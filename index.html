@@ -3,132 +3,537 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Porter Design — Asystent Wycen</title>
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
-  
+  <title>Porter Design — Wyceny</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --green-900: #1a3a08; --green-700: #27500A; --green-500: #3B6D11;
-      --green-300: #97C459; --green-100: #EAF3DE; --grey-900: #1C1C1C;
-      --grey-500: #6B6B6B; --grey-100: #E8E8E8; --white: #FFFFFF;
-      --radius-lg: 24px; --radius-md: 16px; --font-main: 'DM Sans', sans-serif;
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #f7f7f5;
+      --color-border-primary: #d0d0cc;
+      --color-border-secondary: #e0e0dc;
+      --color-border-tertiary: #ececea;
+      --color-text-primary: #1a1a18;
+      --color-text-secondary: #6b6b66;
+      --color-text-tertiary: #a0a09c;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    body { font-family: var(--font-main); background: #f8f9f5; color: var(--grey-900); line-height: 1.5; }
-    .btn { cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
-    input { font-family: inherit; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-background-secondary);
+      color: var(--color-text-primary);
+      min-height: 100vh;
+    }
+    #root {
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--color-background-primary);
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    input, select, button { font-family: inherit; }
   </style>
 </head>
 <body>
   <div id="root"></div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState } = React;
 
-    // --- GŁÓWNA APLIKACJA ---
-    function PorterApp() {
-      const [screen, setScreen] = useState('home'); // home, rooms, summary
-      const [client, setClient] = useState({ name: '', address: '' });
-      const [rooms, setRooms] = useState([]);
-      const [activeRoomIndex, setActiveRoomIndex] = useState(null);
+    const FABRICS = [
+      {name:"Alise",brutto:230,prod:"FIBERO G.ROJEK",width:300},
+      {name:"Alma",brutto:165,prod:"Ridex",width:315},
+      {name:"Altamira",brutto:250,prod:"OZLEM",width:300},
+      {name:"Alto",brutto:120,prod:"VV design",width:370},
+      {name:"Amber",brutto:110,prod:"SAMA TEKSTIL",width:300},
+      {name:"Amsterdam",brutto:160,prod:"SAMA TEKSTIL",width:310},
+      {name:"Andrew",brutto:180,prod:"MARGO TEXTIL",width:320},
+      {name:"Angora",brutto:200,prod:"Spagnolo",width:300},
+      {name:"Anie",brutto:120,prod:"OZLEM",width:310},
+      {name:"Anna",brutto:100,prod:"MARGO TEXTIL",width:330},
+      {name:"Anna 300",brutto:90,prod:"MARGO TEXTIL",width:300},
+      {name:"Annamoe",brutto:140,prod:"OZLEM",width:320},
+      {name:"Antique",brutto:378,prod:"Ridex",width:140},
+      {name:"Antonio Aire",brutto:260,prod:"MARGO TEXTIL",width:290},
+      {name:"Antonio Rabat",brutto:220,prod:"MARGO TEXTIL",width:300},
+    ];
 
-      const addRoom = (name) => {
-        setRooms([...rooms, { name, windows: [] }]);
-        setScreen('rooms');
-      };
+    const PROD_TYPES = [
+      {id:"zaslona",label:"Zasłona"},
+      {id:"firana",label:"Firana"},
+      {id:"zaluzja",label:"Żaluzja"},
+      {id:"roleta",label:"Roleta"},
+      {id:"szyna",label:"Szyna KAES"},
+      {id:"karnisz",label:"Karnisz el."},
+    ];
 
-      const addWindow = (roomIndex) => {
-          const newRooms = [...rooms];
-          newRooms[roomIndex].windows.push({
-              id: Date.now(),
-              type: 'Zasłony',
-              width: '',
-              height: '',
-              fabric: 'Standard',
-              price: 0
-          });
-          setRooms(newRooms);
-      };
+    const ROLETA_CITY = {80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
+    const ROLETA_DUO  = {80:288.16,100:296.34,120:318.61,140:329.84,160:352.12,180:360.3,200:382.57,220:390.76,240:416.08,250:424.26};
+    const ROLETA_EL   = {80:346.42,100:391.83,120:419.84,140:476.13,160:504.14,180:549.55,200:577.56,220:622.96,240:661.86,260:707.27,280:735.28,300:780.68,320:819.58,340:864.99,360:893,380:938.4,400:977.3};
+    const KAES_W = {biala:{100:124.74,150:173.28,200:221.76,250:287.6,300:336.12,350:388.1,400:443.52,450:498.98,500:561.34,550:609.86,600:661.82},czarna:{100:143.46,150:197.16,200:221.76,250:327.12,300:380.8,350:439.04,400:501.74,450:564.46,500:636.18,550:689.9,600:748.08}};
+    const KSLIM = {150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550:1148,600:1308,650:1354,700:1400};
+    const KUNIV = {150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
+    const KNAPED = {am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
+    const KPILOT = {brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
 
-      const updateWindow = (rIdx, wIdx, field, value) => {
-          const newRooms = [...rooms];
-          newRooms[rIdx].windows[wIdx][field] = value;
-          // Prosta logika ceny dla testu
-          const w = parseFloat(newRooms[rIdx].windows[wIdx].width) || 0;
-          newRooms[rIdx].windows[wIdx].price = w * 2.5; 
-          setRooms(newRooms);
-      };
+    function stepLookup(val, obj) {
+      const keys = Object.keys(obj).map(Number).sort((a,b)=>a-b);
+      const k = keys.find(k=>k>=val) || keys[keys.length-1];
+      return {p: obj[k], k};
+    }
 
-      const grandTotal = rooms.reduce((sum, room) => 
-        sum + room.windows.reduce((wSum, w) => wSum + (w.price || 0), 0), 0
-      );
+    function calcProduct(p) {
+      const c = p.c || {}, par = p.par || {};
+      const fabP = p.fabMan != null ? p.fabMan : (p.fabP != null ? p.fabP : null);
+      const fabW = p.fabW || 0;
+      let total = 0, lines = [], warn = null;
 
+      if (p.type === "zaslona" || p.type === "firana") {
+        const wCm = par.wCm||0, hCm = par.hCm||0;
+        const belka = fabW, mars = +(c.mars||"1.5"), szycie = c.sz==="wave"?110:100;
+        const dekro = c.dekro==="tak", hM = hCm/100;
+        if (!wCm || !(p.panels||[]).length || fabP==null) return {total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkaninę":null};
+        const useA2 = belka>0 && hCm>belka;
+        (p.panels||[]).forEach(pn => {
+          const pw = pn.w||wCm, pm = pw/100;
+          let z,kt,ks,koszt;
+          if (useA2) {
+            const pg = Math.ceil((belka/mars)/10)*10-20, lp = Math.ceil(pw/pg);
+            z = +(lp*hM+0.2).toFixed(2); kt = +(z*fabP).toFixed(2);
+            ks = dekro ? (() => { const s=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230; return +(z*s).toFixed(2); })() : +(lp*250).toFixed(2);
+          } else {
+            z = +(pm*mars+0.2).toFixed(2); kt = +(z*fabP).toFixed(2);
+            ks = dekro ? (() => { const s=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230; return +(z*s).toFixed(2); })() : +(z*szycie).toFixed(2);
+          }
+          koszt = kt+ks; total += koszt;
+          lines.push(`${pn.side} ${pw}cm · ${z}mb → ${koszt.toFixed(2).replace(".",",")} zł`);
+        });
+      } else if (p.type === "roleta") {
+        const wCm=par.wCm||0, hCm=par.hCm||0;
+        if (!wCm||!hCm) return {total:0,lines:[],warn:null};
+        const rt=c.rt||"city", rtk2=+(c.rtk2||"160"), rb=c.rb==="tak"?11:0;
+        const tkan = fabP!=null ? fabP : 160;
+        const pow = +((wCm/100)*(hCm/100)).toFixed(3);
+        if (rt==="city") { const r=stepLookup(wCm,ROLETA_CITY); total=+(r.p*2+rb).toFixed(2)++(pow*(200+tkan)).toFixed(2); }
+        else if (rt==="duo") { const r=stepLookup(wCm,ROLETA_DUO); total=+(r.p*2+rb).toFixed(2)++(pow*280).toFixed(2)++(pow*(200+rtk2)).toFixed(2); }
+        else { const r=stepLookup(wCm,ROLETA_EL); total=+(r.p*2).toFixed(2)++(pow*(200+tkan)).toFixed(2); }
+        lines.push(`Roleta ${rt} ${wCm}×${hCm}cm · ${pow}m²`);
+      } else if (p.type === "szyna") {
+        const len=par.len||0, arc=par.arc||0, pts=par.pts||0;
+        if (!len) return {total:0,lines:[],warn:null};
+        let baz;
+        if (c.ks==="wave") { const r=stepLookup(Math.round(len*100), KAES_W[c.kk||"biala"]); baz=r.p; }
+        else baz = +(len*80).toFixed(2);
+        total = baz + +(arc*100).toFixed(2) + +(pts*60).toFixed(2);
+        lines.push(`KAES ${c.ks||"flex"} ${len}mb`);
+        if (c.km==="sciana") warn="Ścienny — dolicz uchwyty ścienne.";
+      } else if (p.type === "karnisz") {
+        const len=par.len||0, pt=par.pt||0, arc=par.arc||0;
+        if (!len) return {total:0,lines:[],warn:null};
+        const st = c.km==="universal" ? KUNIV : KSLIM;
+        const r = stepLookup(len, st);
+        total = r.p + (KNAPED[c.kn||"am75"]||0) + (KPILOT[c.kp||"brak"]||0) + pt*210 + arc*318;
+        lines.push(`Karnisz ${(c.km||"slim").toUpperCase()} do ${r.k}cm`);
+      }
+      return {total, lines, warn};
+    }
+
+    function Chip({label, active, onClick}) {
       return (
-        <div style={{maxWidth: 500, margin: '0 auto', padding: 20}}>
-          {screen === 'home' && (
-            <div style={{textAlign: 'center', marginTop: 100}}>
-              <h1 style={{color: 'var(--green-700)', fontSize: 32, marginBottom: 10}}>PORTER DESIGN</h1>
-              <p style={{color: 'var(--grey-500)', marginBottom: 40}}>System Zarządzania Ofertami</p>
-              <input 
-                style={{width: '100%', padding: 15, borderRadius: 15, border: '1px solid #ddd', marginBottom: 10}}
-                placeholder="Imię i Nazwisko klienta"
-                value={client.name}
-                onChange={(e) => setClient({...client, name: e.target.value})}
-              />
-              <button 
-                onClick={() => addRoom('Salon')}
-                style={{width: '100%', padding: 15, background: 'var(--green-700)', color: 'white', borderRadius: 15, fontWeight: 'bold'}}
-              >
-                Rozpocznij nową wizytę
-              </button>
-            </div>
-          )}
+        <button onClick={onClick} style={{
+          padding:"3px 9px", borderRadius:20, border:`0.5px solid ${active?"#3B6D11":"var(--color-border-secondary)"}`,
+          background: active?"#EAF3DE":"transparent", color: active?"#27500A":"var(--color-text-primary)",
+          fontSize:11, cursor:"pointer", fontFamily:"inherit"
+        }}>{label}</button>
+      );
+    }
 
-          {screen === 'rooms' && (
-            <div>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
-                <h2 style={{fontSize: 18}}>Pokoje i okna</h2>
-                <button onClick={() => setScreen('summary')} style={{color: 'var(--green-700)', fontWeight: 'bold'}}>Podsumowanie ({Math.round(grandTotal)} zł)</button>
+    function FabricPicker({fabName, fabMan, onSelect, onManual}) {
+      const [q, setQ] = useState("");
+      const list = q ? FABRICS.filter(f=>f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase())) : FABRICS;
+      return (
+        <div style={{border:"0.5px solid var(--color-border-secondary)",borderRadius:8,overflow:"hidden",marginBottom:8}}>
+          <div style={{padding:"5px 9px",background:"var(--color-background-secondary)",fontSize:11,fontWeight:500,color:"var(--color-text-secondary)",display:"flex",alignItems:"center",gap:8}}>
+            <span>TKANINA</span>
+            {fabName && <span style={{background:"#EAF3DE",border:"0.5px solid #97C459",borderRadius:5,padding:"2px 7px",color:"#27500A",fontSize:11}}>{fabName} · {FABRICS.find(f=>f.name===fabName)?.brutto} zł/mb · {FABRICS.find(f=>f.name===fabName)?.width}cm</span>}
+            {!fabName && !fabMan && <span style={{color:"var(--color-text-tertiary)"}}>nie wybrano</span>}
+            {fabMan!=null && <span style={{background:"#EAF3DE",border:"0.5px solid #97C459",borderRadius:5,padding:"2px 7px",color:"#27500A",fontSize:11}}>ręczna: {fabMan} zł/mb</span>}
+          </div>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Szukaj po nazwie lub producencie..."
+            style={{width:"100%",padding:"5px 9px",fontSize:12,border:"none",borderBottom:"0.5px solid var(--color-border-tertiary)",background:"var(--color-background-primary)",color:"var(--color-text-primary)",outline:"none",boxSizing:"border-box"}}/>
+          <div style={{maxHeight:150,overflowY:"auto"}}>
+            {list.map(f=>(
+              <div key={f.name} onClick={()=>onSelect(f)} style={{
+                display:"flex",alignItems:"center",gap:8,padding:"5px 9px",
+                borderBottom:"0.5px solid var(--color-border-tertiary)",cursor:"pointer",fontSize:12,
+                background: fabName===f.name ? "#EAF3DE":"var(--color-background-primary)"
+              }}>
+                <span style={{flex:1,fontWeight:500,color:"var(--color-text-primary)"}}>{f.name}</span>
+                <span style={{fontSize:10,color:"var(--color-text-tertiary)",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.prod}</span>
+                <span style={{color:"var(--color-text-secondary)",whiteSpace:"nowrap"}}>{f.width}cm</span>
+                <span style={{color:"#27500A",fontWeight:500,whiteSpace:"nowrap"}}>{f.brutto} zł</span>
               </div>
-
-              {rooms.map((room, rIdx) => (
-                <div key={rIdx} style={{background: 'white', padding: 20, borderRadius: 25, marginBottom: 20, boxShadow: '0 4px 10px rgba(0,0,0,0.05)'}}>
-                  <h3 style={{marginBottom: 15, color: 'var(--green-700)'}}>{room.name}</h3>
-                  {room.windows.map((win, wIdx) => (
-                    <div key={win.id} style={{background: '#f9f9f9', padding: 15, borderRadius: 15, marginBottom: 10}}>
-                        <div style={{display: 'flex', gap: 10, marginBottom: 10}}>
-                            <input placeholder="Szerokość" style={{width: '50%', padding: 8}} onChange={(e) => updateWindow(rIdx, wIdx, 'width', e.target.value)} />
-                            <input placeholder="Wysokość" style={{width: '50%', padding: 8}} onChange={(e) => updateWindow(rIdx, wIdx, 'height', e.target.value)} />
-                        </div>
-                        <div style={{fontSize: 12, color: 'var(--green-700)', fontWeight: 'bold'}}>Wycena okna: {win.price} zł</div>
-                    </div>
-                  ))}
-                  <button onClick={() => addWindow(rIdx)} style={{fontSize: 13, color: 'var(--green-500)'}}>+ Dodaj okno</button>
-                </div>
-              ))}
-              
-              <button onClick={() => addRoom('Kolejny pokój')} style={{width: '100%', padding: 15, border: '2px dashed #ccc', borderRadius: 20, color: '#888'}}>+ Dodaj pomieszczenie</button>
-            </div>
-          )}
-
-          {screen === 'summary' && (
-            <div style={{background: 'white', padding: 30, borderRadius: 30}}>
-                <h2 style={{marginBottom: 20}}>Podsumowanie dla: {client.name}</h2>
-                <div style={{fontSize: 24, fontWeight: 'bold', color: 'var(--green-700)', marginBottom: 20}}>Razem: {grandTotal} zł</div>
-                <button onClick={() => window.print()} style={{width: '100%', padding: 15, background: '#1c1c1c', color: 'white', borderRadius: 15}}>Generuj PDF</button>
-                <button onClick={() => setScreen('rooms')} style={{width: '100%', marginTop: 10, color: '#888'}}>Wróć do edycji</button>
-            </div>
-          )}
+            ))}
+          </div>
+          <div style={{padding:"5px 9px",display:"flex",alignItems:"center",gap:8,borderTop:"0.5px solid var(--color-border-tertiary)"}}>
+            <label style={{fontSize:11,color:"var(--color-text-secondary)",flex:1}}>Lub wpisz cenę ręcznie (zł/mb):</label>
+            <input type="number" value={fabMan!=null?fabMan:""} onChange={e=>onManual(e.target.value===""?null:+e.target.value)}
+              placeholder="np. 180" style={{width:80,padding:"3px 7px",fontSize:12,border:"0.5px solid var(--color-border-secondary)",borderRadius:5,background:"var(--color-background-primary)",color:"var(--color-text-primary)",textAlign:"right"}}/>
+          </div>
         </div>
       );
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<PorterApp />);
+    function ProductCard({prod, idx, onChange, onRemove}) {
+      const c = prod.c||{}, par = prod.par||{};
+      const setC = (k,v) => onChange({...prod, c:{...c,[k]:v}});
+      const togC = (k,a="nie",b="tak") => setC(k, c[k]===b?a:b);
+      const setPar = (k,v) => onChange({...prod, par:{...par,[k]:+v||0}});
+      const addPanel = () => onChange({...prod, panels:[...(prod.panels||[]),{side:"Zasłona lewa",w:""}]});
+      const remPanel = (j) => onChange({...prod, panels:prod.panels.filter((_,i)=>i!==j)});
+      const setPanelSide = (j,v) => onChange({...prod, panels:prod.panels.map((p,i)=>i===j?{...p,side:v}:p)});
+      const setPanelW = (j,v) => onChange({...prod, panels:prod.panels.map((p,i)=>i===j?{...p,w:+v||0}:p)});
+      const selFab = (f) => onChange({...prod, fabName:f.name, fabP:f.brutto, fabW:f.width, fabMan:null});
+      const setFabMan = (v) => onChange({...prod, fabName:null, fabP:null, fabW:null, fabMan:v});
+
+      const {total, lines, warn} = calcProduct(prod);
+      const eff = prod.mp != null ? prod.mp : total;
+
+      const boxStyle = {background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:10,overflow:"hidden",marginBottom:8};
+      const headStyle = {padding:"8px 12px",background:"var(--color-background-secondary)",display:"flex",alignItems:"center",gap:8};
+      const bodyStyle = {padding:"11px 12px",display:"flex",flexDirection:"column",gap:8};
+      const row2 = {display:"grid",gridTemplateColumns:"1fr 1fr",gap:8};
+      const fiStyle = {display:"flex",flexDirection:"column",gap:3};
+      const labelStyle = {fontSize:11,color:"var(--color-text-secondary)"};
+      const inputStyle = {padding:"5px 8px",fontSize:13,border:"0.5px solid var(--color-border-secondary)",borderRadius:6,background:"var(--color-background-primary)",color:"var(--color-text-primary)",fontFamily:"inherit"};
+      const chips = (items) => <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{items}</div>;
+
+      const typeChips = PROD_TYPES.map(t=>(
+        <Chip key={t.id} label={t.label} active={prod.type===t.id} onClick={()=>onChange({...prod,type:t.id,c:{},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,cp:0,mp:null})}/>
+      ));
+
+      let form = null;
+      if (prod.type==="zaslona" || prod.type==="firana") {
+        form = <>
+          <div style={row2}>
+            <div style={fiStyle}><label style={labelStyle}>Szer. karnisza (cm)</label><input type="number" value={par.wCm||""} onChange={e=>setPar("wCm",e.target.value)} placeholder="np. 195" style={inputStyle}/></div>
+            <div style={fiStyle}><label style={labelStyle}>Wysokość (cm)</label><input type="number" value={par.hCm||""} onChange={e=>setPar("hCm",e.target.value)} placeholder="np. 260" style={inputStyle}/></div>
+          </div>
+          {chips([
+            <Chip key="flex" label="Flex 100 zł/mb" active={(!c.sz||c.sz==="flex")} onClick={()=>setC("sz","flex")}/>,
+            <Chip key="wave" label="Wave 110 zł/mb" active={c.sz==="wave"} onClick={()=>setC("sz","wave")}/>,
+            <Chip key="150" label="150%" active={(!c.mars||c.mars==="1.5")} onClick={()=>setC("mars","1.5")}/>,
+            <Chip key="200" label="200%" active={c.mars==="2.0"} onClick={()=>setC("mars","2.0")}/>,
+            <Chip key="dekro" label="Dekro" active={c.dekro==="tak"} onClick={()=>togC("dekro")}/>,
+          ])}
+          <FabricPicker fabName={prod.fabName} fabMan={prod.fabMan} onSelect={selFab} onManual={setFabMan}/>
+          {(prod.panels||[]).map((pn,j)=>(
+            <div key={j} style={{display:"flex",alignItems:"center",gap:6}}>
+              <select value={pn.side} onChange={e=>setPanelSide(j,e.target.value)} style={{...inputStyle,flex:1,fontSize:11,padding:"3px 6px"}}>
+                {["Zasłona lewa","Zasłona prawa","Firana środkowa","Panel lewy","Panel prawy","Całość"].map(o=><option key={o}>{o}</option>)}
+              </select>
+              <input type="number" value={pn.w||""} onChange={e=>setPanelW(j,e.target.value)} placeholder="cm" style={{...inputStyle,width:60,fontSize:11,padding:"3px 6px",textAlign:"center"}}/>
+              <span style={{fontSize:11,color:"var(--color-text-secondary)"}}>cm</span>
+              <button onClick={()=>remPanel(j)} style={{border:"none",background:"none",cursor:"pointer",color:"var(--color-text-tertiary)",fontSize:15,lineHeight:1}}>×</button>
+            </div>
+          ))}
+          <button onClick={addPanel} style={{...inputStyle,cursor:"pointer",fontSize:11,padding:"3px 9px",alignSelf:"flex-start"}}>+ Panel</button>
+        </>;
+      } else if (prod.type==="roleta") {
+        form = <>
+          <div style={row2}>
+            <div style={fiStyle}><label style={labelStyle}>Szerokość (cm)</label><input type="number" value={par.wCm||""} onChange={e=>setPar("wCm",e.target.value)} placeholder="np. 120" style={inputStyle}/></div>
+            <div style={fiStyle}><label style={labelStyle}>Długość (cm)</label><input type="number" value={par.hCm||""} onChange={e=>setPar("hCm",e.target.value)} placeholder="np. 160" style={inputStyle}/></div>
+          </div>
+          {chips([
+            <Chip key="city" label="City" active={!c.rt||c.rt==="city"} onClick={()=>setC("rt","city")}/>,
+            <Chip key="duo" label="Duo" active={c.rt==="duo"} onClick={()=>setC("rt","duo")}/>,
+            <Chip key="el" label="Elektryczna" active={c.rt==="el"} onClick={()=>setC("rt","el")}/>,
+          ])}
+          <FabricPicker fabName={prod.fabName} fabMan={prod.fabMan} onSelect={selFab} onManual={setFabMan}/>
+          {chips([
+            c.rt==="duo" && <Chip key="b160" label="2:Basic 160" active={!c.rtk2||c.rtk2==="160"} onClick={()=>setC("rtk2","160")}/>,
+            c.rt==="duo" && <Chip key="b190" label="2:Standard 190" active={c.rtk2==="190"} onClick={()=>setC("rtk2","190")}/>,
+            c.rt==="duo" && <Chip key="b250" label="2:Premium 250" active={c.rtk2==="250"} onClick={()=>setC("rtk2","250")}/>,
+            <Chip key="benb" label="+bębenek 11zł" active={c.rb==="tak"} onClick={()=>togC("rb")}/>,
+          ].filter(Boolean))}
+        </>;
+      } else if (prod.type==="szyna") {
+        form = <>
+          <div style={row2}>
+            <div style={fiStyle}><label style={labelStyle}>Długość (mb)</label><input type="number" step="0.1" value={par.len||""} onChange={e=>setPar("len",e.target.value)} placeholder="np. 2.5" style={inputStyle}/></div>
+            <div style={fiStyle}><label style={labelStyle}>Gięcie łuk (mb)</label><input type="number" step="0.1" value={par.arc||""} onChange={e=>setPar("arc",e.target.value)} placeholder="0" style={inputStyle}/></div>
+            <div style={fiStyle}><label style={labelStyle}>Gięcie punktowe (szt.)</label><input type="number" value={par.pts||""} onChange={e=>setPar("pts",e.target.value)} placeholder="0" style={inputStyle}/></div>
+          </div>
+          {chips([
+            <Chip key="flex" label="Flex 80 zł/mb" active={!c.ks||c.ks==="flex"} onClick={()=>setC("ks","flex")}/>,
+            <Chip key="wave" label="Wave" active={c.ks==="wave"} onClick={()=>setC("ks","wave")}/>,
+            c.ks==="wave" && <Chip key="biala" label="Biała" active={!c.kk||c.kk==="biala"} onClick={()=>setC("kk","biala")}/>,
+            c.ks==="wave" && <Chip key="czarna" label="Czarna" active={c.kk==="czarna"} onClick={()=>setC("kk","czarna")}/>,
+            <Chip key="sciana" label="Montaż ścienny" active={c.km==="sciana"} onClick={()=>togC("km","sufit","sciana")}/>,
+          ].filter(Boolean))}
+        </>;
+      } else if (prod.type==="karnisz") {
+        form = <>
+          <div style={row2}>
+            <div style={fiStyle}><label style={labelStyle}>Długość (cm)</label><input type="number" value={par.len||""} onChange={e=>setPar("len",e.target.value)} placeholder="300" style={inputStyle}/></div>
+            <div style={fiStyle}><label style={labelStyle}>Gięcie punkt. (szt.)</label><input type="number" value={par.pt||""} onChange={e=>setPar("pt",e.target.value)} placeholder="0" style={inputStyle}/></div>
+            <div style={fiStyle}><label style={labelStyle}>Gięcie łuk (mb)</label><input type="number" step="0.1" value={par.arc||""} onChange={e=>setPar("arc",e.target.value)} placeholder="0" style={inputStyle}/></div>
+          </div>
+          {chips([
+            <Chip key="slim" label="SLIM" active={!c.km||c.km==="slim"} onClick={()=>setC("km","slim")}/>,
+            <Chip key="univ" label="UNIVERSAL" active={c.km==="universal"} onClick={()=>setC("km","universal")}/>,
+          ])}
+          {chips(Object.entries({am75:"A-OK AM75 644zł",am50:"A-OK AM50 1000zł",mdct:"Movelite DCT 902zł",mrts:"Movelite RTS 1056zł",glydea:"Glydea 2268zł",irismo:"Irismo 2182zł"}).map(([v,l])=>(
+            <Chip key={v} label={l} active={(!c.kn&&v==="am75")||c.kn===v} onClick={()=>setC("kn",v)}/>
+          )))}
+          {chips(Object.entries({brak:"Brak st.",aok1b:"Pilot biały 130zł",aok1c:"Pilot czarny 148zł",tuya:"Tuya 340zł",situo:"Situo 284zł",tahoma:"TaHoma 1390zł"}).map(([v,l])=>(
+            <Chip key={v} label={l} active={(!c.kp&&v==="brak")||c.kp===v} onClick={()=>setC("kp",v)}/>
+          )))}
+        </>;
+      } else {
+        form = <div style={{fontSize:12,color:"var(--color-text-secondary)"}}>Cennik wkrótce.</div>;
+      }
+
+      return (
+        <div style={boxStyle}>
+          <div style={headStyle}>
+            <span style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)",flex:1}}>
+              {PROD_TYPES.find(t=>t.id===prod.type)?.label}{prod.fabName?" · "+prod.fabName:""}
+            </span>
+            <span style={{fontSize:12,fontWeight:500,color:"#3B6D11"}}>{eff?Math.round(eff)+" zł":""}</span>
+            <button onClick={onRemove} style={{border:"none",background:"none",cursor:"pointer",fontSize:15,color:"var(--color-text-tertiary)",lineHeight:1}}>×</button>
+          </div>
+          <div style={bodyStyle}>
+            {chips(typeChips)}
+            {form}
+            {warn && <div style={{background:"#FAEEDA",border:"0.5px solid #EF9F27",borderRadius:6,padding:"5px 9px",fontSize:11,color:"#633806"}}>{warn}</div>}
+            {total>0 && prod.mp==null && (
+              <div style={{background:"#EAF3DE",border:"0.5px solid #97C459",borderRadius:8,padding:"8px 10px"}}>
+                {lines.map((l,i)=><div key={i} style={{fontSize:12,color:"#3B6D11",display:"flex",justifyContent:"space-between"}}><span>{l}</span></div>)}
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:500,color:"#27500A",marginTop:4,paddingTop:4,borderTop:"1px solid #97C459"}}>
+                  <span>Razem</span><span>{total.toFixed(2).replace(".",",")} zł</span>
+                </div>
+              </div>
+            )}
+            <div style={{display:"flex",alignItems:"center",gap:8,paddingTop:8,borderTop:"0.5px solid var(--color-border-tertiary)"}}>
+              <label style={{fontSize:11,color:"var(--color-text-secondary)",flex:1}}>Własna cena końcowa (nadpisuje):</label>
+              <input type="number" value={prod.mp!=null?prod.mp:""} onChange={e=>onChange({...prod,mp:e.target.value===""?null:+e.target.value})}
+                placeholder="zł" style={{width:80,padding:"4px 7px",fontSize:12,border:"0.5px solid var(--color-border-secondary)",borderRadius:6,background:"var(--color-background-primary)",color:"var(--color-text-primary)",textAlign:"right"}}/>
+              {prod.mp!=null && <button onClick={()=>onChange({...prod,mp:null})} style={{border:"none",background:"none",cursor:"pointer",fontSize:11,color:"var(--color-text-tertiary)"}}>wyczyść</button>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [screen, setScreen] = useState("home");
+      const [rooms, setRooms] = useState([{id:1,name:"Salon",icon:"🛋️",windows:[]}]);
+      const [client, setClient] = useState(null);
+      const [curRoomId, setCurRoomId] = useState(null);
+      const [curWin, setCurWin] = useState(null);
+      const [modal, setModal] = useState(null);
+      const [newName, setNewName] = useState("");
+      const [newAddr, setNewAddr] = useState("");
+
+      const curRoom = rooms.find(r=>r.id===curRoomId);
+      const winTotal = w => w.products.reduce((a,p)=>a+(p.mp!=null?p.mp:(calcProduct(p).total||0)),0);
+      const roomTotal = r => r.windows.reduce((a,w)=>a+winTotal(w),0);
+      const grandTotal = rooms.reduce((a,r)=>a+roomTotal(r),0);
+
+      const openClient = (name,addr) => { setClient({name,addr}); setScreen("rooms"); };
+      const openRoom = (id) => { setCurRoomId(id); setScreen("windows"); };
+      const openWin = (w) => { setCurWin(JSON.parse(JSON.stringify(w))); setScreen("detail"); };
+      const newWin = (name) => { const w={id:Date.now(),name,products:[]}; setCurWin(w); setScreen("detail"); };
+
+      const saveWin = () => {
+        setRooms(rs=>rs.map(r=>r.id===curRoomId?{...r,windows:r.windows.find(w=>w.id===curWin.id)?r.windows.map(w=>w.id===curWin.id?curWin:w):[...r.windows,curWin]}:r));
+        setScreen("windows");
+      };
+
+      const addProd = () => setCurWin(w=>({...w,products:[...w.products,{id:Date.now(),type:"zaslona",c:{},par:{},panels:[],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}]}));
+      const updateProd = (i,p) => setCurWin(w=>({...w,products:w.products.map((x,j)=>j===i?p:x)}));
+      const removeProd = (i) => setCurWin(w=>({...w,products:w.products.filter((_,j)=>j!==i)}));
+
+      const addRoom = (name) => {
+        const icons={salon:"🛋️",sypialnia:"🛏️",kuchnia:"🍳",łazienka:"🛁",gabinet:"📚",pokój:"🛏️"};
+        const k=Object.keys(icons).find(k=>name.toLowerCase().includes(k));
+        setRooms(rs=>[...rs,{id:Date.now(),name,icon:icons[k]||"🪟",windows:[]}]);
+      };
+
+      const btn = (label,onClick,primary=false) => (
+        <button onClick={onClick} style={{padding:"6px 13px",borderRadius:7,border:`0.5px solid ${primary?"#3B6D11":"var(--color-border-secondary)"}`,background:primary?"#3B6D11":"transparent",color:primary?"#fff":"var(--color-text-primary)",fontSize:12,fontWeight:500,cursor:"pointer",fontFamily:"inherit"}}>{label}</button>
+      );
+
+      const tile = (icon,name,sub,onClick) => (
+        <div onClick={onClick} style={{background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:10,padding:12,cursor:"pointer"}}>
+          <div style={{fontSize:18,marginBottom:4}}>{icon}</div>
+          <div style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)"}}>{name}</div>
+          {sub&&<div style={{fontSize:11,color:"var(--color-text-secondary)",marginTop:1}}>{sub}</div>}
+        </div>
+      );
+
+      const addTile = (label,onClick) => (
+        <div onClick={onClick} style={{background:"transparent",border:"0.5px dashed var(--color-border-secondary)",borderRadius:10,padding:12,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,color:"var(--color-text-tertiary)",minHeight:75}}>
+          <span style={{fontSize:16}}>+</span><span style={{fontSize:11}}>{label}</span>
+        </div>
+      );
+
+      const grid = (children) => <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,marginBottom:12}}>{children}</div>;
+      const sectionLabel = (t) => <div style={{marginBottom:6,fontSize:11,fontWeight:500,color:"var(--color-text-secondary)",letterSpacing:"0.06em",textTransform:"uppercase"}}>{t}</div>;
+
+      const bc = () => {
+        const parts = [];
+        const crumb = (label,onClick) => <span key={label} onClick={onClick} style={{cursor:onClick?"pointer":"default",color:onClick?"var(--color-text-secondary)":"var(--color-text-primary)",fontWeight:onClick?400:500}}>{label}</span>;
+        const sep = (i) => <span key={"s"+i} style={{color:"var(--color-border-primary)",margin:"0 4px"}}>›</span>;
+        parts.push(crumb("Klienci",screen!=="home"?()=>setScreen("home"):null));
+        if (screen!=="home"&&client) { parts.push(sep(1)); parts.push(crumb(client.name,screen!=="rooms"?()=>setScreen("rooms"):null)); }
+        if ((screen==="windows"||screen==="detail")&&curRoom) { parts.push(sep(2)); parts.push(crumb(curRoom.name,screen==="detail"?()=>setScreen("windows"):null)); }
+        if (screen==="detail"&&curWin) { parts.push(sep(3)); parts.push(crumb(curWin.name,null)); }
+        if (screen==="sum") { parts.push(sep(4)); parts.push(crumb("Podsumowanie",null)); }
+        return <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",fontSize:12,marginBottom:"1rem"}}>{parts}</div>;
+      };
+
+      const showModal = (type) => { setModal(type); setNewName(""); setNewAddr(""); };
+      const closeModal = () => setModal(null);
+
+      const Modal = () => {
+        if (!modal) return null;
+        const configs = {
+          client:{title:"Nowy klient",fields:[{id:"name",placeholder:"Imię i nazwisko"},{id:"addr",placeholder:"Adres"}],ok:()=>{openClient(newName,newAddr);closeModal();}},
+          room:{title:"Nowe pomieszczenie",fields:[{id:"name",placeholder:"np. Kuchnia, Pokój Kasi..."}],ok:()=>{addRoom(newName);closeModal();}},
+          win:{title:"Nowe okno",fields:[{id:"name",placeholder:"np. Okno lewe, Taras..."}],ok:()=>{newWin(newName);closeModal();}},
+        };
+        const cfg = configs[modal];
+        return (
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}}>
+            <div style={{background:"var(--color-background-primary)",borderRadius:10,padding:"1.1rem",width:260,border:"0.5px solid var(--color-border-secondary)"}}>
+              <div style={{fontSize:13,fontWeight:500,marginBottom:10,color:"var(--color-text-primary)"}}>{cfg.title}</div>
+              {cfg.fields.map((f,i)=>(
+                <input key={f.id} autoFocus={i===0} value={f.id==="addr"?newAddr:newName}
+                  onChange={e=>f.id==="addr"?setNewAddr(e.target.value):setNewName(e.target.value)}
+                  placeholder={f.placeholder}
+                  style={{width:"100%",padding:"6px 9px",fontSize:13,border:"0.5px solid var(--color-border-secondary)",borderRadius:6,marginBottom:8,background:"var(--color-background-primary)",color:"var(--color-text-primary)",boxSizing:"border-box",fontFamily:"inherit"}}/>
+              ))}
+              <div style={{display:"flex",gap:6,marginTop:4}}>
+                {btn("Dodaj",cfg.ok,true)}
+                {btn("Anuluj",closeModal)}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div style={{padding:"1rem 0",fontFamily:"var(--font-sans)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:"1rem",paddingBottom:"1rem",borderBottom:"0.5px solid var(--color-border-tertiary)"}}>
+            <div style={{width:22,height:22,background:"#EAF3DE",borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>🪟</div>
+            <span style={{fontSize:14,fontWeight:500,color:"var(--color-text-primary)",flex:1}}>Porter Design</span>
+            <span style={{fontSize:11,color:"var(--color-text-secondary)",background:"var(--color-background-secondary)",padding:"2px 8px",borderRadius:6,border:"0.5px solid var(--color-border-tertiary)"}}>{client?.name||"Nowy klient"}</span>
+          </div>
+
+          {bc()}
+
+          {screen==="home" && <>
+            {sectionLabel("Klienci")}
+            {grid(<>
+              {tile("👤","Kowalski Jan","przykładowy",()=>openClient("Kowalski Jan","ul. Wiśniowa 12"))}
+              {addTile("Nowy klient",()=>showModal("client"))}
+            </>)}
+          </>}
+
+          {screen==="rooms" && <>
+            {sectionLabel("Pomieszczenia")}
+            {grid(<>
+              {rooms.map(r=>tile(r.icon,r.name,`${r.windows.length} okien`,()=>openRoom(r.id)))}
+              {addTile("Pomieszczenie",()=>showModal("room"))}
+            </>)}
+            <div style={{display:"flex",gap:6}}>{btn("Podsumowanie ↗",()=>setScreen("sum"),true)}</div>
+          </>}
+
+          {screen==="windows" && curRoom && <>
+            <div style={{background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:10,overflow:"hidden",marginBottom:8}}>
+              <div style={{padding:"8px 12px",background:"var(--color-background-secondary)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)"}}>{curRoom.name}</span>
+                <span style={{fontSize:11,color:"var(--color-text-secondary)"}}>{curRoom.windows.length} okien</span>
+              </div>
+              {!curRoom.windows.length && <div style={{padding:"10px 12px",fontSize:12,color:"var(--color-text-secondary)"}}>Brak okien.</div>}
+              {curRoom.windows.map(w=>{
+                const t=winTotal(w);
+                return <div key={w.id} onClick={()=>openWin(w)} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderTop:"0.5px solid var(--color-border-tertiary)",cursor:"pointer"}}>
+                  <div style={{width:26,height:26,background:"#EAF3DE",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12}}>🪟</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)"}}>{w.name}</div>
+                    <div style={{fontSize:11,color:"var(--color-text-secondary)"}}>{w.products.map(p=>PROD_TYPES.find(t=>t.id===p.type)?.label||p.type).join(", ")||"—"}</div>
+                  </div>
+                  <span style={{fontSize:12,fontWeight:500,color:"#3B6D11"}}>{t?Math.round(t)+" zł":""}</span>
+                  <span style={{color:"var(--color-text-tertiary)",fontSize:12}}>›</span>
+                </div>;
+              })}
+            </div>
+            {btn("+ Dodaj okno",()=>showModal("win"))}
+          </>}
+
+          {screen==="detail" && curWin && <>
+            <div style={{background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:10,overflow:"hidden",marginBottom:8}}>
+              <div style={{padding:"8px 12px",background:"var(--color-background-secondary)",display:"flex",alignItems:"center"}}>
+                <span style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)",flex:1}}>{curWin.name}</span>
+                <span style={{fontSize:12,fontWeight:500,color:"#3B6D11"}}>{curWin.products.length?Math.round(winTotal(curWin))+" zł":""}</span>
+              </div>
+            </div>
+            {curWin.products.map((p,i)=>(
+              <ProductCard key={p.id} prod={p} idx={i} onChange={np=>updateProd(i,np)} onRemove={()=>removeProd(i)}/>
+            ))}
+            <button onClick={addProd} style={{padding:"6px 13px",borderRadius:7,border:"0.5px solid var(--color-border-secondary)",background:"transparent",color:"var(--color-text-primary)",fontSize:12,fontWeight:500,cursor:"pointer",marginBottom:8,fontFamily:"inherit"}}>+ Dodaj produkt</button>
+            {curWin.products.length>0 && (
+              <div style={{background:"#EAF3DE",border:"0.5px solid #97C459",borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                <span style={{fontSize:12,fontWeight:500,color:"#27500A"}}>Łącznie okno</span>
+                <span style={{fontSize:17,fontWeight:500,color:"#27500A"}}>{Math.round(winTotal(curWin))} zł</span>
+              </div>
+            )}
+            <div style={{display:"flex",gap:6}}>
+              {btn("Zapisz okno",saveWin,true)}
+              {btn("Anuluj",()=>setScreen("windows"))}
+            </div>
+          </>}
+
+          {screen==="sum" && <>
+            {rooms.map(r=>r.windows.length?(
+              <div key={r.id} style={{background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-tertiary)",borderRadius:10,overflow:"hidden",marginBottom:8}}>
+                <div style={{padding:"8px 12px",background:"var(--color-background-secondary)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{fontSize:13,fontWeight:500,color:"var(--color-text-primary)"}}>{r.icon} {r.name}</span>
+                  <span style={{fontSize:13,fontWeight:500,color:"#3B6D11"}}>{Math.round(roomTotal(r))} zł</span>
+                </div>
+                {r.windows.map(w=>{
+                  const t=winTotal(w);
+                  const desc=w.products.map(p=>{const l=PROD_TYPES.find(t=>t.id===p.type)?.label||p.type;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
+                  return <div key={w.id} style={{padding:"7px 12px",borderTop:"0.5px solid var(--color-border-tertiary)",fontSize:12}}>
+                    <div style={{fontWeight:500,color:"var(--color-text-primary)",marginBottom:1}}>🪟 {w.name}</div>
+                    <div style={{color:"var(--color-text-secondary)"}}>{desc||"—"} · <strong>{Math.round(t)} zł</strong></div>
+                  </div>;
+                })}
+              </div>
+            ):null)}
+            <div style={{background:"#EAF3DE",border:"0.5px solid #97C459",borderRadius:10,padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+              <span style={{fontSize:13,fontWeight:500,color:"#27500A"}}>Łącznie cała wizyta</span>
+              <span style={{fontSize:19,fontWeight:500,color:"#27500A"}}>{Math.round(grandTotal)} zł</span>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {btn("← Edytuj",()=>setScreen("rooms"))}
+            </div>
+          </>}
+
+          <Modal/>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App/>);
   </script>
 </body>
 </html>
