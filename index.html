@@ -3,63 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Porter Design - Kalkulator Interaktywny</title>
+    <title>Porter Design - Kalkulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .chip { transition: all 0.2s; cursor: pointer; border: 2px solid #e2e8f0; text-align: center; }
-        .chip.active { background-color: #f0fdf4; border-color: #22c55e; color: #166534; font-weight: bold; }
+        .chip { transition: all 0.2s; cursor: pointer; border: 2px solid #e2e8f0; text-align: center; user-select: none; }
+        .chip.active { background-color: #f0fdf4 ! contents; border-color: #22c55e !important; color: #166534 !important; font-weight: bold; background: #f0fdf4; }
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 pb-32 font-sans">
+<body class="bg-gray-50 min-h-screen p-4 pb-40 font-sans text-gray-800">
 
     <div class="max-w-2xl mx-auto space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h1 class="text-xl font-bold text-gray-800 mb-4 tracking-tight">System Ofertowy Porter Design</h1>
-            <input type="text" placeholder="Imię i Nazwisko Klienta" class="w-full border-b-2 py-2 outline-none focus:border-green-500 text-lg">
+            <h1 class="text-xl font-bold mb-4 tracking-tight text-green-700">System Ofertowy Porter Design</h1>
+            <input type="text" placeholder="Imię i Nazwisko Klienta" class="w-full border-b-2 py-2 outline-none focus:border-green-500 text-lg bg-transparent">
         </div>
 
         <div class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
             <div class="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-                <span class="font-bold text-gray-700 uppercase text-xs tracking-widest">Pomieszczenie: Salon</span>
-                <button class="text-red-400 hover:text-red-600 transition-colors"><i class="fas fa-trash"></i></button>
+                <span class="font-bold text-gray-500 uppercase text-[10px] tracking-widest">Pomieszczenie: Salon</span>
+                <button class="text-red-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
             </div>
 
             <div class="p-6 space-y-8">
                 <div>
                     <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Typ produktu</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="productTypes">
-                        <div class="chip active p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Zasłony</div>
-                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Żaluzje</div>
-                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Rolety rzymskie</div>
-                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Szyny KAES</div>
-                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Karnisze el.</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="productGroup">
+                        <div class="chip active p-2 rounded-xl text-[11px]" onclick="handleChipClick(this, 'product')">Zasłony</div>
+                        <div class="chip p-2 rounded-xl text-[11px]" onclick="handleChipClick(this, 'product')">Żaluzje</div>
+                        <div class="chip p-2 rounded-xl text-[11px]" onclick="handleChipClick(this, 'product')">Rolety rzymskie</div>
+                        <div class="chip p-2 rounded-xl text-[11px]" onclick="handleChipClick(this, 'product')">Szyny KAES</div>
+                        <div class="chip p-2 rounded-xl text-[11px]" onclick="handleChipClick(this, 'product')">Karnisze el.</div>
                     </div>
                 </div>
 
-                <div id="curtainForm" class="bg-gray-50 p-6 rounded-2xl space-y-6 border border-gray-100">
-                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-cut text-green-600"></i> Zasłony / firany</h3>
+                <div id="form-zaslony" class="bg-gray-50 p-6 rounded-2xl space-y-6 border border-gray-100">
+                    <h3 class="font-bold text-gray-700 flex items-center gap-2 text-sm"><i class="fas fa-scroll text-green-600"></i> Zasłony / firany</h3>
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div class="space-y-1">
-                            <label class="text-[11px] font-bold text-gray-500 uppercase ml-1">Szer. karnisza (cm)</label>
-                            <input type="number" id="inputSzer" oninput="calculate()" class="w-full p-3 rounded-xl border-2 border-white bg-white shadow-sm focus:border-green-500 outline-none" placeholder="np. 195">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Szer. karnisza (cm)</label>
+                            <input type="number" id="val-szer" oninput="runCalc()" class="w-full p-3 rounded-xl border-2 border-white bg-white shadow-sm focus:border-green-500 outline-none" placeholder="np. 195">
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[11px] font-bold text-gray-500 uppercase ml-1">Wysokość (cm)</label>
-                            <input type="number" id="inputWys" oninput="calculate()" class="w-full p-3 rounded-xl border-2 border-white bg-white shadow-sm focus:border-green-500 outline-none" placeholder="np. 260">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Wysokość (cm)</label>
+                            <input type="number" id="val-wys" oninput="runCalc()" class="w-full p-3 rounded-xl border-2 border-white bg-white shadow-sm focus:border-green-500 outline-none" placeholder="np. 260">
                         </div>
                     </div>
 
                     <div>
-                        <label class="text-[11px] font-bold text-gray-500 uppercase ml-1 mb-2 block">Typ szycia</label>
-                        <div class="flex gap-2" id="szycieTypes">
-                            <div class="chip active flex-1 p-3 rounded-xl text-xs" onclick="selectChip(this, 'szycie', 100)">Flex (100 zł/mb)</div>
-                            <div class="chip flex-1 p-3 rounded-xl text-xs" onclick="selectChip(this, 'szycie', 110)">Wave (110 zł/mb)</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="text-[11px] font-bold text-gray-500 uppercase ml-1 mb-2 block">Marszczenie</label>
-                        <div class="flex gap-2" id="marszczenieTypes">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-2 block">Typ szycia</label>
+                        <div class="flex gap-2" id="szycieGroup">
+                            <div class="chip active flex-1 p-3 rounded-xl text-xs" onclick="handleChipClick(this, 'szycie', 100)">Flex (100 zł/mb)</div>
