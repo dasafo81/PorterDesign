@@ -3,36 +3,97 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Porter Design - System Wycen</title>
+  <title>Porter Design - Ekspercki System Wycen</title>
   <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{
-      --bg:#ffffff;--bg2:#f7f7f5;
-      --bd1:#d0d0cc;--bd2:#e0e0dc;--bd3:#ececea;
-      --t1:#1a1a18;--t2:#6b6b66;--t3:#a0a09c;
-      --gr:#3B6D11;--grl:#EAF3DE;--grd:#27500A;--grm:#97C459;
-      --err:#cc3300;
+    :root {
+      --primary: #2d4a22; /* Głęboka zieleń Porter Design */
+      --accent: #8ba870;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --text: #333333;
+      --text-light: #777777;
+      --radius: 16px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--t1);min-height:100vh;}
-    #root{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;padding:1rem;box-shadow: 0 0 20px rgba(0,0,0,0.05);}
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+      background: var(--bg); 
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    #root { max-width: 500px; margin: 0 auto; min-height: 100vh; padding: 20px; }
+
+    /* Nagłówki */
+    h2 { font-size: 24px; font-weight: 700; margin-bottom: 20px; color: var(--primary); }
+    h3 { font-size: 18px; margin-bottom: 15px; }
+
+    /* Karty */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(0,0,0,0.03);
+      transition: transform 0.2s;
+    }
+
+    /* Przyciski */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 20px;
+      border-radius: var(--radius);
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      font-size: 15px;
+    }
+    .btn-main { background: var(--primary); color: white; }
+    .btn-main:active { transform: scale(0.98); opacity: 0.9; }
     
-    .card{border:1px solid var(--bd3);border-radius:12px;padding:12px;margin-bottom:12px;background:#fff;}
-    .flex-sep{display:flex;justify-content:space-between;align-items:center;}
-    .btn{
-      padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:14px;
-      transition: opacity 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;
-    }
-    .btn-main{background:var(--gr);color:#fff;}
-    .btn-sec{background:var(--grl);color:var(--grd);}
-    .btn-ghost{background:transparent;border:1px solid var(--bd2);color:var(--t2);}
-    .btn-danger{background:#fff;color:var(--err);border:1px solid var(--err);font-size:12px;padding:4px 8px;}
+    .btn-secondary { background: #f0f2f0; color: var(--primary); margin-top: 10px; }
     
-    input, select{
-      width:100%;padding:12px;border:1px solid var(--bd2);border-radius:8px;margin-top:4px;font-size:15px;
+    .btn-outline { 
+      background: transparent; 
+      border: 1.5px solid #eee; 
+      color: var(--text-light); 
+      padding: 8px 15px;
+      font-size: 13px;
+      width: auto;
     }
-    label{font-size:12px;color:var(--t2);font-weight:600;text-transform:uppercase;}
-    .badge{font-size:11px;padding:2px 6px;background:var(--bg2);border-radius:4px;color:var(--t2);}
-    .total-bar{background:var(--grd);color:#fff;padding:16px;border-radius:12px;margin-top:20px;}
+
+    /* Formularz w Kalkulatorze */
+    .input-group { margin-bottom: 15px; }
+    label { display: block; font-size: 12px; font-weight: 700; color: var(--text-light); text-transform: uppercase; margin-bottom: 6px; margin-left: 4px; }
+    input, select {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1.5px solid #eee;
+      font-size: 16px;
+      background: #fdfdfd;
+    }
+    input:focus { outline: none; border-color: var(--accent); }
+
+    /* Elementy listy */
+    .flex-row { display: flex; justify-content: space-between; align-items: center; }
+    .customer-item { border-left: 4px solid var(--accent); }
+    .badge { font-size: 11px; background: #f0f4ee; color: var(--primary); padding: 4px 10px; border-radius: 20px; font-weight: 700; }
+    
+    .price-tag { font-size: 28px; font-weight: 800; color: var(--primary); text-align: center; margin: 10px 0; }
+    
+    .room-header { background: #f9fbf8; padding: 10px 15px; border-radius: 10px; margin-bottom: 10px; border: 1px dashed #ccd5c6; }
+    
+    .item-row { padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #555; }
+    .item-row:last-child { border: none; }
   </style>
 </head>
 <body>
@@ -45,170 +106,122 @@
 const { useState, useEffect, createElement: ce } = React;
 
 function App() {
-  // --- STAN APLIKACJI ---
   const [customers, setCustomers] = useState(() => {
-    const saved = localStorage.getItem('pd_data_v2');
+    const saved = localStorage.getItem('pd_pro_data');
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [screen, setScreen] = useState('customer_list'); 
+  const [screen, setScreen] = useState('list'); 
   const [activeCustId, setActiveCustId] = useState(null);
   const [activeRoomIdx, setActiveRoomIdx] = useState(null);
-  const [calcData, setCalcData] = useState({ cat: 'wood', w: 100, h: 100, type: '50mm' });
+  const [calc, setCalc] = useState({ cat: 'Drewno 50mm', w: 100, h: 150 });
 
   useEffect(() => {
-    localStorage.setItem('pd_data_v2', JSON.stringify(customers));
+    localStorage.setItem('pd_pro_data', JSON.stringify(customers));
   }, [customers]);
 
-  // --- FUNKCJE ---
   const addCustomer = () => {
     const name = prompt("Imię i nazwisko klienta:");
     if(!name) return;
-    const newCust = { id: Date.now(), name, date: new Date().toLocaleDateString(), rooms: [] };
-    setCustomers([...customers, newCust]);
+    setCustomers([...customers, { id: Date.now(), name, date: new Date().toLocaleDateString(), rooms: [] }]);
   };
 
-  const deleteCustomer = (id) => {
-    if(confirm("Usunąć klienta i wszystkie jego wyceny?")) {
-      setCustomers(customers.filter(c => c.id !== id));
-    }
-  };
-
-  const addRoom = (custId) => {
-    const name = prompt("Nazwa pomieszczenia (np. Salon, Kuchnia):");
-    if(!name) return;
-    setCustomers(customers.map(c => {
-      if(c.id === custId) return { ...c, rooms: [...c.rooms, { name, items: [] }] };
-      return c;
-    }));
-  };
-
-  const addItemToRoom = (price, description) => {
-    setCustomers(customers.map(c => {
-      if(c.id === activeCustId) {
-        const newRooms = [...c.rooms];
-        newRooms[activeRoomIdx].items.push({ description, price, id: Date.now() });
-        return { ...c, rooms: newRooms };
-      }
-      return c;
-    }));
-    setScreen('visit_details');
-  };
-
-  const removeItem = (roomIdx, itemIdx) => {
-    setCustomers(customers.map(c => {
-      if(c.id === activeCustId) {
-        const newRooms = [...c.rooms];
-        newRooms[roomIdx].items.splice(itemIdx, 1);
-        return { ...c, rooms: newRooms };
-      }
-      return c;
-    }));
+  const addRoom = () => {
+    const room = prompt("Nazwa pomieszczenia (np. Salon):");
+    if(!room) return;
+    setCustomers(customers.map(c => c.id === activeCustId ? { ...c, rooms: [...c.rooms, { name: room, items: [] }] } : c));
   };
 
   const activeCustomer = customers.find(c => c.id === activeCustId);
 
-  // --- WIDOK 1: LISTA KLIENTÓW ---
-  if (screen === 'customer_list') {
+  // WIDOK 1: LISTA KLIENTÓW
+  if (screen === 'list') {
     return ce('div', null,
-      ce('h2', {style:{marginBottom:'20px'}}, "Moje Wizyty"),
-      customers.length === 0 && ce('p', {style:{color:'#999', fontSize:'14px', textAlign:'center', marginTop:'40px'}}, "Brak zapisanych wizyt. Dodaj pierwszą poniżej."),
-      customers.map(c => ce('div', {key: c.id, className: 'card flex-sep'},
-        ce('div', {onClick: () => { setActiveCustId(c.id); setScreen('visit_details'); }, style:{cursor:'pointer', flex:1}},
-          ce('div', {style:{fontWeight:600}}, c.name),
-          ce('div', {className:'badge'}, c.date + " • " + c.rooms.length + " pokoi")
+      ce('h2', null, "Twoje Wizyty"),
+      customers.map(c => ce('div', { key: c.id, className: 'card flex-row customer-item', onClick: () => { setActiveCustId(c.id); setScreen('details'); } },
+        ce('div', null, 
+          ce('div', { style: { fontWeight: 700 } }, "👤 " + c.name),
+          ce('div', { className: 'badge', style: { marginTop: '5px' } }, c.date)
         ),
-        ce('button', {className:'btn-danger', onClick: () => deleteCustomer(c.id)}, "Usuń")
+        ce('div', { style: { color: '#ccc' } }, "❯")
       )),
-      ce('button', {className:'btn btn-main', style:{width:'100%', marginTop:'20px'}, onClick: addCustomer}, "+ Nowy Klient")
+      ce('button', { className: 'btn btn-main', onClick: addCustomer }, "＋ Nowy klient")
     );
   }
 
-  // --- WIDOK 2: POKOJE I ELEMENTY ---
-  if (screen === 'visit_details' && activeCustomer) {
-    let grandTotal = 0;
-    activeCustomer.rooms.forEach(r => r.items.forEach(i => grandTotal += i.price));
+  // WIDOK 2: SZCZEGÓŁY WIZYTY
+  if (screen === 'details' && activeCustomer) {
+    const total = activeCustomer.rooms.reduce((acc, r) => acc + r.items.reduce((sum, i) => sum + i.price, 0), 0);
 
     return ce('div', null,
-      ce('div', {className:'flex-sep', style:{marginBottom:'20px'}},
-        ce('button', {className:'btn-ghost', onClick: () => setScreen('customer_list')}, "← Powrót"),
-        ce('div', {style:{textAlign:'right'}},
-          ce('div', {style:{fontWeight:700}}, activeCustomer.name),
-          ce('div', {className:'badge'}, "Podsumowanie")
-        )
-      ),
-
-      activeCustomer.rooms.map((room, rIdx) => ce('div', {key: rIdx, className:'card', style:{background:'#f9f9f9'}},
-        ce('div', {className:'flex-sep', style:{marginBottom:'10px'}},
-          ce('strong', null, "📍 " + room.name),
-          ce('span', {style:{color:'var(--grd)', fontWeight:700}}, 
-            Math.round(room.items.reduce((a,b)=>a+b.price, 0)) + " zł")
+      ce('button', { className: 'btn-outline', onClick: () => setScreen('list'), style: { marginBottom: '20px' } }, "← Lista"),
+      ce('h2', null, activeCustomer.name),
+      
+      activeCustomer.rooms.map((room, rIdx) => ce('div', { key: rIdx, className: 'card' },
+        ce('div', { className: 'flex-row room-header' },
+          ce('strong', null, "🛋️ " + room.name),
+          ce('span', { style: { fontWeight: 800 } }, Math.round(room.items.reduce((s, i) => s + i.price, 0)) + " zł")
         ),
-        room.items.map((item, iIdx) => ce('div', {key: iIdx, className:'flex-sep', style:{fontSize:'13px', padding:'6px 0', borderBottom:'1px solid #eee'}},
-          ce('span', null, item.description),
-          ce('div', {style:{display:'flex', gap:'8px', alignItems:'center'}},
-            ce('span', null, Math.round(item.price) + " zł"),
-            ce('span', {style:{color:'red', cursor:'pointer', padding:'4px'}, onClick: () => removeItem(rIdx, iIdx)}, "✕")
-          )
+        room.items.map((item, iIdx) => ce('div', { key: iIdx, className: 'flex-row item-row' },
+          ce('span', null, "📐 " + item.desc),
+          ce('span', { style: { fontWeight: 600 } }, Math.round(item.price) + " zł")
         )),
-        ce('button', {
-          className:'btn btn-sec', 
-          style:{width:'100%', marginTop:'10px', fontSize:'12px'},
-          onClick: () => { setActiveRoomIdx(rIdx); setScreen('calc'); }
-        }, "+ Dodaj okno")
+        ce('button', { className: 'btn-secondary', style: { padding: '8px', fontSize: '12px' }, onClick: () => { setActiveRoomIdx(rIdx); setScreen('calc'); } }, "＋ Dodaj wycenę")
       )),
 
-      ce('button', {className:'btn btn-ghost', style:{width:'100%', marginBottom:'10px'}, onClick: () => addRoom(activeCustomer.id)}, "+ Dodaj Pomieszczenie"),
+      ce('button', { className: 'btn btn-outline', style: { width: '100%' }, onClick: addRoom }, "＋ Dodaj pokój"),
       
-      ce('div', {className:'total-bar flex-sep'},
-        ce('span', null, "ŁĄCZNIE WIZYTA"),
-        ce('span', {style:{fontSize:'20px', fontWeight:800}}, Math.round(grandTotal) + " zł")
+      ce('div', { className: 'card', style: { background: 'var(--primary)', color: 'white', marginTop: '30px', textAlign: 'center' } },
+        ce('div', { style: { fontSize: '12px', opacity: 0.8 } }, "SUMA CAŁKOWITA"),
+        ce('div', { style: { fontSize: '32px', fontWeight: 900 } }, Math.round(total) + " zł")
       )
     );
   }
 
-  // --- WIDOK 3: KALKULATOR ELEMENTU ---
+  // WIDOK 3: KALKULATOR
   if (screen === 'calc') {
-    const mockPrice = (calcData.w * calcData.h * 0.02); 
+    const price = (calc.w * calc.h * 0.025); // Tu wejdą tabele
 
     return ce('div', null,
-      ce('button', {className:'btn-ghost', onClick: () => setScreen('visit_details'), style:{marginBottom:'20px'}}, "← Anuluj"),
-      ce('h3', null, "Wycena elementu"),
-      ce('p', {style:{fontSize:'12px', color:'var(--t2)', marginBottom:'15px'}}, "Pokój: " + activeCustomer.rooms[activeRoomIdx].name),
+      ce('button', { className: 'btn-outline', onClick: () => setScreen('details'), style: { marginBottom: '20px' } }, "← Wróć"),
+      ce('h2', null, "Nowa wycena"),
       
-      ce('label', null, "Kategoria"),
-      ce('select', {value: calcData.cat, onChange: (e) => setCalcData({...calcData, cat: e.target.value})},
-        ce('option', {value:'wood'}, "Żaluzje Drewniane"),
-        ce('option', {value:'alu'}, "Żaluzje Aluminiowe"),
-        ce('option', {value:'curtain'}, "Zasłony / Firany")
-      ),
-
-      ce('div', {style:{display:'flex', gap:'10px', marginTop:'15px'}},
-        ce('div', {style:{flex:1}},
-          ce('label', null, "Szerokość (cm)"),
-          ce('input', {type:'number', value: calcData.w, onChange: (e) => setCalcData({...calcData, w: e.target.value})})
+      ce('div', { className: 'card' },
+        ce('div', { className: 'input-group' },
+          ce('label', null, "Produkt"),
+          ce('select', { value: calc.cat, onChange: (e) => setCalc({ ...calc, cat: e.target.value }) },
+            ce('option', null, "Drewno 50mm"),
+            ce('option', null, "Bambus 50mm"),
+            ce('option', null, "Aluminium 25mm")
+          )
         ),
-        ce('div', {style:{flex:1}},
-          ce('label', null, "Wysokość (cm)"),
-          ce('input', {type:'number', value: calcData.h, onChange: (e) => setCalcData({...calcData, h: e.target.value})})
-        )
-      ),
-
-      ce('div', {className:'card', style:{marginTop:'20px', textAlign:'center', border:'2px solid var(--gr)'}},
-        ce('div', {style:{fontSize:'12px', color:'var(--t2)'}}, "Wstępna cena"),
-        ce('div', {style:{fontSize:'32px', fontWeight:800, color:'var(--grd)'}}, Math.round(mockPrice) + " zł")
-      ),
-
-      ce('button', {
-        className:'btn btn-main', 
-        style:{width:'100%', marginTop:'10px'},
-        onClick: () => addItemToRoom(mockPrice, `${calcData.cat} ${calcData.w}x${calcData.h}`)
-      }, "Zapisz do pokoju")
+        ce('div', { className: 'flex-row', style: { gap: '15px' } },
+          ce('div', { className: 'input-group', style: { flex: 1 } },
+            ce('label', null, "Szerokość (cm)"),
+            ce('input', { type: 'number', value: calc.w, onChange: (e) => setCalc({ ...calc, w: e.target.value }) })
+          ),
+          ce('div', { className: 'input-group', style: { flex: 1 } },
+            ce('label', null, "Wysokość (cm)"),
+            ce('input', { type: 'number', value: calc.h, onChange: (e) => setCalc({ ...calc, h: e.target.value }) })
+          )
+        ),
+        ce('div', { className: 'price-tag' }, Math.round(price) + " zł"),
+        ce('button', { className: 'btn btn-main', onClick: () => {
+          setCustomers(customers.map(c => {
+            if(c.id === activeCustId) {
+              const newRooms = [...c.rooms];
+              newRooms[activeRoomIdx].items.push({ desc: `${calc.cat} ${calc.w}x${calc.h}`, price });
+              return { ...c, rooms: newRooms };
+            }
+            return c;
+          }));
+          setScreen('details');
+        } }, "💾 Zapisz do pokoju")
+      )
     );
   }
 }
 
-// Inicjalizacja
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(ce(App));
 </script>
