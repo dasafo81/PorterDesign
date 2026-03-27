@@ -42,27 +42,25 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 
 <script>
-const { useState, useEffect, createElement: ce, Fragment } = React;
+const { useState, useEffect, createElement: ce } = React;
 
 function App() {
-  // --- STATE ---
+  // --- STAN APLIKACJI ---
   const [customers, setCustomers] = useState(() => {
-    const saved = localStorage.getItem('pd_data');
+    const saved = localStorage.getItem('pd_data_v2');
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [screen, setScreen] = useState('customer_list'); // customer_list, visit_details, calc
+  const [screen, setScreen] = useState('customer_list'); 
   const [activeCustId, setActiveCustId] = useState(null);
   const [activeRoomIdx, setActiveRoomIdx] = useState(null);
-  
-  // Dane do kalkulatora (tymczasowe)
   const [calcData, setCalcData] = useState({ cat: 'wood', w: 100, h: 100, type: '50mm' });
 
   useEffect(() => {
-    localStorage.setItem('pd_data', JSON.stringify(customers));
+    localStorage.setItem('pd_data_v2', JSON.stringify(customers));
   }, [customers]);
 
-  // --- ACTIONS ---
+  // --- FUNKCJE ---
   const addCustomer = () => {
     const name = prompt("Imię i nazwisko klienta:");
     if(!name) return;
@@ -77,12 +75,10 @@ function App() {
   };
 
   const addRoom = (custId) => {
-    const name = prompt("Nazwa pomieszczenia (np. Salon, Sypialnia):");
+    const name = prompt("Nazwa pomieszczenia (np. Salon, Kuchnia):");
     if(!name) return;
     setCustomers(customers.map(c => {
-      if(c.id === custId) {
-        return { ...c, rooms: [...c.rooms, { name, items: [] }] };
-      }
+      if(c.id === custId) return { ...c, rooms: [...c.rooms, { name, items: [] }] };
       return c;
     }));
   };
@@ -110,33 +106,31 @@ function App() {
     }));
   };
 
-  // --- RENDERING HELPERS ---
   const activeCustomer = customers.find(c => c.id === activeCustId);
 
-  // --- SCREENS ---
-  
-  // 1. LISTA KLIENTÓW
+  // --- WIDOK 1: LISTA KLIENTÓW ---
   if (screen === 'customer_list') {
     return ce('div', null,
-      ce('h2', {style:{marginBottom:20}}, "Moje Wizyty"),
+      ce('h2', {style:{marginBottom:'20px'}}, "Moje Wizyty"),
+      customers.length === 0 && ce('p', {style:{color:'#999', fontSize:'14px', textAlign:'center', marginTop:'40px'}}, "Brak zapisanych wizyt. Dodaj pierwszą poniżej."),
       customers.map(c => ce('div', {key: c.id, className: 'card flex-sep'},
-        ce('div', {onClick: () => { setActiveCustId(c.id); setScreen('visit_details'); }, style:{cursor:'pointer'}},
+        ce('div', {onClick: () => { setActiveCustId(c.id); setScreen('visit_details'); }, style:{cursor:'pointer', flex:1}},
           ce('div', {style:{fontWeight:600}}, c.name),
           ce('div', {className:'badge'}, c.date + " • " + c.rooms.length + " pokoi")
         ),
         ce('button', {className:'btn-danger', onClick: () => deleteCustomer(c.id)}, "Usuń")
       )),
-      ce('button', {className:'btn btn-main', style:{width:'100%', marginTop:20}, onClick: addCustomer}, "+ Nowy Klient")
+      ce('button', {className:'btn btn-main', style:{width:'100%', marginTop:'20px'}, onClick: addCustomer}, "+ Nowy Klient")
     );
   }
 
-  // 2. SZCZEGÓŁY WIZYTY (POKOJE I OKNA)
+  // --- WIDOK 2: POKOJE I ELEMENTY ---
   if (screen === 'visit_details' && activeCustomer) {
     let grandTotal = 0;
     activeCustomer.rooms.forEach(r => r.items.forEach(i => grandTotal += i.price));
 
     return ce('div', null,
-      ce('div', {className:'flex-sep', style:{marginBottom:20}},
+      ce('div', {className:'flex-sep', style:{marginBottom:'20px'}},
         ce('button', {className:'btn-ghost', onClick: () => setScreen('customer_list')}, "← Powrót"),
         ce('div', {style:{textAlign:'right'}},
           ce('div', {style:{fontWeight:700}}, activeCustomer.name),
@@ -145,42 +139,42 @@ function App() {
       ),
 
       activeCustomer.rooms.map((room, rIdx) => ce('div', {key: rIdx, className:'card', style:{background:'#f9f9f9'}},
-        ce('div', {className:'flex-sep', style:{marginBottom:10}},
+        ce('div', {className:'flex-sep', style:{marginBottom:'10px'}},
           ce('strong', null, "📍 " + room.name),
-          ce('span', {style:{color:var(--grd), fontWeight:700}}, 
+          ce('span', {style:{color:'var(--grd)', fontWeight:700}}, 
             Math.round(room.items.reduce((a,b)=>a+b.price, 0)) + " zł")
         ),
-        room.items.map((item, iIdx) => ce('div', {key: iIdx, className:'flex-sep', style:{fontSize:13, padding:'4px 0', borderBottom:'0.5px solid #eee'}},
+        room.items.map((item, iIdx) => ce('div', {key: iIdx, className:'flex-sep', style:{fontSize:'13px', padding:'6px 0', borderBottom:'1px solid #eee'}},
           ce('span', null, item.description),
-          ce('div', {style:{display:'flex', gap:8, alignItems:'center'}},
+          ce('div', {style:{display:'flex', gap:'8px', alignItems:'center'}},
             ce('span', null, Math.round(item.price) + " zł"),
-            ce('span', {style:{color:'red', cursor:'pointer'}, onClick: () => removeItem(rIdx, iIdx)}, "✕")
+            ce('span', {style:{color:'red', cursor:'pointer', padding:'4px'}, onClick: () => removeItem(rIdx, iIdx)}, "✕")
           )
         )),
         ce('button', {
           className:'btn btn-sec', 
-          style:{width:'100%', marginTop:10, fontSize:12},
+          style:{width:'100%', marginTop:'10px', fontSize:'12px'},
           onClick: () => { setActiveRoomIdx(rIdx); setScreen('calc'); }
         }, "+ Dodaj okno")
       )),
 
-      ce('button', {className:'btn btn-ghost', style:{width:'100%', marginBottom:10}, onClick: () => addRoom(activeCustomer.id)}, "+ Dodaj Pomieszczenie"),
+      ce('button', {className:'btn btn-ghost', style:{width:'100%', marginBottom:'10px'}, onClick: () => addRoom(activeCustomer.id)}, "+ Dodaj Pomieszczenie"),
       
       ce('div', {className:'total-bar flex-sep'},
         ce('span', null, "ŁĄCZNIE WIZYTA"),
-        ce('span', {style:{fontSize:20}}, Math.round(grandTotal) + " zł")
+        ce('span', {style:{fontSize:'20px', fontWeight:800}}, Math.round(grandTotal) + " zł")
       )
     );
   }
 
-  // 3. UPROSZCZONY KALKULATOR (Logika cenowa z poprzedniej wersji)
+  // --- WIDOK 3: KALKULATOR ELEMENTU ---
   if (screen === 'calc') {
-    const mockPrice = (calcData.w * calcData.h * 0.02); // Tutaj wstawiamy Twoje tabele z Excela
+    const mockPrice = (calcData.w * calcData.h * 0.02); 
 
     return ce('div', null,
-      ce('button', {className:'btn-ghost', onClick: () => setScreen('visit_details'), style:{marginBottom:20}}, "← Anuluj"),
+      ce('button', {className:'btn-ghost', onClick: () => setScreen('visit_details'), style:{marginBottom:'20px'}}, "← Anuluj"),
       ce('h3', null, "Wycena elementu"),
-      ce('p', {style:{fontSize:12, color:var(--t2), marginBottom:15}}, "Pokój: " + activeCustomer.rooms[activeRoomIdx].name),
+      ce('p', {style:{fontSize:'12px', color:'var(--t2)', marginBottom:'15px'}}, "Pokój: " + activeCustomer.rooms[activeRoomIdx].name),
       
       ce('label', null, "Kategoria"),
       ce('select', {value: calcData.cat, onChange: (e) => setCalcData({...calcData, cat: e.target.value})},
@@ -189,7 +183,7 @@ function App() {
         ce('option', {value:'curtain'}, "Zasłony / Firany")
       ),
 
-      ce('div', {style:{display:'flex', gap:10, marginTop:15}},
+      ce('div', {style:{display:'flex', gap:'10px', marginTop:'15px'}},
         ce('div', {style:{flex:1}},
           ce('label', null, "Szerokość (cm)"),
           ce('input', {type:'number', value: calcData.w, onChange: (e) => setCalcData({...calcData, w: e.target.value})})
@@ -200,20 +194,21 @@ function App() {
         )
       ),
 
-      ce('div', {className:'card', style:{marginTop:20, textAlign:'center', border:'2px solid var(--gr)'}},
-        ce('div', {style:{fontSize:12, color:var(--t2)}}, "Wstępna cena"),
-        ce('div', {style:{fontSize:32, fontWeight:800, color:var(--grd)}}, Math.round(mockPrice) + " zł")
+      ce('div', {className:'card', style:{marginTop:'20px', textAlign:'center', border:'2px solid var(--gr)'}},
+        ce('div', {style:{fontSize:'12px', color:'var(--t2)'}}, "Wstępna cena"),
+        ce('div', {style:{fontSize:'32px', fontWeight:800, color:'var(--grd)'}}, Math.round(mockPrice) + " zł")
       ),
 
       ce('button', {
         className:'btn btn-main', 
-        style:{width:'100%', marginTop:10},
+        style:{width:'100%', marginTop:'10px'},
         onClick: () => addItemToRoom(mockPrice, `${calcData.cat} ${calcData.w}x${calcData.h}`)
       }, "Zapisz do pokoju")
     );
   }
 }
 
+// Inicjalizacja
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(ce(App));
 </script>
