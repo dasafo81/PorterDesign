@@ -44,9 +44,13 @@ var PROD_TYPES=[
   {id:"szyna",label:"Szyna KAES"},{id:"karnisz",label:"Karnisz el."}
 ];
 
-// Pomocnicze tabele cennikowe
 var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,300:216.67};
 var KW={biala:{100:124,200:221,300:336,400:443,500:561,600:661},czarna:{100:143,200:221,300:380,400:501,500:636,600:748}};
+
+// Dane firmy do PDF
+var MY_DATA = "PD Porter Design Paulina Porter\nul. Woronieckiego 6C/2, 05-220 Zielonka\nNIP: 8121803400";
+// URL logo Porter Design
+var LOGO_URL = "https://i.imgur.com/x06W7Mh.png"; 
 
 // --- LOGIKA OBLICZEŃ ---
 function lookup(val,obj){
@@ -66,7 +70,7 @@ function calc(p){
     var mars=parseFloat(c.mars||"1.5");
     (p.panels||[]).forEach(pn=>{
       var pw=pn.w||wCm,z=parseFloat((pw/100*mars+0.2).toFixed(2));
-      var koszt=z*fabP + (z*100); // 100zl robocizna
+      var koszt=z*fabP + (z*100); 
       total+=koszt;
       lines.push(pn.side+": "+z+"mb -> "+koszt.toFixed(2)+"zł");
     });
@@ -128,8 +132,10 @@ function ProdCard(p){
       ),
       (prod.type==="zaslona"||prod.type==="firana")&&ce(Fragment,null,
         ce(FabPicker,{fabName:prod.fabName,onSelect:f=>p.onChange({...prod,fabName:f.name,fabP:f.brutto,panels:[{side:"Całość",w:par.wCm}]})}),
-        ce("div",{style:{marginTop:"5px",fontSize:"11px"}},"Marszczenie: ",
-          ce("select",{value:c.mars||"1.5",onChange:e=>p.onChange({...prod,c:{...c,mars:e.target.value}})},ce("option",{value:"1.5"},"150%"),ce("option",{value:"2.0"},"200%")))
+        ce("div",{style:{display:"flex",alignItems:"center",gap:"10px",marginTop:"10px",fontSize:"11px"}},
+          ce("span",{},"Marszczenie: ", ce("select",{value:c.mars||"1.5",onChange:e=>p.onChange({...prod,c:{...c,mars:e.target.value}})},ce("option",{value:"1.5"},"150%"),ce("option",{value:"2.0"},"200%"))),
+          ce("div",{style:{flex:1}}, ce("input",{type:"number",placeholder:"Własna cena (mb)",value:prod.fabMan||"",onChange:e=>p.onChange({...prod,fabMan:e.target.value,fabP:null}),style:{...IST,padding:"4px"}}))
+        )
       )
     ),
     ce("div",{style:{marginTop:"10px",padding:"8px",background:"var(--bg2)",borderRadius:"6px",fontSize:"13px",fontWeight:"600",textAlign:"right"}},
@@ -165,22 +171,43 @@ function App(){
     return client.rooms.reduce((s,r)=>s+r.windows.reduce((sw,w)=>sw+w.products.reduce((sp,p)=>sp+(p.mp||calc(p).total),0),0),0);
   }
 
+  // --- GENEROWANIE PDF Z LOGO I DANYMI FIRMY ---
   function generatePDF(){
     var {jsPDF}=window.jspdf; var doc=new jsPDF();
-    doc.setFontSize(18); doc.text("OFERTA - PORTER DESIGN", 10, 20);
-    doc.setFontSize(12); doc.text("Klient: "+client.name, 10, 30);
-    doc.text("Adres: "+client.addr, 10, 37);
-    doc.line(10, 42, 200, 42);
-    var y=50;
-    client.rooms.forEach(r=>{
-      doc.setFontSize(14); doc.text(r.name, 10, y); y+=8;
-      r.windows.forEach(w=>{
-        doc.setFontSize(10); doc.text("- "+w.name, 15, y); y+=6;
+    var img = new Image(); img.src = LOGO_URL;
+    
+    img.onload = function() {
+      // Wstawianie logo
+      doc.addImage(img, 'PNG', 150, 10, 50, 25); // x, y, width, height
+      
+      // Dane firmy (Moje)
+      doc.setFontSize(10); doc.setTextColor(100);
+      doc.text(MY_DATA, 10, 15);
+      
+      doc.line(10, 42, 200, 42);
+      
+      // Dane klienta i suma
+      doc.setFontSize(16); doc.setTextColor(0);
+      doc.text("OFERTA - " + client.name, 10, 52);
+      doc.setFontSize(12); doc.text("Adres: "+client.addr, 10, 59);
+      
+      doc.setFontSize(18); doc.setTextColor(59, 109, 17); // Zielony kolor
+      doc.text("SUMA: "+Math.round(getGrandTotal())+" zl", 10, 70);
+      doc.setTextColor(0); // Przywróć czarny
+      
+      doc.line(10, 75, 200, 75);
+      
+      var y=85;
+      client.rooms.forEach(r=>{
+        doc.setFontSize(14); doc.text(r.name, 10, y); y+=8;
+        r.windows.forEach(w=>{
+          doc.setFontSize(10); doc.text("- "+w.name, 15, y); y+=6;
+        });
+        y+=4;
       });
-      y+=4;
-    });
-    doc.setFontSize(16); doc.text("SUMA DO ZAPLATY: "+Math.round(getGrandTotal())+" zl", 10, y+10);
-    doc.save("Wycena_"+client.name+".pdf");
+      
+      doc.save("Oferta_"+client.name+".pdf");
+    };
   }
 
   // --- MODAL Z WŁASNYM STANEM (NAPRAWIA FOCUS) ---
