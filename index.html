@@ -3,105 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Porter Design - Kalkulator Premium</title>
+    <title>Porter Design - Kalkulator Interaktywny</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .chip { transition: all 0.2s; cursor: pointer; border: 1px solid #e2e8f0; }
-        .chip.active { background-color: #f0fdf4; border-color: #22c55e; color: #166534; box-shadow: 0 0 0 1px #22c55e; }
+        .chip { transition: all 0.2s; cursor: pointer; border: 2px solid #e2e8f0; text-align: center; }
+        .chip.active { background-color: #f0fdf4; border-color: #22c55e; color: #166534; font-weight: bold; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 pb-32 font-sans">
 
     <div class="max-w-2xl mx-auto space-y-6">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h1 class="text-xl font-bold text-gray-800 mb-4">Klient: <input type="text" placeholder="Wpisz nazwę..." class="border-b outline-none focus:border-green-500"></h1>
-            <div class="grid grid-cols-2 gap-4">
-                <button class="bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-green-100">+ Dodaj Pomieszczenie</button>
-                <button class="bg-white border-2 border-green-600 text-green-600 py-3 rounded-xl font-bold">Zapisz Ofertę</button>
-            </div>
+            <h1 class="text-xl font-bold text-gray-800 mb-4 tracking-tight">System Ofertowy Porter Design</h1>
+            <input type="text" placeholder="Imię i Nazwisko Klienta" class="w-full border-b-2 py-2 outline-none focus:border-green-500 text-lg">
         </div>
 
-        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-            <div class="bg-gray-50 px-6 py-3 border-b flex justify-between items-center">
-                <span class="font-bold text-gray-700 uppercase tracking-wider text-sm">Pomieszczenie: Salon</span>
-                <button class="text-red-400 text-sm"><i class="fas fa-trash"></i></button>
+        <div class="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
+                <span class="font-bold text-gray-700 uppercase text-xs tracking-widest">Pomieszczenie: Salon</span>
+                <button class="text-red-400 hover:text-red-600 transition-colors"><i class="fas fa-trash"></i></button>
             </div>
 
-            <div class="p-6 space-y-6">
+            <div class="p-6 space-y-8">
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-3">Typ produktu</label>
-                    <div class="flex flex-wrap gap-2">
-                        <div class="chip active px-4 py-2 rounded-full text-sm font-medium">Zasłony</div>
-                        <div class="chip px-4 py-2 rounded-full text-sm font-medium">Żaluzje</div>
-                        <div class="chip px-4 py-2 rounded-full text-sm font-medium">Rolety rzymskie</div>
-                        <div class="chip px-4 py-2 rounded-full text-sm font-medium">Szyny KAES</div>
-                        <div class="chip px-4 py-2 rounded-full text-sm font-medium">Karnisze el.</div>
+                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Typ produktu</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="productTypes">
+                        <div class="chip active p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Zasłony</div>
+                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Żaluzje</div>
+                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Rolety rzymskie</div>
+                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Szyny KAES</div>
+                        <div class="chip p-2 rounded-xl text-xs" onclick="selectChip(this, 'product')">Karnisze el.</div>
                     </div>
                 </div>
 
-                <div class="bg-gray-50 p-4 rounded-xl space-y-4">
-                    <h3 class="font-bold text-gray-800 border-b pb-2">Zasłony / firany</h3>
+                <div id="curtainForm" class="bg-gray-50 p-6 rounded-2xl space-y-6 border border-gray-100">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-cut text-green-600"></i> Zasłony / firany</h3>
                     
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">Szer. karnisza (cm)</label>
-                            <input type="number" id="szer" class="w-full p-2 rounded-lg border focus:ring-2 ring-green-500 outline-none" placeholder="np. 195">
+                        <div class="space-y-1">
+                            <label class="text-[11px] font-bold text-gray-500 uppercase ml-1">Szer. karnisza (cm)</label>
+                            <input type="number" id="inputSzer" oninput="calculate()" class="w-full p-3 rounded-xl border-2 border-white bg-white shadow-sm focus:border-green-500 outline-none" placeholder="np. 195">
                         </div>
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">Wysokość (cm)</label>
-                            <input type="number" id="wys" class="w-full p-2 rounded-lg border focus:ring-2 ring-green-500 outline-none" placeholder="np. 260">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">Szer. belki tkaniny (cm)</label>
-                        <input type="number" id="belka" class="w-full p-2 rounded-lg border focus:ring-2 ring-green-500 outline-none" placeholder="np. 280">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-2">Typ szycia</label>
-                        <div class="flex gap-2">
-                            <button class="chip active px-4 py-2 rounded-xl text-sm font-medium">Flex (100 zł/mb)</button>
-                            <button class="chip px-4 py-2 rounded-xl text-sm font-medium">Wave (110 zł/mb)</button>
+                        <div class="space-y-1">
+                            <label class="text-[11px] font-bold text-gray-500 uppercase ml-1">Wysokość (cm)</label>
+                            <input type="number" id="inputWys" oninput="calculate()" class="w-full p-3 rounded-xl border-2 border-white bg-white shadow-sm focus:border-green-500 outline-none" placeholder="np. 260">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs text-gray-500 mb-2">Marszczenie</label>
-                        <div class="flex gap-2">
-                            <button class="chip active px-4 py-2 rounded-xl text-sm font-medium">150%</button>
-                            <button class="chip px-4 py-2 rounded-xl text-sm font-medium">200%</button>
+                        <label class="text-[11px] font-bold text-gray-500 uppercase ml-1 mb-2 block">Typ szycia</label>
+                        <div class="flex gap-2" id="szycieTypes">
+                            <div class="chip active flex-1 p-3 rounded-xl text-xs" onclick="selectChip(this, 'szycie', 100)">Flex (100 zł/mb)</div>
+                            <div class="chip flex-1 p-3 rounded-xl text-xs" onclick="selectChip(this, 'szycie', 110)">Wave (110 zł/mb)</div>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs text-gray-500 mb-2">Kategoria tkaniny</label>
-                        <div class="flex flex-wrap gap-2">
-                            <button class="chip active px-4 py-2 rounded-xl text-sm font-medium">Basic 160 zł/mb</button>
-                            <button class="chip px-4 py-2 rounded-xl text-sm font-medium">Standard 190 zł/mb</button>
-                            <button class="chip px-4 py-2 rounded-xl text-sm font-medium">Premium 220 zł/mb</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-6 shadow-2xl">
-        <div class="max-w-2xl mx-auto flex justify-between items-center">
-            <div>
-                <p class="text-xs text-gray-400 font-bold uppercase tracking-widest">Suma całkowita</p>
-                <p id="total" class="text-3xl font-black text-green-700">0,00 zł</p>
-            </div>
-            <button class="bg-gray-900 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2">
-                <i class="fas fa-file-pdf"></i> GENERUJ PDF
-            </button>
-        </div>
-    </div>
-
-    <script>
-        // Tutaj dopiszemy logikę przeliczeń, gdy zatwierdzisz wygląd
-    </script>
-</body>
-</html>
+                        <label class="text-[11px] font-bold text-gray-500 uppercase ml-1 mb-2 block">Marszczenie</label>
+                        <div class="flex gap-2" id="marszczenieTypes">
