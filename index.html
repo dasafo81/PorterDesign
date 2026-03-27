@@ -1,103 +1,119 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Porter Design - Ekspercki System Wycen</title>
-  <style>
-    :root {
-      --primary: #2d4a22; /* Głęboka zieleń Porter Design */
-      --accent: #8ba870;
-      --bg: #f8f9fa;
-      --card-bg: #ffffff;
-      --text: #333333;
-      --text-light: #777777;
-      --radius: 16px;
-      --shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Porter Design Pro - Ekspert Wycen</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --pd-dark: #121212;
+            --pd-green: #2d4a22;
+            --pd-green-light: #416b32;
+            --pd-accent: #c5a059; /* Złoty akcent */
+            --pd-card: #1e1e1e;
+            --pd-text: #e0e0e0;
+            --pd-muted: #888;
+            --radius: 12px;
+        }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      background: var(--bg); 
-      color: var(--text);
-      line-height: 1.5;
-    }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--pd-dark); 
+            color: var(--pd-text); 
+            margin: 0; padding: 0; line-height: 1.6;
+        }
 
-    #root { max-width: 500px; margin: 0 auto; min-height: 100vh; padding: 20px; }
+        #app { max-width: 600px; margin: 0 auto; padding: 20px; min-height: 100vh; }
 
-    /* Nagłówki */
-    h2 { font-size: 24px; font-weight: 700; margin-bottom: 20px; color: var(--primary); }
-    h3 { font-size: 18px; margin-bottom: 15px; }
+        /* HEADER */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .logo { font-size: 20px; font-weight: 800; color: var(--pd-accent); text-transform: uppercase; letter-spacing: 2px; }
 
-    /* Karty */
-    .card {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 15px;
-      box-shadow: var(--shadow);
-      border: 1px solid rgba(0,0,0,0.03);
-      transition: transform 0.2s;
-    }
+        /* KARTY */
+        .card {
+            background: var(--pd-card);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #333;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        .card:active { transform: scale(0.99); }
 
-    /* Przyciski */
-    .btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 14px 20px;
-      border-radius: var(--radius);
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      width: 100%;
-      font-size: 15px;
-    }
-    .btn-main { background: var(--primary); color: white; }
-    .btn-main:active { transform: scale(0.98); opacity: 0.9; }
-    
-    .btn-secondary { background: #f0f2f0; color: var(--primary); margin-top: 10px; }
-    
-    .btn-outline { 
-      background: transparent; 
-      border: 1.5px solid #eee; 
-      color: var(--text-light); 
-      padding: 8px 15px;
-      font-size: 13px;
-      width: auto;
-    }
+        /* LISTY */
+        .flex-row { display: flex; justify-content: space-between; align-items: center; }
+        .client-info h3 { margin: 0; font-size: 18px; color: #fff; }
+        .client-info p { margin: 0; font-size: 12px; color: var(--pd-muted); }
 
-    /* Formularz w Kalkulatorze */
-    .input-group { margin-bottom: 15px; }
-    label { display: block; font-size: 12px; font-weight: 700; color: var(--text-light); text-transform: uppercase; margin-bottom: 6px; margin-left: 4px; }
-    input, select {
-      width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      border: 1.5px solid #eee;
-      font-size: 16px;
-      background: #fdfdfd;
-    }
-    input:focus { outline: none; border-color: var(--accent); }
+        /* PRZYCISKI */
+        .btn {
+            background: var(--pd-green);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: var(--radius);
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+        .btn:hover { background: var(--pd-green-light); }
+        .btn-outline { background: transparent; border: 1px solid #444; color: var(--pd-text); margin-bottom: 20px; width: auto; padding: 8px 15px; font-size: 13px; }
+        .btn-add-room { background: #333; margin-top: 10px; font-size: 14px; }
+        .btn-save { background: var(--pd-accent); color: var(--pd-dark); margin-top: 20px; }
 
-    /* Elementy listy */
-    .flex-row { display: flex; justify-content: space-between; align-items: center; }
-    .customer-item { border-left: 4px solid var(--accent); }
-    .badge { font-size: 11px; background: #f0f4ee; color: var(--primary); padding: 4px 10px; border-radius: 20px; font-weight: 700; }
-    
-    .price-tag { font-size: 28px; font-weight: 800; color: var(--primary); text-align: center; margin: 10px 0; }
-    
-    .room-header { background: #f9fbf8; padding: 10px 15px; border-radius: 10px; margin-bottom: 10px; border: 1px dashed #ccd5c6; }
-    
-    .item-row { padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #555; }
-    .item-row:last-child { border: none; }
-  </style>
+        /* FORMULARZ */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-size: 11px; text-transform: uppercase; color: var(--pd-accent); margin-bottom: 5px; font-weight: 700; }
+        select, input {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+        }
+
+        /* ROOM & ITEMS */
+        .room-section { border-left: 3px solid var(--pd-green); padding-left: 15px; margin-bottom: 25px; }
+        .room-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .item-row { 
+            background: #252525; 
+            padding: 10px; 
+            border-radius: 8px; 
+            margin-bottom: 5px; 
+            font-size: 14px; 
+            display: flex; 
+            justify-content: space-between;
+        }
+
+        .price-badge { color: var(--pd-accent); font-weight: 800; }
+        
+        /* SUMA */
+        .total-banner {
+            background: linear-gradient(135deg, var(--pd-green), #1a2e14);
+            padding: 25px;
+            border-radius: var(--radius);
+            text-align: center;
+            margin-top: 30px;
+            border: 1px solid var(--pd-green-light);
+        }
+        .total-amount { font-size: 32px; font-weight: 900; color: #fff; }
+    </style>
 </head>
 <body>
-<div id="root"></div>
+
+<div id="app">
+    </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -105,125 +121,147 @@
 <script>
 const { useState, useEffect, createElement: ce } = React;
 
-function App() {
-  const [customers, setCustomers] = useState(() => {
-    const saved = localStorage.getItem('pd_pro_data');
-    return saved ? JSON.parse(saved) : [];
-  });
-  
-  const [screen, setScreen] = useState('list'); 
-  const [activeCustId, setActiveCustId] = useState(null);
-  const [activeRoomIdx, setActiveRoomIdx] = useState(null);
-  const [calc, setCalc] = useState({ cat: 'Drewno 50mm', w: 100, h: 150 });
+function PorterApp() {
+    const [view, setView] = useState('LIST'); // LIST, DETAILS, CALC
+    const [customers, setCustomers] = useState(() => JSON.parse(localStorage.getItem('pd_data') || '[]'));
+    const [activeId, setActiveId] = useState(null);
+    const [activeRoomIdx, setActiveRoomIdx] = useState(null);
 
-  useEffect(() => {
-    localStorage.setItem('pd_pro_data', JSON.stringify(customers));
-  }, [customers]);
+    // Stan kalkulatora
+    const [form, setForm] = useState({ prod: 'Drewno 50mm', w: 100, h: 150, opt: 'Standard' });
 
-  const addCustomer = () => {
-    const name = prompt("Imię i nazwisko klienta:");
-    if(!name) return;
-    setCustomers([...customers, { id: Date.now(), name, date: new Date().toLocaleDateString(), rooms: [] }]);
-  };
+    useEffect(() => { localStorage.setItem('pd_data', JSON.stringify(customers)); }, [customers]);
 
-  const addRoom = () => {
-    const room = prompt("Nazwa pomieszczenia (np. Salon):");
-    if(!room) return;
-    setCustomers(customers.map(c => c.id === activeCustId ? { ...c, rooms: [...c.rooms, { name: room, items: [] }] } : c));
-  };
+    const activeCust = customers.find(c => c.id === activeId);
 
-  const activeCustomer = customers.find(c => c.id === activeCustId);
+    // FUNKCJE LOGICZNE
+    const addNewCustomer = () => {
+        const name = prompt("Nazwa klienta / Projektu:");
+        if (!name) return;
+        const newCust = { id: Date.now(), name, date: new Date().toLocaleDateString(), rooms: [] };
+        setCustomers([newCust, ...customers]);
+    };
 
-  // WIDOK 1: LISTA KLIENTÓW
-  if (screen === 'list') {
-    return ce('div', null,
-      ce('h2', null, "Twoje Wizyty"),
-      customers.map(c => ce('div', { key: c.id, className: 'card flex-row customer-item', onClick: () => { setActiveCustId(c.id); setScreen('details'); } },
-        ce('div', null, 
-          ce('div', { style: { fontWeight: 700 } }, "👤 " + c.name),
-          ce('div', { className: 'badge', style: { marginTop: '5px' } }, c.date)
-        ),
-        ce('div', { style: { color: '#ccc' } }, "❯")
-      )),
-      ce('button', { className: 'btn btn-main', onClick: addCustomer }, "＋ Nowy klient")
-    );
-  }
+    const addRoom = () => {
+        const rName = prompt("Nazwa pomieszczenia (np. Salon):");
+        if (!rName) return;
+        const updated = customers.map(c => c.id === activeId ? { ...c, rooms: [...c.rooms, { name: rName, items: [] }] } : c);
+        setCustomers(updated);
+    };
 
-  // WIDOK 2: SZCZEGÓŁY WIZYTY
-  if (screen === 'details' && activeCustomer) {
-    const total = activeCustomer.rooms.reduce((acc, r) => acc + r.items.reduce((sum, i) => sum + i.price, 0), 0);
+    const saveCalculation = () => {
+        // Tu docelowo wejdą Twoje tabele. Teraz prosta logika testowa.
+        const basePrice = (form.w * form.h * 0.03); 
+        const newItem = {
+            id: Date.now(),
+            desc: `${form.prod} (${form.w}x${form.h}cm)`,
+            price: Math.round(basePrice)
+        };
 
-    return ce('div', null,
-      ce('button', { className: 'btn-outline', onClick: () => setScreen('list'), style: { marginBottom: '20px' } }, "← Lista"),
-      ce('h2', null, activeCustomer.name),
-      
-      activeCustomer.rooms.map((room, rIdx) => ce('div', { key: rIdx, className: 'card' },
-        ce('div', { className: 'flex-row room-header' },
-          ce('strong', null, "🛋️ " + room.name),
-          ce('span', { style: { fontWeight: 800 } }, Math.round(room.items.reduce((s, i) => s + i.price, 0)) + " zł")
-        ),
-        room.items.map((item, iIdx) => ce('div', { key: iIdx, className: 'flex-row item-row' },
-          ce('span', null, "📐 " + item.desc),
-          ce('span', { style: { fontWeight: 600 } }, Math.round(item.price) + " zł")
-        )),
-        ce('button', { className: 'btn-secondary', style: { padding: '8px', fontSize: '12px' }, onClick: () => { setActiveRoomIdx(rIdx); setScreen('calc'); } }, "＋ Dodaj wycenę")
-      )),
-
-      ce('button', { className: 'btn btn-outline', style: { width: '100%' }, onClick: addRoom }, "＋ Dodaj pokój"),
-      
-      ce('div', { className: 'card', style: { background: 'var(--primary)', color: 'white', marginTop: '30px', textAlign: 'center' } },
-        ce('div', { style: { fontSize: '12px', opacity: 0.8 } }, "SUMA CAŁKOWITA"),
-        ce('div', { style: { fontSize: '32px', fontWeight: 900 } }, Math.round(total) + " zł")
-      )
-    );
-  }
-
-  // WIDOK 3: KALKULATOR
-  if (screen === 'calc') {
-    const price = (calc.w * calc.h * 0.025); // Tu wejdą tabele
-
-    return ce('div', null,
-      ce('button', { className: 'btn-outline', onClick: () => setScreen('details'), style: { marginBottom: '20px' } }, "← Wróć"),
-      ce('h2', null, "Nowa wycena"),
-      
-      ce('div', { className: 'card' },
-        ce('div', { className: 'input-group' },
-          ce('label', null, "Produkt"),
-          ce('select', { value: calc.cat, onChange: (e) => setCalc({ ...calc, cat: e.target.value }) },
-            ce('option', null, "Drewno 50mm"),
-            ce('option', null, "Bambus 50mm"),
-            ce('option', null, "Aluminium 25mm")
-          )
-        ),
-        ce('div', { className: 'flex-row', style: { gap: '15px' } },
-          ce('div', { className: 'input-group', style: { flex: 1 } },
-            ce('label', null, "Szerokość (cm)"),
-            ce('input', { type: 'number', value: calc.w, onChange: (e) => setCalc({ ...calc, w: e.target.value }) })
-          ),
-          ce('div', { className: 'input-group', style: { flex: 1 } },
-            ce('label', null, "Wysokość (cm)"),
-            ce('input', { type: 'number', value: calc.h, onChange: (e) => setCalc({ ...calc, h: e.target.value }) })
-          )
-        ),
-        ce('div', { className: 'price-tag' }, Math.round(price) + " zł"),
-        ce('button', { className: 'btn btn-main', onClick: () => {
-          setCustomers(customers.map(c => {
-            if(c.id === activeCustId) {
-              const newRooms = [...c.rooms];
-              newRooms[activeRoomIdx].items.push({ desc: `${calc.cat} ${calc.w}x${calc.h}`, price });
-              return { ...c, rooms: newRooms };
+        const updated = customers.map(c => {
+            if (c.id === activeId) {
+                const newRooms = [...c.rooms];
+                newRooms[activeRoomIdx].items.push(newItem);
+                return { ...c, rooms: newRooms };
             }
             return c;
-          }));
-          setScreen('details');
-        } }, "💾 Zapisz do pokoju")
-      )
-    );
-  }
+        });
+        setCustomers(updated);
+        setView('DETAILS');
+    };
+
+    // --- WIDOK: LISTA KLIENTÓW ---
+    if (view === 'LIST') {
+        return ce('div', null,
+            ce('div', { className: 'header' }, 
+                ce('div', { className: 'logo' }, "Porter Design Pro"),
+                ce('i', { className: 'fa-solid fa-sliders' })
+            ),
+            ce('h2', { style: { marginBottom: '20px' } }, "Twoje Projekty"),
+            customers.length === 0 && ce('p', { style: { color: '#666', textAlign: 'center' } }, "Brak zapisanych wycen."),
+            customers.map(c => ce('div', { key: c.id, className: 'card flex-row', onClick: () => { setActiveId(c.id); setView('DETAILS'); } },
+                ce('div', { className: 'client-info' }, 
+                    ce('h3', null, ce('i', { className: 'fa-solid fa-user-tie', style: { marginRight: '10px', color: 'var(--pd-accent)' } }), c.name),
+                    ce('p', null, ce('i', { className: 'fa-solid fa-calendar', style: { marginRight: '5px' } }), c.date)
+                ),
+                ce('i', { className: 'fa-solid fa-chevron-right', style: { color: '#444' } })
+            )),
+            ce('button', { className: 'btn', style: { marginTop: '20px' }, onClick: addNewCustomer }, ce('i', { className: 'fa-solid fa-plus' }), "Dodaj Nową Wizytę")
+        );
+    }
+
+    // --- WIDOK: SZCZEGÓŁY WIZYTY (POKOJE) ---
+    if (view === 'DETAILS' && activeCust) {
+        const grandTotal = activeCust.rooms.reduce((acc, r) => acc + r.items.reduce((s, i) => s + i.price, 0), 0);
+
+        return ce('div', null,
+            ce('button', { className: 'btn-outline', onClick: () => setView('LIST') }, ce('i', { className: 'fa-solid fa-arrow-left' }), " Powrót"),
+            ce('div', { className: 'header' }, ce('h2', null, activeCust.name)),
+            
+            activeCust.rooms.map((room, rIdx) => ce('div', { key: rIdx, className: 'room-section' },
+                ce('div', { className: 'room-title' }, 
+                    ce('span', null, ce('i', { className: 'fa-solid fa-couch', style: { color: 'var(--pd-accent)' } }), " " + room.name),
+                    ce('span', { className: 'price-badge' }, room.items.reduce((s, i) => s + i.price, 0) + " zł")
+                ),
+                room.items.map(item => ce('div', { key: item.id, className: 'item-row' },
+                    ce('span', null, item.desc),
+                    ce('span', { style: { fontWeight: 'bold' } }, item.price + " zł")
+                )),
+                ce('button', { className: 'btn btn-add-room', onClick: () => { setActiveRoomIdx(rIdx); setView('CALC'); } }, ce('i', { className: 'fa-solid fa-calculator' }), "Dodaj produkt")
+            )),
+
+            ce('button', { className: 'btn', style: { background: '#333', marginTop: '20px' }, onClick: addRoom }, ce('i', { className: 'fa-solid fa-folder-plus' }), "Dodaj Pomieszczenie"),
+            
+            ce('div', { className: 'total-banner' }, 
+                ce('p', { style: { margin: 0, textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' } }, "Wartość całkowita projektu"),
+                ce('div', { className: 'total-amount' }, grandTotal + " zł")
+            )
+        );
+    }
+
+    // --- WIDOK: KALKULATOR EKSPERCKI ---
+    if (view === 'CALC') {
+        return ce('div', null,
+            ce('button', { className: 'btn-outline', onClick: () => setView('DETAILS') }, "Anuluj"),
+            ce('h2', null, "Konfiguracja Produktu"),
+            ce('div', { className: 'card' },
+                ce('div', { className: 'form-group' },
+                    ce('label', null, "Kategoria Produktu"),
+                    ce('select', { value: form.prod, onChange: e => setForm({ ...form, prod: e.target.value }) },
+                        ce('option', null, "Drewno 50mm"),
+                        ce('option', null, "Bambus 50mm"),
+                        ce('option', null, "Aluminium 25mm"),
+                        ce('option', null, "Karnisz Elektryczny Slim"),
+                        ce('option', null, "Szyna Kaes Wave")
+                    )
+                ),
+                ce('div', { style: { display: 'flex', gap: '15px' } },
+                    ce('div', { className: 'form-group', style: { flex: 1 } },
+                        ce('label', null, "Szerokość (cm)"),
+                        ce('input', { type: 'number', value: form.w, onChange: e => setForm({ ...form, w: e.target.value }) })
+                    ),
+                    ce('div', { className: 'form-group', style: { flex: 1 } },
+                        ce('label', null, "Wysokość (cm)"),
+                        ce('input', { type: 'number', value: form.h, onChange: e => setForm({ ...form, h: e.target.value }) })
+                    )
+                ),
+                ce('div', { className: 'form-group' },
+                    ce('label', null, "Opcje dodatkowe"),
+                    ce('select', null, 
+                        ce('option', null, "Montaż standardowy"),
+                        ce('option', null, "Montaż bezinwazyjny (+ doplata)"),
+                        ce('option', null, "Prowadzenie boczne")
+                    )
+                ),
+                ce('button', { className: 'btn btn-save', onClick: saveCalculation }, ce('i', { className: 'fa-solid fa-check' }), "Zatwierdź i wyceń")
+            )
+        );
+    }
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(ce(App));
+const root = ReactDOM.createRoot(document.getElementById('app'));
+root.render(ce(PorterApp));
 </script>
+
 </body>
 </html>
