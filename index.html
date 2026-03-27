@@ -45,50 +45,45 @@ var PROD_TYPES=[
   {id:"szyna",label:"Szyna KAES"}
 ];
 
-var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,300:216.67};
-var KW={biala:{100:124,200:221,300:336,400:443,500:561,600:661},czarna:{100:143,200:221,300:380,400:501,500:636,600:748}};
-
 var MY_DATA = "PD Porter Design Paulina Porter\nul. Woronieckiego 6C/2, 05-220 Zielonka\nNIP: 8121803400";
 var LOGO_URL = "https://i.imgur.com/x06W7Mh.png"; 
 
-// --- LOGIKA OBLICZEŃ (POPRAWIONA) ---
+// --- LOGIKA OBLICZEŃ ---
 function calc(p){
   var c=p.c||{}, par=p.par||{};
-  // Priorytet dla własnej ceny wpisanej ręcznie
   var pricePerMb = p.fabMan ? parseFloat(p.fabMan) : (p.fabP ? parseFloat(p.fabP) : 0);
   var total=0, lines=[];
 
   if(p.type==="zaslona" || p.type==="firana"){
     var wCm = parseFloat(par.wCm) || 0;
+    var hCm = parseFloat(par.hCm) || 0;
     var marszczenie = parseFloat(c.mars) || 1.5;
     
     if(wCm > 0 && pricePerMb > 0){
-      // mb = (szerokość / 100 * marszczenie) + 20cm zapasu
       var mb = parseFloat(((wCm / 100) * marszczenie + 0.2).toFixed(2));
       var kosztTkaniny = mb * pricePerMb;
-      var kosztSzycia = mb * 100; // Stała stawka 100zł/mb szycia
-      
+      var kosztSzycia = mb * 100;
       total = kosztTkaniny + kosztSzycia;
+      lines.push("Wymiar: " + wCm + "x" + hCm + " cm");
       lines.push("Zużycie: " + mb + " mb");
-      lines.push("Tkanina: " + kosztTkaniny.toFixed(2) + " zł");
       lines.push("Szycie: " + kosztSzycia.toFixed(2) + " zł");
     }
   } else if(p.type==="szyna"){
     var len = parseFloat(par.len) || 0;
     if(len > 0) {
         total = (len / 100) * 80;
-        lines.push("Szyna: " + (len/100).toFixed(2) + " mb");
+        lines.push("Długość: " + len + " cm");
     }
-  } else if(p.type==="zaluzja"){
+  } else if(p.type==="zaluzja" || p.type==="roleta"){
     var w=parseFloat(par.wCm)||0, h=parseFloat(par.hCm)||0;
     var m2=Math.max(0.5, (w/100)*(h/100));
     total=m2*450;
-    lines.push("Powierzchnia: " + m2.toFixed(2) + " m2");
+    lines.push("Wymiar: " + w + "x" + h + " cm (" + m2.toFixed(2) + " m2)");
   }
   return {total: total, lines: lines};
 }
 
-// --- KOMPONENTY UI ---
+// --- UI ---
 var IST={padding:"8px",fontSize:"14px",border:"1px solid var(--bd2)",borderRadius:"6px",background:"var(--bg)",width:"100%"};
 
 function Btn(label,onClick,primary){
@@ -104,35 +99,38 @@ function ProdCard(p){
       ce("b",{},(PROD_TYPES.find(t=>t.id===prod.type)||{}).label),
       ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",color:"red",fontSize:"11px"}},"usuń")
     ),
-    // Wybór typu
     ce("div",{style:{display:"flex",gap:"5px",flexWrap:"wrap",marginBottom:"10px"}},
       PROD_TYPES.map(t=>ce("button",{onClick:()=>p.onChange({...prod,type:t.id,fabName:null,fabP:null,fabMan:null}),style:{fontSize:"10px",padding:"4px 8px",borderRadius:"10px",border:"1px solid var(--bd2)",background:prod.type===t.id?"var(--grl)":"#fff"}},t.label))
     ),
-    // Formularz zasłony
+    // FORMULARZ
+    (prod.type!=="szyna") && ce("div",{style:{display:"flex",gap:"5px",marginBottom:"10px"}},
+        ce("input",{type:"number",placeholder:"Szer (cm)",value:par.wCm||"",onChange:e=>p.onChange({...prod,par:{...par,wCm:e.target.value}}),style:IST}),
+        ce("input",{type:"number",placeholder:"Wys (cm)",value:par.hCm||"",onChange:e=>p.onChange({...prod,par:{...par,hCm:e.target.value}}),style:IST})
+    ),
+    prod.type==="szyna" && ce("input",{type:"number",placeholder:"Długość szyny (cm)",value:par.len||"",onChange:e=>p.onChange({...prod,par:{...par,len:e.target.value}}),style:{...IST,marginBottom:10}}),
+
     (prod.type==="zaslona" || prod.type==="firana") && ce(Fragment, null,
-      ce("div",{style:{display:"flex",gap:"5px",marginBottom:"10px"}},
-        ce("input",{type:"number",placeholder:"Szer. karnisza (cm)",value:par.wCm||"",onChange:e=>p.onChange({...prod,par:{...par,wCm:e.target.value}}),style:IST}),
+      ce("div",{style:{marginBottom:10}},
         ce("select",{value:c.mars||"1.5",onChange:e=>p.onChange({...prod,c:{...c,mars:e.target.value}}),style:IST},
-          ce("option",{value:"1.5"},"Marszcz. 150%"),
-          ce("option",{value:"2.0"},"Marszcz. 200%")
+          ce("option",{value:"1.5"},"Marszczenie 150% (x1.5)"),
+          ce("option",{value:"2.0"},"Marszczenie 200% (x2.0)")
         )
       ),
       ce("div",{style:{marginBottom:"10px"}},
-        ce("label",{style:{fontSize:"11px",color:"var(--t2)"}},"Wybierz z katalogu:"),
+        ce("label",{style:{fontSize:"11px",color:"var(--t2)"}},"Wybierz tkaninę:"),
         ce("select",{value:prod.fabName||"",onChange:e=>{
           var f=FABRICS.find(x=>x.name===e.target.value);
-          p.onChange({...prod,fabName:f.name,fabP:f.brutto,fabMan:null});
+          p.onChange({...prod,fabName:f?f.name:null,fabP:f?f.brutto:0,fabMan:null});
         },style:IST},
-          ce("option",{value:""},"--- wybierz tkaninę ---"),
-          FABRICS.map(f=>ce("option",{key:f.name,value:f.name},f.name + " ("+f.brutto+"zł/mb)"))
+          ce("option",{value:""},"--- katalog tkanin ---"),
+          FABRICS.map(f=>ce("option",{key:f.name,value:f.name},f.name + " ("+f.brutto+"zł)"))
         )
       ),
       ce("div",{},
         ce("label",{style:{fontSize:"11px",color:"var(--t2)"}},"LUB wpisz własną cenę mb:"),
-        ce("input",{type:"number",placeholder:"np. 150",value:prod.fabMan||"",onChange:e=>p.onChange({...prod,fabMan:e.target.value,fabName:null,fabP:null}),style:IST})
+        ce("input",{type:"number",placeholder:"Cena za 1 mb",value:prod.fabMan||"",onChange:e=>p.onChange({...prod,fabMan:e.target.value,fabName:null,fabP:null}),style:IST})
       )
     ),
-    // Wynik w karcie
     res.total > 0 && ce("div",{style:{marginTop:"10px",padding:"8px",background:"var(--grl)",borderRadius:"8px",fontSize:"12px"}},
       res.lines.map((l,i)=>ce("div",{key:i},l)),
       ce("div",{style:{fontWeight:"700",borderTop:"1px solid var(--grm)",marginTop:"5px",paddingTop:"5px"}},"Razem: "+Math.round(res.total)+" zł")
@@ -140,7 +138,6 @@ function ProdCard(p){
   );
 }
 
-// --- GŁÓWNA APLIKACJA ---
 function App(){
   var [screen,setScreen]=useState("home");
   var [clients,setClients]=useState([{id:1,name:"Przykład",addr:"Zielonka",rooms:[]}]);
@@ -156,45 +153,43 @@ function App(){
     var {jsPDF}=window.jspdf; var doc=new jsPDF();
     var img=new Image(); img.src=LOGO_URL;
     img.onload=function(){
-      doc.addImage(img,'PNG',150,10,45,20);
-      doc.setFontSize(9); doc.setTextColor(100); doc.text(MY_DATA,10,15);
-      doc.line(10,35,200,35);
-      doc.setFontSize(14); doc.setTextColor(0); doc.text("OFERTA: "+client.name,10,45);
-      doc.setFontSize(10); doc.text("Adres: "+client.addr,10,51);
-      var y=65;
-      var grand=0;
+      doc.addImage(img,'PNG',150,10,40,20);
+      doc.setFontSize(8); doc.setTextColor(100);
+      var lines = MY_DATA.split('\n');
+      lines.forEach((l,i)=>doc.text(l, 10, 12+(i*4)));
+      doc.line(10,30,200,30);
+      doc.setFontSize(14); doc.setTextColor(0); doc.text("OFERTA: "+client.name,10,40);
+      doc.setFontSize(10); doc.text("Adres: "+client.addr,10,46);
+      var y=60; var grand=0;
       client.rooms.forEach(r=>{
-        doc.setFontSize(12); doc.text(r.name.toUpperCase(),10,y); y+=7;
+        doc.setFontSize(12); doc.setTextColor(59,109,17); doc.text(r.name.toUpperCase(),10,y); y+=7;
+        doc.setTextColor(0);
         r.windows.forEach(w=>{
-            var wTotal=w.products.reduce((acc,pr)=>acc+calc(pr).total,0);
-            doc.setFontSize(10); doc.text("- "+w.name+": "+Math.round(wTotal)+" zl",15,y); y+=5;
-            grand+=wTotal;
+            var wT=w.products.reduce((acc,pr)=>acc+calc(pr).total,0);
+            doc.setFontSize(10); doc.text("- "+w.name+": "+Math.round(wT)+" zl",15,y); y+=6;
+            grand+=wT;
         });
-        y+=5;
+        y+=4;
       });
-      doc.setFontSize(14); doc.setTextColor(59,109,17);
-      doc.text("SUMA CALKOWITA: "+Math.round(grand)+" zl",10,y+10);
+      doc.line(10,y,200,y);
+      doc.setFontSize(14); doc.setTextColor(59,109,17); doc.text("SUMA CALKOWITA: "+Math.round(grand)+" zl",10,y+10);
       doc.save("Wycena_"+client.name+".pdf");
     };
   }
 
-  // --- MODAL ---
-  function ModalContent(){
-    var [val,setVal]=useState("");
-    var [val2,setVal2]=useState("");
+  function Modal(){
+    var [v1,setV1]=useState(""); var [v2,setV2]=useState("");
+    if(!modal) return null;
     return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
-      ce("div",{style:{background:"#fff",padding:"20px",borderRadius:"15px",width:"280px"}},
-        ce("h3",{style:{marginBottom:"10px",fontSize:"15px"}},"Dodaj"),
-        ce("input",{autoFocus:true,value:val,onChange:e=>setVal(e.target.value),placeholder:"Nazwa",style:{...IST,marginBottom:"10px"}}),
-        modal==="client" && ce("input",{value:val2,onChange:e=>setVal2(e.target.value),placeholder:"Adres",style:{...IST,marginBottom:"10px"}}),
-        ce("div",{style:{display:"flex",gap:"10px"}},
-          Btn("Dodaj",()=>{
-            if(modal==="client"){
-                var nc={id:Date.now(),name:val||"Klient",addr:val2,rooms:[]};
-                setClients(p=>[...p,nc]); setCurCId(nc.id); setScreen("rooms");
-            }
-            if(modal==="room") setClients(p=>p.map(c=>c.id===curCId?{...c,rooms:[...c.rooms,{id:Date.now(),name:val,windows:[]}]}:c));
-            if(modal==="win"){ setCurWin({id:Date.now(),name:val,products:[]}); setScreen("detail"); }
+      ce("div",{style:{background:"#fff",padding:20,borderRadius:15,width:280}},
+        ce("h3",{style:{marginBottom:10}},"Dodaj"),
+        ce("input",{autoFocus:true,value:v1,onChange:e=>setV1(e.target.value),placeholder:"Nazwa",style:{...IST,marginBottom:10}}),
+        modal==="client" && ce("input",{value:v2,onChange:e=>setV2(e.target.value),placeholder:"Adres",style:{...IST,marginBottom:10}}),
+        ce("div",{style:{display:"flex",gap:10}},
+          Btn("OK",()=>{
+            if(modal==="client"){ var nc={id:Date.now(),name:v1,addr:v2,rooms:[]}; setClients(p=>[...p,nc]); setCurCId(nc.id); setScreen("rooms"); }
+            if(modal==="room") setClients(p=>p.map(c=>c.id===curCId?{...c,rooms:[...c.rooms,{id:Date.now(),name:v1,windows:[]}]}:c));
+            if(modal==="win"){ setCurWin({id:Date.now(),name:v1,products:[]}); setScreen("detail"); }
             setModal(null);
           },true),
           Btn("Anuluj",()=>setModal(null))
@@ -205,28 +200,28 @@ function App(){
 
   var content=null;
   if(screen==="home") content=ce("div",null,
-    ce("h2",{style:{marginBottom:"15px"}},"Klienci"),
-    clients.map(c=>ce("div",{key:c.id,onClick:()=>{setCurCId(c.id);setScreen("rooms")},style:{padding:"15px",background:"#fff",borderRadius:"12px",marginBottom:"10px",border:"1px solid var(--bd3)",cursor:"pointer"}},ce("b",null,c.name))),
+    ce("h2",{style:{marginBottom:15}},"Klienci"),
+    clients.map(c=>ce("div",{key:c.id,onClick:()=>{setCurCId(c.id);setScreen("rooms")},style:{padding:15,background:"#fff",borderRadius:12,marginBottom:10,border:"1px solid var(--bd3)",cursor:"pointer"}},ce("b",null,c.name))),
     Btn("+ Nowy Klient",()=>setModal("client"),true)
   );
   else if(screen==="rooms") content=ce("div",null,
     ce("h2",null,client.name),
-    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",margin:"15px 0"}},
-      client.rooms.map(r=>ce("div",{key:r.id,onClick:()=>{setCurRId(r.id);setScreen("windows")},style:{padding:"15px",background:"var(--grl)",borderRadius:"12px",textAlign:"center",cursor:"pointer"}},r.name)),
-      ce("div",{onClick:()=>setModal("room"),style:{padding:"15px",border:"2px dashed var(--bd2)",borderRadius:"12px",textAlign:"center",cursor:"pointer"}},"+ Pokój")
+    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"15px 0"}},
+      client.rooms.map(r=>ce("div",{key:r.id,onClick:()=>{setCurRId(r.id);setScreen("windows")},style:{padding:15,background:"var(--grl)",borderRadius:12,textAlign:"center",cursor:"pointer"}},r.name)),
+      ce("div",{onClick:()=>setModal("room"),style:{padding:15,border:"2px dashed var(--bd2)",borderRadius:12,textAlign:center,cursor:"pointer"}},"+ Pokój")
     ),
-    ce("div",{style:{display:"flex",gap:"10px"}},Btn("PDF",generatePDF,true),Btn("Wstecz",()=>setScreen("home")))
+    ce("div",{style:{display:"flex",gap:10}},Btn("Generuj PDF",generatePDF,true),Btn("Wstecz",()=>setScreen("home")))
   );
   else if(screen==="windows") content=ce("div",null,
     ce("h2",null,room.name),
-    room.windows.map(w=>ce("div",{key:w.id,onClick:()=>{setCurWin(w);setScreen("detail")},style:{padding:"12px",background:"#fff",border:"1px solid var(--bd3)",borderRadius:"10px",marginBottom:"10px",cursor:"pointer"}},w.name)),
-    ce("div",{style:{display:"flex",gap:"10px"}},Btn("+ Okno",()=>setModal("win"),true),Btn("Wstecz",()=>setScreen("rooms")))
+    room.windows.map(w=>ce("div",{key:w.id,onClick:()=>{setCurWin(w);setScreen("detail")},style:{padding:12,background:"#fff",border:"1px solid var(--bd3)",borderRadius:10,marginBottom:10,cursor:"pointer"}},w.name)),
+    ce("div",{style:{display:"flex",gap:10}},Btn("+ Okno",()=>setModal("win"),true),Btn("Wstecz",()=>setScreen("rooms")))
   );
   else if(screen==="detail") content=ce("div",null,
-    ce("h2",null,"Okno: "+curWin.name),
+    ce("h2",null,curWin.name),
     curWin.products.map((p,i)=>ce(ProdCard,{key:p.id,prod:p,onRemove:()=>setCurWin({...curWin,products:curWin.products.filter((_,j)=>j!==i)}),onChange:np=>setCurWin({...curWin,products:curWin.products.map((x,j)=>j===i?np:x)})})),
-    ce("div",{style:{display:"flex",gap:"10px",marginTop:"15px"}},
-      Btn("+ Produkt",()=>setCurWin({...curWin,products:[...curWin.products,{id:Date.now(),type:"zaslona",par:{},c:{},fabP:0}]})),
+    ce("div",{style:{display:"flex",gap:10,marginTop:15}},
+      Btn("+ Produkt",()=>setCurWin({...curWin,products:[...curWin.products,{id:Date.now(),type:"zaslona",par:{},c:{}}]})),
       Btn("Zapisz",()=>{
           setClients(prev=>prev.map(c=>c.id===curCId?{...c,rooms:c.rooms.map(r=>r.id===curRId?{...r,windows:r.windows.find(w=>w.id===curWin.id)?r.windows.map(w=>w.id===curWin.id?curWin:w):[...r.windows,curWin]}:r)}:c));
           setScreen("windows");
@@ -234,9 +229,8 @@ function App(){
     )
   );
 
-  return ce("div",null,content,modal&&ce(ModalContent));
+  return ce("div",null,content,modal&&ce(Modal));
 }
-
 ReactDOM.createRoot(document.getElementById("root")).render(ce(App));
 })();
 </script>
