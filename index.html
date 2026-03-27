@@ -3,141 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Porter Design - Kalkulator</title>
+    <title>Porter Design - System Ofertowy</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Styl dla nieaktywnego przycisku */
-        .chip { 
-            cursor: pointer; 
-            border: 2px solid #e2e8f0; 
-            transition: all 0.2s;
-            background-color: white;
-        }
-        /* Styl dla aktywnego przycisku - wymuszony kolorami Tailwind */
-        .chip.active { 
-            border-color: #22c55e !important; 
-            background-color: #f0fdf4 !important; 
-            color: #166534 !important;
-            font-weight: bold;
-        }
+        .chip { cursor: pointer; border: 2px solid #e2e8f0; transition: all 0.2s; background: white; text-align: center; user-select: none; }
+        .chip.active { border-color: #22c55e !important; background-color: #f0fdf4 !important; color: #166534 !important; font-weight: bold; }
+        @media print { .no-print { display: none; } body { background: white; p: 0; } .shadow-lg { shadow: none; border: 1px solid #eee; } }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 pb-40 text-gray-800">
+<body class="bg-gray-100 min-h-screen pb-40">
 
-    <div class="max-w-2xl mx-auto space-y-6">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border">
-            <h1 class="text-xl font-bold text-green-700">System Ofertowy Porter Design</h1>
+    <div class="max-w-2xl mx-auto p-4 space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border no-print">
+            <h1 class="text-2xl font-black text-green-700 italic">PORTER DESIGN</h1>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Kalkulator ofertowy v3.0</p>
+            <input type="text" id="client-name" placeholder="Imię i Nazwisko Klienta / Inwestycja" class="w-full mt-4 border-b-2 py-2 outline-none focus:border-green-500 text-lg font-medium">
         </div>
 
-        <div class="bg-white rounded-3xl shadow-lg border overflow-hidden">
+        <div class="bg-white rounded-3xl shadow-xl border overflow-hidden">
+            <div class="bg-gray-50 px-6 py-4 border-b no-print">
+                <span class="font-bold text-gray-500 uppercase text-[10px] tracking-widest">Konfiguracja produktu</span>
+            </div>
+
             <div class="p-6 space-y-8">
-                
-                <div>
-                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest">Typ produktu</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="productGroup">
-                        <div class="chip active p-2 rounded-xl text-[11px] text-center" onclick="handleSelect(this, 'product')">Zasłony</div>
-                        <div class="chip p-2 rounded-xl text-[11px] text-center" onclick="handleSelect(this, 'product')">Żaluzje</div>
-                        <div class="chip p-2 rounded-xl text-[11px] text-center" onclick="handleSelect(this, 'product')">Rolety rzymskie</div>
-                        <div class="chip p-2 rounded-xl text-[11px] text-center" onclick="handleSelect(this, 'product')">Szyny KAES</div>
-                        <div class="chip p-2 rounded-xl text-[11px] text-center" onclick="handleSelect(this, 'product')">Karnisze el.</div>
+                <div class="no-print">
+                    <label class="block text-[10px] font-black text-gray-400 uppercase mb-3">Wybierz typ osłony</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="chip active p-3 rounded-xl text-xs" onclick="changeType('zaslony', this)">Zasłony</div>
+                        <div class="chip p-3 rounded-xl text-xs" onclick="changeType('zaluzje', this)">Żaluzje</div>
+                        <div class="chip p-3 rounded-xl text-xs" onclick="changeType('rolety', this)">Rolety rzym.</div>
                     </div>
                 </div>
 
-                <div id="section-zaslony" class="bg-gray-50 p-6 rounded-2xl space-y-6 border">
+                <div id="form-zaslony" class="product-form space-y-6">
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase block mb-1">Szerokość (cm)</label>
-                            <input type="number" id="inp-szer" oninput="calculate()" class="w-full p-3 rounded-xl border focus:ring-2 ring-green-500 outline-none" placeholder="0">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Szerokość (cm)</label>
+                            <input type="number" id="z-szer" oninput="calc()" class="w-full p-3 rounded-xl border-2 focus:border-green-500 outline-none" placeholder="0">
                         </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase block mb-1">Wysokość (cm)</label>
-                            <input type="number" id="inp-wys" oninput="calculate()" class="w-full p-3 rounded-xl border focus:ring-2 ring-green-500 outline-none" placeholder="0">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Typ szycia</label>
-                        <div class="flex gap-2">
-                            <div class="chip active flex-1 p-3 rounded-xl text-xs text-center" onclick="handleSelect(this, 'szycie', 100)">Flex (100 zł)</div>
-                            <div class="chip flex-1 p-3 rounded-xl text-xs text-center" onclick="handleSelect(this, 'szycie', 110)">Wave (110 zł)</div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Wysokość (cm)</label>
+                            <input type="number" id="z-wys" oninput="calc()" class="w-full p-3 rounded-xl border-2 focus:border-green-500 outline-none" placeholder="0">
                         </div>
                     </div>
-
-                    <div>
-                        <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Marszczenie</label>
-                        <div class="flex gap-2">
-                            <div class="chip active flex-1 p-3 rounded-xl text-xs text-center" onclick="handleSelect(this, 'marsz', 1.5)">150%</div>
-                            <div class="chip flex-1 p-3 rounded-xl text-xs text-center" onclick="handleSelect(this, 'marsz', 2.0)">200%</div>
+                    <div class="no-print space-y-4">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase block">Parametry szycia i tkaniny</label>
+                        <div class="flex gap-2" id="z-szycie">
+                            <div class="chip active flex-1 p-2 rounded-lg text-[10px]" onclick="setVal('szycie', 100, this)">Flex (100zł)</div>
+                            <div class="chip flex-1 p-2 rounded-lg text-[10px]" onclick="setVal('szycie', 110, this)">Wave (110zł)</div>
                         </div>
-                    </div>
-
-                    <div>
-                        <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Kategoria tkaniny</label>
-                        <div class="flex flex-col gap-2">
-                            <div class="chip active p-3 rounded-xl text-xs px-4" onclick="handleSelect(this, 'kat', 160)">Basic (160 zł/mb)</div>
-                            <div class="chip p-3 rounded-xl text-xs px-4" onclick="handleSelect(this, 'kat', 190)">Standard (190 zł/mb)</div>
-                            <div class="chip p-3 rounded-xl text-xs px-4" onclick="handleSelect(this, 'kat', 220)">Premium (220 zł/mb)</div>
+                        <div class="flex gap-2" id="z-marsz">
+                            <div class="chip active flex-1 p-2 rounded-lg text-[10px]" onclick="setVal('marsz', 1.5, this)">150%</div>
+                            <div class="chip flex-1 p-2 rounded-lg text-[10px]" onclick="setVal('marsz', 2.0, this)">200%</div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2">
+                            <div class="chip active p-2 rounded-lg text-[10px]" onclick="setVal('kat', 160, this)">Basic (160zł/mb)</div>
+                            <div class="chip p-2 rounded-lg text-[10px]" onclick="setVal('kat', 190, this)">Standard (190zł/mb)</div>
+                            <div class="chip p-2 rounded-lg text-[10px]" onclick="setVal('kat', 240, this)">Premium (240zł/mb)</div>
                         </div>
                     </div>
                 </div>
 
-                <div id="section-other" class="hidden p-10 text-center text-gray-400 italic bg-gray-50 rounded-2xl border-2 border-dashed">
-                    Moduł w trakcie konfiguracji...
+                <div id="form-zaluzje" class="product-form hidden space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Szerokość (cm)</label>
+                            <input type="number" id="zal-szer" oninput="calc()" class="w-full p-3 rounded-xl border-2 focus:border-green-500 outline-none" placeholder="0">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Wysokość (cm)</label>
+                            <input type="number" id="zal-wys" oninput="calc()" class="w-full p-3 rounded-xl border-2 focus:border-green-500 outline-none" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="no-print space-y-2">
+                        <label class="text-[10px] font-bold text-gray-400 uppercase block">Materiał żaluzji</label>
+                        <div class="chip active p-3 rounded-xl text-xs" onclick="setVal('zal-m2', 450, this)">Drewno 50mm (450zł/m²)</div>
+                        <div class="chip p-3 rounded-xl text-xs mt-2" onclick="setVal('zal-m2', 550, this)">Bambus 50mm (550zł/m²)</div>
+                    </div>
+                </div>
+
+                <div id="form-rolety" class="product-form hidden space-y-6">
+                    <p class="text-center text-gray-400 text-sm py-10">Moduł rolet rzymskich w konfiguracji cenowej...</p>
+                </div>
+
+                <div id="print-summary" class="border-t pt-4 mt-10">
+                    <h4 class="font-bold text-sm mb-2">Szczegóły wyceny:</h4>
+                    <div id="summary-text" class="text-xs text-gray-600 leading-relaxed">
+                        Wpisz wymiary, aby zobaczyć specyfikację...
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-6 shadow-2xl z-50">
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-6 shadow-2xl z-50 no-print">
         <div class="max-w-2xl mx-auto flex justify-between items-center">
             <div>
-                <p class="text-[10px] text-gray-400 font-black uppercase">Suma</p>
-                <p id="total-price" class="text-4xl font-black text-green-600">0,00 zł</p>
+                <p class="text-[10px] text-gray-400 font-black uppercase">Suma do zapłaty</p>
+                <p id="total-display" class="text-4xl font-black text-green-600 tracking-tighter">0,00 zł</p>
             </div>
-            <button class="bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold">PDF</button>
+            <button onclick="window.print()" class="bg-gray-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2">
+                <i class="fas fa-print"></i> DRUKUJ / PDF
+            </button>
         </div>
     </div>
 
     <script>
-        // Startowe wartości
-        let valSzycie = 100;
-        let valMarsz = 1.5;
-        let valKat = 160;
+        let currentType = 'zaslony';
+        let vSzycie = 100, vMarsz = 1.5, vKat = 160; // Dla zasłon
+        let vZalM2 = 450; // Dla żaluzji
 
-        function handleSelect(el, type, price) {
-            // 1. Zmień wygląd przycisków w grupie
-            const parent = el.parentElement;
-            const chips = parent.querySelectorAll('.chip');
+        function changeType(type, el) {
+            currentType = type;
+            document.querySelectorAll('.product-form').forEach(f => f.classList.add('hidden'));
+            document.getElementById('form-' + type).classList.remove('hidden');
+            
+            const chips = el.parentElement.querySelectorAll('.chip');
             chips.forEach(c => c.classList.remove('active'));
             el.classList.add('active');
-
-            // 2. Obsłuż zmianę produktu
-            if (type === 'product') {
-                const isCurtain = el.innerText === 'Zasłony';
-                document.getElementById('section-zaslony').style.display = isCurtain ? 'block' : 'none';
-                document.getElementById('section-other').style.display = isCurtain ? 'none' : 'block';
-            }
-
-            // 3. Przypisz wartości do obliczeń
-            if (type === 'szycie') valSzycie = price;
-            if (type === 'marsz') valMarsz = price;
-            if (type === 'kat') valKat = price;
-
-            calculate();
+            calc();
         }
 
-        function calculate() {
-            const szer = parseFloat(document.getElementById('inp-szer').value) || 0;
-            const display = document.getElementById('total-price');
+        function setVal(type, val, el) {
+            if(type === 'szycie') vSzycie = val;
+            if(type === 'marsz') vMarsz = val;
+            if(type === 'kat') vKat = val;
+            if(type === 'zal-m2') vZalM2 = val;
 
-            if (szer > 0) {
-                const mb = (szer * valMarsz) / 100;
-                const suma = mb * (valKat + valSzycie);
-                display.innerText = suma.toLocaleString('pl-PL', {style: 'currency', currency: 'PLN'});
-            } else {
-                display.innerText = "0,00 zł";
+            const chips = el.parentElement.querySelectorAll('.chip');
+            chips.forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            calc();
+        }
+
+        function calc() {
+            let total = 0;
+            let summary = "";
+
+            if (currentType === 'zaslony') {
+                const s = parseFloat(document.getElementById('z-szer').value) || 0;
+                const w = parseFloat(document.getElementById('z-wys').value) || 0;
+                if(s > 0) {
+                    const mb = (s * vMarsz) / 100;
+                    total = mb * (vKat + vSzycie);
+                    summary = `Zasłony: szer. ${s}cm, wys. ${w}cm. Marszczenie ${vMarsz*100}%, tkanina ${vKat}zł/mb, szycie ${vSzycie}zł/mb. Zużycie: ${mb.toFixed(2)}mb.`;
+                }
+            } else if (currentType === 'zaluzje') {
+                const s = parseFloat(document.getElementById('zal-szer').value) || 0;
+                const w = parseFloat(document.getElementById('zal-wys').value) || 0;
+                if(s > 0 && w > 0) {
+                    const m2 = (s * w) / 10000;
+                    total = Math.max(m2, 1.0) * vZalM2; // Minimum 1m2
+                    summary = `Żaluzje: szer. ${s}cm, wys. ${w}cm. Powierzchnia: ${m2.toFixed(2)}m². Cena za m²: ${vZalM2}zł.`;
+                }
             }
+
+            document.getElementById('total-display').innerText = total.toLocaleString('pl-PL', {style: 'currency', currency: 'PLN'});
+            document.getElementById('summary-text').innerText = summary;
         }
     </script>
 </body>
