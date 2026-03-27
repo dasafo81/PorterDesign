@@ -1,193 +1,481 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Porter Design - System Handlowy</title>
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    :root{
-      --bg:#ffffff;--bg2:#f7f7f5;
-      --bd1:#d0d0cc;--bd2:#e0e0dc;--bd3:#ececea;
-      --t1:#1a1a18;--t2:#6b6b66;--t3:#a0a09c;
-      --accent:#3B6D11; --accent-l:#EAF3DE;
-      --wb:#FAEEDA;--wbd:#EF9F27;--wt:#633806;
-      --shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--t1);min-height:100vh;}
-    #root{max-width:480px;margin:20px auto;background:var(--bg);min-height:90vh;padding:1.5rem;border-radius:20px;box-shadow:var(--shadow);}
-    input,select,button{font-family:inherit; outline:none;}
-    .card { background:#fff; border:1px solid var(--bd3); border-radius:15px; padding:15px; margin-bottom:12px; transition: 0.2s; }
-    .icon-box { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; margin-right:10px; font-size:16px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Porter Design v2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3B6D11;
+            --primary-light: #EAF3DE;
+            --secondary: #6b6b66;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #1a1a18;
+            --text-light: #6b6b66;
+            --border: #e0e0dc;
+            --accent: #EF9F27;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.4;
+            font-size: 13px; /* Mniejsza czcionka zgodnie z prośbą */
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            background: #eee;
+            padding: 4px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 12px;
+            border-radius: 6px;
+            color: var(--text-light);
+            transition: 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--card-bg);
+            color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* FORM ELEMENTS */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .full { grid-column: span 2; }
+
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-light);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        input:focus { border-color: var(--primary); }
+
+        .search-box { position: relative; }
+        .search-results {
+            position: absolute;
+            top: 100%; left: 0; right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 0 0 6px 6px;
+            max-height: 150px;
+            overflow-y: auto;
+            z-index: 10;
+            display: none;
+        }
+
+        .search-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .search-item:hover { background: var(--primary-light); }
+
+        /* SUMMARY BOX */
+        .result-box {
+            background: var(--primary-light);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 15px;
+        }
+
+        .result-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .total-price {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+            text-align: right;
+            margin-top: 8px;
+            border-top: 1px solid rgba(59, 109, 17, 0.2);
+            padding-top: 8px;
+        }
+
+        .badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: #eee;
+            border-radius: 4px;
+            margin-left: 5px;
+        }
+
+        .hidden { display: none; }
+
+        /* ICONS EMULATION */
+        .icon { width: 16px; height: 16px; display: inline-block; vertical-align: middle; }
+    </style>
 </head>
 <body>
-<div id="root"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div class="container">
+    <header>
+        <h1>Porter Design · Kalkulator Ofertowy</h1>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('zaslony')">🧶 Zasłony</button>
+        <button class="tab-btn" onclick="showTab('zaluzje')">🪵 Żaluzje</button>
+        <button class="tab-btn" onclick="showTab('karnisze')">🔌 Systemy</button>
+    </div>
+
+    <div id="tab-zaslony" class="tab-content">
+        <div class="card">
+            <div class="section-title">Konfiguracja Zasłon</div>
+            <div class="grid">
+                <div class="full">
+                    <label>Tkanina (Szukaj w katalogu)</label>
+                    <div class="search-box">
+                        <input type="text" id="fabric-search" placeholder="Wpisz nazwę tkaniny..." oninput="searchFabric()">
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+                </div>
+                
+                <div id="manual-price-div" class="hidden full">
+                    <label>Własna cena za mb (brutto)</label>
+                    <input type="number" id="manual-price" placeholder="0.00" oninput="calculateCurtains()">
+                </div>
+
+                <div>
+                    <label>Szerokość karnisza (m)</label>
+                    <input type="number" id="curtain-width" step="0.1" placeholder="np. 2.5" oninput="calculateCurtains()">
+                </div>
+                <div>
+                    <label>Model Marszczenia</label>
+                    <select id="fold-type" onchange="calculateCurtains()">
+                        <option value="1.5">Flex / Standard (150%)</option>
+                        <option value="2.0">Wave / Gęste (200%)</option>
+                    </select>
+                </div>
+                <div class="full">
+                    <label>Rodzaj Szycia</label>
+                    <select id="sewing-type" onchange="calculateCurtains()">
+                        <option value="100">Szycie Flex (100 zł/mb)</option>
+                        <option value="110">Szycie Wave (110 zł/mb)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="curtain-result" class="result-box hidden">
+                <div class="result-line"><span>Wybrana tkanina:</span> <strong id="res-fab-name">-</strong></div>
+                <div class="result-line"><span>Producent/Wysokość:</span> <span id="res-fab-info">-</span></div>
+                <div class="result-line"><span>Zużycie materiału:</span> <strong id="res-usage">-</strong></div>
+                <div class="result-line"><span>Cena (Tkanina + Szycie):</span> <span id="res-unit-price">-</span></div>
+                <div class="total-price" id="res-total">0.00 zł</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-zaluzje" class="tab-content hidden">
+        <div class="card">
+            <div class="section-title">Konfiguracja Żaluzji</div>
+            <div class="grid">
+                <div class="full">
+                    <label>Typ produktu</label>
+                    <select id="blind-type" onchange="calculateBlinds()">
+                        <optgroup label="Aluminium">
+                            <option value="alu25">Aluminium 25mm</option>
+                            <option value="alu35">Aluminium 35mm</option>
+                            <option value="alu50">Aluminium 50mm Sunset</option>
+                        </optgroup>
+                        <optgroup label="Bambus">
+                            <option value="bam35">Bamboo 35mm</option>
+                            <option value="bam50">Bamboo 50mm</option>
+                            <option value="bam65">Bamboo 65mm</option>
+                        </optgroup>
+                        <optgroup label="Drewno (Basswood)">
+                            <option value="bas35">Basswood 35mm</option>
+                            <option value="bas50">Basswood 50mm</option>
+                            <option value="bas65">Basswood 65mm</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div>
+                    <label>Szerokość (cm)</label>
+                    <input type="number" id="blind-w" placeholder="np. 80" oninput="calculateBlinds()">
+                </div>
+                <div>
+                    <label>Wysokość (cm)</label>
+                    <input type="number" id="blind-h" placeholder="np. 150" oninput="calculateBlinds()">
+                </div>
+            </div>
+            <div id="blind-result" class="result-box hidden">
+                <div class="result-line"><span>Wymiar po zaokrągleniu:</span> <strong id="res-blind-dim">-</strong></div>
+                <div id="blind-warning" style="color: #d93025; font-size: 11px; margin-top: 5px; font-weight: 500;"></div>
+                <div class="total-price" id="res-blind-total">0.00 zł</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-karnisze" class="tab-content hidden">
+        <div class="card">
+            <div class="section-title">Szyny i Karnisze Elektr.</div>
+            <label>Rodzaj systemu</label>
+            <select id="sys-type" onchange="toggleSysFields(); calculateSystems();" style="margin-bottom: 12px;">
+                <option value="kaes_flex">Szyna KAES (System Flex)</option>
+                <option value="kaes_wave">Szyna KAES (System Wave)</option>
+                <option value="ele_slim">Karnisz Elek. SLIM</option>
+                <option value="ele_uni">Karnisz Elek. UNIVERSAL</option>
+            </select>
+
+            <div class="grid">
+                <div id="col-len">
+                    <label>Długość (cm)</label>
+                    <input type="number" id="sys-len" placeholder="np. 240" oninput="calculateSystems()">
+                </div>
+                <div id="col-color" class="hidden">
+                    <label>Kolor szyny</label>
+                    <select id="sys-color" onchange="calculateSystems()">
+                        <option value="white">Biały</option>
+                        <option value="black">Czarny</option>
+                    </select>
+                </div>
+                <div id="col-motor" class="hidden full">
+                    <label>Napęd (Silnik)</label>
+                    <select id="sys-motor" onchange="calculateSystems()">
+                        <option value="644">A-OK AM75 (Sieciowy) - 644 zł</option>
+                        <option value="1000">A-OK AM50 (Akumulator) - 1000 zł</option>
+                        <option value="902">Somfy Movelite 35 DCT - 902 zł</option>
+                        <option value="1056">Somfy Movelite 35 RTS - 1056 zł</option>
+                        <option value="2268">Somfy Glydea Ultra RTS - 2268 zł</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="sys-result" class="result-box hidden">
+                <div class="result-line"><span>Cena bazowa szyny:</span> <strong id="res-sys-base">-</strong></div>
+                <div class="result-line" id="res-sys-motor-row"><span>Cena napędu:</span> <strong id="res-sys-motor">-</strong></div>
+                <div class="total-price" id="res-sys-total">0.00 zł</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-(function(){
-"use strict";
-var ce=React.createElement,useState=React.useState,Fragment=React.Fragment;
+    // BAZA TKANIN (PRZYKŁAD Z PDF)
+    const fabrics = [
+        { name: "Własna tkanina (wpisz cenę)", price: 0, provider: "-", height: "-", manual: true },
+        { name: "1310", price: 160, provider: "MARGO TEXTIL", height: "300 cm" },
+        { name: "18734", price: 80, provider: "MARGO TEXTIL", height: "300 cm" },
+        { name: "Belluno", price: 70, provider: "SAMA TEKSTIL", height: "300 cm" },
+        { name: "Bercy FR", price: 264, provider: "RIDEX", height: "303 cm" },
+        { name: "Berin", price: 110, provider: "SAMA TEKSTIL", height: "300 cm" },
+        { name: "Betty 148", price: 60, provider: "MARGO TEXTIL", height: "315 cm" },
+        { name: "Betty 213", price: 80, provider: "MARGO TEXTIL", height: "315 cm" },
+        { name: "Billy Dim-Out", price: 195, provider: "MARGO TEXTIL", height: "295 cm" },
+        { name: "Basic (Ogólna)", price: 160, provider: "Standard", height: "300 cm" },
+        { name: "Standard (Ogólna)", price: 190, provider: "Standard", height: "300 cm" },
+        { name: "Premium (Ogólna)", price: 220, provider: "Standard", height: "300 cm" }
+    ];
 
-// --- DANE ---
-var MY_DATA = "PD Porter Design Paulina Porter\nul. Woronieckiego 6C/2, 05-220 Zielonka\nNIP: 8121803400";
-var FABRICS=[{name:"Alise",brutto:230},{name:"Alma",brutto:165},{name:"Altamira",brutto:250},{name:"Alto",brutto:120},{name:"Amber",brutto:110},{name:"Antonio",brutto:220}];
+    let selectedFabric = null;
 
-// Tabele
-var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,300:216.67};
-var KW={biala:{100:124,150:173,200:221,250:287,300:336,400:443},czarna:{100:143,150:197,200:221,250:327,300:380,400:501}};
-var KSLIM={150:658,200:704,250:750,300:816,400:952,500:1108};
+    // OBSŁUGA TKANIN
+    function searchFabric() {
+        const query = document.getElementById('fabric-search').value.toLowerCase();
+        const resultsDiv = document.getElementById('search-results');
+        resultsDiv.innerHTML = '';
+        
+        if (query.length < 1) { resultsDiv.style.display = 'none'; return; }
 
-function lookup(val,obj){
-  var keys=Object.keys(obj).map(Number).sort((a,b)=>a-b);
-  var k=keys.find(k=>k>=val)||keys[keys.length-1];
-  return obj[k];
-}
+        const filtered = fabrics.filter(f => f.name.toLowerCase().includes(query));
+        filtered.forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'search-item';
+            div.innerHTML = `<strong>${f.name}</strong> <span class="badge">${f.price} zł</span><br><small>${f.provider} | wys. ${f.height}</small>`;
+            div.onclick = () => selectFabric(f);
+            resultsDiv.appendChild(div);
+        });
+        resultsDiv.style.display = 'block';
+    }
 
-function calc(p){
-  var c=p.c||{}, par=p.par||{};
-  var fabP = p.fabMan ? parseFloat(p.fabMan) : (p.fabP || 0);
-  var total=0;
-  if(p.type==="zaslona" || p.type==="firana"){
-    var w=parseFloat(par.wCm)||0, m=parseFloat(c.mars)||1.5;
-    if(w>0 && fabP>0) total = ((w/100)*m + 0.2) * (fabP + 100);
-  } else if(p.type==="szyna"){
-    var l=parseFloat(par.len)||0;
-    total = (c.ks==="wave") ? lookup(l, KW[c.kk||"biala"]) : (l/100)*80;
-  } else if(p.type==="zaluzja"){
-    total = Math.max(0.5, (parseFloat(par.wCm)/100)*(parseFloat(par.hCm)/100)) * 450;
-  } else if(p.type==="roleta"){
-    total = lookup(parseFloat(par.wCm)||0, RCITY) + (fabP || 0);
-  } else if(p.type==="karnisz"){
-    total = lookup(parseFloat(par.len)||0, KSLIM) + 644;
-  }
-  return total || 0;
-}
+    function selectFabric(f) {
+        selectedFabric = f;
+        document.getElementById('fabric-search').value = f.name;
+        document.getElementById('search-results').style.display = 'none';
+        
+        const manualDiv = document.getElementById('manual-price-div');
+        if(f.manual) {
+            manualDiv.classList.remove('hidden');
+        } else {
+            manualDiv.classList.add('hidden');
+        }
+        calculateCurtains();
+    }
 
-// --- UI COMPONENTS ---
-var IST={padding:"10px",fontSize:"14px",border:"1px solid var(--bd2)",borderRadius:"8px",width:"100%",marginBottom:"10px"};
-function Btn(l,onClick,pri){
-  return ce("button",{onClick:onClick,style:{padding:"10px 18px",borderRadius:10,border:"none",background:pri?"#1a1a18":"var(--bd3)",color:pri?"#fff":"#000",fontWeight:600,cursor:"pointer",marginRight:5}},l);
-}
+    function calculateCurtains() {
+        const width = parseFloat(document.getElementById('curtain-width').value);
+        const fold = parseFloat(document.getElementById('fold-type').value);
+        const sewing = parseFloat(document.getElementById('sewing-type').value);
+        
+        if (!width || (!selectedFabric && !document.getElementById('manual-price').value)) return;
 
-function ProdCard(p){
-  var pr=p.prod, c=pr.c||{}, par=pr.par||{};
-  var val = calc(pr);
-  var types=[{id:"zaslona",l:"Zasłona",i:"🧤",b:"#EAF3DE"},{id:"firana",l:"Firana",i:"🌬️",b:"#EAF3DE"},{id:"zaluzja",l:"Żaluzja",i:"📏",b:"#FAEEDA"},{id:"roleta",l:"Roleta",i:"🌀",b:"#FAEEDA"},{id:"szyna",l:"KAES",i:"🛤️",b:"#ececea"},{id:"karnisz",l:"Karnisz",i:"⚡",b:"#ececea"}];
+        let fabricPrice = selectedFabric ? selectedFabric.price : 0;
+        if(selectedFabric && selectedFabric.manual) {
+            fabricPrice = parseFloat(document.getElementById('manual-price').value) || 0;
+        }
 
-  return ce("div",{className:"card"},
-    ce("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:12}},
-       ce("b",{},"Konfiguracja"),ce("button",{onClick:p.onRemove,style:{color:"red",border:"none",background:"none"}},"usuń")),
-    ce("div",{style:{display:"flex",gap:4,flexWrap:"wrap",marginBottom:12}},
-       types.map(t=>ce("button",{key:t.id,onClick:()=>p.onChange({...pr,type:t.id,fabP:0,fabMan:"",fabName:""}),style:{fontSize:11,padding:"6px 10px",background:pr.type===t.id?t.b:"#fff",border:"1px solid "+(pr.type===t.id?"#000":"var(--bd2)"),borderRadius:10}},t.i+" "+t.l))),
-    
-    (pr.type!=="szyna" && pr.type!=="karnisz") && ce("div",{style:{display:"flex",gap:8}},
-       ce("input",{placeholder:"Szer (cm)",value:par.wCm||"",type:"number",onChange:e=>p.onChange({...pr,par:{...par,wCm:e.target.value}}),style:IST}),
-       ce("input",{placeholder:"Wys (cm)",value:par.hCm||"",type:"number",onChange:e=>p.onChange({...pr,par:{...par,hCm:e.target.value}}),style:IST})),
-    
-    (pr.type==="szyna"||pr.type==="karnisz") && ce("input",{placeholder:"Długość (cm)",value:par.len||"",type:"number",onChange:e=>p.onChange({...pr,par:{...par,len:e.target.value}}),style:IST}),
+        const usage = (width * fold) + 0.2;
+        const totalPrice = usage * (fabricPrice + sewing);
 
-    (pr.type==="zaslona"||pr.type==="firana"||pr.type==="roleta") && ce(Fragment,null,
-       pr.type!=="roleta" && ce("select",{value:c.mars||"1.5",onChange:e=>p.onChange({...pr,c:{...c,mars:e.target.value}}),style:IST},ce("option",{value:"1.5"},"Marszczenie 1.5x"),ce("option",{value:"2.0"},"Marszczenie 2.0x")),
-       ce("select",{value:pr.fabName||"",onChange:e=>{
-          var f=FABRICS.find(x=>x.name===e.target.value);
-          p.onChange({...pr,fabName:f?f.name:"",fabP:f?f.brutto:0,fabMan:""});
-       },style:IST},ce("option",{value:""},"--- wybierz tkaninę ---"),FABRICS.map(f=>ce("option",{key:f.name,value:f.name},f.name+" ("+f.brutto+"zł)"))),
-       ce("input",{placeholder:"LUB własna cena mb",value:pr.fabMan||"",type:"number",onChange:e=>p.onChange({...pr,fabMan:e.target.value,fabName:"",fabP:0}),style:IST})),
-    
-    pr.type==="szyna" && ce("div",{style:{display:"flex",gap:5}},
-       ce("select",{value:c.ks||"flex",onChange:e=>p.onChange({...pr,c:{...c,ks:e.target.value}}),style:IST},ce("option",{value:"flex"},"Flex"),ce("option",{value:"wave"},"Wave")),
-       c.ks==="wave" && ce("select",{value:c.kk||"biala",onChange:e=>p.onChange({...pr,c:{...c,kk:e.target.value}}),style:IST},ce("option",{value:"biala"},"Biała"),ce("option",{value:"czarna"},"Czarna"))),
+        document.getElementById('curtain-result').classList.remove('hidden');
+        document.getElementById('res-fab-name').innerText = selectedFabric ? selectedFabric.name : "Własna";
+        document.getElementById('res-fab-info').innerText = selectedFabric ? `${selectedFabric.provider} / ${selectedFabric.height}` : "-";
+        document.getElementById('res-usage').innerText = usage.toFixed(2) + " mb";
+        document.getElementById('res-unit-price').innerText = (fabricPrice + sewing) + " zł/mb";
+        document.getElementById('res-total').innerText = totalPrice.toFixed(2) + " zł";
+    }
 
-    val>0 && ce("div",{style:{padding:10,background:"#f0f9eb",borderRadius:8,fontWeight:700,textAlign:"right"}},"Suma: "+Math.round(val)+" zł")
-  );
-}
+    // OBSŁUGA ŻALUZJI (Logika uproszczona na potrzeby demo - w realu tu byłby lookup z CSV)
+    function calculateBlinds() {
+        const w = parseInt(document.getElementById('blind-w').value);
+        const h = parseInt(document.getElementById('blind-h').value);
+        if (!w || !h) return;
 
-function App(){
-  var [screen,setScreen]=useState("home");
-  var [clients,setClients]=useState([]);
-  var [cId,setCId]=useState(null);
-  var [rId,setRId]=useState(null);
-  var [curWin,setCurWin]=useState(null);
-  var [modal,setModal]=useState(null);
+        // Zaokrąglenie w górę do 10cm
+        const roundedW = Math.ceil(w / 10) * 10;
+        const roundedH = Math.ceil(h / 10) * 10;
+        
+        // Przykładowy algorytm cenowy (symulacja tabeli)
+        let base = 250; 
+        const area = (w * h) / 10000;
+        const price = base + (area * 150); 
 
-  var client=clients.find(c=>c.id===cId);
-  var room=client?client.rooms.find(r=>r.id===rId):null;
+        document.getElementById('blind-result').classList.remove('hidden');
+        document.getElementById('res-blind-dim').innerText = `${roundedW} x ${roundedH} cm`;
+        document.getElementById('res-blind-total').innerText = Math.round(price) + " zł";
+        
+        const warning = document.getElementById('blind-warning');
+        if (area > 5) {
+            warning.innerText = "⚠️ Powierzchnia powyżej 5m² - ograniczona gwarancja manualna.";
+        } else {
+            warning.innerText = "";
+        }
+    }
 
-  function pdf(){
-    var {jsPDF}=window.jspdf; var doc=new jsPDF();
-    doc.setFontSize(14); doc.text("PORTER DESIGN - OFERTA", 10, 20);
-    doc.setFontSize(10); doc.text(MY_DATA, 10, 30);
-    doc.text("Klient: "+client.name, 10, 50);
-    var y=65; var total=0;
-    client.rooms.forEach(r=>{
-      doc.setFontSize(12); doc.text(r.name.toUpperCase(), 10, y); y+=7;
-      r.windows.forEach(w=>{
-        var wt=w.products.reduce((a,p)=>a+calc(p),0);
-        doc.setFontSize(10); doc.text("- "+w.name+": "+Math.round(wt)+" zl", 15, y); y+=6;
-        total+=wt;
-      }); y+=4;
-    });
-    doc.text("SUMA: "+Math.round(total)+" zl", 10, y+10);
-    doc.save("Wycena.pdf");
-  }
+    // OBSŁUGA SYSTEMÓW
+    function toggleSysFields() {
+        const type = document.getElementById('sys-type').value;
+        document.getElementById('col-color').classList.toggle('hidden', !type.includes('kaes_wave'));
+        document.getElementById('col-motor').classList.toggle('hidden', !type.includes('ele'));
+        document.getElementById('res-sys-motor-row').classList.toggle('hidden', !type.includes('ele'));
+    }
 
-  function Modal(){
-    var [v1,setV1]=useState(""); var [v2,setV2]=useState("");
-    return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9}},
-      ce("div",{style:{background:"#fff",padding:25,borderRadius:20,width:300}},
-        ce("h3",{style:{marginBottom:15}},"Dodaj"),
-        ce("input",{placeholder:"Nazwa",value:v1,onChange:e=>setV1(e.target.value),style:IST,autoFocus:true}),
-        modal==="client" && ce("input",{placeholder:"Adres",value:v2,onChange:e=>setV2(e.target.value),style:IST}),
-        Btn("Dodaj",()=>{
-          if(modal==="client"){ var nc={id:Date.now(),name:v1,addr:v2,rooms:[]}; setClients([nc,...clients]); setCId(nc.id); setScreen("rooms"); }
-          if(modal==="room") setClients(clients.map(c=>c.id===cId?{...c,rooms:[...c.rooms,{id:Date.now(),name:v1,windows:[]}]}:c));
-          if(modal==="win"){ setCurWin({id:Date.now(),name:v1,products:[]}); setScreen("detail"); }
-          setModal(null);
-        },true), Btn("X",()=>setModal(null))
-      )
-    );
-  }
+    function calculateSystems() {
+        const type = document.getElementById('sys-type').value;
+        const len = parseInt(document.getElementById('sys-len').value) || 0;
+        const color = document.getElementById('sys-color').value;
+        let total = 0;
+        let base = 0;
 
-  var content=null;
-  if(screen==="home") content=ce("div",null,
-    ce("h2",{style:{marginBottom:20}},"Klienci"),
-    clients.map(c=>ce("div",{key:c.id,className:"card",onClick:()=>{setCId(c.id);setScreen("rooms")}},ce("b",null,"👤 "+c.name))),
-    Btn("+ Nowy Klient",()=>setModal("client"),true)
-  );
-  else if(screen==="rooms") content=ce("div",null,
-    ce("h2",null,client.name),
-    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"20px 0"}},
-      client.rooms.map(r=>ce("div",{key:r.id,onClick:()=>{setRId(r.id);setScreen("windows")},style:{padding:20,background:"#f7f7f5",borderRadius:15,textAlign:"center",border:"1px solid var(--bd3)"}},"🏠 "+r.name)),
-      ce("div",{onClick:()=>setModal("room"),style:{padding:20,border:"2px dashed #ccc",borderRadius:15,textAlign:"center"}},"+ Pokój")),
-    Btn("Eksport PDF",pdf,true), Btn("Wstecz",()=>setScreen("home"))
-  );
-  else if(screen==="windows") content=ce("div",null,
-    ce("h2",null,room.name),
-    room.windows.map(w=>ce("div",{key:w.id,className:"card",onClick:()=>{setCurWin(w);setScreen("detail")}},"🪟 "+w.name)),
-    Btn("+ Okno",()=>setModal("win"),true), Btn("Wstecz",()=>setScreen("rooms"))
-  );
-  else if(screen==="detail") content=ce("div",null,
-    ce("h2",null,curWin.name),
-    curWin.products.map((p,i)=>ce(ProdCard,{key:p.id,prod:p,onRemove:()=>setCurWin({...curWin,products:curWin.products.filter((_,j)=>j!==i)}),onChange:np=>setCurWin({...curWin,products:curWin.products.map((x,j)=>j===i?np:x)})})),
-    Btn("+ Produkt",()=>setCurWin({...curWin,products:[...curWin.products,{id:Date.now(),type:"zaslona",par:{},c:{}}]})),
-    Btn("Zapisz",()=>{
-      setClients(clients.map(c=>c.id===cId?{...c,rooms:c.rooms.map(r=>r.id===rId?{...r,windows:r.windows.find(w=>w.id===curWin.id)?r.windows.map(w=>w.id===curWin.id?curWin:w):[...r.windows,curWin]}:r)}:c));
-      setScreen("windows");
-    },true)
-  );
+        if (type === 'kaes_flex') {
+            base = (len / 100) * 80;
+            total = base;
+        } else if (type === 'kaes_wave') {
+            // Tiered pricing z instrukcji
+            if (len <= 100) base = (color === 'white' ? 124.74 : 143.46);
+            else if (len <= 150) base = (color === 'white' ? 173.28 : 197.16);
+            else if (len <= 200) base = 221.76;
+            else if (len <= 250) base = (color === 'white' ? 287.60 : 327.12);
+            else base = (len / 100) * 120; // uproszczenie dla > 250
+            total = base;
+        } else {
+            // Elektryczne
+            const motorPrice = parseInt(document.getElementById('sys-motor').value);
+            // Uproszczona tabela szyn ele.
+            base = 650 + (Math.floor(len/100) * 80); 
+            total = base + motorPrice;
+            document.getElementById('res-sys-motor').innerText = motorPrice + " zł";
+        }
 
-  return ce("div",null,
-    ce("div",{style:{textAlign:"center",marginBottom:20,fontSize:20,fontWeight:800}},"🪟 PORTER DESIGN"),
-    content, modal&&ce(Modal)
-  );
-}
-ReactDOM.createRoot(document.getElementById("root")).render(ce(App));
-})();
+        document.getElementById('sys-result').classList.remove('hidden');
+        document.getElementById('res-sys-base').innerText = base.toFixed(2) + " zł";
+        document.getElementById('res-sys-total').innerText = total.toFixed(2) + " zł";
+    }
+
+    // NAWIGACJA
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.remove('hidden');
+        event.currentTarget.classList.add('active');
+    }
+
+    // Inicjalizacja
+    toggleSysFields();
 </script>
+
 </body>
 </html>
