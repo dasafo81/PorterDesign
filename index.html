@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Porter Design</title>
+  <title>Porter Design - Asystent Handlowca</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
     :root{
@@ -11,17 +11,19 @@
       --bd1:#d0d0cc;--bd2:#e0e0dc;--bd3:#ececea;
       --t1:#1a1a18;--t2:#6b6b66;--t3:#a0a09c;
       --gr:#3B6D11;--grl:#EAF3DE;--grd:#27500A;--grm:#97C459;
-      --wb:#FAEEDA;--wbd:#EF9F27;--wt:#633806;
     }
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--t1);min-height:100vh;}
     #root{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;padding:1rem;}
-    button,input,select{font-family:inherit;}
+    input,select,button{font-family:inherit;}
   </style>
 </head>
 <body>
 <div id="root"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script>
 (function(){
 "use strict";
@@ -29,434 +31,212 @@ var ce=React.createElement,useState=React.useState,Fragment=React.Fragment;
 
 // --- DANE I CENNIKI ---
 var FABRICS=[
-  {name:"Alise",brutto:230,prod:"FIBERO G.ROJEK",width:300},
+  {name:"Alise",brutto:230,prod:"FIBERO",width:300},
   {name:"Alma",brutto:165,prod:"Ridex",width:315},
-  {name:"Altamira",brutto:250,prod:"OZLEM",width:300},
   {name:"Alto",brutto:120,prod:"VV design",width:370},
-  {name:"Amber",brutto:110,prod:"SAMA TEKSTIL",width:300},
-  {name:"Amsterdam",brutto:160,prod:"SAMA TEKSTIL",width:310},
-  {name:"Andrew",brutto:180,prod:"MARGO TEXTIL",width:320},
-  {name:"Angora",brutto:200,prod:"Spagnolo",width:300},
-  {name:"Anie",brutto:120,prod:"OZLEM",width:310},
-  {name:"Anna",brutto:100,prod:"MARGO TEXTIL",width:330},
-  {name:"Anna 300",brutto:90,prod:"MARGO TEXTIL",width:300},
-  {name:"Annamoe",brutto:140,prod:"OZLEM",width:320},
-  {name:"Antique",brutto:378,prod:"Ridex",width:140},
-  {name:"Antonio Aire",brutto:260,prod:"MARGO TEXTIL",width:290},
-  {name:"Antonio Rabat",brutto:220,prod:"MARGO TEXTIL",width:300}
+  {name:"Amber",brutto:110,prod:"SAMA",width:300},
+  {name:"Antonio",brutto:220,prod:"MARGO",width:300}
 ];
 
 var PROD_TYPES=[
-  {id:"zaslona",label:"Zasłona"},
-  {id:"firana",label:"Firana"},
-  {id:"zaluzja",label:"Żaluzja"},
-  {id:"roleta",label:"Roleta"},
-  {id:"szyna",label:"Szyna KAES"},
-  {id:"karnisz",label:"Karnisz el."}
+  {id:"zaslona",label:"Zasłona"},{id:"firana",label:"Firana"},
+  {id:"zaluzja",label:"Żaluzja"},{id:"roleta",label:"Roleta"},
+  {id:"szyna",label:"Szyna KAES"},{id:"karnisz",label:"Karnisz el."}
 ];
 
-var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
-var RDUO={80:288.16,100:296.34,120:318.61,140:329.84,160:352.12,180:360.3,200:382.57,220:390.76,240:416.08,250:424.26};
-var REL={80:346.42,100:391.83,120:419.84,140:476.13,160:504.14,180:549.55,200:577.56,220:622.96,240:661.86,260:707.27,280:735.28,300:780.68,320:819.58,340:864.99,360:893,380:938.4,400:977.3};
-var KW={biala:{100:124.74,150:173.28,200:221.76,250:287.6,300:336.12,350:388.1,400:443.52,450:498.98,500:561.34,550:609.86,600:661.82},czarna:{100:143.46,150:197.16,200:221.76,250:327.12,300:380.8,350:439.04,400:501.74,450:564.46,500:636.18,550:689.9,600:748.08}};
-var KSLIM={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550:1148,600:1308,650:1354,700:1400};
-var KUNIV={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
-var KN={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
-var KP={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
+// Pomocnicze tabele cennikowe
+var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,300:216.67};
+var KW={biala:{100:124,200:221,300:336,400:443,500:561,600:661},czarna:{100:143,200:221,300:380,400:501,500:636,600:748}};
 
 // --- LOGIKA OBLICZEŃ ---
 function lookup(val,obj){
-  var keys=Object.keys(obj).map(Number).sort(function(a,b){return a-b;});
-  var k=keys.find(function(k){return k>=val;})||keys[keys.length-1];
+  var keys=Object.keys(obj).map(Number).sort((a,b)=>a-b);
+  var k=keys.find(k=>k>=val)||keys[keys.length-1];
   return {p:obj[k],k:k};
 }
 
 function calc(p){
   var c=p.c||{},par=p.par||{};
   var fabP=p.fabMan!=null?p.fabMan:(p.fabP!=null?p.fabP:null);
-  var fabW=p.fabW||0;
-  var total=0,lines=[],warn=null;
+  var total=0,lines=[];
 
   if(p.type==="zaslona"||p.type==="firana"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
-    var belka=fabW,mars=+(c.mars||"1.5"),szycie=c.sz==="wave"?110:100;
-    var dekro=c.dekro==="tak",hM=hCm/100;
-    if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkaninę":null};
-    var useA2=belka>0&&hCm>belka;
-    (p.panels||[]).forEach(function(pn){
-      var pw=pn.w||wCm,pm=pw/100,z,kt,ks,koszt;
-      if(useA2){
-        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil(pw/pg);
-        z=+(lp*hM+0.2).toFixed(2);kt=+(z*fabP).toFixed(2);
-        var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
-        ks=dekro?+(z*sv).toFixed(2):+(lp*250).toFixed(2);
-      }else{
-        z=+(pm*mars+0.2).toFixed(2);kt=+(z*fabP).toFixed(2);
-        var sv2=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
-        ks=dekro?+(z*sv2).toFixed(2):+(z*szycie).toFixed(2);
-      }
-      koszt=kt+ks;total+=koszt;
-      lines.push(pn.side+" "+pw+"cm · "+z+"mb → "+koszt.toFixed(2).replace(".",",")+" zł");
+    if(!wCm||fabP==null)return{total:0,lines:[]};
+    var mars=parseFloat(c.mars||"1.5");
+    (p.panels||[]).forEach(pn=>{
+      var pw=pn.w||wCm,z=parseFloat((pw/100*mars+0.2).toFixed(2));
+      var koszt=z*fabP + (z*100); // 100zl robocizna
+      total+=koszt;
+      lines.push(pn.side+": "+z+"mb -> "+koszt.toFixed(2)+"zł");
     });
-  }else if(p.type==="roleta"){
-    var wCm=par.wCm||0,hCm=par.hCm||0;
-    if(!wCm||!hCm)return{total:0,lines:[],warn:null};
-    var rt=c.rt||"city",rtk2=+(c.rtk2||"160"),rb=c.rb==="tak"?11:0;
-    var tkan=fabP!=null?fabP:160;
-    var pow=+((wCm/100)*(hCm/100)).toFixed(3);
-    var rr;
-    if(rt==="city"){rr=lookup(wCm,RCITY);total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));}
-    else if(rt==="duo"){rr=lookup(wCm,RDUO);total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*280).toFixed(2))+parseFloat((pow*(200+rtk2)).toFixed(2));}
-    else{rr=lookup(wCm,REL);total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));}
-    lines.push("Roleta "+rt+" "+wCm+"×"+hCm+"cm · "+pow+"m²");
   }else if(p.type==="szyna"){
-    var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0;
-    if(!lenCm)return{total:0,lines:[],warn:null};
-    var lenMb = lenCm / 100;
-    var baz;
-    if(c.ks==="wave"){var r=lookup(lenCm,KW[c.kk||"biala"]);baz=r.p;}
-    else baz=+(lenMb*80).toFixed(2);
-    total=baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*60).toFixed(2));
-    lines.push("KAES "+(c.ks||"flex")+" "+lenCm+"cm");
-    if(c.km==="sciana")warn="Ścienny — dolicz uchwyty ścienne.";
-  }else if(p.type==="karnisz"){
-    var len=par.len||0,pt=par.pt||0,arc=par.arc||0;
-    if(!len)return{total:0,lines:[],warn:null};
-    var st=c.km==="universal"?KUNIV:KSLIM;
-    var r=lookup(len,st);
-    total=r.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318;
-    lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+r.k+"cm");
+    var lenCm=par.len||0;
+    if(!lenCm)return{total:0,lines:[]};
+    if(c.ks==="wave"){total=lookup(lenCm,KW[c.kk||"biala"]).p;}
+    else{total=(lenCm/100)*80;}
+    lines.push("KAES "+lenCm+"cm");
   }else if(p.type==="zaluzja"){
-    var wCm=par.wCm||0,hCm=par.hCm||0;
-    if(!wCm||!hCm)return{total:0,lines:[],warn:null};
-    var pow = Math.max(0.5, (wCm/100)*(hCm/100)); // min 0.5m2
-    total = pow * 450; // Przykładowa cena 450zł/m2
-    lines.push("Żaluzja " + wCm + "x" + hCm + "cm · " + pow.toFixed(2) + "m²");
+    var w=par.wCm||0,h=par.hCm||0;
+    var m2=Math.max(0.5, (w/100)*(h/100));
+    total=m2*450;
+    lines.push("Żaluzja "+m2.toFixed(2)+"m2");
+  }else if(p.type==="roleta"){
+    var w=par.wCm||0;
+    total=lookup(w,RCITY).p + (fabP||0);
+    lines.push("Roleta City");
   }
-  return{total:total,lines:lines,warn:warn};
+  return{total:total,lines:lines};
 }
 
 // --- KOMPONENTY UI ---
-function mg(a,b){return Object.assign({},a,b);}
-var IST={padding:"5px 8px",fontSize:13,border:"0.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",width:"100%"};
+var IST={padding:"8px",fontSize:"14px",border:"1px solid var(--bd2)",borderRadius:"6px",background:"var(--bg)",width:"100%"};
 
-function Chip(p){
-  return ce("button",{onClick:p.onClick,style:{padding:"3px 9px",borderRadius:20,border:"0.5px solid "+(p.active?"var(--gr)":"var(--bd2)"),background:p.active?"var(--grl)":"transparent",color:p.active?"var(--grd)":"var(--t1)",fontSize:11,cursor:"pointer",marginBottom:2}},p.label);
-}
-
-function Chips(p){
-  return ce("div",{style:{display:"flex",gap:4,flexWrap:"wrap"}},p.items.filter(Boolean));
-}
-
-function Fld(p){
-  return ce("div",{style:{display:"flex",flexDirection:"column",gap:3}},ce("label",{style:{fontSize:11,color:"var(--t2)"}},p.label),p.children);
+function Btn(label,onClick,primary){
+  return ce("button",{onClick:onClick,style:{padding:"8px 16px",borderRadius:"8px",border:"none",background:primary?"var(--gr)":"var(--bd3)",color:primary?"#fff":"var(--t1)",fontWeight:"600",cursor:"pointer"}},label);
 }
 
 function FabPicker(p){
-  var qs=useState("");var q=qs[0],setQ=qs[1];
-  var list=q?FABRICS.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):FABRICS;
-  var sf=FABRICS.find(function(f){return f.name===p.fabName;});
-  return ce("div",{style:{border:"0.5px solid var(--bd2)",borderRadius:8,overflow:"hidden",marginBottom:8}},
-    ce("div",{style:{padding:"5px 9px",background:"var(--bg2)",fontSize:11,fontWeight:500,color:"var(--t2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
-      ce("span",{},"TKANINA"),
-      sf?ce("span",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:5,padding:"2px 7px",color:"var(--grd)",fontSize:11}},p.fabName+" · "+sf.brutto+" zł/mb · "+sf.width+"cm"):null,
-      !p.fabName&&p.fabMan==null?ce("span",{style:{color:"var(--t3)"}},"nie wybrano"):null,
-      p.fabMan!=null?ce("span",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:5,padding:"2px 7px",color:"var(--grd)",fontSize:11}},"ręczna: "+p.fabMan+" zł/mb"):null
-    ),
-    ce("input",{value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny...",style:{width:"100%",padding:"5px 9px",fontSize:12,border:"none",borderBottom:"0.5px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box"}}),
-    ce("div",{style:{maxHeight:150,overflowY:"auto"}},
-      list.map(function(f){
-        return ce("div",{key:f.name,onClick:function(){p.onSelect(f);},style:{display:"flex",alignItems:"center",gap:8,padding:"5px 9px",borderBottom:"0.5px solid var(--bd3)",cursor:"pointer",fontSize:12,background:p.fabName===f.name?"var(--grl)":"var(--bg)"}},
-          ce("span",{style:{flex:1,fontWeight:500,color:"var(--t1)"}},f.name),
-          ce("span",{style:{fontSize:10,color:"var(--t3)"}},f.prod),
-          ce("span",{style:{color:"var(--grd)",fontWeight:500}},f.brutto+" zł")
-        );
-      })
-    ),
-    ce("div",{style:{padding:"5px 9px",display:"flex",alignItems:"center",gap:8,borderTop:"0.5px solid var(--bd3)"}},
-      ce("label",{style:{fontSize:11,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
-      ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"0",style:{width:60,padding:"3px 7px",fontSize:12,border:"0.5px solid var(--bd2)",borderRadius:5,textAlign:"right"}})
+  var [q,setQ]=useState("");
+  var list=FABRICS.filter(f=>f.name.toLowerCase().includes(q.toLowerCase()));
+  return ce("div",{style:{border:"1px solid var(--bd3)",borderRadius:"8px",marginTop:"8px"}},
+    ce("input",{value:q,onChange:e=>setQ(e.target.value),placeholder:"Szukaj tkaniny...",style:{width:"100%",padding:"8px",border:"none",borderBottom:"1px solid var(--bd3)"}}),
+    ce("div",{style:{maxHeight:"120px",overflowY:"auto"}},
+      list.map(f=>ce("div",{key:f.name,onClick:()=>p.onSelect(f),style:{padding:"8px",fontSize:"12px",cursor:"pointer",background:p.fabName===f.name?"var(--grl)":"#fff"}},f.name+" - "+f.brutto+"zł"))
     )
   );
 }
 
 function ProdCard(p){
   var prod=p.prod,c=prod.c||{},par=prod.par||{};
-  function sc(k,v){p.onChange(mg(prod,{c:mg(c,{[k]:v})}));}
-  function tc(k,a,b){a=a||"nie";b=b||"tak";sc(k,c[k]===b?a:b);}
-  function sp(k,v){p.onChange(mg(prod,{par:mg(par,{[k]:+v||0})}));}
-  function sf(f){p.onChange(mg(prod,{fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null}));}
-  function sfm(v){p.onChange(mg(prod,{fabName:null,fabP:null,fabW:null,fabMan:v}));}
-  function addPan(){p.onChange(mg(prod,{panels:(prod.panels||[]).concat([{side:"Całość",w:""}])}));}
-  function remPan(j){p.onChange(mg(prod,{panels:(prod.panels||[]).filter(function(_,i){return i!==j;})}));}
-  function setPS(j,v){p.onChange(mg(prod,{panels:(prod.panels||[]).map(function(x,i){return i===j?mg(x,{side:v}):x;})}));}
-  function setPW(j,v){p.onChange(mg(prod,{panels:(prod.panels||[]).map(function(x,i){return i===j?mg(x,{w:+v||0}):x;})}));}
+  var res=calc(prod);
+  var finalPrice=prod.mp!=null?prod.mp:res.total;
 
-  var res=calc(prod),total=res.total,lines=res.lines,warn=res.warn;
-  var eff=prod.mp!=null?prod.mp:total;
-  var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
-
-  var typeChips=PROD_TYPES.map(function(t){
-    return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){p.onChange(mg(prod,{type:t.id,c:{},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null}));}});
-  });
-
-  var panOpts=["Zasłona lewa","Zasłona prawa","Firana","Całość"];
-  var form=null;
-
-  if(prod.type==="zaslona"||prod.type==="firana"){
-    form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-        ce(Fld,{label:"Szer. karnisza (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},style:IST})),
-        ce(Fld,{label:"Wysokość (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},style:IST}))
-      ),
-      ce(Chips,{items:[
-        ce(Chip,{key:"fl",label:"Flex",active:!c.sz||c.sz==="flex",onClick:function(){sc("sz","flex");}}),
-        ce(Chip,{key:"wv",label:"Wave",active:c.sz==="wave",onClick:function(){sc("sz","wave");}}),
-        ce(Chip,{key:"m1",label:"150%",active:!c.mars||c.mars==="1.5",onClick:function(){sc("mars","1.5");}}),
-        ce(Chip,{key:"m2",label:"200%",active:c.mars==="2.0",onClick:function(){sc("mars","2.0");}}),
-        ce(Chip,{key:"dk",label:"Dekro",active:c.dekro==="tak",onClick:function(){tc("dekro");}})
-      ]}),
-      ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,onSelect:sf,onManual:sfm}),
-      (prod.panels||[]).map(function(pn,j){
-        return ce("div",{key:j,style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},
-          ce("select",{value:pn.side,onChange:function(ev){setPS(j,ev.target.value);},style:{flex:1,padding:"3px 6px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6}},
-            panOpts.map(function(o){return ce("option",{key:o},o);})),
-          ce("input",{type:"number",value:pn.w||"",onChange:function(ev){setPW(j,ev.target.value);},placeholder:"szer",style:{width:60,padding:"3px 6px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6,textAlign:"center"}}),
-          ce("button",{onClick:function(){remPan(j);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:16}},"×")
-        );
-      }),
-      ce("button",{onClick:addPan,style:{padding:"3px 9px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6,cursor:"pointer",marginTop:2}},"+ Panel")
-    );
-  }else if(prod.type==="roleta" || prod.type==="zaluzja"){
-    form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-        ce(Fld,{label:"Szerokość (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},style:IST})),
-        ce(Fld,{label:"Wysokość (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},style:IST}))
-      ),
-      prod.type==="roleta" ? ce(Fragment, null, 
-        ce(Chips,{items:[
-          ce(Chip,{key:"ct",label:"City",active:!c.rt||c.rt==="city",onClick:function(){sc("rt","city");}}),
-          ce(Chip,{key:"du",label:"Duo",active:c.rt==="duo",onClick:function(){sc("rt","duo");}}),
-          ce(Chip,{key:"el",label:"Elektryczna",active:c.rt==="el",onClick:function(){sc("rt","el");}})
-        ]}),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,onSelect:sf,onManual:sfm})
-      ) : ce("div", {style:{fontSize:11, color:"var(--t2)"}}, "Cennik żaluzji: 450zł/m2 (min. 0.5m2)")
-    );
-  }else if(prod.type==="szyna"){
-    form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-        ce(Fld,{label:"Długość (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
-        ce(Fld,{label:"Łuki (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},style:IST}))
-      ),
-      ce(Chips,{items:[
-        ce(Chip,{key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
-        ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
-        c.ks==="wave"?ce(Chip,{key:"bi",label:"Biała",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}):null,
-        c.ks==="wave"?ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}):null,
-      ]})
-    );
-  } else if(prod.type==="karnisz"){
-    form=ce("div", {style:{fontSize:12, color:"var(--t2)"}}, "Konfiguracja karnisza elektrycznego...");
-  }
-
-  return ce("div",{style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,overflow:"hidden",marginBottom:8}},
-    ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",display:"flex",alignItems:"center",gap:8}},
-      ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--t1)",flex:1}},lbl+(prod.fabName?" · "+prod.fabName:"")),
-      ce("span",{style:{fontSize:12,fontWeight:500,color:"var(--gr)"}},eff?Math.round(eff)+" zł":""),
-      ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"var(--t3)"}},"×")
+  return ce("div",{style:{background:"#fff",border:"1px solid var(--bd3)",borderRadius:"12px",padding:"12px",marginBottom:"10px"}},
+    ce("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:"10px"}},
+      ce("b",{},(PROD_TYPES.find(t=>t.id===prod.type)||{}).label),
+      ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",color:"red"}},"usuń")
     ),
-    ce("div",{style:{padding:"11px 12px",display:"flex",flexDirection:"column",gap:8}},
-      ce(Chips,{items:typeChips}),
-      form,
-      (total>0&&prod.mp==null)?ce("div",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:8,padding:"8px 10px"}},
-        lines.map(function(l,i){return ce("div",{key:i,style:{fontSize:12,color:"var(--gr)"}},l);}),
-        ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:500,color:"var(--grd)",marginTop:4,paddingTop:4,borderTop:"1px solid var(--grm)"}},
-          ce("span",{},"Razem"),ce("span",{},total.toFixed(2).replace(".",",")+" zł"))
-      ):null,
-      ce("div",{style:{display:"flex",alignItems:"center",gap:8,paddingTop:8,borderTop:"0.5px solid var(--bd3)"}},
-        ce("label",{style:{fontSize:11,color:"var(--t2)",flex:1}},"Własna cena (nadpisuje):"),
-        ce("input",{type:"number",value:prod.mp!=null?prod.mp:"",onChange:function(ev){p.onChange(mg(prod,{mp:ev.target.value===""?null:+ev.target.value}));},placeholder:"zł",style:{width:70,padding:"4px 7px",fontSize:12,border:"0.5px solid var(--bd2)",borderRadius:6,textAlign:"right"}})
+    ce("div",{style:{display:"flex",gap:"5px",flexWrap:"wrap",marginBottom:"10px"}},
+      PROD_TYPES.map(t=>ce("button",{onClick:()=>p.onChange({...prod,type:t.id,fabName:null,fabP:null,panels:[]}),style:{fontSize:"10px",padding:"4px 8px",borderRadius:"10px",border:"1px solid var(--bd2)",background:prod.type===t.id?"var(--grl)":"#fff"}},t.label))
+    ),
+    prod.type==="szyna"?ce("input",{type:"number",placeholder:"Długość szyny (cm)",value:par.len||"",onChange:e=>p.onChange({...prod,par:{...par,len:e.target.value}}),style:IST}):
+    ce(Fragment,null,
+      ce("div",{style:{display:"flex",gap:"5px"}},
+        ce("input",{type:"number",placeholder:"Szer (cm)",value:par.wCm||"",onChange:e=>p.onChange({...prod,par:{...par,wCm:e.target.value}}),style:IST}),
+        ce("input",{type:"number",placeholder:"Wys (cm)",value:par.hCm||"",onChange:e=>p.onChange({...prod,par:{...par,hCm:e.target.value}}),style:IST})
+      ),
+      (prod.type==="zaslona"||prod.type==="firana")&&ce(Fragment,null,
+        ce(FabPicker,{fabName:prod.fabName,onSelect:f=>p.onChange({...prod,fabName:f.name,fabP:f.brutto,panels:[{side:"Całość",w:par.wCm}]})}),
+        ce("div",{style:{marginTop:"5px",fontSize:"11px"}},"Marszczenie: ",
+          ce("select",{value:c.mars||"1.5",onChange:e=>p.onChange({...prod,c:{...c,mars:e.target.value}})},ce("option",{value:"1.5"},"150%"),ce("option",{value:"2.0"},"200%")))
       )
+    ),
+    ce("div",{style:{marginTop:"10px",padding:"8px",background:"var(--bg2)",borderRadius:"6px",fontSize:"13px",fontWeight:"600",textAlign:"right"}},
+      "Cena: "+Math.round(finalPrice)+" zł"
     )
   );
 }
 
 // --- GŁÓWNA APLIKACJA ---
 function App(){
-  var a=useState("home"),screen=a[0],setScreen=a[1];
-  var b=useState([
-    {id:1,name:"Kowalski Jan",addr:"ul. Wiśniowa 12",rooms:[{id:101, name:"Salon", icon:"🛋️", windows:[]}]}
-  ]),clients=b[0],setClients=b[1];
-  
-  var c2=useState(null),curClientId=c2[0],setCurClientId=c2[1];
-  var d=useState(null),curRoomId=d[0],setCurRoomId=d[1];
-  var f=useState(null),curWin=f[0],setCurWin=f[1];
-  var g=useState(null),modal=g[0],setModal=g[1];
-  
-  // Stany formularzy modalnych (aby uniknąć błędu focusu)
-  var h2=useState(""),fName=h2[0],setFName=h2[1];
-  var i2=useState(""),fAddr=i2[0],setFAddr=i2[1];
+  var [screen,setScreen]=useState("home");
+  var [clients,setClients]=useState([{id:1,name:"Jan Kowalski",addr:"Warszawa",rooms:[]}]);
+  var [curCId,setCurCId]=useState(null);
+  var [curRId,setCurRId]=useState(null);
+  var [curWin,setCurWin]=useState(null);
+  var [modal,setModal]=useState(null);
 
-  var client = clients.find(c => c.id === curClientId);
-  var curRoom = client ? client.rooms.find(r => r.id === curRoomId) : null;
+  var client=clients.find(c=>c.id===curCId);
+  var room=client?client.rooms.find(r=>r.id===curRId):null;
 
-  function wt(w){return w.products.reduce(function(a,p){return a+(p.mp!=null?p.mp:(calc(p).total||0));},0);}
-  function rt(r){return r.windows.reduce(function(a,w){return a+wt(w);},0);}
-  var grand = client ? client.rooms.reduce((a, r) => a + rt(r), 0) : 0;
-
-  // Akcje
-  function addClient(name, addr){
-    var newC = {id:Date.now(), name:name, addr:addr, rooms:[]};
-    setClients(prev => prev.concat([newC]));
-    setCurClientId(newC.id);
-    setScreen("rooms");
+  function addClient(n,a){
+    var nc={id:Date.now(),name:n||"Nowy",addr:a||"",rooms:[]};
+    setClients(p=>[...p,nc]); setCurCId(nc.id); setScreen("rooms");
   }
 
   function saveWin(){
-    setClients(prev => prev.map(c => {
-      if(c.id !== curClientId) return c;
-      return mg(c, {rooms: c.rooms.map(r => {
-        if(r.id !== curRoomId) return r;
-        var exists = r.windows.find(w => w.id === curWin.id);
-        return mg(r, {windows: exists ? r.windows.map(w => w.id === curWin.id ? curWin : w) : r.windows.concat([curWin])});
-      })});
-    }));
+    setClients(prev=>prev.map(c=>c.id===curCId?{...c,rooms:c.rooms.map(r=>r.id===curRId?{...r,windows:r.windows.find(w=>w.id===curWin.id)?r.windows.map(w=>w.id===curWin.id?curWin:w):[...r.windows,curWin]}:r)}:c));
     setScreen("windows");
   }
 
-  // --- EKSPORT PDF ---
+  function getGrandTotal(){
+    if(!client)return 0;
+    return client.rooms.reduce((s,r)=>s+r.windows.reduce((sw,w)=>sw+w.products.reduce((sp,p)=>sp+(p.mp||calc(p).total),0),0),0);
+  }
+
   function generatePDF(){
-    if(!client) return;
-    const { jsPDF } = window.jspdf || {};
-    if(!jsPDF) { alert("Ładowanie modułu PDF... Spróbuj za chwilę."); return; }
-    
-    var doc = new jsPDF();
-    doc.text("OFERTA: " + client.name, 10, 10);
-    doc.text("Adres: " + (client.addr || "-"), 10, 20);
-    doc.line(10, 25, 200, 25);
-    
-    var y = 35;
-    client.rooms.forEach(r => {
-      doc.setFontSize(14);
-      doc.text(r.name + " - suma: " + rt(r) + " zł", 10, y);
-      y += 10;
-      r.windows.forEach(w => {
-        doc.setFontSize(10);
-        doc.text("  Okna: " + w.name + " (" + wt(w) + " zł)", 15, y);
-        y += 7;
+    var {jsPDF}=window.jspdf; var doc=new jsPDF();
+    doc.setFontSize(18); doc.text("OFERTA - PORTER DESIGN", 10, 20);
+    doc.setFontSize(12); doc.text("Klient: "+client.name, 10, 30);
+    doc.text("Adres: "+client.addr, 10, 37);
+    doc.line(10, 42, 200, 42);
+    var y=50;
+    client.rooms.forEach(r=>{
+      doc.setFontSize(14); doc.text(r.name, 10, y); y+=8;
+      r.windows.forEach(w=>{
+        doc.setFontSize(10); doc.text("- "+w.name, 15, y); y+=6;
       });
-      y += 5;
+      y+=4;
     });
-    
-    doc.setFontSize(16);
-    doc.text("SUMA CAŁKOWITA: " + Math.round(grand) + " zł", 10, y + 10);
-    doc.save("Oferta_" + client.name.replace(" ","_") + ".pdf");
+    doc.setFontSize(16); doc.text("SUMA DO ZAPLATY: "+Math.round(getGrandTotal())+" zl", 10, y+10);
+    doc.save("Wycena_"+client.name+".pdf");
   }
 
-  function Btn(label,onClick,primary){
-    return ce("button",{onClick:onClick,style:{padding:"6px 13px",borderRadius:7,border:"0.5px solid "+(primary?"var(--gr)":"var(--bd2)"),background:primary?"var(--gr)":"transparent",color:primary?"#fff":"var(--t1)",fontSize:12,fontWeight:500,cursor:"pointer"}},label);
-  }
-
-  // --- MODAL ---
-  function Mdl(){
-    if(!modal) return null;
-    return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
-      ce("div",{style:{background:"var(--bg)",borderRadius:12,padding:20,width:280}},
-        ce("h3",{style:{fontSize:14,marginBottom:15}}, modal==="client"?"Nowy klient":modal==="room"?"Nowy pokój":"Nowe okno"),
-        ce("input",{value:fName, onChange:e=>setFName(e.target.value), placeholder:"Nazwa/Imię", style:mg(IST, {marginBottom:10})}),
-        modal==="client" && ce("input",{value:fAddr, onChange:e=>setFAddr(e.target.value), placeholder:"Adres", style:mg(IST, {marginBottom:10})}),
-        ce("div",{style:{display:"flex",gap:8}},
-          Btn("Dodaj", function(){
-            if(modal==="client") addClient(fName, fAddr);
-            if(modal==="room") {
-               setClients(prev => prev.map(c => c.id === curClientId ? mg(c, {rooms: c.rooms.concat([{id:Date.now(), name:fName, icon:"🏠", windows:[]}])}) : c));
-            }
-            if(modal==="win") {
-               setCurWin({id:Date.now(), name:fName, products:[]});
-               setScreen("detail");
-            }
-            setModal(null); setFName(""); setFAddr("");
-          }, true),
-          Btn("Anuluj", ()=>setModal(null))
+  // --- MODAL Z WŁASNYM STANEM (NAPRAWIA FOCUS) ---
+  function Modal(){
+    var [n,setN]=useState(""); var [a,setA]=useState("");
+    if(!modal)return null;
+    return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}},
+      ce("div",{style:{background:"#fff",padding:"20px",borderRadius:"15px",width:"300px"}},
+        ce("h3",{style:{marginBottom:"15px"}},"Dodaj"),
+        ce("input",{autoFocus:true,value:n,onChange:e=>setN(e.target.value),placeholder:"Nazwa",style:{...IST,marginBottom:"10px"}}),
+        modal==="client"&&ce("input",{value:a,onChange:e=>setA(e.target.value),placeholder:"Adres",style:{...IST,marginBottom:"10px"}}),
+        ce("div",{style:{display:"flex",gap:"10px"}},
+          Btn("Dodaj",()=>{
+            if(modal==="client") addClient(n,a);
+            if(modal==="room") setClients(p=>p.map(c=>c.id===curCId?{...c,rooms:[...c.rooms,{id:Date.now(),name:n,windows:[]}]}:c));
+            if(modal==="win"){ setCurWin({id:Date.now(),name:n,products:[]}); setScreen("detail"); }
+            setModal(null);
+          },true),
+          Btn("Anuluj",()=>setModal(null))
         )
       )
     );
   }
 
-  var content = null;
-  if(screen==="home"){
-    content = ce(Fragment, null,
-      ce("div",{style:{marginBottom:10, fontSize:11, color:"var(--t2)"}}, "LISTA KLIENTÓW"),
-      ce("div",{style:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}},
-        clients.map(c => ce("div",{key:c.id, onClick:()=>{setCurClientId(c.id); setScreen("rooms");}, style:{background:"var(--bg)", border:"0.5px solid var(--bd3)", borderRadius:10, padding:12, cursor:"pointer"}},
-          ce("div",{style:{fontWeight:600}}, "👤 " + c.name),
-          ce("div",{style:{fontSize:11, color:"var(--t2)"}}, c.addr)
-        )),
-        ce("div",{onClick:()=>setModal("client"), style:{border:"1px dashed var(--bd1)", borderRadius:10, padding:15, textAlign:"center", cursor:"pointer", color:"var(--t3)"}}, "+ Nowy klient")
-      )
-    );
-  } else if(screen==="rooms"){
-    content = ce(Fragment, null,
-      ce("div",{style:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}},
-        client.rooms.map(r => ce("div",{key:r.id, onClick:()=>{setCurRoomId(r.id); setScreen("windows");}, style:{background:"var(--bg)", border:"0.5px solid var(--bd3)", borderRadius:10, padding:12, cursor:"pointer"}},
-          ce("div",{}, r.icon + " " + r.name),
-          ce("div",{style:{fontSize:11, color:"var(--t2)"}}, r.windows.length + " okien")
-        )),
-        ce("div",{onClick:()=>setModal("room"), style:{border:"1px dashed var(--bd1)", borderRadius:10, padding:15, textAlign:"center", cursor:"pointer"}}, "+ Pokój")
-      ),
-      ce("div",{style:{marginTop:20, display:"flex", gap:10}}, 
-        Btn("Podsumowanie", ()=>setScreen("sum"), true),
-        Btn("Wstecz", ()=>setScreen("home"))
-      )
-    );
-  } else if(screen==="windows"){
-    content = ce(Fragment, null,
-      ce("div",{style:{background:"var(--bg)", border:"0.5px solid var(--bd3)", borderRadius:10, marginBottom:10}},
-        ce("div",{style:{padding:10, background:"var(--bg2)", fontWeight:600}}, curRoom.name),
-        curRoom.windows.map(w => ce("div",{key:w.id, onClick:()=>{setCurWin(JSON.parse(JSON.stringify(w))); setScreen("detail");}, style:{padding:10, borderTop:"0.5px solid var(--bd3)", display:"flex", justifyContent:"space-between"}},
-          ce("span", {}, "🪟 " + w.name),
-          ce("span", {style:{color:"var(--gr)", fontWeight:500}}, Math.round(wt(w)) + " zł")
-        ))
-      ),
-      ce("div",{style:{display:"flex", gap:10}},
-        Btn("+ Okno", ()=>setModal("win"), false),
-        Btn("Wstecz", ()=>setScreen("rooms"))
-      )
-    );
-  } else if(screen==="detail"){
-    content = ce(Fragment, null,
-      ce("h3", {style:{marginBottom:10}}, "Edycja: " + curWin.name),
-      curWin.products.map((p, i) => ce(ProdCard, {key:p.id, prod:p, onChange:np=>{setCurWin(w=>mg(w,{products:w.products.map((x,j)=>j===i?np:x)}))}, onRemove:()=>setCurWin(w=>mg(w,{products:w.products.filter((_,j)=>j!==i)}))})),
-      ce("div",{style:{display:"flex", gap:10, marginTop:10}},
-        Btn("+ Produkt", ()=>setCurWin(w=>mg(w,{products:w.products.concat([{id:Date.now(), type:"zaslona", c:{}, par:{}, panels:[], mp:null}])})), false),
-        Btn("Zapisz", saveWin, true)
-      )
-    );
-  } else if(screen==="sum"){
-    content = ce(Fragment, null,
-      ce("div",{style:{background:"var(--grl)", padding:15, borderRadius:10, marginBottom:15}},
-        ce("div",{style:{fontSize:12}}, "KLIENT: " + client.name),
-        ce("div",{style:{fontSize:20, fontWeight:700, color:"var(--grd)"}}, "Suma: " + Math.round(grand) + " zł")
-      ),
-      ce("div",{style:{display:"flex", gap:10}},
-        Btn("Generuj PDF", generatePDF, true),
-        Btn("Wstecz", ()=>setScreen("rooms"))
-      )
-    );
-  }
-
-  return ce("div",{style:{padding:"1rem 0"}},
-    ce("script",{src:"https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"}),
-    ce("div",{style:{marginBottom:15, paddingBottom:10, borderBottom:"1px solid var(--bd3)", display:"flex", justifyContent:"space-between"}},
-      ce("strong",{},"Porter Design"),
-      ce("span",{style:{fontSize:11}}, client ? client.name : "Wybierz klienta")
-    ),
-    content,
-    ce(Mdl,{})
+  var content=null;
+  if(screen==="home") content=ce("div",null,
+    ce("h2",{style:{marginBottom:"15px"}},"Klienci"),
+    clients.map(c=>ce("div",{key:c.id,onClick:()=>{setCurCId(c.id);setScreen("rooms")},style:{padding:"15px",background:"#fff",borderRadius:"12px",marginBottom:"10px",border:"1px solid var(--bd3)",cursor:"pointer"}},ce("b",null,c.name),ce("div",{style:{fontSize:"12px",color:"var(--t2)"}},c.addr))),
+    Btn("+ Nowy Klient",()=>setModal("client"))
   );
+  else if(screen==="rooms") content=ce("div",null,
+    ce("h2",null,client.name),
+    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",margin:"15px 0"}},
+      client.rooms.map(r=>ce("div",{key:r.id,onClick:()=>{setCurRId(r.id);setScreen("windows")},style:{padding:"20px",background:"var(--grl)",borderRadius:"12px",textAlign:"center",cursor:"pointer"}},r.name)),
+      ce("div",{onClick:()=>setModal("room"),style:{padding:"20px",border:"2px dashed var(--bd2)",borderRadius:"12px",textAlign:"center",cursor:"pointer"}},"+ Pokój")
+    ),
+    ce("div",{style:{display:"flex",gap:"10px"}},Btn("PDF",generatePDF,true),Btn("Wstecz",()=>setScreen("home")))
+  );
+  else if(screen==="windows") content=ce("div",null,
+    ce("h2",null,room.name),
+    room.windows.map(w=>ce("div",{key:w.id,onClick:()=>{setCurWin(w);setScreen("detail")},style:{padding:"12px",background:"#fff",border:"1px solid var(--bd3)",borderRadius:"10px",marginBottom:"10px",cursor:"pointer"}},w.name)),
+    ce("div",{style:{display:"flex",gap:"10px"}},Btn("+ Okno",()=>setModal("win"),true),Btn("Wstecz",()=>setScreen("rooms")))
+  );
+  else if(screen==="detail") content=ce("div",null,
+    ce("h2",null,"Okno: "+curWin.name),
+    curWin.products.map((p,i)=>ce(ProdCard,{key:p.id,prod:p,onRemove:()=>setCurWin({...curWin,products:curWin.products.filter((_,j)=>j!==i)}),onChange:np=>setCurWin({...curWin,products:curWin.products.map((x,j)=>j===i?np:x)})})),
+    ce("div",{style:{display:"flex",gap:"10px",marginTop:"15px"}},
+      Btn("+ Produkt",()=>setCurWin({...curWin,products:[...curWin.products,{id:Date.now(),type:"zaslona",par:{},c:{},panels:[]}]})),
+      Btn("Zapisz",saveWin,true)
+    )
+  );
+
+  return ce("div",null,content,ce(Modal,null));
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(ce(App,{}));
+ReactDOM.createRoot(document.getElementById("root")).render(ce(App));
 })();
 </script>
 </body>
