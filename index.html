@@ -7,42 +7,41 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .active-chip { background-color: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; font-weight: bold; }
-        @media print { .no-print { display: none; } body { background: white; } }
+        .active-chip { background-color: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; font-weight: bold; box-shadow: 0 0 0 1px #22c55e; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        @media print { .no-print { display: none !important; } .print-only { display: block !important; } body { background: white; padding: 0; } }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen pb-40 text-slate-800">
 
     <div class="max-w-3xl mx-auto p-4 space-y-6">
-        <header class="bg-white p-6 rounded-3xl shadow-sm border no-print flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-black text-green-700 italic">PORTER DESIGN</h1>
-                <input type="text" id="client-name" placeholder="Imię i Nazwisko klienta" class="mt-2 text-lg border-b outline-none focus:border-green-500 w-full bg-transparent">
+        <header class="bg-white p-6 rounded-[2rem] shadow-sm border no-print flex justify-between items-center">
+            <div class="flex-1 mr-4">
+                <h1 class="text-2xl font-black text-green-700 italic leading-none">PORTER DESIGN</h1>
+                <input type="text" id="client-input" placeholder="Klient / Inwestycja" class="mt-2 text-lg border-b-2 border-slate-100 outline-none focus:border-green-500 w-full bg-transparent py-1 transition-all">
             </div>
-            <button onclick="addRoom()" class="bg-green-600 text-white px-6 py-3 rounded-2xl font-bold shadow-lg hover:bg-green-700 transition-all">
-                + Pomieszczenie
+            <button onclick="addRoom()" class="bg-green-600 text-white px-6 py-4 rounded-2xl font-bold shadow-lg shadow-green-100 hover:bg-green-700 active:scale-95 transition-all whitespace-nowrap">
+                <i class="fas fa-plus mr-2"></i> Dodaj Pokój
             </button>
         </header>
 
-        <div id="rooms-container" class="space-y-8"></div>
+        <div id="rooms-container" class="space-y-10"></div>
     </div>
 
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-6 shadow-2xl z-50 no-print">
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] z-50 no-print">
         <div class="max-w-3xl mx-auto flex justify-between items-center">
             <div>
-                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Suma całkowita</p>
-                <p id="grand-total" class="text-4xl font-black text-green-600">0,00 zł</p>
+                <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Suma całkowita oferty</p>
+                <p id="grand-total" class="text-4xl font-black text-green-600 tracking-tighter">0,00 zł</p>
             </div>
-            <button onclick="window.print()" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2">
-                <i class="fas fa-file-pdf"></i> PDF / DRUK
+            <button onclick="window.print()" class="bg-slate-900 text-white px-10 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-black transition-all shadow-xl">
+                <i class="fas fa-file-pdf"></i> GENERUJ PDF
             </button>
         </div>
     </div>
 
     <script>
-        let appState = {
-            rooms: []
-        };
+        let state = { rooms: [] };
 
         function addRoom() {
             const room = {
@@ -50,23 +49,23 @@
                 name: "Nowe pomieszczenie",
                 windows: []
             };
-            appState.rooms.push(room);
+            state.rooms.push(room);
             render();
             addWindow(room.id);
         }
 
         function removeRoom(roomId) {
-            appState.rooms = appState.rooms.filter(r => r.id !== roomId);
+            state.rooms = state.rooms.filter(r => r.id !== roomId);
             render();
         }
 
         function addWindow(roomId) {
-            const room = appState.rooms.find(r => r.id === roomId);
+            const room = state.rooms.find(r => r.id === roomId);
             room.windows.push({
                 id: Date.now() + Math.random(),
                 type: 'Zasłony',
-                szer: 0,
-                wys: 0,
+                szer: '',
+                wys: '',
                 szycie: 100, // Flex
                 marsz: 1.5,
                 kat: 160,
@@ -76,65 +75,11 @@
         }
 
         function removeWindow(roomId, windowId) {
-            const room = appState.rooms.find(r => r.id === roomId);
+            const room = state.rooms.find(r => r.id === roomId);
             room.windows = room.windows.filter(w => w.id !== windowId);
             render();
         }
 
-        function updateVal(roomId, winId, field, val) {
-            const room = appState.rooms.find(r => r.id === roomId);
-            const win = room.windows.find(w => w.id === winId);
-            win[field] = val;
-            calculate(win);
-            renderGrandTotal();
-        }
-
-        function calculate(win) {
-            if (win.type === 'Zasłony' || win.type === 'Firany') {
-                const mb = (parseFloat(win.szer) * parseFloat(win.marsz)) / 100;
-                win.total = mb * (parseFloat(win.kat) + parseFloat(win.szycie));
-            } else if (win.type === 'Żaluzje') {
-                const m2 = (parseFloat(win.szer) * parseFloat(win.wys)) / 10000;
-                win.total = Math.max(m2, 1) * 450; // Cena 450 zł/m2
-            } else {
-                win.total = 0;
-            }
-            const el = document.getElementById(`price-${win.id}`);
-            if (el) el.innerText = win.total.toLocaleString('pl-PL', {style:'currency', currency:'PLN'});
-        }
-
-        function renderGrandTotal() {
-            let total = 0;
-            appState.rooms.forEach(r => r.windows.forEach(w => total += w.total));
-            document.getElementById('grand-total').innerText = total.toLocaleString('pl-PL', {style:'currency', currency:'PLN'});
-        }
-
-        function render() {
-            const container = document.getElementById('rooms-container');
-            container.innerHTML = '';
-
-            appState.rooms.forEach(room => {
-                const roomEl = document.createElement('div');
-                roomEl.className = "bg-white rounded-[2rem] shadow-sm border overflow-hidden mb-6";
-                roomEl.innerHTML = `
-                    <div class="bg-slate-50 px-8 py-4 border-b flex justify-between items-center">
-                        <input type="text" value="${room.name}" onchange="const r = appState.rooms.find(r=>r.id===${room.id}); r.name=this.value;" class="bg-transparent font-bold uppercase text-xs tracking-widest outline-none focus:text-green-600">
-                        <button onclick="removeRoom(${room.id})" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
-                    </div>
-                    <div class="p-6 space-y-6" id="win-container-${room.id}"></div>
-                    <div class="p-6 pt-0">
-                        <button onclick="addWindow(${room.id})" class="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-xs hover:border-green-300 transition-all">
-                            + DODAJ OKNO W TYM POKOJU
-                        </button>
-                    </div>
-                `;
-                container.appendChild(roomEl);
-
-                const winContainer = document.getElementById(`win-container-${room.id}`);
-                room.windows.forEach(win => {
-                    const winEl = document.createElement('div');
-                    winEl.className = "p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-4 relative";
-                    winEl.innerHTML = `
-                        <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 no-print">
-                            ${['Zasłony', 'Firany', 'Żaluzje', 'KAES', 'Rolety'].map(t => `
-                                <div class="cursor-pointer border-2 p-2 rounded-xl text-[10px] text-center bg-white ${win.type===t?'active-chip':''}" onclick="
+        function update(roomId, winId, field, val) {
+            const room = state.rooms.find(r => r.id === roomId);
+            const win = room
