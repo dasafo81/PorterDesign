@@ -4,652 +4,131 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Porter Design — Asystent Wycen</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
+  
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --green-900: #1a3a08;
-      --green-700: #27500A;
-      --green-500: #3B6D11;
-      --green-300: #97C459;
-      --green-100: #EAF3DE;
-      --green-50:  #F3F9EC;
-      --grey-900: #1C1C1C;
-      --grey-700: #3D3D3D;
-      --grey-500: #6B6B6B;
-      --grey-300: #ADADAD;
-      --grey-100: #E8E8E8;
-      --grey-50:  #F5F5F5;
-      --white: #FFFFFF;
-      --amber: #EF9F27;
-      --amber-light: #FAEEDA;
-      --font: 'DM Sans', sans-serif;
-      --mono: 'DM Mono', monospace;
-      --radius-sm: 6px;
-      --radius-md: 10px;
-      --radius-lg: 14px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
-      --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+      --green-900: #1a3a08; --green-700: #27500A; --green-500: #3B6D11;
+      --green-300: #97C459; --green-100: #EAF3DE; --grey-900: #1C1C1C;
+      --grey-500: #6B6B6B; --grey-100: #E8E8E8; --white: #FFFFFF;
+      --radius-lg: 24px; --radius-md: 16px; --font-main: 'DM Sans', sans-serif;
     }
-
-    body {
-      font-family: var(--font);
-      background: var(--grey-50);
-      color: var(--grey-900);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    #root { min-height: 100vh; }
-
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--grey-200); border-radius: 4px; }
-
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-    @keyframes popIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
-
-    .fade-in { animation: fadeIn 0.22s ease both; }
-    .pop-in  { animation: popIn  0.18s ease both; }
+    body { font-family: var(--font-main); background: #f8f9f5; color: var(--grey-900); line-height: 1.5; }
+    .btn { cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
+    input { font-family: inherit; }
   </style>
 </head>
 <body>
-<div id="root"></div>
+  <div id="root"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-<script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+    // --- GŁÓWNA APLIKACJA ---
+    function PorterApp() {
+      const [screen, setScreen] = useState('home'); // home, rooms, summary
+      const [client, setClient] = useState({ name: '', address: '' });
+      const [rooms, setRooms] = useState([]);
+      const [activeRoomIndex, setActiveRoomIndex] = useState(null);
 
-const FABRICS = [
-  {name:"Alise",      brutto:230, prod:"FIBERO G.ROJEK",  width:300},
-  {name:"Alma",       brutto:165, prod:"Ridex",            width:315},
-  {name:"Altamira",   brutto:250, prod:"OZLEM",            width:300},
-  {name:"Alto",       brutto:120, prod:"VV design",        width:370},
-  {name:"Amber",      brutto:110, prod:"SAMA TEKSTIL",     width:300},
-  {name:"Amsterdam",  brutto:160, prod:"SAMA TEKSTIL",     width:310},
-  {name:"Andrew",     brutto:180, prod:"MARGO TEXTIL",     width:320},
-  {name:"Angora",     brutto:200, prod:"Spagnolo",         width:300},
-  {name:"Anie",       brutto:120, prod:"OZLEM",            width:310},
-  {name:"Anna",       brutto:100, prod:"MARGO TEXTIL",     width:330},
-  {name:"Anna 300",   brutto:90,  prod:"MARGO TEXTIL",     width:300},
-  {name:"Annamoe",    brutto:140, prod:"OZLEM",            width:320},
-  {name:"Antique",    brutto:378, prod:"Ridex",            width:140},
-  {name:"Antonio Aire",  brutto:260, prod:"MARGO TEXTIL",  width:290},
-  {name:"Antonio Rabat", brutto:220, prod:"MARGO TEXTIL",  width:300},
-];
+      const addRoom = (name) => {
+        setRooms([...rooms, { name, windows: [] }]);
+        setScreen('rooms');
+      };
 
-const PROD_TYPES = [
-  {id:"zaslona", label:"Zasłona", icon:"🪟"},
-  {id:"firana",  label:"Firana",  icon:"✨"},
-  {id:"zaluzja", label:"Żaluzja", icon:"🔲"},
-  {id:"roleta",  label:"Roleta",  icon:"⬜"},
-  {id:"szyna",   label:"Szyna KAES", icon:"📏"},
-  {id:"karnisz", label:"Karnisz el.", icon:"⚡"},
-];
+      const addWindow = (roomIndex) => {
+          const newRooms = [...rooms];
+          newRooms[roomIndex].windows.push({
+              id: Date.now(),
+              type: 'Zasłony',
+              width: '',
+              height: '',
+              fabric: 'Standard',
+              price: 0
+          });
+          setRooms(newRooms);
+      };
 
-const ROLETA_CITY = {80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
-const ROLETA_DUO  = {80:288.16,100:296.34,120:318.61,140:329.84,160:352.12,180:360.3,200:382.57,220:390.76,240:416.08,250:424.26};
-const ROLETA_EL   = {80:346.42,100:391.83,120:419.84,140:476.13,160:504.14,180:549.55,200:577.56,220:622.96,240:661.86,260:707.27,280:735.28,300:780.68,320:819.58,340:864.99,360:893,380:938.4,400:977.3};
-const KAES_W = {
-  biala:{100:124.74,150:173.28,200:221.76,250:287.6,300:336.12,350:388.1,400:443.52,450:498.98,500:561.34,550:609.86,600:661.82},
-  czarna:{100:143.46,150:197.16,200:221.76,250:327.12,300:380.8,350:439.04,400:501.74,450:564.46,500:636.18,550:689.9,600:748.08}
-};
-const KSLIM = {150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550:1148,600:1308,650:1354,700:1400};
-const KUNIV = {150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
-const KNAPED = {am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
-const KPILOT = {brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
+      const updateWindow = (rIdx, wIdx, field, value) => {
+          const newRooms = [...rooms];
+          newRooms[rIdx].windows[wIdx][field] = value;
+          // Prosta logika ceny dla testu
+          const w = parseFloat(newRooms[rIdx].windows[wIdx].width) || 0;
+          newRooms[rIdx].windows[wIdx].price = w * 2.5; 
+          setRooms(newRooms);
+      };
 
-function stepLookup(val, obj) {
-  const keys = Object.keys(obj).map(Number).sort((a,b)=>a-b);
-  const k = keys.find(k=>k>=val) || keys[keys.length-1];
-  return {p: obj[k], k};
-}
+      const grandTotal = rooms.reduce((sum, room) => 
+        sum + room.windows.reduce((wSum, w) => wSum + (w.price || 0), 0), 0
+      );
 
-function calcProduct(p) {
-  const c = p.c || {}, par = p.par || {};
-  const fabP = p.fabMan != null ? p.fabMan : (p.fabP != null ? p.fabP : null);
-  const fabW = p.fabW || 0;
-  let total = 0, lines = [], warn = null;
+      return (
+        <div style={{maxWidth: 500, margin: '0 auto', padding: 20}}>
+          {screen === 'home' && (
+            <div style={{textAlign: 'center', marginTop: 100}}>
+              <h1 style={{color: 'var(--green-700)', fontSize: 32, marginBottom: 10}}>PORTER DESIGN</h1>
+              <p style={{color: 'var(--grey-500)', marginBottom: 40}}>System Zarządzania Ofertami</p>
+              <input 
+                style={{width: '100%', padding: 15, borderRadius: 15, border: '1px solid #ddd', marginBottom: 10}}
+                placeholder="Imię i Nazwisko klienta"
+                value={client.name}
+                onChange={(e) => setClient({...client, name: e.target.value})}
+              />
+              <button 
+                onClick={() => addRoom('Salon')}
+                style={{width: '100%', padding: 15, background: 'var(--green-700)', color: 'white', borderRadius: 15, fontWeight: 'bold'}}
+              >
+                Rozpocznij nową wizytę
+              </button>
+            </div>
+          )}
 
-  if (p.type === "zaslona" || p.type === "firana") {
-    const wCm = par.wCm||0, hCm = par.hCm||0;
-    const belka = fabW, mars = +(c.mars||"1.5"), szycie = c.sz==="wave"?110:100;
-    const dekro = c.dekro==="tak", hM = hCm/100;
-    if (!wCm || !(p.panels||[]).length || fabP==null) return {total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkaninę":null};
-    const useA2 = belka>0 && hCm>belka;
-    if (useA2) warn = "Moduł A2 — tkanina musi być jednobarwna lub bez raportu wzoru.";
-    (p.panels||[]).forEach(pn => {
-      const pw = pn.w||wCm, pm = pw/100;
-      let z,kt,ks,koszt;
-      if (useA2) {
-        const pg = Math.ceil((belka/mars)/10)*10-20, lp = Math.ceil(pw/pg);
-        z = +(lp*hM+0.2).toFixed(2); kt = +(z*fabP).toFixed(2);
-        ks = dekro ? (() => { const s=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230; return +(z*s).toFixed(2); })() : +(lp*250).toFixed(2);
-      } else {
-        z = +(pm*mars+0.2).toFixed(2); kt = +(z*fabP).toFixed(2);
-        ks = dekro ? (() => { const s=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230; return +(z*s).toFixed(2); })() : +(z*szycie).toFixed(2);
-      }
-      koszt = kt+ks; total += koszt;
-      lines.push({label:`${pn.side} · ${pw}cm · ${z}mb`, val:`${koszt.toFixed(2).replace(".",",")} zł`});
-    });
-  } else if (p.type === "roleta") {
-    const wCm=par.wCm||0, hCm=par.hCm||0;
-    if (!wCm||!hCm) return {total:0,lines:[],warn:null};
-    const rt=c.rt||"city", rtk2=+(c.rtk2||"160"), rb=c.rb==="tak"?11:0;
-    const tkan = fabP!=null ? fabP : 160;
-    const pow = +((wCm/100)*(hCm/100)).toFixed(3);
-    let sys;
-    if (rt==="city") { const r=stepLookup(wCm,ROLETA_CITY); sys=+(r.p*2+rb).toFixed(2); total=sys++(pow*(200+tkan)).toFixed(2); }
-    else if (rt==="duo") { const r=stepLookup(wCm,ROLETA_DUO); sys=+(r.p*2+rb).toFixed(2); total=sys++(pow*280).toFixed(2)++(pow*(200+rtk2)).toFixed(2); }
-    else { const r=stepLookup(wCm,ROLETA_EL); sys=+(r.p*2).toFixed(2); total=sys++(pow*(200+tkan)).toFixed(2); }
-    lines.push({label:`Roleta ${rt.toUpperCase()} ${wCm}×${hCm}cm`, val:`${pow}m²`});
-    lines.push({label:"System + tkanina", val:`${total.toFixed(2).replace(".",",")} zł`});
-  } else if (p.type === "szyna") {
-    const len=par.len||0, arc=par.arc||0, pts=par.pts||0;
-    if (!len) return {total:0,lines:[],warn:null};
-    let baz;
-    if (c.ks==="wave") { const r=stepLookup(Math.round(len*100), KAES_W[c.kk||"biala"]); baz=r.p; }
-    else baz = +(len*80).toFixed(2);
-    total = baz + +(arc*100).toFixed(2) + +(pts*60).toFixed(2);
-    lines.push({label:`KAES ${(c.ks||"Flex").toUpperCase()} ${len}mb`, val:`${total.toFixed(2).replace(".",",")} zł`});
-    if (c.km==="sciana") warn="Montaż ścienny — dolicz uchwyty ścienne (wycena indywidualna).";
-  } else if (p.type === "karnisz") {
-    const len=par.len||0, pt=par.pt||0, arc=par.arc||0;
-    if (!len) return {total:0,lines:[],warn:null};
-    const st = c.km==="universal" ? KUNIV : KSLIM;
-    const r = stepLookup(len, st);
-    total = r.p + (KNAPED[c.kn||"am75"]||0) + (KPILOT[c.kp||"brak"]||0) + pt*210 + arc*318;
-    lines.push({label:`Karnisz ${(c.km||"SLIM").toUpperCase()} do ${r.k}cm`, val:`${total.toFixed(2).replace(".",",")} zł`});
-  }
-  return {total, lines, warn};
-}
-
-const s = {
-  card: { background:"var(--white)", border:"1px solid var(--grey-100)", borderRadius:"var(--radius-lg)", overflow:"hidden", boxShadow:"var(--shadow-sm)", marginBottom:10 },
-  cardHead: { padding:"11px 16px", background:"var(--grey-50)", borderBottom:"1px solid var(--grey-100)", display:"flex", alignItems:"center", gap:10 },
-  body: { padding:"14px 16px", display:"flex", flexDirection:"column", gap:10 },
-  row2: { display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 },
-  field: { display:"flex", flexDirection:"column", gap:4 },
-  label: { fontSize:11, fontWeight:500, color:"var(--grey-500)", letterSpacing:"0.04em", textTransform:"uppercase" },
-  input: { padding:"8px 11px", fontSize:13, border:"1px solid var(--grey-100)", borderRadius:"var(--radius-sm)", background:"var(--white)", color:"var(--grey-900)", fontFamily:"var(--font)", outline:"none", transition:"border-color 0.15s" },
-  chips: { display:"flex", gap:5, flexWrap:"wrap" },
-  result: { background:"var(--green-50)", border:"1px solid var(--green-100)", borderRadius:"var(--radius-md)", padding:"10px 13px" },
-  warn: { background:"var(--amber-light)", border:"1px solid #F5C97A", borderRadius:"var(--radius-sm)", padding:"8px 12px", fontSize:12, color:"#7A4A0A", display:"flex", gap:7, alignItems:"flex-start" },
-  btnPrimary: { padding:"8px 16px", borderRadius:"var(--radius-sm)", border:"none", background:"var(--green-500)", color:"var(--white)", fontSize:13, fontWeight:500, cursor:"pointer", fontFamily:"var(--font)", transition:"background 0.15s" },
-  btnGhost: { padding:"8px 14px", borderRadius:"var(--radius-sm)", border:"1px solid var(--grey-100)", background:"transparent", color:"var(--grey-700)", fontSize:13, fontWeight:400, cursor:"pointer", fontFamily:"var(--font)", transition:"border-color 0.15s, background 0.15s" },
-};
-
-function Chip({label, active, onClick}) {
-  return (
-    <button onClick={onClick} style={{ padding:"5px 11px", borderRadius:20, border:`1px solid ${active?"var(--green-300)":"var(--grey-100)"}`, background:active?"var(--green-100)":"var(--white)", color:active?"var(--green-700)":"var(--grey-500)", fontSize:11.5, fontWeight:active?500:400, cursor:"pointer", fontFamily:"var(--font)", transition:"all 0.12s" }}>{label}</button>
-  );
-}
-
-function InputField({label, value, onChange, placeholder, type="text", step, style}) {
-  return (
-    <div style={s.field}>
-      {label && <label style={s.label}>{label}</label>}
-      <input type={type} step={step} value={value} onChange={onChange} placeholder={placeholder} style={{...s.input,...style}}
-        onFocus={e=>e.target.style.borderColor="var(--green-300)"} onBlur={e=>e.target.style.borderColor="var(--grey-100)"}/>
-    </div>
-  );
-}
-
-function FabricPicker({fabName, fabMan, onSelect, onManual}) {
-  const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
-  const list = FABRICS.filter(f=>!q||f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase()));
-  const chosen = FABRICS.find(f=>f.name===fabName);
-  return (
-    <div style={{border:"1px solid var(--grey-100)",borderRadius:"var(--radius-md)",overflow:"hidden"}}>
-      <div style={{padding:"9px 13px",background:"var(--grey-50)",borderBottom:"1px solid var(--grey-100)",display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
-        <span style={{fontSize:11,fontWeight:500,color:"var(--grey-500)",letterSpacing:"0.05em",textTransform:"uppercase",flex:1}}>Tkanina</span>
-        {chosen && <span style={{background:"var(--green-100)",border:"1px solid var(--green-300)",borderRadius:5,padding:"2px 8px",color:"var(--green-700)",fontSize:11.5,fontWeight:500}}>{chosen.name} · {chosen.brutto} zł/mb · {chosen.width}cm</span>}
-        {fabMan!=null && <span style={{background:"var(--green-100)",border:"1px solid var(--green-300)",borderRadius:5,padding:"2px 8px",color:"var(--green-700)",fontSize:11.5,fontWeight:500}}>ręczna: {fabMan} zł/mb</span>}
-        {!chosen&&fabMan==null&&<span style={{fontSize:11,color:"var(--grey-300)"}}>nie wybrano</span>}
-        <span style={{color:"var(--grey-300)",fontSize:13,transform:open?"rotate(180deg)":"none",transition:"transform 0.15s"}}>▾</span>
-      </div>
-      {open && (
-        <div className="fade-in">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Szukaj po nazwie lub producencie..." autoFocus
-            style={{width:"100%",padding:"8px 13px",fontSize:12.5,border:"none",borderBottom:"1px solid var(--grey-100)",background:"var(--white)",color:"var(--grey-900)",outline:"none",fontFamily:"var(--font)"}}/>
-          <div style={{maxHeight:180,overflowY:"auto"}}>
-            {list.map(f=>(
-              <div key={f.name} onClick={()=>{onSelect(f);setOpen(false);setQ("");}}
-                style={{display:"flex",alignItems:"center",gap:8,padding:"8px 13px",borderBottom:"1px solid var(--grey-50)",cursor:"pointer",fontSize:12.5,background:fabName===f.name?"var(--green-50)":"var(--white)",transition:"background 0.1s"}}
-                onMouseEnter={e=>e.currentTarget.style.background=fabName===f.name?"var(--green-100)":"var(--grey-50)"}
-                onMouseLeave={e=>e.currentTarget.style.background=fabName===f.name?"var(--green-50)":"var(--white)"}>
-                <span style={{flex:1,fontWeight:fabName===f.name?500:400,color:"var(--grey-900)"}}>{f.name}</span>
-                <span style={{fontSize:11,color:"var(--grey-300)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.prod}</span>
-                <span style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--grey-400)"}}>{f.width}cm</span>
-                <span style={{fontFamily:"var(--mono)",fontSize:12,color:"var(--green-500)",fontWeight:500}}>{f.brutto} zł</span>
+          {screen === 'rooms' && (
+            <div>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20}}>
+                <h2 style={{fontSize: 18}}>Pokoje i okna</h2>
+                <button onClick={() => setScreen('summary')} style={{color: 'var(--green-700)', fontWeight: 'bold'}}>Podsumowanie ({Math.round(grandTotal)} zł)</button>
               </div>
-            ))}
-            {list.length===0&&<div style={{padding:"12px 13px",fontSize:12,color:"var(--grey-300)"}}>Brak wyników.</div>}
-          </div>
-          <div style={{padding:"8px 13px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--grey-100)",background:"var(--grey-50)"}}>
-            <label style={{...s.label,flex:1}}>Cena ręczna (zł/mb):</label>
-            <input type="number" value={fabMan!=null?fabMan:""} onChange={e=>onManual(e.target.value===""?null:+e.target.value)} placeholder="np. 180"
-              style={{...s.input,width:90,textAlign:"right",fontSize:12,padding:"5px 9px"}}/>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
-function ProductCard({prod, idx, onChange, onRemove}) {
-  const c=prod.c||{}, par=prod.par||{};
-  const setC=(k,v)=>onChange({...prod,c:{...c,[k]:v}});
-  const togC=(k,a="nie",b="tak")=>setC(k,c[k]===b?a:b);
-  const setPar=(k,v)=>onChange({...prod,par:{...par,[k]:+v||0}});
-  const addPanel=()=>onChange({...prod,panels:[...(prod.panels||[]),{side:"Zasłona lewa",w:""}]});
-  const remPanel=(j)=>onChange({...prod,panels:prod.panels.filter((_,i)=>i!==j)});
-  const setPanelSide=(j,v)=>onChange({...prod,panels:prod.panels.map((p,i)=>i===j?{...p,side:v}:p)});
-  const setPanelW=(j,v)=>onChange({...prod,panels:prod.panels.map((p,i)=>i===j?{...p,w:+v||0}:p)});
-  const selFab=(f)=>onChange({...prod,fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null});
-  const setFabMan=(v)=>onChange({...prod,fabName:null,fabP:null,fabW:null,fabMan:v});
-  const {total,lines,warn}=calcProduct(prod);
-  const eff=prod.mp!=null?prod.mp:total;
-  const typeInfo=PROD_TYPES.find(t=>t.id===prod.type);
-  let form=null;
-  if (prod.type==="zaslona"||prod.type==="firana") {
-    form=<>
-      <div style={s.row2}>
-        <InputField label="Szer. karnisza (cm)" type="number" value={par.wCm||""} onChange={e=>setPar("wCm",e.target.value)} placeholder="195"/>
-        <InputField label="Wysokość (cm)" type="number" value={par.hCm||""} onChange={e=>setPar("hCm",e.target.value)} placeholder="260"/>
-      </div>
-      <div style={s.chips}>
-        <Chip label="Flex 100 zł/mb" active={!c.sz||c.sz==="flex"} onClick={()=>setC("sz","flex")}/>
-        <Chip label="Wave 110 zł/mb" active={c.sz==="wave"} onClick={()=>setC("sz","wave")}/>
-        <Chip label="Marszcz. 150%" active={!c.mars||c.mars==="1.5"} onClick={()=>setC("mars","1.5")}/>
-        <Chip label="Marszcz. 200%" active={c.mars==="2.0"} onClick={()=>setC("mars","2.0")}/>
-        <Chip label="Dekro" active={c.dekro==="tak"} onClick={()=>togC("dekro")}/>
-      </div>
-      <FabricPicker fabName={prod.fabName} fabMan={prod.fabMan} onSelect={selFab} onManual={setFabMan}/>
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        {(prod.panels||[]).map((pn,j)=>(
-          <div key={j} style={{display:"flex",alignItems:"center",gap:7,background:"var(--grey-50)",borderRadius:"var(--radius-sm)",padding:"6px 9px"}}>
-            <select value={pn.side} onChange={e=>setPanelSide(j,e.target.value)} style={{...s.input,flex:1,fontSize:11.5,padding:"5px 8px",cursor:"pointer"}}>
-              {["Zasłona lewa","Zasłona prawa","Firana środkowa","Panel lewy","Panel prawy","Całość"].map(o=><option key={o}>{o}</option>)}
-            </select>
-            <input type="number" value={pn.w||""} onChange={e=>setPanelW(j,e.target.value)} placeholder="cm" style={{...s.input,width:65,fontSize:12,padding:"5px 8px",textAlign:"center"}}/>
-            <span style={{fontSize:11,color:"var(--grey-400)"}}>cm</span>
-            <button onClick={()=>remPanel(j)} style={{border:"none",background:"none",cursor:"pointer",color:"var(--grey-300)",fontSize:17,lineHeight:1,padding:"0 2px"}}>×</button>
-          </div>
-        ))}
-        <button onClick={addPanel} style={{...s.btnGhost,fontSize:11.5,padding:"6px 12px",alignSelf:"flex-start"}}>+ Panel</button>
-      </div>
-    </>;
-  } else if (prod.type==="roleta") {
-    form=<>
-      <div style={s.row2}>
-        <InputField label="Szerokość (cm)" type="number" value={par.wCm||""} onChange={e=>setPar("wCm",e.target.value)} placeholder="120"/>
-        <InputField label="Długość (cm)" type="number" value={par.hCm||""} onChange={e=>setPar("hCm",e.target.value)} placeholder="160"/>
-      </div>
-      <div style={s.chips}>
-        <Chip label="City" active={!c.rt||c.rt==="city"} onClick={()=>setC("rt","city")}/>
-        <Chip label="Duo" active={c.rt==="duo"} onClick={()=>setC("rt","duo")}/>
-        <Chip label="Elektryczna" active={c.rt==="el"} onClick={()=>setC("rt","el")}/>
-        <Chip label="+bębenek 11zł" active={c.rb==="tak"} onClick={()=>togC("rb")}/>
-      </div>
-      <FabricPicker fabName={prod.fabName} fabMan={prod.fabMan} onSelect={selFab} onManual={setFabMan}/>
-      {c.rt==="duo"&&<div style={s.chips}>
-        <Chip label="2. Basic 160" active={!c.rtk2||c.rtk2==="160"} onClick={()=>setC("rtk2","160")}/>
-        <Chip label="2. Standard 190" active={c.rtk2==="190"} onClick={()=>setC("rtk2","190")}/>
-        <Chip label="2. Premium 250" active={c.rtk2==="250"} onClick={()=>setC("rtk2","250")}/>
-      </div>}
-    </>;
-  } else if (prod.type==="szyna") {
-    form=<>
-      <div style={s.row2}>
-        <InputField label="Długość (mb)" type="number" step="0.1" value={par.len||""} onChange={e=>setPar("len",e.target.value)} placeholder="2.5"/>
-        <InputField label="Łuk ciągły (mb)" type="number" step="0.1" value={par.arc||""} onChange={e=>setPar("arc",e.target.value)} placeholder="0"/>
-        <InputField label="Gięcie punktowe (szt.)" type="number" value={par.pts||""} onChange={e=>setPar("pts",e.target.value)} placeholder="0"/>
-      </div>
-      <div style={s.chips}>
-        <Chip label="Flex 80 zł/mb" active={!c.ks||c.ks==="flex"} onClick={()=>setC("ks","flex")}/>
-        <Chip label="Wave" active={c.ks==="wave"} onClick={()=>setC("ks","wave")}/>
-        {c.ks==="wave"&&<Chip label="Biała" active={!c.kk||c.kk==="biala"} onClick={()=>setC("kk","biala")}/>}
-        {c.ks==="wave"&&<Chip label="Czarna" active={c.kk==="czarna"} onClick={()=>setC("kk","czarna")}/>}
-        <Chip label="Montaż ścienny" active={c.km==="sciana"} onClick={()=>togC("km","sufit","sciana")}/>
-      </div>
-    </>;
-  } else if (prod.type==="karnisz") {
-    form=<>
-      <div style={s.row2}>
-        <InputField label="Długość (cm)" type="number" value={par.len||""} onChange={e=>setPar("len",e.target.value)} placeholder="300"/>
-        <InputField label="Gięcie punkt. (szt.)" type="number" value={par.pt||""} onChange={e=>setPar("pt",e.target.value)} placeholder="0"/>
-        <InputField label="Łuk (mb)" type="number" step="0.1" value={par.arc||""} onChange={e=>setPar("arc",e.target.value)} placeholder="0"/>
-      </div>
-      <div style={s.chips}>
-        <Chip label="SLIM" active={!c.km||c.km==="slim"} onClick={()=>setC("km","slim")}/>
-        <Chip label="UNIVERSAL" active={c.km==="universal"} onClick={()=>setC("km","universal")}/>
-      </div>
-      <div style={{...s.label,marginBottom:-4}}>Napęd</div>
-      <div style={s.chips}>
-        {Object.entries({am75:"A-OK AM75 644zł",am50:"A-OK AM50 1000zł",mdct:"Movelite DCT 902zł",mrts:"Movelite RTS 1056zł",glydea:"Glydea 2268zł",irismo:"Irismo 2182zł"}).map(([v,l])=>(
-          <Chip key={v} label={l} active={(!c.kn&&v==="am75")||c.kn===v} onClick={()=>setC("kn",v)}/>
-        ))}
-      </div>
-      <div style={{...s.label,marginBottom:-4}}>Sterowanie</div>
-      <div style={s.chips}>
-        {Object.entries({brak:"Brak",aok1b:"Pilot biały 130zł",aok1c:"Pilot czarny 148zł",tuya:"Tuya 340zł",situo:"Situo 284zł",tahoma:"TaHoma 1390zł"}).map(([v,l])=>(
-          <Chip key={v} label={l} active={(!c.kp&&v==="brak")||c.kp===v} onClick={()=>setC("kp",v)}/>
-        ))}
-      </div>
-    </>;
-  } else {
-    form=<div style={{fontSize:12,color:"var(--grey-300)",padding:"4px 0"}}>Cennik żaluzji — wkrótce.</div>;
-  }
-  return (
-    <div style={{...s.card}} className="fade-in">
-      <div style={s.cardHead}>
-        <span style={{fontSize:15}}>{typeInfo?.icon}</span>
-        <span style={{fontSize:13,fontWeight:500,color:"var(--grey-900)",flex:1}}>{typeInfo?.label}{prod.fabName?` · ${prod.fabName}`:""}</span>
-        {eff>0&&<span style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:500,color:"var(--green-500)"}}>{Math.round(eff).toLocaleString("pl")} zł</span>}
-        <button onClick={onRemove} style={{border:"none",background:"none",cursor:"pointer",color:"var(--grey-300)",fontSize:18,lineHeight:1,padding:"0 2px",marginLeft:4}}>×</button>
-      </div>
-      <div style={s.body}>
-        <div style={s.chips}>
-          {PROD_TYPES.map(t=>(
-            <Chip key={t.id} label={t.label} active={prod.type===t.id}
-              onClick={()=>onChange({...prod,type:t.id,c:{},par:{},panels:[],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null})}/>
-          ))}
-        </div>
-        {form}
-        {warn&&<div style={s.warn}><span>⚠️</span><span>{warn}</span></div>}
-        {total>0&&prod.mp==null&&(
-          <div style={s.result}>
-            {lines.map((l,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--green-700)",marginBottom:i<lines.length-1?4:0}}>
-                <span>{l.label}</span><span style={{fontFamily:"var(--mono)",fontWeight:500}}>{l.val}</span>
-              </div>
-            ))}
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:500,color:"var(--green-700)",marginTop:8,paddingTop:8,borderTop:"1px solid var(--green-300)"}}>
-              <span>Razem</span><span style={{fontFamily:"var(--mono)"}}>{total.toFixed(2).replace(".",",")} zł</span>
-            </div>
-          </div>
-        )}
-        <div style={{display:"flex",alignItems:"center",gap:10,paddingTop:8,borderTop:"1px solid var(--grey-50)"}}>
-          <label style={{...s.label,flex:1}}>Własna cena końcowa (nadpisuje):</label>
-          <input type="number" value={prod.mp!=null?prod.mp:""} onChange={e=>onChange({...prod,mp:e.target.value===""?null:+e.target.value})} placeholder="zł"
-            style={{...s.input,width:90,textAlign:"right",fontSize:12,padding:"5px 9px"}}/>
-          {prod.mp!=null&&<button onClick={()=>onChange({...prod,mp:null})} style={{border:"none",background:"none",cursor:"pointer",fontSize:11,color:"var(--grey-300)",padding:0}}>wyczyść</button>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Modal({type, onClose, onClient, onRoom, onWin}) {
-  const [name,setName]=useState("");
-  const [addr,setAddr]=useState("");
-  const inputRef=useRef(null);
-  useEffect(()=>{setTimeout(()=>inputRef.current?.focus(),50);},[]);
-  const configs={
-    client:{title:"Nowy klient",ok:()=>{onClient(name,addr);onClose();}},
-    room:{title:"Nowe pomieszczenie",ok:()=>{onRoom(name);onClose();}},
-    win:{title:"Nowe okno / punkt pomiarowy",ok:()=>{onWin(name);onClose();}},
-  };
-  const cfg=configs[type];
-  if (!cfg) return null;
-  return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.3)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(2px)"}}
-      onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div className="pop-in" style={{background:"var(--white)",borderRadius:"var(--radius-lg)",padding:"22px 24px",width:300,boxShadow:"var(--shadow-md)",border:"1px solid var(--grey-100)"}}>
-        <div style={{fontSize:14,fontWeight:600,marginBottom:16,color:"var(--grey-900)"}}>{cfg.title}</div>
-        <input ref={inputRef} value={name} onChange={e=>setName(e.target.value)}
-          placeholder={type==="client"?"Imię i nazwisko":type==="room"?"np. Salon, Kuchnia...":"np. Okno lewe, Taras..."}
-          style={{...s.input,width:"100%",marginBottom:10,fontSize:13}}
-          onKeyDown={e=>{if(e.key==="Enter")cfg.ok();}}
-          onFocus={e=>e.target.style.borderColor="var(--green-300)"} onBlur={e=>e.target.style.borderColor="var(--grey-100)"}/>
-        {type==="client"&&(
-          <input value={addr} onChange={e=>setAddr(e.target.value)} placeholder="Adres (opcjonalnie)"
-            style={{...s.input,width:"100%",marginBottom:10,fontSize:13}}
-            onFocus={e=>e.target.style.borderColor="var(--green-300)"} onBlur={e=>e.target.style.borderColor="var(--grey-100)"}/>
-        )}
-        <div style={{display:"flex",gap:8,marginTop:6}}>
-          <button style={s.btnPrimary} onClick={cfg.ok}>Dodaj</button>
-          <button style={s.btnGhost} onClick={onClose}>Anuluj</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TopBar({screen,client,curRoom,curWin,onNav}) {
-  const crumbs=[
-    {label:"Klienci",screen:"home"},
-    ...(screen!=="home"&&client?[{label:client.name,screen:"rooms"}]:[]),
-    ...((screen==="windows"||screen==="detail")&&curRoom?[{label:curRoom.name,screen:"windows"}]:[]),
-    ...(screen==="detail"&&curWin?[{label:curWin.name,screen:null}]:[]),
-    ...(screen==="sum"?[{label:"Podsumowanie",screen:null}]:[]),
-  ];
-  return (
-    <div style={{position:"sticky",top:0,zIndex:100,background:"rgba(255,255,255,0.92)",backdropFilter:"blur(10px)",borderBottom:"1px solid var(--grey-100)",padding:"0 20px",height:52,display:"flex",alignItems:"center"}}>
-      <div style={{width:30,height:30,background:"var(--green-100)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,marginRight:12}}>🪟</div>
-      <span style={{fontSize:14,fontWeight:600,color:"var(--grey-900)",marginRight:20}}>Porter Design</span>
-      <div style={{display:"flex",alignItems:"center",fontSize:12,flex:1}}>
-        {crumbs.map((cr,i)=>(
-          <span key={i} style={{display:"flex",alignItems:"center"}}>
-            {i>0&&<span style={{color:"var(--grey-200)",margin:"0 6px",fontSize:11}}>›</span>}
-            <span onClick={cr.screen?()=>onNav(cr.screen):undefined}
-              style={{cursor:cr.screen?"pointer":"default",color:cr.screen?"var(--grey-500)":"var(--grey-900)",fontWeight:i===crumbs.length-1?500:400}}
-              onMouseEnter={e=>{if(cr.screen)e.target.style.color="var(--green-500)";}}
-              onMouseLeave={e=>{if(cr.screen)e.target.style.color="var(--grey-500)";}}>{cr.label}</span>
-          </span>
-        ))}
-      </div>
-      {client&&<span style={{fontSize:11,color:"var(--grey-400)",background:"var(--grey-50)",border:"1px solid var(--grey-100)",borderRadius:5,padding:"2px 9px"}}>{client.name}</span>}
-    </div>
-  );
-}
-
-function TileGrid({children}) {
-  return <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8,marginBottom:14}}>{children}</div>;
-}
-
-function Tile({icon,name,sub,badge,onClick}) {
-  return (
-    <div onClick={onClick} style={{background:"var(--white)",border:"1px solid var(--grey-100)",borderRadius:"var(--radius-md)",padding:"14px 14px 12px",cursor:"pointer",position:"relative",transition:"box-shadow 0.15s,border-color 0.15s"}}
-      onMouseEnter={e=>{e.currentTarget.style.boxShadow="var(--shadow-md)";e.currentTarget.style.borderColor="var(--grey-200)";}}
-      onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor="var(--grey-100)";}}>
-      <div style={{fontSize:20,marginBottom:8}}>{icon}</div>
-      <div style={{fontSize:13,fontWeight:500,color:"var(--grey-900)",marginBottom:2}}>{name}</div>
-      {sub&&<div style={{fontSize:11,color:"var(--grey-400)"}}>{sub}</div>}
-      {badge&&<div style={{position:"absolute",top:10,right:10,background:"var(--green-100)",color:"var(--green-700)",fontSize:11,fontWeight:500,borderRadius:5,padding:"1px 7px",fontFamily:"var(--mono)"}}>{badge}</div>}
-    </div>
-  );
-}
-
-function AddTile({label,onClick}) {
-  return (
-    <div onClick={onClick} style={{background:"transparent",border:"1.5px dashed var(--grey-100)",borderRadius:"var(--radius-md)",padding:"14px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,color:"var(--grey-300)",minHeight:88,transition:"all 0.15s"}}
-      onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--green-300)";e.currentTarget.style.color="var(--green-500)";}}
-      onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--grey-100)";e.currentTarget.style.color="var(--grey-300)";}}>
-      <span style={{fontSize:20,lineHeight:1}}>+</span>
-      <span style={{fontSize:11}}>{label}</span>
-    </div>
-  );
-}
-
-function SectionLabel({text}) {
-  return <div style={{fontSize:10.5,fontWeight:600,color:"var(--grey-400)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:8}}>{text}</div>;
-}
-
-export default function App() {
-  const [screen,setScreen]=useState("home");
-  const [rooms,setRooms]=useState([{id:1,name:"Salon",icon:"🛋️",windows:[]}]);
-  const [client,setClient]=useState(null);
-  const [curRoomId,setCurRoomId]=useState(null);
-  const [curWin,setCurWin]=useState(null);
-  const [modal,setModal]=useState(null);
-  const curRoom=rooms.find(r=>r.id===curRoomId);
-  const winTotal=w=>w.products.reduce((a,p)=>a+(p.mp!=null?p.mp:(calcProduct(p).total||0)),0);
-  const roomTotal=r=>r.windows.reduce((a,w)=>a+winTotal(w),0);
-  const grandTotal=rooms.reduce((a,r)=>a+roomTotal(r),0);
-  const openClient=(name,addr)=>{setClient({name,addr});setScreen("rooms");};
-  const openRoom=(id)=>{setCurRoomId(id);setScreen("windows");};
-  const openWin=(w)=>{setCurWin(JSON.parse(JSON.stringify(w)));setScreen("detail");};
-  const newWin=(name)=>{const w={id:Date.now(),name,products:[]};setCurWin(w);setScreen("detail");};
-  const saveWin=()=>{
-    setRooms(rs=>rs.map(r=>r.id===curRoomId?{...r,windows:r.windows.find(w=>w.id===curWin.id)?r.windows.map(w=>w.id===curWin.id?curWin:w):[...r.windows,curWin]}:r));
-    setScreen("windows");
-  };
-  const addProd=()=>setCurWin(w=>({...w,products:[...w.products,{id:Date.now(),type:"zaslona",c:{},par:{},panels:[],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}]}));
-  const updateProd=(i,p)=>setCurWin(w=>({...w,products:w.products.map((x,j)=>j===i?p:x)}));
-  const removeProd=(i)=>setCurWin(w=>({...w,products:w.products.filter((_,j)=>j!==i)}));
-  const addRoom=(name)=>{
-    const icons={salon:"🛋️",sypialnia:"🛏️",kuchnia:"🍳",łazienka:"🛁",gabinet:"📚",jadalnia:"🍽️",pokój:"🛏️",dziecięcy:"🧸",biuro:"📐"};
-    const k=Object.keys(icons).find(k=>name.toLowerCase().includes(k));
-    setRooms(rs=>[...rs,{id:Date.now(),name,icon:icons[k]||"🪟",windows:[]}]);
-  };
-  const handleNav=(s)=>setScreen(s);
-
-  return (
-    <div style={{minHeight:"100vh",background:"var(--grey-50)"}}>
-      <TopBar screen={screen} client={client} curRoom={curRoom} curWin={curWin} onNav={handleNav}/>
-      <div style={{maxWidth:640,margin:"0 auto",padding:"24px 16px 60px"}}>
-
-        {screen==="home"&&(
-          <div className="fade-in">
-            <div style={{marginBottom:24}}>
-              <div style={{fontSize:22,fontWeight:600,color:"var(--grey-900)",marginBottom:4}}>Wizyta u klienta</div>
-              <div style={{fontSize:13,color:"var(--grey-400)"}}>Wybierz klienta lub dodaj nowego, aby rozpocząć wycenę.</div>
-            </div>
-            <SectionLabel text="Klienci"/>
-            <TileGrid>
-              <Tile icon="👤" name="Kowalski Jan" sub="ul. Wiśniowa 12" onClick={()=>openClient("Kowalski Jan","ul. Wiśniowa 12")}/>
-              <AddTile label="Nowy klient" onClick={()=>setModal("client")}/>
-            </TileGrid>
-          </div>
-        )}
-
-        {screen==="rooms"&&(
-          <div className="fade-in">
-            <div style={{marginBottom:20}}>
-              <div style={{fontSize:18,fontWeight:600,color:"var(--grey-900)",marginBottom:2}}>{client?.name}</div>
-              {client?.addr&&<div style={{fontSize:12,color:"var(--grey-400)"}}>{client.addr}</div>}
-            </div>
-            <SectionLabel text="Pomieszczenia"/>
-            <TileGrid>
-              {rooms.map(r=><Tile key={r.id} icon={r.icon} name={r.name} sub={`${r.windows.length} okien`} badge={roomTotal(r)>0?Math.round(roomTotal(r)).toLocaleString("pl")+" zł":null} onClick={()=>openRoom(r.id)}/>)}
-              <AddTile label="Pomieszczenie" onClick={()=>setModal("room")}/>
-            </TileGrid>
-            {grandTotal>0&&(
-              <div style={{background:"var(--green-50)",border:"1px solid var(--green-100)",borderRadius:"var(--radius-md)",padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                <span style={{fontSize:12,color:"var(--green-700)"}}>Suma wizyty</span>
-                <span style={{fontFamily:"var(--mono)",fontSize:17,fontWeight:600,color:"var(--green-500)"}}>{Math.round(grandTotal).toLocaleString("pl")} zł</span>
-              </div>
-            )}
-            <button style={s.btnPrimary} onClick={()=>setScreen("sum")}>Podsumowanie ↗</button>
-          </div>
-        )}
-
-        {screen==="windows"&&curRoom&&(
-          <div className="fade-in">
-            <div style={{marginBottom:20}}>
-              <div style={{fontSize:18,fontWeight:600,color:"var(--grey-900)"}}>{curRoom.icon} {curRoom.name}</div>
-              <div style={{fontSize:12,color:"var(--grey-400)",marginTop:2}}>{curRoom.windows.length} {curRoom.windows.length===1?"okno":"okien"}</div>
-            </div>
-            <div style={s.card}>
-              {!curRoom.windows.length&&<div style={{padding:"18px 16px",fontSize:13,color:"var(--grey-300)",textAlign:"center"}}>Brak okien. Dodaj pierwsze.</div>}
-              {curRoom.windows.map((w,i)=>{
-                const t=winTotal(w);
-                const prods=w.products.map(p=>PROD_TYPES.find(t=>t.id===p.type)?.label||p.type).join(", ");
-                return (
-                  <div key={w.id} onClick={()=>openWin(w)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<curRoom.windows.length-1?"1px solid var(--grey-50)":"none",cursor:"pointer",transition:"background 0.1s"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="var(--grey-50)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{width:32,height:32,background:"var(--green-50)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>🪟</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:500,color:"var(--grey-900)"}}>{w.name}</div>
-                      <div style={{fontSize:11,color:"var(--grey-400)",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{prods||"—"}</div>
+              {rooms.map((room, rIdx) => (
+                <div key={rIdx} style={{background: 'white', padding: 20, borderRadius: 25, marginBottom: 20, boxShadow: '0 4px 10px rgba(0,0,0,0.05)'}}>
+                  <h3 style={{marginBottom: 15, color: 'var(--green-700)'}}>{room.name}</h3>
+                  {room.windows.map((win, wIdx) => (
+                    <div key={win.id} style={{background: '#f9f9f9', padding: 15, borderRadius: 15, marginBottom: 10}}>
+                        <div style={{display: 'flex', gap: 10, marginBottom: 10}}>
+                            <input placeholder="Szerokość" style={{width: '50%', padding: 8}} onChange={(e) => updateWindow(rIdx, wIdx, 'width', e.target.value)} />
+                            <input placeholder="Wysokość" style={{width: '50%', padding: 8}} onChange={(e) => updateWindow(rIdx, wIdx, 'height', e.target.value)} />
+                        </div>
+                        <div style={{fontSize: 12, color: 'var(--green-700)', fontWeight: 'bold'}}>Wycena okna: {win.price} zł</div>
                     </div>
-                    {t>0&&<span style={{fontFamily:"var(--mono)",fontSize:12,fontWeight:500,color:"var(--green-500)",whiteSpace:"nowrap"}}>{Math.round(t).toLocaleString("pl")} zł</span>}
-                    <span style={{color:"var(--grey-200)",fontSize:14}}>›</span>
-                  </div>
-                );
-              })}
-            </div>
-            <button style={s.btnGhost} onClick={()=>setModal("win")}>+ Dodaj okno</button>
-          </div>
-        )}
-
-        {screen==="detail"&&curWin&&(
-          <div className="fade-in">
-            <div style={{...s.card,marginBottom:14}}>
-              <div style={s.cardHead}>
-                <span style={{fontSize:14}}>🪟</span>
-                <span style={{fontSize:14,fontWeight:600,color:"var(--grey-900)",flex:1}}>{curWin.name}</span>
-                {winTotal(curWin)>0&&<span style={{fontFamily:"var(--mono)",fontSize:14,fontWeight:600,color:"var(--green-500)"}}>{Math.round(winTotal(curWin)).toLocaleString("pl")} zł</span>}
-              </div>
-            </div>
-            {curWin.products.map((p,i)=><ProductCard key={p.id} prod={p} idx={i} onChange={np=>updateProd(i,np)} onRemove={()=>removeProd(i)}/>)}
-            <button style={{...s.btnGhost,marginBottom:14}} onClick={addProd}>+ Dodaj produkt</button>
-            {curWin.products.length>0&&(
-              <div style={{background:"var(--green-50)",border:"1px solid var(--green-100)",borderRadius:"var(--radius-md)",padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                <span style={{fontSize:13,fontWeight:500,color:"var(--green-700)"}}>Łącznie okno</span>
-                <span style={{fontFamily:"var(--mono)",fontSize:18,fontWeight:600,color:"var(--green-500)"}}>{Math.round(winTotal(curWin)).toLocaleString("pl")} zł</span>
-              </div>
-            )}
-            <div style={{display:"flex",gap:8}}>
-              <button style={s.btnPrimary} onClick={saveWin}>Zapisz okno</button>
-              <button style={s.btnGhost} onClick={()=>setScreen("windows")}>Anuluj</button>
-            </div>
-          </div>
-        )}
-
-        {screen==="sum"&&(
-          <div className="fade-in">
-            <div style={{marginBottom:20}}>
-              <div style={{fontSize:18,fontWeight:600,color:"var(--grey-900)",marginBottom:2}}>Podsumowanie wizyty</div>
-              {client&&<div style={{fontSize:13,color:"var(--grey-400)"}}>{client.name}{client.addr?` · ${client.addr}`:""}</div>}
-            </div>
-            {rooms.map(r=>r.windows.length>0?(
-              <div key={r.id} style={s.card}>
-                <div style={{...s.cardHead,justifyContent:"space-between"}}>
-                  <span style={{fontSize:13,fontWeight:600,color:"var(--grey-900)"}}>{r.icon} {r.name}</span>
-                  <span style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:500,color:"var(--green-500)"}}>{Math.round(roomTotal(r)).toLocaleString("pl")} zł</span>
+                  ))}
+                  <button onClick={() => addWindow(rIdx)} style={{fontSize: 13, color: 'var(--green-500)'}}>+ Dodaj okno</button>
                 </div>
-                {r.windows.map((w,i)=>{
-                  const t=winTotal(w);
-                  const desc=w.products.map(p=>{const l=PROD_TYPES.find(t=>t.id===p.type)?.label||p.type;return p.fabName?`${l} (${p.fabName})`:l;}).join(", ");
-                  return (
-                    <div key={w.id} style={{padding:"10px 16px",borderTop:"1px solid var(--grey-50)"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-                        <span style={{fontSize:12.5,fontWeight:500,color:"var(--grey-900)"}}>🪟 {w.name}</span>
-                        <span style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:500,color:"var(--green-700)"}}>{Math.round(t).toLocaleString("pl")} zł</span>
-                      </div>
-                      <div style={{fontSize:11,color:"var(--grey-400)",marginTop:2}}>{desc||"—"}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            ):null)}
-            <div style={{background:"var(--green-100)",border:"1px solid var(--green-300)",borderRadius:"var(--radius-lg)",padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-              <span style={{fontSize:13,fontWeight:600,color:"var(--green-700)"}}>Łącznie cała wizyta</span>
-              <span style={{fontFamily:"var(--mono)",fontSize:22,fontWeight:700,color:"var(--green-700)"}}>{Math.round(grandTotal).toLocaleString("pl")} zł</span>
+              ))}
+              
+              <button onClick={() => addRoom('Kolejny pokój')} style={{width: '100%', padding: 15, border: '2px dashed #ccc', borderRadius: 20, color: '#888'}}>+ Dodaj pomieszczenie</button>
             </div>
-            <div style={{display:"flex",gap:8}}>
-              <button style={s.btnPrimary} onClick={()=>alert("Generowanie PDF — funkcja dostępna po integracji z backendem.")}>Generuj PDF ↗</button>
-              <button style={s.btnGhost} onClick={()=>setScreen("rooms")}>← Edytuj</button>
+          )}
+
+          {screen === 'summary' && (
+            <div style={{background: 'white', padding: 30, borderRadius: 30}}>
+                <h2 style={{marginBottom: 20}}>Podsumowanie dla: {client.name}</h2>
+                <div style={{fontSize: 24, fontWeight: 'bold', color: 'var(--green-700)', marginBottom: 20}}>Razem: {grandTotal} zł</div>
+                <button onClick={() => window.print()} style={{width: '100%', padding: 15, background: '#1c1c1c', color: 'white', borderRadius: 15}}>Generuj PDF</button>
+                <button onClick={() => setScreen('rooms')} style={{width: '100%', marginTop: 10, color: '#888'}}>Wróć do edycji</button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      );
+    }
 
-      </div>
-      {modal&&<Modal type={modal} onClose={()=>setModal(null)} onClient={(name,addr)=>openClient(name,addr)} onRoom={(name)=>addRoom(name)} onWin={(name)=>newWin(name)}/>}
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script>
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PorterApp />);
+  </script>
 </body>
 </html>
