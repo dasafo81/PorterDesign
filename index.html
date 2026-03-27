@@ -29,167 +29,129 @@
 "use strict";
 var ce=React.createElement,useState=React.useState,Fragment=React.Fragment;
 
-// --- DANE KATALOGOWE ---
+// --- DANE ---
 var FABRICS=[
-  {name:"Alise",brutto:230,prod:"FIBERO",width:300},
-  {name:"Alma",brutto:165,prod:"Ridex",width:315},
-  {name:"Altamira",brutto:250,prod:"OZLEM",width:300},
-  {name:"Alto",brutto:120,prod:"VV design",width:370},
-  {name:"Amber",brutto:110,prod:"SAMA",width:300},
-  {name:"Antonio",brutto:220,prod:"MARGO",width:300}
-];
-
-var PROD_TYPES=[
-  {id:"zaslona",label:"Zasłona"},{id:"firana",label:"Firana"},
-  {id:"zaluzja",label:"Żaluzja"},{id:"roleta",label:"Roleta"},
-  {id:"szyna",label:"Szyna KAES"}
+  {name:"Alise",brutto:230},{name:"Alma",brutto:165},{name:"Altamira",brutto:250},
+  {name:"Alto",brutto:120},{name:"Amber",brutto:110},{name:"Antonio",brutto:220}
 ];
 
 var MY_DATA = "PD Porter Design Paulina Porter\nul. Woronieckiego 6C/2, 05-220 Zielonka\nNIP: 8121803400";
 var LOGO_URL = "https://i.imgur.com/x06W7Mh.png"; 
 
-// --- LOGIKA OBLICZEŃ ---
+// --- LOGIKA ---
 function calc(p){
   var c=p.c||{}, par=p.par||{};
   var pricePerMb = p.fabMan ? parseFloat(p.fabMan) : (p.fabP ? parseFloat(p.fabP) : 0);
   var total=0, lines=[];
 
   if(p.type==="zaslona" || p.type==="firana"){
-    var wCm = parseFloat(par.wCm) || 0;
-    var hCm = parseFloat(par.hCm) || 0;
-    var marszczenie = parseFloat(c.mars) || 1.5;
-    
-    if(wCm > 0 && pricePerMb > 0){
-      var mb = parseFloat(((wCm / 100) * marszczenie + 0.2).toFixed(2));
-      var kosztTkaniny = mb * pricePerMb;
-      var kosztSzycia = mb * 100;
-      total = kosztTkaniny + kosztSzycia;
-      lines.push("Wymiar: " + wCm + "x" + hCm + " cm");
-      lines.push("Zużycie: " + mb + " mb");
-      lines.push("Szycie: " + kosztSzycia.toFixed(2) + " zł");
+    var w = parseFloat(par.wCm) || 0;
+    var h = parseFloat(par.hCm) || 0;
+    var m = parseFloat(c.mars) || 1.5;
+    if(w > 0 && pricePerMb > 0){
+      var mb = parseFloat(((w / 100) * m + 0.2).toFixed(2));
+      total = mb * (pricePerMb + 100);
+      lines.push("Wymiar: "+w+"x"+h+" cm, Zużycie: "+mb+"mb");
     }
   } else if(p.type==="szyna"){
-    var len = parseFloat(par.len) || 0;
-    if(len > 0) {
-        total = (len / 100) * 80;
-        lines.push("Długość: " + len + " cm");
-    }
+    var l = parseFloat(par.len) || 0;
+    if(l > 0) total = (l / 100) * 80;
   } else if(p.type==="zaluzja" || p.type==="roleta"){
     var w=parseFloat(par.wCm)||0, h=parseFloat(par.hCm)||0;
     var m2=Math.max(0.5, (w/100)*(h/100));
     total=m2*450;
-    lines.push("Wymiar: " + w + "x" + h + " cm (" + m2.toFixed(2) + " m2)");
   }
   return {total: total, lines: lines};
 }
 
 // --- UI ---
-var IST={padding:"8px",fontSize:"14px",border:"1px solid var(--bd2)",borderRadius:"6px",background:"var(--bg)",width:"100%"};
+var IST={padding:"8px",fontSize:"14px",border:"1px solid var(--bd2)",borderRadius:"6px",width:"100%",marginBottom:"8px"};
 
-function Btn(label,onClick,primary){
-  return ce("button",{onClick:onClick,style:{padding:"8px 16px",borderRadius:"8px",border:"none",background:primary?"var(--gr)":"var(--bd3)",color:primary?"#fff":"var(--t1)",fontWeight:"600",cursor:"pointer"}},label);
+function Btn(label,onClick,pri){
+  return ce("button",{onClick:onClick,style:{padding:"8px 16px",borderRadius:8,border:"none",background:pri?"var(--gr)":"var(--bd3)",color:pri?"#fff":"#000",fontWeight:600,cursor:"pointer"}},label);
 }
 
 function ProdCard(p){
-  var prod=p.prod, c=prod.c||{}, par=prod.par||{};
-  var res=calc(prod);
+  var pr=p.prod, c=pr.c||{}, par=pr.par||{};
+  var res=calc(pr);
+  var types=[{id:"zaslona",l:"Zasłona"},{id:"firana",l:"Firana"},{id:"zaluzja",l:"Żaluzja"},{id:"szyna",l:"Szyna"}];
 
-  return ce("div",{style:{background:"#fff",border:"1px solid var(--bd3)",borderRadius:"12px",padding:"12px",marginBottom:"10px"}},
-    ce("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:"10px"}},
-      ce("b",{},(PROD_TYPES.find(t=>t.id===prod.type)||{}).label),
-      ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",color:"red",fontSize:"11px"}},"usuń")
-    ),
-    ce("div",{style:{display:"flex",gap:"5px",flexWrap:"wrap",marginBottom:"10px"}},
-      PROD_TYPES.map(t=>ce("button",{onClick:()=>p.onChange({...prod,type:t.id,fabName:null,fabP:null,fabMan:null}),style:{fontSize:"10px",padding:"4px 8px",borderRadius:"10px",border:"1px solid var(--bd2)",background:prod.type===t.id?"var(--grl)":"#fff"}},t.label))
-    ),
-    // FORMULARZ
-    (prod.type!=="szyna") && ce("div",{style:{display:"flex",gap:"5px",marginBottom:"10px"}},
-        ce("input",{type:"number",placeholder:"Szer (cm)",value:par.wCm||"",onChange:e=>p.onChange({...prod,par:{...par,wCm:e.target.value}}),style:IST}),
-        ce("input",{type:"number",placeholder:"Wys (cm)",value:par.hCm||"",onChange:e=>p.onChange({...prod,par:{...par,hCm:e.target.value}}),style:IST})
-    ),
-    prod.type==="szyna" && ce("input",{type:"number",placeholder:"Długość szyny (cm)",value:par.len||"",onChange:e=>p.onChange({...prod,par:{...par,len:e.target.value}}),style:{...IST,marginBottom:10}}),
+  return ce("div",{style:{background:"#fff",border:"1px solid var(--bd3)",borderRadius:12,padding:12,marginBottom:10}},
+    ce("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:10}},
+       ce("b",{},"Produkt"),ce("button",{onClick:p.onRemove,style:{color:"red",border:"none",background:"none"}},"usuń")),
+    ce("div",{style:{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}},
+       types.map(t=>ce("button",{key:t.id,onClick:()=>p.onChange({...pr,type:t.id,fabP:0,fabMan:"",fabName:""}),style:{fontSize:10,padding:"4px 8px",background:pr.type===t.id?"var(--grl)":"#fff",border:"1px solid var(--bd2)",borderRadius:10}},t.l))),
+    
+    pr.type!=="szyna" && ce("div",{style:{display:"flex",gap:5}},
+       ce("input",{placeholder:"Szer (cm)",value:par.wCm||"",type:"number",onChange:e=>p.onChange({...pr,par:{...par,wCm:e.target.value}}),style:IST}),
+       ce("input",{placeholder:"Wys (cm)",value:par.hCm||"",type:"number",onChange:e=>p.onChange({...pr,par:{...par,hCm:e.target.value}}),style:IST})),
+    
+    pr.type==="szyna" && ce("input",{placeholder:"Długość (cm)",value:par.len||"",type:"number",onChange:e=>p.onChange({...pr,par:{...par,len:e.target.value}}),style:IST}),
 
-    (prod.type==="zaslona" || prod.type==="firana") && ce(Fragment, null,
-      ce("div",{style:{marginBottom:10}},
-        ce("select",{value:c.mars||"1.5",onChange:e=>p.onChange({...prod,c:{...c,mars:e.target.value}}),style:IST},
-          ce("option",{value:"1.5"},"Marszczenie 150% (x1.5)"),
-          ce("option",{value:"2.0"},"Marszczenie 200% (x2.0)")
-        )
-      ),
-      ce("div",{style:{marginBottom:"10px"}},
-        ce("label",{style:{fontSize:"11px",color:"var(--t2)"}},"Wybierz tkaninę:"),
-        ce("select",{value:prod.fabName||"",onChange:e=>{
+    (pr.type==="zaslona"||pr.type==="firana") && ce(Fragment,null,
+       ce("select",{value:c.mars||"1.5",onChange:e=>p.onChange({...pr,c:{...c,mars:e.target.value}}),style:IST},
+          ce("option",{value:"1.5"},"Marszczenie 150%"),ce("option",{value:"2.0"},"Marszczenie 200%")),
+       ce("select",{value:pr.fabName||"",onChange:e=>{
           var f=FABRICS.find(x=>x.name===e.target.value);
-          p.onChange({...prod,fabName:f?f.name:null,fabP:f?f.brutto:0,fabMan:null});
-        },style:IST},
-          ce("option",{value:""},"--- katalog tkanin ---"),
-          FABRICS.map(f=>ce("option",{key:f.name,value:f.name},f.name + " ("+f.brutto+"zł)"))
-        )
-      ),
-      ce("div",{},
-        ce("label",{style:{fontSize:"11px",color:"var(--t2)"}},"LUB wpisz własną cenę mb:"),
-        ce("input",{type:"number",placeholder:"Cena za 1 mb",value:prod.fabMan||"",onChange:e=>p.onChange({...prod,fabMan:e.target.value,fabName:null,fabP:null}),style:IST})
-      )
-    ),
-    res.total > 0 && ce("div",{style:{marginTop:"10px",padding:"8px",background:"var(--grl)",borderRadius:"8px",fontSize:"12px"}},
-      res.lines.map((l,i)=>ce("div",{key:i},l)),
-      ce("div",{style:{fontWeight:"700",borderTop:"1px solid var(--grm)",marginTop:"5px",paddingTop:"5px"}},"Razem: "+Math.round(res.total)+" zł")
-    )
+          p.onChange({...pr,fabName:f?f.name:"",fabP:f?f.brutto:0,fabMan:""});
+       },style:IST},
+          ce("option",{value:""},"--- wybierz tkaninę ---"),
+          FABRICS.map(f=>ce("option",{key:f.name,value:f.name},f.name+" ("+f.brutto+"zł)"))),
+       ce("input",{placeholder:"LUB własna cena mb",value:pr.fabMan||"",type:"number",onChange:e=>p.onChange({...pr,fabMan:e.target.value,fabName:"",fabP:0}),style:IST})),
+    
+    ce("div",{style:{padding:8,background:"var(--grl)",borderRadius:8,fontSize:12,fontWeight:700}},"Suma: "+Math.round(res.total)+" zł")
   );
 }
 
+// --- APP ---
 function App(){
   var [screen,setScreen]=useState("home");
-  var [clients,setClients]=useState([{id:1,name:"Przykład",addr:"Zielonka",rooms:[]}]);
-  var [curCId,setCurCId]=useState(null);
-  var [curRId,setCurRId]=useState(null);
+  var [clients,setClients]=useState([]);
+  var [cId,setCId]=useState(null);
+  var [rId,setRId]=useState(null);
   var [curWin,setCurWin]=useState(null);
   var [modal,setModal]=useState(null);
 
-  var client=clients.find(c=>c.id===curCId);
-  var room=client?client.rooms.find(r=>r.id===curRId):null;
+  var client = clients.find(c=>c.id===cId);
+  var room = client ? client.rooms.find(r=>r.id===rId) : null;
 
-  function generatePDF(){
+  function pdf(){
     var {jsPDF}=window.jspdf; var doc=new jsPDF();
     var img=new Image(); img.src=LOGO_URL;
     img.onload=function(){
       doc.addImage(img,'PNG',150,10,40,20);
-      doc.setFontSize(8); doc.setTextColor(100);
-      var lines = MY_DATA.split('\n');
-      lines.forEach((l,i)=>doc.text(l, 10, 12+(i*4)));
-      doc.line(10,30,200,30);
-      doc.setFontSize(14); doc.setTextColor(0); doc.text("OFERTA: "+client.name,10,40);
-      doc.setFontSize(10); doc.text("Adres: "+client.addr,10,46);
-      var y=60; var grand=0;
+      doc.setFontSize(8); doc.text(MY_DATA,10,15);
+      doc.line(10,32,200,32);
+      doc.setFontSize(14); doc.text("OFERTA: "+client.name,10,42);
+      var y=55; var total=0;
       client.rooms.forEach(r=>{
-        doc.setFontSize(12); doc.setTextColor(59,109,17); doc.text(r.name.toUpperCase(),10,y); y+=7;
-        doc.setTextColor(0);
+        doc.setFontSize(12); doc.text(r.name.toUpperCase(),10,y); y+=7;
         r.windows.forEach(w=>{
-            var wT=w.products.reduce((acc,pr)=>acc+calc(pr).total,0);
-            doc.setFontSize(10); doc.text("- "+w.name+": "+Math.round(wT)+" zl",15,y); y+=6;
-            grand+=wT;
+          var wt=w.products.reduce((a,p)=>a+calc(p).total,0);
+          doc.setFontSize(10); doc.text("- "+w.name+": "+Math.round(wt)+" zł",15,y); y+=6;
+          total+=wt;
         });
-        y+=4;
+        y+=5;
       });
-      doc.line(10,y,200,y);
-      doc.setFontSize(14); doc.setTextColor(59,109,17); doc.text("SUMA CALKOWITA: "+Math.round(grand)+" zl",10,y+10);
-      doc.save("Wycena_"+client.name+".pdf");
+      doc.setFontSize(14); doc.text("SUMA: "+Math.round(total)+" zł",10,y+5);
+      doc.save("Wycena.pdf");
     };
   }
 
   function Modal(){
     var [v1,setV1]=useState(""); var [v2,setV2]=useState("");
-    if(!modal) return null;
     return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
       ce("div",{style:{background:"#fff",padding:20,borderRadius:15,width:280}},
-        ce("h3",{style:{marginBottom:10}},"Dodaj"),
-        ce("input",{autoFocus:true,value:v1,onChange:e=>setV1(e.target.value),placeholder:"Nazwa",style:{...IST,marginBottom:10}}),
-        modal==="client" && ce("input",{value:v2,onChange:e=>setV2(e.target.value),placeholder:"Adres",style:{...IST,marginBottom:10}}),
+        ce("input",{placeholder:"Nazwa",value:v1,onChange:e=>setV1(e.target.value),style:IST,autoFocus:true}),
+        modal==="client" && ce("input",{placeholder:"Adres",value:v2,onChange:e=>setV2(e.target.value),style:IST}),
         ce("div",{style:{display:"flex",gap:10}},
-          Btn("OK",()=>{
-            if(modal==="client"){ var nc={id:Date.now(),name:v1,addr:v2,rooms:[]}; setClients(p=>[...p,nc]); setCurCId(nc.id); setScreen("rooms"); }
-            if(modal==="room") setClients(p=>p.map(c=>c.id===curCId?{...c,rooms:[...c.rooms,{id:Date.now(),name:v1,windows:[]}]}:c));
-            if(modal==="win"){ setCurWin({id:Date.now(),name:v1,products:[]}); setScreen("detail"); }
+          Btn("Dodaj",()=>{
+            if(modal==="client"){ 
+              var nc={id:Date.now(),name:v1||"Klient",addr:v2,rooms:[]};
+              setClients(p=>[...p,nc]); setCId(nc.id); setScreen("rooms");
+            }
+            if(modal==="room") setClients(p=>p.map(c=>c.id===cId?{...c,rooms:[...c.rooms,{id:Date.now(),name:v1||"Pokój",windows:[]}]}:c));
+            if(modal==="win"){ setCurWin({id:Date.now(),name:v1||"Okno",products:[]}); setScreen("detail"); }
             setModal(null);
           },true),
           Btn("Anuluj",()=>setModal(null))
@@ -198,38 +160,37 @@ function App(){
     );
   }
 
-  var content=null;
-  if(screen==="home") content=ce("div",null,
-    ce("h2",{style:{marginBottom:15}},"Klienci"),
-    clients.map(c=>ce("div",{key:c.id,onClick:()=>{setCurCId(c.id);setScreen("rooms")},style:{padding:15,background:"#fff",borderRadius:12,marginBottom:10,border:"1px solid var(--bd3)",cursor:"pointer"}},ce("b",null,c.name))),
+  var view=null;
+  if(screen==="home") view=ce("div",null,
+    ce("h2",{style:{marginBottom:15}},"Moi Klienci"),
+    clients.map(c=>ce("div",{key:c.id,onClick:()=>{setCId(c.id);setScreen("rooms")},style:{padding:15,background:"#fff",border:"1px solid var(--bd3)",borderRadius:12,marginBottom:10}},ce("b",null,c.name))),
     Btn("+ Nowy Klient",()=>setModal("client"),true)
   );
-  else if(screen==="rooms") content=ce("div",null,
+  else if(screen==="rooms") view=ce("div",null,
     ce("h2",null,client.name),
     ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"15px 0"}},
-      client.rooms.map(r=>ce("div",{key:r.id,onClick:()=>{setCurRId(r.id);setScreen("windows")},style:{padding:15,background:"var(--grl)",borderRadius:12,textAlign:"center",cursor:"pointer"}},r.name)),
-      ce("div",{onClick:()=>setModal("room"),style:{padding:15,border:"2px dashed var(--bd2)",borderRadius:12,textAlign:center,cursor:"pointer"}},"+ Pokój")
-    ),
-    ce("div",{style:{display:"flex",gap:10}},Btn("Generuj PDF",generatePDF,true),Btn("Wstecz",()=>setScreen("home")))
+      client.rooms.map(r=>ce("div",{key:r.id,onClick:()=>{setRId(r.id);setScreen("windows")},style:{padding:15,background:"var(--grl)",borderRadius:12,textAlign:"center"}},r.name)),
+      ce("div",{onClick:()=>setModal("room"),style:{padding:15,border:"2px dashed var(--bd2)",borderRadius:12,textAlign:"center"}},"+ Pokój")),
+    ce("div",{style:{display:"flex",gap:10}},Btn("PDF",pdf,true),Btn("Wstecz",()=>setScreen("home")))
   );
-  else if(screen==="windows") content=ce("div",null,
+  else if(screen==="windows") view=ce("div",null,
     ce("h2",null,room.name),
-    room.windows.map(w=>ce("div",{key:w.id,onClick:()=>{setCurWin(w);setScreen("detail")},style:{padding:12,background:"#fff",border:"1px solid var(--bd3)",borderRadius:10,marginBottom:10,cursor:"pointer"}},w.name)),
+    room.windows.map(w=>ce("div",{key:w.id,onClick:()=>{setCurWin(w);setScreen("detail")},style:{padding:12,background:"#fff",border:"1px solid var(--bd3)",borderRadius:10,marginBottom:10}},w.name)),
     ce("div",{style:{display:"flex",gap:10}},Btn("+ Okno",()=>setModal("win"),true),Btn("Wstecz",()=>setScreen("rooms")))
   );
-  else if(screen==="detail") content=ce("div",null,
+  else if(screen==="detail") view=ce("div",null,
     ce("h2",null,curWin.name),
     curWin.products.map((p,i)=>ce(ProdCard,{key:p.id,prod:p,onRemove:()=>setCurWin({...curWin,products:curWin.products.filter((_,j)=>j!==i)}),onChange:np=>setCurWin({...curWin,products:curWin.products.map((x,j)=>j===i?np:x)})})),
     ce("div",{style:{display:"flex",gap:10,marginTop:15}},
-      Btn("+ Produkt",()=>setCurWin({...curWin,products:[...curWin.products,{id:Date.now(),type:"zaslona",par:{},c:{}}]})),
+      Btn("+ Produkt",()=>setCurWin({...curWin,products:[...curWin.products,{id:Date.now(),type:"zaslona",par:{},c:{}} ]})),
       Btn("Zapisz",()=>{
-          setClients(prev=>prev.map(c=>c.id===curCId?{...c,rooms:c.rooms.map(r=>r.id===curRId?{...r,windows:r.windows.find(w=>w.id===curWin.id)?r.windows.map(w=>w.id===curWin.id?curWin:w):[...r.windows,curWin]}:r)}:c));
-          setScreen("windows");
+        setClients(p=>p.map(c=>c.id===cId?{...c,rooms:c.rooms.map(r=>r.id===rId?{...r,windows:r.windows.find(w=>w.id===curWin.id)?r.windows.map(w=>w.id===curWin.id?curWin:w):[...r.windows,curWin]}:r)}:c));
+        setScreen("windows");
       },true)
     )
   );
 
-  return ce("div",null,content,modal&&ce(Modal));
+  return ce("div",null,view,modal&&ce(Modal));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(ce(App));
 })();
