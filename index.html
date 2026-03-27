@@ -2,37 +2,60 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Porter Design - Kalkulator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PD Porter Design - Kalkulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-slate-50 p-4">
-    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-lg p-6 border-t-4 border-green-600">
-        <h1 class="text-xl font-bold mb-4">PD Porter Design</h1>
-        <div id="db-status" class="text-xs p-2 mb-4 rounded bg-gray-100 text-gray-500 text-center">
-            Sprawdzanie połączenia z bazą...
+<body class="bg-gray-100 p-4 font-sans text-gray-900">
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border-t-8 border-green-600">
+        <div class="p-6">
+            <h1 class="text-2xl font-bold mb-1">PD Porter Design</h1>
+            <p class="text-sm text-gray-500 mb-6 font-medium tracking-wide">SYSTEM WYCENY OFERTOWEJ</p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Szerokość okna (cm)</label>
+                    <input type="number" id="width" oninput="calculate()" class="w-full text-xl p-3 border-2 border-gray-200 rounded-xl focus:border-green-500 outline-none transition-all shadow-sm" placeholder="np. 200">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Tkanina</label>
+                    <select id="fabricSelect" onchange="calculate()" class="w-full text-lg p-3 border-2 border-gray-200 rounded-xl focus:border-green-500 outline-none bg-white shadow-sm cursor-pointer">
+                        <option value="160">1310 (160 zł/m)</option>
+                        <option value="230">Alise (230 zł/m)</option>
+                        <option value="195">Billy Dim-Out (195 zł/m)</option>
+                        <option value="264">Bercy FR (264 zł/m)</option>
+                        <option value="165">Alma (165 zł/m)</option>
+                        <option value="250">Altamira (250 zł/m)</option>
+                    </select>
+                </div>
+
+                <div id="resultBox" class="mt-8 p-6 bg-green-50 rounded-2xl border-2 border-green-200 text-center hidden">
+                    <p class="text-green-800 text-sm font-medium uppercase tracking-widest">Szacowany koszt</p>
+                    <div id="totalPrice" class="text-4xl font-black text-green-700 mt-1">0,00 zł</div>
+                    <p class="text-xs text-green-600 mt-2 italic">Cena brutto (z VAT)</p>
+                </div>
+            </div>
         </div>
-        <input type="number" id="w" class="w-full p-3 border rounded-xl mb-4" placeholder="Szerokość okna (cm)">
-        <div id="output" class="text-sm space-y-2"></div>
     </div>
 
     <script>
-        const supabaseUrl = 'https://rkcidwuszjvfwxszotnb.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3Vzanp2Znd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDU4NzIsImV4cCI6MjA5MDE4MTg3Mn0.N-frD06x0MzSg8dHmz-xneA16QvVrBmAYUg3ileNpXw';
-        const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        function calculate() {
+            const w = document.getElementById('width').value;
+            const pricePerMeter = document.getElementById('fabricSelect').value;
+            const resBox = document.getElementById('resultBox');
+            const totalDisplay = document.getElementById('totalPrice');
 
-        async function init() {
-            const { data, error } = await _supabase.from('fabrics').select('*').limit(5);
-            const status = document.getElementById('db-status');
-            if (error) {
-                status.innerText = "Błąd bazy: " + error.message;
-                status.className = "text-xs p-2 mb-4 rounded bg-red-100 text-red-600 text-center";
+            if (w > 0) {
+                // PRZYKŁAD LOGIKI: Szerokość (w metrach) * cena tkaniny * narzut 1.5
+                const result = (w / 100) * pricePerMeter * 1.5;
+                
+                totalDisplay.innerText = result.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' });
+                resBox.classList.remove('hidden');
             } else {
-                status.innerText = "Połączono z bazą tkanin ";
-                status.className = "text-xs p-2 mb-4 rounded bg-green-100 text-green-700 text-center";
+                resBox.classList.add('hidden');
             }
         }
-        init();
     </script>
 </body>
 </html>
