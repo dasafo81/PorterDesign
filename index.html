@@ -3,83 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Porter Design - System Ofertowy</title>
+    <title>Porter Design - Kalkulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .active-chip { background-color: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; font-weight: bold; box-shadow: 0 0 0 1px #22c55e; }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        @media print { .no-print { display: none !important; } .print-only { display: block !important; } body { background: white; padding: 0; } }
+        .active-chip { background-color: #f0fdf4 !important; border-color: #22c55e !important; color: #166534 !important; font-weight: bold; }
+        .card { background: white; border-radius: 24px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        input { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: #22c55e; }
+        .chip { cursor: pointer; border: 2px solid #f1f5f9; padding: 8px; border-radius: 12px; text-align: center; font-size: 11px; transition: all 0.2s; background: #fff; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-40 text-slate-800">
+<body class="bg-slate-50 min-h-screen pb-40 font-sans">
 
-    <div class="max-w-3xl mx-auto p-4 space-y-6">
-        <header class="bg-white p-6 rounded-[2rem] shadow-sm border no-print flex justify-between items-center">
-            <div class="flex-1 mr-4">
-                <h1 class="text-2xl font-black text-green-700 italic leading-none">PORTER DESIGN</h1>
-                <input type="text" id="client-input" placeholder="Klient / Inwestycja" class="mt-2 text-lg border-b-2 border-slate-100 outline-none focus:border-green-500 w-full bg-transparent py-1 transition-all">
+    <div class="max-w-2xl mx-auto p-4 space-y-6">
+        <div class="card p-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-black text-green-700 italic">PORTER DESIGN</h1>
+                <input type="text" id="clientName" placeholder="Imię i nazwisko klienta" class="mt-2 w-full">
             </div>
-            <button onclick="addRoom()" class="bg-green-600 text-white px-6 py-4 rounded-2xl font-bold shadow-lg shadow-green-100 hover:bg-green-700 active:scale-95 transition-all whitespace-nowrap">
-                <i class="fas fa-plus mr-2"></i> Dodaj Pokój
+            <button onclick="addRoom()" class="bg-green-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg hover:bg-green-700 transition-all">
+                + Dodaj Pokój
             </button>
-        </header>
+        </div>
 
-        <div id="rooms-container" class="space-y-10"></div>
+        <div id="roomsList" class="space-y-6"></div>
     </div>
 
-    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] z-50 no-print">
-        <div class="max-w-3xl mx-auto flex justify-between items-center">
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t p-6 shadow-2xl z-50">
+        <div class="max-w-2xl mx-auto flex justify-between items-center">
             <div>
-                <p class="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Suma całkowita oferty</p>
-                <p id="grand-total" class="text-4xl font-black text-green-600 tracking-tighter">0,00 zł</p>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Suma do zapłaty</p>
+                <p id="grandTotal" class="text-3xl font-black text-green-600">0,00 zł</p>
             </div>
-            <button onclick="window.print()" class="bg-slate-900 text-white px-10 py-4 rounded-2xl font-bold flex items-center gap-3 hover:bg-black transition-all shadow-xl">
-                <i class="fas fa-file-pdf"></i> GENERUJ PDF
+            <button onclick="window.print()" class="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold">
+                <i class="fas fa-print mr-2"></i> DRUKUJ PDF
             </button>
         </div>
     </div>
 
     <script>
-        let state = { rooms: [] };
+        let state = {
+            rooms: [
+                { id: 1, name: 'Salon', windows: [{ id: 101, type: 'Zasłony', szer: '', wys: '', szycie: 100, marsz: 1.5, kat: 160, total: 0 }] }
+            ]
+        };
+
+        function render() {
+            const container = document.getElementById('roomsList');
+            container.innerHTML = '';
+
+            state.rooms.forEach(room => {
+                const roomDiv = document.createElement('div');
+                roomDiv.className = 'card overflow-hidden';
+                roomDiv.innerHTML = `
+                    <div class="bg-slate-50 px-6 py-3 border-b flex justify-between items-center">
+                        <input type="text" value="${room.name}" onchange="updateRoomName(${room.id}, this.value)" class="bg-transparent border-none p-0 font-bold text-xs uppercase tracking-widest text-slate-500">
+                        <button onclick="deleteRoom(${room.id})" class="text-slate-300 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <div class="p-6 space-y-6" id="winList-${room.id}"></div>
+                    <div class="px-6 pb-6">
+                        <button onclick="addWindow(${room.id})" class="w-full py-3 border-2 border-dashed border-slate-100 rounded-xl text-slate-400 text-xs font-bold hover:bg-slate-50 transition-all">+ DODAJ OKNO</button>
+                    </div>
+                `;
+                container.appendChild(roomDiv);
+
+                const winContainer = document.getElementById(`winList-${room.id}`);
+                room.windows.forEach(win => {
+                    const winDiv = document.createElement('div');
+                    winDiv.className = 'p-4 bg-slate-50 rounded-2xl space-y-4 border border-slate-100';
+                    winDiv.innerHTML = `
+                        <div class="grid grid-cols-5 gap-1">
+                            ${['Zasłony', 'Firany', 'Żaluzje', 'KAES', 'Rolety'].map(t => `
+                                <div onclick="updateWin(${room.id}, ${win.id}, 'type', '${t}')" class="chip ${win.type === t ? 'active-chip' : ''}">${t}</div>
+                            `).join('')}
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="number" placeholder="Szerokość" value="${win.szer}" oninput="updateWin(${room.id}, ${win.id}, 'szer', this.value)">
+                            <input type="number" placeholder="Wysokość" value="${win.wys}" oninput="updateWin(${room.id}, ${win.id}, 'wys', this.value)">
+                        </div>
+                        ${(win.type === 'Zasłony' || win.type === 'Firany') ? `
+                            <div class="grid grid-cols-2 gap-2">
+                                <div onclick="updateWin(${room.id}, ${win.id}, 'szycie', 100)" class="chip ${win.szycie == 100 ? 'active-chip' : ''}">FLEX</div>
+                                <div onclick="updateWin(${room.id}, ${win.id}, 'szycie', 110)" class="chip ${win.szycie == 110 ? 'active-chip' : ''}">WAVE</div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div onclick="updateWin(${room.id}, ${win.id}, 'kat', 160)" class="chip ${win.kat == 160 ? 'active-chip' : ''}">BASIC</div>
+                                <div onclick="updateWin(${room.id}, ${win.id}, 'kat', 190)" class="chip ${win.kat == 190 ? 'active-chip' : ''}">STD</div>
+                                <div onclick="updateWin(${room.id}, ${win.id}, 'kat', 240)" class="chip ${win.kat == 240 ? 'active-chip' : ''}">PREM</div>
+                            </div>
+                        ` : ''}
+                        <div class="flex justify-between items-center pt-2">
+                            <button onclick="deleteWin(${room.id}, ${win.id})" class="text-[10px] text-slate-300 font-bold uppercase">Usuń okno</button>
+                            <span class="font-black text-slate-700">${win.total.toLocaleString('pl-PL', {style:'currency', currency:'PLN'})}</span>
+                        </div>
+                    `;
+                    winContainer.appendChild(winDiv);
+                });
+            });
+            updateGrandTotal();
+        }
+
+        function updateWin(rId, wId, key, val) {
+            const room = state.rooms.find(r => r.id === rId);
+            const win = room.windows.find(w => w.id === wId);
+            win[key] = val;
+            
+            // Obliczenia
+            if (win.type === 'Zasłony' || win.type === 'Firany') {
+                const s = parseFloat(win.szer) || 0;
+                win.total = ((s * win.marsz) / 100) * (parseFloat(win.kat) + parseFloat(win.szycie));
+            } else if (win.type === 'Żaluzje') {
+                const s = parseFloat(win.szer) || 0;
+                const w = parseFloat(win.wys) || 0;
+                win.total = Math.max((s * w) / 10000, 1) * 450;
+            } else { win.total = 0; }
+            
+            render();
+        }
 
         function addRoom() {
-            const room = {
-                id: Date.now(),
-                name: "Nowe pomieszczenie",
-                windows: []
-            };
-            state.rooms.push(room);
-            render();
-            addWindow(room.id);
-        }
-
-        function removeRoom(roomId) {
-            state.rooms = state.rooms.filter(r => r.id !== roomId);
+            state.rooms.push({ id: Date.now(), name: 'Nowy pokój', windows: [] });
             render();
         }
 
-        function addWindow(roomId) {
-            const room = state.rooms.find(r => r.id === roomId);
-            room.windows.push({
-                id: Date.now() + Math.random(),
-                type: 'Zasłony',
-                szer: '',
-                wys: '',
-                szycie: 100, // Flex
-                marsz: 1.5,
-                kat: 160,
-                total: 0
-            });
+        function addWindow(rId) {
+            const room = state.rooms.find(r => r.id === rId);
+            room.windows.push({ id: Date.now(), type: 'Zasłony', szer: '', wys: '', szycie: 100, marsz: 1.5, kat: 160, total: 0 });
             render();
         }
 
-        function removeWindow(roomId, windowId) {
-            const room = state.rooms.find(r => r.id === roomId);
-            room.windows = room.windows.filter(w => w.id !== windowId);
-            render();
+        function deleteRoom(id) { state.rooms = state.rooms.filter(r => r.id !== id); render(); }
+        function deleteWin(rId, wId) { 
+            const room = state.rooms.find(r => r.id === rId);
+            room.windows = room.windows.filter(w => w.id !== wId); 
+            render(); 
+        }
+        function updateRoomName(id, val) { state.rooms.find(r => r.id === id).name = val; }
+
+        function updateGrandTotal() {
+            let total = 0;
+            state.rooms.forEach(r => r.windows.forEach(w => total += w.total));
+            document.getElementById('grandTotal').innerText = total.toLocaleString('pl-PL', {style:'currency', currency:'PLN'});
         }
 
-        function update(roomId, winId, field, val) {
-            const room = state.rooms.find(r => r.id === roomId);
-            const win = room
+        render();
+    </script>
+</body>
+</html>
