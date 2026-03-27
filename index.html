@@ -1,8 +1,32 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Porter Design</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#ffffff;--bg2:#f7f7f5;
+      --bd1:#d0d0cc;--bd2:#e0e0dc;--bd3:#ececea;
+      --t1:#1a1a18;--t2:#6b6b66;--t3:#a0a09c;
+      --gr:#3B6D11;--grl:#EAF3DE;--grd:#27500A;--grm:#97C459;
+      --wb:#FAEEDA;--wbd:#EF9F27;--wt:#633806;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--t1);min-height:100vh;}
+    #root{max-width:480px;margin:0 auto;background:var(--bg);min-height:100vh;padding:1rem;}
+    button,input,select{font-family:inherit;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
 (function(){
 "use strict";
 var ce=React.createElement,useState=React.useState,Fragment=React.Fragment;
 
-// --- DANE I CENNIKI ---
 var FABRICS=[
   {name:"Alise",brutto:230,prod:"FIBERO G.ROJEK",width:300},
   {name:"Alma",brutto:165,prod:"Ridex",width:315},
@@ -22,9 +46,9 @@ var FABRICS=[
 ];
 
 var PROD_TYPES=[
-  {id:"zaslona",label:"Zasłona"},
+  {id:"zaslona",label:"Zas\u0142ona"},
   {id:"firana",label:"Firana"},
-  {id:"zaluzja",label:"Żaluzja"},
+  {id:"zaluzja",label:"\u017daluzja"},
   {id:"roleta",label:"Roleta"},
   {id:"szyna",label:"Szyna KAES"},
   {id:"karnisz",label:"Karnisz el."}
@@ -39,7 +63,6 @@ var KUNIV={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,55
 var KN={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
 var KP={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
 
-// --- LOGIKA OBLICZEŃ ---
 function lookup(val,obj){
   var keys=Object.keys(obj).map(Number).sort(function(a,b){return a-b;});
   var k=keys.find(function(k){return k>=val;})||keys[keys.length-1];
@@ -51,12 +74,11 @@ function calc(p){
   var fabP=p.fabMan!=null?p.fabMan:(p.fabP!=null?p.fabP:null);
   var fabW=p.fabW||0;
   var total=0,lines=[],warn=null;
-
   if(p.type==="zaslona"||p.type==="firana"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
     var belka=fabW,mars=+(c.mars||"1.5"),szycie=c.sz==="wave"?110:100;
     var dekro=c.dekro==="tak",hM=hCm/100;
-    if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkaninę":null};
+    if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
     var useA2=belka>0&&hCm>belka;
     (p.panels||[]).forEach(function(pn){
       var pw=pn.w||wCm,pm=pw/100,z,kt,ks,koszt;
@@ -71,7 +93,7 @@ function calc(p){
         ks=dekro?+(z*sv2).toFixed(2):+(z*szycie).toFixed(2);
       }
       koszt=kt+ks;total+=koszt;
-      lines.push(pn.side+" "+pw+"cm · "+z+"mb → "+koszt.toFixed(2).replace(".",",")+" zł");
+      lines.push(pn.side+" "+pw+"cm \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142");
     });
   }else if(p.type==="roleta"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
@@ -83,17 +105,16 @@ function calc(p){
     if(rt==="city"){rr=lookup(wCm,RCITY);total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));}
     else if(rt==="duo"){rr=lookup(wCm,RDUO);total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*280).toFixed(2))+parseFloat((pow*(200+rtk2)).toFixed(2));}
     else{rr=lookup(wCm,REL);total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));}
-    lines.push("Roleta "+rt+" "+wCm+"×"+hCm+"cm · "+pow+"m²");
+    lines.push("Roleta "+rt+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2");
   }else if(p.type==="szyna"){
-    var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0;
-    if(!lenCm)return{total:0,lines:[],warn:null};
-    var lenMb = lenCm / 100;
+    var len=par.len||0,arc=par.arc||0,pts=par.pts||0;
+    if(!len)return{total:0,lines:[],warn:null};
     var baz;
-    if(c.ks==="wave"){var r=lookup(lenCm,KW[c.kk||"biala"]);baz=r.p;}
-    else baz=+(lenMb*80).toFixed(2);
+    if(c.ks==="wave"){var r=lookup(Math.round(len*100),KW[c.kk||"biala"]);baz=r.p;}
+    else baz=+(len*80).toFixed(2);
     total=baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*60).toFixed(2));
-    lines.push("KAES "+(c.ks||"flex")+" "+lenCm+"cm");
-    if(c.km==="sciana")warn="Ścienny — dolicz uchwyty ścienne.";
+    lines.push("KAES "+(c.ks||"flex")+" "+len+"mb");
+    if(c.km==="sciana")warn="\u015acienny \u2014 dolicz uchwyty \u015bcienne.";
   }else if(p.type==="karnisz"){
     var len=par.len||0,pt=par.pt||0,arc=par.arc||0;
     if(!len)return{total:0,lines:[],warn:null};
@@ -101,18 +122,13 @@ function calc(p){
     var r=lookup(len,st);
     total=r.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+r.k+"cm");
-  }else if(p.type==="zaluzja"){
-    var wCm=par.wCm||0,hCm=par.hCm||0;
-    if(!wCm||!hCm)return{total:0,lines:[],warn:null};
-    var pow = Math.max(0.5, (wCm/100)*(hCm/100)); // min 0.5m2
-    total = pow * 450; // Przykładowa cena 450zł/m2
-    lines.push("Żaluzja " + wCm + "x" + hCm + "cm · " + pow.toFixed(2) + "m²");
   }
   return{total:total,lines:lines,warn:warn};
 }
 
-// --- KOMPONENTY UI ---
+// merge helper
 function mg(a,b){return Object.assign({},a,b);}
+
 var IST={padding:"5px 8px",fontSize:13,border:"0.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",width:"100%"};
 
 function Chip(p){
@@ -134,23 +150,24 @@ function FabPicker(p){
   return ce("div",{style:{border:"0.5px solid var(--bd2)",borderRadius:8,overflow:"hidden",marginBottom:8}},
     ce("div",{style:{padding:"5px 9px",background:"var(--bg2)",fontSize:11,fontWeight:500,color:"var(--t2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
       ce("span",{},"TKANINA"),
-      sf?ce("span",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:5,padding:"2px 7px",color:"var(--grd)",fontSize:11}},p.fabName+" · "+sf.brutto+" zł/mb · "+sf.width+"cm"):null,
+      sf?ce("span",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:5,padding:"2px 7px",color:"var(--grd)",fontSize:11}},p.fabName+" \xb7 "+sf.brutto+" z\u0142/mb \xb7 "+sf.width+"cm"):null,
       !p.fabName&&p.fabMan==null?ce("span",{style:{color:"var(--t3)"}},"nie wybrano"):null,
-      p.fabMan!=null?ce("span",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:5,padding:"2px 7px",color:"var(--grd)",fontSize:11}},"ręczna: "+p.fabMan+" zł/mb"):null
+      p.fabMan!=null?ce("span",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:5,padding:"2px 7px",color:"var(--grd)",fontSize:11}},"r\u0119czna: "+p.fabMan+" z\u0142/mb"):null
     ),
-    ce("input",{value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny...",style:{width:"100%",padding:"5px 9px",fontSize:12,border:"none",borderBottom:"0.5px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box"}}),
+    ce("input",{value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj po nazwie lub producencie...",style:{width:"100%",padding:"5px 9px",fontSize:12,border:"none",borderBottom:"0.5px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box"}}),
     ce("div",{style:{maxHeight:150,overflowY:"auto"}},
       list.map(function(f){
         return ce("div",{key:f.name,onClick:function(){p.onSelect(f);},style:{display:"flex",alignItems:"center",gap:8,padding:"5px 9px",borderBottom:"0.5px solid var(--bd3)",cursor:"pointer",fontSize:12,background:p.fabName===f.name?"var(--grl)":"var(--bg)"}},
           ce("span",{style:{flex:1,fontWeight:500,color:"var(--t1)"}},f.name),
-          ce("span",{style:{fontSize:10,color:"var(--t3)"}},f.prod),
-          ce("span",{style:{color:"var(--grd)",fontWeight:500}},f.brutto+" zł")
+          ce("span",{style:{fontSize:10,color:"var(--t3)",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod),
+          ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap"}},f.width+"cm"),
+          ce("span",{style:{color:"var(--grd)",fontWeight:500,whiteSpace:"nowrap"}},f.brutto+" z\u0142")
         );
       })
     ),
     ce("div",{style:{padding:"5px 9px",display:"flex",alignItems:"center",gap:8,borderTop:"0.5px solid var(--bd3)"}},
-      ce("label",{style:{fontSize:11,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
-      ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"0",style:{width:60,padding:"3px 7px",fontSize:12,border:"0.5px solid var(--bd2)",borderRadius:5,textAlign:"right"}})
+      ce("label",{style:{fontSize:11,color:"var(--t2)",flex:1}},"Lub wpisz cen\u0119 r\u0119cznie (z\u0142/mb):"),
+      ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:80,padding:"3px 7px",fontSize:12,border:"0.5px solid var(--bd2)",borderRadius:5,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}})
     )
   );
 }
@@ -162,7 +179,7 @@ function ProdCard(p){
   function sp(k,v){p.onChange(mg(prod,{par:mg(par,{[k]:+v||0})}));}
   function sf(f){p.onChange(mg(prod,{fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null}));}
   function sfm(v){p.onChange(mg(prod,{fabName:null,fabP:null,fabW:null,fabMan:v}));}
-  function addPan(){p.onChange(mg(prod,{panels:(prod.panels||[]).concat([{side:"Całość",w:""}])}));}
+  function addPan(){p.onChange(mg(prod,{panels:(prod.panels||[]).concat([{side:"Zas\u0142ona lewa",w:""}])}));}
   function remPan(j){p.onChange(mg(prod,{panels:(prod.panels||[]).filter(function(_,i){return i!==j;})}));}
   function setPS(j,v){p.onChange(mg(prod,{panels:(prod.panels||[]).map(function(x,i){return i===j?mg(x,{side:v}):x;})}));}
   function setPW(j,v){p.onChange(mg(prod,{panels:(prod.panels||[]).map(function(x,i){return i===j?mg(x,{w:+v||0}):x;})}));}
@@ -175,18 +192,18 @@ function ProdCard(p){
     return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){p.onChange(mg(prod,{type:t.id,c:{},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null}));}});
   });
 
-  var panOpts=["Zasłona lewa","Zasłona prawa","Firana","Całość"];
+  var panOpts=["Zas\u0142ona lewa","Zas\u0142ona prawa","Firana \u015brodkowa","Panel lewy","Panel prawy","Ca\u0142o\u015b\u0107"];
   var form=null;
 
   if(prod.type==="zaslona"||prod.type==="firana"){
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-        ce(Fld,{label:"Szer. karnisza (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},style:IST})),
-        ce(Fld,{label:"Wysokość (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},style:IST}))
+        ce(Fld,{label:"Szer. karnisza (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 195",style:IST})),
+        ce(Fld,{label:"Wysoko\u015b\u0107 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 260",style:IST}))
       ),
       ce(Chips,{items:[
-        ce(Chip,{key:"fl",label:"Flex",active:!c.sz||c.sz==="flex",onClick:function(){sc("sz","flex");}}),
-        ce(Chip,{key:"wv",label:"Wave",active:c.sz==="wave",onClick:function(){sc("sz","wave");}}),
+        ce(Chip,{key:"fl",label:"Flex 100 z\u0142/mb",active:!c.sz||c.sz==="flex",onClick:function(){sc("sz","flex");}}),
+        ce(Chip,{key:"wv",label:"Wave 110 z\u0142/mb",active:c.sz==="wave",onClick:function(){sc("sz","wave");}}),
         ce(Chip,{key:"m1",label:"150%",active:!c.mars||c.mars==="1.5",onClick:function(){sc("mars","1.5");}}),
         ce(Chip,{key:"m2",label:"200%",active:c.mars==="2.0",onClick:function(){sc("mars","2.0");}}),
         ce(Chip,{key:"dk",label:"Dekro",active:c.dekro==="tak",onClick:function(){tc("dekro");}})
@@ -194,238 +211,275 @@ function ProdCard(p){
       ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,onSelect:sf,onManual:sfm}),
       (prod.panels||[]).map(function(pn,j){
         return ce("div",{key:j,style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},
-          ce("select",{value:pn.side,onChange:function(ev){setPS(j,ev.target.value);},style:{flex:1,padding:"3px 6px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6}},
+          ce("select",{value:pn.side,onChange:function(ev){setPS(j,ev.target.value);},style:{flex:1,padding:"3px 6px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}},
             panOpts.map(function(o){return ce("option",{key:o},o);})),
-          ce("input",{type:"number",value:pn.w||"",onChange:function(ev){setPW(j,ev.target.value);},placeholder:"szer",style:{width:60,padding:"3px 6px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6,textAlign:"center"}}),
-          ce("button",{onClick:function(){remPan(j);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:16}},"×")
+          ce("input",{type:"number",value:pn.w||"",onChange:function(ev){setPW(j,ev.target.value);},placeholder:"cm",style:{width:60,padding:"3px 6px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",textAlign:"center"}}),
+          ce("span",{style:{fontSize:11,color:"var(--t2)"}},"cm"),
+          ce("button",{onClick:function(){remPan(j);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:16}},"\xd7")
         );
       }),
-      ce("button",{onClick:addPan,style:{padding:"3px 9px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6,cursor:"pointer",marginTop:2}},"+ Panel")
+      ce("button",{onClick:addPan,style:{padding:"3px 9px",fontSize:11,border:"0.5px solid var(--bd2)",borderRadius:6,background:"transparent",color:"var(--t1)",cursor:"pointer",marginTop:2}},"+ Panel")
     );
-  }else if(prod.type==="roleta" || prod.type==="zaluzja"){
+  }else if(prod.type==="roleta"){
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-        ce(Fld,{label:"Szerokość (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},style:IST})),
-        ce(Fld,{label:"Wysokość (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},style:IST}))
+        ce(Fld,{label:"Szeroko\u015b\u0107 (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
+        ce(Fld,{label:"D\u0142ugo\u015b\u0107 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
       ),
-      prod.type==="roleta" ? ce(Fragment, null, 
-        ce(Chips,{items:[
-          ce(Chip,{key:"ct",label:"City",active:!c.rt||c.rt==="city",onClick:function(){sc("rt","city");}}),
-          ce(Chip,{key:"du",label:"Duo",active:c.rt==="duo",onClick:function(){sc("rt","duo");}}),
-          ce(Chip,{key:"el",label:"Elektryczna",active:c.rt==="el",onClick:function(){sc("rt","el");}})
-        ]}),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,onSelect:sf,onManual:sfm})
-      ) : ce("div", {style:{fontSize:11, color:"var(--t2)"}}, "Cennik żaluzji: 450zł/m2 (min. 0.5m2)")
+      ce(Chips,{items:[
+        ce(Chip,{key:"ct",label:"City",active:!c.rt||c.rt==="city",onClick:function(){sc("rt","city");}}),
+        ce(Chip,{key:"du",label:"Duo",active:c.rt==="duo",onClick:function(){sc("rt","duo");}}),
+        ce(Chip,{key:"el",label:"Elektryczna",active:c.rt==="el",onClick:function(){sc("rt","el");}})
+      ]}),
+      ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,onSelect:sf,onManual:sfm}),
+      ce(Chips,{items:[
+        c.rt==="duo"?ce(Chip,{key:"b1",label:"2:Basic 160",active:!c.rtk2||c.rtk2==="160",onClick:function(){sc("rtk2","160");}}):null,
+        c.rt==="duo"?ce(Chip,{key:"b2",label:"2:Standard 190",active:c.rtk2==="190",onClick:function(){sc("rtk2","190");}}):null,
+        c.rt==="duo"?ce(Chip,{key:"b3",label:"2:Premium 250",active:c.rtk2==="250",onClick:function(){sc("rtk2","250");}}):null,
+        ce(Chip,{key:"bb",label:"+b\u0119benek 11z\u0142",active:c.rb==="tak",onClick:function(){tc("rb");}})
+      ]})
     );
   }else if(prod.type==="szyna"){
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-        ce(Fld,{label:"Długość (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
-        ce(Fld,{label:"Łuki (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},style:IST}))
+        ce(Fld,{label:"D\u0142ugo\u015b\u0107 (mb)"},ce("input",{type:"number",step:"0.1",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 2.5",style:IST})),
+        ce(Fld,{label:"Gi\u0119cie \u0142uk (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"Gi\u0119cie pkt (szt.)"},ce("input",{type:"number",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST}))
       ),
       ce(Chips,{items:[
-        ce(Chip,{key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
+        ce(Chip,{key:"fl",label:"Flex 80 z\u0142/mb",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
         ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
-        c.ks==="wave"?ce(Chip,{key:"bi",label:"Biała",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}):null,
+        c.ks==="wave"?ce(Chip,{key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}):null,
         c.ks==="wave"?ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}):null,
+        ce(Chip,{key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
       ]})
     );
-  } else if(prod.type==="karnisz"){
-    form=ce("div", {style:{fontSize:12, color:"var(--t2)"}}, "Konfiguracja karnisza elektrycznego...");
+  }else if(prod.type==="karnisz"){
+    var nap=[{v:"am75",l:"A-OK AM75 644z\u0142"},{v:"am50",l:"A-OK AM50 1000z\u0142"},{v:"mdct",l:"Movelite DCT 902z\u0142"},{v:"mrts",l:"Movelite RTS 1056z\u0142"},{v:"glydea",l:"Glydea 2268z\u0142"},{v:"irismo",l:"Irismo 2182z\u0142"}];
+    var pil=[{v:"brak",l:"Brak st."},{v:"aok1b",l:"Pilot bia\u0142y 130z\u0142"},{v:"aok1c",l:"Pilot czarny 148z\u0142"},{v:"tuya",l:"Tuya 340z\u0142"},{v:"situo",l:"Situo 284z\u0142"},{v:"tahoma",l:"TaHoma 1390z\u0142"}];
+    form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+        ce(Fld,{label:"D\u0142ugo\u015b\u0107 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
+        ce(Fld,{label:"Gi\u0119cie pkt (szt.)"},ce("input",{type:"number",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"Gi\u0119cie \u0142uk (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST}))
+      ),
+      ce(Chips,{items:[
+        ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
+        ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
+      ]}),
+      ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})}),
+      ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})}
+      )
+    );
+  }else{
+    form=ce("div",{style:{fontSize:12,color:"var(--t2)"}},"Cennik wkr\xf3tce.");
   }
 
   return ce("div",{style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,overflow:"hidden",marginBottom:8}},
     ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",display:"flex",alignItems:"center",gap:8}},
-      ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--t1)",flex:1}},lbl+(prod.fabName?" · "+prod.fabName:"")),
-      ce("span",{style:{fontSize:12,fontWeight:500,color:"var(--gr)"}},eff?Math.round(eff)+" zł":""),
-      ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"var(--t3)"}},"×")
+      ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--t1)",flex:1}},lbl+(prod.fabName?" \xb7 "+prod.fabName:"")),
+      ce("span",{style:{fontSize:12,fontWeight:500,color:"var(--gr)"}},eff?Math.round(eff)+" z\u0142":""),
+      ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"var(--t3)"}},"\xd7")
     ),
     ce("div",{style:{padding:"11px 12px",display:"flex",flexDirection:"column",gap:8}},
       ce(Chips,{items:typeChips}),
       form,
+      warn?ce("div",{style:{background:"var(--wb)",border:"0.5px solid var(--wbd)",borderRadius:6,padding:"5px 9px",fontSize:11,color:"var(--wt)"}},warn):null,
       (total>0&&prod.mp==null)?ce("div",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:8,padding:"8px 10px"}},
         lines.map(function(l,i){return ce("div",{key:i,style:{fontSize:12,color:"var(--gr)"}},l);}),
         ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:500,color:"var(--grd)",marginTop:4,paddingTop:4,borderTop:"1px solid var(--grm)"}},
-          ce("span",{},"Razem"),ce("span",{},total.toFixed(2).replace(".",",")+" zł"))
+          ce("span",{},"Razem"),ce("span",{},total.toFixed(2).replace(".",",")+" z\u0142"))
       ):null,
       ce("div",{style:{display:"flex",alignItems:"center",gap:8,paddingTop:8,borderTop:"0.5px solid var(--bd3)"}},
-        ce("label",{style:{fontSize:11,color:"var(--t2)",flex:1}},"Własna cena (nadpisuje):"),
-        ce("input",{type:"number",value:prod.mp!=null?prod.mp:"",onChange:function(ev){p.onChange(mg(prod,{mp:ev.target.value===""?null:+ev.target.value}));},placeholder:"zł",style:{width:70,padding:"4px 7px",fontSize:12,border:"0.5px solid var(--bd2)",borderRadius:6,textAlign:"right"}})
+        ce("label",{style:{fontSize:11,color:"var(--t2)",flex:1}},"W\u0142asna cena ko\u0144cowa (nadpisuje):"),
+        ce("input",{type:"number",value:prod.mp!=null?prod.mp:"",onChange:function(ev){p.onChange(mg(prod,{mp:ev.target.value===""?null:+ev.target.value}));},placeholder:"z\u0142",style:{width:80,padding:"4px 7px",fontSize:12,border:"0.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        prod.mp!=null?ce("button",{onClick:function(){p.onChange(mg(prod,{mp:null}));},style:{border:"none",background:"none",cursor:"pointer",fontSize:11,color:"var(--t3)"}},"wyczy\u015b\u0107"):null
       )
     )
   );
 }
 
-// --- GŁÓWNA APLIKACJA ---
 function App(){
   var a=useState("home"),screen=a[0],setScreen=a[1];
-  var b=useState([
-    {id:1,name:"Kowalski Jan",addr:"ul. Wiśniowa 12",rooms:[{id:101, name:"Salon", icon:"🛋️", windows:[]}]}
-  ]),clients=b[0],setClients=b[1];
-  
-  var c2=useState(null),curClientId=c2[0],setCurClientId=c2[1];
+  var b=useState([{id:1,name:"Salon",icon:"\ud83d\udecb\ufe0f",windows:[]}]),rooms=b[0],setRooms=b[1];
+  var c2=useState(null),client=c2[0],setClient=c2[1];
   var d=useState(null),curRoomId=d[0],setCurRoomId=d[1];
   var f=useState(null),curWin=f[0],setCurWin=f[1];
   var g=useState(null),modal=g[0],setModal=g[1];
-  
-  // Stany formularzy modalnych (aby uniknąć błędu focusu)
-  var h2=useState(""),fName=h2[0],setFName=h2[1];
-  var i2=useState(""),fAddr=i2[0],setFAddr=i2[1];
+  var h2=useState(""),newName=h2[0],setNewName=h2[1];
+  var i2=useState(""),newAddr=i2[0],setNewAddr=i2[1];
 
-  var client = clients.find(c => c.id === curClientId);
-  var curRoom = client ? client.rooms.find(r => r.id === curRoomId) : null;
-
+  var curRoom=rooms.find(function(r){return r.id===curRoomId;});
   function wt(w){return w.products.reduce(function(a,p){return a+(p.mp!=null?p.mp:(calc(p).total||0));},0);}
   function rt(r){return r.windows.reduce(function(a,w){return a+wt(w);},0);}
-  var grand = client ? client.rooms.reduce((a, r) => a + rt(r), 0) : 0;
+  var grand=rooms.reduce(function(a,r){return a+rt(r);},0);
 
-  // Akcje
-  function addClient(name, addr){
-    var newC = {id:Date.now(), name:name, addr:addr, rooms:[]};
-    setClients(prev => prev.concat([newC]));
-    setCurClientId(newC.id);
-    setScreen("rooms");
-  }
-
+  function openClient(name,addr){setClient({name:name,addr:addr});setScreen("rooms");}
+  function openRoom(id){setCurRoomId(id);setScreen("windows");}
+  function openWin(w){setCurWin(JSON.parse(JSON.stringify(w)));setScreen("detail");}
+  function newWin2(name){setCurWin({id:Date.now(),name:name,products:[]});setScreen("detail");}
   function saveWin(){
-    setClients(prev => prev.map(c => {
-      if(c.id !== curClientId) return c;
-      return mg(c, {rooms: c.rooms.map(r => {
-        if(r.id !== curRoomId) return r;
-        var exists = r.windows.find(w => w.id === curWin.id);
-        return mg(r, {windows: exists ? r.windows.map(w => w.id === curWin.id ? curWin : w) : r.windows.concat([curWin])});
-      })});
-    }));
+    setRooms(function(rs){return rs.map(function(r){
+      if(r.id!==curRoomId)return r;
+      var found=r.windows.find(function(w){return w.id===curWin.id;});
+      return mg(r,{windows:found?r.windows.map(function(w){return w.id===curWin.id?curWin:w;}):r.windows.concat([curWin])});
+    });});
     setScreen("windows");
   }
-
-  // --- EKSPORT PDF ---
-  function generatePDF(){
-    if(!client) return;
-    const { jsPDF } = window.jspdf || {};
-    if(!jsPDF) { alert("Ładowanie modułu PDF... Spróbuj za chwilę."); return; }
-    
-    var doc = new jsPDF();
-    doc.text("OFERTA: " + client.name, 10, 10);
-    doc.text("Adres: " + (client.addr || "-"), 10, 20);
-    doc.line(10, 25, 200, 25);
-    
-    var y = 35;
-    client.rooms.forEach(r => {
-      doc.setFontSize(14);
-      doc.text(r.name + " - suma: " + rt(r) + " zł", 10, y);
-      y += 10;
-      r.windows.forEach(w => {
-        doc.setFontSize(10);
-        doc.text("  Okna: " + w.name + " (" + wt(w) + " zł)", 15, y);
-        y += 7;
-      });
-      y += 5;
-    });
-    
-    doc.setFontSize(16);
-    doc.text("SUMA CAŁKOWITA: " + Math.round(grand) + " zł", 10, y + 10);
-    doc.save("Oferta_" + client.name.replace(" ","_") + ".pdf");
+  function addProd(){setCurWin(function(w){return mg(w,{products:w.products.concat([{id:Date.now(),type:"zaslona",c:{},par:{},panels:[],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});}
+  function updProd(i,p){setCurWin(function(w){return mg(w,{products:w.products.map(function(x,j){return j===i?p:x;})});});}
+  function remProd(i){setCurWin(function(w){return mg(w,{products:w.products.filter(function(_,j){return j!==i;})});});}
+  function addRoom(name){
+    var icons={"salon":"\ud83d\udecb\ufe0f","sypialnia":"\ud83d\udecc\ufe0f","kuchnia":"\ud83c\udf73","gabinet":"\ud83d\udcda","pok\xf3j":"\ud83d\udecc\ufe0f"};
+    var k=Object.keys(icons).find(function(k){return name.toLowerCase().includes(k);});
+    setRooms(function(rs){return rs.concat([{id:Date.now(),name:name,icon:icons[k]||"\ud83e\ufaa1",windows:[]}]);});
   }
+  function showModal(t){setModal(t);setNewName("");setNewAddr("");}
+  function closeModal(){setModal(null);}
 
   function Btn(label,onClick,primary){
     return ce("button",{onClick:onClick,style:{padding:"6px 13px",borderRadius:7,border:"0.5px solid "+(primary?"var(--gr)":"var(--bd2)"),background:primary?"var(--gr)":"transparent",color:primary?"#fff":"var(--t1)",fontSize:12,fontWeight:500,cursor:"pointer"}},label);
   }
 
-  // --- MODAL ---
+  function BC(){
+    var parts=[];
+    function cr(label,oc){return ce("span",{key:label,onClick:oc,style:{cursor:oc?"pointer":"default",color:oc?"var(--t2)":"var(--t1)",fontWeight:oc?400:500}},label);}
+    function sp(i){return ce("span",{key:"s"+i,style:{color:"var(--bd1)",margin:"0 4px"}},"\u203a");}
+    parts.push(cr("Klienci",screen!=="home"?function(){setScreen("home");}:null));
+    if(screen!=="home"&&client){parts.push(sp(1));parts.push(cr(client.name,screen!=="rooms"?function(){setScreen("rooms");}:null));}
+    if((screen==="windows"||screen==="detail")&&curRoom){parts.push(sp(2));parts.push(cr(curRoom.name,screen==="detail"?function(){setScreen("windows");}:null));}
+    if(screen==="detail"&&curWin){parts.push(sp(3));parts.push(cr(curWin.name,null));}
+    if(screen==="sum"){parts.push(sp(4));parts.push(cr("Podsumowanie",null));}
+    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",fontSize:12,marginBottom:"1rem"}},parts);
+  }
+
   function Mdl(){
-    if(!modal) return null;
-    return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
-      ce("div",{style:{background:"var(--bg)",borderRadius:12,padding:20,width:280}},
-        ce("h3",{style:{fontSize:14,marginBottom:15}}, modal==="client"?"Nowy klient":modal==="room"?"Nowy pokój":"Nowe okno"),
-        ce("input",{value:fName, onChange:e=>setFName(e.target.value), placeholder:"Nazwa/Imię", style:mg(IST, {marginBottom:10})}),
-        modal==="client" && ce("input",{value:fAddr, onChange:e=>setFAddr(e.target.value), placeholder:"Adres", style:mg(IST, {marginBottom:10})}),
-        ce("div",{style:{display:"flex",gap:8}},
-          Btn("Dodaj", function(){
-            if(modal==="client") addClient(fName, fAddr);
-            if(modal==="room") {
-               setClients(prev => prev.map(c => c.id === curClientId ? mg(c, {rooms: c.rooms.concat([{id:Date.now(), name:fName, icon:"🏠", windows:[]}])}) : c));
-            }
-            if(modal==="win") {
-               setCurWin({id:Date.now(), name:fName, products:[]});
-               setScreen("detail");
-            }
-            setModal(null); setFName(""); setFAddr("");
-          }, true),
-          Btn("Anuluj", ()=>setModal(null))
-        )
+    if(!modal)return null;
+    var cfgs={
+      client:{title:"Nowy klient",fields:[{id:"name",ph:"Imi\u0119 i nazwisko"},{id:"addr",ph:"Adres"}],ok:function(){openClient(newName,newAddr);closeModal();}},
+      room:{title:"Nowe pomieszczenie",fields:[{id:"name",ph:"np. Kuchnia, Pok\xf3j Kasi..."}],ok:function(){addRoom(newName);closeModal();}},
+      win:{title:"Nowe okno",fields:[{id:"name",ph:"np. Okno lewe, Taras..."}],ok:function(){newWin2(newName);closeModal();}}
+    };
+    var cfg=cfgs[modal];
+    return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
+      ce("div",{style:{background:"var(--bg)",borderRadius:10,padding:"1.1rem",width:260,border:"0.5px solid var(--bd2)"}},
+        ce("div",{style:{fontSize:13,fontWeight:500,marginBottom:10,color:"var(--t1)"}},cfg.title),
+        cfg.fields.map(function(fld,i){
+          return ce("input",{key:fld.id,autoFocus:i===0,value:fld.id==="addr"?newAddr:newName,onChange:function(ev){fld.id==="addr"?setNewAddr(ev.target.value):setNewName(ev.target.value);},placeholder:fld.ph,style:{width:"100%",padding:"6px 9px",fontSize:13,border:"0.5px solid var(--bd2)",borderRadius:6,marginBottom:8,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block"}});
+        }),
+        ce("div",{style:{display:"flex",gap:6,marginTop:4}},Btn("Dodaj",cfg.ok,true),Btn("Anuluj",closeModal,false))
       )
     );
   }
 
-  var content = null;
+  var content=null;
+
   if(screen==="home"){
-    content = ce(Fragment, null,
-      ce("div",{style:{marginBottom:10, fontSize:11, color:"var(--t2)"}}, "LISTA KLIENTÓW"),
-      ce("div",{style:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}},
-        clients.map(c => ce("div",{key:c.id, onClick:()=>{setCurClientId(c.id); setScreen("rooms");}, style:{background:"var(--bg)", border:"0.5px solid var(--bd3)", borderRadius:10, padding:12, cursor:"pointer"}},
-          ce("div",{style:{fontWeight:600}}, "👤 " + c.name),
-          ce("div",{style:{fontSize:11, color:"var(--t2)"}}, c.addr)
-        )),
-        ce("div",{onClick:()=>setModal("client"), style:{border:"1px dashed var(--bd1)", borderRadius:10, padding:15, textAlign:"center", cursor:"pointer", color:"var(--t3)"}}, "+ Nowy klient")
+    content=ce(Fragment,null,
+      ce("div",{style:{marginBottom:6,fontSize:11,fontWeight:500,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase"}},"Klienci"),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,marginBottom:12}},
+        ce("div",{onClick:function(){openClient("Kowalski Jan","ul. Wi\u015bniowa 12");},style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,padding:12,cursor:"pointer"}},
+          ce("div",{style:{fontSize:18,marginBottom:4}},"\ud83d\udc64"),
+          ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},"Kowalski Jan"),
+          ce("div",{style:{fontSize:11,color:"var(--t2)",marginTop:1}},"przyk\u0142adowy")
+        ),
+        ce("div",{onClick:function(){showModal("client");},style:{background:"transparent",border:"0.5px dashed var(--bd2)",borderRadius:10,padding:12,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,color:"var(--t3)",minHeight:75}},
+          ce("span",{style:{fontSize:16}},"+"),ce("span",{style:{fontSize:11}},"Nowy klient")
+        )
       )
     );
-  } else if(screen==="rooms"){
-    content = ce(Fragment, null,
-      ce("div",{style:{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}},
-        client.rooms.map(r => ce("div",{key:r.id, onClick:()=>{setCurRoomId(r.id); setScreen("windows");}, style:{background:"var(--bg)", border:"0.5px solid var(--bd3)", borderRadius:10, padding:12, cursor:"pointer"}},
-          ce("div",{}, r.icon + " " + r.name),
-          ce("div",{style:{fontSize:11, color:"var(--t2)"}}, r.windows.length + " okien")
-        )),
-        ce("div",{onClick:()=>setModal("room"), style:{border:"1px dashed var(--bd1)", borderRadius:10, padding:15, textAlign:"center", cursor:"pointer"}}, "+ Pokój")
+  }else if(screen==="rooms"){
+    var roomTiles=rooms.map(function(r){
+      return ce("div",{key:r.id,onClick:function(){openRoom(r.id);},style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,padding:12,cursor:"pointer"}},
+        ce("div",{style:{fontSize:18,marginBottom:4}},r.icon),
+        ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},r.name),
+        ce("div",{style:{fontSize:11,color:"var(--t2)",marginTop:1}},r.windows.length+" okien")
+      );
+    });
+    roomTiles.push(ce("div",{key:"add",onClick:function(){showModal("room");},style:{background:"transparent",border:"0.5px dashed var(--bd2)",borderRadius:10,padding:12,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,color:"var(--t3)",minHeight:75}},
+      ce("span",{style:{fontSize:16}},"+"),ce("span",{style:{fontSize:11}},"Pomieszczenie")
+    ));
+    content=ce(Fragment,null,
+      ce("div",{style:{marginBottom:6,fontSize:11,fontWeight:500,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase"}},"Pomieszczenia"),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,marginBottom:12}},roomTiles),
+      ce("div",{style:{display:"flex",gap:6}},Btn("Podsumowanie \u2197",function(){setScreen("sum");},true))
+    );
+  }else if(screen==="windows"&&curRoom){
+    var winRows=curRoom.windows.map(function(w){
+      var t=wt(w);
+      var labels=w.products.map(function(p){return(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;}).join(", ");
+      return ce("div",{key:w.id,onClick:function(){openWin(w);},style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderTop:"0.5px solid var(--bd3)",cursor:"pointer"}},
+        ce("div",{style:{width:26,height:26,background:"var(--grl)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12}},"\ud83e\ufaa1"),
+        ce("div",{style:{flex:1}},
+          ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},w.name),
+          ce("div",{style:{fontSize:11,color:"var(--t2)"}},labels||"\u2014")
+        ),
+        ce("span",{style:{fontSize:12,fontWeight:500,color:"var(--gr)"}},t?Math.round(t)+" z\u0142":""),
+        ce("span",{style:{color:"var(--t3)",fontSize:12}},"\u203a")
+      );
+    });
+    content=ce(Fragment,null,
+      ce("div",{style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,overflow:"hidden",marginBottom:8}},
+        ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+          ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},curRoom.name),
+          ce("span",{style:{fontSize:11,color:"var(--t2)"}},curRoom.windows.length+" okien")
+        ),
+        curRoom.windows.length===0?ce("div",{style:{padding:"10px 12px",fontSize:12,color:"var(--t2)"}},"Brak okien."):null,
+        winRows
       ),
-      ce("div",{style:{marginTop:20, display:"flex", gap:10}}, 
-        Btn("Podsumowanie", ()=>setScreen("sum"), true),
-        Btn("Wstecz", ()=>setScreen("home"))
-      )
+      Btn("+ Dodaj okno",function(){showModal("win");},false)
     );
-  } else if(screen==="windows"){
-    content = ce(Fragment, null,
-      ce("div",{style:{background:"var(--bg)", border:"0.5px solid var(--bd3)", borderRadius:10, marginBottom:10}},
-        ce("div",{style:{padding:10, background:"var(--bg2)", fontWeight:600}}, curRoom.name),
-        curRoom.windows.map(w => ce("div",{key:w.id, onClick:()=>{setCurWin(JSON.parse(JSON.stringify(w))); setScreen("detail");}, style:{padding:10, borderTop:"0.5px solid var(--bd3)", display:"flex", justifyContent:"space-between"}},
-          ce("span", {}, "🪟 " + w.name),
-          ce("span", {style:{color:"var(--gr)", fontWeight:500}}, Math.round(wt(w)) + " zł")
-        ))
+  }else if(screen==="detail"&&curWin){
+    var wtv=wt(curWin);
+    content=ce(Fragment,null,
+      ce("div",{style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,overflow:"hidden",marginBottom:8}},
+        ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",display:"flex",alignItems:"center"}},
+          ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--t1)",flex:1}},curWin.name),
+          ce("span",{style:{fontSize:12,fontWeight:500,color:"var(--gr)"}},curWin.products.length?Math.round(wtv)+" z\u0142":"")
+        )
       ),
-      ce("div",{style:{display:"flex", gap:10}},
-        Btn("+ Okno", ()=>setModal("win"), false),
-        Btn("Wstecz", ()=>setScreen("rooms"))
-      )
+      curWin.products.map(function(p,i){return ce(ProdCard,{key:p.id,prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);}});}),
+      ce("button",{onClick:addProd,style:{padding:"6px 13px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:12,fontWeight:500,cursor:"pointer",marginBottom:8}},"+ Dodaj produkt"),
+      curWin.products.length>0?ce("div",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:8,padding:"9px 13px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
+        ce("span",{style:{fontSize:12,fontWeight:500,color:"var(--grd)"}},"Łącznie okno"),
+        ce("span",{style:{fontSize:17,fontWeight:500,color:"var(--grd)"}},Math.round(wtv)+" z\u0142")
+      ):null,
+      ce("div",{style:{display:"flex",gap:6}},Btn("Zapisz okno",saveWin,true),Btn("Anuluj",function(){setScreen("windows");},false))
     );
-  } else if(screen==="detail"){
-    content = ce(Fragment, null,
-      ce("h3", {style:{marginBottom:10}}, "Edycja: " + curWin.name),
-      curWin.products.map((p, i) => ce(ProdCard, {key:p.id, prod:p, onChange:np=>{setCurWin(w=>mg(w,{products:w.products.map((x,j)=>j===i?np:x)}))}, onRemove:()=>setCurWin(w=>mg(w,{products:w.products.filter((_,j)=>j!==i)}))})),
-      ce("div",{style:{display:"flex", gap:10, marginTop:10}},
-        Btn("+ Produkt", ()=>setCurWin(w=>mg(w,{products:w.products.concat([{id:Date.now(), type:"zaslona", c:{}, par:{}, panels:[], mp:null}])})), false),
-        Btn("Zapisz", saveWin, true)
-      )
-    );
-  } else if(screen==="sum"){
-    content = ce(Fragment, null,
-      ce("div",{style:{background:"var(--grl)", padding:15, borderRadius:10, marginBottom:15}},
-        ce("div",{style:{fontSize:12}}, "KLIENT: " + client.name),
-        ce("div",{style:{fontSize:20, fontWeight:700, color:"var(--grd)"}}, "Suma: " + Math.round(grand) + " zł")
+  }else if(screen==="sum"){
+    var sumRows=rooms.filter(function(r){return r.windows.length>0;}).map(function(r){
+      return ce("div",{key:r.id,style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,overflow:"hidden",marginBottom:8}},
+        ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",display:"flex",alignItems:"center",justifyContent:"space-between"}},
+          ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},r.icon+" "+r.name),
+          ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--gr)"}},Math.round(rt(r))+" z\u0142")
+        ),
+        r.windows.map(function(w){
+          var t=wt(w);
+          var desc=w.products.map(function(p){var l=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
+          return ce("div",{key:w.id,style:{padding:"7px 12px",borderTop:"0.5px solid var(--bd3)",fontSize:12}},
+            ce("div",{style:{fontWeight:500,color:"var(--t1)",marginBottom:1}},"\ud83e\ufaa1 "+w.name),
+            ce("div",{style:{color:"var(--t2)"}},desc||"\u2014"," \xb7 ",ce("strong",{},Math.round(t)+" z\u0142"))
+          );
+        })
+      );
+    });
+    content=ce(Fragment,null,
+      sumRows,
+      ce("div",{style:{background:"var(--grl)",border:"0.5px solid var(--grm)",borderRadius:10,padding:"11px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
+        ce("span",{style:{fontSize:13,fontWeight:500,color:"var(--grd)"}},"Łącznie cała wizyta"),
+        ce("span",{style:{fontSize:19,fontWeight:500,color:"var(--grd)"}},Math.round(grand)+" z\u0142")
       ),
-      ce("div",{style:{display:"flex", gap:10}},
-        Btn("Generuj PDF", generatePDF, true),
-        Btn("Wstecz", ()=>setScreen("rooms"))
-      )
+      ce("div",{style:{display:"flex",gap:6}},Btn("\u2190 Edytuj",function(){setScreen("rooms");},false))
     );
   }
 
   return ce("div",{style:{padding:"1rem 0"}},
-    ce("script",{src:"https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"}),
-    ce("div",{style:{marginBottom:15, paddingBottom:10, borderBottom:"1px solid var(--bd3)", display:"flex", justifyContent:"space-between"}},
-      ce("strong",{},"Porter Design"),
-      ce("span",{style:{fontSize:11}}, client ? client.name : "Wybierz klienta")
+    ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:"1rem",paddingBottom:"1rem",borderBottom:"0.5px solid var(--bd3)"}},
+      ce("div",{style:{width:22,height:22,background:"var(--grl)",borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}},"\ud83e\ufaa1"),
+      ce("span",{style:{fontSize:14,fontWeight:500,color:"var(--t1)",flex:1}},"Porter Design"),
+      ce("span",{style:{fontSize:11,color:"var(--t2)",background:"var(--bg2)",padding:"2px 8px",borderRadius:6,border:"0.5px solid var(--bd3)"}},client?client.name:"Nowy klient")
     ),
+    ce(BC,{}),
     content,
     ce(Mdl,{})
   );
@@ -433,3 +487,6 @@ function App(){
 
 ReactDOM.createRoot(document.getElementById("root")).render(ce(App,{}));
 })();
+</script>
+</body>
+</html>
