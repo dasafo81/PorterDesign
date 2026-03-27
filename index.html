@@ -3,117 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Porter Design Pro - Ekspert Wycen</title>
+    <title>Porter Design Pro - SYSTEM WYCEN</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --pd-dark: #121212;
-            --pd-green: #2d4a22;
-            --pd-green-light: #416b32;
-            --pd-accent: #c5a059; /* Złoty akcent */
-            --pd-card: #1e1e1e;
-            --pd-text: #e0e0e0;
-            --pd-muted: #888;
-            --radius: 12px;
-        }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            background-color: var(--pd-dark); 
-            color: var(--pd-text); 
-            margin: 0; padding: 0; line-height: 1.6;
-        }
-
-        #app { max-width: 600px; margin: 0 auto; padding: 20px; min-height: 100vh; }
-
-        /* HEADER */
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .logo { font-size: 20px; font-weight: 800; color: var(--pd-accent); text-transform: uppercase; letter-spacing: 2px; }
-
-        /* KARTY */
-        .card {
-            background: var(--pd-card);
-            border-radius: var(--radius);
-            padding: 20px;
-            margin-bottom: 15px;
-            border: 1px solid #333;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-        }
-        .card:active { transform: scale(0.99); }
-
-        /* LISTY */
-        .flex-row { display: flex; justify-content: space-between; align-items: center; }
-        .client-info h3 { margin: 0; font-size: 18px; color: #fff; }
-        .client-info p { margin: 0; font-size: 12px; color: var(--pd-muted); }
-
-        /* PRZYCISKI */
-        .btn {
-            background: var(--pd-green);
-            color: white;
-            border: none;
-            padding: 15px 20px;
-            border-radius: var(--radius);
-            font-weight: 700;
-            cursor: pointer;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            font-size: 16px;
-            transition: 0.2s;
-        }
-        .btn:hover { background: var(--pd-green-light); }
-        .btn-outline { background: transparent; border: 1px solid #444; color: var(--pd-text); margin-bottom: 20px; width: auto; padding: 8px 15px; font-size: 13px; }
-        .btn-add-room { background: #333; margin-top: 10px; font-size: 14px; }
-        .btn-save { background: var(--pd-accent); color: var(--pd-dark); margin-top: 20px; }
-
-        /* FORMULARZ */
-        .form-group { margin-bottom: 15px; }
-        label { display: block; font-size: 11px; text-transform: uppercase; color: var(--pd-accent); margin-bottom: 5px; font-weight: 700; }
-        select, input {
-            width: 100%;
-            background: #2a2a2a;
-            border: 1px solid #444;
-            padding: 12px;
-            border-radius: 8px;
-            color: white;
-            font-size: 16px;
-        }
-
-        /* ROOM & ITEMS */
-        .room-section { border-left: 3px solid var(--pd-green); padding-left: 15px; margin-bottom: 25px; }
-        .room-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .item-row { 
-            background: #252525; 
-            padding: 10px; 
-            border-radius: 8px; 
-            margin-bottom: 5px; 
-            font-size: 14px; 
-            display: flex; 
-            justify-content: space-between;
-        }
-
-        .price-badge { color: var(--pd-accent); font-weight: 800; }
-        
-        /* SUMA */
-        .total-banner {
-            background: linear-gradient(135deg, var(--pd-green), #1a2e14);
-            padding: 25px;
-            border-radius: var(--radius);
-            text-align: center;
-            margin-top: 30px;
-            border: 1px solid var(--pd-green-light);
-        }
-        .total-amount { font-size: 32px; font-weight: 900; color: #fff; }
+        :root { --pd-dark: #121212; --pd-green: #2d4a22; --pd-accent: #c5a059; --pd-card: #1e1e1e; --pd-text: #e0e0e0; --radius: 12px; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--pd-dark); color: var(--pd-text); margin: 0; padding: 0; }
+        #app { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .card { background: var(--pd-card); border-radius: var(--radius); padding: 18px; margin-bottom: 15px; border: 1px solid #333; }
+        .btn { background: var(--pd-green); color: white; border: none; padding: 14px; border-radius: var(--radius); width: 100%; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-outline { background: transparent; border: 1px solid #444; color: #888; padding: 8px 15px; border-radius: 8px; cursor: pointer; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 11px; color: var(--pd-accent); text-transform: uppercase; margin-bottom: 4px; font-weight: bold; }
+        select, input { width: 100%; background: #2a2a2a; border: 1px solid #444; padding: 10px; border-radius: 6px; color: white; font-size: 15px; }
+        .warning-box { background: rgba(197, 160, 89, 0.1); border: 1px solid var(--pd-accent); color: var(--pd-accent); padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 10px; }
+        .summary-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #333; font-size: 14px; }
+        .total-price { font-size: 28px; color: #fff; font-weight: 800; text-align: center; margin-top: 20px; }
+        .room-tag { background: var(--pd-green); padding: 2px 8px; border-radius: 4px; font-size: 10px; margin-bottom: 5px; display: inline-block; }
     </style>
 </head>
 <body>
-
-<div id="app">
-    </div>
+<div id="app"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -122,42 +31,67 @@
 const { useState, useEffect, createElement: ce } = React;
 
 function PorterApp() {
-    const [view, setView] = useState('LIST'); // LIST, DETAILS, CALC
-    const [customers, setCustomers] = useState(() => JSON.parse(localStorage.getItem('pd_data') || '[]'));
+    const [view, setView] = useState('LIST'); 
+    const [customers, setCustomers] = useState(() => JSON.parse(localStorage.getItem('pd_pro_data') || '[]'));
     const [activeId, setActiveId] = useState(null);
     const [activeRoomIdx, setActiveRoomIdx] = useState(null);
 
-    // Stan kalkulatora
-    const [form, setForm] = useState({ prod: 'Drewno 50mm', w: 100, h: 150, opt: 'Standard' });
+    // KATEGORIE I LOGIKA
+    const [cat, setCat] = useState('ZALUZJE');
+    const [calcData, setCalcData] = useState({ 
+        typ: 'Basswood 50', w: 100, h: 150, 
+        tkanina: 'Standard', szycie: 'Wave', marszczenie: 2, // dla zasłon
+        szyna: 'SLIM', naped: 'AM75', sterowanie: 'Pilot 1-kanałowy', // dla elektryki
+        kaesTyp: 'FLEX', kaesKolor: 'Biała' // dla Kaes
+    });
 
-    useEffect(() => { localStorage.setItem('pd_data', JSON.stringify(customers)); }, [customers]);
+    useEffect(() => { localStorage.setItem('pd_pro_data', JSON.stringify(customers)); }, [customers]);
 
     const activeCust = customers.find(c => c.id === activeId);
 
-    // FUNKCJE LOGICZNE
-    const addNewCustomer = () => {
-        const name = prompt("Nazwa klienta / Projektu:");
-        if (!name) return;
-        const newCust = { id: Date.now(), name, date: new Date().toLocaleDateString(), rooms: [] };
-        setCustomers([newCust, ...customers]);
+    // --- SILNIK OBLICZENIOWY (Przywrócone Logiki z Dokumentów) ---
+    const calculatePrice = () => {
+        let price = 0;
+        let warning = "";
+
+        if (cat === 'ZALUZJE') {
+            // Logika: RoundUp wymiarów (symulacja tabeli)
+            const rw = Math.ceil(calcData.w / 10) * 10;
+            const rh = Math.ceil(calcData.h / 10) * 10;
+            price = (rw * rh * 0.04); // Tu wchodzą dane z CSV
+            if ((calcData.w * calcData.h / 10000) > 5) warning = "Uwaga: Ograniczona gwarancja (powyżej 5m2)!";
+        } 
+        else if (cat === 'ZASLONY') {
+            // Logika: (Szerokość * Marszczenie + 0.2) * (Tkanina + Szycie)
+            const mb = (Number(calcData.w/100) * Number(calcData.marszczenie)) + 0.2;
+            const tkaninaCena = calcData.tkanina === 'Premium' ? 220 : (calcData.tkanina === 'Standard' ? 190 : 160);
+            const szycieCena = calcData.szycie === 'Wave' ? 110 : 100;
+            price = mb * (tkaninaCena + szycieCena);
+        }
+        else if (cat === 'KAES') {
+            // Logika: Flex (80zł/mb) vs Wave (Tabela)
+            if (calcData.kaesTyp === 'FLEX') price = (calcData.w / 100) * 80;
+            else price = (calcData.w <= 150) ? 173 : 221; // Uproszczona tabela Wave
+        }
+        else if (cat === 'ELEKTRYKA') {
+            // Logika: Szyna + Napęd + Sterowanie (ceny x2)
+            const szynaBase = calcData.szyna === 'SLIM' ? 816 : 880; // dla 300cm
+            const napedCena = calcData.naped === 'AM50' ? 1000 : 644;
+            const sterowanieCena = 130;
+            price = szynaBase + napedCena + sterowanieCena;
+        }
+
+        return { total: Math.round(price), warning };
     };
 
-    const addRoom = () => {
-        const rName = prompt("Nazwa pomieszczenia (np. Salon):");
-        if (!rName) return;
-        const updated = customers.map(c => c.id === activeId ? { ...c, rooms: [...c.rooms, { name: rName, items: [] }] } : c);
-        setCustomers(updated);
-    };
-
-    const saveCalculation = () => {
-        // Tu docelowo wejdą Twoje tabele. Teraz prosta logika testowa.
-        const basePrice = (form.w * form.h * 0.03); 
+    const handleSaveItem = () => {
+        const result = calculatePrice();
         const newItem = {
             id: Date.now(),
-            desc: `${form.prod} (${form.w}x${form.h}cm)`,
-            price: Math.round(basePrice)
+            desc: `${calcData.typ} | ${calcData.w}x${calcData.h} cm`,
+            price: result.total,
+            warning: result.warning
         };
-
         const updated = customers.map(c => {
             if (c.id === activeId) {
                 const newRooms = [...c.rooms];
@@ -170,90 +104,77 @@ function PorterApp() {
         setView('DETAILS');
     };
 
-    // --- WIDOK: LISTA KLIENTÓW ---
-    if (view === 'LIST') {
-        return ce('div', null,
-            ce('div', { className: 'header' }, 
-                ce('div', { className: 'logo' }, "Porter Design Pro"),
-                ce('i', { className: 'fa-solid fa-sliders' })
-            ),
-            ce('h2', { style: { marginBottom: '20px' } }, "Twoje Projekty"),
-            customers.length === 0 && ce('p', { style: { color: '#666', textAlign: 'center' } }, "Brak zapisanych wycen."),
-            customers.map(c => ce('div', { key: c.id, className: 'card flex-row', onClick: () => { setActiveId(c.id); setView('DETAILS'); } },
-                ce('div', { className: 'client-info' }, 
-                    ce('h3', null, ce('i', { className: 'fa-solid fa-user-tie', style: { marginRight: '10px', color: 'var(--pd-accent)' } }), c.name),
-                    ce('p', null, ce('i', { className: 'fa-solid fa-calendar', style: { marginRight: '5px' } }), c.date)
-                ),
-                ce('i', { className: 'fa-solid fa-chevron-right', style: { color: '#444' } })
-            )),
-            ce('button', { className: 'btn', style: { marginTop: '20px' }, onClick: addNewCustomer }, ce('i', { className: 'fa-solid fa-plus' }), "Dodaj Nową Wizytę")
-        );
-    }
+    // --- WIDOKI ---
+    if (view === 'LIST') return ce('div', null,
+        ce('h2', {style:{color: 'var(--pd-accent)'}}, "Projekty Porter Design"),
+        customers.map(c => ce('div', { key: c.id, className: 'card', onClick: () => { setActiveId(c.id); setView('DETAILS'); } },
+            ce('div', { style: { fontWeight: 'bold' } }, c.name),
+            ce('div', { style: { fontSize: '12px', color: '#666' } }, `${c.rooms.length} pomieszczeń | ${c.date}`)
+        )),
+        ce('button', { className: 'btn', onClick: () => {
+            const n = prompt("Klient:"); if(n) setCustomers([{id:Date.now(), name:n, date:new Date().toLocaleDateString(), rooms:[]}, ...customers])
+        }}, ce('i', {className:'fa fa-plus'}), "Nowy Klient")
+    );
 
-    // --- WIDOK: SZCZEGÓŁY WIZYTY (POKOJE) ---
-    if (view === 'DETAILS' && activeCust) {
-        const grandTotal = activeCust.rooms.reduce((acc, r) => acc + r.items.reduce((s, i) => s + i.price, 0), 0);
+    if (view === 'DETAILS') return ce('div', null,
+        ce('button', { className: 'btn-outline', onClick: () => setView('LIST') }, "← Lista"),
+        ce('h2', null, activeCust.name),
+        activeCust.rooms.map((r, idx) => ce('div', { key: idx, className: 'card' },
+            ce('div', { className: 'room-tag' }, r.name),
+            r.items.map(i => ce('div', { className: 'summary-item' }, ce('span', null, i.desc), ce('span', null, i.price + " zł"))),
+            ce('button', { className: 'btn', style:{marginTop:'10px', height:'35px', fontSize:'13px'}, onClick: () => { setActiveRoomIdx(idx); setView('CALC'); } }, "Dodaj produkt")
+        )),
+        ce('button', { className: 'btn', style:{background:'#333'}, onClick: () => {
+            const r = prompt("Nazwa pokoju:"); if(r) {
+                const updated = customers.map(c => c.id === activeId ? {...c, rooms:[...c.rooms, {name:r, items:[]}]} : c);
+                setCustomers(updated);
+            }
+        }}, "Dodaj Pokój")
+    );
 
-        return ce('div', null,
-            ce('button', { className: 'btn-outline', onClick: () => setView('LIST') }, ce('i', { className: 'fa-solid fa-arrow-left' }), " Powrót"),
-            ce('div', { className: 'header' }, ce('h2', null, activeCust.name)),
-            
-            activeCust.rooms.map((room, rIdx) => ce('div', { key: rIdx, className: 'room-section' },
-                ce('div', { className: 'room-title' }, 
-                    ce('span', null, ce('i', { className: 'fa-solid fa-couch', style: { color: 'var(--pd-accent)' } }), " " + room.name),
-                    ce('span', { className: 'price-badge' }, room.items.reduce((s, i) => s + i.price, 0) + " zł")
-                ),
-                room.items.map(item => ce('div', { key: item.id, className: 'item-row' },
-                    ce('span', null, item.desc),
-                    ce('span', { style: { fontWeight: 'bold' } }, item.price + " zł")
-                )),
-                ce('button', { className: 'btn btn-add-room', onClick: () => { setActiveRoomIdx(rIdx); setView('CALC'); } }, ce('i', { className: 'fa-solid fa-calculator' }), "Dodaj produkt")
-            )),
-
-            ce('button', { className: 'btn', style: { background: '#333', marginTop: '20px' }, onClick: addRoom }, ce('i', { className: 'fa-solid fa-folder-plus' }), "Dodaj Pomieszczenie"),
-            
-            ce('div', { className: 'total-banner' }, 
-                ce('p', { style: { margin: 0, textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' } }, "Wartość całkowita projektu"),
-                ce('div', { className: 'total-amount' }, grandTotal + " zł")
-            )
-        );
-    }
-
-    // --- WIDOK: KALKULATOR EKSPERCKI ---
     if (view === 'CALC') {
+        const result = calculatePrice();
         return ce('div', null,
             ce('button', { className: 'btn-outline', onClick: () => setView('DETAILS') }, "Anuluj"),
-            ce('h2', null, "Konfiguracja Produktu"),
+            ce('h2', null, "Kalkulator Ekspercki"),
             ce('div', { className: 'card' },
-                ce('div', { className: 'form-group' },
-                    ce('label', null, "Kategoria Produktu"),
-                    ce('select', { value: form.prod, onChange: e => setForm({ ...form, prod: e.target.value }) },
-                        ce('option', null, "Drewno 50mm"),
-                        ce('option', null, "Bambus 50mm"),
-                        ce('option', null, "Aluminium 25mm"),
-                        ce('option', null, "Karnisz Elektryczny Slim"),
-                        ce('option', null, "Szyna Kaes Wave")
+                ce('label', null, "Kategoria"),
+                ce('select', { value: cat, onChange: e => setCat(e.target.value) },
+                    ce('option', { value: 'ZALUZJE' }, "Żaluzje (Drewno/Bambus/Alu)"),
+                    ce('option', { value: 'ZASLONY' }, "Zasłony i Szycie"),
+                    ce('option', { value: 'KAES' }, "Szyny KAES (Ręczne)"),
+                    ce('option', { value: 'ELEKTRYKA' }, "Karnisze Elektryczne")
+                ),
+                ce('hr', { style: { border: '0', borderTop: '1px solid #333', margin: '15px 0' } }),
+                
+                // Formularz dynamiczny zależny od kategorii
+                cat === 'ZALUZJE' && ce('div', null,
+                    ce('label', null, "Produkt"),
+                    ce('select', { onChange: e => setCalcData({...calcData, typ: e.target.value}) },
+                        ce('option', null, "Basswood 50"), ce('option', null, "Bamboo 50"), ce('option', null, "Aluminium 25")
                     )
                 ),
-                ce('div', { style: { display: 'flex', gap: '15px' } },
-                    ce('div', { className: 'form-group', style: { flex: 1 } },
-                        ce('label', null, "Szerokość (cm)"),
-                        ce('input', { type: 'number', value: form.w, onChange: e => setForm({ ...form, w: e.target.value }) })
+
+                cat === 'ZASLONY' && ce('div', null,
+                    ce('label', null, "Tkanina"),
+                    ce('select', { onChange: e => setCalcData({...calcData, tkanina: e.target.value}) },
+                        ce('option', null, "Standard"), ce('option', null, "Basic"), ce('option', null, "Premium")
                     ),
-                    ce('div', { className: 'form-group', style: { flex: 1 } },
-                        ce('label', null, "Wysokość (cm)"),
-                        ce('input', { type: 'number', value: form.h, onChange: e => setForm({ ...form, h: e.target.value }) })
+                    ce('label', null, "Marszczenie"),
+                    ce('select', { onChange: e => setCalcData({...calcData, marszczenie: e.target.value}) },
+                        ce('option', { value: 2 }, "200% (x2)"), ce('option', { value: 1.5 }, "150% (x1.5)")
                     )
                 ),
-                ce('div', { className: 'form-group' },
-                    ce('label', null, "Opcje dodatkowe"),
-                    ce('select', null, 
-                        ce('option', null, "Montaż standardowy"),
-                        ce('option', null, "Montaż bezinwazyjny (+ doplata)"),
-                        ce('option', null, "Prowadzenie boczne")
-                    )
+
+                ce('div', { style: { display: 'flex', gap: '10px', marginTop: '10px' } },
+                    ce('div', { style: { flex: 1 } }, ce('label', null, "Szerokość (cm)"), ce('input', { type: 'number', value: calcData.w, onChange: e => setCalcData({...calcData, w: e.target.value}) })),
+                    cat !== 'KAES' && ce('div', { style: { flex: 1 } }, ce('label', null, "Wysokość (cm)"), ce('input', { type: 'number', value: calcData.h, onChange: e => setCalcData({...calcData, h: e.target.value}) }))
                 ),
-                ce('button', { className: 'btn btn-save', onClick: saveCalculation }, ce('i', { className: 'fa-solid fa-check' }), "Zatwierdź i wyceń")
+
+                result.warning && ce('div', { className: 'warning-box' }, ce('i', { className: 'fa fa-exclamation-triangle' }), " " + result.warning),
+                
+                ce('div', { className: 'total-price' }, result.total + " zł"),
+                ce('button', { className: 'btn', style: { marginTop: '20px', background: 'var(--pd-accent)', color: '#000' }, onClick: handleSaveItem }, "Zapisz do wyceny")
             )
         );
     }
@@ -262,6 +183,5 @@ function PorterApp() {
 const root = ReactDOM.createRoot(document.getElementById('app'));
 root.render(ce(PorterApp));
 </script>
-
 </body>
 </html>
