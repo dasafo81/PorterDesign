@@ -124,6 +124,25 @@ function jzLookup(type, wCm, lCm){
 // ── POZOSTAŁE DANE ────────────────────────────────────────────────────────
 
 var FABRICS=[
+  {name:"1310",brutto:160,prod:"MARGO TEXTIL",width:300},
+  {name:"18734",brutto:80,prod:"MARGO TEXTIL",width:300},
+  {name:"2354",brutto:80,prod:"MARGO TEXTIL",width:300},
+  {name:"25450",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"26931",brutto:110,prod:"MARGO TEXTIL",width:280},
+  {name:"4083/2",brutto:65,prod:"MARGO TEXTIL",width:300},
+  {name:"4210",brutto:110,prod:"MARGO TEXTIL",width:330},
+  {name:"8014",brutto:90,prod:"SAMA TEKSTIL",width:330},
+  {name:"Aeris",brutto:280,prod:"MARGO TEXTIL",width:300},
+  {name:"Agnes",brutto:85,prod:"KAMELEON.PRO",width:null},
+  {name:"Aisha",brutto:180,prod:"MARGO TEXTIL",width:290},
+  {name:"Aken - Vaals - Kelmis",brutto:90,prod:"SAMA TEKSTIL",width:360},
+  {name:"Alaska",brutto:150,prod:"SAMA TEKSTIL",width:300},
+  {name:"Alaska VV",brutto:176,prod:"VV design",width:300},
+  {name:"Alaska Margo",brutto:150,prod:"MARGO TEXTIL",width:null},
+  {name:"Alcova",brutto:220,prod:"MARGO TEXTIL",width:310},
+  {name:"Alexandria",brutto:100,prod:"SAMA TEKSTIL",width:300},
+  {name:"Algarve",brutto:196,prod:"Ridex",width:300},
+  {name:"Alina",brutto:140,prod:"SAMA TEKSTIL",width:295},
   {name:"Alise",brutto:230,prod:"FIBERO G.ROJEK",width:300},
   {name:"Alma",brutto:165,prod:"Ridex",width:315},
   {name:"Altamira",brutto:250,prod:"OZLEM",width:300},
@@ -138,7 +157,63 @@ var FABRICS=[
   {name:"Annamoe",brutto:140,prod:"OZLEM",width:320},
   {name:"Antique",brutto:378,prod:"Ridex",width:140},
   {name:"Antonio Aire",brutto:260,prod:"MARGO TEXTIL",width:290},
-  {name:"Antonio Rabat",brutto:220,prod:"MARGO TEXTIL",width:300}
+  {name:"Antonio Rabat",brutto:220,prod:"MARGO TEXTIL",width:300},
+  {name:"Ara",brutto:201,prod:"Ridex",width:330},
+  {name:"Arbitare",brutto:160,prod:"MARGO TEXTIL",width:280},
+  {name:"Arcole",brutto:249,prod:"Ridex",width:295},
+  {name:"Arctic",brutto:182,prod:"Ridex",width:140},
+  {name:"Aresa",brutto:273,prod:"Ridex",width:305},
+  {name:"Aria Plain",brutto:98,prod:"Ridex",width:298},
+  {name:"Aria Stripe",brutto:185,prod:"Ridex",width:298},
+  {name:"Artisan Stripe",brutto:304,prod:"Ridex",width:312},
+  {name:"Artisan Wave",brutto:304,prod:"Ridex",width:312},
+  {name:"Arya Blackout",brutto:190,prod:"SAMA TEKSTIL",width:300},
+  {name:"Aster",brutto:180,prod:"MARGO TEXTIL",width:280},
+  {name:"Atlas",brutto:80,prod:"SAMA TEKSTIL",width:330},
+  {name:"Aura",brutto:100,prod:"SAMA TEKSTIL",width:300},
+  {name:"Aurora",brutto:65,prod:"KAMELEON.PRO",width:null},
+  {name:"Avior Degrade",brutto:100,prod:"SAMA TEKSTIL",width:300},
+  {name:"Azaro",brutto:150,prod:"OZLEM",width:315},
+  {name:"Bahama",brutto:180,prod:"SAMA TEKSTIL",width:290},
+  {name:"Bali",brutto:100,prod:"SAMA TEKSTIL",width:320},
+  {name:"Baloo",brutto:80,prod:"KAMELEON.PRO",width:null},
+  {name:"Barcelona",brutto:90,prod:"SAMA TEKSTIL",width:300},
+  {name:"Barras",brutto:220,prod:"OZLEM",width:300},
+  {name:"Basal",brutto:120,prod:"VV design",width:300},
+  {name:"Basco",brutto:192,prod:"Spagnolo",width:300},
+  {name:"Basic Dust Blackout",brutto:139,prod:"Ridex",width:320},
+  {name:"Basic Evergreen",brutto:59,prod:"Ridex",width:310},
+  {name:"Basic Glaze",brutto:187,prod:"Ridex",width:280},
+  {name:"Basic Hold Blackout",brutto:177,prod:"Ridex",width:280},
+  {name:"Basic Intimacy Dimout",brutto:89,prod:"Ridex",width:295},
+  {name:"Basic Key",brutto:102,prod:"Ridex",width:296},
+  {name:"Basic Molton",brutto:148,prod:"Ridex",width:300},
+  {name:"Basic Nora",brutto:139,prod:"Ridex",width:280},
+  {name:"Basic Pilou",brutto:213,prod:"Ridex",width:280},
+  {name:"Basic Satino",brutto:182,prod:"Ridex",width:280},
+  {name:"Basic Schino",brutto:120,prod:"Ridex",width:280},
+  {name:"Basic Sunstop Blackout",brutto:206,prod:"Ridex",width:295},
+  {name:"Basic Swing",brutto:79,prod:"Ridex",width:280},
+  {name:"Batumi Domingo",brutto:220,prod:"MARGO TEXTIL",width:300},
+  {name:"Batumi Goya",brutto:140,prod:"MARGO TEXTIL",width:315},
+  {name:"Bea",brutto:184,prod:"FIBERO G.ROJEK",width:320},
+  {name:"Belluci",brutto:475,prod:"Ridex",width:300},
+  {name:"Belluno",brutto:70,prod:"SAMA TEKSTIL",width:300},
+  {name:"Bercy FR",brutto:264,prod:"Ridex",width:303},
+  {name:"Berin",brutto:110,prod:"SAMA TEKSTIL",width:300},
+  {name:"Betty 148",brutto:60,prod:"MARGO TEXTIL",width:315},
+  {name:"Betty 213",brutto:80,prod:"MARGO TEXTIL",width:315},
+  {name:"Billy Dim-Out",brutto:195,prod:"MARGO TEXTIL",width:295},
+  {name:"Blanca",brutto:110,prod:"MARGO TEXTIL",width:320},
+  {name:"Blue Star Blackout",brutto:130,prod:"MARGO TEXTIL",width:300},
+  {name:"Blues",brutto:291,prod:"Ridex",width:290},
+  {name:"Boccelino",brutto:370,prod:"Ridex",width:295},
+  {name:"Bonita",brutto:40,prod:"KAMELEON.PRO",width:null},
+  {name:"Bonita Margo",brutto:160,prod:"MARGO TEXTIL",width:300},
+  {name:"Bora",brutto:260,prod:"Ridex",width:303},
+  {name:"Bordeaux",brutto:90,prod:"SAMA TEKSTIL",width:330},
+  {name:"Borneo",brutto:200,prod:"SAMA TEKSTIL",width:300},
+  {name:"Boston",brutto:160,prod:"SAMA TEKSTIL",width:300}
 ];
 
 var PROD_TYPES=[
@@ -247,6 +322,351 @@ function calc(p){
 function mg(a,b){return Object.assign({},a,b);}
 
 var IST={padding:"5px 8px",fontSize:13,border:"0.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",width:"100%"};
+
+
+// ── INLINE EDIT COMPONENT ────────────────────────────────────────────────
+function InlineEdit(p){
+  // p: {value, onSave, style, inputStyle}
+  var es=useState(false),editing=es[0],setEditing=es[1];
+  var vs=useState(p.value),val=vs[0],setVal=vs[1];
+  React.useEffect(function(){setVal(p.value);},[p.value]);
+  function confirm(){
+    if(val.trim()) p.onSave(val.trim());
+    setEditing(false);
+  }
+  if(editing){
+    return ce("span",{style:{display:"inline-flex",alignItems:"center",gap:4}},
+      ce("input",{autoFocus:true,value:val,
+        onChange:function(ev){setVal(ev.target.value);},
+        onKeyDown:function(ev){
+          if(ev.key==="Enter")confirm();
+          if(ev.key==="Escape"){setVal(p.value);setEditing(false);}
+        },
+        onBlur:confirm,
+        style:Object.assign({},{fontSize:13,fontWeight:500,border:"none",borderBottom:"1.5px solid var(--gr)",outline:"none",background:"transparent",color:"var(--t1)",padding:"0 2px",minWidth:80,maxWidth:220},p.inputStyle||{})
+      })
+    );
+  }
+  return ce("span",{style:Object.assign({},{display:"inline-flex",alignItems:"center",gap:5,cursor:"pointer"},p.style||{})},
+    ce("span",{},p.value),
+    ce("span",{
+      onClick:function(ev){ev.stopPropagation();setEditing(true);},
+      title:"Edytuj",
+      style:{fontSize:11,color:"var(--t3)",opacity:0.7,lineHeight:1,padding:"1px 3px",borderRadius:4,
+             border:"0.5px solid transparent",transition:"all .15s",cursor:"pointer",
+             ":hover":{opacity:1}}
+    },"\u270f\ufe0f")
+  );
+}
+
+// ── PDF GENERATOR ────────────────────────────────────────────────────────
+var SELLER={
+  name:"Pd Porter Design Paulina Porter",
+  addr:"Jacka Woronieckiego 6c/2",
+  city:"05-220 Zielonka",
+  nip:"812-18-03-400",
+  email:"paulina@porterdesign.pl",
+  tel:"+48 791 123 437",
+  bank:"21 1160 2202 0000 0006 3164 7645",
+  bankName:"Millennium Bank"
+};
+
+function formatPLN(n){return Math.round(n).toLocaleString("pl-PL")+" zł";}
+
+function getPDFOfferNumber(client){
+  var now=new Date();
+  var y=now.getFullYear();
+  var m=String(now.getMonth()+1).padStart(2,"0");
+  var d=String(now.getDate()).padStart(2,"0");
+  var slug=(client.name||"").replace(/\s+/g,"-").slice(0,12);
+  return "OF-"+y+m+d+"-"+slug;
+}
+
+function buildOfferRows(client){
+  // Returns [{lp, name, qty, unit, cenaJedn, total}]
+  var rows=[];var lp=1;
+  (client.rooms||[]).forEach(function(r){
+    (r.windows||[]).forEach(function(w){
+      (w.products||[]).forEach(function(p){
+        var total=p.mp!=null?p.mp:(calc(p).total||0);
+        if(!total)return;
+        var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
+        var desc=lbl+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
+        rows.push({lp:lp++,name:desc,qty:1,unit:"szt.",cenaJedn:total,total:total});
+      });
+    });
+  });
+  return rows;
+}
+
+function buildFabricRows(client){
+  // Group by fabric: {fabName, prod, brutto, width, metry}
+  var map={};
+  (client.rooms||[]).forEach(function(r){
+    (r.windows||[]).forEach(function(w){
+      (w.products||[]).forEach(function(p){
+        if(p.type!=="zaslona"&&p.type!=="firana")return;
+        var key=p.fabName||("reczna_"+p.fabMan);
+        if(!map[key])map[key]={
+          fabName:p.fabName||"Tkanina ręczna",
+          prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
+          brutto:p.fabMan||p.fabP||0,
+          width:p.fabW||null,
+          metry:0,rooms:[]
+        };
+        var res=calc(p);
+        var metry=0;
+        (res.lines||[]).forEach(function(l){
+          var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
+        });
+        map[key].metry+=metry;
+        map[key].rooms.push(r.name+" / "+w.name);
+      });
+    });
+  });
+  return Object.values(map);
+}
+
+function buildSewingRows(client){
+  var rows=[];
+  (client.rooms||[]).forEach(function(r){
+    (r.windows||[]).forEach(function(w){
+      (w.products||[]).forEach(function(p){
+        if(p.type!=="zaslona"&&p.type!=="firana")return;
+        var res=calc(p);
+        var metry=0;
+        (res.lines||[]).forEach(function(l){
+          var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
+        });
+        var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
+        var sz=p.c&&p.c.sz==="wave"?"Wave":"Flex";
+        var mars=p.c&&p.c.mars?p.c.mars+"00%":"150%";
+        rows.push({
+          room:r.name,win:w.name,
+          type:lbl,
+          fabric:p.fabName||"(ręczna)",
+          szStyle:sz+" "+mars,
+          metry:metry,
+          panels:(p.panels||[]).map(function(pn){return pn.side+(pn.w?" "+pn.w+"cm":"");}).join(", ")||"-",
+          hCm:(p.par&&p.par.hCm)||"-"
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+// Generic HTML→PDF via print dialog (window.print in iframe)
+function openPDFWindow(htmlContent, title){
+  var w=window.open("","_blank","width=900,height=700");
+  if(!w){alert("Zezwól na wyskakujące okna dla tej strony.");return;}
+  w.document.open();
+  w.document.write(htmlContent);
+  w.document.close();
+  setTimeout(function(){w.focus();w.print();},600);
+}
+
+function makeTableHTML(headers, rows, caption){
+  var headerHTML=headers.map(function(h){return "<th>"+h+"</th>";}).join("");
+  var rowsHTML=rows.map(function(r){
+    return "<tr>"+r.map(function(c){return "<td>"+c+"</td>";}).join("")+"</tr>";
+  }).join("");
+  return "<table><caption>"+caption+"</caption><thead><tr>"+headerHTML+"</tr></thead><tbody>"+rowsHTML+"</tbody></table>";
+}
+
+function pdfStyles(){
+  return `<style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#1a1a18;background:#fff;padding:18mm 16mm;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10mm;border-bottom:0.5px solid #c8c8c4;padding-bottom:7mm;}
+    .logo-text{font-size:20px;font-weight:700;letter-spacing:0.15em;color:#1a1a18;}
+    .logo-sub{font-size:8px;letter-spacing:0.25em;color:#6b6b66;text-transform:uppercase;margin-top:2px;}
+    .doc-title{font-size:16px;font-weight:700;margin-bottom:6mm;}
+    .meta{display:flex;gap:12mm;margin-bottom:6mm;}
+    .meta-block{flex:1;}
+    .meta-block h4{font-size:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b6b66;margin-bottom:3px;}
+    .meta-block p{font-size:10px;line-height:1.5;}
+    table{width:100%;border-collapse:collapse;margin-bottom:6mm;}
+    caption{font-size:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b6b66;text-align:left;margin-bottom:3px;}
+    th{background:#f2f2ef;font-size:8px;font-weight:600;padding:4px 6px;text-align:left;border-bottom:0.5px solid #c8c8c4;}
+    td{padding:4px 6px;border-bottom:0.5px solid #eaeae6;font-size:9px;vertical-align:top;}
+    tr:last-child td{border-bottom:none;}
+    .total-row td{font-weight:700;background:#f8f8f6;font-size:10px;}
+    .sum-box{background:#1a1a18;color:#fff;padding:8px 12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm;}
+    .sum-box .label{font-size:9px;letter-spacing:0.06em;opacity:0.7;}
+    .sum-box .amount{font-size:15px;font-weight:700;}
+    .notes{font-size:9px;border:0.5px solid #c8c8c4;border-radius:4px;padding:6px 10px;margin-bottom:8mm;line-height:1.6;}
+    .footer{margin-top:10mm;border-top:0.5px solid #eaeae6;padding-top:5mm;display:flex;justify-content:space-between;font-size:8px;color:#a8a8a4;}
+    .sign-block{margin-top:12mm;display:flex;justify-content:space-between;}
+    .sign-block .sign{width:180px;border-top:0.5px solid #1a1a18;padding-top:3px;font-size:8px;color:#6b6b66;text-align:center;}
+    @media print{body{padding:12mm 10mm;} @page{size:A4;margin:0;}}
+  </style>`;
+}
+
+function generateOfferPDF(client){
+  var rows=buildOfferRows(client);
+  if(!rows.length){alert("Brak wycenionych produktów.");return;}
+  var total=rows.reduce(function(a,r){return a+r.total;},0);
+  var netto=total/1.23;var vat=total-netto;
+  var now=new Date();
+  var dateStr=now.toLocaleDateString("pl-PL");
+  var validStr=new Date(now.getTime()+30*24*3600*1000).toLocaleDateString("pl-PL");
+  var offerNo=getPDFOfferNumber(client);
+
+  var tableRows=rows.map(function(r){
+    return [r.lp,r.name,r.qty,r.unit,
+      r.cenaJedn.toFixed(2).replace(".",",")+" zł",
+      (r.total/1.23).toFixed(2).replace(".",",")+" zł",
+      "23%",
+      (r.total-r.total/1.23).toFixed(2).replace(".",",")+" zł",
+      r.total.toFixed(2).replace(".",",")+" zł"
+    ];
+  });
+  tableRows.push(["","","","","<strong>Suma:</strong>",
+    netto.toFixed(2).replace(".",",")+" zł","23%",
+    vat.toFixed(2).replace(".",",")+" zł",
+    "<strong>"+total.toFixed(2).replace(".",",")+" zł</strong>"
+  ]);
+
+  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${offerNo}</title>${pdfStyles()}</head><body>
+  <div class="header">
+    <div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>
+    <div style="text-align:right"><div style="font-size:18px;font-weight:700">Oferta nr ${offerNo}</div>
+      <div style="font-size:9px;color:#6b6b66;margin-top:4px">Data wystawienia: ${dateStr} &nbsp;|&nbsp; Ważne do: ${validStr}</div>
+    </div>
+  </div>
+  <div class="meta">
+    <div class="meta-block"><h4>Sprzedawca</h4>
+      <p><strong>${SELLER.name}</strong><br>${SELLER.addr}<br>${SELLER.city}<br>NIP: ${SELLER.nip}<br>Tel.: ${SELLER.tel}<br>E-mail: ${SELLER.email}<br>Konto: ${SELLER.bank}<br>${SELLER.bankName}</p>
+    </div>
+    <div class="meta-block"><h4>Nabywca</h4>
+      <p><strong>${client.name}</strong><br>${client.addr||""}</p>
+    </div>
+  </div>
+  ${makeTableHTML(["Lp.","Nazwa produktu / usługi","Ilość","Jedn.","Cena jedn. brutto","Wartość netto","Stawka VAT","Wartość VAT","Wartość brutto"],tableRows,"Pozycje")}
+  <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
+  <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
+  <div class="sign-block">
+    <div class="sign">Osoba uprawniona do wystawienia<br><strong>Paulina Porter</strong></div>
+    <div class="sign">Osoba uprawniona do odbioru</div>
+  </div>
+  <div class="footer"><span>${SELLER.name} | ${SELLER.city}</span><span>Strona 1</span></div>
+  </body></html>`;
+  openPDFWindow(html, offerNo);
+}
+
+function generateFabricOrderPDF(client){
+  var rows=buildFabricRows(client);
+  if(!rows.length){alert("Brak tkanin do zamówienia.");return;}
+  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
+
+  // Group rows by supplier
+  var bySupplier={};
+  rows.forEach(function(r){
+    var key=r.prod||"Inny";
+    if(!bySupplier[key])bySupplier[key]=[];
+    bySupplier[key].push(r);
+  });
+  var suppliers=Object.keys(bySupplier).sort();
+
+  // Build one section per supplier
+  var supplierSections=suppliers.map(function(sup,si){
+    var supRows=bySupplier[sup];
+    var tableRows=supRows.map(function(r){
+      return [
+        "<strong>"+r.fabName+"</strong>",
+        r.width?r.width+"cm":"-",
+        r.metry.toFixed(2).replace(".",",")+" mb",
+        r.brutto?r.brutto.toFixed(2).replace(".",",")+" zł/mb":"-",
+        r.rooms.join("; ")
+      ];
+    });
+    var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
+    tableRows.push(["<strong>RAZEM</strong>","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>","",""]);
+
+    var tableHTML=makeTableHTML(
+      ["Tkanina","Szer. belki","Ilość (mb)","Cena brutto/mb","Przeznaczenie"],
+      tableRows,
+      "Pozycje do zamówienia"
+    );
+
+    var pageBreak=si>0?'<div style="page-break-before:always;padding-top:10mm;"></div>':"";
+
+    return pageBreak+`
+    <div class="supplier-header">
+      <div class="supplier-name">${sup}</div>
+      <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
+      <div class="supplier-meta">Klient końcowy: <strong>${client.name}</strong>${client.addr?" — "+client.addr:""}  |  Data: ${dateStr}</div>
+    </div>
+    ${tableHTML}
+    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma płatności: _________________ &nbsp;&nbsp;&nbsp; Podpis: _________________</div>
+    <div class="sign-block" style="margin-top:8mm">
+      <div class="sign">Zamawiający<br><strong>Paulina Porter</strong></div>
+      <div class="sign">Dostawca — potwierdzenie</div>
+    </div>`;
+  }).join("");
+
+  var extraStyles=`
+    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
+    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
+    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
+  `;
+
+  var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
+    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
+    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Data: '+dateStr+' &nbsp;|&nbsp; Dostawców: '+suppliers.length+'</div></div></div>'
+    +supplierSections
+    +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
+    +"</body></html>";
+
+  openPDFWindow(html, "zamowienie-tkaniny");
+}
+
+function generateSewingOrderPDF(client){
+  var rows=buildSewingRows(client);
+  if(!rows.length){alert("Brak pozycji szycia.");return;}
+
+  // Prompt for sewing house details
+  var sewingHouse=window.prompt(
+    "Podaj dane szwalni (nazwa, osoba, tel.):\n(możesz zostawić puste i uzupełnić na wydruku)",
+    ""
+  );
+  if(sewingHouse===null)return; // user cancelled
+
+  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
+  var termStr=window.prompt("Termin realizacji (np. 14.04.2026):", "") || "________________";
+
+  var tableRows=rows.map(function(r){
+    return [r.room+" / "+r.win,r.type,r.fabric,r.szStyle,r.hCm?r.hCm+"cm":"-",r.metry.toFixed(2).replace(".",",")+"\u00a0mb",r.panels];
+  });
+  var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
+  tableRows.push(["<strong>RAZEM</strong>","","","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+"\u00a0mb</strong>",""]);
+
+  var sewingHouseHTML=sewingHouse
+    ?'<p><strong>'+sewingHouse+'</strong></p>'
+    :'<p style="color:#a8a8a4;font-style:italic">____________________________<br>____________________________<br>____________________________</p>';
+
+  var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'+pdfStyles()+'</head><body>'
+    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zlecenie szycia</div>'
+    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Data: '+dateStr+' &nbsp;|&nbsp; Klient: '+client.name+'</div></div></div>'
+    +'<div class="meta">'
+    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong>'+SELLER.name+'</strong><br>'+SELLER.addr+', '+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
+    +'<div class="meta-block"><h4>Szwalnia</h4>'+sewingHouseHTML+'</div>'
+    +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong><br>'+(client.addr||"")+'</p></div>'
+    +'</div>'
+    +makeTableHTML(["Pomieszczenie / Okno","Rodzaj","Tkanina","Styl szycia","Wys. (cm)","Metry","Panele / uk\u0142ad"],tableRows,"Pozycje do szycia")
+    +'<div class="notes">Termin realizacji: <strong>'+termStr+'</strong> &nbsp;&nbsp;&nbsp; Uwagi: ____________________________________________________________________<br><br>Tkaniny dostarcza: \u25a1 Porter Design &nbsp; \u25a1 Szwalnia dostarcza we w\u0142asnym zakresie</div>'
+    +'<div class="sign-block">'
+    +'<div class="sign">Zleceniodawca<br><strong>Paulina Porter</strong></div>'
+    +'<div class="sign">Szwalnia \u2014 przyj\u0119to zlecenie</div>'
+    +'</div>'
+    +'<div class="footer"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Strona 1</span></div>'
+    +"</body></html>";
+
+  openPDFWindow(html, "zlecenie-szycia");
+}
 
 // ── UI COMPONENTS ──────────────────────────────────────────────────────────
 
@@ -618,18 +1038,35 @@ function App(){
     var rooms=curClient.rooms||[];
     var roomTiles=rooms.map(function(r){
       var rTotal=rt(r);
-      return ce("div",{key:r.id,onClick:function(){openRoom(r.id);},
-        style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,padding:12,cursor:"pointer",display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
-        ce("div",{style:{fontSize:22,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg2)",borderRadius:8}},r.icon),
+      return ce("div",{key:r.id,
+        style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,padding:12,display:"flex",alignItems:"center",gap:12,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}},
+        ce("div",{onClick:function(ev){ev.stopPropagation();openRoom(r.id);},style:{fontSize:22,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg2)",borderRadius:8,cursor:"pointer",flexShrink:0}},r.icon),
         ce("div",{style:{flex:1}},
-          ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},r.name),
-          ce("div",{style:{fontSize:11,color:"var(--t3)"}},(r.windows||[]).length+" okien")
+          ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},
+            ce(InlineEdit,{value:r.name,
+              onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{name:v}):x;})});});},
+              inputStyle:{fontSize:13,fontWeight:500}})
+          ),
+          ce("div",{onClick:function(){openRoom(r.id);},style:{fontSize:11,color:"var(--t3)",cursor:"pointer"}},(r.windows||[]).length+" okien")
         ),
-        rTotal?ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--gr)"}},Math.round(rTotal)+" z\u0142"):null,
-        ce("span",{style:{color:"var(--t3)",fontSize:13}},"\u203a")
+        rTotal?ce("span",{onClick:function(){openRoom(r.id);},style:{fontSize:12,fontWeight:600,color:"var(--gr)",cursor:"pointer"}},Math.round(rTotal)+" z\u0142"):null,
+        ce("span",{onClick:function(){openRoom(r.id);},style:{color:"var(--t3)",fontSize:13,cursor:"pointer"}},"\u203a")
       );
     });
     content=ce(Fragment,null,
+      ce("div",{style:{background:"var(--bg2)",border:"0.5px solid var(--bd3)",borderRadius:10,padding:"12px 14px",marginBottom:10}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Klient"),
+        ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t1)"}},
+          ce(InlineEdit,{value:curClient.name,
+            onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{name:v});});},
+            inputStyle:{fontSize:14,fontWeight:600}})
+        ),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},
+          ce(InlineEdit,{value:curClient.addr||"(brak adresu)",
+            onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{addr:v});});},
+            inputStyle:{fontSize:11}})
+        )
+      ),
       ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}},"Pomieszczenia"),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:12}},
         roomTiles,
@@ -659,7 +1096,9 @@ function App(){
       );
     });
     content=ce(Fragment,null,
-      ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}},curRoom.name+" \u2014 okna"),
+      ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}},
+        ce(InlineEdit,{value:curRoom.name+" — okna",onSave:function(v){var n=v.replace(/\s*—\s*okna$/i,"").trim();updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:n}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
+      ),
       (curRoom.windows||[]).length===0?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"8px 0 12px"}},"Brak okien. Dodaj pierwsze."):null,
       ce("div",{style:{marginBottom:12}},winRows),
       Btn("+ Dodaj okno",function(){setShowWinModal(true);},false)
@@ -671,7 +1110,9 @@ function App(){
     var wtv=wt(curWin);
     content=ce(Fragment,null,
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
-        ce("div",{style:{fontSize:14,fontWeight:500,color:"var(--t1)"}},curWin.name),
+        ce("div",{style:{fontSize:14,fontWeight:500,color:"var(--t1)"}},
+          ce(InlineEdit,{value:curWin.name,onSave:function(v){setCurWin(function(w){return mg(w,{name:v});});},inputStyle:{fontSize:14,fontWeight:500}})
+        ),
         (curWin.products||[]).length?ce("div",{style:{fontSize:15,fontWeight:600,color:"var(--gr)"}},Math.round(wtv)+" z\u0142"):null
       ),
       (curWin.products||[]).map(function(p,i){return ce(ProdCard,{key:p.id,prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);}});}),
@@ -709,7 +1150,12 @@ function App(){
         ce("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)",letterSpacing:"0.04em"}},"Łącznie cała wizyta"),
         ce("span",{style:{fontSize:20,fontWeight:700,color:"#fff"}},Math.round(clientTotal(curClient))+" z\u0142")
       ),
-      ce("div",{style:{display:"flex",gap:8}},Btn("\u2190 Edytuj",function(){setScreen("rooms");},false))
+      ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+        Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
+        ce("button",{onClick:function(){generateOfferPDF(curClient);},style:{padding:"7px 12px",borderRadius:8,border:"none",background:"var(--gr)",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"\uD83D\uDCC4 Wycena PDF"),
+        ce("button",{onClick:function(){generateFabricOrderPDF(curClient);},style:{padding:"7px 12px",borderRadius:8,border:"none",background:"var(--t2)",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"\uD83E\uDDF5 Zamówienie tkaniny"),
+        ce("button",{onClick:function(){generateSewingOrderPDF(curClient);},style:{padding:"7px 12px",borderRadius:8,border:"none",background:"var(--t1)",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"\u2702\uFE0F Zlecenie szycia")
+      )
     );
   }
 
