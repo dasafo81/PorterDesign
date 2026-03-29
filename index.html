@@ -213,7 +213,66 @@ var FABRICS=[
   {name:"Bora",brutto:260,prod:"Ridex",width:303},
   {name:"Bordeaux",brutto:90,prod:"SAMA TEKSTIL",width:330},
   {name:"Borneo",brutto:200,prod:"SAMA TEKSTIL",width:300},
-  {name:"Boston",brutto:160,prod:"SAMA TEKSTIL",width:300}
+  {name:"Boston",brutto:160,prod:"SAMA TEKSTIL",width:300},
+  {name:"Sinope 111/400",brutto:80,prod:"SAMA TEKSTIL",width:300},
+  {name:"Sinope 21662",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"Sinope 21686",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"Sinope 21697",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"Sinope 21698",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"Sinope 34200",brutto:150,prod:"SAMA TEKSTIL",width:310},
+  {name:"Sinope 34280",brutto:150,prod:"SAMA TEKSTIL",width:310},
+  {name:"Sinope 53490",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"Sinope 60000",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"Sinope 60020",brutto:90,prod:"SAMA TEKSTIL",width:320},
+  {name:"Sinope 8014",brutto:80,prod:"SAMA TEKSTIL",width:300},
+  {name:"Sisi 3165",brutto:120,prod:"MARGO TEXTIL",width:300},
+  {name:"Sisi 5331",brutto:85,prod:"MARGO TEXTIL",width:300},
+  {name:"Sisi 5331 260cm",brutto:70,prod:"MARGO TEXTIL",width:260},
+  {name:"Slow",brutto:150,prod:"VV design",width:280},
+  {name:"Smart Velvet",brutto:30,prod:"KAMELEON.PRO",width:null},
+  {name:"Sofi Silky",brutto:130,prod:"MARGO TEXTIL",width:320},
+  {name:"Sofia",brutto:80,prod:"SAMA TEKSTIL",width:330},
+  {name:"Softy Velvet",brutto:296,prod:"Ridex",width:295},
+  {name:"Solar Dimout",brutto:148,prod:"Ridex",width:315},
+  {name:"Solidarity",brutto:90,prod:"Ridex",width:300},
+  {name:"Soraya",brutto:100,prod:"VV design",width:330},
+  {name:"Star",brutto:220,prod:"Spagnolo",width:290},
+  {name:"Stefano",brutto:172,prod:"Spagnolo",width:300},
+  {name:"Suave",brutto:110,prod:"MARGO TEXTIL",width:140},
+  {name:"Sude",brutto:90,prod:"SAMA TEKSTIL",width:315},
+  {name:"Supernova",brutto:269,prod:"Ridex",width:300},
+  {name:"Tali",brutto:125,prod:"Spagnolo",width:300},
+  {name:"Tanini",brutto:160,prod:"OZLEM",width:300},
+  {name:"Tara",brutto:96,prod:"FIBERO G.ROJEK",width:320},
+  {name:"Tasos",brutto:190,prod:"Spagnolo",width:300},
+  {name:"Terrano Dim-Out",brutto:165,prod:"Spagnolo",width:280},
+  {name:"Tina 30051",brutto:100,prod:"MARGO TEXTIL",width:320},
+  {name:"Titan",brutto:180,prod:"Spagnolo",width:300},
+  {name:"Torino",brutto:90,prod:"SAMA TEKSTIL",width:330},
+  {name:"Tosca Dimout",brutto:170,prod:"MARGO TEXTIL",width:310},
+  {name:"Tracy",brutto:60,prod:"KAMELEON.PRO",width:null},
+  {name:"Trentina",brutto:170,prod:"Spagnolo",width:300},
+  {name:"Turia",brutto:175,prod:"Spagnolo",width:290},
+  {name:"Typic FR",brutto:220,prod:"VV design",width:300},
+  {name:"Unito",brutto:165,prod:"MARGO TEXTIL",width:320},
+  {name:"Vega",brutto:100,prod:"SAMA TEKSTIL",width:300},
+  {name:"Velvet",brutto:160,prod:"MARGO TEXTIL",width:300},
+  {name:"Venice",brutto:260,prod:"MARGO TEXTIL",width:300},
+  {name:"Venus Dimout",brutto:150,prod:"MARGO TEXTIL",width:320},
+  {name:"Vergano",brutto:113,prod:"Ridex",width:315},
+  {name:"Verona",brutto:95,prod:"SAMA TEKSTIL",width:330},
+  {name:"Vertic",brutto:150,prod:"VV design",width:300},
+  {name:"Vince",brutto:240,prod:"VV design",width:300},
+  {name:"Vista",brutto:100,prod:"SAMA TEKSTIL",width:300},
+  {name:"Voile",brutto:70,prod:"SAMA TEKSTIL",width:330},
+  {name:"Vox",brutto:120,prod:"SAMA TEKSTIL",width:300},
+  {name:"Vual",brutto:70,prod:"SAMA TEKSTIL",width:360},
+  {name:"Vulcano Dim-Out",brutto:180,prod:"Spagnolo",width:280},
+  {name:"Wonder",brutto:150,prod:"MARGO TEXTIL",width:310},
+  {name:"Yita",brutto:95,prod:"SAMA TEKSTIL",width:300},
+  {name:"Yorkshire Tweed",brutto:221,prod:"Ridex",width:310},
+  {name:"Yorkshire Wales",brutto:221,prod:"Ridex",width:310},
+  {name:"Zante",brutto:195,prod:"Spagnolo",width:320}
 ];
 
 var PROD_TYPES=[
@@ -276,10 +335,17 @@ function calc(p){
     total=res.price;
     // dopłaty
     if(c.bezinw==="tak"){
-      var bDop=jt==="al50"?85.03:57.12;
-      if(jt==="al25"||jt==="al35")bDop=74.73;
+      var bDop;
+      if(jt==="al50")bDop=85.03;
+      else if(jt==="al25"||jt==="al35")bDop=74.73;
+      else bDop=57.12; // drewnopodobne: ba35,ba50,ba65,bs35,bs50,bs65
       total+=bDop;
       lines.push("Monta\u017c bezinwazyjny +"+bDop.toFixed(2)+" z\u0142");
+    }
+    if(c.tasiemka==="tak"){
+      var tDop=46.43;
+      if(wCm<60){warn=(warn?warn+" | ":"")+"Tasiemka niedostępna dla szer. < 60 cm.";c.tasiemka=undefined;}
+      else{total+=tDop;lines.push("Dodatkowa tasiemka +"+tDop.toFixed(2)+" z\u0142");}
     }
     lines.push(JZ_LABELS[jt]+" "+wCm+"\xd7"+lCm+"cm \u2192 "+res.price+" z\u0142");
     // strefy
@@ -802,7 +868,8 @@ function ProdCard(p){
       ),
       ce(Chips,{items:jzTypes.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.jt&&x.v==="al25")||c.jt===x.v,onClick:function(){sc("jt",x.v);}});})}),
       ce(Chips,{items:[
-        ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}})
+        ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}}),
+        (par.wCm&&par.wCm>=60)?ce(Chip,{key:"ts",label:"Dodatkowa tasiemka +46,43 z\u0142",active:c.tasiemka==="tak",onClick:function(){tc("tasiemka");}}):null
       ]})
     );
   }else if(prod.type==="roleta"){
