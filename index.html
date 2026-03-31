@@ -1086,7 +1086,7 @@ function App(){
     var clientTiles=clients.map(function(cl){
       var total=clientTotal(cl);
       return ce("div",{key:cl.id,
-        style:{background:"var(--bg)",border:"0.5px solid var(--bd3)",borderRadius:10,padding:"14px 12px",boxShadow:"0 1px 3px rgba(0,0,0,0.04)",position:"relative"}},
+        style:{background:"var(--bg2)",border:"0.5px solid var(--bd3)",borderRadius:10,padding:"13px 12px",position:"relative"}},
         ce("div",{onClick:function(){openClient(cl.id);},style:{cursor:"pointer",paddingRight:32}},
           ce("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}},
             ce("div",null,
@@ -1095,7 +1095,7 @@ function App(){
             ),
             ce("span",{style:{fontSize:10,color:"var(--t3)"}},"\u203a")
           ),
-          total?ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--gr)",marginTop:4}},Math.round(total)+" z\u0142"):null
+          total?ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t2)",marginTop:4}},Math.round(total)+" z\u0142"):null
         ),
         ce("button",{
           onClick:function(ev){
@@ -1107,8 +1107,8 @@ function App(){
             }
           },
           title:"Usu\u0144 klienta",
-          style:{position:"absolute",top:8,right:8,border:"none",background:"none",cursor:"pointer",fontSize:14,color:"var(--t3)",padding:"3px 6px",borderRadius:4,lineHeight:1,opacity:0.6}
-        },"\u{1F5D1}")
+          style:{position:"absolute",top:8,right:8,border:"none",background:"none",cursor:"pointer",fontSize:14,color:"var(--t3)",padding:"2px 5px",lineHeight:1,opacity:0.45,fontWeight:300}
+        },"\u00d7")
       );
     });;
     clientTiles.push(ce("div",{key:"add",onClick:function(){setShowClientModal(true);},
