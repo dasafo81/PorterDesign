@@ -589,7 +589,7 @@ function calc(p){
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
     var useA2=belka>0&&hCm>belka;
     (p.panels||[]).forEach(function(pn){
-      var pw=pn.w||wCm,pm=pw/100,z,kt,ks,koszt;
+      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pm=pw/100,z,kt,ks,koszt;
       if(useA2){
         var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil(pw/pg);
         z=+(lp*hM+0.2).toFixed(2);kt=+(z*fabP).toFixed(2);
@@ -1105,7 +1105,7 @@ function ProdCard(p){
   function sf(f){p.onChange(mg(prod,{fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null}));}
   function sfm(v){p.onChange(mg(prod,{fabName:null,fabP:null,fabW:prod.fabManW||null,fabMan:v}));}
   function sfmW(v){p.onChange(mg(prod,{fabManW:v,fabW:v}));}
-  function addPan(){p.onChange(mg(prod,{panels:(prod.panels||[]).concat([{side:"Zas\u0142ona lewa",w:""}])}));}
+  function addPan(){var cur=prod.panels||[];var nextSide=cur.length===0?"Zasłona lewa":"Zasłona prawa";p.onChange(mg(prod,{panels:cur.concat([{side:nextSide,w:""}])}));}
   function remPan(j){p.onChange(mg(prod,{panels:(prod.panels||[]).filter(function(_,i){return i!==j;})}));}
   function setPS(j,v){p.onChange(mg(prod,{panels:(prod.panels||[]).map(function(x,i){return i===j?mg(x,{side:v}):x;})}));}
   function setPW(j,v){p.onChange(mg(prod,{panels:(prod.panels||[]).map(function(x,i){return i===j?mg(x,{w:+v||0}):x;})}));}
