@@ -1137,7 +1137,7 @@ function ProdCard(p){
       ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
       (prod.panels||[]).map(function(pn,j){
         return ce("div",{key:j,style:{display:"flex",alignItems:"center",gap:6,marginBottom:4}},
-          ce("select",{value:pn.side,onChange:function(ev){setPS(j,ev.target.value);},style:{flex:1,padding:"9px 10px",fontSize:14,border:"1px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",minHeight:44}}),
+          ce("select",{value:pn.side,onChange:function(ev){setPS(j,ev.target.value);},style:{flex:1,padding:"9px 10px",fontSize:14,border:"1px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",minHeight:44}},
             panOpts.map(function(o){return ce("option",{key:o},o);})),
           ce("input",{type:"number",value:pn.w||"",onChange:function(ev){setPW(j,ev.target.value);},placeholder:"cm",style:{width:72,padding:"9px 8px",fontSize:14,border:"1px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"center",minHeight:44}}),
           ce("span",{style:{fontSize:11,color:"var(--t2)"}},"cm"),
