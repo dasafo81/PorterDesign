@@ -1192,82 +1192,13 @@ function ModalClient(p){
   );
 }
 
-function generateSewingOrderPDFFromRows(rows, client, modalData){
-  if(!rows.length){alert("Brak wybranych pozycji.");return;}
-  var sewingHouse=modalData.sewingHouse||"";
-  var notes=modalData.notes||"";
-  var termStr=modalData.term||"________________";
-  var attachB64=modalData.attachB64||null;
-  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
-  var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
-
-  var tableHeader=["Pom. / Okno","Rodzaj","Tkanina","Producent","Szer. belki","Kolor","Mb","Wys. (cm)","Szer. (cm)","Podział","Styl szycia","Typ dołu","Odstęp ślizg.","Ołów w bokach"];
-  var tableRows=rows.map(function(r){
-    return [
-      r.room+" / "+r.win,r.type,
-      "<strong>"+r.fabric+"</strong>",
-      r.prod||"-",r.fabW+"cm",r.kolor,
-      r.metry.toFixed(2).replace(".",",")+" mb",
-      r.hCm?(r.hCm+"cm"):"-",r.wCm?(r.wCm+"cm"):"-",
-      r.split,r.szStyle,r.bottom,r.glide,r.leadInSides
-    ];
-  });
-  tableRows.push(["<strong>RAZEM</strong>","","","","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>","","","","","","",""]);
-
-  var sewHouseBlock=sewingHouse
-    ?'<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>'
-    :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________<br>____________________________</div>';
-  var notesBlock=notes?'<div class="notes"><strong>Uwagi do zlecenia:</strong><br>'+notes.replace(/</g,'&lt;').replace(/
-/g,'<br>')+'</div>':"";
-  var extraStyles="table{font-size:8px;}th{font-size:7px;padding:3px 4px;}td{padding:3px 4px;font-size:8px;}";
-
-  var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
-    +pdfStyles().replace('</style>',extraStyles+'</style>')
-    +'</head><body>'
-    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
-    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zlecenie szycia</div>'
-    +'<div style="font-size:10px;color:#6b6b66;margin-top:4px">Data: '+dateStr+'</div></div></div>'
-    +'<div class="meta">'
-    +'<div class="meta-block"><h4>KLIENT</h4><p style="font-size:11px;line-height:1.6">'+((client.name||"")+"
-"+(client.phone||"")+"
-"+(client.email||"")).replace(/
-/g,'<br>')+'</p></div>'
-    +'<div class="meta-block"><h4>SZWALNIA</h4>'+sewHouseBlock+'</div>'
-    +'<div class="meta-block"><h4>TERMIN</h4><p style="font-size:13px;font-weight:600">'+termStr+'</p></div>'
-    +'</div>'
-    +makeTableHTML(tableHeader,tableRows,"Specyfikacja szycia")
-    +notesBlock
-    +'<div class="sign-block"><div class="sign">Data odbioru tkaniny</div><div class="sign">Podpis zleceniodawcy</div><div class="sign">Podpis szwalni</div></div>'
-    +'</body></html>';
-
-  openPDFWindow(h,"Zlecenie szycia");
-
-  // attachment
-  if(attachB64){
-    setTimeout(function(){
-      var w2=window.open("","_blank","width=900,height=700");
-      if(w2){
-        w2.document.open();
-        w2.document.write('<!DOCTYPE html><html><head><title>Załącznik</title></head><body style="margin:0">'
-          +'<iframe src="'+attachB64+'" style="width:100%;height:100vh;border:none"></iframe></body></html>');
-        w2.document.close();
-      }
-    },800);
-  }
-}
-
 function ModalSewing(p){
   // p: {client, onClose}
   var SEWING_HOUSES=[
-    "TRINITAS \u2014 ul. Sk\u0142adowa 9, 86-300 Grudzi\u0105dz",
-    "LaurAles \u2014 ul. Kolegialna 35 lok.1, 09-402 P\u0142ock",
-    "Marcin Dekor \u2014 ul. Terespolska 75, 05-074 Halin\xf3w, Konik Nowy"
+    "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
+    "LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock",
+    "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów, Konik Nowy"
   ];
-
-  // mode: "choose" | "single" | "split"
-  var ms=useState("choose"),mode=ms[0],setMode=ms[1];
-
-  // single order state
   var ss=useState(SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
   var cs=useState(""),customHouse=cs[0],setCustomHouse=cs[1];
   var ns=useState(""),notes=ns[0],setNotes=ns[1];
@@ -1275,195 +1206,58 @@ function ModalSewing(p){
   var as=useState(null),attachB64=as[0],setAttachB64=as[1];
   var fns=useState(""),attachName=fns[0],setAttachName=fns[1];
 
-  // split order state
-  var allRows=buildSewingRows(p.client);
-  // selectedIds: set of row indices already assigned to a previous order
-  var used=useState([]),usedIds=used[0],setUsedIds=used[1];
-  // current batch selection (indices)
-  var sel=useState([]),selIds=sel[0],setSelIds=sel[1];
-  // split house/notes/term per batch
-  var sh=useState(SEWING_HOUSES[0]),splitHouse=sh[0],setSplitHouse=sh[1];
-  var sc2=useState(""),splitCustom=sc2[0],setSplitCustom=sc2[1];
-  var sn=useState(""),splitNotes=sn[0],setSplitNotes=sn[1];
-  var st=useState(""),splitTerm=st[0],setSplitTerm=st[1];
-  var sa=useState(null),splitAttach=sa[0],setSplitAttach=sa[1];
-  var sfn=useState(""),splitAttachName=sfn[0],setSplitAttachName=sfn[1];
-
-  function handleFile(ev,setB64,setName){
+  function handleFile(ev){
     var file=ev.target.files&&ev.target.files[0];
     if(!file)return;
-    if(file.type!=="application/pdf"){alert("Prosz\u0119 wybra\u0107 plik PDF.");return;}
+    if(file.type!=="application/pdf"){alert("Proszę wybrać plik PDF.");return;}
     var reader=new FileReader();
-    reader.onload=function(e){setB64(e.target.result);setName(file.name);};
+    reader.onload=function(e){setAttachB64(e.target.result);setAttachName(file.name);};
     reader.readAsDataURL(file);
   }
 
-  function generateSingle(){
+  function generate(){
     var house=selHouse==="__custom__"?customHouse:selHouse;
     generateSewingOrderPDF(p.client,{sewingHouse:house,notes:notes,term:term,attachB64:attachB64});
     p.onClose();
   }
 
-  function generateSplitBatch(){
-    if(!selIds.length){alert("Wybierz przynajmniej jedn\u0105 pozycj\u0119.");return;}
-    var house=splitHouse==="__custom__"?splitCustom:splitHouse;
-    // Build a fake client with only selected rows' products
-    var selectedRows=selIds.map(function(i){return allRows[i];});
-    generateSewingOrderPDFFromRows(selectedRows,p.client,{sewingHouse:house,notes:splitNotes,term:splitTerm,attachB64:splitAttach});
-    // Mark used, reset selection and house/notes for next batch
-    var newUsed=usedIds.concat(selIds);
-    setUsedIds(newUsed);
-    setSelIds([]);
-    setSplitHouse(SEWING_HOUSES[0]);
-    setSplitCustom("");
-    setSplitNotes("");
-    setSplitTerm("");
-    setSplitAttach(null);
-    setSplitAttachName("");
-    // If all done, close
-    if(newUsed.length>=allRows.length) p.onClose();
-  }
-
-  function toggleSel(i){
-    setSelIds(function(prev){
-      return prev.indexOf(i)>=0?prev.filter(function(x){return x!==i;}):prev.concat([i]);
-    });
-  }
-
   var INP={padding:"12px 14px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box",outline:"none"};
 
-  function HouseSelect(sp2){
-    return ce("div",null,
-      ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"SZWALNIA"),
-      ce("select",{value:sp2.val,onChange:function(ev){sp2.setVal(ev.target.value);},style:Object.assign({},INP,{minHeight:48})},
-        SEWING_HOUSES.map(function(h,i){return ce("option",{key:i,value:h},h);}),
-        ce("option",{value:"__custom__"},"\u2014 Wpisz w\u0142asne dane \u2014")
-      ),
-      sp2.val==="__custom__"?ce("textarea",{value:sp2.custom,onChange:function(ev){sp2.setCustom(ev.target.value);},placeholder:"Nazwa szwalni, osoba kontaktowa, telefon, adres...",rows:3,style:Object.assign({},INP,{marginTop:8,resize:"vertical",lineHeight:1.5})}):null
-    );
-  }
-
-  function TermInput(sp2){
-    return ce("div",null,
-      ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"TERMIN REALIZACJI"),
-      ce("input",{type:"text",value:sp2.val,onChange:function(ev){sp2.setVal(ev.target.value);},placeholder:"np. 25.04.2026",style:Object.assign({},INP,{minHeight:48})})
-    );
-  }
-
-  function NotesInput(sp2){
-    return ce("div",null,
-      ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"UWAGI DO ZLECENIA"),
-      ce("textarea",{value:sp2.val,onChange:function(ev){sp2.setVal(ev.target.value);},placeholder:"Wpisz szczeg\xf3\u0142owe uwagi dla szwalni...",rows:4,style:Object.assign({},INP,{resize:"vertical",lineHeight:1.6,minHeight:100})})
-    );
-  }
-
-  function AttachInput(sp2){
-    return ce("div",null,
-      ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"ZA\u0141\u0104CZNIK \u2014 RYSUNEK TECHNICZNY (PDF)"),
-      ce("label",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",border:"2px dashed var(--bd2)",borderRadius:10,cursor:"pointer",background:sp2.b64?"var(--grl)":"transparent",transition:"all .15s"}},
-        ce("span",{style:{fontSize:20}},sp2.b64?"\u2705":"\uD83D\uDCCE"),
-        ce("span",{style:{fontSize:14,color:"var(--t2)"}},sp2.b64?sp2.name:"Wybierz plik PDF (opcjonalnie)"),
-        ce("input",{type:"file",accept:".pdf,application/pdf",onChange:function(ev){handleFile(ev,sp2.setB64,sp2.setName);},style:{display:"none"}})
-      ),
-      sp2.b64?ce("button",{onClick:function(){sp2.setB64(null);sp2.setName("");},style:{marginTop:6,border:"none",background:"none",cursor:"pointer",fontSize:12,color:"var(--t3)"}},"× Usu\u0144 za\u0142\u0105cznik"):null
-    );
-  }
-
-  // ── CONTENT depending on mode ─────────────────────────────────────
-  var content;
-
-  if(mode==="choose"){
-    content=ce("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-      ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:4}},"Wybierz spos\xf3b generowania zlecenia szycia:"),
-      ce("button",{
-        onClick:function(){setMode("single");},
-        style:{padding:"18px 20px",borderRadius:12,border:"2px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",textAlign:"left",transition:"all .15s"}
-      },
-        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:4}},"\u2702\ufe0f Zamówienie do jednej szwalni"),
-        ce("div",{style:{fontSize:13,color:"var(--t2)"}},"Wszystkie pozycje trafiaj\u0105 do jednego zlecenia \u2014 jeden PDF.")
-      ),
-      allRows.length>1?ce("button",{
-        onClick:function(){setMode("split");},
-        style:{padding:"18px 20px",borderRadius:12,border:"2px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",textAlign:"left",transition:"all .15s"}
-      },
-        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:4}},"\u2702\ufe0f\u2702\ufe0f Zamówienie dzielone"),
-        ce("div",{style:{fontSize:13,color:"var(--t2)"}},"Wybierasz pozycje i generujesz osobne PDF dla ka\u017cdej szwalni. Mo\u017cna powt\xf3rzy\u0107 wielokrotnie.")
-      ):ce("div",{style:{padding:"14px",borderRadius:12,border:"1.5px solid var(--bd3)",background:"var(--bg2)",fontSize:13,color:"var(--t3)"}},"Zamówienie dzielone wymaga co najmniej 2 pozycji szycia.")
-    );
-
-  }else if(mode==="single"){
-    content=ce("div",{style:{display:"flex",flexDirection:"column",gap:16}},
-      ce("button",{onClick:function(){setMode("choose");},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t2)",textAlign:"left",padding:0}},"← Wr\xf3\u0107"),
-      ce(HouseSelect,{val:selHouse,setVal:setSelHouse,custom:customHouse,setCustom:setCustomHouse}),
-      ce(TermInput,{val:term,setVal:setTerm}),
-      ce(NotesInput,{val:notes,setVal:setNotes}),
-      ce(AttachInput,{b64:attachB64,setB64:setAttachB64,name:attachName,setName:setAttachName}),
-      ce("div",{style:{display:"flex",gap:10,marginTop:4}},
-        ce("button",{onClick:generateSingle,style:{flex:1,padding:"15px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}},"\u2702\ufe0f Generuj PDF"),
-        ce("button",{onClick:p.onClose,style:{padding:"15px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:15,cursor:"pointer"}},"Anuluj")
-      )
-    );
-
-  }else if(mode==="split"){
-    var remaining=allRows.length-usedIds.length;
-    content=ce("div",{style:{display:"flex",flexDirection:"column",gap:16}},
-      ce("button",{onClick:function(){if(!usedIds.length)setMode("choose");},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:usedIds.length?"var(--t3)":"var(--t2)",textAlign:"left",padding:0}},usedIds.length?"(pomi\u0144 \u2014 trwa generowanie zlece\u0144)":"← Wr\xf3\u0107"),
-      // Progress
-      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,padding:"10px 14px",fontSize:13}},
-        ce("span",{style:{fontWeight:700,color:"var(--t1)"}},"Zlecenie "+(usedIds.length>0?"kolejne":"pierwsze")),
-        ce("span",{style:{color:"var(--t2)"}}," \u2014 pozosta\u0142o "+remaining+" pozycji do przypisania")
-      ),
-      // Row picker
-      ce("div",null,
-        ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:10}},"WYBIERZ POZYCJE DO TEGO ZLECENIA"),
-        ce("div",{style:{display:"flex",flexDirection:"column",gap:6,maxHeight:200,overflowY:"auto",paddingRight:4}},
-          allRows.map(function(r,i){
-            var isUsed=usedIds.indexOf(i)>=0;
-            var isSel=selIds.indexOf(i)>=0;
-            return ce("label",{
-              key:i,
-              style:{
-                display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,
-                border:"1.5px solid "+(isSel?"var(--t1)":isUsed?"var(--bd3)":"var(--bd2)"),
-                background:isUsed?"var(--bg3)":isSel?"rgba(26,26,24,0.04)":"var(--bg)",
-                cursor:isUsed?"not-allowed":"pointer",
-                opacity:isUsed?0.45:1,
-                transition:"all .12s"
-              }
-            },
-              ce("input",{type:"checkbox",checked:isSel,disabled:isUsed,onChange:function(){if(!isUsed)toggleSel(i);},style:{width:16,height:16,cursor:isUsed?"not-allowed":"pointer",accentColor:"var(--t1)",flexShrink:0}}),
-              ce("div",{style:{fontSize:13,color:isUsed?"var(--t3)":"var(--t1)",lineHeight:1.4}},
-                ce("span",{style:{fontWeight:600}},r.room+" / "+r.win),
-                ce("span",{style:{color:"var(--t2)"}}," \u2014 "+r.type+(r.fabric?" \u00b7 "+r.fabric:"")),
-                isUsed?ce("span",{style:{fontSize:11,color:"var(--t3)"}}," (ju\u017c przypisane)"):null
-              )
-            );
-          })
-        )
-      ),
-      // House/term/notes for this batch
-      ce(HouseSelect,{val:splitHouse,setVal:setSplitHouse,custom:splitCustom,setCustom:setSplitCustom}),
-      ce(TermInput,{val:splitTerm,setVal:setSplitTerm}),
-      ce(NotesInput,{val:splitNotes,setVal:setSplitNotes}),
-      ce(AttachInput,{b64:splitAttach,setB64:setSplitAttach,name:splitAttachName,setName:setSplitAttachName}),
-      ce("div",{style:{display:"flex",gap:10,marginTop:4}},
-        ce("button",{
-          onClick:generateSplitBatch,
-          disabled:!selIds.length,
-          style:{flex:1,padding:"15px 20px",borderRadius:12,border:"none",background:selIds.length?"var(--t1)":"var(--grm)",color:"#fff",fontSize:15,fontWeight:600,cursor:selIds.length?"pointer":"not-allowed",transition:"all .15s"}
-        },selIds.length?"\u2702\ufe0f Generuj PDF ("+(usedIds.length+selIds.length)+"/"+allRows.length+")":"\u2702\ufe0f Wybierz pozycje..."),
-        ce("button",{onClick:p.onClose,style:{padding:"15px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:15,cursor:"pointer"}},"Zako\u0144cz")
-      )
-    );
-  }
-
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"1rem"}},
-    ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"1.8rem",width:"min(560px,96vw)",border:"1px solid var(--bd2)",boxShadow:"0 16px 48px rgba(0,0,0,0.2)",maxHeight:"92vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:16}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"1.8rem",width:"min(520px,96vw)",border:"1px solid var(--bd2)",boxShadow:"0 16px 48px rgba(0,0,0,0.2)",maxHeight:"90vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:16}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}},
         ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},"\u2702\ufe0f Zlecenie szycia"),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",padding:"0 4px"}},"\xd7")
       ),
-      content
+      ce("div",null,
+        ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"SZWALNIA"),
+        ce("select",{value:selHouse,onChange:function(ev){setSelHouse(ev.target.value);},style:Object.assign({},INP,{minHeight:48})},
+          SEWING_HOUSES.map(function(h,i){return ce("option",{key:i,value:h},h);}),
+          ce("option",{value:"__custom__"},"— Wpisz własne dane —")
+        ),
+        selHouse==="__custom__"?ce("textarea",{value:customHouse,onChange:function(ev){setCustomHouse(ev.target.value);},placeholder:"Nazwa szwalni, osoba kontaktowa, telefon, adres...",rows:3,style:Object.assign({},INP,{marginTop:8,resize:"vertical",lineHeight:1.5})}):null
+      ),
+      ce("div",null,
+        ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"TERMIN REALIZACJI"),
+        ce("input",{type:"text",value:term,onChange:function(ev){setTerm(ev.target.value);},placeholder:"np. 25.04.2026",style:Object.assign({},INP,{minHeight:48})})
+      ),
+      ce("div",null,
+        ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"UWAGI DO ZLECENIA"),
+        ce("textarea",{value:notes,onChange:function(ev){setNotes(ev.target.value);},placeholder:"Wpisz szczeg\xf3\u0142owe uwagi dla szwalni — np. specjalne wymagania, spos\xf3b monta\u017cu, kolory nici, priorytety...",rows:5,style:Object.assign({},INP,{resize:"vertical",lineHeight:1.6,minHeight:120})})
+      ),
+      ce("div",null,
+        ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:8}},"ZA\u0141\u0104CZNIK — RYSUNEK TECHNICZNY (PDF)"),
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,padding:"12px 16px",border:"2px dashed var(--bd2)",borderRadius:10,cursor:"pointer",background:attachB64?"var(--grl)":"transparent",transition:"all .15s"}},
+          ce("span",{style:{fontSize:20}},attachB64?"\u2705":"📎"),
+          ce("span",{style:{fontSize:14,color:"var(--t2)"}},attachB64?attachName:"Wybierz plik PDF (opcjonalnie)"),
+          ce("input",{type:"file",accept:".pdf,application/pdf",onChange:handleFile,style:{display:"none"}})
+        ),
+        attachB64?ce("button",{onClick:function(){setAttachB64(null);setAttachName("");},style:{marginTop:6,border:"none",background:"none",cursor:"pointer",fontSize:12,color:"var(--t3)"}},"\xd7 Usu\u0144 za\u0142\u0105cznik"):null
+      ),
+      ce("div",{style:{display:"flex",gap:10,marginTop:4}},
+        ce("button",{onClick:generate,style:{flex:1,padding:"15px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"#fff",fontSize:15,fontWeight:600,cursor:"pointer"}},"\u2702\ufe0f Generuj PDF"),
+        ce("button",{onClick:p.onClose,style:{padding:"15px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:15,cursor:"pointer"}},"Anuluj")
+      )
     )
   );
 }
