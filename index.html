@@ -1043,32 +1043,47 @@ function Section(p){
 
 function FabPicker(p){
   var qs=useState("");var q=qs[0],setQ=qs[1];
+  var os=useState(false);var open=os[0],setOpen=os[1];
   var list=q?FABRICS.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):FABRICS;
   var sf=FABRICS.find(function(f){return f.name===p.fabName;});
-  return ce("div",{style:{border:"1.5px solid var(--bd2)",borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4}},
-    ce("div",{style:{padding:"10px 14px",background:"var(--bg2)",fontSize:12,fontWeight:500,color:"var(--t2)",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",borderBottom:"1px solid var(--bd2)"}},
-      ce("span",{},"TKANINA"),
-      sf?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12}},p.fabName+" \xb7 "+sf.brutto+" z\u0142/mb \xb7 "+sf.width+"cm"):null,
-      !p.fabName&&p.fabMan==null?ce("span",{style:{color:"var(--t3)"}},"nie wybrano"):null,
-      p.fabMan!=null?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12}},"r\u0119czna: "+p.fabMan+" z\u0142/mb"):null
+  var hasSelection=p.fabName||p.fabMan!=null;
+  return ce("div",{style:{border:"1.5px solid "+(open?"var(--t1)":"var(--bd2)"),borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4,transition:"border-color .15s"}},
+    ce("div",{
+      onClick:function(){setOpen(!open);},
+      style:{padding:"14px 16px",background:open?"var(--grl)":"var(--bg2)",fontSize:13,fontWeight:500,color:"var(--t1)",display:"flex",alignItems:"center",gap:10,cursor:"pointer",userSelect:"none",transition:"background .15s"}
+    },
+      ce("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:open?"var(--grd)":"var(--t2)",textTransform:"uppercase",flexShrink:0}},"Tkanina"),
+      hasSelection?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+        sf?(p.fabName+" · "+sf.brutto+" zł/mb"):("ręczna: "+p.fabMan+" zł/mb")
+      ):ce("span",{style:{color:"var(--t3)",fontSize:13,flex:1}},
+        "nie wybrano — kliknij aby wybrać"
+      ),
+      ce("span",{style:{color:"var(--t3)",fontSize:16,transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,lineHeight:1,display:"inline-block"}},"⌄")
     ),
-    ce("input",{value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
-    ce("div",{style:{maxHeight:220,overflowY:"auto"}},
-      list.map(function(f){
-        return ce("div",{key:f.name,onClick:function(){p.onSelect(f);},style:{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",borderBottom:"1px solid var(--bd3)",cursor:"pointer",fontSize:15,background:p.fabName===f.name?"var(--grl)":"var(--bg)"}},
-          ce("span",{style:{flex:1,fontWeight:500,color:"var(--t1)"}},f.name),
-          ce("span",{style:{fontSize:10,color:"var(--t3)",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod),
-          ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap"}},f.width+"cm"),
-          ce("span",{style:{color:"var(--grd)",fontWeight:500,whiteSpace:"nowrap"}},f.brutto+" z\u0142")
-        );
-      })
-    ),
-    ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
-      ce("label",{style:{fontSize:11,color:"var(--t2)",flex:1}},"Cena r\u0119czna (z\u0142/mb):"),
-      ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}}),
-            ce("label",{style:{fontSize:11,color:"var(--t2)",whiteSpace:"nowrap"}}," Wys. belki (cm):"),
-      ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
-    )
+    open?ce("div",null,
+      ce("input",{autoFocus:true,value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny po nazwie lub dostawcy...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
+      ce("div",{style:{maxHeight:240,overflowY:"auto"}},
+        list.map(function(f){
+          var active=p.fabName===f.name;
+          return ce("div",{key:f.name,
+            onClick:function(){p.onSelect(f);setOpen(false);setQ("");},
+            style:{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",borderBottom:"1px solid var(--bd3)",cursor:"pointer",fontSize:15,background:active?"var(--grl)":"var(--bg)"}
+          },
+            active?ce("span",{style:{color:"var(--gr)",fontSize:14,flexShrink:0,width:16}},"✓"):ce("span",{style:{width:16,flexShrink:0}}),
+            ce("span",{style:{flex:1,fontWeight:active?600:500,color:"var(--t1)"}},f.name),
+            ce("span",{style:{fontSize:11,color:"var(--t3)",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod),
+            ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap",fontSize:13}},f.width+"cm"),
+            ce("span",{style:{color:"var(--grd)",fontWeight:600,whiteSpace:"nowrap",fontSize:13}},f.brutto+" zł")
+          );
+        })
+      ),
+      ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
+        ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}}),
+        ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
+        ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
+      )
+    ):null
   );
 }
 
