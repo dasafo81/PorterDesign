@@ -953,6 +953,107 @@ function generateOfferPDF(client){
   openPDFWindow(html, offerNo);
 }
 
+// ── Suppliers for karnisze / szyny ─────────────────────────────────────────
+var KARNISZ_SUPPLIERS=[
+  {key:"marcin_dekor", label:"Marcin Dekor"},
+  {key:"forest_polska",label:"Forest Polska, ul. Poloneza 89, 02-826 Warszawa"}
+];
+
+function buildKarniszRows(client){
+  var rows=[];
+  (client.rooms||[]).forEach(function(r){
+    (r.windows||[]).forEach(function(w){
+      (w.products||[]).forEach(function(p){
+        if(p.type!=="karnisz"&&p.type!=="szyna")return;
+        var pc=p.c||{},par=p.par||{};
+        var typLabel=p.type==="karnisz"?"Karnisz el. "+(pc.km||"slim").toUpperCase():"Szyna KAES "+(pc.ks||"flex");
+        var len=par.len||0;
+        var res=calc(p);
+        rows.push({
+          room:r.name,
+          win:w.name,
+          type:typLabel,
+          len:len,
+          arc:par.arc||0,
+          pts:par.pt||par.pts||0,
+          supplier:p.karniszSupplier||"",
+          total:res.total||0,
+          lines:(res.lines||[]).join("; ")
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+function generateKarniszOrderPDF(client){
+  var rows=buildKarniszRows(client);
+  if(!rows.length){alert("Brak karnisz\xf3w / szyn do zam\xf3wienia.");return;}
+  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
+
+  // Ask which supplier for each row that has no supplier assigned
+  // Present a simple prompt listing items and asking for Marcin Dekor or Forest Polska
+  var resolved=rows.map(function(r){
+    if(r.supplier)return r;
+    var answer=window.prompt(
+      r.room+" / "+r.win+" — "+r.type+" ("+r.len+"cm)\n\nWybierz dostawcę:\n1 — Marcin Dekor\n2 — Forest Polska\n\nWpisz 1 lub 2:",""
+    );
+    if(answer===null)return null; // cancelled
+    var sup=answer==="2"?"forest_polska":"marcin_dekor";
+    return Object.assign({},r,{supplier:sup});
+  });
+
+  // If any prompt was cancelled
+  if(resolved.indexOf(null)>=0)return;
+
+  // Group by supplier
+  var bySupplier={};
+  KARNISZ_SUPPLIERS.forEach(function(s){bySupplier[s.key]=[];});
+  resolved.forEach(function(r){
+    var key=(r.supplier&&bySupplier[r.supplier]!==undefined)?r.supplier:"marcin_dekor";
+    bySupplier[key].push(r);
+  });
+
+  var activeSups=KARNISZ_SUPPLIERS.filter(function(s){return bySupplier[s.key].length>0;});
+  if(!activeSups.length){alert("Brak pozycji.");return;}
+
+  var supplierSections=activeSups.map(function(sup,si){
+    var supRows=bySupplier[sup.key];
+    var tableRows=supRows.map(function(r){
+      return [
+        r.room+" / "+r.win,
+        r.type,
+        r.len?r.len+"cm":"-",
+        r.arc?r.arc+" mb":"–",
+        r.pts?r.pts+" szt.":"–",
+        r.total>0?r.total.toFixed(2).replace(".",",")+"\u00a0z\u0142":"–"
+      ];
+    });
+
+    var tableHTML=makeTableHTML(
+      ["Pom. / Okno","Typ","D\u0142ugo\u015b\u0107","Gi\u0119cie \u0142uk","Gi\u0119cie pkt","Warto\u015b\u0107"],
+      tableRows,
+      "Pozycje do zam\xf3wienia"
+    );
+
+    var pageBreak=si>0?"<div style=\"page-break-before:always;padding-top:10mm;\"></div>":"";
+
+    return pageBreak+"\n    <div class=\"supplier-header\">\n      <div class=\"supplier-name\">"+sup.label+"</div>\n      <div class=\"supplier-meta\">Zamawiaj\u0105cy: <strong>"+SELLER.name+"</strong>  |  Tel.: "+SELLER.tel+"  |  E-mail: "+SELLER.email+"</div>\n      <div class=\"supplier-meta\">Klient ko\u0144cowy: <strong>"+client.name+"</strong>"+(client.addr?" \u2014 "+client.addr:"")+"  |  Data: "+dateStr+"</div>\n    </div>\n    "+tableHTML+"\n    <div class=\"notes\" style=\"margin-top:4mm\">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma p\u0142atno\u015bci: _________________ &nbsp;&nbsp;&nbsp; Podpis: _________________</div>\n    <div class=\"sign-block\" style=\"margin-top:8mm\">\n      <div class=\"sign\">Zamawiaj\u0105cy<br><strong>Paulina Porter</strong></div>\n      <div class=\"sign\">Dostawca \u2014 potwierdzenie</div>\n    </div>";
+  }).join("");
+
+  var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n  ";
+
+  var html="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Zam\xf3wienie karnisz\xf3w \u2014 "+client.name+"</title>"+pdfStyles().replace("</style>",extraStyles+"</style>")+"</head><body>"
+    +"<div class=\"header\"><div><div class=\"logo-text\">PORTER<br>DESIGN</div><div class=\"logo-sub\">Dekoracje okienne</div></div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Zam\xf3wienie karnisz\xf3w / szyn</div>"
+    +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Klient: <strong>"+client.name+"</strong> &nbsp;|&nbsp; Data: "+dateStr+" &nbsp;|&nbsp; Dostawc\xf3w: "+activeSups.length+"</div></div></div>"
+    +supplierSections
+    +"<div class=\"footer\" style=\"margin-top:8mm\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>Generowano: "+dateStr+"</span></div>"
+    +"</body></html>";
+
+  openPDFWindow(html,"zamowienie-karnisz");
+}
+
 function generateFabricOrderPDF(client){
   var rows=buildFabricRows(client);
   if(!rows.length){alert("Brak tkanin do zamówienia.");return;}
@@ -2163,6 +2264,14 @@ function ProdCard(p){
     ):null;
 
     // ── MANUAL / PÓŁAUTOMAT options ───────────────────────────────────
+    var METALOWY_KOLORY=[
+      {key:"srebrny",   label:"Srebrny"},
+      {key:"zloty",     label:"Z\u0142oty"},
+      {key:"stare_zloto",label:"Stare z\u0142oto"},
+      {key:"antracyt",  label:"Antracyt"},
+      {key:"miedz",     label:"Mied\u017a"}
+    ];
+    var isMetalowy=c.lancuszek==="metalowy";
     var lancuszekSection = (rSystem==="manual"||rSystem==="polautomatyczny")?ce("div",{style:{marginTop:20}},
       // Kolor łańcuszka
       ce("div",{style:{marginBottom:16}},
@@ -2185,7 +2294,21 @@ function ProdCard(p){
               ce("span",{style:{fontSize:12,fontWeight:isA?700:400,color:"var(--t1)",marginTop:8}},lk.label)
             );
           })
-        )
+        ),
+        // Podmenu kolorów łańcuszka metalowego
+        isMetalowy?ce("div",{style:{marginTop:14,padding:"14px 16px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)"}},
+          ce("label",{style:{fontSize:11,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"KOLOR METALOWEGO \u0141A\u0143CUSZKA"),
+          ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+            METALOWY_KOLORY.map(function(mk){
+              var isAK=c.kolorLancuszka===mk.key||(mk.key==="srebrny"&&!c.kolorLancuszka);
+              return ce("button",{
+                key:mk.key,
+                onClick:function(){sc("kolorLancuszka",mk.key);},
+                style:{padding:"8px 16px",borderRadius:8,border:"2px solid "+(isAK?"var(--t1)":"var(--bd2)"),background:isAK?"var(--t1)":"var(--bg)",color:isAK?"#fff":"var(--t1)",fontSize:13,fontWeight:isAK?600:400,cursor:"pointer",transition:"all .18s"}
+              },isAK?"\u2713 "+mk.label:mk.label);
+            })
+          )
+        ):null
       ),
       // Strona obsługi
       ce("div",null,
@@ -2596,6 +2719,7 @@ function App(){
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
         ce("button",{onClick:function(){generateOfferPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena PDF"),
         ce("button",{onClick:function(){generateFabricOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
+        ce("button",{onClick:function(){generateKarniszOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
         ce("button",{onClick:function(){setShowSewingModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
       )
     );
