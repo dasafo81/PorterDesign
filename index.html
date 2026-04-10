@@ -1560,7 +1560,7 @@ function ProdCard(p){
 
     // ── SECTION 0: Model selection ─────────────────────────────────────
     var modelSelector = ce("div",{style:{marginBottom:0}},
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:580}},
         [
           {key:"falda",label:"Zas\u0142ona z fa\u0142d\u0105",imgSrc:IMG_MODEL_FALDA},
           {key:"wave",label:"Zas\u0142ona Wave",imgSrc:IMG_MODEL_WAVE},
@@ -1581,7 +1581,7 @@ function ProdCard(p){
             }
           },
             ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-              ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"120px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0"}}),
+              ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0"}}),
               isActive?ce("div",{style:{position:"absolute",top:8,left:8,width:26,height:26,borderRadius:"50%",background:"var(--t1)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:700}},"✓"):null
             ),
             ce("span",{style:{
@@ -1601,12 +1601,12 @@ function ProdCard(p){
       var foldTypes=[
         {key:"pojedyncza",label:"Pojedyncza",imgSrc:IMG_FALDA_POJEDYNCZA},
         {key:"podwojna",label:"Podw\xf3jna",imgSrc:IMG_FALDA_PODWOJNA},
-        {key:"potrojna",label:"Pot\xf3jna",imgSrc:IMG_FALDA_POTROJNA},
+        {key:"potrojna",label:"Potr\xf3jna",imgSrc:IMG_FALDA_POTROJNA},
         {key:"plaska",label:"P\u0142aska",imgSrc:IMG_FALDA_PLASKA},
         {key:"studio",label:"Studio",imgSrc:IMG_FALDA_STUDIO}
       ];
       foldTypeSelector = ce("div",{style:{marginTop:20}},
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:580}},
           foldTypes.map(function(ft){
             var isActive=foldType===ft.key;
             return ce("button",{
@@ -1621,7 +1621,7 @@ function ProdCard(p){
               }
             },
               ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-                ce("img",{src:ft.imgSrc,alt:ft.label,style:{width:"100%",height:"110px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0"}}),
+                ce("img",{src:ft.imgSrc,alt:ft.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0"}}),
                 isActive?ce("div",{style:{position:"absolute",top:8,left:8,width:24,height:24,borderRadius:"50%",background:"var(--t1)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:700}},"✓"):null
               ),
               ce("span",{style:{
@@ -1835,7 +1835,10 @@ function ProdCard(p){
       ce(Section,{num:"2",title:"Model"},
         ce("p",{style:{fontSize:13,color:"var(--t2)",marginBottom:16}},"Wybierz model zas\u0142ony"),
         modelSelector,
-        foldTypeSelector
+        foldTypeSelector?ce("div",{style:{marginTop:4}},
+          ce("p",{style:{fontSize:13,color:"var(--t2)",margin:"16px 0 0"}},"Wybierz rodzaj fa\u0142dy"),
+          foldTypeSelector
+        ):null
       ),
 
       // SEKCJA 3: Podział + szczegóły
