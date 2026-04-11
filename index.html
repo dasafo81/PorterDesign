@@ -3024,7 +3024,7 @@ function ModalAIValuation(p){
       jzList+"\n\n"+
 
       "=== FORMAT ODPOWIEDZI ===\n"+
-      "Zwroc TYLKO poprawny JSON (bez backticks, bez komentarzy, bez zadnego innego tekstu):\n"+
+      "KRYTYCZNE: Zwroc WYLACZNIE surowy JSON. Zero tekstu przed ani po. Zero backticks. Pierwszy znak to '{', ostatni '}'. Jesli dodasz cos poza JSONem, aplikacja sie zepsuje.\n"+
       '{"clientName":"Jan Kowalski","addr":"","rooms":[{"name":"Salon","windows":[{"name":"Okno 1","products":[]}]}]}\n\n'+
 
       "=== TYPY PRODUKTOW i ich pola ===\n"+
@@ -3161,6 +3161,9 @@ function ModalAIValuation(p){
         var data;
         try{
           var clean=jsonTxt.replace(/```json|```/g,"").trim();
+          // Wyciagnij JSON nawet jesli Llama dodala tekst przed/po
+          var match=clean.match(/\{[\s\S]*\}/);
+          if(match) clean=match[0];
           data=JSON.parse(clean);
         }catch(e){
           setError("AI zwrocilo niepoprawny JSON. Sprobuj ponownie lub uproscil zapytanie.\n\nOdpowiedz AI: "+jsonTxt.slice(0,200));
