@@ -75,7 +75,7 @@ var sbApi = {
   },
   // Dodaj nowego klienta
   addClient: function(name, addr){
-    return sbFetch("POST","clients",{name:name,addr:addr,rooms:[{id:1,name:"Salon",icon:"\ud83d\udecb\ufe0f",windows:[]}]});
+    return sbFetch("POST","clients",{name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
   },
   // Zaktualizuj rooms klienta (zapisuje cały JSON)
   updateClient: function(id, data){
@@ -1599,8 +1599,8 @@ function ModalRoom(p){
               transition:"all .15s"
             }},
             preset.img
-              ?ce("img",{src:preset.img,style:{width:64,height:64,objectFit:"cover",borderRadius:8}})
-              :ce("div",{style:{width:64,height:64,borderRadius:8,background:"var(--bg2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,color:"var(--t2)"}},"+"),
+              ?ce("img",{src:preset.img,style:{width:80,height:80,objectFit:"cover",borderRadius:10}})
+              :ce("div",{style:{width:80,height:80,borderRadius:10,background:"var(--bg2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,color:"var(--t2)"}},"+"),
             ce("div",{style:{fontSize:11,fontWeight:600,color:isActive?"var(--t1)":"var(--t2)",textAlign:"center",lineHeight:1.2}},preset.label)
           );
         })
@@ -2658,7 +2658,7 @@ function App(){
 
   function addClient(name,addr){
     sbApi.addClient(name,addr).then(function(data){
-      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,rooms:[{id:1,name:"Salon",icon:"\ud83d\udecb\ufe0f",windows:[]}]};
+      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
       setClients(function(cs){return cs.concat([newCl]);});
       setCurClientId(newCl.id);
       setScreen("rooms");
@@ -2774,9 +2774,12 @@ function App(){
       var rTotal=rt(r);
       return ce("div",{key:r.id,
         style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,padding:"18px 16px",display:"flex",alignItems:"center",gap:16,boxShadow:"0 1px 6px rgba(0,0,0,0.04)"}},
-        r.img
-          ?ce("img",{onClick:function(ev){ev.stopPropagation();openRoom(r.id);},src:r.img,style:{width:60,height:60,objectFit:"cover",borderRadius:10,cursor:"pointer",flexShrink:0}})
-          :ce("div",{onClick:function(ev){ev.stopPropagation();openRoom(r.id);},style:{width:60,height:60,display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg2)",borderRadius:10,cursor:"pointer",flexShrink:0,fontSize:26,color:"var(--t2)"}},r.name&&r.name[0]||"\u25a1"),
+        (function(){
+          var _img=r.img||(r.name&&r.name.toLowerCase().includes("salon")?IMG_ROOM_SALON:r.name&&r.name.toLowerCase().includes("kuchnia")?IMG_ROOM_KUCHNIA:r.name&&r.name.toLowerCase().includes("sypialnia")?IMG_ROOM_SYPIALNIA:r.name&&r.name.toLowerCase().includes("gabinet")?IMG_ROOM_GABINET:r.name&&r.name.toLowerCase().includes("pok")?IMG_ROOM_POKÓJ:null);
+          return _img
+            ?ce("img",{onClick:function(ev){ev.stopPropagation();openRoom(r.id);},src:_img,style:{width:120,height:120,objectFit:"cover",borderRadius:12,cursor:"pointer",flexShrink:0}})
+            :ce("div",{onClick:function(ev){ev.stopPropagation();openRoom(r.id);},style:{width:120,height:120,display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg2)",borderRadius:12,cursor:"pointer",flexShrink:0,fontSize:36,color:"var(--t2)"}},r.name&&r.name[0]||"\u25a1");
+        })(),
         ce("div",{style:{flex:1}},
           ce("div",{style:{fontSize:15,fontWeight:500,color:"var(--t1)"}},
             ce(InlineEdit,{value:r.name,
