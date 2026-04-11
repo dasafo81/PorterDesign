@@ -2648,6 +2648,7 @@ function App(){
   var s7=useState(false),showRoomModal=s7[0],setShowRoomModal=s7[1];
   var s8=useState(false),showWinModal=s8[0],setShowWinModal=s8[1];
   var s11=useState(false),showSewingModal=s11[0],setShowSewingModal=s11[1];
+  var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
 
@@ -2960,21 +2961,211 @@ function App(){
   return ce("div",{style:{padding:"1.2rem",maxWidth:"100%",margin:"0 auto"}},
     // Save status
     saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"#c0392b":"var(--t2)",color:"#fff",fontSize:12,padding:"6px 18px",borderRadius:"0 0 10px 10px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuję...":saveStatus==="ok"?"✓ Zapisano":"⚠ Błąd zapisu"):null,
-    // Topbar
-    screen!=="home"?ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1.2rem",paddingBottom:"1rem",borderBottom:"1px solid var(--bd3)"}},
-      ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"none",cursor:"pointer",padding:"4px 0",color:"var(--t3)",fontSize:13,letterSpacing:"0.08em",display:"flex",alignItems:"center",gap:4}},"← Wstecz"),
-      ce("div",{style:{display:"flex",alignItems:"center",gap:10,borderLeft:"none",borderRight:"none"}},
+    // Topbar (always visible)
+    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1.2rem",paddingBottom:"1rem",borderBottom:"1px solid var(--bd3)"}},
+      screen!=="home"?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"none",cursor:"pointer",padding:"4px 0",color:"var(--t3)",fontSize:13,letterSpacing:"0.08em",display:"flex",alignItems:"center",gap:4}},"\u2190 Wstecz"):ce("div",{style:{width:20}}),
+      ce("div",{style:{display:"flex",alignItems:"center",gap:10}},
         ce("img",{src:LOGO_SRC,alt:"PD",style:{height:22,opacity:0.9}}),
-        ce("span",{style:{fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)",fontWeight:500}},
-          "Porter Design Assistant")
-      )
-    ):null,
+        ce("span",{style:{fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)",fontWeight:500}},"Porter Design Assistant")
+      ),
+      ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI")
+    ),
     screen!=="home"?ce(BC,{}):null,
     content,
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
-    showSewingModal?ce(ModalSewing,{client:curClient,onClose:function(){setShowSewingModal(false);}}):null
+    showSewingModal?ce(ModalSewing,{client:curClient,onClose:function(){setShowSewingModal(false);}}):null,
+    showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null
+  );
+}
+
+
+// CSS animacja kropek
+if(!document.getElementById("ai-pulse-style")){
+  var _s=document.createElement("style");
+  _s.id="ai-pulse-style";
+  _s.textContent="@keyframes pulse{0%,100%{opacity:0.3;}50%{opacity:1;}}";
+  document.head.appendChild(_s);
+}
+
+// MODAL: WYCENA AI
+function ModalAIValuation(p){
+  var useState=React.useState,useRef=React.useRef;
+  var sr1=useState(""),inputText=sr1[0],setInputText=sr1[1];
+  var sr2=useState(null),valuation=sr2[0],setValuation=sr2[1];
+  var sr3=useState(null),emailText=sr3[0],setEmailText=sr3[1];
+  var sr4=useState(false),loading=sr4[0],setLoading=sr4[1];
+  var sr5=useState(null),error=sr5[0],setError=sr5[1];
+  var sr6=useState(false),saved=sr6[0],setSaved=sr6[1];
+  var sr7=useState(null),savedClient=sr7[0],setSavedClient=sr7[1];
+  var sr8=useState(false),emailLoading=sr8[0],setEmailLoading=sr8[1];
+  var sr9=useState(false),emailCopied=sr9[0],setEmailCopied=sr9[1];
+  var sr10=useState(false),saveLoading=sr10[0],setSaveLoading=sr10[1];
+  var emailRef=useRef(null);
+
+  var SYS_WYCENA="Jestes asystentem wyceny Porter Design – butikowej pracowni dekoracji okiennych.\n"+
+    "Przeanalizuj mail/notatki klienta i zrob SZCZEGOLOWA WYCENE po polsku.\n\n"+
+    "CENNIK ZASLON/FIRAN: szer x wys x cena_tkaniny + uszycie. Mnoznik: zakladka 2.3x, transparentna 2.0x, firana 2.5-3.0x. Uszycie 48-85 PLN/mb.\n"+
+    "CENNIK ZALUZJI: Aluminium 25mm od 149 PLN; Basswood 50mm od 249 PLN; Bamboo 50mm od 254 PLN.\n"+
+    "CENNIK ROLET: 80-350 PLN/mb x szer x wys; min 150 PLN; elektryczna +300-600 PLN.\n"+
+    "CENNIK SZYN/KARNISZY: Flex 80 PLN/mb; Wave 90-120 PLN/mb; AM75 644 PLN; AM50 1000 PLN; Glydea 2268 PLN.\n\n"+
+    "Instrukcje: wyodrebnij pomieszczenia/okna/wymiary/typy. Dla kazdego okna rozpisz wycene. Zakoncz PODSUMOWANIEM CALKOWITYM. Pisz profesjonalnie.";
+
+  var SYS_JSON='Jestes ekstrakatorem danych Porter Design. Na podstawie wyceny zwroc WYLACZNIE poprawny JSON (bez backticks, bez komentarzy):\n{"clientName":"Imie Nazwisko","addr":"","rooms":[{"name":"Salon","windows":[{"name":"Okno 1","products":[{"type":"zaslona","label":"Zaslona lniana","mp":1260,"opis":"150x250cm"}]}]}]}\nReguly: type=(zaslona|firana|zaluzja|roleta|szyna|karnisz), mp=cena koncowa jako liczba PLN, clientName z maila lub "Nowy klient". Odpowiedz TYLKO jsonem.';
+
+  var SYS_EMAIL="Jestes asystentem Porter Design. Napisz profesjonalnego maila do klienta po polsku.\n"+
+    "Zacznij: Dzien dobry [imie lub bez]. Krotkie wprowadzenie, zestawienie wyceny, laczna kwota, zaproszenie do kontaktu. Podpis: Porter Design. Ton cieply i profesjonalny. Nie dodawaj nic poza mailem.";
+
+  function callAI(sys,msg,ok,fail){
+    fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,system:sys,messages:[{role:"user",content:msg}]})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.error){fail(d.error.message||"Blad API");return;}
+      ok(d.content&&d.content[0]?d.content[0].text:"");
+    }).catch(function(e){fail(e.message||"Blad polaczenia");});
+  }
+
+  function doValuation(){
+    if(!inputText.trim())return;
+    setLoading(true);setError(null);setValuation(null);setSaved(false);setSavedClient(null);setEmailText(null);
+    callAI(SYS_WYCENA,inputText.trim(),
+      function(t){setValuation(t);setLoading(false);},
+      function(e){setError(e);setLoading(false);}
+    );
+  }
+
+  function doSave(){
+    if(!valuation)return;
+    setSaveLoading(true);setError(null);
+    callAI(SYS_JSON,"Wycena:\n"+valuation+"\n\nOryginalny mail:\n"+inputText,
+      function(jsonTxt){
+        var data;
+        try{data=JSON.parse(jsonTxt.replace(/```json|```/g,"").trim());}
+        catch(e){setError("Nie udalo sie przetworzyc struktury. Sprobuj ponownie.");setSaveLoading(false);return;}
+        var name=data.clientName||"Nowy klient AI";
+        var sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3VzanpZZnd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NjA5NzcsImV4cCI6MjA2MDEzNjk3N30.bJcRxoiVjaSG6Z4yFU3FP2VzDM3p2HV3o2MDcCilJFA";
+        fetch("https://rkcidwusjzvfwxszotnb.supabase.co/rest/v1/clients",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","apikey":sbKey,"Prefer":"return=representation"},
+          body:JSON.stringify({name:name,addr:data.addr||"",rooms:data.rooms||[]})
+        }).then(function(r){return r.json();}).then(function(res){
+          var cl=res&&res[0]?res[0]:{id:Date.now(),name:name,addr:data.addr||"",rooms:data.rooms||[]};
+          if(p.setClients)p.setClients(function(cs){return cs.concat([cl]);});
+          if(p.setCurClientId)p.setCurClientId(cl.id);
+          setSavedClient(cl);setSaved(true);setSaveLoading(false);
+        }).catch(function(){
+          var cl={id:Date.now(),name:name,addr:data.addr||"",rooms:data.rooms||[]};
+          if(p.setClients)p.setClients(function(cs){return cs.concat([cl]);});
+          if(p.setCurClientId)p.setCurClientId(cl.id);
+          setSavedClient(cl);setSaved(true);setSaveLoading(false);
+        });
+      },
+      function(e){setError(e);setSaveLoading(false);}
+    );
+  }
+
+  function doEmail(){
+    if(!valuation)return;
+    setEmailLoading(true);setError(null);setEmailText(null);
+    callAI(SYS_EMAIL,"Klient: "+(savedClient?savedClient.name:"Klient")+"\n\nWycena:\n"+valuation,
+      function(t){setEmailText(t);setEmailLoading(false);},
+      function(e){setError(e);setEmailLoading(false);}
+    );
+  }
+
+  function copyEmail(){
+    if(!emailRef.current)return;
+    navigator.clipboard.writeText(emailRef.current.value).then(function(){
+      setEmailCopied(true);setTimeout(function(){setEmailCopied(false);},2000);
+    });
+  }
+
+  function goToClient(){if(p.setScreen)p.setScreen("rooms");p.onClose();}
+  function reset(){setInputText("");setValuation(null);setEmailText(null);setError(null);setSaved(false);setSavedClient(null);}
+
+  var DOTS=ce("span",{style:{display:"flex",gap:4,alignItems:"center"}},
+    ce("span",{style:{animation:"pulse 1.2s infinite",fontSize:14,display:"inline-block"}},"●"),
+    ce("span",{style:{animation:"pulse 1.2s infinite 0.2s",fontSize:14,display:"inline-block"}},"●"),
+    ce("span",{style:{animation:"pulse 1.2s infinite 0.4s",fontSize:14,display:"inline-block"}},"●")
+  );
+
+  function Btn(label,onClick,disabled,accent){
+    return ce("button",{onClick:onClick,disabled:!!disabled,style:{
+      padding:"10px 16px",borderRadius:10,border:"none",
+      background:disabled?"var(--bd2)":accent?"var(--t1)":"var(--bg3)",
+      color:disabled?"var(--t3)":accent?"#fff":"var(--t1)",
+      fontSize:13,fontWeight:600,cursor:disabled?"not-allowed":"pointer",flexShrink:0
+    }},label);
+  }
+
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"flex-end"},onClick:function(e){if(e.target===e.currentTarget)p.onClose();}},
+    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:580,height:"100vh",display:"flex",flexDirection:"column",boxShadow:"-4px 0 40px rgba(0,0,0,0.25)",overflowY:"auto"}},
+
+      ce("div",{style:{padding:"18px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:12,background:"var(--bg2)",position:"sticky",top:0,zIndex:10}},
+        ce("div",{style:{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#1a1a18,#3a3a38)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"\uD83E\uDD16"),
+        ce("div",{style:{flex:1}},
+          ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}},"Wycena AI"),
+          ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},"Wklej maila \u2192 wycena \u2192 zapisz klienta \u2192 generuj maila")
+        ),
+        ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",padding:"4px 8px"}},"\u00D7")
+      ),
+
+      ce("div",{style:{padding:"20px",display:"flex",flexDirection:"column",gap:20,flex:1}},
+
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"1 / Tre\u015b\u0107 zapytania klienta"),
+          ce("textarea",{value:inputText,onChange:function(ev){setInputText(ev.target.value);},
+            onKeyDown:function(ev){if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey))doValuation();},
+            placeholder:"Wklej tutaj maila od klienta lub opisz zapytanie...\n\nPrzyk\u0142ad: Potrzebuj\u0119 zas\u0142ony do salonu (200\u00d7270cm) i rolet\u0119 do sypialni (150\u00d7200cm).\n\n(Ctrl+Enter aby wys\u0142a\u0107)",
+            rows:6,style:{width:"100%",padding:"12px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit",lineHeight:1.6,outline:"none",boxSizing:"border-box"}}),
+          ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+            Btn(loading?"\u23f3 Analizuj\u0119...":"\u2192 Wyce\u0144",doValuation,loading||!inputText.trim(),true),
+            valuation?Btn("Wyczy\u015b\u0107",reset,false,false):null
+          )
+        ),
+
+        loading?ce("div",{style:{padding:"14px",background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:10,color:"var(--t3)",fontSize:13}},DOTS,ce("span",{},"Analiza w toku...")):null,
+
+        valuation&&!loading?ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"Wynik wyceny"),
+          ce("div",{style:{padding:"16px",background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",fontSize:13,lineHeight:1.75,color:"var(--t1)",whiteSpace:"pre-wrap",wordBreak:"break-word",maxHeight:300,overflowY:"auto"}},valuation),
+
+          ce("div",{style:{padding:"14px 16px",background:saved?"#f0fdf4":"var(--bg2)",borderRadius:12,border:"1.5px solid "+(saved?"#86efac":"var(--bd2)"),display:"flex",flexDirection:"column",gap:10}},
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"2 / Zapis klienta"),
+            saved
+              ?ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+                  ce("div",{style:{fontSize:13,fontWeight:600,color:"#15803d"}},"\u2713 Zapisano: "+savedClient.name),
+                  Btn("\u2192 Przejd\u017a do klienta",goToClient,false,true)
+                )
+              :ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+                  ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},"AI wyodr\u0119bni pomieszczenia, okna i produkty z wyceny i zapisze klienta w aplikacji."),
+                  ce("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
+                    Btn(saveLoading?"\u23f3 Zapisuj\u0119...":"\uD83D\uDCBE Zapisz klienta",doSave,saveLoading,true),
+                    saveLoading?DOTS:null
+                  )
+                )
+          ),
+
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"3 / Mail do klienta"),
+            !emailText&&!emailLoading?Btn("\u2709\uFE0F Generuj maila",doEmail,false,false):null,
+            emailLoading?ce("div",{style:{padding:"12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",display:"flex",gap:8,alignItems:"center",color:"var(--t3)"}},DOTS):null,
+            emailText?ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+              ce("textarea",{ref:emailRef,value:emailText,onChange:function(ev){setEmailText(ev.target.value);},rows:10,
+                style:{width:"100%",padding:"12px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",fontFamily:"inherit",lineHeight:1.6,resize:"vertical",outline:"none",boxSizing:"border-box"}}),
+              ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+                Btn(emailCopied?"\u2713 Skopiowano!":"\uD83D\uDCCB Kopiuj maila",copyEmail,false,emailCopied),
+                Btn("\uD83D\uDD04 Generuj ponownie",doEmail,emailLoading,false)
+              )
+            ):null
+          )
+        ):null,
+
+        error?ce("div",{style:{padding:"12px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,fontSize:12,color:"#b91c1c"}},"\u26a0\uFE0F "+error):null
+      )
+    )
   );
 }
 
