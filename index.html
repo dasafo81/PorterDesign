@@ -3002,35 +3002,60 @@ function ModalAIValuation(p){
   var sr8=useState(false),emailLoading=sr8[0],setEmailLoading=sr8[1];
   var sr9=useState(false),emailCopied=sr9[0],setEmailCopied=sr9[1];
   var sr10=useState(false),saveLoading=sr10[0],setSaveLoading=sr10[1];
+  var sr11=useState([]),attachments=sr11[0],setAttachments=sr11[1];
   var emailRef=useRef(null);
+  var fileRef=useRef(null);
 
-  var SYS_WYCENA="Jestes asystentem wyceny Porter Design – butikowej pracowni dekoracji okiennych.\n"+
-    "Przeanalizuj mail/notatki klienta i zrob SZCZEGOLOWA WYCENE po polsku.\n\n"+
+  var SYS_WYCENA="Jestes asystentem wyceny Porter Design - butikowej pracowni dekoracji okiennych.\n"+
+    "Przeanalizuj tresc maila/notatek klienta (i ewentualny rzut mieszkania) i zrob SZCZEGOLOWA WYCENE po polsku.\n\n"+
+    "Jesli dostales obraz (rzut mieszkania/plan), odczytaj z niego wymiary okien i pomieszczenia.\n\n"+
     "CENNIK ZASLON/FIRAN: szer x wys x cena_tkaniny + uszycie. Mnoznik: zakladka 2.3x, transparentna 2.0x, firana 2.5-3.0x. Uszycie 48-85 PLN/mb.\n"+
     "CENNIK ZALUZJI: Aluminium 25mm od 149 PLN; Basswood 50mm od 249 PLN; Bamboo 50mm od 254 PLN.\n"+
     "CENNIK ROLET: 80-350 PLN/mb x szer x wys; min 150 PLN; elektryczna +300-600 PLN.\n"+
     "CENNIK SZYN/KARNISZY: Flex 80 PLN/mb; Wave 90-120 PLN/mb; AM75 644 PLN; AM50 1000 PLN; Glydea 2268 PLN.\n\n"+
-    "Instrukcje: wyodrebnij pomieszczenia/okna/wymiary/typy. Dla kazdego okna rozpisz wycene. Zakoncz PODSUMOWANIEM CALKOWITYM. Pisz profesjonalnie.";
+    "Wyodrebnij pomieszczenia/okna/wymiary/typy. Dla kazdego okna rozpisz wycene. Zakoncz PODSUMOWANIEM CALKOWITYM. Pisz profesjonalnie.";
 
   var SYS_JSON='Jestes ekstrakatorem danych Porter Design. Na podstawie wyceny zwroc WYLACZNIE poprawny JSON (bez backticks, bez komentarzy):\n{"clientName":"Imie Nazwisko","addr":"","rooms":[{"name":"Salon","windows":[{"name":"Okno 1","products":[{"type":"zaslona","label":"Zaslona lniana","mp":1260,"opis":"150x250cm"}]}]}]}\nReguly: type=(zaslona|firana|zaluzja|roleta|szyna|karnisz), mp=cena koncowa jako liczba PLN, clientName z maila lub "Nowy klient". Odpowiedz TYLKO jsonem.';
 
-  var SYS_EMAIL="Jestes asystentem Porter Design. Napisz profesjonalnego maila do klienta po polsku.\n"+
+  var SYS_EMAIL="Jestes asystentem Porter Design. Napisz profesjonalnego maila do klienta po polsku na podstawie wyceny.\n"+
     "Zacznij: Dzien dobry [imie lub bez]. Krotkie wprowadzenie, zestawienie wyceny, laczna kwota, zaproszenie do kontaktu. Podpis: Porter Design. Ton cieply i profesjonalny. Nie dodawaj nic poza mailem.";
 
-  function callAI(sys,msg,ok,fail){
+  // Buduje tablice messages z tekstem i opcjonalnymi obrazkami
+  function buildUserContent(textContent){
+    if(!attachments.length) return textContent;
+    var parts=[];
+    attachments.forEach(function(att){
+      parts.push({type:"image",source:{type:"base64",media_type:att.mediaType,data:att.data}});
+    });
+    if(textContent) parts.push({type:"text",text:textContent});
+    return parts;
+  }
+
+  function callAI(sys,userContent,ok,fail){
     fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:2000,system:sys,messages:[{role:"user",content:msg}]})
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-allow-all":"true"
+      },
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:2000,
+        system:sys,
+        messages:[{role:"user",content:userContent}]
+      })
     }).then(function(r){return r.json();}).then(function(d){
       if(d.error){fail(d.error.message||"Blad API");return;}
       ok(d.content&&d.content[0]?d.content[0].text:"");
-    }).catch(function(e){fail(e.message||"Blad polaczenia");});
+    }).catch(function(e){fail(e.message||"Blad polaczenia: "+e);});
   }
 
   function doValuation(){
-    if(!inputText.trim())return;
+    if(!inputText.trim()&&!attachments.length)return;
     setLoading(true);setError(null);setValuation(null);setSaved(false);setSavedClient(null);setEmailText(null);
-    callAI(SYS_WYCENA,inputText.trim(),
+    var userContent=buildUserContent(inputText.trim()||"Przeanalizuj zalaczony rzut i wycen dekoracje okienne.");
+    callAI(SYS_WYCENA,userContent,
       function(t){setValuation(t);setLoading(false);},
       function(e){setError(e);setLoading(false);}
     );
@@ -3083,7 +3108,36 @@ function ModalAIValuation(p){
   }
 
   function goToClient(){if(p.setScreen)p.setScreen("rooms");p.onClose();}
-  function reset(){setInputText("");setValuation(null);setEmailText(null);setError(null);setSaved(false);setSavedClient(null);}
+  function reset(){setInputText("");setValuation(null);setEmailText(null);setError(null);setSaved(false);setSavedClient(null);setAttachments([]);}
+
+  function handleFiles(files){
+    var arr=Array.from(files).filter(function(f){return f.type.startsWith("image/");});
+    arr.slice(0,3).forEach(function(file){
+      var reader=new FileReader();
+      reader.onload=function(ev){
+        var dataUrl=ev.target.result;
+        var comma=dataUrl.indexOf(",");
+        var data=dataUrl.slice(comma+1);
+        var mediaType=file.type;
+        setAttachments(function(prev){
+          if(prev.length>=3)return prev;
+          return prev.concat([{name:file.name,mediaType:mediaType,data:data}]);
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function onFileChange(ev){handleFiles(ev.target.files);}
+
+  function onDrop(ev){
+    ev.preventDefault();
+    handleFiles(ev.dataTransfer.files);
+  }
+
+  function removeAttachment(i){
+    setAttachments(function(prev){return prev.filter(function(_,idx){return idx!==i;});});
+  }
 
   var DOTS=ce("span",{style:{display:"flex",gap:4,alignItems:"center"}},
     ce("span",{style:{animation:"pulse 1.2s infinite",fontSize:14,display:"inline-block"}},"●"),
@@ -3096,58 +3150,100 @@ function ModalAIValuation(p){
       padding:"10px 16px",borderRadius:10,border:"none",
       background:disabled?"var(--bd2)":accent?"var(--t1)":"var(--bg3)",
       color:disabled?"var(--t3)":accent?"#fff":"var(--t1)",
-      fontSize:13,fontWeight:600,cursor:disabled?"not-allowed":"pointer",flexShrink:0
+      fontSize:13,fontWeight:600,cursor:disabled?"not-allowed":"pointer",flexShrink:0,
+      transition:"background 0.15s"
     }},label);
   }
 
-  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"flex-end"},onClick:function(e){if(e.target===e.currentTarget)p.onClose();}},
-    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:580,height:"100vh",display:"flex",flexDirection:"column",boxShadow:"-4px 0 40px rgba(0,0,0,0.25)",overflowY:"auto"}},
+  var canAnalyze=!loading&&(inputText.trim().length>0||attachments.length>0);
 
-      ce("div",{style:{padding:"18px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:12,background:"var(--bg2)",position:"sticky",top:0,zIndex:10}},
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"flex-end"},onClick:function(e){if(e.target===e.currentTarget)p.onClose();}},
+    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:600,height:"100vh",display:"flex",flexDirection:"column",boxShadow:"-4px 0 40px rgba(0,0,0,0.25)",overflowY:"auto"}},
+
+      // Header
+      ce("div",{style:{padding:"18px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:12,background:"var(--bg2)",position:"sticky",top:0,zIndex:10,flexShrink:0}},
         ce("div",{style:{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#1a1a18,#3a3a38)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"\uD83E\uDD16"),
         ce("div",{style:{flex:1}},
           ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}},"Wycena AI"),
-          ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},"Wklej maila \u2192 wycena \u2192 zapisz klienta \u2192 generuj maila")
+          ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},"Wklej maila i/lub dodaj rzut \u2192 wycena \u2192 zapis \u2192 mail")
         ),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",padding:"4px 8px"}},"\u00D7")
       ),
 
-      ce("div",{style:{padding:"20px",display:"flex",flexDirection:"column",gap:20,flex:1}},
+      // Body
+      ce("div",{style:{padding:"20px",display:"flex",flexDirection:"column",gap:18,flex:1}},
 
+        // Krok 1: Input tekstowy
         ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"1 / Tre\u015b\u0107 zapytania klienta"),
+          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"1 / Zapytanie klienta"),
           ce("textarea",{value:inputText,onChange:function(ev){setInputText(ev.target.value);},
             onKeyDown:function(ev){if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey))doValuation();},
-            placeholder:"Wklej tutaj maila od klienta lub opisz zapytanie...\n\nPrzyk\u0142ad: Potrzebuj\u0119 zas\u0142ony do salonu (200\u00d7270cm) i rolet\u0119 do sypialni (150\u00d7200cm).\n\n(Ctrl+Enter aby wys\u0142a\u0107)",
-            rows:6,style:{width:"100%",padding:"12px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit",lineHeight:1.6,outline:"none",boxSizing:"border-box"}}),
+            placeholder:"Wklej tutaj maila od klienta lub opisz zapytanie...\n\nPrzyklad: Potrzebuje zaslony do salonu (200x270cm) i rolety do sypialni (150x200cm).\n\n(Ctrl+Enter aby wyslac)",
+            rows:5,style:{width:"100%",padding:"12px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit",lineHeight:1.6,outline:"none",boxSizing:"border-box"}}),
+
+          // Strefa drag&drop dla plikow
+          ce("div",{
+            onDragOver:function(e){e.preventDefault();},
+            onDrop:onDrop,
+            onClick:function(){if(attachments.length<3)fileRef.current&&fileRef.current.click();},
+            style:{
+              border:"2px dashed var(--bd2)",borderRadius:10,padding:"14px 16px",
+              background:"var(--bg2)",cursor:attachments.length>=3?"default":"pointer",
+              display:"flex",flexDirection:"column",gap:8,transition:"border-color 0.15s"
+            }
+          },
+            ce("div",{style:{display:"flex",alignItems:"center",gap:8,color:"var(--t2)",fontSize:13}},
+              ce("span",{style:{fontSize:20}},"\uD83D\uDDBC\uFE0F"),
+              ce("span",{},"Dodaj rzut mieszkania lub zdjecie okna"),
+              ce("span",{style:{fontSize:11,color:"var(--t3)",marginLeft:"auto"}},"max 3 obrazki")
+            ),
+            attachments.length>0?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+              attachments.map(function(att,i){
+                return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:6,background:"var(--bg3)",borderRadius:8,padding:"5px 10px",fontSize:12,color:"var(--t1)"}},
+                  ce("img",{src:"data:"+att.mediaType+";base64,"+att.data,style:{width:36,height:36,objectFit:"cover",borderRadius:5}}),
+                  ce("span",{style:{maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},att.name),
+                  ce("button",{onClick:function(e){e.stopPropagation();removeAttachment(i);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:16,padding:"0 2px",lineHeight:1}},"\u00D7")
+                );
+              })
+            ):ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Przeci\u0105gnij plik lub kliknij aby wybra\u0107 (JPG, PNG, PDF jako obraz)"),
+            ce("input",{ref:fileRef,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:onFileChange})
+          ),
+
           ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-            Btn(loading?"\u23f3 Analizuj\u0119...":"\u2192 Wyce\u0144",doValuation,loading||!inputText.trim(),true),
-            valuation?Btn("Wyczy\u015b\u0107",reset,false,false):null
+            Btn(loading?"\u23F3 Analizuj\u0119...":"\u2192 Wyce\u0144",doValuation,!canAnalyze,true),
+            (valuation||attachments.length>0)?Btn("Wyczy\u015b\u0107",reset,false,false):null
           )
         ),
 
+        // Ladowanie
         loading?ce("div",{style:{padding:"14px",background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:10,color:"var(--t3)",fontSize:13}},DOTS,ce("span",{},"Analiza w toku...")):null,
 
+        // Wynik wyceny
         valuation&&!loading?ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
-          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"Wynik wyceny"),
-          ce("div",{style:{padding:"16px",background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",fontSize:13,lineHeight:1.75,color:"var(--t1)",whiteSpace:"pre-wrap",wordBreak:"break-word",maxHeight:300,overflowY:"auto"}},valuation),
 
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"Wynik wyceny"),
+            ce("div",{style:{padding:"16px",background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",fontSize:13,lineHeight:1.75,color:"var(--t1)",whiteSpace:"pre-wrap",wordBreak:"break-word",maxHeight:280,overflowY:"auto"}},valuation)
+          ),
+
+          // Krok 2: Zapis klienta
           ce("div",{style:{padding:"14px 16px",background:saved?"#f0fdf4":"var(--bg2)",borderRadius:12,border:"1.5px solid "+(saved?"#86efac":"var(--bd2)"),display:"flex",flexDirection:"column",gap:10}},
-            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"2 / Zapis klienta"),
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"2 / Zapis klienta w aplikacji"),
             saved
               ?ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
                   ce("div",{style:{fontSize:13,fontWeight:600,color:"#15803d"}},"\u2713 Zapisano: "+savedClient.name),
-                  Btn("\u2192 Przejd\u017a do klienta",goToClient,false,true)
+                  Btn("\u2192 Przejd\u017A do klienta",goToClient,false,true)
                 )
               :ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-                  ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},"AI wyodr\u0119bni pomieszczenia, okna i produkty z wyceny i zapisze klienta w aplikacji."),
+                  ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},"AI wyodr\u0119bni pomieszczenia, okna i produkty z wyceny i zapisze klienta."),
                   ce("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
-                    Btn(saveLoading?"\u23f3 Zapisuj\u0119...":"\uD83D\uDCBE Zapisz klienta",doSave,saveLoading,true),
+                    Btn(saveLoading?"\u23F3 Zapisuj\u0119...":"\uD83D\uDCBE Zapisz klienta",doSave,saveLoading,true),
                     saveLoading?DOTS:null
                   )
                 )
           ),
 
+          // Krok 3: Mail
           ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
             ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"3 / Mail do klienta"),
             !emailText&&!emailLoading?Btn("\u2709\uFE0F Generuj maila",doEmail,false,false):null,
@@ -3163,7 +3259,8 @@ function ModalAIValuation(p){
           )
         ):null,
 
-        error?ce("div",{style:{padding:"12px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,fontSize:12,color:"#b91c1c"}},"\u26a0\uFE0F "+error):null
+        // Blad
+        error?ce("div",{style:{padding:"12px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,fontSize:12,color:"#b91c1c"}},"\u26A0\uFE0F "+error):null
       )
     )
   );
