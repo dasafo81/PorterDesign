@@ -3077,11 +3077,11 @@ function ModalAIValuation(p){
 
   // ── CALL AI ─────────────────────────────────────────────────────────────
   function callAI(sys,userContent,ok,fail){
-    fetch("https://api.anthropic.com/v1/messages",{
+    fetch("/api/claude",{
       method:"POST",
-      headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01","anthropic-dangerous-allow-all":"true"},
+      headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
+        model:"llama-3.3-70b-versatile",
         max_tokens:3000,
         system:sys,
         messages:[{role:"user",content:userContent}]
