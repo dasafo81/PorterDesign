@@ -3024,7 +3024,7 @@ function ModalAIValuation(p){
       jzList+"\n\n"+
 
       "=== FORMAT ODPOWIEDZI ===\n"+
-      "KRYTYCZNE: Zwroc WYLACZNIE surowy JSON. Zero tekstu przed ani po. Zero backticks. Pierwszy znak to '{', ostatni '}'. Jesli dodasz cos poza JSONem, aplikacja sie zepsuje.\n"+
+      "ODPOWIEDZ TYLKO JSONem. Zadnego tekstu przed ani po. Zadnych backticks. Zadnych komentarzy. Tylko sam JSON zaczynajacy sie od { i konczacy }.\n"+
       '{"clientName":"Jan Kowalski","addr":"","rooms":[{"name":"Salon","windows":[{"name":"Okno 1","products":[]}]}]}\n\n'+
 
       "=== TYPY PRODUKTOW i ich pola ===\n"+
@@ -3065,7 +3065,7 @@ function ModalAIValuation(p){
       "- Jesli nie ma dokladnych wymiarow – nie zgaduj, uzyj wCm:0 hCm:0 (calc pomin)\n"+
       "- Jesli klient wspomina 'salon' i 'sypialnia' – zrob dwa osobne rooms\n"+
       "- Jesli na rzucie widac kilka pomieszczen – zidentyfikuj je i przypisz okna\n"+
-      "- Odpowiedz TYLKO jsonem\n"
+      "- ZWROC TYLKO JSON. Nic wiecej.\n"
     );
   }
 
@@ -3081,7 +3081,7 @@ function ModalAIValuation(p){
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        model:"llama-3.3-70b-versatile",
+        model:"llama-3.1-8b-instant",
         max_tokens:3000,
         system:sys,
         messages:[{role:"user",content:userContent}]
@@ -3161,9 +3161,8 @@ function ModalAIValuation(p){
         var data;
         try{
           var clean=jsonTxt.replace(/```json|```/g,"").trim();
-          // Wyciagnij JSON nawet jesli Llama dodala tekst przed/po
-          var match=clean.match(/\{[\s\S]*\}/);
-          if(match) clean=match[0];
+          var m=clean.match(/\{[\s\S]*\}/);
+          if(m) clean=m[0];
           data=JSON.parse(clean);
         }catch(e){
           setError("AI zwrocilo niepoprawny JSON. Sprobuj ponownie lub uproscil zapytanie.\n\nOdpowiedz AI: "+jsonTxt.slice(0,200));
