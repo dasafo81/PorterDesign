@@ -30,7 +30,7 @@ export default async function handler(req) {
     // Konwertuj format Anthropic -> format OpenAI/Groq
     const groqBody = {
       model: body.model || 'llama-3.3-70b-versatile',
-      max_tokens: body.max_tokens || 3000,
+      max_tokens: body.max_tokens || 8000,
       messages: [
         ...(body.system ? [{ role: 'system', content: body.system }] : []),
         ...(body.messages || []),
