@@ -629,11 +629,11 @@ function calc(p){
     var belka=fabW,mars=+(c.mars||"1.5"),szycie=c.sz==="wave"?110:100;
     var dekro=c.dekro==="tak",hM=hCm/100;
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
-    var useA2=belka>0&&hCm>belka;
+    var useA2=belka>0&&hCm+20>belka;
     (p.panels||[]).forEach(function(pn){
-      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pm=pw/100,z,kt,ks,koszt;
+      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pwZ/100,z,kt,ks,koszt;
       if(useA2){
-        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil(pw/pg);
+        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil(pwZ/pg);
         z=+(lp*hM+0.2).toFixed(2);kt=+(z*fabP).toFixed(2);
         var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv).toFixed(2):+(lp*250).toFixed(2);
