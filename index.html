@@ -1204,12 +1204,11 @@ function generateSimplifiedPDF(client){
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         if(p.type==="inny"&&p.c&&p.c.innyNazwa)lbl=p.c.innyNazwa;
-        winRows+="<tr><td style=\"padding:5px 10px 5px 24px;font-size:10px;color:#555;\">"+lbl+(p.fabName?" \u00b7 "+p.fabName:"")+"</td><td style=\"padding:5px 10px;text-align:right;font-size:10px;font-weight:600;color:#555;\">"+Math.round(total)+" z\u0142</td></tr>";
+        winRows+="<tr><td style=\"padding:5px 10px 5px 24px;font-size:10px;color:#555;\">"+lbl+"</td><td style=\"padding:5px 10px;text-align:right;font-size:10px;font-weight:600;color:#333;\">"+Math.round(total)+" z\u0142</td></tr>";
         winTotal+=total;
       });
       if(!winTotal)return;
-      // Nagłówek okna
-      rows+="<tr style=\"background:#fdf6ef;\"><td style=\"padding:7px 10px;font-size:11px;font-weight:600;color:#8B5E3C;\">"+w.name+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:700;color:#8B5E3C;\">"+Math.round(winTotal)+" z\u0142</td></tr>";
+      rows+="<tr style=\"background:#f4f3f1;\"><td style=\"padding:7px 10px;font-size:11px;font-weight:600;color:#444;\">"+w.name+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:700;color:#333;\">"+Math.round(winTotal)+" z\u0142</td></tr>";
       rows+=winRows;
       roomTotal+=winTotal;
     });
@@ -1217,10 +1216,9 @@ function generateSimplifiedPDF(client){
     if(!roomTotal)return;
     grandTotal+=roomTotal;
 
-    // Łącznie dla pomieszczenia
-    rows+="<tr style=\"background:#f0e6d8;border-top:2px solid #d4a98a;\"><td style=\"padding:9px 10px;font-size:12px;font-weight:700;color:#6b3f1e;\">&#8721; \u0141\u0105cznie "+room.name+"</td><td style=\"padding:9px 10px;text-align:right;font-size:13px;font-weight:700;color:#6b3f1e;\">"+Math.round(roomTotal)+" z\u0142</td></tr>";
+    rows+="<tr style=\"background:#e8e6e2;border-top:1px solid #ccc;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#222;\">&#8721; \u0141\u0105cznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#222;\">"+Math.round(roomTotal)+" z\u0142</td></tr>";
 
-    roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#8B5E3C;color:#fff;margin-bottom:0;\">"+room.name+"</div><table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;\"><tbody>"+rows+"</tbody></table></div>";
+    roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:12px;font-weight:700;color:#fff;letter-spacing:0.06em;text-transform:uppercase;padding:7px 10px;background:#666;margin-bottom:0;\">"+room.name+"</div><table style=\"width:100%;border-collapse:collapse;border:1px solid #ddd;\"><tbody>"+rows+"</tbody></table></div>";
   });
 
   if(!grandTotal){alert("Brak pozycji do wyceny.");return;}
@@ -1234,7 +1232,7 @@ function generateSimplifiedPDF(client){
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Ważne do: "+validStr+"</div></div></div>"
     +"<div style=\"font-size:9px;color:#888;margin:0 0 6mm;padding-bottom:4mm;border-bottom:1px solid #ede3d9;\">Dokument poglądowy — orientacyjna wycena z podziałem na pomieszczenia. Szczegółowe zestawienie w ofercie właściwej.</div>"
     +roomSections
-    +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+    +"<div style=\"margin-top:6mm;padding:12px 16px;background:#444;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
     +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">Łącznie cała realizacja</span>"
     +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+Math.round(grandTotal)+" zł</span></div>"
     +"<div class=\"notes\" style=\"margin-top:6mm;\">Powyższa wycena ma charakter orientacyjny i obejmuje materiały oraz szycie. Ceny są cenami brutto. <strong>Montaż doliczany jest dodatkowo i wynosi 10% wartości zamówienia.</strong> Termin realizacji: ok. 4 tygodnie od akceptacji i wpłaty zaliczki 50%.</div>"
