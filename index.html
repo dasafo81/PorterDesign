@@ -1193,30 +1193,34 @@ function generateSimplifiedPDF(client){
 
   (client.rooms||[]).forEach(function(room){
     if(!(room.windows||[]).length)return;
-    // Zbierz wszystkie produkty z tego pomieszczenia pogrupowane po typie
-    var typeTotals={};
     var roomTotal=0;
+    var rows="";
+
     (room.windows||[]).forEach(function(w){
+      var winTotal=0;
+      var winRows="";
       (w.products||[]).forEach(function(p){
         var total=calcProd(p);
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
-        if(!typeTotals[lbl])typeTotals[lbl]=0;
-        typeTotals[lbl]+=total;
-        roomTotal+=total;
+        if(p.type==="inny"&&p.c&&p.c.innyNazwa)lbl=p.c.innyNazwa;
+        winRows+="<tr><td style=\"padding:5px 10px 5px 24px;font-size:10px;color:#555;\">"+lbl+(p.fabName?" \u00b7 "+p.fabName:"")+"</td><td style=\"padding:5px 10px;text-align:right;font-size:10px;font-weight:600;color:#555;\">"+Math.round(total)+" z\u0142</td></tr>";
+        winTotal+=total;
       });
+      if(!winTotal)return;
+      // Nagłówek okna
+      rows+="<tr style=\"background:#fdf6ef;\"><td style=\"padding:7px 10px;font-size:11px;font-weight:600;color:#8B5E3C;\">"+w.name+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:700;color:#8B5E3C;\">"+Math.round(winTotal)+" z\u0142</td></tr>";
+      rows+=winRows;
+      roomTotal+=winTotal;
     });
+
     if(!roomTotal)return;
     grandTotal+=roomTotal;
 
-    var rows="";
-    Object.keys(typeTotals).forEach(function(lbl){
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+Math.round(typeTotals[lbl])+" zł</td></tr>";
-    });
     // Łącznie dla pomieszczenia
-    rows+="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">Łącznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+Math.round(roomTotal)+" zł</td></tr>";
+    rows+="<tr style=\"background:#f0e6d8;border-top:2px solid #d4a98a;\"><td style=\"padding:9px 10px;font-size:12px;font-weight:700;color:#6b3f1e;\">&#8721; \u0141\u0105cznie "+room.name+"</td><td style=\"padding:9px 10px;text-align:right;font-size:13px;font-weight:700;color:#6b3f1e;\">"+Math.round(roomTotal)+" z\u0142</td></tr>";
 
-    roomSections+="<div style=\"margin-bottom:10mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:0;\">"+room.name+"</div><table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;\"><tbody>"+rows+"</tbody></table></div>";
+    roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#8B5E3C;color:#fff;margin-bottom:0;\">"+room.name+"</div><table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;\"><tbody>"+rows+"</tbody></table></div>";
   });
 
   if(!grandTotal){alert("Brak pozycji do wyceny.");return;}
