@@ -600,7 +600,8 @@ var PROD_TYPES=[
   {id:"zaluzja",label:"Żaluzja",icon:"🪟"},
   {id:"roleta",label:"Roleta",icon:"⬛"},
   {id:"szyna",label:"Szyna KAES",icon:"📏"},
-  {id:"karnisz",label:"Karnisz el.",icon:"⚡"}
+  {id:"karnisz",label:"Karnisz el.",icon:"⚡"},
+  {id:"inny",label:"Inny",icon:"📦"}
 ];
 
 var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
@@ -785,11 +786,14 @@ function getPDFOfferNumber(client){
 function buildOfferRows(client){
   // Returns [{lp, name, qty, unit, cenaJedn, total}]
   var rows=[];var lp=1;
+  var mult=client.prowizja?1.1:1;
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
-        var total=p.mp!=null?p.mp:(calc(pfc).total||0);
+        var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
+        var base=p.mp!=null?p.mp:(calc(pfc).total||0);
+        var total=Math.round(base*mult);
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var desc=lbl+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
@@ -897,7 +901,7 @@ function openPDFWindow(htmlContent, title){
   w.document.open();
   w.document.write(htmlContent);
   w.document.close();
-  setTimeout(function(){w.focus();w.print();},600);
+  w.focus();
 }
 
 function makeTableHTML(headers, rows, caption){
@@ -1119,15 +1123,14 @@ function generateFabricOrderPDF(client){
         "<strong>"+r.fabName+"</strong>",
         r.width?r.width+"cm":"-",
         r.metry.toFixed(2).replace(".",",")+" mb",
-        r.brutto?r.brutto.toFixed(2).replace(".",",")+" zł/mb":"-",
         r.rooms.join("; ")
       ];
     });
     var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
-    tableRows.push(["<strong>RAZEM</strong>","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>","",""]);
+    tableRows.push(["<strong>RAZEM</strong>","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
 
     var tableHTML=makeTableHTML(
-      ["Tkanina","Szer. belki","Ilość (mb)","Cena brutto/mb","Przeznaczenie"],
+      ["Tkanina","Szer. belki","Ilość (mb)","Przeznaczenie"],
       tableRows,
       "Pozycje do zamówienia"
     );
@@ -1177,9 +1180,11 @@ function generateSimplifiedPDF(client){
   var validStr=validDate.toLocaleDateString("pl-PL");
   var offerNo=getPDFOfferNumber(client);
 
+  var mult=client.prowizja?1.1:1;
   function calcProd(p){
     var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
-    return p.mp!=null?p.mp:(calc(pfc).total||0);
+    var base=p.mp!=null?p.mp:(calc(pfc).total||0);
+    return Math.round(base*mult);
   }
 
   // Buduj wiersze: grupuj per pomieszczenie → per typ produktu
@@ -1885,6 +1890,7 @@ function ProdCard(p){
   var res=calc(prodForCalc),total=res.total,lines=res.lines,warn=res.warn;
   var eff=prod.mp!=null?prod.mp:total;
   var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
+  if(prod.type==="inny"&&prod.c&&prod.c.innyNazwa)lbl="Inny: "+prod.c.innyNazwa;
 
   var typeChips=PROD_TYPES.map(function(t){
     return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
@@ -2435,7 +2441,8 @@ function ProdCard(p){
         ):null,
         // Wysokość haczyka - Fałda i Taśma (NIE Wave)
         (model==="falda"||model==="tasma")?haczSection:null,
-        glideGap
+        // Odstęp między ślizgami - tylko Wave
+        model==="wave"?glideGap:null
       ):null,
 
       // SEKCJA 4: Wykończenie
@@ -2692,6 +2699,17 @@ function ProdCard(p){
       ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})})),
       ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})}))
     );
+  }else if(prod.type==="inny"){
+    form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14,paddingTop:8}},
+      ce("div",{},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"NAZWA PRODUKTU"),
+        ce("input",{type:"text",value:(c&&c.innyNazwa)||"",onChange:function(ev){sc("innyNazwa",ev.target.value);},placeholder:"np. tapeta, narzuta...",style:{width:"100%",padding:"14px 16px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box"}})
+      ),
+      ce("div",{},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"CENA (z\u0142)"),
+        ce("input",{type:"number",value:(c&&c.innyCena!=null?c.innyCena:""),onChange:function(ev){var v=ev.target.value===""?null:+ev.target.value;p.onChange(mg(prod,{c:mg(c,{innyCena:v}),mp:v}));},placeholder:"0",style:{width:"100%",padding:"14px 16px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box"}})
+      )
+    );
   }else{
     form=ce("div",{style:{fontSize:14,color:"var(--t2)",padding:"16px 0"}},"Cennik wkr\xf3tce.");
   }
@@ -2746,9 +2764,9 @@ function App(){
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
 
-  function wt(w){return(w.products||[]).reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);}
-  function rt(r){return(r.windows||[]).reduce(function(a,w){return a+wt(w);},0);}
-  function clientTotal(cl){return(cl.rooms||[]).reduce(function(a,r){return a+rt(r);},0);}
+  function wt(w,cl){var mult=(cl&&cl.prowizja)?1.1:(curClient&&curClient.prowizja)?1.1:1;return(w.products||[]).reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return a+Math.round(base*mult);},0);}
+  function rt(r,cl){return(r.windows||[]).reduce(function(a,w){return a+wt(w,cl);},0);}
+  function clientTotal(cl){return(cl.rooms||[]).reduce(function(a,r){return a+rt(r,cl);},0);}
 
   // Załaduj klientów z Supabase przy starcie
   React.useEffect(function(){
@@ -2940,6 +2958,10 @@ function App(){
           ce(InlineEdit,{value:curClient.addr||"(brak adresu)",
             onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{addr:v});});},
             inputStyle:{fontSize:11}})
+        ),
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,marginTop:10,cursor:"pointer",fontSize:13,color:"var(--t1)",fontWeight:500}},
+          ce("input",{type:"checkbox",checked:!!(curClient.prowizja),onChange:function(ev){updateClient(curClientId,function(cl){return mg(cl,{prowizja:ev.target.checked});});},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
+          ce("span",{},"Prowizja (+10% do każdego produktu)")
         )
       ),
       ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t2)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}},"Pomieszczenia"),
