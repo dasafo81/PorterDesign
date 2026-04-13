@@ -771,7 +771,8 @@ var SELLER={
   bankName:"Millennium Bank"
 };
 
-function formatPLN(n){return Math.round(n).toLocaleString("pl-PL")+" zł";}
+function formatPLN(n){return roundTo10(n).toLocaleString("pl-PL")+" zł";}
+function roundTo10(n){var r=n%10;return r<5?n-r:n+(10-r);}
 
 function getPDFOfferNumber(client){
   var now=new Date();
@@ -1205,10 +1206,10 @@ function generateSimplifiedPDF(client){
 
     var rows="";
     Object.keys(typeTotals).forEach(function(lbl){
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+Math.round(typeTotals[lbl])+" zł</td></tr>";
+      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(typeTotals[lbl])+" zł</td></tr>";
     });
     // Łącznie dla pomieszczenia
-    rows+="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">Łącznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+Math.round(roomTotal)+" zł</td></tr>";
+    rows+="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">Łącznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+roundTo10(roomTotal)+" zł</td></tr>";
 
     roomSections+="<div style=\"margin-bottom:10mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:0;\">"+room.name+"</div><table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;\"><tbody>"+rows+"</tbody></table></div>";
   });
@@ -1226,7 +1227,7 @@ function generateSimplifiedPDF(client){
     +roomSections
     +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
     +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">Łącznie cała realizacja</span>"
-    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+Math.round(grandTotal)+" zł</span></div>"
+    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+roundTo10(grandTotal)+" zł</span></div>"
     +"<div class=\"notes\" style=\"margin-top:6mm;\">Powyższa wycena ma charakter orientacyjny i obejmuje materiały oraz wykonanie (szycie/montaż). Ceny są cenami brutto. Termin realizacji: ok. 4 tygodnie od akceptacji i wpłaty zaliczki 50%.</div>"
     +"<div class=\"sign-block\">"
     +"<div class=\"sign\">Wystawiła<br><strong>Paulina Porter</strong></div>"
@@ -1240,8 +1241,8 @@ function generateSimplifiedPDF(client){
 
 // ── GENEROWANIE MAILA DO KLIENTA ──────────────────────────────────────────
 function generateClientEmail(client){
-  var total=Math.round((client.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return c+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);},0);},0));
-  var zaliczka=Math.round(total*0.5);
+  var total=roundTo10((client.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return c+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);},0);},0));
+  var zaliczka=roundTo10(total*0.5);
   var clientTitle=client.gender==="male"?"Pana":"Pani";
   var mail="Dzień dobry,\n\nW nawiązaniu do rozmowy / spotkania / przesłanych wymiarów, przesyłam w załączeniu PDF z uproszczoną, przybliżoną wyceną "+(client.gender==="male"?"Pana":"Pani")+" zamówienia.\n\nŁączna orientacyjna wartość realizacji: "+total+" zł brutto\n(zaliczka 50% = "+zaliczka+" zł)\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wpłaty zaliczki w wysokości 50% wartości zamówienia.\n\nChętnie przyjadę z wzornikami tkanin, aby dobrać kolor i fakturę do wnętrza.\n\nKoszt pomiaru z dojazdem wynosi 250 PLN i jest w całości odliczany od wartości zamówienia przy realizacji.\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design\nTel.: "+SELLER.tel+"\nE-mail: "+SELLER.email;
   return mail;
@@ -2698,7 +2699,7 @@ function ProdCard(p){
   return ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
     ce("div",{style:{padding:"14px 20px",background:"var(--bg2)",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid var(--bd2)"}},
       ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",flex:1}},lbl+(prod.fabName?" \xb7 "+prod.fabName:"")),
-      ce("span",{style:{fontSize:14,fontWeight:700,color:"var(--gr)",background:"var(--grl)",padding:"4px 10px",borderRadius:8}},eff?Math.round(eff)+" z\u0142":""),
+      ce("span",{style:{fontSize:14,fontWeight:700,color:"var(--gr)",background:"var(--grl)",padding:"4px 10px",borderRadius:8}},eff?roundTo10(eff)+" z\u0142":""),
       ce("button",{onClick:p.onDuplicate,title:"Kopiuj produkt",style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"var(--t3)",padding:"4px 8px",borderRadius:6}},"⧉"),
       ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",cursor:"pointer",fontSize:20,color:"var(--t3)",padding:"4px 8px",borderRadius:6}},"×")
     ),
@@ -2859,7 +2860,7 @@ function App(){
             ),
             ce("span",{style:{fontSize:10,color:"var(--t3)"}},"\u203a")
           ),
-          total?ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t2)",marginTop:6}},Math.round(total)+" z\u0142"):null
+          total?ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t2)",marginTop:6}},roundTo10(total)+" z\u0142"):null
         ),
         ce("button",{
           onClick:function(ev){
@@ -2915,7 +2916,7 @@ function App(){
           ),
           ce("div",{onClick:function(){openRoom(r.id);},style:{fontSize:11,color:"var(--t3)",cursor:"pointer"}},(r.windows||[]).length+" okien")
         ),
-        rTotal?ce("span",{onClick:function(){openRoom(r.id);},style:{fontSize:12,fontWeight:600,color:"var(--gr)",cursor:"pointer"}},Math.round(rTotal)+" z\u0142"):null,
+        rTotal?ce("span",{onClick:function(){openRoom(r.id);},style:{fontSize:12,fontWeight:600,color:"var(--gr)",cursor:"pointer"}},roundTo10(rTotal)+" z\u0142"):null,
         ce("span",{onClick:function(){openRoom(r.id);},style:{color:"var(--t3)",fontSize:13,cursor:"pointer"}},"\u203a"),
         ce("button",{
           onClick:function(ev){
@@ -2967,7 +2968,7 @@ function App(){
           ce("div",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",marginBottom:3}},w.name),
           ce("div",{style:{fontSize:12,color:"var(--t3)"}},labels||"\u2014")
         ),
-        t?ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--gr)"}},Math.round(t)+" z\u0142"):null,
+        t?ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--gr)"}},roundTo10(t)+" z\u0142"):null,
         ce("span",{style:{color:"var(--t3)",fontSize:13}},"\u203a"),
         ce("button",{
           onClick:function(ev){
@@ -3003,13 +3004,13 @@ function App(){
         ce("div",{style:{fontSize:18,fontWeight:600,color:"var(--t1)"}},
           ce(InlineEdit,{value:curWin.name,onSave:function(v){setCurWin(function(w){return mg(w,{name:v});});},inputStyle:{fontSize:14,fontWeight:500}})
         ),
-        (curWin.products||[]).length?ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--gr)",background:"var(--grl)",padding:"6px 14px",borderRadius:8}},Math.round(wtv)+" z\u0142"):null
+        (curWin.products||[]).length?ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--gr)",background:"var(--grl)",padding:"6px 14px",borderRadius:8}},roundTo10(wtv)+" z\u0142"):null
       ),
       (curWin.products||[]).map(function(p,i){return ce(ProdCard,{key:p.id,prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);},onDuplicate:function(){dupProd(i);}});})
       ce("button",{onClick:addProd,style:{padding:"20px 18px",borderRadius:12,border:"2px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:16,cursor:"pointer",marginBottom:16,width:"100%",minHeight:62,transition:"all .15s"}},"+ Dodaj produkt"),
       (curWin.products||[]).length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},
         ce("span",{style:{fontSize:14,color:"var(--grd)"}},"Łącznie okno"),
-        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--grd)"}},Math.round(wtv)+" z\u0142")
+        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--grd)"}},roundTo10(wtv)+" z\u0142")
       ):null,
       ce("div",{style:{display:"flex",gap:8}},Btn("Zapisz okno",saveWin,true),Btn("Anuluj",function(){setScreen("windows");},false))
     );
@@ -3021,7 +3022,7 @@ function App(){
     content=ce(Fragment,null,
       sRooms.map(function(r){
         return ce("div",{key:r.id,style:{marginBottom:20}},
-          ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:10}},r.name+" \u2014 "+Math.round(rt(r))+" z\u0142"),
+          ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:10}},r.name+" \u2014 "+roundTo10(rt(r))+" z\u0142"),
           (r.windows||[]).map(function(w){
             var t=wt(w);
             var desc=(w.products||[]).map(function(p){var l=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
@@ -3030,7 +3031,7 @@ function App(){
                 ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:3}},"🪟 "+w.name),
                 ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},desc||"\u2014")
               ),
-              ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--gr)",whiteSpace:"nowrap"}},Math.round(t)+" z\u0142")
+              ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--gr)",whiteSpace:"nowrap"}},roundTo10(t)+" z\u0142")
             );
           })
         );
@@ -3038,7 +3039,7 @@ function App(){
       sRooms.length===0?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak okien do podsumowania."):null,
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:12}},
         ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.75)",letterSpacing:"0.04em"}},"Łącznie cała wizyta"),
-        ce("span",{style:{fontSize:20,fontWeight:700,color:"#fff"}},Math.round(clientTotal(curClient))+" z\u0142")
+        ce("span",{style:{fontSize:20,fontWeight:700,color:"#fff"}},roundTo10(clientTotal(curClient))+" z\u0142")
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
@@ -3093,8 +3094,8 @@ function ModalClientEmail(p){
   var sr2=useState("rozmowy"),kontekst=sr2[0],setKontekst=sr2[1];
   var emailRef=useRef(null);
 
-  var total=Math.round((client.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c,prod){var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;return c+(prod.mp!=null?prod.mp:(calc(pfc).total||0));},0);},0);},0));
-  var zaliczka=Math.round(total*0.5);
+  var total=roundTo10((client.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c,prod){var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;return c+(prod.mp!=null?prod.mp:(calc(pfc).total||0));},0);},0);},0));
+  var zaliczka=roundTo10(total*0.5);
 
   var konteksty=["rozmowy","spotkania","wysłanych wymiarów"];
 
@@ -3382,12 +3383,12 @@ function ModalAIValuation(p){
       room.windows.forEach(function(win){
         summary+=win.name+":\n";
         win.products.forEach(function(prod){
-          summary+="  - "+prod.label+": "+Math.round(prod.price)+" PLN\n";
+          summary+="  - "+prod.label+": "+roundTo10(prod.price)+" PLN\n";
           (prod.lines||[]).forEach(function(l){summary+="    "+l+"\n";});
         });
       });
     });
-    summary+="\nLACZNA KWOTA: "+Math.round(calcResult.total)+" PLN";
+    summary+="\nLACZNA KWOTA: "+roundTo10(calcResult.total)+" PLN";
     callAI(SYS_EMAIL,summary,
       function(t){setEmailText(t);setEmailLoading(false);},
       function(e){setError(e);setEmailLoading(false);}
@@ -3532,7 +3533,7 @@ function ModalAIValuation(p){
                           prod.warn?ce("div",{style:{fontSize:11,color:"#b45309",marginTop:2}},"\u26A0\uFE0F "+prod.warn):null,
                           prod.price===0?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"(brak danych – uzupelnij w aplikacji)"):null
                         ),
-                        ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",flexShrink:0}},prod.price>0?Math.round(prod.price)+" z\u0142":"-")
+                        ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",flexShrink:0}},prod.price>0?roundTo10(prod.price)+" z\u0142":"-")
                       );
                     })
                   );
@@ -3541,7 +3542,7 @@ function ModalAIValuation(p){
             }),
             ce("div",{style:{padding:"12px 14px",borderTop:"2px solid var(--bd2)",display:"flex",justifyContent:"space-between",alignItems:"center",background:"var(--t1)"}},
               ce("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)",letterSpacing:"0.05em"}},"RAZEM"),
-              ce("span",{style:{fontSize:18,fontWeight:700,color:"#fff"}},Math.round(calcResult.total)+" z\u0142")
+              ce("span",{style:{fontSize:18,fontWeight:700,color:"#fff"}},roundTo10(calcResult.total)+" z\u0142")
             )
           )
         ),
