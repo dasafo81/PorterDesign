@@ -74,8 +74,8 @@ var sbApi = {
     return sbFetch("GET","clients?select=*&order=created_at.asc");
   },
   // Dodaj nowego klienta
- addClient: function(name, addr, phone, email){
-    return sbFetch("POST","clients",{name:name,addr:addr,phone:phone||null,email:email||null,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
+  addClient: function(name, addr){
+    return sbFetch("POST","clients",{name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
   },
   // Zaktualizuj rooms klienta (zapisuje cały JSON)
   updateClient: function(id, data){
@@ -664,6 +664,75 @@ var KSLIM={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550
 var KUNIV={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
 var KN={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
 var KP={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
+// ── AUTOMATYKA DO ROLET RZYMSKICH XL ─────────────────────────────────────────
+var RRZ_WIDTHS = [90,120,150,180,210,240,270,300,330,360,390,420,450,480];
+
+var RRZ_SOMFY = {
+  "sonesse40wt":  [1651,1725,1801,1875,1949,2025,2099,2175,2249,2325,2399,2473,2546,2623],
+  "sonesse40rts": [2806,2880,2956,3030,3104,3180,3254,3330,3404,3480,3554,3628,3702,3778],
+  "sonesse30aku": [2389,2463,2539,2613,2687,2763,2837,2913,null,null,null,null,null,null]
+};
+var RRZ_SOMFY_LABELS = {
+  "sonesse40wt":  "SONESSE 40 WT (230V, przełącznik ścienny)",
+  "sonesse40rts": "SONESSE 40 RTS (230V, pilot bezprzewodowy)",
+  "sonesse30aku": "SONESSE 30 RTS AKU (24V, akumulator, pilot) — max 300 cm"
+};
+var RRZ_SOMFY_ACC = [
+  {id:"situo1",        label:"Pilot SITUO 1-kanałowy",                          price:262.78},
+  {id:"situo5",        label:"Pilot SITUO 5-kanałowy",                          price:417.80},
+  {id:"telis16",       label:"Pilot TELIS 16-kanałowy",                         price:1079.48},
+  {id:"smoove1",       label:"Pilot ścienny SMOOVE 1-kanałowy",           price:274.12},
+  {id:"smoove2",       label:"Pilot ścienny SMOOVE 2-kanałowy",           price:427.33},
+  {id:"smoove4",       label:"Pilot ścienny SMOOVE 4-kanałowy",           price:533.12},
+  {id:"smoove_uno",    label:"Przełącznik ścienny SMOOVE UNO pojedynczy", price:98.30},
+  {id:"smoove_duo",    label:"Przełącznik ścienny SMOOVE DUO podwójny", price:149.35},
+  {id:"lad_30wf",      label:"Ładowarka do SONESSE 30WF RTS akumulatorowego",   price:149.35},
+  {id:"tahoma",        label:"Centralka Tahoma",                                price:1412.21},
+  {id:"bebenek_szyna", label:"Dodatkowy bębenek w szynie",                      price:52.57}
+];
+
+var RRZ_PREMIUM = {
+  "am354w":     [1093,1167,1244,1318,1392,1468,1542,1619,1693,1769,1843,1917,1991,2068],
+  "am353w":     [1547,1621,1698,1772,1846,1922,1996,2072,2146,2223,2297,2371,2445,2521],
+  "am35bat":    [1908,1982,2058,2132,2206,2282,2356,2433,2507,2583,2657,2731,2805,2882],
+  "am35wifi":   [1810,1884,1960,2034,2108,2185,2259,2335,2409,2486,2560,2634,2708,2784],
+  "am35zigbee": [1810,1884,1960,2034,2108,2185,2259,2335,2409,2486,2560,2634,2708,2784],
+  "am25_230v":  [1547,1621,1698,1772,1846,1922,1996,2072,null,null,null,null,null,null],
+  "am25bat":    [1738,1812,1889,1963,2037,2113,2187,2263,null,null,null,null,null,null]
+};
+var RRZ_PREMIUM_LABELS = {
+  "am354w":     "PREMIUM AM 35 4W (230V, przełącznik ścienny)",
+  "am353w":     "PREMIUM AM 35 3W (230V, pilot radiowy)",
+  "am35bat":    "PREMIUM AM 35 BATTERY (akumulator, pilot radiowy)",
+  "am35wifi":   "PREMIUM AM 35 3W WiFi (230V, pilot + WiFi)",
+  "am35zigbee": "PREMIUM AM 35 3W ZigBee (230V, pilot + ZigBee)",
+  "am25_230v":  "PREMIUM AM 25 230V (zasilacz, pilot) — max 300 cm",
+  "am25bat":    "PREMIUM AM 25 BATTERY (akumulator, pilot) — max 300 cm"
+};
+var RRZ_PREMIUM_ACC = [
+  {id:"pilot1",        label:"Pilot 1-kanałowy",                                price:155.52},
+  {id:"pilot6",        label:"Pilot 6-kanałowy",                                price:197.13},
+  {id:"pilot16",       label:"Pilot 16-kanałowy",                               price:267.16},
+  {id:"inis_uno",      label:"Przełącznik ścienny INIS UNO pojedynczy", price:113.90},
+  {id:"inis_duo",      label:"Przełącznik ścienny INIS DUO podwójny", price:173.00},
+  {id:"lad_am25",      label:"Ładowarka do AM 25 24V akumulatorowego",          price:142.35},
+  {id:"lad_am35",      label:"Ładowarka do AM 35 24V akumulatorowego",          price:166.47},
+  {id:"smarthome_ac",  label:"Centralka SMART HOME PREMIUM LINE AC 520-01",    price:453.41},
+  {id:"smarthome_zb",  label:"Centralka SMART HOME ZigBee",                    price:416.17},
+  {id:"bebenek_szyna", label:"Dodatkowy bębenek w szynie",                      price:52.57}
+];
+
+function rrzLookup(brand, model, wCm){
+  var tbl = brand==="somfy" ? RRZ_SOMFY : RRZ_PREMIUM;
+  var row = tbl[model];
+  if(!row) return null;
+  var idx = RRZ_WIDTHS.findIndex(function(w){ return w >= wCm; });
+  if(idx<0) idx = RRZ_WIDTHS.length-1;
+  var price = row[idx];
+  if(price==null) return null;
+  return {price: price, upToWidth: RRZ_WIDTHS[idx]};
+}
+
 
 function lookup(val,obj){
   var keys=Object.keys(obj).map(Number).sort(function(a,b){return a-b;});
@@ -753,10 +822,29 @@ function calc(p){
       if(c.rSystem==="elektryk"){
         rr=lookup(wCm,REL);
         total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
+        // ── AUTOMATYKA ROLET RZYMSKICH XL ──────────────────────────────
+        var rrzBrand=c.rrzBrand||null;
+        var rrzModel=c.rrzModel||null;
+        if(rrzBrand&&rrzModel){
+          var rrzR=rrzLookup(rrzBrand,rrzModel,wCm);
+          if(rrzR){
+            var accList=rrzBrand==="somfy"?RRZ_SOMFY_ACC:RRZ_PREMIUM_ACC;
+            var accIds=c.rrzAcc||[];
+            var accTotal=accIds.reduce(function(sum,aid){
+              var a=accList.find(function(x){return x.id===aid;});
+              return sum+(a?a.price:0);
+            },0);
+            total+=rrzR.price+accTotal;
+            lines.push("Mechanizm "+(rrzBrand==="somfy"?"SOMFY":"PREMIUM LINE")+" → "+rrzR.price.toFixed(2).replace(".",",")+" zł");
+            if(accTotal>0) lines.push("Akcesoria → +"+accTotal.toFixed(2).replace(".",",")+" zł");
+          }else{
+            warn="Wybrany model automatyki nie obejmuje szerokości "+wCm+" cm.";
+          }
+        }
       }
       lines.push("Roleta "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2");
     }
-    if(rb)lines.push("+ B\u0119benek 11 z\u0142");
+    if(rb)lines.push("+ Bębenek 11 zł");
   }else if(p.type==="szyna"){
     var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0;
     if(!lenCm)return{total:0,lines:[],warn:null};
@@ -1476,17 +1564,12 @@ function FabPicker(p){
 function ModalClient(p){
   var ns=useState(""),name=ns[0],setName=ns[1];
   var as=useState(""),addr=as[0],setAddr=as[1];
-  var ps=useState(""),phone=ps[0],setPhone=ps[1];
-  var es=useState(""),email=es[0],setEmail=es[1];
-  function submit(){if(!name.trim())return;p.onOk(name.trim(),addr.trim(),phone.trim(),email.trim());p.onClose();}
-  var INP={width:"100%",padding:"14px 16px",fontSize:17,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:56};
+  function submit(){if(!name.trim())return;p.onOk(name.trim(),addr.trim());p.onClose();}
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
-    ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"2rem",width:"min(420px, 94vw)",border:"1px solid var(--bd2)",boxShadow:"0 12px 40px rgba(0,0,0,0.15)"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"2rem",width:"min(380px, 92vw)",border:"1px solid var(--bd2)",boxShadow:"0 12px 40px rgba(0,0,0,0.15)"}},
       ce("div",{style:{fontSize:13,fontWeight:600,marginBottom:12,color:"var(--t1)",letterSpacing:"0.02em"}},"Nowy klient"),
-      ce("input",{autoFocus:true,value:name,onChange:function(ev){setName(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Imi\u0119 i nazwisko *",style:INP}),
-      ce("input",{value:addr,onChange:function(ev){setAddr(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Adres (opcjonalnie)",style:INP}),
-      ce("input",{value:phone,onChange:function(ev){setPhone(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Telefon (opcjonalnie)",type:"tel",style:INP}),
-      ce("input",{value:email,onChange:function(ev){setEmail(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"E-mail (opcjonalnie)",type:"email",style:Object.assign({},INP,{marginBottom:14})}),
+      ce("input",{autoFocus:true,value:name,onChange:function(ev){setName(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Imi\u0119 i nazwisko",style:{width:"100%",padding:"14px 16px",fontSize:17,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:56}}),
+      ce("input",{value:addr,onChange:function(ev){setAddr(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Adres (opcjonalnie)",style:{width:"100%",padding:"14px 16px",fontSize:17,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:14,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:56}}),
       ce("div",{style:{display:"flex",gap:10,marginTop:4}},
         ce("button",{onClick:submit,style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"DODAJ"),
         ce("button",{onClick:p.onClose,style:{padding:"8px 14px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"Anuluj")
@@ -2763,17 +2846,80 @@ function ProdCard(p){
     ):null;
 
     // ── ELEKTRYK options ──────────────────────────────────────────────
-    var elektrykSection = rSystem==="elektryk"?ce("div",{style:{marginTop:20}},
-      ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA MONTA\u017bU SILNIKA"),
-      ce("div",{style:{display:"flex",gap:10}},
-        ["Lewo","Prawo"].map(function(str){
-          var isA=c.stronaSilnika===str||(str==="Lewo"&&!c.stronaSilnika);
-          return ce("button",{key:str,onClick:function(){sc("stronaSilnika",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-            isA?"✓ "+str:str
-          );
-        })
+    var rrzBrand = c.rrzBrand||null;
+    var rrzModel = c.rrzModel||null;
+    var rrzAcc   = c.rrzAcc||[];
+
+    var elektrykSection = rSystem==="elektryk"?ce("div",{style:{marginTop:20,display:"flex",flexDirection:"column",gap:20}},
+
+      // Strona montażu silnika
+      ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA MONTAŻU SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          ["Lewo","Prawo"].map(function(str){
+            var isA=c.stronaSilnika===str||(str==="Lewo"&&!c.stronaSilnika);
+            return ce("button",{key:str,onClick:function(){sc("stronaSilnika",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"✓ "+str:str
+            );
+          })
+        )
       ),
-      ce("div",{style:{marginTop:16,padding:"12px 16px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",fontSize:13,color:"var(--t2)"}},"\u26a1 Cennik elektryki — zostanie dodany wkr\xf3tce")
+
+      // Wybór producenta automatyki
+      ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"AUTOMATYKA — PRODUCENT"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"somfy",label:"SOMFY"},{key:"premium",label:"PREMIUM LINE"}].map(function(br){
+            var isA=rrzBrand===br.key;
+            return ce("button",{key:br.key,
+              onClick:function(){p.onChange(mg(prod,{c:mg(c,{rrzBrand:br.key,rrzModel:null,rrzAcc:[]})}));},
+              style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"✓ "+br.label:br.label
+            );
+          })
+        )
+      ),
+
+      // Wybór modelu silnika
+      rrzBrand?ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"MODEL MECHANIZMU"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          Object.keys(rrzBrand==="somfy"?RRZ_SOMFY:RRZ_PREMIUM).map(function(mKey){
+            var labels=rrzBrand==="somfy"?RRZ_SOMFY_LABELS:RRZ_PREMIUM_LABELS;
+            var isA=rrzModel===mKey;
+            var wCm2=prod.par&&prod.par.wCm?+prod.par.wCm:0;
+            var rrzCheck=wCm2?rrzLookup(rrzBrand,mKey,wCm2):null;
+            var avail=!wCm2||rrzCheck!=null;
+            var priceStr=isA&&rrzCheck?" → "+rrzCheck.price.toFixed(2).replace(".",",")+" zł":"";
+            return ce("button",{key:mKey,
+              onClick:function(){p.onChange(mg(prod,{c:mg(c,{rrzModel:mKey,rrzAcc:[]})}));},
+              disabled:!avail,
+              style:{padding:"12px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":avail?"var(--bg)":"var(--bg3)",color:isA?"#fff":avail?"var(--t1)":"var(--t3)",fontSize:13,fontWeight:isA?600:400,cursor:avail?"pointer":"not-allowed",textAlign:"left",transition:"all .18s",opacity:avail?1:0.5}},
+              (isA?"✓ ":"")+labels[mKey]+priceStr
+            );
+          })
+        )
+      ):null,
+
+      // Akcesoria
+      rrzModel?ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"AKCESORIA (opcjonalnie)"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+          (rrzBrand==="somfy"?RRZ_SOMFY_ACC:RRZ_PREMIUM_ACC).map(function(acc){
+            var checked=rrzAcc.indexOf(acc.id)>=0;
+            return ce("label",{key:acc.id,style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:"var(--t1)",padding:"6px 0"}},
+              ce("input",{type:"checkbox",checked:checked,
+                onChange:function(ev){
+                  var next=ev.target.checked?[].concat(rrzAcc,[acc.id]):rrzAcc.filter(function(x){return x!==acc.id;});
+                  p.onChange(mg(prod,{c:mg(c,{rrzAcc:next})}));
+                },
+                style:{width:16,height:16,cursor:"pointer",accentColor:"var(--t1)"}}),
+              ce("span",{},acc.label+" — "+acc.price.toFixed(2).replace(".",",")+" zł")
+            );
+          })
+        )
+      ):null
+
     ):null;
 
     form=ce("div",{style:{display:"flex",flexDirection:"column"}},
@@ -2923,18 +3069,19 @@ function App(){
       setSaveStatus("error");
     });
   }
+
   function updateClient(id,fn){
     setClients(function(cs){
       var updated=cs.map(function(cl){return cl.id===id?fn(cl):cl;});
       var newCl=updated.find(function(cl){return cl.id===id;});
-      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||null,email:newCl.email||null,rooms:newCl.rooms});
+      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,rooms:newCl.rooms});
       return updated;
     });
   }
 
-  function addClient(name,addr,phone,email){
-    sbApi.addClient(name,addr,phone,email).then(function(data){
-      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,phone:phone||null,email:email||null,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+  function addClient(name,addr){
+    sbApi.addClient(name,addr).then(function(data){
+      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
       setClients(function(cs){return cs.concat([newCl]);});
       setCurClientId(newCl.id);
       setScreen("rooms");
@@ -2977,19 +3124,14 @@ function App(){
 
   function BC(){
     var parts=[];
-    function cr(label,oc){
-      if(oc){
-        return ce("button",{key:label,onClick:oc,style:{cursor:"pointer",color:"var(--t2)",fontWeight:500,fontSize:15,background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:8,padding:"8px 14px",minHeight:44,lineHeight:1.2,letterSpacing:0}},"\u2190 "+label);
-      }
-      return ce("span",{key:label,style:{color:"var(--t1)",fontWeight:600,fontSize:15,padding:"8px 2px"}},label);
-    }
-    function sep(i){return ce("span",{key:"s"+i,style:{color:"var(--bd3)",margin:"0 4px",fontSize:13}},"/");}
+    function cr(label,oc){return ce("span",{key:label,onClick:oc,style:{cursor:oc?"pointer":"default",color:oc?"var(--t3)":"var(--t1)",fontWeight:oc?400:600,fontSize:13}},label);}
+    function sep(i){return ce("span",{key:"s"+i,style:{color:"var(--bd2)",margin:"0 6px",fontSize:13}},"/");}
     parts.push(cr("Klienci",screen!=="home"?function(){setScreen("home");}:null));
     if(screen!=="home"&&curClient){parts.push(sep(1));parts.push(cr(curClient.name,screen!=="rooms"?function(){setScreen("rooms");}:null));}
     if((screen==="windows"||screen==="detail")&&curRoom){parts.push(sep(2));parts.push(cr(curRoom.name,screen==="detail"?function(){setScreen("windows");}:null));}
     if(screen==="detail"&&curWin){parts.push(sep(3));parts.push(cr(curWin.name,null));}
     if(screen==="sum"){parts.push(sep(4));parts.push(cr("Podsumowanie",null));}
-    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:4,marginBottom:0,paddingBottom:0,borderBottom:"none"}},parts);
+    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",marginBottom:0,paddingBottom:0,borderBottom:"none"}},parts);
   }
 
   var content=null;
@@ -3010,8 +3152,7 @@ function App(){
           ce("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}},
             ce("div",null,
               ce("div",{style:{fontSize:16,fontWeight:600,color:"var(--t1)",marginBottom:4}},cl.name),
-              cl.addr?ce("div",{style:{fontSize:13,color:"var(--t3)",marginBottom:2}},cl.addr):null,
-              (cl.phone||cl.email)?ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:6}},[cl.phone,cl.email].filter(Boolean).join("  \u00b7  ")):null
+              cl.addr?ce("div",{style:{fontSize:13,color:"var(--t3)",marginBottom:6}},cl.addr):null
             ),
             ce("span",{style:{fontSize:10,color:"var(--t3)"}},"\u203a")
           ),
