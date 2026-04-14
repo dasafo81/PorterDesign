@@ -954,7 +954,7 @@ function buildSewingRows(client){
         else if(split==="right") splitDesc="Prawa sztuka";
         else if(split==="equal"){var tw2=par.wCm||0;splitDesc="Komplet r\xf3wny ("+Math.floor(tw2/2)+" + "+Math.ceil(tw2/2)+" cm)";}
         else splitDesc="Komplet nier\xf3wny: L="+(pc.leftW||0)+"cm / P="+(pc.rightW||0)+"cm";
-        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"Ta\u015bma obci\u0105\u017caj\u0105ca doszyta"};
+        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"O\u0142owianka"};
         var bottomDesc=(bottomMap[pc.bottomType||"single"]||"Pojedynczy")+(pc.bottomSize?" "+pc.bottomSize+"cm":"");
         var fabObj=prod.fabName?FABRICS.find(function(f){return f.name===prod.fabName;}):null;
         rows.push({
@@ -2448,7 +2448,7 @@ function ProdCard(p){
     var bottomSection=ce("div",{style:{marginTop:20}},
       ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP DO\u0141U"),
       ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}},
-        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"Ta\u015bma obci\u0105\u017caj\u0105ca doszyta"}].map(function(bt){
+        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"O\u0142owianka"}].map(function(bt){
           var isA=bottomType===bt.key;
           return ce("button",{key:bt.key,onClick:function(){sc("bottomType",bt.key);},style:{padding:"16px 12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
             isA?"\u2713 "+bt.label:bt.label
