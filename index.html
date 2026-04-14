@@ -857,7 +857,7 @@ function buildOfferRows(client){
         var total=p.mp!=null?p.mp:(calc(pfc).total||0);
         if(!total)return;
         var lbl=p.type==="inne"?(p.inneLabel||"Inne"):(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
-        var desc=lbl+(p.fabName?" \u00b7 "+p.fabName:"") — "+r.name+" /;
+        var desc=lbl+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name;
         rows.push({lp:lp++,name:desc,qty:1,unit:"szt.",cenaJedn:total,total:total});
       });
     });
