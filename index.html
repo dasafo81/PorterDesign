@@ -2923,21 +2923,18 @@ function App(){
       setSaveStatus("error");
     });
   }
-if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||null,email:newCl.email||null,rooms:newCl.rooms});
   function updateClient(id,fn){
     setClients(function(cs){
       var updated=cs.map(function(cl){return cl.id===id?fn(cl):cl;});
       var newCl=updated.find(function(cl){return cl.id===id;});
-      function addClient(name,addr,phone,email){
-    sbApi.addClient(name,addr,phone,email).then(function(data){
-      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,phone:phone||null,email:email||null,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||null,email:newCl.email||null,rooms:newCl.rooms});
       return updated;
     });
   }
 
-  function addClient(name,addr){
-    sbApi.addClient(name,addr).then(function(data){
-      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+  function addClient(name,addr,phone,email){
+    sbApi.addClient(name,addr,phone,email).then(function(data){
+      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,phone:phone||null,email:email||null,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
       setClients(function(cs){return cs.concat([newCl]);});
       setCurClientId(newCl.id);
       setScreen("rooms");
@@ -3001,10 +2998,7 @@ if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||
   if(screen==="home"){
     if(loading){
       content=ce("div",{style:{textAlign:"center",padding:"4rem 0",color:"var(--t3)"}},
-      cl.addr?ce("div",{style:{fontSize:13,color:"var(--t3)",marginBottom:2}},cl.addr):null,
-              (cl.phone||cl.email)?ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:6}},
-                [cl.phone,cl.email].filter(Boolean).join("  \u00b7  ")
-              ):null
+        ce("img",{src:LOGO_SRC,alt:"Porter Design",style:{width:35,opacity:0.4,marginBottom:12,display:"block",margin:"0 auto 12px"}}),
         ce("div",{style:{fontSize:12,letterSpacing:"0.08em"}},"Ładowanie...")
       );
     } else {
@@ -3016,7 +3010,8 @@ if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||
           ce("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}},
             ce("div",null,
               ce("div",{style:{fontSize:16,fontWeight:600,color:"var(--t1)",marginBottom:4}},cl.name),
-              cl.addr?ce("div",{style:{fontSize:13,color:"var(--t3)",marginBottom:6}},cl.addr):null
+              cl.addr?ce("div",{style:{fontSize:13,color:"var(--t3)",marginBottom:2}},cl.addr):null,
+              (cl.phone||cl.email)?ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:6}},[cl.phone,cl.email].filter(Boolean).join("  \u00b7  ")):null
             ),
             ce("span",{style:{fontSize:10,color:"var(--t3)"}},"\u203a")
           ),
