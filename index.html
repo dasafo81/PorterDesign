@@ -3124,8 +3124,8 @@ function App(){
 
   function BC(){
     var parts=[];
-    function cr(label,oc){return ce("span",{key:label,onClick:oc,style:{cursor:oc?"pointer":"default",color:oc?"var(--t3)":"var(--t1)",fontWeight:oc?400:600,fontSize:13}},label);}
-    function sep(i){return ce("span",{key:"s"+i,style:{color:"var(--bd2)",margin:"0 6px",fontSize:13}},"/");}
+    function cr(label,oc){return ce("span",{key:label,onClick:oc,style:{cursor:oc?"pointer":"default",color:oc?"var(--t3)":"var(--t1)",fontWeight:oc?400:600,fontSize:15,padding:"10px 4px",minHeight:44,display:"inline-flex",alignItems:"center"}},label);}
+    function sep(i){return ce("span",{key:"s"+i,style:{color:"var(--bd2)",margin:"0 4px",fontSize:15,lineHeight:"44px"}},"/");}
     parts.push(cr("Klienci",screen!=="home"?function(){setScreen("home");}:null));
     if(screen!=="home"&&curClient){parts.push(sep(1));parts.push(cr(curClient.name,screen!=="rooms"?function(){setScreen("rooms");}:null));}
     if((screen==="windows"||screen==="detail")&&curRoom){parts.push(sep(2));parts.push(cr(curRoom.name,screen==="detail"?function(){setScreen("windows");}:null));}
