@@ -168,6 +168,59 @@ var JZ_LABELS={
   bs65:"Basswood 65mm"
 };
 
+// ── SILNIKI DO ŻALUZJI ────────────────────────────────────────────────────
+var JZALUZJA_MOTORS = [
+  {id:"somfy_sonesse2_40_r1_zigbee", label:"Somfy Sonesse2 40 R1 Zigbee 9/12 UN",       tech:"Zigbee 3.0", nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1848.30},
+  {id:"somfy_sonesse2_40_wirefree",  label:"Somfy Sonesse2 40 WireFree Zigbee Li-Ion",   tech:"Zigbee 3.0", nm:4,   maxKg:20, minWidthMm:750, weightKg:1.10, power:"Akumulator", price:2032.57},
+  {id:"somfy_sonesse_rts",           label:"Somfy SONESSE RTS",                           tech:"RTS",        nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1863.91},
+  {id:"somfy_sonesse_io",            label:"Somfy SONESSE io-homecontrol\u00ae",          tech:"IO",         nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1952.67},
+  {id:"somfy_sonesse_switch",        label:"Somfy SONESSE switch",                        tech:"Switch/V/T", nm:9,   maxKg:20, minWidthMm:610, weightKg:1.35, power:"230V",       price:1405.95},
+  {id:"somfy_j4_io_10nm",            label:"Somfy J4 io-homecontrol\u00ae 10Nm",         tech:"IO",         nm:10,  maxKg:26, minWidthMm:800, weightKg:1.70, power:"230V",       price:1970.45},
+  {id:"somfy_j4_io_18nm",            label:"Somfy J4 io-homecontrol\u00ae 18Nm",         tech:"IO",         nm:18,  maxKg:26, minWidthMm:800, weightKg:2.20, power:"230V",       price:2246.27},
+  {id:"somfy_j4_switch_10nm",        label:"Somfy J4 switch 10Nm",                       tech:"Switch/WT",  nm:10,  maxKg:26, minWidthMm:800, weightKg:1.70, power:"230V",       price:1246.07},
+  {id:"somfy_j4_switch_18nm",        label:"Somfy J4 switch 18Nm",                       tech:"Switch/WT",  nm:18,  maxKg:26, minWidthMm:800, weightKg:2.20, power:"230V",       price:1333.31},
+  {id:"somfy_tilt_only_50wf_zigbee", label:"Somfy TILT ONLY 50 WF ZIGBEE",               tech:"RTS",        nm:1,   maxKg:25, minWidthMm:480, weightKg:0.484,power:"Bateria",    price:976.55},
+  {id:"brel_blemq35_13",             label:"Brel BLEMQ35-13",                             tech:"RTS",        nm:13,  maxKg:20, minWidthMm:790, weightKg:1.50, power:"Akumulator", price:1620.04},
+  {id:"brel_bte50_tilt",             label:"Brel BTE50 tilt only",                        tech:"RTS",        nm:0.6, maxKg:25, minWidthMm:550, weightKg:0.40, power:"Bateria",    price:933.78},
+  {id:"brel_meq35_10",               label:"Brel MEQ35-10",                               tech:"RTS",        nm:10,  maxKg:20, minWidthMm:700, weightKg:1.50, power:"230V",       price:924.09},
+  {id:"brel_beq35_10",               label:"Brel BEQ35-10",                               tech:"RTS",        nm:10,  maxKg:20, minWidthMm:700, weightKg:1.50, power:"230V",       price:1061.67},
+  {id:"coulisse_cm06",               label:"Coulisse CM-06",                              tech:"RTS",        nm:6,   maxKg:17, minWidthMm:830, weightKg:1.50, power:"Akumulator", price:1644.82},
+  {id:"coulisse_cm06_e_v",           label:"Coulisse CM-06-E-V",                          tech:"RTS",        nm:6,   maxKg:17, minWidthMm:830, weightKg:1.50, power:"Akumulator", price:1890.86},
+  {id:"coulisse_cm10_qc",            label:"Coulisse CM-10-QC",                           tech:"RTS",        nm:8,   maxKg:23, minWidthMm:720, weightKg:1.70, power:"230V",       price:1292.72}
+];
+
+// ── PILOTY DO ŻALUZJI ─────────────────────────────────────────────────────
+var JZALUZJA_REMOTES = [
+  {id:"somfy_situo1_rts_pure",     label:"Somfy Situo 1 RTS \u2013 Pure II (1 \u017ealuzja)",       price:296.77},
+  {id:"somfy_situo1_rts_arctic",   label:"Somfy Situo 1 RTS \u2013 Arctic II (1 \u017ealuzja)",     price:427.34},
+  {id:"somfy_situo1_rts_natural",  label:"Somfy Situo 1 RTS \u2013 Natural II (1 \u017ealuzja)",    price:427.34},
+  {id:"somfy_situo1_rts_iron",     label:"Somfy Situo 1 RTS \u2013 Iron II (1 \u017ealuzja)",       price:427.34},
+  {id:"somfy_situo5_io_pure",      label:"Somfy Situo 5 io II \u2013 Pure II (do 5 \u017ealuzji)",  price:500.42},
+  {id:"somfy_situo5_io_arctic",    label:"Somfy Situo 5 io II \u2013 Arctic II (do 5)",             price:595.50},
+  {id:"somfy_situo5_io_natural",   label:"Somfy Situo 5 io II \u2013 Natural II (do 5)",            price:595.50},
+  {id:"somfy_situo5_io_iron",      label:"Somfy Situo 5 io II \u2013 Iron II (do 5)",               price:595.50},
+  {id:"somfy_telis16_rts",         label:"Somfy Telis 16 RTS \u2013 Pure (do 16 \u017ealuzji)",     price:1055.49},
+  {id:"somfy_zasilacz_rts",        label:"Zasilacz Somfy \u2013 p\u00f3\u0142 elektryczna RTS",    price:128.75},
+  {id:"brel_thw2001_1ch",          label:"Brel THW2001 1ch (1 \u017ealuzja)",                       price:165.36},
+  {id:"brel_dd2710_1ch",           label:"Brel DD-2710 1ch (1 \u017ealuzja)",                       price:168.31},
+  {id:"brel_thw2015_15ch",         label:"Brel THW2015 15ch (do 15 \u017ealuzji)",                  price:176.49},
+  {id:"brel_dd2712_15ch",          label:"Brel DD-2712 15ch (do 15 \u017ealuzji)",                  price:207.87},
+  {id:"brel_dc306_5ch_white",      label:"Brel DC-306 5ch White (do 5 \u017ealuzji)",               price:165.36},
+  {id:"brel_dc306_5ch_black",      label:"Brel DC-306 5ch Black (do 5 \u017ealuzji)",               price:165.36},
+  {id:"brel_dc305_1ch_white",      label:"Brel DC-305 1ch White (1 \u017ealuzja)",                  price:154.36},
+  {id:"brel_dc305_1ch_black",      label:"Brel DC-305 1ch Black (1 \u017ealuzja)",                  price:154.36},
+  {id:"brel_thb3001_1ch",          label:"Brel THB3001 1ch (1 \u017ealuzja)",                       price:336.63},
+  {id:"brel_thb3015_15ch",         label:"Brel THB3015 15ch (do 15 \u017ealuzji)",                  price:376.19},
+  {id:"brel_ysia1_variation_emea", label:"Pilot Ysia 1 Variation Zigbee EMEA",                      price:346.73},
+  {id:"brel_ysia5_variation_emea", label:"Pilot Ysia 5 Variation Zigbee EMEA",                      price:412.97},
+  {id:"brel_ysia1_zigbee_b",       label:"Pilot Ysia 1 Zigbee B",                                   price:205.97},
+  {id:"brel_ysia5_zigbee_b",       label:"Pilot Ysia 5 Zigbee B",                                   price:284.63},
+  {id:"brel_usb_dc220",            label:"Zasilacz USB DC-220 EU z kablem magnetycznym",             price:143.28},
+  {id:"coulisse_cm11_bk_1ch",      label:"Pilot Coulisse CM-11-BK 1ch (1 \u017ealuzja)",            price:105.81},
+  {id:"coulisse_cm12_bk_5ch",      label:"Pilot Coulisse CM-12-BK 5ch (do 5)",                      price:165.97},
+  {id:"coulisse_cm13_bk_15ch",     label:"Pilot Coulisse CM-13-BK 15ch (do 15)",                    price:267.08}
+];
+
 function jzLookup(type, wCm, lCm){
   var tbl=JZ[type];
   if(!tbl)return null;
@@ -672,6 +725,12 @@ function calc(p){
     var z=JZ_ZONES[jt]||{};
     if(z.blue&&pow>=z.blue)warn="Strefa niebieska ("+pow.toFixed(2)+"m\xb2) \u2014 wymagana obs\u0142uga elektryczna.";
     else if(z.red&&pow>=z.red)warn="Strefa czerwona ("+pow.toFixed(2)+"m\xb2) \u2014 ograniczona gwarancja.";
+    if(c.jzMode==="auto"){
+      var mot=JZALUZJA_MOTORS.find(function(m){return m.id===c.jzMotorId;});
+      var rem=JZALUZJA_REMOTES.find(function(r){return r.id===c.jzRemoteId;});
+      if(mot){total+=mot.price;lines.push("Silnik: "+mot.label+" +"+mot.price.toFixed(2)+" zł");}
+      if(rem){total+=rem.price;lines.push("Pilot: "+rem.label+" +"+rem.price.toFixed(2)+" zł");}
+    }
   }else if(p.type==="roleta"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
     if(!wCm||!hCm)return{total:0,lines:[],warn:null};
@@ -2505,7 +2564,71 @@ function ProdCard(p){
           ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}}),
           (par.wCm&&par.wCm>=60)?ce(Chip,{key:"ts",label:"Dodatkowa tasiemka +46,43 z\u0142",active:c.tasiemka==="tak",onClick:function(){tc("tasiemka");}}):null
         ]})
-      )
+      ),
+      // ── TRYB STEROWANIA ─────────────────────────────────────────────
+      ce("div",{style:{marginTop:16}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"STEROWANIE"),
+        ce(Chips,{items:[
+          ce(Chip,{key:"m",label:"\ud83d\udd27 Manual",active:!c.jzMode||c.jzMode==="manual",onClick:function(){sc("jzMode","manual");sc("jzMotorId",null);sc("jzRemoteId",null);}}),
+          ce(Chip,{key:"a",label:"\u26a1 Automatyka",active:c.jzMode==="auto",onClick:function(){sc("jzMode","auto");}})
+        ]})
+      ),
+      // ── AUTOMATYKA: silnik + pilot ───────────────────────────────────
+      (c.jzMode==="auto")?(function(){
+        var wMm=(par.wCm||0)*10;
+        var availMotors=JZALUZJA_MOTORS.filter(function(m){return !wMm||m.minWidthMm<=wMm;});
+        var selMotor=JZALUZJA_MOTORS.find(function(m){return m.id===c.jzMotorId;})||null;
+        var selRemote=JZALUZJA_REMOTES.find(function(r){return r.id===c.jzRemoteId;})||null;
+        return ce("div",{style:{marginTop:12,display:"flex",flexDirection:"column",gap:12}},
+          ce("div",null,
+            ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:4}},
+              "SILNIK"+(wMm?" (filtrowane dla szer. "+wMm+"mm)":"")
+            ),
+            ce("select",{
+              value:c.jzMotorId||"",
+              onChange:function(ev){sc("jzMotorId",ev.target.value||null);},
+              style:Object.assign({},IST,{width:"100%"})
+            },
+              ce("option",{value:""},"-- wybierz silnik --"),
+              availMotors.map(function(m){
+                return ce("option",{key:m.id,value:m.id},
+                  m.label+" | "+m.tech+" | "+m.nm+"Nm | maks. "+m.maxKg+"kg | "+m.power+" | "+m.price.toFixed(2)+" z\u0142"
+                );
+              })
+            ),
+            selMotor?ce("div",{style:{marginTop:6,padding:"8px 10px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",fontSize:11,color:"var(--t2)"}},
+              ce("div",{style:{fontWeight:600,color:"var(--t1)",marginBottom:4}},selMotor.label),
+              ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:2}},
+                ce("div",null,"\u2699\ufe0f Technologia: "+selMotor.tech),
+                ce("div",null,"\u26a1 Si\u0142a: "+selMotor.nm+"Nm"),
+                ce("div",null,"\u2696\ufe0f Waga silnika: "+selMotor.weightKg+" kg"),
+                ce("div",null,"\ud83d\udd0c Zasilanie: "+selMotor.power),
+                ce("div",null,"\u2195\ufe0f Maks. waga \u017caluzji: "+selMotor.maxKg+" kg"),
+                ce("div",null,"\u2194\ufe0f Min. szeroko\u015b\u0107: "+selMotor.minWidthMm+" mm")
+              ),
+              ce("div",{style:{marginTop:6,fontWeight:700,color:"var(--t1)",fontSize:13}},selMotor.price.toFixed(2)+" z\u0142")
+            ):null
+          ),
+          ce("div",null,
+            ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:4}},"PILOT / AKCESORIA (opcjonalnie)"),
+            ce("select",{
+              value:c.jzRemoteId||"",
+              onChange:function(ev){sc("jzRemoteId",ev.target.value||null);},
+              style:Object.assign({},IST,{width:"100%"})
+            },
+              ce("option",{value:""},"-- brak / wybierz pilot --"),
+              JZALUZJA_REMOTES.map(function(r){
+                return ce("option",{key:r.id,value:r.id},r.label+" | "+r.price.toFixed(2)+" z\u0142");
+              })
+            ),
+            selRemote?ce("div",{style:{marginTop:6,padding:"6px 10px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",fontSize:11,color:"var(--t2)"}},
+              ce("span",{style:{fontWeight:600}},selRemote.label),
+              "  \u2014  ",
+              ce("span",{style:{fontWeight:700,color:"var(--t1)"}},selRemote.price.toFixed(2)+" z\u0142")
+            ):null
+          )
+        );
+      })():null
     );
   }else if(prod.type==="roleta"){
 
