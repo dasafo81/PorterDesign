@@ -74,8 +74,8 @@ var sbApi = {
     return sbFetch("GET","clients?select=*&order=created_at.asc");
   },
   // Dodaj nowego klienta
-  addClient: function(name, addr){
-    return sbFetch("POST","clients",{name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
+  addClient: function(name, addr, phone, email){
+    return sbFetch("POST","clients",{name:name,addr:addr,phone:phone||"",email:email||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
   },
   // Zaktualizuj rooms klienta (zapisuje cały JSON)
   updateClient: function(id, data){
@@ -653,7 +653,8 @@ var PROD_TYPES=[
   {id:"zaluzja",label:"Żaluzja",icon:"🪟"},
   {id:"roleta",label:"Roleta",icon:"⬛"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
-  {id:"karnisz",label:"Karnisz el.",icon:"⚡"}
+  {id:"karnisz",label:"Karnisz el.",icon:"⚡"},
+  {id:"inne",label:"Inne",icon:"✏️"}
 ];
 
 var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
@@ -775,6 +776,11 @@ function calc(p){
     total=rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm");
   }
+  }else if(p.type==="inne"){
+    // Ręczna cena — nie liczymy, mp wpisane przez użytkownika
+    total=0;
+    lines=[];
+  }
   return{total:total,lines:lines,warn:warn};
 }
 
@@ -851,7 +857,7 @@ function buildOfferRows(client){
         var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
         var total=p.mp!=null?p.mp:(calc(pfc).total||0);
         if(!total)return;
-        var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
+        var lbl=p.type==="inne"?(p.inneLabel||"Inne"):(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var desc=lbl+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
         rows.push({lp:lp++,name:desc,qty:1,unit:"szt.",cenaJedn:total,total:total});
       });
@@ -1268,7 +1274,7 @@ function generateSimplifiedPDF(client,comm){
       (w.products||[]).forEach(function(p){
         var total=calcProd(p);
         if(!total)return;
-        var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
+        var lbl=p.type==="inne"?(p.inneLabel||"Inne"):(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         if(!typeData[lbl])typeData[lbl]={total:0,count:0};
         typeData[lbl].total+=total;
         typeData[lbl].count+=1;
@@ -1479,12 +1485,17 @@ function FabPicker(p){
 function ModalClient(p){
   var ns=useState(""),name=ns[0],setName=ns[1];
   var as=useState(""),addr=as[0],setAddr=as[1];
-  function submit(){if(!name.trim())return;p.onOk(name.trim(),addr.trim());p.onClose();}
+  var ps=useState(""),phone=ps[0],setPhone=ps[1];
+  var es=useState(""),email=es[0],setEmail=es[1];
+  function submit(){if(!name.trim())return;p.onOk(name.trim(),addr.trim(),phone.trim(),email.trim());p.onClose();}
+  var inp=function(val,set,ph,type){return ce("input",{value:val,onChange:function(ev){set(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:ph,type:type||"text",style:{width:"100%",padding:"14px 16px",fontSize:15,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:52}});};
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
     ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"2rem",width:"min(380px, 92vw)",border:"1px solid var(--bd2)",boxShadow:"0 12px 40px rgba(0,0,0,0.15)"}},
       ce("div",{style:{fontSize:13,fontWeight:600,marginBottom:12,color:"var(--t1)",letterSpacing:"0.02em"}},"Nowy klient"),
-      ce("input",{autoFocus:true,value:name,onChange:function(ev){setName(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Imi\u0119 i nazwisko",style:{width:"100%",padding:"14px 16px",fontSize:17,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:56}}),
-      ce("input",{value:addr,onChange:function(ev){setAddr(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Adres (opcjonalnie)",style:{width:"100%",padding:"14px 16px",fontSize:17,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:14,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:56}}),
+      ce("input",{autoFocus:true,value:name,onChange:function(ev){setName(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Imi\u0119 i nazwisko",style:{width:"100%",padding:"14px 16px",fontSize:15,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:52}}),
+      inp(phone,setPhone,"Telefon (opcjonalnie)","tel"),
+      inp(email,setEmail,"E-mail (opcjonalnie)","email"),
+      inp(addr,setAddr,"Adres (opcjonalnie)"),
       ce("div",{style:{display:"flex",gap:10,marginTop:4}},
         ce("button",{onClick:submit,style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"DODAJ"),
         ce("button",{onClick:p.onClose,style:{padding:"8px 14px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"Anuluj")
@@ -1961,7 +1972,7 @@ function ProdCard(p){
 
   var res=calc(prodForCalc),total=res.total,lines=res.lines,warn=res.warn;
   var eff=prod.mp!=null?prod.mp:total;
-  var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
+  var lbl=prod.type==="inne"?(prod.inneLabel||"Inne"):(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
 
   var typeChips=PROD_TYPES.map(function(t){
     return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
@@ -2835,6 +2846,28 @@ function ProdCard(p){
       ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})})),
       ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})}))
     );
+  }else if(prod.type==="inne"){
+    form=ce("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+      ce(Fld,{label:"NAZWA PRODUKTU"},
+        ce("input",{
+          type:"text",
+          value:prod.inneLabel||"",
+          onChange:function(ev){p.onChange(mg(prod,{inneLabel:ev.target.value}));},
+          placeholder:"np. Narzuta dekoracyjna, Poduszki, Podbi\u00f3r...",
+          style:IST
+        })
+      ),
+      ce(Fld,{label:"CENA (z\u0142)"},
+        ce("input",{
+          type:"number",
+          value:prod.mp!=null?prod.mp:"",
+          onChange:function(ev){p.onChange(mg(prod,{mp:ev.target.value===""?null:+ev.target.value}));},
+          placeholder:"Wpisz cen\u0119",
+          style:IST
+        })
+      ),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:4}},"Cena wpisana r\u0119cznie \u2014 b\u0119dzie sumowana w zamówieniu.")
+    );
   }else{
     form=ce("div",{style:{fontSize:14,color:"var(--t2)",padding:"16px 0"}},"Cennik wkr\xf3tce.");
   }
@@ -2931,9 +2964,9 @@ function App(){
     });
   }
 
-  function addClient(name,addr){
-    sbApi.addClient(name,addr).then(function(data){
-      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+  function addClient(name,addr,phone,email){
+    sbApi.addClient(name,addr,phone,email).then(function(data){
+      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,phone:phone||"",email:email||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
       setClients(function(cs){return cs.concat([newCl]);});
       setCurClientId(newCl.id);
       setScreen("rooms");
@@ -3319,8 +3352,11 @@ function ModalAIValuation(p){
   var sr10=useState(false),emailLoading=sr10[0],setEmailLoading=sr10[1];
   var sr11=useState(false),emailCopied=sr11[0],setEmailCopied=sr11[1];
   var sr12=useState([]),attachments=sr12[0],setAttachments=sr12[1];
+  var sr13=useState([]),chatHistory=sr13[0],setChatHistory=sr13[1];
+  var sr14=useState(""),chatInput=sr14[0],setChatInput=sr14[1];
   var emailRef=useRef(null);
   var fileRef=useRef(null);
+  var chatEndRef=useRef(null);
 
   // ── SYSTEM PROMPT: AI ekstrahuje dane, NIE liczy cen ─────────────────────
   // Listę tkanin z aplikacji wstrzykujemy dynamicznie
@@ -3391,7 +3427,7 @@ function ModalAIValuation(p){
   );
 
   // ── CALL AI ─────────────────────────────────────────────────────────────
-  function callAI(sys,userContent,ok,fail){
+  function callAI(sys,userContent,ok,fail,history){
     fetch("/api/claude",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -3399,7 +3435,7 @@ function ModalAIValuation(p){
         model:"claude-sonnet-4-20250514",
         max_tokens:3000,
         system:sys,
-        messages:[{role:"user",content:userContent}]
+        messages:(history||[]).concat([{role:"user",content:userContent}])
       })
     }).then(function(r){return r.json();}).then(function(d){
       if(d.error){fail(d.error.message||"Blad API");return;}
@@ -3457,7 +3493,6 @@ function ModalAIValuation(p){
     setLoading(true);setError(null);setParsed(null);setCalcResult(null);
     setSaved(false);setSavedClient(null);setEmailText(null);
 
-    // Buduj wiadomosc z tekstem i ewentualnymi obrazkami
     var userContent;
     if(attachments.length){
       var parts=[];
@@ -3471,6 +3506,11 @@ function ModalAIValuation(p){
       userContent=inputText.trim();
     }
 
+    var msgText=inputText.trim()||"[obrazek]";
+    var newHistory=chatHistory.concat([{role:"user",content:userContent,display:msgText}]);
+    setChatHistory(newHistory);
+    setInputText("");setAttachments([]);
+
     callAI(buildSystemPrompt(),userContent,
       function(jsonTxt){
         var data;
@@ -3478,16 +3518,54 @@ function ModalAIValuation(p){
           var clean=jsonTxt.replace(/```json|```/g,"").trim();
           data=JSON.parse(clean);
         }catch(e){
-          setError("AI zwrocilo niepoprawny JSON. Sprobuj ponownie lub uproscil zapytanie.\n\nOdpowiedz AI: "+jsonTxt.slice(0,200));
-          setLoading(false);return;
+          setChatHistory(function(h){return h.concat([{role:"assistant",content:jsonTxt,display:jsonTxt}]);});
+          setError(null);setLoading(false);return;
         }
         var result=enrichWithPrices(data);
         setParsed(data);
         setCalcResult(result);
+        var aiMsg="\u2705 Wycena gotowa! \u0141\u0105czna kwota: "+roundTo10(result.total)+" z\u0142. Mo\u017cesz doprecyzowa\u0107 szczeg\u00f3\u0142y lub zada\u0107 pytanie poni\u017cej.";
+        setChatHistory(function(h){return h.concat([{role:"assistant",content:jsonTxt,display:aiMsg,isQuote:true}]);});
         setLoading(false);
       },
       function(e){setError(e);setLoading(false);}
-    );
+    ,newHistory.map(function(m){return{role:m.role,content:m.content};}));
+  }
+
+  // ── CZAT: dalsza rozmowa z AI ────────────────────────────────────────────
+  function doChat(){
+    if(!chatInput.trim()||loading)return;
+    var msg=chatInput.trim();
+    setChatInput("");
+    var newHistory=chatHistory.concat([{role:"user",content:msg,display:msg}]);
+    setChatHistory(newHistory);
+    setLoading(true);setError(null);
+
+    var ctxSys=buildSystemPrompt()+
+      "\n\nJe\u017celi u\u017cytkownik pyta o co\u015b og\u00f3lnego (nie o ekstrakcj\u0119 danych) \u2013 odpowiedz po polsku jako pomocny doradca Porter Design. Mo\u017cesz zwraca\u0107 tekst (nie JSON) je\u015bli nie prosi o wycen\u0119. Je\u015bli prosi o zmian\u0119 wyceny lub dodanie produktu \u2013 zwr\u00f3\u0107 pe\u0142ny zaktualizowany JSON.";
+
+    callAI(ctxSys,msg,
+      function(txt){
+        var trimmed=txt.replace(/```json|```/g,"").trim();
+        var isJson=trimmed.startsWith("{");
+        if(isJson){
+          try{
+            var data=JSON.parse(trimmed);
+            var result=enrichWithPrices(data);
+            setParsed(data);setCalcResult(result);
+            setSaved(false);setSavedClient(null);setEmailText(null);
+            var aiMsg="\u2705 Zaktualizowano wycen\u0119! \u0141\u0105czna kwota: "+roundTo10(result.total)+" z\u0142.";
+            setChatHistory(function(h){return h.concat([{role:"assistant",content:txt,display:aiMsg,isQuote:true}]);});
+          }catch(e){
+            setChatHistory(function(h){return h.concat([{role:"assistant",content:txt,display:txt}]);});
+          }
+        }else{
+          setChatHistory(function(h){return h.concat([{role:"assistant",content:txt,display:txt}]);});
+        }
+        setLoading(false);
+      },
+      function(e){setError(e);setLoading(false);}
+    ,newHistory.map(function(m){return{role:m.role,content:m.content};}));
   }
 
   // ── KROK 2: Zapisz klienta ──────────────────────────────────────────────
@@ -3562,6 +3640,7 @@ function ModalAIValuation(p){
   function reset(){
     setInputText("");setParsed(null);setCalcResult(null);setEmailText(null);
     setError(null);setSaved(false);setSavedClient(null);setAttachments([]);
+    setChatHistory([]);setChatInput("");
   }
 
   function handleFiles(files){
@@ -3599,8 +3678,6 @@ function ModalAIValuation(p){
     }},label);
   }
 
-  var canAnalyze=!loading&&(inputText.trim().length>0||attachments.length>0);
-
   // ── RENDER ───────────────────────────────────────────────────────────────
   return ce("div",{
     style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"flex-end"},
@@ -3621,18 +3698,9 @@ function ModalAIValuation(p){
     // Body
     ce("div",{style:{padding:"20px",display:"flex",flexDirection:"column",gap:18,flex:1}},
 
-      // KROK 1: Input
-      ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"1 / Zapytanie klienta"),
-        ce("textarea",{
-          value:inputText,onChange:function(ev){setInputText(ev.target.value);},
-          onKeyDown:function(ev){if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey))doAnalyze();},
-          placeholder:"Wklej maila od klienta lub opisz zapytanie...\n\nPrzyklad: Potrzebuje zaslony do salonu (okno 200x270cm, tkanina Aisha) i zaluzje drewniane 50mm do gabinetu (120x150cm).\n\n(Ctrl+Enter aby wyslac)",
-          rows:5,
-          style:{width:"100%",padding:"12px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit",lineHeight:1.6,outline:"none",boxSizing:"border-box"}
-        }),
-
-        // Drag & drop
+      // Drag & drop załączniki (widoczne tylko przed pierwszą wiadomością)
+      chatHistory.length===0?ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"Za\u0142\u0105czniki (opcjonalnie)"),
         ce("div",{
           onDragOver:function(e){e.preventDefault();},onDrop:onDrop,
           onClick:function(){if(attachments.length<3)fileRef.current&&fileRef.current.click();},
@@ -3655,17 +3723,30 @@ function ModalAIValuation(p){
               )
             :ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Przeci\u0105gnij lub kliknij aby wybra\u0107"),
           ce("input",{ref:fileRef,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:function(ev){handleFiles(ev.target.files);}})
-        ),
-
-        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-          Btn(loading?"\u23F3 Analizuj\u0119...":"\u2192 Analizuj i wyce\u0144",doAnalyze,!canAnalyze,true),
-          (calcResult||attachments.length>0)?Btn("Wyczy\u015b\u0107",reset,false,false):null
         )
-      ),
+      ):null,
 
       // Ładowanie
       loading?ce("div",{style:{padding:"14px",background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:10,color:"var(--t3)",fontSize:13}},
         DOTS,ce("span",{},"AI analizuje dane, aplikacja liczy ceny...")
+      ):null,
+
+      // ── HISTORIA CZATU ────────────────────────────────────────────────────
+      chatHistory.length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:8,maxHeight:280,overflowY:"auto",paddingBottom:4}},
+        chatHistory.map(function(msg,i){
+          var isUser=msg.role==="user";
+          return ce("div",{key:i,style:{display:"flex",flexDirection:"column",alignItems:isUser?"flex-end":"flex-start"}},
+            ce("div",{style:{
+              maxWidth:"86%",padding:"9px 13px",
+              borderRadius:isUser?"14px 14px 4px 14px":"14px 14px 14px 4px",
+              background:isUser?"var(--t1)":"var(--bg2)",
+              color:isUser?"#fff":"var(--t1)",
+              fontSize:13,lineHeight:1.55,whiteSpace:"pre-wrap",wordBreak:"break-word",
+              border:isUser?"none":"1px solid var(--bd2)"
+            }},msg.display||msg.content)
+          );
+        }),
+        ce("div",{ref:chatEndRef})
       ):null,
 
       // WYNIK WYCENY
@@ -3687,7 +3768,7 @@ function ModalAIValuation(p){
                           ce("div",{style:{fontSize:13,color:"var(--t1)"}},(pi+1)+". "+prod.label),
                           prod.lines.length>0?ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5,marginTop:2}},prod.lines.join(" · ")):null,
                           prod.warn?ce("div",{style:{fontSize:11,color:"#b45309",marginTop:2}},"\u26A0\uFE0F "+prod.warn):null,
-                          prod.price===0?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"(brak danych – uzupelnij w aplikacji)"):null
+                          prod.price===0?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"(brak danych \u2013 uzupe\u0142nij w aplikacji)"):null
                         ),
                         ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",flexShrink:0}},prod.price>0?roundTo10(prod.price)+" z\u0142":"-")
                       );
@@ -3737,7 +3818,56 @@ function ModalAIValuation(p){
       ):null,
 
       // Błąd
-      error?ce("div",{style:{padding:"12px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,fontSize:12,color:"#b91c1c",whiteSpace:"pre-wrap"}},"\u26A0\uFE0F "+error):null
+      error?ce("div",{style:{padding:"12px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,fontSize:12,color:"#b91c1c",whiteSpace:"pre-wrap"}},"\u26A0\uFE0F "+error):null,
+
+      // ── INPUT CZATU (na dole, zawsze) ─────────────────────────────────────
+      ce("div",{style:{marginTop:"auto",paddingTop:12,borderTop:chatHistory.length>0?"1px solid var(--bd2)":"none",display:"flex",flexDirection:"column",gap:8}},
+        chatHistory.length>0&&attachments.length===0?ce("button",{
+          onClick:function(){fileRef.current&&fileRef.current.click();},
+          style:{alignSelf:"flex-start",border:"1px dashed var(--bd2)",background:"var(--bg2)",color:"var(--t3)",fontSize:11,borderRadius:8,padding:"4px 10px",cursor:"pointer"}
+        },"\uD83D\uDDBC\uFE0F Za\u0142\u0105cz obrazek"):null,
+        attachments.length>0?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+          attachments.map(function(att,i){
+            return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:4,background:"var(--bg3)",borderRadius:7,padding:"3px 8px",fontSize:11}},
+              ce("img",{src:"data:"+att.mediaType+";base64,"+att.data,style:{width:24,height:24,objectFit:"cover",borderRadius:3}}),
+              ce("span",{style:{maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--t1)"}},att.name),
+              ce("button",{onClick:function(e){e.stopPropagation();removeAtt(i);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:14,lineHeight:1}},"\u00D7")
+            );
+          }),
+          ce("input",{ref:fileRef,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:function(ev){handleFiles(ev.target.files);}})
+        ):ce("input",{ref:fileRef,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:function(ev){handleFiles(ev.target.files);}}),
+        ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
+          ce("textarea",{
+            value:chatHistory.length===0?inputText:chatInput,
+            onChange:function(ev){chatHistory.length===0?setInputText(ev.target.value):setChatInput(ev.target.value);},
+            onKeyDown:function(ev){
+              if(ev.key==="Enter"&&!ev.shiftKey){
+                ev.preventDefault();
+                if(chatHistory.length===0)doAnalyze();
+                else doChat();
+              }
+            },
+            placeholder:chatHistory.length===0
+              ?"Wklej maila od klienta lub opisz zapytanie...\n\n(Enter aby wys\u0142a\u0107, Shift+Enter nowa linia)"
+              :"Zadaj pytanie, doprecyzuj szczeg\u00f3\u0142y lub popro\u015b o zmian\u0119...\n(Enter aby wys\u0142a\u0107)",
+            rows:chatHistory.length===0?5:3,
+            style:{flex:1,padding:"10px 13px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",resize:"none",fontFamily:"inherit",lineHeight:1.55,outline:"none",boxSizing:"border-box"}
+          }),
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+            ce("button",{
+              onClick:chatHistory.length===0?doAnalyze:doChat,
+              disabled:loading||(chatHistory.length===0?(!inputText.trim()&&!attachments.length):!chatInput.trim()),
+              style:{width:42,height:42,borderRadius:10,border:"none",background:"var(--t1)",color:"#fff",fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",
+                opacity:(loading||(chatHistory.length===0?(!inputText.trim()&&!attachments.length):!chatInput.trim()))?0.35:1,transition:"opacity 0.15s"}
+            },loading?"\u23F3":"\u27A4"),
+            chatHistory.length>0?ce("button",{
+              onClick:reset,
+              title:"Nowa rozmowa",
+              style:{width:42,height:42,borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg2)",color:"var(--t3)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}
+            },"\uD83D\uDDD1\uFE0F"):null
+          )
+        )
+      )
     )
   ));
 }
