@@ -683,7 +683,8 @@ var PROD_TYPES=[
   {id:"zaluzja",label:"Żaluzja",icon:"🪟"},
   {id:"roleta",label:"Roleta",icon:"⬛"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
-  {id:"karnisz",label:"Karnisz el.",icon:"⚡"}
+  {id:"karnisz",label:"Karnisz el.",icon:"⚡"},
+  {id:"inny",label:"Inny",icon:"📦"}
 ];
 
 var RCITY={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
@@ -882,7 +883,8 @@ function buildOfferRows(client){
         var total=p.mp!=null?p.mp:(calc(pfc).total||0);
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
-        var desc=lbl+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
+        var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
+        var desc=prodLabel+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
         rows.push({lp:lp++,name:desc,qty:1,unit:"szt.",cenaJedn:total,total:total});
       });
     });
@@ -946,6 +948,7 @@ function buildSewingRows(client){
         });
         var pc=prod.c||{},par=prod.par||{};
         var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
+        var lblDisp=prod.type==="inny"?(prod.innyNazwa||lbl):lbl;
         var sz=pc.sz==="wave"?"Wave":"Flex";
         var mars=pc.mars?(Math.round(+pc.mars*100))+"%":"150%";
         var split=pc.split||"unequal";
@@ -954,12 +957,12 @@ function buildSewingRows(client){
         else if(split==="right") splitDesc="Prawa sztuka";
         else if(split==="equal"){var tw2=par.wCm||0;splitDesc="Komplet r\xf3wny ("+Math.floor(tw2/2)+" + "+Math.ceil(tw2/2)+" cm)";}
         else splitDesc="Komplet nier\xf3wny: L="+(pc.leftW||0)+"cm / P="+(pc.rightW||0)+"cm";
-        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"O\u0142owianka"};
+        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"Ta\u015bma obci\u0105\u017caj\u0105ca doszyta"};
         var bottomDesc=(bottomMap[pc.bottomType||"single"]||"Pojedynczy")+(pc.bottomSize?" "+pc.bottomSize+"cm":"");
         var fabObj=prod.fabName?FABRICS.find(function(f){return f.name===prod.fabName;}):null;
         rows.push({
           room:r.name,win:w.name,
-          type:lbl,
+          type:lblDisp,
           fabric:prod.fabName||(prod.fabMan?"r\u0119czna "+prod.fabMan+" z\u0142":"(brak)"),
           prod:fabObj?fabObj.prod:"",
           fabW:prod.fabW||prod.fabManW||"-",
@@ -1299,8 +1302,9 @@ function generateSimplifiedPDF(client,comm){
         var total=calcProd(p);
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
-        if(!typeTotals[lbl])typeTotals[lbl]=0;
-        typeTotals[lbl]+=total;
+        var lblKey=p.type==="inny"?(p.innyNazwa||lbl):lbl;
+        if(!typeTotals[lblKey])typeTotals[lblKey]=0;
+        typeTotals[lblKey]+=total;
         roomTotal+=total;
       });
     });
@@ -1992,7 +1996,7 @@ function ProdCard(p){
 
   var typeChips=PROD_TYPES.map(function(t){
     return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
-      p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null}));
+      p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined}));
     }});
   });
 
@@ -2448,7 +2452,7 @@ function ProdCard(p){
     var bottomSection=ce("div",{style:{marginTop:20}},
       ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP DO\u0141U"),
       ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}},
-        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"O\u0142owianka"}].map(function(bt){
+        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"Ta\u015bma obci\u0105\u017caj\u0105ca doszyta"}].map(function(bt){
           var isA=bottomType===bt.key;
           return ce("button",{key:bt.key,onClick:function(){sc("bottomType",bt.key);},style:{padding:"16px 12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
             isA?"\u2713 "+bt.label:bt.label
@@ -2862,13 +2866,26 @@ function ProdCard(p){
       ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})})),
       ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})}))
     );
+  }else if(prod.type==="inny"){
+    form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+      ce(Fld,{label:"NAZWA PRODUKTU"},
+        ce("input",{type:"text",value:prod.innyNazwa||"",
+          onChange:function(ev){p.onChange(mg(prod,{innyNazwa:ev.target.value||undefined}));},
+          placeholder:"np. Narzuta dekoracyjna, Poduszka...",
+          style:Object.assign({},IST,{width:"100%"})
+        })
+      ),
+      ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)"}},
+        "\u2139\uFE0F Wpisz cen\u0119 ko\u0144cow\u0105 w polu poni\u017cej \u2014 zostanie wliczona do podsumowania."
+      )
+    );
   }else{
     form=ce("div",{style:{fontSize:14,color:"var(--t2)",padding:"16px 0"}},"Cennik wkr\xf3tce.");
   }
 
   return ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
     ce("div",{style:{padding:"14px 20px",background:"var(--bg2)",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid var(--bd2)"}},
-      ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",flex:1}},lbl+(prod.fabName?" \xb7 "+prod.fabName:"")),
+      ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",flex:1}},prod.type==="inny"?(prod.innyNazwa?prod.innyNazwa:lbl):(lbl+(prod.fabName?" \xb7 "+prod.fabName:""))),
       ce("span",{style:{fontSize:14,fontWeight:700,color:"var(--gr)",background:"var(--grl)",padding:"4px 10px",borderRadius:8}},eff?roundTo10(eff)+" z\u0142":""),
       ce("button",{onClick:p.onDuplicate,title:"Kopiuj produkt",style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"var(--t3)",padding:"4px 8px",borderRadius:6}},"⧉"),
       ce("button",{onClick:p.onRemove,style:{border:"none",background:"none",cursor:"pointer",fontSize:20,color:"var(--t3)",padding:"4px 8px",borderRadius:6}},"×")
