@@ -1928,6 +1928,37 @@ function ModalWindow(p){
   );
 }
 
+function ModalConfirmTypeChange(p){
+  // p.fromLabel, p.toLabel, p.onConfirm, p.onClose
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1200,padding:"16px"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"2rem",width:340,maxWidth:"100%",border:"1px solid var(--bd2)",boxShadow:"0 20px 60px rgba(0,0,0,0.22)"}},
+      ce("div",{style:{fontSize:28,textAlign:"center",marginBottom:12}},"⚠️"),
+      ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",textAlign:"center",marginBottom:10,lineHeight:1.3}},
+        "Zmiana typu produktu"
+      ),
+      ce("div",{style:{fontSize:13,color:"var(--t2)",textAlign:"center",lineHeight:1.6,marginBottom:20}},
+        "Czy na pewno chcesz zmienić typ z ",
+        ce("strong",{style:{color:"var(--t1)"}},"\u201e"+p.fromLabel+"\u201d"),
+        " na ",
+        ce("strong",{style:{color:"var(--t1)"}},"\u201e"+p.toLabel+"\u201d"),
+        "?",
+        ce("br",null),
+        ce("span",{style:{color:"#b91c1c",fontWeight:600}},"Wszystkie wpisane dane zostaną bezpowrotnie usunięte.")
+      ),
+      ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        ce("button",{
+          onClick:function(){p.onConfirm();p.onClose();},
+          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#b91c1c",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
+        },"Tak, zmień i wyczyść dane"),
+        ce("button",{
+          onClick:p.onClose,
+          style:{width:"100%",padding:"12px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:13,fontWeight:600,cursor:"pointer"}
+        },"Anuluj — zostaw jak jest")
+      )
+    )
+  );
+}
+
 function ModalSimple(p){
   var ns=useState(""),name=ns[0],setName=ns[1];
   function submit(){if(!name.trim())return;p.onOk(name.trim());p.onClose();}
@@ -1994,8 +2025,16 @@ function ProdCard(p){
   var eff=prod.mp!=null?prod.mp:total;
   var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
 
+  function hasProdData(pr){
+    return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||
+      (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len))||
+      (pr.c&&Object.keys(pr.c).length>1));
+  }
+  var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
   var typeChips=PROD_TYPES.map(function(t){
     return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
+      if(prod.type===t.id)return;
+      if(hasProdData(prod)){setPendingType(t);return;}
       p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined}));
     }});
   });
@@ -2914,7 +2953,15 @@ function ProdCard(p){
         ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",display:"block",marginBottom:6}},"UWAGA (opcjonalnie)"),
         ce("input",{type:"text",value:prod.note||"",onChange:function(ev){p.onChange(mg(prod,{note:ev.target.value||undefined}));},placeholder:"np. inny kolor, specjalna prośba...",style:{width:"100%",padding:"10px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box"}})
       )
-    )
+    ),
+    pendingType?ce(ModalConfirmTypeChange,{
+      fromLabel:lbl,
+      toLabel:pendingType.label,
+      onConfirm:function(){
+        p.onChange(mg(prod,{type:pendingType.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined}));
+      },
+      onClose:function(){setPendingType(null);}
+    }):null
   );
 }
 
