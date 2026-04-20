@@ -3126,11 +3126,11 @@ function ProdCard(p){
   }
 
   return ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
-    ce("div",{style:{padding:"14px 20px",background:"var(--t1)",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid var(--bd2)"}},
-      ce("span",{style:{fontSize:16,fontWeight:700,color:"var(--bg)",flex:1}},prod.type==="inny"?(prod.innyNazwa?prod.innyNazwa:lbl):lbl),
-      ce("span",{style:{fontSize:14,fontWeight:700,color:"var(--gr)",background:"rgba(255,255,255,0.15)",padding:"4px 10px",borderRadius:8}},eff?roundTo10(eff)+" z\u0142":""),
-      ce("button",{onClick:p.onDuplicate,title:"Kopiuj produkt",style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"rgba(255,255,255,0.6)",padding:"4px 8px",borderRadius:6}},"⧉"),
-      ce("button",{onClick:function(){if(hasProdData(prod)){setShowRemoveConfirm(true);}else{p.onRemove();}},style:{border:"none",background:"none",cursor:"pointer",fontSize:20,color:"rgba(255,255,255,0.6)",padding:"4px 8px",borderRadius:6}},"×")
+    ce("div",{style:{padding:"14px 20px",background:"#2a7a8a",display:"flex",alignItems:"center",gap:10,borderBottom:"none"}},
+      ce("span",{style:{fontSize:16,fontWeight:700,color:"#fff",flex:1,letterSpacing:"0.01em"}},prod.type==="inny"?(prod.innyNazwa?prod.innyNazwa:lbl):lbl),
+      ce("span",{style:{fontSize:14,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.25)",padding:"4px 12px",borderRadius:20,whiteSpace:"nowrap"}},eff?roundTo10(eff)+" z\u0142":""),
+      ce("button",{onClick:p.onDuplicate,title:"Kopiuj produkt",style:{border:"none",background:"rgba(255,255,255,0.15)",cursor:"pointer",fontSize:15,color:"#fff",padding:"5px 9px",borderRadius:7,lineHeight:1}},"⧉"),
+      ce("button",{onClick:function(){if(hasProdData(prod)){setShowRemoveConfirm(true);}else{p.onRemove();}},style:{border:"none",background:"rgba(255,255,255,0.15)",cursor:"pointer",fontSize:18,color:"#fff",padding:"5px 9px",borderRadius:7,lineHeight:1}},"×")
     ),
     ce("div",{style:{padding:"16px 20px 4px"}},
       ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
