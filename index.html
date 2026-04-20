@@ -681,7 +681,7 @@ var PROD_TYPES=[
   {id:"zaslona",label:"Zas\u0142ona",icon:"🪟"},
   {id:"firana",label:"Firana",icon:"🌿"},
   {id:"zaluzja",label:"Żaluzja",icon:"🪟"},
-  {id:"roleta",label:"Roleta",icon:"⬛"},
+  {id:"roleta",label:"Roleta rzymska",icon:"2b1b"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
   {id:"inny",label:"Inny",icon:"📦"}
@@ -853,26 +853,26 @@ function calc(p){
         rr=lookup(wCm,REL);
         total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
       }
-      lines.push("Roleta "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2");
+      lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2");
     }
     if(rb)lines.push("+ B\u0119benek 11 z\u0142");
   }else if(p.type==="szyna"){
-    var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0;
+    var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0,qty=par.qty||1;
     if(!lenCm)return{total:0,lines:[],warn:null};
     var lenMb=lenCm/100;
     var baz;
     if(c.ks==="wave"){var rw=lookup(lenCm,KW[c.kk||"biala"]);baz=rw.p;}
     else baz=parseFloat((lenMb*80).toFixed(2));
-    total=baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*60).toFixed(2));
-    lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)");
+    total=(baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*60).toFixed(2)))*qty;
+    lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
     if(c.km==="sciana")warn="\u015acienny \u2014 dolicz uchwyty \u015bcienne.";
   }else if(p.type==="karnisz"){
-    var lenK=par.len||0,pt=par.pt||0,arc=par.arc||0;
+    var lenK=par.len||0,pt=par.pt||0,arc=par.arc||0,qty=par.qty||1;
     if(!lenK)return{total:0,lines:[],warn:null};
     var st=c.km==="universal"?KUNIV:KSLIM;
     var rk=lookup(lenK,st);
-    total=rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318;
-    lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm");
+    total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318)*qty;
+    lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
   }
   return{total:total,lines:lines,warn:warn};
 }
@@ -1025,7 +1025,7 @@ function buildSewingRows(client){
         else if(split==="right") splitDesc="Prawa sztuka";
         else if(split==="equal"){var tw2=par.wCm||0;splitDesc="Komplet r\xf3wny ("+Math.floor(tw2/2)+" + "+Math.ceil(tw2/2)+" cm)";}
         else splitDesc="Komplet nier\xf3wny: L="+(pc.leftW||0)+"cm / P="+(pc.rightW||0)+"cm";
-        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"Ta\u015bma obci\u0105\u017caj\u0105ca doszyta"};
+        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"O\u0142owianka"};
         var bottomDesc=(bottomMap[pc.bottomType||"single"]||"Pojedynczy")+(pc.bottomSize?" "+pc.bottomSize+"cm":"");
         var fabObj=prod.fabName?FABRICS.find(function(f){return f.name===prod.fabName;}):null;
         rows.push({
@@ -1188,8 +1188,12 @@ function buildKarniszRows(client){
           win:w.name,
           type:typLabel,
           len:len,
+          qty:par.qty||1,
           arc:par.arc||0,
+          arcDepth:par.arcDepth||null,
           pts:par.pt||par.pts||0,
+          motorSide:p.type==="karnisz"?(pc.motorSide||"lewo"):null,
+          motorType:p.type==="karnisz"?(pc.motorType||"kurtyna"):null,
           supplier:p.karniszSupplier||"",
           total:res.total||0,
           lines:(res.lines||[]).join("; ")
@@ -1234,18 +1238,22 @@ function generateKarniszOrderPDF(client){
   var supplierSections=activeSups.map(function(sup,si){
     var supRows=bySupplier[sup.key];
     var tableRows=supRows.map(function(r){
+      var motorDesc=r.motorSide?(r.motorSide.charAt(0).toUpperCase()+r.motorSide.slice(1))+(r.motorType?" / "+(r.motorType.charAt(0).toUpperCase()+r.motorType.slice(1)):""):"–";
       return [
         r.room+" / "+r.win,
         r.type,
         r.len?r.len+"cm":"-",
+        r.qty>1?r.qty+" szt.":"1 szt.",
         r.arc?r.arc+" mb":"–",
+        r.arcDepth?r.arcDepth+" cm":"–",
         r.pts?r.pts+" szt.":"–",
-        r.total>0?r.total.toFixed(2).replace(".",",")+"\u00a0z\u0142":"–"
+        motorDesc,
+        r.total>0?r.total.toFixed(2).replace(".",",")+" zł":"–"
       ];
     });
 
     var tableHTML=makeTableHTML(
-      ["Pom. / Okno","Typ","D\u0142ugo\u015b\u0107","Gi\u0119cie \u0142uk","Gi\u0119cie pkt","Warto\u015b\u0107"],
+      ["Pom. / Okno","Typ","D\u0142ugo\u015b\u0107","Ilo\u015b\u0107","Gi\u0119cie \u0142uk","G\u0142\u0119b. \u0142uku","Gi\u0119cie pkt","Silnik / Typ","Warto\u015b\u0107"],
       tableRows,
       "Pozycje do zam\xf3wienia"
     );
@@ -2631,7 +2639,7 @@ function ProdCard(p){
     var bottomSection=ce("div",{style:{marginTop:20}},
       ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP DO\u0141U"),
       ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}},
-        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"Ta\u015bma obci\u0105\u017caj\u0105ca doszyta"}].map(function(bt){
+        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"O\u0142owianka"}].map(function(bt){
           var isA=bottomType===bt.key;
           return ce("button",{key:bt.key,onClick:function(){sc("bottomType",bt.key);},style:{padding:"16px 12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
             isA?"\u2713 "+bt.label:bt.label
@@ -2722,7 +2730,7 @@ function ProdCard(p){
         ):null,
         // Wysokość haczyka - Fałda i Taśma (NIE Wave)
         (model==="falda"||model==="tasma")?haczSection:null,
-        glideGap
+        model==="wave"?glideGap:null
       ):null,
 
       // SEKCJA 4: Wykończenie
@@ -3078,8 +3086,10 @@ function ProdCard(p){
     }else if(prod.type==="szyna"){
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"number",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"number",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"number",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
       ),
@@ -3096,9 +3106,11 @@ function ProdCard(p){
     var pil=[{v:"brak",l:"Brak st."},{v:"aok1b",l:"Pilot bia\u0142y 130z\u0142"},{v:"aok1c",l:"Pilot czarny 148z\u0142"},{v:"tuya",l:"Tuya 340z\u0142"},{v:"situo",l:"Situo 284z\u0142"},{v:"tahoma",l:"TaHoma 1390z\u0142"}];
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"number",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"number",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
         ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"number",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
       ),
       ce(Chips,{items:[
@@ -3106,7 +3118,29 @@ function ProdCard(p){
         ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
       ]}),
       ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})})),
-      ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})}))
+      ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})})),
+      ce("div",{style:{marginTop:20}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
+            var isA=(c.motorSide||"lewo")===s.key;
+            return ce("button",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+s.label:s.label
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginTop:16}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP"),
+        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
+            var isA=(c.motorType||"kurtyna")===t.key;
+            return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+t.label:t.label
+            );
+          })
+        )
+      )
     );
   }else if(prod.type==="inny"){
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
@@ -3743,7 +3777,7 @@ function ModalAIValuation(p){
           var res=calc(prodForCalc);
           prod.mp=res.total||0;
           winTotal+=prod.mp;
-          var typeLabel={zaslona:"Zasłona",firana:"Firana",zaluzja:"Żaluzja",roleta:"Roleta",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
+          var typeLabel={zaslona:"Zasłona",firana:"Firana",zaluzja:"Żaluzja",roleta:"Roleta rzymska",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
           var fabInfo=prod.fabName?" ("+prod.fabName+")":"";
           var warnInfo=res.warn?" ⚠ "+res.warn:"";
           prodSummary.push({
