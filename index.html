@@ -1364,6 +1364,26 @@ function generateSimplifiedPDF(client,comm){
     return comm>0?base*(1+comm):base;
   }
 
+  // Pomocnik: liczba mnoga dla typów produktów
+  function pluralProd(type,count){
+    if(type==="zaslona")return count===1?"Zas\u0142ona":"Zas\u0142ony";
+    if(type==="firana")return count===1?"Firana":"Firany";
+    if(type==="roleta")return count===1?"Roleta":"Rolety";
+    if(type==="zaluzja")return count===1?"Zaluzja":count<5?"Zaluzje":"Zaluzji";
+    if(type==="plisa")return count===1?"Plisa":"Plisy";
+    if(type==="karnisz")return count===1?"Karnisz":"Karnisze";
+    if(type==="szyna")return count===1?"Szyna":"Szyny";
+    var lbl=(PROD_TYPES.find(function(t){return t.id===type;})||{label:type}).label;
+    return lbl;
+  }
+  // Pomocnik: szczegóły szycia dla zasłon/firan
+  function sewingInfo(p){
+    var c=p.c||{};
+    var sz=c.sz==="wave"?"Wave":"Flex";
+    var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";
+    return sz+" "+mars;
+  }
+
   // Buduj wiersze: grupuj per pomieszczenie → per typ produktu
   var roomSections="";
   var grandTotal=0;
@@ -1371,16 +1391,22 @@ function generateSimplifiedPDF(client,comm){
   (client.rooms||[]).forEach(function(room){
     if(!(room.windows||[]).length)return;
     // Zbierz wszystkie produkty z tego pomieszczenia pogrupowane po typie
-    var typeTotals={};
+    // typeData: { count, total, type, innyNazwa, sewings: Set of sewing strings }
+    var typeData={};
+    var typeOrder=[];
     var roomTotal=0;
     (room.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         var total=calcProd(p);
         if(!total)return;
-        var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
-        var lblKey=p.type==="inny"?(p.innyNazwa||lbl):lbl;
-        if(!typeTotals[lblKey])typeTotals[lblKey]=0;
-        typeTotals[lblKey]+=total;
+        var key=p.type==="inny"?(p.innyNazwa||"Inne"):p.type;
+        if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,sewings:[]};typeOrder.push(key);}
+        typeData[key].count+=1;
+        typeData[key].total+=total;
+        if(p.type==="zaslona"||p.type==="firana"){
+          var si=sewingInfo(p);
+          if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);
+        }
         roomTotal+=total;
       });
     });
@@ -1388,11 +1414,22 @@ function generateSimplifiedPDF(client,comm){
     grandTotal+=roomTotal;
 
     var rows="";
-    Object.keys(typeTotals).forEach(function(lbl){
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(typeTotals[lbl])+" zł</td></tr>";
+    typeOrder.forEach(function(key){
+      var d=typeData[key];
+      var lbl;
+      if(d.type==="inny"){
+        lbl=d.innyNazwa||"Inne";
+      } else {
+        lbl=pluralProd(d.type,d.count);
+      }
+      var extra="";
+      if(d.sewings.length>0){
+        extra=" <span style=\"font-size:9px;color:#888;font-weight:400;\">(" + d.sewings.join(", ") + ")</span>";
+      }
+      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
     // Łącznie dla pomieszczenia
-    rows+="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">Łącznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+roundTo10(roomTotal)+" zł</td></tr>";
+    rows+="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">\u0141\u0105cznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+roundTo10(roomTotal)+" z\u0142</td></tr>";
 
     roomSections+="<div style=\"margin-bottom:10mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:0;\">"+room.name+"</div><table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;\"><tbody>"+rows+"</tbody></table></div>";
   });
