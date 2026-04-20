@@ -683,7 +683,7 @@ var PROD_TYPES=[
   {id:"zaluzja",label:"Żaluzja",icon:"🪟"},
   {id:"roleta",label:"Roleta",icon:"⬛"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
-  {id:"karnisz",label:"Karnisz el.",icon:"⚡"},
+  {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
   {id:"inny",label:"Inny",icon:"📦"}
 ];
 
@@ -1180,7 +1180,7 @@ function buildKarniszRows(client){
       (w.products||[]).forEach(function(p){
         if(p.type!=="karnisz"&&p.type!=="szyna")return;
         var pc=p.c||{},par=p.par||{};
-        var typLabel=p.type==="karnisz"?"Karnisz el. "+(pc.km||"slim").toUpperCase():"Szyna KS "+(pc.ks||"flex");
+        var typLabel=p.type==="karnisz"?"Karnisz elektryczny "+(pc.km||"slim").toUpperCase():"Szyna KS "+(pc.ks||"flex");
         var len=par.len||0;
         var res=calc(p);
         rows.push({
@@ -3126,11 +3126,11 @@ function ProdCard(p){
   }
 
   return ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
-    ce("div",{style:{padding:"14px 20px",background:"var(--bg2)",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid var(--bd2)"}},
-      ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",flex:1}},prod.type==="inny"?(prod.innyNazwa?prod.innyNazwa:lbl):(lbl+(prod.fabName?" \xb7 "+prod.fabName:""))),
-      ce("span",{style:{fontSize:14,fontWeight:700,color:"var(--gr)",background:"var(--grl)",padding:"4px 10px",borderRadius:8}},eff?roundTo10(eff)+" z\u0142":""),
-      ce("button",{onClick:p.onDuplicate,title:"Kopiuj produkt",style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"var(--t3)",padding:"4px 8px",borderRadius:6}},"⧉"),
-      ce("button",{onClick:function(){if(hasProdData(prod)){setShowRemoveConfirm(true);}else{p.onRemove();}},style:{border:"none",background:"none",cursor:"pointer",fontSize:20,color:"var(--t3)",padding:"4px 8px",borderRadius:6}},"×")
+    ce("div",{style:{padding:"14px 20px",background:"var(--t1)",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid var(--bd2)"}},
+      ce("span",{style:{fontSize:16,fontWeight:700,color:"var(--bg)",flex:1}},prod.type==="inny"?(prod.innyNazwa?prod.innyNazwa:lbl):lbl),
+      ce("span",{style:{fontSize:14,fontWeight:700,color:"var(--gr)",background:"rgba(255,255,255,0.15)",padding:"4px 10px",borderRadius:8}},eff?roundTo10(eff)+" z\u0142":""),
+      ce("button",{onClick:p.onDuplicate,title:"Kopiuj produkt",style:{border:"none",background:"none",cursor:"pointer",fontSize:16,color:"rgba(255,255,255,0.6)",padding:"4px 8px",borderRadius:6}},"⧉"),
+      ce("button",{onClick:function(){if(hasProdData(prod)){setShowRemoveConfirm(true);}else{p.onRemove();}},style:{border:"none",background:"none",cursor:"pointer",fontSize:20,color:"rgba(255,255,255,0.6)",padding:"4px 8px",borderRadius:6}},"×")
     ),
     ce("div",{style:{padding:"16px 20px 4px"}},
       ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
@@ -3743,7 +3743,7 @@ function ModalAIValuation(p){
           var res=calc(prodForCalc);
           prod.mp=res.total||0;
           winTotal+=prod.mp;
-          var typeLabel={zaslona:"Zasłona",firana:"Firana",zaluzja:"Żaluzja",roleta:"Roleta",szyna:"Szyna",karnisz:"Karnisz"}[prod.type]||prod.type;
+          var typeLabel={zaslona:"Zasłona",firana:"Firana",zaluzja:"Żaluzja",roleta:"Roleta",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
           var fabInfo=prod.fabName?" ("+prod.fabName+")":"";
           var warnInfo=res.warn?" ⚠ "+res.warn:"";
           prodSummary.push({
