@@ -39,7 +39,7 @@
   </style>
 </head>
 <body>
-<div id="root"><div class="app-inner"><div id="app-mount"></div></div><div style="text-align:center;padding:0.8rem 1rem 1.4rem;font-size:8px;color:var(--t3);letter-spacing:0.18em;text-transform:uppercase;border-top:0.5px solid var(--bd3);opacity:0.6;margin-top:auto;">Created by Porter Design</div></div>
+<div id="root"><div class="app-inner"><div id="app-mount"></div></div><div style="text-align:center;padding:0.8rem 1rem 1.4rem;font-size:8px;color:var(--t3);letter-spacing:0.18em;text-transform:uppercase;border-top:0.5px solid var(--bd3);opacity:0.6;margin-top:auto;">Created by Porter Design &nbsp;·&nbsp; <span id="app-version" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Historia zmian">v1.0.0</span></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
@@ -899,14 +899,12 @@ function buildFabricRows(client){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         if(p.type!=="zaslona"&&p.type!=="firana")return;
-        var kolor=(p.c&&p.c.kolor)||"-";
-        var key=(p.fabName||("reczna_"+p.fabMan))+"__"+kolor;
+        var key=p.fabName||("reczna_"+p.fabMan);
         if(!map[key])map[key]={
           fabName:p.fabName||"Tkanina ręczna",
           prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
           brutto:p.fabMan||p.fabP||0,
           width:p.fabW||null,
-          kolor:kolor,
           metry:0,rooms:[]
         };
         var panels=getPanelsForProd(p);
@@ -1204,65 +1202,74 @@ function generateKarniszOrderPDF(client){
 
 function generateFabricOrderPDF(client){
   var rows=buildFabricRows(client);
-  if(!rows.length){alert("Brak tkanin do zam\xf3wienia.");return;}
+  if(!rows.length){alert("Brak tkanin do zamówienia.");return;}
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
-  // Group rows by supplier (skip zero-meter or no-supplier rows)
+  // Group rows by supplier (skip manual fabrics with no meters)
   var bySupplier={};
   rows.forEach(function(r){
-    if(!r.metry||r.metry<=0)return;
+    if(!r.metry||r.metry<=0)return; // skip zero-meter rows
     var key=r.prod||"Inny";
-    if(key==="-")return;
+    if(key==="-")return; // skip manual/custom fabrics with no supplier
     if(!bySupplier[key])bySupplier[key]=[];
     bySupplier[key].push(r);
   });
   var suppliers=Object.keys(bySupplier).sort();
-  if(!suppliers.length){alert("Brak tkanin do zam\xf3wienia (brak producenta).");return;}
 
-  var fabricNotes=window.prompt("Uwagi do zam\xf3wienia (opcjonalne, dotyczy wszystkich zam\xf3wie\u0144):", "");
-  if(fabricNotes===null)return;
-
-  var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n  ";
-
-  // Open one PDF window per supplier
-  suppliers.forEach(function(sup){
+  // Build one section per supplier
+  var supplierSections=suppliers.map(function(sup,si){
     var supRows=bySupplier[sup];
     var tableRows=supRows.map(function(r){
       return [
         "<strong>"+r.fabName+"</strong>",
-        r.kolor||"-",
         r.width?r.width+"cm":"-",
-        r.metry.toFixed(2).replace(".",",")+" mb",
+        r.metry.toFixed(2).replace(".",",")+" mb",
         r.rooms.join("; ")
       ];
     });
     var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
-    tableRows.push(["<strong>RAZEM</strong>","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
+    tableRows.push(["<strong>RAZEM</strong>","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
 
     var tableHTML=makeTableHTML(
-      ["Tkanina","Kolor","Szer. belki","Ilo\u015b\u0107 (mb)","Przeznaczenie"],
+      ["Tkanina","Szer. belki","Ilość (mb)","Przeznaczenie"],
       tableRows,
-      "Pozycje do zam\xf3wienia"
+      "Pozycje do zamówienia"
     );
 
-    var notesBlock=fabricNotes?("<div class=\"notes\" style=\"margin-top:4mm\"><strong>Uwagi:</strong> "+fabricNotes+"</div>"):"";
+    var pageBreak=si>0?'<div style="page-break-before:always;padding-top:10mm;"></div>':"";
 
-    var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zam\xf3wienie tkaniny \u2014 '+sup+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
-      +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
-      +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zam\xf3wienie tkaniny</div>'
-      +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
-      +'<div class="supplier-header"><div class="supplier-name">'+sup+'</div>'
-      +'<div class="supplier-meta">Zamawiaj\u0105cy: <strong>'+SELLER.name+'</strong>  |  Tel.: '+SELLER.tel+'  |  E-mail: '+SELLER.email+'</div>'
-      +'<div class="supplier-meta">Klient ko\u0144cowy: <strong>'+client.name+'</strong>'+(client.addr?' \u2014 '+client.addr:'')+'  |  Data: '+dateStr+'</div></div>'
-      +tableHTML
-      +'<div class="notes" style="margin-top:4mm">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma p\u0142atno\u015bci: _________________ &nbsp;&nbsp;&nbsp; Podpis: _________________</div>'
-      +notesBlock
-      +'<div class="sign-block" style="margin-top:8mm"><div class="sign">Zamawiaj\u0105cy<br><strong>Paulina Porter</strong></div><div class="sign">Dostawca \u2014 potwierdzenie</div></div>'
-      +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
-      +"</body></html>";
+    return pageBreak+`
+    <div class="supplier-header">
+      <div class="supplier-name">${sup}</div>
+      <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
+      <div class="supplier-meta">Klient końcowy: <strong>${client.name}</strong>${client.addr?" — "+client.addr:""}  |  Data: ${dateStr}</div>
+    </div>
+    ${tableHTML}
+    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma płatności: _________________ &nbsp;&nbsp;&nbsp; Podpis: _________________</div>
+    <div class="sign-block" style="margin-top:8mm">
+      <div class="sign">Zamawiający<br><strong>Paulina Porter</strong></div>
+      <div class="sign">Dostawca — potwierdzenie</div>
+    </div>`;
+  }).join("");
 
-    openPDFWindow(html, "zamowienie-tkaniny-"+sup.replace(/\s+/g,"-").toLowerCase());
-  });
+  var extraStyles=`
+    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
+    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
+    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
+  `;
+
+  var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
+    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
+    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Data: '+dateStr+' &nbsp;|&nbsp; Dostawców: '+suppliers.length+'</div></div></div>'
+    +supplierSections
+    +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
+    +"</body></html>";
+
+  var fabricNotes=window.prompt("Uwagi do zamówienia (opcjonalne):", "") || "";
+  if(fabricNotes===null)return;
+  if(fabricNotes) html=html+'<div class="notes" style="margin-top:6mm"><strong>Dodatkowe uwagi:</strong><br>'+fabricNotes+'</div>';
+  openPDFWindow(html, "zamowienie-tkaniny");
 }
 
 // ── WYCENA UPROSZCZONA PDF ─────────────────────────────────────────────────
@@ -2896,17 +2903,124 @@ function ProdCard(p){
     ):null;
 
     // ── ELEKTRYK options ──────────────────────────────────────────────
-    var elektrykSection = rSystem==="elektryk"?ce("div",{style:{marginTop:20}},
-      ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA MONTA\u017bU SILNIKA"),
-      ce("div",{style:{display:"flex",gap:10}},
-        ["Lewo","Prawo"].map(function(str){
-          var isA=c.stronaSilnika===str||(str==="Lewo"&&!c.stronaSilnika);
-          return ce("button",{key:str,onClick:function(){sc("stronaSilnika",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-            isA?"✓ "+str:str
-          );
-        })
+    // Dane cennikowe silników rolet (ceny netto)
+    var RRZ_SOMFY=[
+      {id:"sonesse40wt",  label:"Somfy Sonesse 40 WT",   prices:[519,519,519,519,555,555,555,590,590,590,635,635,null,null]},
+      {id:"sonesse40rts", label:"Somfy Sonesse 40 RTS",  prices:[580,580,580,580,620,620,620,660,660,660,710,710,null,null]},
+      {id:"sonesse30aku", label:"Somfy Sonesse 30 AKU",  prices:[620,620,620,620,660,660,660,null,null,null,null,null,null,null]}
+    ];
+    var RRZ_PREMIUM=[
+      {id:"am354w",   label:"Premium AM 35 4W",    prices:[480,480,480,510,510,510,545,545,580,580,620,620,670,670]},
+      {id:"am3510w",  label:"Premium AM 35 10W",   prices:[520,520,520,550,550,550,585,585,620,620,660,660,710,710]},
+      {id:"am3518w",  label:"Premium AM 35 18W",   prices:[560,560,560,590,590,590,625,625,660,660,700,700,750,750]},
+      {id:"am254w",   label:"Premium AM 25 4W",    prices:[440,440,440,470,470,470,500,500,null,null,null,null,null,null]},
+      {id:"am2510w",  label:"Premium AM 25 10W",   prices:[480,480,480,510,510,510,540,540,null,null,null,null,null,null]},
+      {id:"am45",     label:"Premium AM 45",        prices:[590,590,590,620,620,620,655,655,690,690,730,730,780,780]},
+      {id:"am60",     label:"Premium AM 60",        prices:[650,650,650,680,680,680,715,715,750,750,790,790,840,840]}
+    ];
+    // Progi szerokości (cm) — 14 kolumn
+    var RRZ_WIDTH_STEPS=[60,80,100,120,140,160,180,200,220,240,260,280,320,360];
+    var RRZ_ACC_SOMFY=[
+      {id:"pilot1rts",   label:"Pilot Somfy Situo 1 RTS",           price:149},
+      {id:"pilot5io",    label:"Pilot Somfy Situo 5 io",             price:229},
+      {id:"przelacznik", label:"Przełącznik ścienny Somfy",          price:89},
+      {id:"tahoma",      label:"Centralka Tahoma (internet/Alexa)",  price:349},
+      {id:"zasilacz",    label:"Zasilacz Somfy RTS",                 price:119}
+    ];
+    var RRZ_ACC_PREMIUM=[
+      {id:"remote1",  label:"Pilot 1-kanałowy",                 price:99},
+      {id:"remote5",  label:"Pilot 5-kanałowy",                 price:159},
+      {id:"wall",     label:"Przełącznik ścienny",              price:79},
+      {id:"smart",    label:"Centralka SMART HOME ZigBee",      price:299},
+      {id:"charger",  label:"Ładowarka (wersja AKU)",           price:49}
+    ];
+
+    function rrzLookup(brand, modelId, widthCm){
+      var models = brand==="somfy" ? RRZ_SOMFY : RRZ_PREMIUM;
+      var m = models.find(function(x){return x.id===modelId;});
+      if(!m) return null;
+      var idx=0;
+      for(var i=0;i<RRZ_WIDTH_STEPS.length;i++){
+        if(widthCm<=RRZ_WIDTH_STEPS[i]){idx=i;break;}
+        if(i===RRZ_WIDTH_STEPS.length-1) idx=i;
+      }
+      return m.prices[idx]||null;
+    }
+
+    var rrzBrand = c.rrzBrand||null;
+    var rrzModel = c.rrzModel||null;
+    var rrzAcc   = c.rrzAcc||[];
+    var wCmNum   = parseFloat(par.wCm)||0;
+
+    var elektrykSection = rSystem==="elektryk"?ce("div",{style:{marginTop:20,display:"flex",flexDirection:"column",gap:20}},
+
+      // Strona montażu silnika
+      ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA MONTA\u017bU SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          ["Lewo","Prawo"].map(function(str){
+            var isA=c.stronaSilnika===str||(str==="Lewo"&&!c.stronaSilnika);
+            return ce("button",{key:str,onClick:function(){sc("stronaSilnika",str);},style:{padding:"12px 24px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+str:str
+            );
+          })
+        )
       ),
-      ce("div",{style:{marginTop:16,padding:"12px 16px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",fontSize:13,color:"var(--t2)"}},"\u26a1 Cennik elektryki — zostanie dodany wkr\xf3tce")
+
+      // Wybór producenta
+      ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AUTOMATYKA \u2014 PRODUCENT"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [["somfy","Somfy"],["premium","Premium Line"]].map(function(br){
+            var isA=rrzBrand===br[0];
+            return ce("button",{key:br[0],onClick:function(){sc("rrzBrand",br[0]);sc("rrzModel",null);sc("rrzAcc",[]);},style:{padding:"10px 20px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+br[1]:br[1]
+            );
+          })
+        )
+      ),
+
+      // Wybór modelu (po wyborze producenta)
+      rrzBrand?ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"MODEL MECHANIZMU"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          (rrzBrand==="somfy"?RRZ_SOMFY:RRZ_PREMIUM).map(function(m){
+            var isA=rrzModel===m.id;
+            var price=wCmNum>0?rrzLookup(rrzBrand,m.id,wCmNum):null;
+            var unavail=wCmNum>0&&price===null;
+            return ce("button",{key:m.id,
+              onClick:unavail?null:function(){sc("rrzModel",m.id);},
+              disabled:unavail,
+              style:{padding:"10px 14px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:unavail?"var(--t3)":(isA?"#fff":"var(--t1)"),fontSize:13,fontWeight:isA?600:400,cursor:unavail?"not-allowed":"pointer",transition:"all .18s",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:unavail?0.5:1}},
+              ce("span",null,isA?"\u2713 "+m.label:m.label),
+              price!=null?ce("span",{style:{fontWeight:600,fontSize:12}},price+" z\u0142"):
+              unavail?ce("span",{style:{fontSize:11,color:"var(--t3)"}},
+                "niedost. dla "+wCmNum+"cm"):null
+            );
+          })
+        )
+      ):null,
+
+      // Akcesoria (po wyborze modelu)
+      rrzModel?ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AKCESORIA (opcjonalnie)"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          (rrzBrand==="somfy"?RRZ_ACC_SOMFY:RRZ_ACC_PREMIUM).map(function(a){
+            var sel=(rrzAcc||[]).indexOf(a.id)>-1;
+            return ce("button",{key:a.id,
+              onClick:function(){
+                var cur=c.rrzAcc||[];
+                var next=sel?cur.filter(function(x){return x!==a.id;}):cur.concat([a.id]);
+                sc("rrzAcc",next);
+              },
+              style:{padding:"10px 14px",borderRadius:10,border:"2px solid "+(sel?"var(--t1)":"var(--bd2)"),background:sel?"var(--t1)":"var(--bg)",color:sel?"#fff":"var(--t1)",fontSize:13,fontWeight:sel?600:400,cursor:"pointer",transition:"all .18s",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+              ce("span",null,(sel?"\u2713 ":"")+a.label),
+              ce("span",{style:{fontSize:12,fontWeight:600}},"+"+a.price+" z\u0142")
+            );
+          })
+        )
+      ):null
+
     ):null;
 
     form=ce("div",{style:{display:"flex",flexDirection:"column"}},
@@ -3914,6 +4028,55 @@ function ModalAIValuation(p){
     )
   ));
 }
+
+// ── CHANGELOG MODAL ──────────────────────────────────────────────────────
+(function(){
+  var CHANGELOG=[
+    {
+      version:"v1.0.0",
+      date:"2025-04-16",
+      notes:[
+        "Pierwsza stabilna wersja produkcyjna",
+        "Zarządzanie klientami, pokojami i oknami z zapisem w Supabase",
+        "Cztery typy PDF: Wycena, Wycena uproszczona, Zamówienie tkaniny, Zlecenie do szwalni",
+        "System prowizji (Polecenie %) skalujący ceny jednostkowe",
+        "Obsługa żaluzji (aluminium, bamboo, basswood), rolet i zasłon",
+        "Asystent AI do generowania wycen z opisu słownego",
+        "Usunięto auto-print przy otwieraniu PDF",
+        "Poprawiono nagłówki i stopki dokumentów PDF",
+        "Potwierdzenia przed usunięciem danych (klient, pokój, okno, produkt)",
+        "Kategoria produktu „Inny” z polem nazwy i ceny ręcznej",
+        "Osobny PDF tkaniny na każdego producenta",
+        "Kolumna Kolor w zamówieniu tkaniny",
+        "Cennik automatyki (Somfy / Premium Line) dla rolet"
+      ]
+    }
+  ];
+  document.addEventListener("DOMContentLoaded",function(){
+    var btn=document.getElementById("app-version");
+    if(!btn)return;
+    btn.addEventListener("click",function(){
+      var overlay=document.createElement("div");
+      overlay.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;";
+      var box=document.createElement("div");
+      box.style.cssText="background:var(--bg2,#fff);border-radius:14px;padding:1.5rem;max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.22);";
+      var html="<div style=\"font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--t3);margin-bottom:1.2rem;\">Porter Design \u2014 Historia zmian</div>";
+      CHANGELOG.forEach(function(entry){
+        html+="<div style=\"margin-bottom:1.2rem;\">";
+        html+="<div style=\"font-size:13px;font-weight:700;color:var(--t1);margin-bottom:0.15rem;\">"+entry.version+" <span style=\"font-weight:400;font-size:10px;color:var(--t3);\">"+entry.date+"</span></div>";
+        html+="<ul style=\"margin:0.4rem 0 0 1rem;padding:0;font-size:11px;color:var(--t2);line-height:1.7;\">";
+        entry.notes.forEach(function(n){html+="<li>"+n+"</li>";});
+        html+="</ul></div>";
+      });
+      html+="<div style=\"text-align:right;margin-top:1rem;\"><button id=\"pd-cl-close\" style=\"font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:none;border:0.5px solid var(--bd2);border-radius:6px;padding:0.4rem 1rem;cursor:pointer;color:var(--t2);\">Zamknij</button></div>";
+      box.innerHTML=html;
+      overlay.appendChild(box);
+      overlay.addEventListener("click",function(e){if(e.target===overlay)overlay.remove();});
+      document.body.appendChild(overlay);
+      document.getElementById("pd-cl-close").addEventListener("click",function(){overlay.remove();});
+    });
+  });
+})();
 
 ReactDOM.createRoot(document.getElementById("app-mount")).render(ce(App,{}));
 })();
