@@ -696,6 +696,74 @@ var KUNIV={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,55
 var KN={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
 var KP={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
 
+var RRZ_WIDTHS = [90,120,150,180,210,240,270,300,330,360,390,420,450,480];
+
+var RRZ_SOMFY = {
+  "sonesse40wt":  [1651,1725,1801,1875,1949,2025,2099,2175,2249,2325,2399,2473,2546,2623],
+  "sonesse40rts": [2806,2880,2956,3030,3104,3180,3254,3330,3404,3480,3554,3628,3702,3778],
+  "sonesse30aku": [2389,2463,2539,2613,2687,2763,2837,2913,null,null,null,null,null,null]
+};
+var RRZ_SOMFY_LABELS = {
+  "sonesse40wt":  "SONESSE 40 WT (230V, przełącznik ścienny)",
+  "sonesse40rts": "SONESSE 40 RTS (230V, pilot bezprzewodowy)",
+  "sonesse30aku": "SONESSE 30 RTS AKU (24V, akumulator, pilot) — max 300 cm"
+};
+var RRZ_SOMFY_ACC = [
+  {id:"situo1",        label:"Pilot SITUO 1-kanałowy",                          price:262.78},
+  {id:"situo5",        label:"Pilot SITUO 5-kanałowy",                          price:417.80},
+  {id:"telis16",       label:"Pilot TELIS 16-kanałowy",                         price:1079.48},
+  {id:"smoove1",       label:"Pilot ścienny SMOOVE 1-kanałowy",             price:274.12},
+  {id:"smoove2",       label:"Pilot ścienny SMOOVE 2-kanałowy",             price:427.33},
+  {id:"smoove4",       label:"Pilot ścienny SMOOVE 4-kanałowy",             price:533.12},
+  {id:"smoove_uno",    label:"Przełącznik ścienny SMOOVE UNO pojedynczy", price:98.30},
+  {id:"smoove_duo",    label:"Przełącznik ścienny SMOOVE DUO podwójny", price:149.35},
+  {id:"lad_30wf",      label:"Ładowarka do SONESSE 30WF RTS akumulatorowego",   price:149.35},
+  {id:"tahoma",        label:"Centralka Tahoma",                                price:1412.21},
+  {id:"bebenek_szyna", label:"Dodatkowy bębenek w szynie",                      price:52.57}
+];
+
+var RRZ_PREMIUM = {
+  "am354w":     [1093,1167,1244,1318,1392,1468,1542,1619,1693,1769,1843,1917,1991,2068],
+  "am353w":     [1547,1621,1698,1772,1846,1922,1996,2072,2146,2223,2297,2371,2445,2521],
+  "am35bat":    [1908,1982,2058,2132,2206,2282,2356,2433,2507,2583,2657,2731,2805,2882],
+  "am35wifi":   [1810,1884,1960,2034,2108,2185,2259,2335,2409,2486,2560,2634,2708,2784],
+  "am35zigbee": [1810,1884,1960,2034,2108,2185,2259,2335,2409,2486,2560,2634,2708,2784],
+  "am25_230v":  [1547,1621,1698,1772,1846,1922,1996,2072,null,null,null,null,null,null],
+  "am25bat":    [1738,1812,1889,1963,2037,2113,2187,2263,null,null,null,null,null,null]
+};
+var RRZ_PREMIUM_LABELS = {
+  "am354w":     "PREMIUM AM 35 4W (230V, przełącznik ścienny)",
+  "am353w":     "PREMIUM AM 35 3W (230V, pilot radiowy)",
+  "am35bat":    "PREMIUM AM 35 BATTERY (akumulator, pilot radiowy)",
+  "am35wifi":   "PREMIUM AM 35 3W WiFi (230V, pilot + WiFi)",
+  "am35zigbee": "PREMIUM AM 35 3W ZigBee (230V, pilot + ZigBee)",
+  "am25_230v":  "PREMIUM AM 25 230V (zasilacz, pilot) — max 300 cm",
+  "am25bat":    "PREMIUM AM 25 BATTERY (akumulator, pilot) — max 300 cm"
+};
+var RRZ_PREMIUM_ACC = [
+  {id:"pilot1",        label:"Pilot 1-kanałowy",                                price:155.52},
+  {id:"pilot6",        label:"Pilot 6-kanałowy",                                price:197.13},
+  {id:"pilot16",       label:"Pilot 16-kanałowy",                               price:267.16},
+  {id:"inis_uno",      label:"Przełącznik ścienny INIS UNO pojedynczy", price:113.90},
+  {id:"inis_duo",      label:"Przełącznik ścienny INIS DUO podwójny", price:173.00},
+  {id:"lad_am25",      label:"Ładowarka do AM 25 24V akumulatorowego",          price:142.35},
+  {id:"lad_am35",      label:"Ładowarka do AM 35 24V akumulatorowego",          price:166.47},
+  {id:"smarthome_ac",  label:"Centralka SMART HOME PREMIUM LINE AC 520-01",    price:453.41},
+  {id:"smarthome_zb",  label:"Centralka SMART HOME ZigBee",                    price:416.17},
+  {id:"bebenek_szyna", label:"Dodatkowy bębenek w szynie",                      price:52.57}
+];
+
+function rrzLookup(brand, model, wCm){
+  var tbl = brand==="somfy" ? RRZ_SOMFY : RRZ_PREMIUM;
+  var row = tbl[model];
+  if(!row) return null;
+  var idx = RRZ_WIDTHS.findIndex(function(w){ return w >= wCm; });
+  if(idx<0) idx = RRZ_WIDTHS.length-1;
+  var price = row[idx];
+  if(price==null) return null;
+  return {price: price, upToWidth: RRZ_WIDTHS[idx]};
+}
+
 function lookup(val,obj){
   var keys=Object.keys(obj).map(Number).sort(function(a,b){return a-b;});
   var k=keys.find(function(k){return k>=val;})||keys[keys.length-1];
@@ -2903,116 +2971,75 @@ function ProdCard(p){
     ):null;
 
     // ── ELEKTRYK options ──────────────────────────────────────────────
-    // Dane cennikowe silników rolet (ceny netto)
-    var RRZ_SOMFY=[
-      {id:"sonesse40wt",  label:"SONESSE 40 WT",      prices:[1651,1725,1801,1875,1949,2025,2099,2175,2249,2325,2399,2473,2546,2623]},
-      {id:"sonesse40rts", label:"SONESSE 40 RTS",     prices:[2806,2880,2956,3030,3104,3180,3254,3330,3404,3480,3554,3628,3702,3778]},
-      {id:"sonesse30aku", label:"SONESSE 30 RTS AKU", prices:[2389,2463,2539,2613,2687,2763,2837,2913,null,null,null,null,null,null]}
-    ];
-    var RRZ_PREMIUM=[
-      {id:"am354w",    label:"PREMIUM AM 35 4W",        prices:[1093,1167,1244,1318,1392,1468,1542,1619,1693,1769,1843,1917,1991,2068]},
-      {id:"am353w",    label:"PREMIUM AM 35 3W",        prices:[1547,1621,1698,1772,1846,1922,1996,2072,2146,2223,2297,2371,2445,2521]},
-      {id:"am35bat",   label:"PREMIUM AM 35 BATERRY",   prices:[1908,1982,2058,2132,2206,2282,2356,2433,2507,2583,2657,2731,2805,2882]},
-      {id:"am353wifi", label:"PREMIUM AM 35 3W WiFi",   prices:[1810,1884,1960,2034,2108,2185,2259,2335,2409,2486,2560,2634,2708,2784]},
-      {id:"am353zb",   label:"PREMIUM AM 35 3W ZigBee", prices:[1810,1884,1960,2034,2108,2185,2259,2335,2409,2486,2560,2634,2708,2784]},
-      {id:"am25230",   label:"PREMIUM AM 25 230V",      prices:[1547,1621,1698,1772,1846,1922,1996,2072,null,null,null,null,null,null]},
-      {id:"am25bat",   label:"PREMIUM AM 25 BATERRY",   prices:[1738,1812,1889,1963,2037,2113,2187,2263,null,null,null,null,null,null]}
-    ];
-    var RRZ_W=[90,120,150,180,210,240,270,300,330,360,390,420,450,480];
-    var RRZ_ACC_SOMFY=[
-      {id:"situo1",    label:"Pilot SITUO 1-kanałowy",                    price:262.78},
-      {id:"situo5",    label:"Pilot SITUO 5-kanałowy",                    price:417.80},
-      {id:"telis16",   label:"Pilot TELIS 16-kanałowy",                   price:1079.48},
-      {id:"smoove1",   label:"Pilot ścienny SMOOVE 1-kanałowy",             price:274.12},
-      {id:"smoove2",   label:"Pilot ścienny SMOOVE 2-kanałowy",             price:427.33},
-      {id:"smoove4",   label:"Pilot ścienny SMOOVE 4-kanałowy",             price:533.12},
-      {id:"smooveuno", label:"Przeł. ścienny SMOOVE UNO pojedynczy",        price:98.30},
-      {id:"smooveduo", label:"Przeł. ścienny SMOOVE DUO podwójny",     price:149.35},
-      {id:"lad30aku",  label:"Ładowarka SONESSE 30WF RTS AKU",            price:149.35},
-      {id:"tahoma",    label:"Centralka Tahoma",                             price:1412.21},
-      {id:"bebenek",   label:"Dodatkowy bębenek w szynie",               price:52.57}
-    ];
-    var RRZ_ACC_PREMIUM=[
-      {id:"pilot1",    label:"Pilot 1-kanałowy",                          price:155.52},
-      {id:"pilot6",    label:"Pilot 6-kanałowy",                          price:197.13},
-      {id:"pilot16",   label:"Pilot 16-kanałowy",                         price:267.16},
-      {id:"przeluno",  label:"Przeł. ścienny INIS UNO pojedynczy",          price:113.90},
-      {id:"prelduo",   label:"Przeł. ścienny INIS DUO podwójny",       price:173.00},
-      {id:"lad25",     label:"Ładowarka AM 25 24V AKU",                   price:142.35},
-      {id:"lad35",     label:"Ładowarka AM 35 24V AKU",                   price:166.47},
-      {id:"smart520",  label:"Centralka SMART HOME AC 520-01",               price:453.41},
-      {id:"smartzb",   label:"Centralka SMART HOME ZigBee",                  price:416.17},
-      {id:"bebenek",   label:"Dodatkowy bębenek w szynie",               price:52.57}
-    ]
     var rrzBrand = c.rrzBrand||null;
     var rrzModel = c.rrzModel||null;
     var rrzAcc   = c.rrzAcc||[];
-    var wCmNum   = parseFloat(par.wCm)||0;
 
     var elektrykSection = rSystem==="elektryk"?ce("div",{style:{marginTop:20,display:"flex",flexDirection:"column",gap:20}},
 
       // Strona montażu silnika
       ce("div",null,
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA MONTA\u017bU SILNIKA"),
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA MONTAŻU SILNIKA"),
         ce("div",{style:{display:"flex",gap:10}},
           ["Lewo","Prawo"].map(function(str){
             var isA=c.stronaSilnika===str||(str==="Lewo"&&!c.stronaSilnika);
-            return ce("button",{key:str,onClick:function(){sc("stronaSilnika",str);},style:{padding:"12px 24px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+str:str
+            return ce("button",{key:str,onClick:function(){sc("stronaSilnika",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"✓ "+str:str
             );
           })
         )
       ),
 
-      // Wybór producenta
+      // Wybór producenta automatyki
       ce("div",null,
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AUTOMATYKA \u2014 PRODUCENT"),
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"AUTOMATYKA — PRODUCENT"),
         ce("div",{style:{display:"flex",gap:10}},
-          [["somfy","Somfy"],["premium","Premium Line"]].map(function(br){
-            var isA=rrzBrand===br[0];
-            return ce("button",{key:br[0],onClick:function(){sc("rrzBrand",br[0]);sc("rrzModel",null);sc("rrzAcc",[]);},style:{padding:"10px 20px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+br[1]:br[1]
+          [{key:"somfy",label:"SOMFY"},{key:"premium",label:"PREMIUM LINE"}].map(function(br){
+            var isA=rrzBrand===br.key;
+            return ce("button",{key:br.key,
+              onClick:function(){p.onChange(mg(prod,{c:mg(c,{rrzBrand:br.key,rrzModel:null,rrzAcc:[]})}));},
+              style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"✓ "+br.label:br.label
             );
           })
         )
       ),
 
-      // Wybór modelu (po wyborze producenta)
+      // Wybór modelu silnika
       rrzBrand?ce("div",null,
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"MODEL MECHANIZMU"),
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"MODEL MECHANIZMU"),
         ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-          (rrzBrand==="somfy"?RRZ_SOMFY:RRZ_PREMIUM).map(function(m){
-            var isA=rrzModel===m.id;
-            var price=wCmNum>0?rrzLookup(rrzBrand,m.id,wCmNum):null;
-            var unavail=wCmNum>0&&price===null;
-            return ce("button",{key:m.id,
-              onClick:unavail?null:function(){sc("rrzModel",m.id);},
-              disabled:unavail,
-              style:{padding:"10px 14px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:unavail?"var(--t3)":(isA?"#fff":"var(--t1)"),fontSize:13,fontWeight:isA?600:400,cursor:unavail?"not-allowed":"pointer",transition:"all .18s",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:unavail?0.5:1}},
-              ce("span",null,isA?"\u2713 "+m.label:m.label),
-              price!=null?ce("span",{style:{fontWeight:600,fontSize:12}},price+" z\u0142"):
-              unavail?ce("span",{style:{fontSize:11,color:"var(--t3)"}},
-                "niedost. dla "+wCmNum+"cm"):null
+          Object.keys(rrzBrand==="somfy"?RRZ_SOMFY:RRZ_PREMIUM).map(function(mKey){
+            var labels=rrzBrand==="somfy"?RRZ_SOMFY_LABELS:RRZ_PREMIUM_LABELS;
+            var isA=rrzModel===mKey;
+            var wCm2=prod.par&&prod.par.wCm?+prod.par.wCm:0;
+            var rrzCheck=wCm2?rrzLookup(rrzBrand,mKey,wCm2):null;
+            var avail=!wCm2||rrzCheck!=null;
+            var priceStr=isA&&rrzCheck?" → "+rrzCheck.price.toFixed(2).replace(".",",")+" zł":"";
+            return ce("button",{key:mKey,
+              onClick:function(){p.onChange(mg(prod,{c:mg(c,{rrzModel:mKey,rrzAcc:[]})}));},
+              disabled:!avail,
+              style:{padding:"12px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":avail?"var(--bg)":"var(--bg3)",color:isA?"#fff":avail?"var(--t1)":"var(--t3)",fontSize:13,fontWeight:isA?600:400,cursor:avail?"pointer":"not-allowed",textAlign:"left",transition:"all .18s",opacity:avail?1:0.5}},
+              (isA?"✓ ":"")+labels[mKey]+priceStr
             );
           })
         )
       ):null,
 
-      // Akcesoria (po wyborze modelu)
+      // Akcesoria
       rrzModel?ce("div",null,
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AKCESORIA (opcjonalnie)"),
-        ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-          (rrzBrand==="somfy"?RRZ_ACC_SOMFY:RRZ_ACC_PREMIUM).map(function(a){
-            var sel=(rrzAcc||[]).indexOf(a.id)>-1;
-            return ce("button",{key:a.id,
-              onClick:function(){
-                var cur=c.rrzAcc||[];
-                var next=sel?cur.filter(function(x){return x!==a.id;}):cur.concat([a.id]);
-                sc("rrzAcc",next);
-              },
-              style:{padding:"10px 14px",borderRadius:10,border:"2px solid "+(sel?"var(--t1)":"var(--bd2)"),background:sel?"var(--t1)":"var(--bg)",color:sel?"#fff":"var(--t1)",fontSize:13,fontWeight:sel?600:400,cursor:"pointer",transition:"all .18s",display:"flex",justifyContent:"space-between",alignItems:"center"}},
-              ce("span",null,(sel?"\u2713 ":"")+a.label),
-              ce("span",{style:{fontSize:12,fontWeight:600}},"+"+a.price+" z\u0142")
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"AKCESORIA (opcjonalnie)"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+          (rrzBrand==="somfy"?RRZ_SOMFY_ACC:RRZ_PREMIUM_ACC).map(function(acc){
+            var checked=rrzAcc.indexOf(acc.id)>=0;
+            return ce("label",{key:acc.id,style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:"var(--t1)",padding:"6px 0"}},
+              ce("input",{type:"checkbox",checked:checked,
+                onChange:function(ev){
+                  var next=ev.target.checked?[].concat(rrzAcc,[acc.id]):rrzAcc.filter(function(x){return x!==acc.id;});
+                  p.onChange(mg(prod,{c:mg(c,{rrzAcc:next})}));
+                },
+                style:{width:16,height:16,cursor:"pointer",accentColor:"var(--t1)"}}),
+              ce("span",{},acc.label+" — "+acc.price.toFixed(2).replace(".",",")+" zł")
             );
           })
         )
