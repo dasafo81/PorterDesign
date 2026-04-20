@@ -2972,9 +2972,10 @@ function ProdCard(p){
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AUTOMATYKA \u2014 PRODUCENT"),
         ce("div",{style:{display:"flex",gap:10}},
           [["somfy","Somfy"],["premium","Premium Line"]].map(function(br){
-            var isA=rrzBrand===br[0];
-            return ce("button",{key:br[0],onClick:function(){sc("rrzBrand",br[0]);sc("rrzModel",null);sc("rrzAcc",[]);},style:{padding:"10px 20px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+br[1]:br[1]
+            var brId=br[0],brLabel=br[1];
+            var isA=rrzBrand===brId;
+            return ce("button",{key:brId,type:"button",onClick:function(){sc("rrzBrand",brId);sc("rrzModel",null);sc("rrzAcc",[]);},style:{padding:"10px 20px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+brLabel:brLabel
             );
           })
         )
@@ -2989,7 +2990,7 @@ function ProdCard(p){
             var price=wCmNum>0?rrzLookup(rrzBrand,m.id,wCmNum):null;
             var unavail=wCmNum>0&&price===null;
             return ce("button",{key:m.id,
-              onClick:unavail?null:function(){sc("rrzModel",m.id);},
+              type:"button",onClick:unavail?null:function(){var mid=m.id;sc("rrzModel",mid);},
               disabled:unavail,
               style:{padding:"10px 14px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:unavail?"var(--t3)":(isA?"#fff":"var(--t1)"),fontSize:13,fontWeight:isA?600:400,cursor:unavail?"not-allowed":"pointer",transition:"all .18s",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:unavail?0.5:1}},
               ce("span",null,isA?"\u2713 "+m.label:m.label),
@@ -3008,9 +3009,10 @@ function ProdCard(p){
           (rrzBrand==="somfy"?RRZ_ACC_SOMFY:RRZ_ACC_PREMIUM).map(function(a){
             var sel=(rrzAcc||[]).indexOf(a.id)>-1;
             return ce("button",{key:a.id,
-              onClick:function(){
+              type:"button",onClick:function(){
+                var aid=a.id;
                 var cur=c.rrzAcc||[];
-                var next=sel?cur.filter(function(x){return x!==a.id;}):cur.concat([a.id]);
+                var next=sel?cur.filter(function(x){return x!==aid;}):cur.concat([aid]);
                 sc("rrzAcc",next);
               },
               style:{padding:"10px 14px",borderRadius:10,border:"2px solid "+(sel?"var(--t1)":"var(--bd2)"),background:sel?"var(--t1)":"var(--bg)",color:sel?"#fff":"var(--t1)",fontSize:13,fontWeight:sel?600:400,cursor:"pointer",transition:"all .18s",display:"flex",justifyContent:"space-between",alignItems:"center"}},
