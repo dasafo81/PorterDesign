@@ -1016,9 +1016,11 @@ function calc(p){
     // Profil montażowy
     if(c.sprofil==="tak"){var pv=rsSuppLookup(RS_PROFIL,wCm);total+=pv;lines.push("+ Profil monta\u017cowy +"+pv+" z\u0142");}
     // Obciążnik
-    if(c.sobcTyp&&c.sobcTyp!=="brak"){
+    if(c.sobcTyp&&c.sobcTyp!=="A"){
       var obcTbl={B:RS_OB_B,C:RS_OB_C,D:RS_OB_D}[c.sobcTyp];
       if(obcTbl){var ov=rsSuppLookup(obcTbl,wCm);total+=ov;lines.push("+ Obci\u0105\u017cnik Typ "+c.sobcTyp+" +"+ov+" z\u0142");}
+    }else if(c.sobcTyp==="A"){
+      lines.push("+ Obci\u0105\u017cnik Typ A (standardowy, w cenie)");
     }
     // Maskownica
     if(c.smask&&c.smask!=="brak"){var mv=RS_MASKS[c.smask]||0;if(mv){total+=mv;var mcl=RS_MASK_COLORS.find(function(x){return x.k===c.smaskKolor;});var mklbl=mcl?" ("+mcl.l+")":"";lines.push("+ Maskownica "+c.smask+mklbl+" +"+mv.toFixed(2)+" z\u0142");}}
@@ -1032,9 +1034,11 @@ function calc(p){
       if(mot){total+=mot.price;lines.push("+ Nap\u0119d "+mot.label+" +"+mot.price+" z\u0142");}
     }
     // Pilot/centralka
-    if(c.sremote){
-      var rem=RS_REMOTES.find(function(r){return r.id===c.sremote;});
-      if(rem){total+=rem.price;lines.push("+ "+rem.label+" +"+rem.price+" z\u0142");}
+    if(c.sremotes&&c.sremotes.length){
+      c.sremotes.forEach(function(rid){
+        var rem=RS_REMOTES.find(function(r){return r.id===rid;});
+        if(rem){total+=rem.price;lines.push("+ "+rem.label+" +"+rem.price+" z\u0142");}
+      });
     }
   }else if(p.type==="szyna"){
     var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0,qty=par.qty||1;
@@ -3325,22 +3329,22 @@ function ProdCard(p){
         )
       ),
       // Obciążnik — karty z obrazkami
-      ce(Fld,{label:"OBC I\u0104\u017bNIK"},
+      ce(Fld,{label:"OBCI\u0104\u017bNIK"},
         ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}},
           [
-            {k:"brak", l:"Brak",  img:null},
-            {k:"B",    l:"Typ B", img:RS_IMG.obcB},
-            {k:"C",    l:"Typ C", img:RS_IMG.obcC},
-            {k:"D",    l:"Typ D", img:RS_IMG.obcD}
+            {k:"A", l:"Typ A", img:RS_IMG.obcA},
+            {k:"B", l:"Typ B", img:RS_IMG.obcB},
+            {k:"C", l:"Typ C", img:RS_IMG.obcC},
+            {k:"D", l:"Typ D", img:RS_IMG.obcD}
           ].map(function(o){
-            var isA=(c.sobcTyp||"brak")===o.k;
-            return ce("button",{key:o.k,onClick:function(){sc("sobcTyp",o.k);},
+            var isA=c.sobcTyp===o.k;
+            return ce("button",{key:o.k,onClick:function(){sc("sobcTyp",isA?null:o.k);},
               style:{padding:0,borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),
                 background:isA?"var(--bg2)":"var(--bg)",cursor:"pointer",overflow:"hidden",
                 display:"flex",flexDirection:"column",alignItems:"center",transition:"border-color .15s"}},
-              o.img
-                ? ce("img",{src:o.img,alt:o.l,style:{width:"100%",height:90,objectFit:"cover",objectPosition:"center",display:"block",borderRadius:"8px 8px 0 0"}})
-                : ce("div",{style:{width:"100%",height:90,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"var(--t3)"}},"—"),
+              ce("div",{style:{width:"100%",height:90,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"8px 8px 0 0",overflow:"hidden"}},
+                ce("img",{src:o.img,alt:o.l,style:{maxWidth:"100%",maxHeight:86,objectFit:"contain",display:"block"}})
+              ),
               ce("span",{style:{display:"block",padding:"6px 4px",fontSize:12,fontWeight:isA?700:400,color:isA?"var(--t1)":"var(--t2)"}},
                 isA?"\u2713 "+o.l:o.l
               )
@@ -3348,16 +3352,16 @@ function ProdCard(p){
           })
         )
       ),
-      // Maskownica
+      // Maskownica — bez opcji "Brak", kliknięcie aktywnej odznacza
       ce(Fld,{label:"MASKOWNICA UCHWYTU (RM40)"},
         ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-          [{k:"brak",l:"Brak"},{k:"oval",l:"Oval 27,56 z\u0142"},{k:"kwadro",l:"Kwadro 33,92 z\u0142"},{k:"cube",l:"Cube 38,16 z\u0142"}].map(function(o){
-            var isA=(c.smask||"brak")===o.k;
-            return ce("button",{key:o.k,onClick:function(){sc("smask",o.k);if(o.k==="brak")sc("smaskKolor",null);},style:{padding:"10px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer"}},isA?"\u2713 "+o.l:o.l);
+          [{k:"oval",l:"Oval 27,56 z\u0142"},{k:"kwadro",l:"Kwadro 33,92 z\u0142"},{k:"cube",l:"Cube 38,16 z\u0142"}].map(function(o){
+            var isA=c.smask===o.k;
+            return ce("button",{key:o.k,onClick:function(){sc("smask",isA?null:o.k);if(isA)sc("smaskKolor",null);},style:{padding:"10px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer"}},isA?"\u2713 "+o.l:o.l);
           })
         )
       ),
-      (c.smask&&c.smask!=="brak")?ce(Fld,{label:"KOLOR MASKOWNIC"},
+      c.smask?ce(Fld,{label:"KOLOR MASKOWNIC"},
         ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},
           RS_MASK_COLORS.map(function(col){
             var isA=(c.smaskKolor||"bialy")===col.k;
@@ -3399,12 +3403,21 @@ function ProdCard(p){
           )
         )
       ),
-      // Pilot / centralka (tylko gdy wybrany napęd)
-      c.smotor?ce(Fld,{label:"PILOT / CENTRALKA (opcjonalnie)"},
-        ce("select",{value:c.sremote||"",onChange:function(ev){sc("sremote",ev.target.value||null);},style:Object.assign({},IST,{width:"100%"})},
-          ce("option",{value:""},"-- brak --"),
-          RS_REMOTES.map(function(r){
-            return ce("option",{key:r.id,value:r.id},r.label+" | "+r.price+" z\u0142");
+      // Pilot i centralka — niezależne checkboxy (tylko gdy wybrany napęd)
+      c.smotor?ce("div",{style:{display:"flex",flexDirection:"column",gap:10,marginTop:4}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:2}},"PILOT / CENTRALKA (opcjonalnie)"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+          [{id:"ac12701",label:"Pilot 1-kan. AC-127-01",price:162},{id:"ac52001",label:"Centralka Smart Home AC-520-01",price:405},{id:"ac52601",label:"Centralka Smart Home ZigBee AC-526-01",price:385}].map(function(r){
+            var checked=(c.sremotes||[]).indexOf(r.id)>=0;
+            return ce("label",{key:r.id,style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:"var(--t1)",padding:"8px 12px",borderRadius:8,border:"1px solid "+(checked?"var(--t1)":"var(--bd2)"),background:checked?"var(--bg2)":"var(--bg)"}},
+              ce("input",{type:"checkbox",checked:checked,onChange:function(){
+                var cur=c.sremotes||[];
+                var next=checked?cur.filter(function(x){return x!==r.id;}):cur.concat([r.id]);
+                sc("sremotes",next.length?next:null);
+              }}),
+              ce("span",{style:{flex:1}},r.label),
+              ce("span",{style:{fontWeight:600,color:"var(--t2)",whiteSpace:"nowrap"}},r.price+" z\u0142")
+            );
           })
         )
       ):null,
