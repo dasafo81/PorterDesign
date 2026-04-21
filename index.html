@@ -785,6 +785,18 @@ var RS_OB_B={60:18,70:21,80:24,90:27,100:30,110:33,120:36,130:39,140:42,150:45,1
 var RS_OB_C={60:9,70:11,80:12,90:14,100:15,110:17,120:18,130:20,140:21,150:23,160:24,170:26,180:27,190:29,200:30,210:32,220:33,230:35,240:36,250:38,260:39,270:41,280:42,290:44,300:45,310:47,320:48,330:50,340:51,350:53};
 var RS_OB_D={60:14,70:16,80:18,90:20,100:23,110:25,120:27,130:29,140:32,150:34,160:36,170:38,180:41,190:43,200:45,210:47,220:50,230:52,240:54,250:56,260:59,270:61,280:63,290:65,300:68,310:70,320:72,330:74,340:77,350:79};
 // Maskownice do systemu RM 40
+// Supabase Storage — schematy i obrazki Rolety Shadow
+var RS_BASE="https://rkcidwusjzvfwxszotnb.supabase.co/storage/v1/object/public/assets/porter-design-assets/rolety%20shadow/";
+var RS_IMG={
+  rm40schemat: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.49.28.png",
+  rm40uchwyty: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.49.40.png",
+  rm45schemat: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.51.51.png",
+  rm45uchwyty: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.51.59.png",
+  obcA: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.55.44.png",
+  obcB: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.55.51.png",
+  obcC: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.55.58.png",
+  obcD: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.56.03.png"
+};
 var RS_MASKS={oval:27.56,kwadro:33.92,cube:38.16};
 var RS_MASK_COLORS=[
   {k:"bialy",      l:"Bia\u0142y",      hex:"#f5f5f3",border:"#bbb",textColor:"#444"},
@@ -3312,12 +3324,27 @@ function ProdCard(p){
           "Profil monta\u017cowy (dop\u0142ata wg szeroko\u015bci)"
         )
       ),
-      // Obciążnik
-      ce(Fld,{label:"OBD CI\u0104\u017bNIK"},
-        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-          [{k:"brak",l:"Brak"},{k:"B",l:"Typ B"},{k:"C",l:"Typ C"},{k:"D",l:"Typ D"}].map(function(o){
+      // Obciążnik — karty z obrazkami
+      ce(Fld,{label:"OBC I\u0104\u017bNIK"},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}},
+          [
+            {k:"brak", l:"Brak",  img:null},
+            {k:"B",    l:"Typ B", img:RS_IMG.obcB},
+            {k:"C",    l:"Typ C", img:RS_IMG.obcC},
+            {k:"D",    l:"Typ D", img:RS_IMG.obcD}
+          ].map(function(o){
             var isA=(c.sobcTyp||"brak")===o.k;
-            return ce("button",{key:o.k,onClick:function(){sc("sobcTyp",o.k);},style:{padding:"10px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer"}},isA?"\u2713 "+o.l:o.l);
+            return ce("button",{key:o.k,onClick:function(){sc("sobcTyp",o.k);},
+              style:{padding:0,borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),
+                background:isA?"var(--bg2)":"var(--bg)",cursor:"pointer",overflow:"hidden",
+                display:"flex",flexDirection:"column",alignItems:"center",transition:"border-color .15s"}},
+              o.img
+                ? ce("img",{src:o.img,alt:o.l,style:{width:"100%",height:90,objectFit:"cover",objectPosition:"center",display:"block",borderRadius:"8px 8px 0 0"}})
+                : ce("div",{style:{width:"100%",height:90,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"var(--t3)"}},"—"),
+              ce("span",{style:{display:"block",padding:"6px 4px",fontSize:12,fontWeight:isA?700:400,color:isA?"var(--t1)":"var(--t2)"}},
+                isA?"\u2713 "+o.l:o.l
+              )
+            );
           })
         )
       ),
@@ -3380,7 +3407,53 @@ function ProdCard(p){
             return ce("option",{key:r.id,value:r.id},r.label+" | "+r.price+" z\u0142");
           })
         )
-      ):null
+      ):null,
+      // ── SCHEMATY TECHNICZNE ──────────────────────────────────────
+      ce("div",{style:{marginTop:8,borderRadius:10,border:"1px solid var(--bd2)",overflow:"hidden"}},
+        ce("button",{
+          onClick:function(){sc("sSchemat",c.sSchemat==="open"?null:"open");},
+          style:{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",
+            padding:"12px 16px",background:"var(--bg2)",border:"none",cursor:"pointer",
+            fontSize:13,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase"}},
+          "\uD83D\uDCCF Schematy techniczne RM40 / RM45",
+          ce("span",{style:{fontSize:16,transition:"transform .2s",display:"inline-block",
+            transform:c.sSchemat==="open"?"rotate(180deg)":"rotate(0deg)"}},"▾")
+        ),
+        c.sSchemat==="open"?ce("div",{style:{padding:"16px",display:"flex",flexDirection:"column",gap:20,background:"var(--bg)"}},
+          // RM 40
+          ce("div",null,
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",marginBottom:8}},"ROLETA RM 40"),
+            ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Schemat pomiaru"),
+                ce("img",{src:RS_IMG.rm40schemat,alt:"RM40 schemat pomiaru",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              ),
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Uchwyty i profil monta\u017cowy"),
+                ce("img",{src:RS_IMG.rm40uchwyty,alt:"RM40 uchwyty",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              )
+            )
+          ),
+          // RM 45
+          ce("div",null,
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",marginBottom:8}},"ROLETA RM 45"),
+            ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Schemat pomiaru"),
+                ce("img",{src:RS_IMG.rm45schemat,alt:"RM45 schemat pomiaru",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              ),
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Uchwyty i profil monta\u017cowy"),
+                ce("img",{src:RS_IMG.rm45uchwyty,alt:"RM45 uchwyty",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              )
+            )
+          )
+        ):null
+      )
     );
 
     }else if(prod.type==="szyna"){
