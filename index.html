@@ -684,6 +684,7 @@ var PROD_TYPES=[
   {id:"roleta",label:"Roleta rzymska",icon:"2b1b"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
+  {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
   {id:"inny",label:"Inny",icon:"📦"}
 ];
 
@@ -695,6 +696,153 @@ var KSLIM={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550
 var KUNIV={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
 var KN={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
 var KP={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
+
+// ── ROLETA SHADOW ────────────────────────────────────────────────────────────
+// Wymiary dokładne: szerokość (kolumny) i wysokość (wiersze) w cm
+// Tabele C, D, E — wartości brutto (PLN) z cennika Shadows Club
+// Szerokości: 60..350 co 10 cm
+var RS_WIDTHS=[60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300,310,320,330,340,350];
+// Wysokości: 100..300 co 10 cm
+var RS_HEIGHTS=[100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300];
+
+var RS_C=[
+  [164,175,195,203,215,230,234,257,270,263,296,303,318,332,343,352,473,493,509,531,540,593,633,661,699,734,771,809,850,892],
+  [166,179,197,210,221,237,246,265,276,292,303,314,325,343,354,372,487,504,524,540,553,641,670,690,723,759,797,837,879,923],
+  [173,188,203,215,230,241,252,270,285,301,310,318,330,352,367,383,500,518,537,549,564,668,694,723,754,792,832,873,917,963],
+  [179,190,208,217,237,246,257,274,294,305,318,330,345,358,376,391,513,531,546,566,579,694,723,756,792,831,873,917,962,1011],
+  [181,195,210,221,239,250,263,283,301,310,325,338,363,363,387,396,524,542,560,584,593,721,750,794,818,859,902,947,995,1044],
+  [184,197,212,230,243,257,272,292,303,316,334,347,374,374,398,405,533,557,573,597,606,748,778,821,845,887,931,978,1027,1078],
+  [188,201,215,237,246,263,283,301,310,325,343,358,383,383,407,411,542,571,584,608,626,776,805,847,871,915,961,1009,1059,1112],
+  [190,208,217,239,252,270,288,305,316,334,352,365,387,391,411,425,557,582,597,622,639,805,847,874,902,948,995,1045,1097,1152],
+  [195,210,221,241,257,274,296,310,318,338,358,369,391,403,416,434,571,588,608,635,652,845,878,898,940,987,1036,1088,1143,1200],
+  [217,237,250,270,288,314,338,361,383,407,431,451,476,502,518,540,686,706,734,761,783,882,902,940,969,1017,1068,1121,1178,1236],
+  [241,263,283,301,318,347,387,411,445,473,502,531,560,591,619,652,792,823,858,894,918,953,982,1013,1046,1098,1153,1211,1272,1335],
+  [246,270,293,310,332,398,425,451,456,487,518,544,575,606,635,670,803,838,876,907,933,967,1000,1033,1066,1119,1175,1234,1296,1361],
+  [250,274,301,318,343,383,409,438,467,498,533,560,591,626,652,686,818,856,894,925,953,982,1013,1048,1082,1136,1192,1252,1315,1380],
+  [257,281,310,330,354,391,418,447,476,506,537,568,599,633,654,697,834,869,916,940,967,1000,1031,1062,1099,1154,1212,1273,1336,1403],
+  [263,285,316,338,367,396,429,456,482,515,542,577,606,606,670,708,847,885,916,953,982,1013,1046,1073,1115,1170,1229,1290,1357,1423],
+  [265,294,318,347,376,405,438,467,495,526,551,586,613,613,681,719,858,896,929,960,993,1031,1062,1093,1126,1182,1241,1303,1368,1437],
+  [268,301,325,358,387,421,445,425,482,503,560,597,626,626,690,728,869,907,940,973,1004,1046,1073,1110,1137,1197,1253,1316,1382,1451],
+  [274,305,334,365,398,425,451,482,511,537,568,604,633,633,699,734,882,922,955,989,1022,1059,1093,1126,1157,1215,1275,1339,1406,1476],
+  [283,310,338,369,407,434,460,491,518,546,577,613,644,644,708,741,898,933,969,1004,1040,1073,1115,1141,1172,1231,1292,1357,1425,1496],
+  [288,315,347,380,411,440,469,502,525,558,584,617,648,648,709,741,909,949,982,1008,1051,1093,1128,1159,1188,1247,1309,1375,1444,1516],
+  [296,318,358,389,416,451,478,511,533,564,591,626,661,661,728,756,925,960,1004,1028,1064,1110,1141,1174,1205,1266,1329,1395,1465,1538]
+];
+
+var RS_D=[
+  [230,246,274,286,302,324,330,361,380,370,417,426,448,467,482,495,666,694,716,747,760,834,890,931,984,1033,1084,1139,1196,1255],
+  [233,252,277,296,311,333,346,374,389,411,426,442,458,482,498,523,685,710,738,760,778,903,943,971,1018,1069,1122,1178,1237,1299],
+  [243,265,286,302,324,339,355,380,402,423,436,448,464,495,517,539,704,728,756,772,794,940,977,1018,1061,1115,1170,1229,1290,1355],
+  [252,268,293,305,333,346,361,386,414,430,448,486,504,504,529,551,722,747,769,797,816,977,1018,1065,1114,1170,1229,1290,1355,1422],
+  [255,274,296,311,336,352,370,398,423,436,458,476,511,511,545,557,738,763,788,822,834,1015,1055,1118,1152,1209,1270,1333,1400,1470],
+  [258,277,299,324,342,361,383,411,430,445,470,489,526,523,560,570,750,784,806,840,856,1052,1093,1155,1189,1249,1311,1377,1445,1518],
+  [265,283,302,333,346,370,398,423,445,458,482,539,559,573,579,763,822,856,881,1093,1133,1189,1226,1288,1352,1420,1491,1565],
+  [268,293,305,336,355,380,405,430,445,470,495,514,545,551,579,598,784,819,840,875,900,1133,1192,1233,1264,1323,1389,1459,1531,1608,1688],
+  [274,296,311,339,361,386,417,436,448,476,504,520,551,567,585,610,803,828,856,893,918,1189,1233,1264,1323,1389,1459,1531,1608,1688],
+  [305,333,352,386,405,442,476,507,573,607,669,707,728,760,965,993,1033,1071,1102,1242,1270,1323,1363,1432,1503,1578,1657,1740],
+  [339,370,398,423,448,489,545,579,626,666,707,747,788,831,872,918,1114,1158,1208,1258,1292,1342,1382,1426,1472,1546,1623,1704,1790,1879],
+  [346,380,411,436,467,517,560,598,641,685,728,766,809,853,893,943,1130,1180,1233,1276,1314,1360,1407,1454,1500,1575,1654,1737,1824,1915],
+  [352,386,436,464,498,539,576,616,657,700,750,788,831,881,918,965,1152,1205,1258,1301,1342,1382,1426,1475,1522,1598,1678,1762,1850,1943],
+  [361,395,436,464,498,551,588,629,669,713,756,800,844,890,934,981,1174,1223,1270,1323,1360,1407,1451,1494,1547,1624,1706,1791,1880,1975],
+  [370,402,445,476,511,557,604,641,679,725,763,812,853,853,943,996,1192,1245,1289,1342,1382,1426,1472,1510,1569,1647,1730,1816,1907,2002],
+  [377,414,448,489,529,570,626,657,697,741,775,812,862,862,959,1012,1208,1261,1307,1351,1398,1451,1494,1538,1584,1664,1747,1834,1926,2022],
+  [386,430,470,514,560,598,635,666,707,747,788,840,881,881,971,1024,1223,1276,1323,1370,1413,1472,1510,1563,1600,1680,1764,1852,1945,2042],
+  [386,430,470,514,560,598,635,666,707,756,800,850,890,890,984,1033,1242,1298,1345,1391,1438,1491,1538,1584,1628,1709,1795,1885,1979,2078],
+  [392,436,445,476,510,568,610,647,691,728,769,812,906,906,996,1043,1246,1301,1363,1413,1479,1510,1569,1606,1650,1732,1819,1910,2005,2106],
+  [405,445,489,535,579,619,660,707,741,781,822,868,921,921,1012,1052,1279,1335,1382,1419,1479,1538,1588,1631,1672,1755,1843,1935,2032,2133],
+  [417,448,504,548,585,635,672,719,750,794,831,881,931,931,1024,1065,1301,1351,1413,1447,1497,1563,1606,1653,1696,1781,1870,1964,2062,2165]
+];
+
+var RS_E=[
+  [392,418,466,487,513,550,561,630,709,725,762,820,841,1132,1180,1217,1270,1291,1418,1513,1672,1756,1844,1936,2033,2134],
+  [397,429,471,503,529,566,587,635,661,699,725,751,778,1164,1207,1254,1291,1323,1535,1603,1651,1730,1817,1908,2003,2103,2209],
+  [413,450,487,513,550,577,603,646,683,720,741,762,788,1196,1238,1286,1312,1349,1598,1662,1730,1805,1895,1989,2089,2193,2303],
+  [429,455,497,519,566,587,614,656,704,730,762,788,826,1228,1270,1307,1386,1445,1662,1730,1805,1895,1989,2089,2193,2303,2418],
+  [434,466,503,529,572,598,630,677,720,741,778,810,868,1254,1296,1339,1397,1418,1725,1794,1900,1958,2056,2159,2267,2380,2499],
+  [439,471,508,550,582,614,651,699,730,757,799,831,894,1275,1334,1371,1429,1455,1789,1857,1963,2021,2123,2229,2340,2457,2580],
+  [450,513,529,566,587,630,670,720,741,762,820,857,926,1296,1365,1429,1487,1529,1926,2027,2090,2159,2267,2380,2499,2624,2756],
+  [466,503,529,577,614,656,709,741,762,810,857,884,937,1334,1408,1455,1519,1561,2021,2096,2148,2249,2361,2480,2604,2734,2870],
+  [519,577,598,646,751,810,915,1064,1132,1080,1201,1238,1291,1365,1640,1688,1757,1820,2159,2281,2434,2555,2683,2817,2958],
+  [577,630,677,720,762,831,926,984,1064,1132,1201,1270,1339,1413,1482,1561,1894,1969,2053,2138,2196,2281,2350,2424,2503,2628,2760,2898,3042,3195],
+  [587,646,699,741,794,878,953,1016,1090,1164,1238,1302,1376,1450,1519,1603,1921,2006,2096,2170,2233,2313,2392,2471,2551,2678,2812,2953,3100,3255],
+  [598,672,720,762,820,915,979,1000,1117,1191,1275,1339,1413,1498,1561,1640,1958,2048,2138,2212,2281,2350,2424,2508,2588,2717,2853,2996,3145,3303],
+  [614,672,741,788,847,947,1000,1069,1138,1212,1286,1360,1434,1513,1588,1667,1995,2080,2159,2249,2313,2392,2466,2540,2630,2762,2900,3045,3197,3357],
+  [630,683,757,810,878,947,1027,1090,1154,1233,1296,1381,1450,1450,1603,1693,2027,2117,2191,2281,2350,2424,2503,2567,2667,2800,2940,3087,3242,3404],
+  [635,762,831,910,968,1037,1117,1185,1259,1318,1402,1466,1540,1630,1720,2143,2191,2281,2350,2424,2540,2616,2694,2768,2828,2970,3118,3274,3438],
+  [640,720,778,857,926,984,1064,1132,1201,1270,1339,1429,1498,1498,1651,1741,2080,2170,2249,2328,2402,2503,2567,2656,2720,2856,2999,3149,3306,3471],
+  [656,730,799,873,953,1016,1080,1154,1222,1286,1345,1445,1513,1513,1672,1757,2111,2207,2286,2365,2445,2535,2614,2694,2768,2906,3051,3204,3364,3532],
+  [677,741,810,844,1037,1381,1540,1693,1756,2148,2233,2318,2402,2487,2535,2614,2694,2768,2906,3045,3092,3212,3274,3409,3580],
+  [688,757,831,910,984,1048,1117,1201,1259,1328,1397,1476,1566,1566,1720,1789,2175,2270,2350,2413,2514,2614,2699,2773,2842,2984,3133,3290,3454,3627],
+  [688,757,831,910,984,1048,1122,1201,1259,1328,1397,1476,1566,1566,1720,1789,2175,2270,2350,2413,2514,2614,2699,2773,2842,2984,3133,3290,3454,3627],
+  [709,762,857,931,995,1080,1143,1222,1275,1349,1413,1498,1582,1582,1741,1810,2212,2297,2402,2461,2545,2656,2731,2810,2884,3028,3180,3339,3506,3681]
+];
+
+// Tabela dopłat (obciążniki i profil montażowy) wg szerokości
+// Klucze: szerokości od 60 do 350 co 10 cm, wartości brutto PLN
+var RS_SUPP_WIDTHS=[60,70,80,90,100,110,120,130,140,150,160,170,180,190,200,210,220,230,240,250,260,270,280,290,300,310,320,330,340,350];
+var RS_PROFIL={60:36,70:42,80:48,90:54,100:60,110:66,120:71,130:75,140:81,150:86,160:92,170:98,180:102,190:108,200:114,210:122,220:129,230:140,240:149,250:159,260:173,270:185,280:197,290:210,300:222,310:234,320:246,330:257,340:269,350:278};
+var RS_OB_B={60:18,70:21,80:24,90:27,100:30,110:33,120:36,130:39,140:42,150:45,160:48,170:51,180:54,190:57,200:60,210:63,220:66,230:69,240:72,250:75,260:78,270:81,280:84,290:87,300:90,310:93,320:96,330:99,340:102,350:105};
+var RS_OB_C={60:9,70:11,80:12,90:14,100:15,110:17,120:18,130:20,140:21,150:23,160:24,170:26,180:27,190:29,200:30,210:32,220:33,230:35,240:36,250:38,260:39,270:41,280:42,290:44,300:45,310:47,320:48,330:50,340:51,350:53};
+var RS_OB_D={60:14,70:16,80:18,90:20,100:23,110:25,120:27,130:29,140:32,150:34,160:36,170:38,180:41,190:43,200:45,210:47,220:50,230:52,240:54,250:56,260:59,270:61,280:63,290:65,300:68,310:70,320:72,330:74,340:77,350:79};
+// Maskownice do systemu RM 40
+// Supabase Storage — schematy i obrazki Rolety Shadow
+var RS_BASE="https://rkcidwusjzvfwxszotnb.supabase.co/storage/v1/object/public/assets/porter-design-assets/rolety%20shadow/";
+var RS_IMG={
+  rm40schemat: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.49.28.png",
+  rm40uchwyty: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.49.40.png",
+  rm45schemat: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.51.51.png",
+  rm45uchwyty: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.51.59.png",
+  obcA: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.55.44.png",
+  obcB: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.55.51.png",
+  obcC: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.55.58.png",
+  obcD: RS_BASE+"Zrzut%20ekranu%202026-04-21%20o%2013.56.03.png"
+};
+var RS_MASKS={oval:27.56,kwadro:33.92,cube:38.16};
+var RS_MASK_COLORS=[
+  {k:"bialy",      l:"Bia\u0142y",      hex:"#f5f5f3",border:"#bbb",textColor:"#444"},
+  {k:"czarny",     l:"Czarny",       hex:"#1a1a1a",border:"#1a1a1a",textColor:"#fff"},
+  {k:"chrom-mat",  l:"Chrom mat",    hex:"#9e9e9e",border:"#777",textColor:"#fff"},
+  {k:"chrom-polysk",l:"Chrom po\u0142ysk",hex:"#d6d6d6",border:"#999",textColor:"#333"}
+];
+// Dopłaty stałe (brutto)
+var RS_ZESTAW_ZYLKOWY=27.56; // zestaw do prowadzenia żyłkowego / kpl
+var RS_LANCUSZEK=15.9;         // ozdobny obciążnik łańcuszka / szt
+
+// ── NAPĘDY SHADOW ──────────────────────────────────────────────────────────
+var RS_MOTORS=[
+  // Przewodowe
+  {id:"am35q",    label:"AM 35 Q 6/28",           type:"wire",   price:323},
+  {id:"son40pa",  label:"Sonesse 40 PA 6/20",      type:"wire",   price:1064},
+  // Radiowe
+  {id:"am25rfb",  label:"AM25 RF ESE Battery",     type:"radio",  price:532},
+  {id:"am35qe",   label:"AM35 QE 6/28",            type:"radio",  price:439},
+  {id:"am35essb", label:"AM35 ESS 6/18 Battery",   type:"radio",  price:717},
+  {id:"son40rts", label:"Sonesse 40 RTS 6/20",     type:"radio",  price:1336}
+];
+var RS_REMOTES=[
+  {id:"ac12701",  label:"Pilot 1-kan. AC-127-01",  price:162},
+  {id:"ac52001",  label:"Centralka Smart Home AC-520-01", price:405},
+  {id:"ac52601",  label:"Centralka Smart Home ZigBee AC-526-01", price:385}
+];
+
+// Lookup helper for Shadow: nearest-higher width AND height
+function rsShadowLookup(grupaCen, wCm, hCm){
+  var tbl={C:RS_C,D:RS_D,E:RS_E}[grupaCen];
+  if(!tbl)return null;
+  var wi=RS_WIDTHS.findIndex(function(w){return w>=wCm;});
+  if(wi<0)wi=RS_WIDTHS.length-1;
+  var hi=RS_HEIGHTS.findIndex(function(h){return h>=hCm;});
+  if(hi<0)hi=RS_HEIGHTS.length-1;
+  var row=tbl[hi];
+  if(!row||row[wi]==null)return null;
+  return {price:row[wi], widthUsed:RS_WIDTHS[wi], heightUsed:RS_HEIGHTS[hi]};
+}
+function rsSuppLookup(tbl,wCm){
+  var wi=RS_SUPP_WIDTHS.findIndex(function(w){return w>=wCm;});
+  if(wi<0)wi=RS_SUPP_WIDTHS.length-1;
+  var keys=Object.keys(tbl).map(Number).sort(function(a,b){return a-b;});
+  return tbl[keys[wi]]||tbl[keys[keys.length-1]]||0;
+
 
 var RRZ_WIDTHS = [90,120,150,180,210,240,270,300,330,360,390,420,450,480];
 
@@ -856,6 +1004,44 @@ function calc(p){
       lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2");
     }
     if(rb)lines.push("+ B\u0119benek 11 z\u0142");
+  }else if(p.type==="shadow"){
+    var wCm=par.wCm||0,hCm=par.hCm||0;
+    if(!wCm||!hCm)return{total:0,lines:[],warn:null};
+    var sg=c.sgrup||"C";
+    var res=rsShadowLookup(sg,wCm,hCm);
+    if(!res)return{total:0,lines:[],warn:"Wymiary poza zakresem cennika (maks. 300\xd7300 cm)."};
+    total=res.price;
+    lines.push("Roleta Shadow RM (Gr."+sg+") "+res.widthUsed+"\xd7"+res.heightUsed+"cm \u2192 "+res.price+" z\u0142");
+    // Profil montażowy
+    if(c.sprofil==="tak"){var pv=rsSuppLookup(RS_PROFIL,wCm);total+=pv;lines.push("+ Profil monta\u017cowy +"+pv+" z\u0142");}
+    // Obciążnik
+    if(c.sobcTyp&&c.sobcTyp!=="A"){
+      var obcTbl={B:RS_OB_B,C:RS_OB_C,D:RS_OB_D}[c.sobcTyp];
+      if(obcTbl){var ov=rsSuppLookup(obcTbl,wCm);total+=ov;lines.push("+ Obci\u0105\u017cnik Typ "+c.sobcTyp+" +"+ov+" z\u0142");}
+    }else if(c.sobcTyp==="A"){
+      lines.push("+ Obci\u0105\u017cnik Typ A (standardowy, w cenie)");
+    }
+    // Maskownica
+    if(c.smask&&c.smask!=="brak"){var mv=RS_MASKS[c.smask]||0;if(mv){total+=mv;var mcl=RS_MASK_COLORS.find(function(x){return x.k===c.smaskKolor;});var mklbl=mcl?" ("+mcl.l+")":"";lines.push("+ Maskownica "+c.smask+mklbl+" +"+mv.toFixed(2)+" z\u0142");}}
+    // Zestaw żyłkowy
+    if(c.szylko==="tak"){total+=RS_ZESTAW_ZYLKOWY;lines.push("+ Zestaw do prowadzenia \u017cy\u0142kowego +"+RS_ZESTAW_ZYLKOWY.toFixed(2)+" z\u0142");}
+    // Obciążnik łańcuszka
+    if(c.slanc==="tak"){total+=RS_LANCUSZEK;lines.push("+ Ozdobny obci\u0105\u017cnik \u0142a\u0144cuszka +"+RS_LANCUSZEK.toFixed(2)+" z\u0142");}
+    // Napęd
+    if(c.smotor){
+      var mot=RS_MOTORS.find(function(m){return m.id===c.smotor;});
+      if(mot){total+=mot.price;lines.push("+ Nap\u0119d "+mot.label+" +"+mot.price+" z\u0142");}
+    }
+    // Pilot/centralka
+    if(c.sremotes&&c.sremotes.length){
+      c.sremotes.forEach(function(rid){
+        var rem=RS_REMOTES.find(function(r){return r.id===rid;});
+        if(rem){total+=rem.price;lines.push("+ "+rem.label+" +"+rem.price+" z\u0142");}
+      });
+    }
+  }else if(p.type==="szyna"){
+    var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0,qty=par.qty||1;
+
   }else if(p.type==="szyna"){
     var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0,qty=par.qty||1;
     if(!lenCm)return{total:0,lines:[],warn:null};
@@ -3157,6 +3343,173 @@ function ProdCard(p){
         elektrykSection
       ):null
     );
+
+    }else if(prod.type==="shadow"){
+    // ── ROLETA SHADOW FORM ───────────────────────────────────────────
+    form=ce(Fragment,null,
+      // Wymiary
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+      ),
+      // Grupa cenowa
+      ce(Fld,{label:"GRUPA CENOWA"},
+        ce("div",{style:{display:"flex",gap:8}},
+          ["C","D","E"].map(function(g){
+            var isA=(c.sgrup||"C")===g;
+            return ce("button",{key:g,onClick:function(){sc("sgrup",g);},style:{flex:1,padding:"12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?700:400,cursor:"pointer"}},isA?"\u2713 "+g:g);
+          })
+        )
+      ),
+      // Profil montażowy
+      ce("div",{style:{marginTop:12}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:c.sprofil==="tak",onChange:function(ev){sc("sprofil",ev.target.checked?"tak":null);}}),
+          "Profil monta\u017cowy (dop\u0142ata wg szeroko\u015bci)"
+        )
+      ),
+      // Obciążnik — karty z obrazkami
+      ce(Fld,{label:"OBCI\u0104\u017bNIK"},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}},
+          [
+            {k:"A", l:"Typ A", img:RS_IMG.obcA},
+            {k:"B", l:"Typ B", img:RS_IMG.obcB},
+            {k:"C", l:"Typ C", img:RS_IMG.obcC},
+            {k:"D", l:"Typ D", img:RS_IMG.obcD}
+          ].map(function(o){
+            var isA=c.sobcTyp===o.k;
+            return ce("button",{key:o.k,onClick:function(){sc("sobcTyp",isA?null:o.k);},
+              style:{padding:0,borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),
+                background:isA?"var(--bg2)":"var(--bg)",cursor:"pointer",overflow:"hidden",
+                display:"flex",flexDirection:"column",alignItems:"center",transition:"border-color .15s"}},
+              ce("div",{style:{width:"100%",height:90,background:"#fff",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"8px 8px 0 0",overflow:"hidden"}},
+                ce("img",{src:o.img,alt:o.l,style:{maxWidth:"100%",maxHeight:86,objectFit:"contain",display:"block"}})
+              ),
+              ce("span",{style:{display:"block",padding:"6px 4px",fontSize:12,fontWeight:isA?700:400,color:isA?"var(--t1)":"var(--t2)"}},
+                isA?"\u2713 "+o.l:o.l
+              )
+            );
+          })
+        )
+      ),
+      // Maskownica — bez opcji "Brak", kliknięcie aktywnej odznacza
+      ce(Fld,{label:"MASKOWNICA UCHWYTU (RM40)"},
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          [{k:"oval",l:"Oval 27,56 z\u0142"},{k:"kwadro",l:"Kwadro 33,92 z\u0142"},{k:"cube",l:"Cube 38,16 z\u0142"}].map(function(o){
+            var isA=c.smask===o.k;
+            return ce("button",{key:o.k,onClick:function(){sc("smask",isA?null:o.k);if(isA)sc("smaskKolor",null);},style:{padding:"10px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer"}},isA?"\u2713 "+o.l:o.l);
+          })
+        )
+      ),
+      c.smask?ce(Fld,{label:"KOLOR MASKOWNIC"},
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:4}},
+          RS_MASK_COLORS.map(function(col){
+            var isA=(c.smaskKolor||"bialy")===col.k;
+            return ce("button",{key:col.k,onClick:function(){sc("smaskKolor",col.k);},
+              style:{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderRadius:10,
+                border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),
+                background:isA?"var(--bg2)":"var(--bg)",
+                cursor:"pointer",fontSize:13,fontWeight:isA?600:400,color:"var(--t1)"}},
+              ce("span",{style:{width:18,height:18,borderRadius:"50%",background:col.hex,border:"1.5px solid "+col.border,display:"inline-block",flexShrink:0}}),
+              isA?"\u2713 "+col.l:col.l
+            );
+          })
+        )
+      ):null,
+      // Dopłaty stałe
+      ce("div",{style:{marginTop:4,display:"flex",flexDirection:"column",gap:8}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:c.szylko==="tak",onChange:function(ev){sc("szylko",ev.target.checked?"tak":null);}}),
+          "Zestaw do prowadzenia \u017cy\u0142kowego +27,56 z\u0142/kpl"
+        ),
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:c.slanc==="tak",onChange:function(ev){sc("slanc",ev.target.checked?"tak":null);}}),
+          "Ozdobny obci\u0105\u017cnik \u0142a\u0144cuszka +15,90 z\u0142/szt"
+        )
+      ),
+      // Napęd
+      ce(Fld,{label:"NAP\u0118D (opcjonalnie)"},
+        ce("select",{value:c.smotor||"",onChange:function(ev){sc("smotor",ev.target.value||null);},style:Object.assign({},IST,{width:"100%"})},
+          ce("option",{value:""},"-- Manualny / brak nap\u0119du --"),
+          ce("optgroup",{label:"\u2014 Przewodowe"},
+            RS_MOTORS.filter(function(m){return m.type==="wire";}).map(function(m){
+              return ce("option",{key:m.id,value:m.id},m.label+" | "+m.price+" z\u0142");
+            })
+          ),
+          ce("optgroup",{label:"\u2014 Radiowe"},
+            RS_MOTORS.filter(function(m){return m.type==="radio";}).map(function(m){
+              return ce("option",{key:m.id,value:m.id},m.label+" | "+m.price+" z\u0142");
+            })
+          )
+        )
+      ),
+      // Pilot i centralka — niezależne checkboxy (tylko gdy wybrany napęd)
+      c.smotor?ce("div",{style:{display:"flex",flexDirection:"column",gap:10,marginTop:4}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:2}},"PILOT / CENTRALKA (opcjonalnie)"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+          [{id:"ac12701",label:"Pilot 1-kan. AC-127-01",price:162},{id:"ac52001",label:"Centralka Smart Home AC-520-01",price:405},{id:"ac52601",label:"Centralka Smart Home ZigBee AC-526-01",price:385}].map(function(r){
+            var checked=(c.sremotes||[]).indexOf(r.id)>=0;
+            return ce("label",{key:r.id,style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:13,color:"var(--t1)",padding:"8px 12px",borderRadius:8,border:"1px solid "+(checked?"var(--t1)":"var(--bd2)"),background:checked?"var(--bg2)":"var(--bg)"}},
+              ce("input",{type:"checkbox",checked:checked,onChange:function(){
+                var cur=c.sremotes||[];
+                var next=checked?cur.filter(function(x){return x!==r.id;}):cur.concat([r.id]);
+                sc("sremotes",next.length?next:null);
+              }}),
+              ce("span",{style:{flex:1}},r.label),
+              ce("span",{style:{fontWeight:600,color:"var(--t2)",whiteSpace:"nowrap"}},r.price+" z\u0142")
+            );
+          })
+        )
+      ):null,
+      // ── SCHEMATY TECHNICZNE ──────────────────────────────────────
+      ce("div",{style:{marginTop:8,borderRadius:10,border:"1px solid var(--bd2)",overflow:"hidden"}},
+        ce("button",{
+          onClick:function(){sc("sSchemat",c.sSchemat==="open"?null:"open");},
+          style:{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",
+            padding:"12px 16px",background:"var(--bg2)",border:"none",cursor:"pointer",
+            fontSize:13,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase"}},
+          "\uD83D\uDCCF Schematy techniczne RM40 / RM45",
+          ce("span",{style:{fontSize:16,transition:"transform .2s",display:"inline-block",
+            transform:c.sSchemat==="open"?"rotate(180deg)":"rotate(0deg)"}},"▾")
+        ),
+        c.sSchemat==="open"?ce("div",{style:{padding:"16px",display:"flex",flexDirection:"column",gap:20,background:"var(--bg)"}},
+          // RM 40
+          ce("div",null,
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",marginBottom:8}},"ROLETA RM 40"),
+            ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Schemat pomiaru"),
+                ce("img",{src:RS_IMG.rm40schemat,alt:"RM40 schemat pomiaru",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              ),
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Uchwyty i profil monta\u017cowy"),
+                ce("img",{src:RS_IMG.rm40uchwyty,alt:"RM40 uchwyty",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              )
+            )
+          ),
+          // RM 45
+          ce("div",null,
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",marginBottom:8}},"ROLETA RM 45"),
+            ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Schemat pomiaru"),
+                ce("img",{src:RS_IMG.rm45schemat,alt:"RM45 schemat pomiaru",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              ),
+              ce("div",null,
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:4}},"Uchwyty i profil monta\u017cowy"),
+                ce("img",{src:RS_IMG.rm45uchwyty,alt:"RM45 uchwyty",
+                  style:{width:"100%",borderRadius:8,border:"1px solid var(--bd2)",display:"block"}})
+              )
+            )
+          )
+        ):null
+      )
+    );
+
+
 
     }else if(prod.type==="szyna"){
     form=ce(Fragment,null,
