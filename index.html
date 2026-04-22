@@ -842,6 +842,8 @@ function rsSuppLookup(tbl,wCm){
   if(wi<0)wi=RS_SUPP_WIDTHS.length-1;
   var keys=Object.keys(tbl).map(Number).sort(function(a,b){return a-b;});
   return tbl[keys[wi]]||tbl[keys[keys.length-1]]||0;
+}
+// ── END ROLETA SHADOW DATA ────────────────────────────────────────────────────
 
 
 var RRZ_WIDTHS = [90,120,150,180,210,240,270,300,330,360,390,420,450,480];
