@@ -1411,87 +1411,90 @@ function generateSimplifiedPDF(client,comm){
     return {rows:rows,total:total};
   }
 
-  // Buduj sekcje: pomieszczenie → plain windows + variant groups osobno
-  var roomSections="";
-  var grandTotal=0; // suma Wariantu A (lub jedynego wariantu) z każdej grupy + zwykłe okna
-
+  // Zbierz wszystkie etykiety wariantow uzywane w tym kliencie
+  var allVariantLabels={};
   (client.rooms||[]).forEach(function(room){
-    if(!(room.windows||[]).length)return;
-    var wins=room.windows||[];
-
-    // segregate
-    var variantGroups={};
-    var variantGroupOrder=[];
-    var plainWins=[];
-    wins.forEach(function(w){
-      if(w.variantGroup){
-        if(!variantGroups[w.variantGroup]){variantGroups[w.variantGroup]=[];variantGroupOrder.push(w.variantGroup);}
-        variantGroups[w.variantGroup].push(w);
-      } else {
-        plainWins.push(w);
-      }
+    (room.windows||[]).forEach(function(w){
+      if(w.variantGroup&&w.variantLabel){allVariantLabels[w.variantLabel]=true;}
     });
-
-    var roomSection="";
-    var roomBaseTotal=0;
-
-    // plain windows section
-    if(plainWins.length){
-      var pr=buildWinRows(plainWins);
-      if(pr.total){
-        var totalRow="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">\u0141\u0105cznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+roundTo10(pr.total)+" z\u0142</td></tr>";
-        roomSection+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:4mm;\"><tbody>"+pr.rows+totalRow+"</tbody></table>";
-        roomBaseTotal+=pr.total;
-      }
-    }
-
-    // variant groups
-    variantGroupOrder.forEach(function(gid){
-      var group=variantGroups[gid].slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
-      var baseName=group[0].variantBaseName||group[0].name;
-      var groupHtml="<div style=\"border:2px solid #3367d6;border-radius:6px;margin-bottom:4mm;overflow:hidden;\">";
-      groupHtml+="<div style=\"background:#e8f0fe;padding:6px 10px;font-size:10px;font-weight:700;color:#3367d6;letter-spacing:0.07em;text-transform:uppercase;\">\uD83D\uDD00 Warianty \u2014 "+baseName+"</div>";
-      group.forEach(function(w,gi){
-        var vr=buildWinRows([w]);
-        if(!vr.total)return;
-        if(gi===0)roomBaseTotal+=vr.total; // count only Variant A to grand total
-        var variantBg=gi%2===0?"#fff":"#f0f4ff";
-        var totalRow="<tr style=\"background:"+(gi===0?"#dce8f7":"#e8f0fe")+";\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#3367d6;\">\u0141\u0105cznie Wariant "+w.variantLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#3367d6;\">"+roundTo10(vr.total)+" z\u0142</td></tr>";
-        groupHtml+="<div style=\"background:"+variantBg+";padding:4px 0;\"><div style=\"padding:5px 10px;font-size:10px;font-weight:700;color:#3367d6;\">Wariant "+w.variantLabel+"</div><table style=\"width:100%;border-collapse:collapse;\"><tbody>"+vr.rows+totalRow+"</tbody></table></div>";
-      });
-      groupHtml+="</div>";
-      roomSection+=groupHtml;
-    });
-
-    if(!roomBaseTotal)return;
-    grandTotal+=roomBaseTotal;
-
-    roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:3mm;\">"+room.name+"</div>"+roomSection+"</div>";
   });
+  var variantLabelsSorted=Object.keys(allVariantLabels).sort();
+  var hasAnyVariants=variantLabelsSorted.length>0;
 
-  if(!grandTotal){alert("Brak pozycji do wyceny.");return;}
+  // Pomocnik: buduje html jednego PDF dla danego zestawu okien (plain + wybrana etykieta wariantu)
+  function buildOnePDF(variantLabel){
+    var roomSections2="";
+    var grandTotal2=0;
 
-  var html="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Wycena Uproszczona — "+client.name+"</title>"+pdfStyles()+"</head><body>"
-    +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
-    +"<div class=\"header\" style=\"padding-top:2mm;\">"
-    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
-    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona</div>"
-    +"<div style=\"font-size:10px;color:#8B5E3C;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
-    +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Ważne do: "+validStr+"</div></div></div>"
-    +"<div style=\"font-size:9px;color:#888;margin:0 0 6mm;padding-bottom:4mm;border-bottom:1px solid #ede3d9;\">Dokument poglądowy — orientacyjna wycena z podziałem na pomieszczenia. Szczegółowe zestawienie w ofercie właściwej.</div>"
-    +roomSections
-    +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
-    +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">Łącznie cała realizacja</span>"
-    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+roundTo10(grandTotal)+" zł</span></div>"
-    +"<div class=\"notes\" style=\"margin-top:6mm;\"><strong>Montaż i stylizacja tkanin wynosi 10% wartości zamówienia.</strong></div>"
-    +"<div class=\"sign-block\">"
-    +"<div class=\"sign\">Wystawiła<br><strong>Paulina Porter</strong></div>"
-    +"<div class=\"sign\">Akceptacja klienta</div>"
-    +"</div>"
-    +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
-    +"</body></html>";
+    (client.rooms||[]).forEach(function(room){
+      if(!(room.windows||[]).length)return;
+      var wins=room.windows||[];
 
-  openPDFWindow(html, "wycena-uproszczona-"+offerNo);
+      // dla tego PDF bierzemy: okna bez wariantu + okna z wybraną etykietą wariantu
+      var selectedWins=wins.filter(function(w){
+        if(!w.variantGroup)return true;
+        return w.variantLabel===variantLabel;
+      });
+      if(!selectedWins.length)return;
+
+      var roomSection2="";
+      var roomTotal2=0;
+
+      selectedWins.forEach(function(w){
+        var wr=buildWinRows([w]);
+        if(!wr.total)return;
+        var isVariantWin=!!w.variantGroup;
+        var headerColor=isVariantWin?"#3367d6":"#8B5E3C";
+        var totalRowBg=isVariantWin?"#dce8f7":"#f5ede0";
+        var winLabel=isVariantWin?(w.variantBaseName||w.name):w.name;
+        var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
+        roomSection2+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+totalRow2+"</tbody></table>";
+        roomTotal2+=wr.total;
+      });
+
+      if(!roomTotal2)return;
+      grandTotal2+=roomTotal2;
+      roomSections2+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:3mm;\">"+room.name+"</div>"+roomSection2+"</div>";
+    });
+
+    if(!grandTotal2)return null;
+
+    var variantSuffix=variantLabel?" \u2014 Wariant "+variantLabel:"";
+    var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Wycena Uproszczona"+variantSuffix+" \u2014 "+client.name+"</title>"+pdfStyles()+"</head><body>"
+      +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
+      +"<div class=\"header\" style=\"padding-top:2mm;\">"
+      +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
+      +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
+      +"<div style=\"font-size:10px;color:#8B5E3C;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
+      +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
+      +"<div style=\"font-size:9px;color:#888;margin:0 0 6mm;padding-bottom:4mm;border-bottom:1px solid #ede3d9;\">Dokument pogl\u0105dowy \u2014 orientacyjna wycena z podzia\u0142em na pomieszczenia. Szczeg\u00f3\u0142owe zestawienie w ofercie w\u0142a\u015bciwej.</div>"
+      +roomSections2
+      +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+      +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">\u0141\u0105cznie ca\u0142a realizacja</span>"
+      +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>"
+      +"<div class=\"notes\" style=\"margin-top:6mm;\"><strong>Monta\u017c i stylizacja tkanin wynosi 10% warto\u015bci zam\u00f3wienia.</strong></div>"
+      +"<div class=\"sign-block\">"
+      +"<div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
+      +"<div class=\"sign\">Akceptacja klienta</div>"
+      +"</div>"
+      +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
+      +"</body></html>";
+    return h;
+  }
+
+  if(hasAnyVariants){
+    var opened=0;
+    variantLabelsSorted.forEach(function(lbl){
+      var h=buildOnePDF(lbl);
+      if(h){openPDFWindow(h,"wycena-uproszczona-wariant"+lbl+"-"+offerNo);opened++;}
+    });
+    if(!opened){alert("Brak pozycji do wyceny.");}
+  } else {
+    var h=buildOnePDF(null);
+    if(!h){alert("Brak pozycji do wyceny.");return;}
+    openPDFWindow(h,"wycena-uproszczona-"+offerNo);
+  }
+
 }
 
 // ── GENEROWANIE MAILA DO KLIENTA ──────────────────────────────────────────
