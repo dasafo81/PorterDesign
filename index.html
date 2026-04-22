@@ -1384,54 +1384,89 @@ function generateSimplifiedPDF(client,comm){
     return sz+" "+mars;
   }
 
-  // Buduj wiersze: grupuj per pomieszczenie → per typ produktu
-  var roomSections="";
-  var grandTotal=0;
-
-  (client.rooms||[]).forEach(function(room){
-    if(!(room.windows||[]).length)return;
-    // Zbierz wszystkie produkty z tego pomieszczenia pogrupowane po typie
-    // typeData: { count, total, type, innyNazwa, sewings: Set of sewing strings }
+  // Helper: build product rows table for a list of windows
+  function buildWinRows(windows){
     var typeData={};
     var typeOrder=[];
-    var roomTotal=0;
-    (room.windows||[]).forEach(function(w){
+    var total=0;
+    (windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
-        var total=calcProd(p);
-        if(!total)return;
+        var t=calcProd(p);
+        if(!t)return;
         var key=p.type==="inny"?(p.innyNazwa||"Inne"):p.type;
         if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,sewings:[]};typeOrder.push(key);}
         typeData[key].count+=1;
-        typeData[key].total+=total;
-        if(p.type==="zaslona"||p.type==="firana"){
-          var si=sewingInfo(p);
-          if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);
-        }
-        roomTotal+=total;
+        typeData[key].total+=t;
+        if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
+        total+=t;
       });
     });
-    if(!roomTotal)return;
-    grandTotal+=roomTotal;
-
     var rows="";
     typeOrder.forEach(function(key){
       var d=typeData[key];
-      var lbl;
-      if(d.type==="inny"){
-        lbl=d.innyNazwa||"Inne";
-      } else {
-        lbl=pluralProd(d.type,d.count);
-      }
-      var extra="";
-      if(d.sewings.length>0){
-        extra=" <span style=\"font-size:9px;color:#888;font-weight:400;\">(" + d.sewings.join(", ") + ")</span>";
-      }
+      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):pluralProd(d.type,d.count);
+      var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
       rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
-    // Łącznie dla pomieszczenia
-    rows+="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">\u0141\u0105cznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+roundTo10(roomTotal)+" z\u0142</td></tr>";
+    return {rows:rows,total:total};
+  }
 
-    roomSections+="<div style=\"margin-bottom:10mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:0;\">"+room.name+"</div><table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;\"><tbody>"+rows+"</tbody></table></div>";
+  // Buduj sekcje: pomieszczenie → plain windows + variant groups osobno
+  var roomSections="";
+  var grandTotal=0; // suma Wariantu A (lub jedynego wariantu) z każdej grupy + zwykłe okna
+
+  (client.rooms||[]).forEach(function(room){
+    if(!(room.windows||[]).length)return;
+    var wins=room.windows||[];
+
+    // segregate
+    var variantGroups={};
+    var variantGroupOrder=[];
+    var plainWins=[];
+    wins.forEach(function(w){
+      if(w.variantGroup){
+        if(!variantGroups[w.variantGroup]){variantGroups[w.variantGroup]=[];variantGroupOrder.push(w.variantGroup);}
+        variantGroups[w.variantGroup].push(w);
+      } else {
+        plainWins.push(w);
+      }
+    });
+
+    var roomSection="";
+    var roomBaseTotal=0;
+
+    // plain windows section
+    if(plainWins.length){
+      var pr=buildWinRows(plainWins);
+      if(pr.total){
+        var totalRow="<tr style=\"background:#f5ede0;\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#8B5E3C;\">\u0141\u0105cznie "+room.name+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#8B5E3C;\">"+roundTo10(pr.total)+" z\u0142</td></tr>";
+        roomSection+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:4mm;\"><tbody>"+pr.rows+totalRow+"</tbody></table>";
+        roomBaseTotal+=pr.total;
+      }
+    }
+
+    // variant groups
+    variantGroupOrder.forEach(function(gid){
+      var group=variantGroups[gid].slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+      var baseName=group[0].variantBaseName||group[0].name;
+      var groupHtml="<div style=\"border:2px solid #3367d6;border-radius:6px;margin-bottom:4mm;overflow:hidden;\">";
+      groupHtml+="<div style=\"background:#e8f0fe;padding:6px 10px;font-size:10px;font-weight:700;color:#3367d6;letter-spacing:0.07em;text-transform:uppercase;\">\uD83D\uDD00 Warianty \u2014 "+baseName+"</div>";
+      group.forEach(function(w,gi){
+        var vr=buildWinRows([w]);
+        if(!vr.total)return;
+        if(gi===0)roomBaseTotal+=vr.total; // count only Variant A to grand total
+        var variantBg=gi%2===0?"#fff":"#f0f4ff";
+        var totalRow="<tr style=\"background:"+(gi===0?"#dce8f7":"#e8f0fe")+";\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:#3367d6;\">\u0141\u0105cznie Wariant "+w.variantLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:#3367d6;\">"+roundTo10(vr.total)+" z\u0142</td></tr>";
+        groupHtml+="<div style=\"background:"+variantBg+";padding:4px 0;\"><div style=\"padding:5px 10px;font-size:10px;font-weight:700;color:#3367d6;\">Wariant "+w.variantLabel+"</div><table style=\"width:100%;border-collapse:collapse;\"><tbody>"+vr.rows+totalRow+"</tbody></table></div>";
+      });
+      groupHtml+="</div>";
+      roomSection+=groupHtml;
+    });
+
+    if(!roomBaseTotal)return;
+    grandTotal+=roomBaseTotal;
+
+    roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:3mm;\">"+room.name+"</div>"+roomSection+"</div>";
   });
 
   if(!grandTotal){alert("Brak pozycji do wyceny.");return;}
@@ -3330,29 +3365,78 @@ function App(){
         var wins=r.windows||[];
         // check if this window already has a variantGroup
         var grpId=win.variantGroup||("vg_"+win.id);
-        // get existing variant labels in this group
-        var existingLabels=wins.filter(function(w){return w.variantGroup===grpId;}).map(function(w){return w.variantLabel||"";});
-        // next label: A if none exist yet (original gets A), then B, C...
         var letters="ABCDEFGHIJ";
-        var nextLetter=letters[existingLabels.length+1]||"?"; // +1 because original will be A
+        var isFirstVariant=!win.variantGroup;
+        // rename original to Wariant A if not yet in a group
         var newWins=wins.map(function(w){
           if(w.id!==win.id)return w;
-          // rename original to Wariant A if it doesn't have a variantGroup yet
           if(!w.variantGroup){
             var baseName=w.name;
             return mg(w,{variantGroup:grpId,variantLabel:"A",variantBaseName:baseName,name:baseName+" \u2014 Wariant A"});
           }
           return w;
         });
-        // build new variant window (deep copy of products)
-        var origWin=newWins.find(function(w){return w.id===win.id;});
-        var baseName=origWin.variantBaseName||win.name;
-        var newVariant=JSON.parse(JSON.stringify(origWin));
+        // count how many are now in the group (after renaming original) → next letter index
+        var countInGroup=newWins.filter(function(w){return w.variantGroup===grpId;}).length;
+        var nextLetter=letters[countInGroup]||"?"; // countInGroup=1 after first rename → index 1 = "B"
+        // build new variant window (deep copy of source window, which is the one clicked)
+        var srcWin=newWins.find(function(w){return w.id===win.id;})||win;
+        var baseName=srcWin.variantBaseName||win.name;
+        var newVariant=JSON.parse(JSON.stringify(srcWin));
         newVariant.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
         newVariant.variantGroup=grpId;
         newVariant.variantLabel=nextLetter;
         newVariant.variantBaseName=baseName;
         newVariant.name=baseName+" \u2014 Wariant "+nextLetter;
+        newWins=newWins.concat([newVariant]);
+        return mg(r,{windows:newWins});
+      });
+      return mg(cl,{rooms:newRooms});
+    });
+  }
+
+  // Wariant Marszczenie: kopiuje okno, zmienia mars zasłon/firan na nextMars
+  function duplicateWinAsVariantMarszczenie(win){
+    // detect current mars of first zaslona/firana to suggest next value
+    var firstCurtain=(win.products||[]).find(function(p){return p.type==="zaslona"||p.type==="firana";});
+    if(!firstCurtain){alert("Brak zas\u0142ony/firany w tym oknie \u2014 Wariant Marszczenie nie ma zastosowania.");return;}
+    var curMars=+(firstCurtain.c&&firstCurtain.c.mars!=null?firstCurtain.c.mars:1.5);
+    // toggle: 150% → 200%, 200% → 150%
+    var nextMars=(+curMars.toFixed(2)===1.5)?2.0:1.5;
+    var nextMarsPct=Math.round(nextMars*100)+"%";
+
+    updateClient(curClientId,function(cl){
+      var newRooms=(cl.rooms||[]).map(function(r){
+        if(r.id!==curRoomId)return r;
+        var wins=r.windows||[];
+        var grpId=win.variantGroup||("vg_"+win.id);
+        // rename original to Wariant A if first time
+        var newWins=wins.map(function(w){
+          if(w.id!==win.id)return w;
+          if(!w.variantGroup){
+            var baseName=w.name;
+            return mg(w,{variantGroup:grpId,variantLabel:"A",variantBaseName:baseName,name:baseName+" \u2014 Wariant A"});
+          }
+          return w;
+        });
+        var countInGroup=newWins.filter(function(w){return w.variantGroup===grpId;}).length;
+        var letters="ABCDEFGHIJ";
+        var nextLetter=letters[countInGroup]||"?";
+        var srcWin=newWins.find(function(w){return w.id===win.id;})||win;
+        var baseName=srcWin.variantBaseName||win.name;
+        var newVariant=JSON.parse(JSON.stringify(srcWin));
+        newVariant.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+        newVariant.variantGroup=grpId;
+        newVariant.variantLabel=nextLetter;
+        newVariant.variantBaseName=baseName;
+        newVariant.name=baseName+" \u2014 Wariant "+nextLetter+" ("+nextMarsPct+")";
+        // change mars on all zaslona/firana products
+        newVariant.products=(newVariant.products||[]).map(function(p){
+          if(p.type==="zaslona"||p.type==="firana"){
+            return mg(p,{c:mg(p.c||{},{mars:nextMars.toFixed(2)})});
+          }
+          return p;
+        });
         newWins=newWins.concat([newVariant]);
         return mg(r,{windows:newWins});
       });
@@ -3529,6 +3613,7 @@ function App(){
       var t=wt(w);
       var labels=(w.products||[]).map(function(p){return(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;}).join(", ");
       var isVariant=!!w.variantGroup;
+      var hasCurtain=(w.products||[]).some(function(p){return p.type==="zaslona"||p.type==="firana";});
       var variantBadge=isVariant?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"#e8f0fe",color:"#3367d6",borderRadius:6,padding:"2px 7px",marginLeft:6,verticalAlign:"middle"}},"Wariant "+w.variantLabel):null;
       return ce("div",{key:w.id,
         style:{display:"flex",alignItems:"center",gap:14,padding:"16px 14px",borderBottom:"1px solid var(--bd3)",borderRadius:0,position:"relative",background:isVariant?"rgba(51,103,214,0.03)":"transparent"}},
@@ -3547,6 +3632,11 @@ function App(){
             title:"Utw\u00f3rz wariant tego okna",
             style:{border:"1px solid #3367d6",background:"#e8f0fe",cursor:"pointer",fontSize:11,color:"#3367d6",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
           },"\u2B6F Wariant"),
+          hasCurtain?ce("button",{
+            onClick:function(ev){ev.stopPropagation();duplicateWinAsVariantMarszczenie(w);},
+            title:"Wariant z innym procentem marszczenia",
+            style:{border:"1px solid #7b4fa6",background:"#f3eaff",cursor:"pointer",fontSize:11,color:"#7b4fa6",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
+          },"\uD83E\uDDF5 Marszczenie"):null,
           ce("button",{
             onClick:function(ev){
               ev.stopPropagation();
