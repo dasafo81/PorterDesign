@@ -39,7 +39,7 @@
   </style>
 </head>
 <body>
-<div id="root"><div class="app-inner"><div id="app-mount"></div></div><div style="text-align:center;padding:0.8rem 1rem 1.4rem;font-size:8px;color:var(--t3);letter-spacing:0.18em;text-transform:uppercase;border-top:0.5px solid var(--bd3);opacity:0.6;margin-top:auto;">Created by Porter Design &nbsp;·&nbsp; <span id="app-version" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Historia zmian">v1.0.0</span></div></div>
+<div id="root"><div class="app-inner"><div id="app-mount"></div></div><div style="text-align:center;padding:0.8rem 1rem 1.4rem;font-size:8px;color:var(--t3);letter-spacing:0.18em;text-transform:uppercase;border-top:0.5px solid var(--bd3);opacity:0.6;margin-top:auto;">Created by Porter Design &nbsp;·&nbsp; <span id="app-version" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Historia zmian">v1.2.0</span></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script>
@@ -3463,6 +3463,30 @@ function ProdCard(p){
           })
         )
       ):null,
+      // Strona silnika / strona obsługi
+      c.smotor
+        ? ce("div",{style:{marginTop:12}},
+            ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"STRONA SILNIKA"),
+            ce("div",{style:{display:"flex",gap:10}},
+              ["Lewo","Prawo"].map(function(str){
+                var isA=(c.sstronaSilnika||"Lewo")===str;
+                return ce("button",{key:str,onClick:function(){sc("sstronaSilnika",str);},style:{flex:1,padding:"14px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+                  isA?"\u2713 "+str:str
+                );
+              })
+            )
+          )
+        : ce("div",{style:{marginTop:12}},
+            ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"STRONA OBS\u0141UGI"),
+            ce("div",{style:{display:"flex",gap:10}},
+              ["Lewo","Prawo"].map(function(str){
+                var isA=(c.sstronaObslugi||"Lewo")===str;
+                return ce("button",{key:str,onClick:function(){sc("sstronaObslugi",str);},style:{flex:1,padding:"14px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+                  isA?"\u2713 "+str:str
+                );
+              })
+            )
+          ),
       // ── SCHEMATY TECHNICZNE ──────────────────────────────────────
       ce("div",{style:{marginTop:8,borderRadius:10,border:"1px solid var(--bd2)",overflow:"hidden"}},
         ce("button",{
@@ -3597,9 +3621,11 @@ function ProdCard(p){
       ce("button",{onClick:function(){if(hasProdData(prod)){setShowRemoveConfirm(true);}else{p.onRemove();}},style:{border:"none",background:"rgba(255,255,255,0.15)",cursor:"pointer",fontSize:18,color:"#fff",padding:"5px 9px",borderRadius:7,lineHeight:1}},"×")
     ),
     ce("div",{style:{padding:"16px 20px 4px"}},
-      ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
+      ce("div",{style:{marginBottom:16}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"TYP PRODUKTU"),
-        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},typeChips)
+        ce("div",{style:{border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
+          ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",padding:"8px"}},typeChips)
+        )
       )
     ),
     ce("div",{style:{padding:"4px 20px 20px",display:"flex",flexDirection:"column"}},
@@ -4704,8 +4730,35 @@ function ModalAIValuation(p){
 (function(){
   var CHANGELOG=[
     {
+      version:"v1.2.0",
+      date:"2026-04-23",
+      notes:[
+        "Roleta Shadow: opcja strona silnika (lewo/prawo) przy napędzie elektrycznym",
+        "Roleta Shadow: opcja strona obsługi (lewo/prawo) przy wersji manualnej",
+        "Poprawka: etykieta „TYP PRODUKTU” nie jest już przycinana przez zaokrąglenie ramki"
+      ]
+    },
+    {
+      version:"v1.1.0",
+      date:"2026-04-22",
+      notes:[
+        "Nowy typ produktu: Roleta Shadow (grupy cenowe C/D/E, obciążniki, maskownice, napędy Somfy)",
+        "Warianty wyceny — możliwość tworzenia wariantów okna (A/B/C…) do porównania opcji",
+        "Wycena uproszczona: osobne PDF dla każdego wariantu",
+        "Wycena uproszczona: liczba mnoga nazw produktów + info o marszczeniu i Flex/Wave",
+        "Nagłówek karty produktu: kolor tła wyróżniający sekcje przy przewijaniu",
+        "Roleta rzymska: napęd elektryczny — wybor producenta (Somfy / Premium Line) z cennikiem",
+        "Szyna KS i Karnisz elektryczny: pole ilości sztuk (mnożnik ceny)",
+        "Szyna KS i Karnisz elektryczny: pole głębokości łuku (widoczne w zamówieniu)",
+        "Karnisz elektryczny: strona silnika (lewo/prawo) i typ (kurtyna/lewostronny/prawostronny)",
+        "Roleta → przemianowana na Roleta rzymska",
+        "Wykończenie: taśma obciążająca → Ołowianka",
+        "Zamówienie tkanin: osobny PDF na każdego producenta, kolumna Kolor"
+      ]
+    },
+    {
       version:"v1.0.0",
-      date:"2025-04-16",
+      date:"2026-04-16",
       notes:[
         "Pierwsza stabilna wersja produkcyjna",
         "Zarządzanie klientami, pokojami i oknami z zapisem w Supabase",
@@ -4713,12 +4766,8 @@ function ModalAIValuation(p){
         "System prowizji (Polecenie %) skalujący ceny jednostkowe",
         "Obsługa żaluzji (aluminium, bamboo, basswood), rolet i zasłon",
         "Asystent AI do generowania wycen z opisu słownego",
-        "Usunięto auto-print przy otwieraniu PDF",
-        "Poprawiono nagłówki i stopki dokumentów PDF",
         "Potwierdzenia przed usunięciem danych (klient, pokój, okno, produkt)",
         "Kategoria produktu „Inny” z polem nazwy i ceny ręcznej",
-        "Osobny PDF tkaniny na każdego producenta",
-        "Kolumna Kolor w zamówieniu tkaniny",
         "Cennik automatyki (Somfy / Premium Line) dla rolet"
       ]
     }
