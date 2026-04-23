@@ -1394,31 +1394,20 @@ function buildKarniszRows(client){
 
 function generateKarniszOrderPDF(client){
   var rows=buildKarniszRows(client);
-  if(!rows.length){alert("Brak karnisz\xf3w / szyn do zam\xf3wienia.");return;}
+  if(!rows.length){alert("Brak karniszów / szyn do zamówienia.");return;}
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
-  // Ask which supplier for each row that has no supplier assigned
-  // Present a simple prompt listing items and asking for Marcin Dekor or Forest Polska
-  var resolved=rows.map(function(r){
-    if(r.supplier)return r;
-    var answer=window.prompt(
-      r.room+" / "+r.win+" — "+r.type+" ("+r.len+"cm)\n\nWybierz dostawcę:\n1 — Marcin Dekor\n2 — Forest Polska\n\nWpisz 1 lub 2:",""
-    );
-    if(answer===null)return null; // cancelled
-    var sup=answer==="2"?"forest_polska":"marcin_dekor";
-    return Object.assign({},r,{supplier:sup});
-  });
+  // Collect rows without a supplier assigned
+  var pending=rows.filter(function(r){return !r.supplier;});
 
-  // If any prompt was cancelled
-  if(resolved.indexOf(null)>=0)return;
-
-  // Group by supplier
-  var bySupplier={};
-  KARNISZ_SUPPLIERS.forEach(function(s){bySupplier[s.key]=[];});
-  resolved.forEach(function(r){
-    var key=(r.supplier&&bySupplier[r.supplier]!==undefined)?r.supplier:"marcin_dekor";
-    bySupplier[key].push(r);
-  });
+  function proceedWithPDF(){
+    // Group by supplier
+    var bySupplier={};
+    KARNISZ_SUPPLIERS.forEach(function(s){bySupplier[s.key]=[];});
+    rows.forEach(function(r){
+      var key=(r.supplier&&bySupplier[r.supplier]!==undefined)?r.supplier:"marcin_dekor";
+      bySupplier[key].push(r);
+    });
 
   var activeSups=KARNISZ_SUPPLIERS.filter(function(s){return bySupplier[s.key].length>0;});
   if(!activeSups.length){alert("Brak pozycji.");return;}
@@ -1462,6 +1451,40 @@ function generateKarniszOrderPDF(client){
     +"</body></html>";
 
   openPDFWindow(html,"zamowienie-karnisz");
+  } // end proceedWithPDF
+
+  // If all rows already have suppliers, go straight to PDF
+  if(!pending.length){proceedWithPDF();return;}
+
+  // Build a touch-friendly dialog to assign supplier per unassigned item
+  var dlg=document.createElement("dialog");
+  dlg.style.cssText="border:none;border-radius:14px;padding:24px 20px;max-width:400px;width:92%;box-shadow:0 8px 40px rgba(0,0,0,0.22);font-family:inherit;";
+
+  var pidx=0;
+  function showSupplierPick(){
+    if(pidx>=pending.length){dlg.close();document.body.removeChild(dlg);proceedWithPDF();return;}
+    var r=pending[pidx];
+    var btns=KARNISZ_SUPPLIERS.map(function(s){
+      return '<button data-key="'+s.key+'" style="display:block;width:100%;padding:14px 16px;border-radius:8px;border:1.5px solid #c8c8c4;background:#fff;font-size:14px;font-weight:600;cursor:pointer;text-align:left;margin-bottom:10px;">'+s.label+'</button>';
+    }).join('');
+    dlg.innerHTML='<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Dostawca ('+(pidx+1)+'/'+pending.length+')</div>'
+      +'<div style="font-weight:700;font-size:15px;margin-bottom:4px">'+r.room+' / '+r.win+'</div>'
+      +'<div style="font-size:13px;color:#555;margin-bottom:20px">'+r.type+(r.len?' — '+r.len+' cm':'')+'</div>'
+      +btns
+      +'<button data-key="cancel" style="display:block;width:100%;padding:10px;border-radius:8px;border:none;background:none;font-size:13px;color:#888;cursor:pointer;">Anuluj</button>';
+    dlg.querySelectorAll("button").forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var key=btn.getAttribute("data-key");
+        if(key==="cancel"){dlg.close();document.body.removeChild(dlg);return;}
+        r.supplier=key;
+        pidx++;
+        showSupplierPick();
+      });
+    });
+  }
+  document.body.appendChild(dlg);
+  dlg.showModal();
+  showSupplierPick();
 }
 
 function generateFabricOrderPDF(client){
@@ -1480,8 +1503,14 @@ function generateFabricOrderPDF(client){
   });
   var suppliers=Object.keys(bySupplier).sort();
 
-  // Build one section per supplier
-  var supplierSections=suppliers.map(function(sup,si){
+  // Build and open one PDF window per supplier
+  var extraStyles=`
+    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
+    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
+    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
+  `;
+
+  suppliers.forEach(function(sup){
     var supRows=bySupplier[sup];
     var tableRows=supRows.map(function(r){
       return [
@@ -1492,7 +1521,7 @@ function generateFabricOrderPDF(client){
       ];
     });
     var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
-    tableRows.push(["<strong>RAZEM</strong>","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
+    tableRows.push(["<strong>RAZEM</strong>","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
 
     var tableHTML=makeTableHTML(
       ["Tkanina","Szer. belki","Ilość (mb)","Przeznaczenie"],
@@ -1500,40 +1529,29 @@ function generateFabricOrderPDF(client){
       "Pozycje do zamówienia"
     );
 
-    var pageBreak=si>0?'<div style="page-break-before:always;padding-top:10mm;"></div>':"";
-
-    return pageBreak+`
+    var bodySection=`
     <div class="supplier-header">
       <div class="supplier-name">${sup}</div>
-      <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
-      <div class="supplier-meta">Klient końcowy: <strong>${client.name}</strong>${client.addr?" — "+client.addr:""}  |  Data: ${dateStr}</div>
+      <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
+      <div class="supplier-meta">Klient końcowy: <strong>${client.name}</strong>${client.addr?" — "+client.addr:""}  |  Data: ${dateStr}</div>
     </div>
     ${tableHTML}
-    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma płatności: _________________ &nbsp;&nbsp;&nbsp; Podpis: _________________</div>
+    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________&nbsp;&nbsp;&nbsp; Forma płatności: _________________&nbsp;&nbsp;&nbsp; Podpis: _________________</div>
     <div class="sign-block" style="margin-top:8mm">
       <div class="sign">Zamawiający<br><strong>Paulina Porter</strong></div>
       <div class="sign">Dostawca — potwierdzenie</div>
     </div>`;
-  }).join("");
 
-  var extraStyles=`
-    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
-    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
-    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
-  `;
+    var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+sup+' — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
+      +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
+      +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
+      +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Dostawca: <strong>'+sup+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
+      +bodySection
+      +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
+      +'</body></html>';
 
-  var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
-    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
-    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
-    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Data: '+dateStr+' &nbsp;|&nbsp; Dostawców: '+suppliers.length+'</div></div></div>'
-    +supplierSections
-    +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
-    +"</body></html>";
-
-  var fabricNotes=window.prompt("Uwagi do zamówienia (opcjonalne):", "") || "";
-  if(fabricNotes===null)return;
-  if(fabricNotes) html=html+'<div class="notes" style="margin-top:6mm"><strong>Dodatkowe uwagi:</strong><br>'+fabricNotes+'</div>';
-  openPDFWindow(html, "zamowienie-tkaniny");
+    openPDFWindow(html,'zamowienie-tkaniny-'+sup.replace(/\s+/g,'-').toLowerCase());
+  });
 }
 
 // ── WYCENA UPROSZCZONA PDF ─────────────────────────────────────────────────
