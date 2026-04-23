@@ -932,10 +932,11 @@ function calc(p){
     var wCm=par.wCm||0,hCm=par.hCm||0;
     var belka=fabW,mars=+(c.mars||"1.5"),szycie=c.sz==="wave"?110:100;
     var dekro=c.dekro==="tak",hM=hCm/100;
+    var podszewka=c.podszewka==="tak";
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
     var useA2=belka>0&&hCm+20>belka;
     (p.panels||[]).forEach(function(pn){
-      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pwZ/100,z,kt,ks,koszt;
+      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pwZ/100,z,kt,ks,kp,koszt;
       if(useA2){
         var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil(pwZ/pg);
         z=+(lp*hM+0.2).toFixed(2);kt=+(z*fabP).toFixed(2);
@@ -946,8 +947,9 @@ function calc(p){
         var sv2=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv2).toFixed(2):+(z*szycie).toFixed(2);
       }
-      koszt=kt+ks;total+=koszt;
-      lines.push(pn.side+" "+pw+"cm \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142");
+      kp=podszewka?+(z*80+ks*0.5).toFixed(2):0;
+      koszt=kt+ks+kp;total+=koszt;
+      lines.push(pn.side+" "+pw+"cm \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":""));
     });
   }else if(p.type==="zaluzja"){
     var wCm=par.wCm||0,lCm=par.lCm||0;
@@ -1233,6 +1235,7 @@ function buildSewingRows(client){
           bottom:bottomDesc,
           glide:"Odst\u0119p "+(pc.glideGap||8)+" cm",
           leadInSides:pc.leadInSides?"tak":"nie",
+          podszewka:pc.podszewka==="tak"?"TAK":"nie",
           note:prod.note||""
         });
       });
@@ -1724,7 +1727,7 @@ function generateSewingOrderPDF(client, modalData){
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
   var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
 
-  var tableHeader=["Pom. / Okno","Rodzaj","Tkanina","Producent","Szer. belki","Kolor","Mb","Wys. (cm)","Szer. (cm)","Podzia\u0142","Styl szycia","Typ do\u0142u","Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Uwaga"];
+  var tableHeader=["Pom. / Okno","Rodzaj","Tkanina","Producent","Szer. belki","Kolor","Mb","Wys. (cm)","Szer. (cm)","Podzia\u0142","Styl szycia","Typ do\u0142u","Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Podszewka","Uwaga"];
   var tableRows=rows.map(function(r){
     return [
       r.room+" / "+r.win,
@@ -1741,10 +1744,11 @@ function generateSewingOrderPDF(client, modalData){
       r.bottom,
       r.glide,
       r.leadInSides,
+      r.podszewka||"nie",
       r.note||""
     ];
   });
-  tableRows.push(["<strong>RAZEM</strong>","","","","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+"\u00a0mb</strong>","","","","","","","",""]);
+  tableRows.push(["<strong>RAZEM</strong>","","","","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+"\u00a0mb</strong>","","","","","","","","",""]);
 
   var sewHouseBlock=sewingHouse
     ?'<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>'
@@ -1896,14 +1900,14 @@ function generateSewingOrderPDFFromRows(rows, client, modalData){
   var attachB64=modalData.attachB64||null;
   var now=new Date();var dateStr=now.toLocaleDateString('pl-PL');
   var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
-  var tableHeader=['Pom. / Okno','Rodzaj','Tkanina','Producent','Szer. belki','Kolor','Mb','Wys. (cm)','Szer. (cm)','Podzia\u0142','Styl szycia','Typ do\u0142u','Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Uwaga'];
+  var tableHeader=['Pom. / Okno','Rodzaj','Tkanina','Producent','Szer. belki','Kolor','Mb','Wys. (cm)','Szer. (cm)','Podzia\u0142','Styl szycia','Typ do\u0142u','Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Uwaga'];
   var tableRows=rows.map(function(r){
     return [r.room+' / '+r.win,r.type,'<strong>'+r.fabric+'</strong>',r.prod||'-',r.fabW+'cm',r.kolor,
       r.metry.toFixed(2).replace('.',',')+' mb',
       r.hCm?(r.hCm+'cm'):'-',r.wCm?(r.wCm+'cm'):'-',
-      r.split,r.szStyle,r.bottom,r.glide,r.leadInSides,r.note||''];
+      r.split,r.szStyle,r.bottom,r.glide,r.leadInSides,r.podszewka||"nie",r.note||''];
   });
-  tableRows.push(['<strong>RAZEM</strong>','','','','','','<strong>'+totalMetry.toFixed(2).replace('.',',')+' mb</strong>','','','','','','','','']);
+  tableRows.push(['<strong>RAZEM</strong>','','','','','','<strong>'+totalMetry.toFixed(2).replace('.',',')+' mb</strong>','','','','','','','','','']);
   var sewHouseBlock=sewingHouse
     ?('<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>')
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
@@ -2944,6 +2948,15 @@ function ProdCard(p){
           ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"14px 0",fontSize:15,color:"var(--t1)"}},
             ce("input",{type:"checkbox",checked:c.leadInSides||false,onChange:function(ev){sc("leadInSides",ev.target.checked);},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
             ce("span",{},"O\u0142\xf3w w bokach")
+          )
+        )
+      ),
+      ce("div",{style:{marginTop:16}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.podszewka==="tak"?"var(--t1)":"var(--bd2)"),background:c.podszewka==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
+          ce("input",{type:"checkbox",checked:c.podszewka==="tak",onChange:function(ev){sc("podszewka",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
+          ce("div",{},
+            ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Podszewka"),
+            ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"materia\u0142 80 z\u0142/mb + 50% do szycia")
           )
         )
       )
