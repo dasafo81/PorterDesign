@@ -4320,141 +4320,97 @@ function ModalClientEmail(p){
 }
 
 function ModalAIValuation(p){
-  var useState=React.useState,useRef=React.useRef;
-  var sr1=useState(""),inputText=sr1[0],setInputText=sr1[1];
-  var sr2=useState(null),parsed=sr2[0],setParsed=sr2[1];       // JSON od AI
-  var sr3=useState(null),calcResult=sr3[0],setCalcResult=sr3[1]; // wynik calc()
-  var sr4=useState(null),emailText=sr4[0],setEmailText=sr4[1];
-  var sr5=useState(false),loading=sr5[0],setLoading=sr5[1];
-  var sr6=useState(null),error=sr6[0],setError=sr6[1];
-  var sr7=useState(false),saved=sr7[0],setSaved=sr7[1];
-  var sr8=useState(null),savedClient=sr8[0],setSavedClient=sr8[1];
-  var sr9=useState(false),saveLoading=sr9[0],setSaveLoading=sr9[1];
-  var sr10=useState(false),emailLoading=sr10[0],setEmailLoading=sr10[1];
-  var sr11=useState(false),emailCopied=sr11[0],setEmailCopied=sr11[1];
-  var sr12=useState([]),attachments=sr12[0],setAttachments=sr12[1];
-  var emailRef=useRef(null);
-  var fileRef=useRef(null);
+  var useState=React.useState,useRef=React.useRef,useEffect=React.useEffect;
 
-  // ── SYSTEM PROMPT: AI ekstrahuje dane, NIE liczy cen ─────────────────────
-  // Listę tkanin z aplikacji wstrzykujemy dynamicznie
+  // \u2500\u2500 STATE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  var sc1=useState([]),messages=sc1[0],setMessages=sc1[1];
+  var sc2=useState(""),inputText=sc2[0],setInputText=sc2[1];
+  var sc3=useState([]),attachments=sc3[0],setAttachments=sc3[1];
+  var sc4=useState(false),loading=sc4[0],setLoading=sc4[1];
+  var sc5=useState(null),error=sc5[0],setError=sc5[1];
+  var sc6=useState(null),lastCalc=sc6[0],setLastCalc=sc6[1];
+  var sc7=useState(null),lastParsed=sc7[0],setLastParsed=sc7[1];
+  var sc8=useState(false),saved=sc8[0],setSaved=sc8[1];
+  var sc9=useState(null),savedClient=sc9[0],setSavedClient=sc9[1];
+  var sc10=useState(false),saveLoading=sc10[0],setSaveLoading=sc10[1];
+  var fileRef=useRef(null);
+  var bottomRef=useRef(null);
+
+  useEffect(function(){
+    if(bottomRef.current)bottomRef.current.scrollIntoView({behavior:"smooth"});
+  },[messages,loading]);
+
+  // \u2500\u2500 SYSTEM PROMPT \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function buildSystemPrompt(){
     var fabList=FABRICS.map(function(f){return f.name+":"+f.brutto+"PLN";}).join(", ");
     var jzList=Object.keys(JZ_LABELS).map(function(k){return k+"="+JZ_LABELS[k];}).join(", ");
     return (
-      "Jestes asystentem Porter Design – pracowni dekoracji okiennych.\n"+
-      "Twoim zadaniem jest WYLACZNIE wyodrebnic dane z maila/notatek klienta i zwrocic je jako JSON.\n"+
-      "NIE LICZYSZ CEN – aplikacja sama je wyliczy.\n\n"+
-
-      "=== DOSTEPNE TKANINY (nazwa:cena) ===\n"+
-      fabList+"\n\n"+
-
-      "=== DOSTEPNE TYPY ZALUZJI ===\n"+
-      jzList+"\n\n"+
-
-      "=== FORMAT ODPOWIEDZI ===\n"+
-      "Zwroc TYLKO poprawny JSON (bez backticks, bez komentarzy, bez zadnego innego tekstu):\n"+
-      '{"clientName":"Jan Kowalski","addr":"","rooms":[{"name":"Salon","windows":[{"name":"Okno 1","products":[]}]}]}\n\n'+
-
-      "=== TYPY PRODUKTOW i ich pola ===\n"+
-      "1. ZASLONA/FIRANA:\n"+
-      '{"type":"zaslona","par":{"wCm":200,"hCm":270},"c":{"mars":"2.3","sz":"flex","split":"equal"},"fabName":"Aisha"}\n'+
-      "  - type: zaslona lub firana\n"+
-      "  - par.wCm: szerokosc okna w cm (pelna szerokosc, nie pol)\n"+
-      "  - par.hCm: wysokosc w cm\n"+
-      "  - c.mars: mnoznik – zakladka='2.3', transparentna='2.0', firana='2.5'-'3.0'\n"+
-      "  - c.sz: 'flex' (standard) lub 'wave'\n"+
-      "  - c.split: 'equal'=komplet rowny, 'left'=tylko lewa, 'right'=tylko prawa, 'unequal'=komplet nierowny\n"+
-      "  - fabName: DOKLADNA nazwa tkaniny z listy powyzej (jesli klient podal) lub null jesli nie podano\n\n"+
-
-      "2. ZALUZJA:\n"+
-      '{"type":"zaluzja","par":{"wCm":100,"lCm":150},"c":{"jt":"ba50"}}\n'+
-      "  - par.wCm: szerokosc w cm, par.lCm: dlugosc/wysokosc w cm\n"+
-      "  - c.jt: kod z listy zaluzji powyzej (al25, al35, ba35, ba50, ba65, bs35, bs50, bs65)\n"+
-      "  - Jesli klient pyta o 'drewniane 50mm' -> ba50 lub bs50; 'aluminium' -> al25; 'bamboo' -> ba50\n\n"+
-
-      "3. ROLETA:\n"+
-      '{"type":"roleta","par":{"wCm":120,"hCm":180},"c":{"rModel":"relax"},"fabName":null}\n'+
-      "  - c.rModel: relax, print, back, front, cascade, duo\n"+
-      "  - fabName: nazwa tkaniny jesli klient podal, lub null\n\n"+
-
-      "4. SZYNA:\n"+
-      '{"type":"szyna","par":{"len":200},"c":{"ks":"flex"}}\n'+
-      "  - par.len: dlugosc w cm\n"+
-      "  - c.ks: 'flex' lub 'wave'\n\n"+
-
-      "5. KARNISZ:\n"+
-      '{"type":"karnisz","par":{"len":200},"c":{"km":"slim","kn":"am75"}}\n'+
-      "  - c.km: 'slim' lub 'universal'\n"+
-      "  - c.kn: 'am75' (standardowy) lub 'am50' (Premium) lub 'glydea'\n\n"+
-
-      "=== REGULY ===\n"+
-      "- clientName: imie/nazwisko z maila lub 'Nowy klient'\n"+
-      "- Jesli klient nie poda tkaniny – uzyj fabName:null\n"+
-      "- Jesli nie ma dokladnych wymiarow – nie zgaduj, uzyj wCm:0 hCm:0 (calc pomin)\n"+
-      "- Jesli klient wspomina 'salon' i 'sypialnia' – zrob dwa osobne rooms\n"+
-      "- Jesli na rzucie widac kilka pomieszczen – zidentyfikuj je i przypisz okna\n"+
-      "- Odpowiedz TYLKO jsonem\n"
+      "Jeste\u015b asystentem Pauliny Porter z Porter Design \u2013 pracowni dekoracji okiennych (zas\u0142ony, \u017caluzje, rolety). "+
+      "Pomagasz przygotowa\u0107 wycen\u0119 na podstawie opisu lub zdj\u0119\u0107 klienta.\n\n"+
+      "TRYB PRACY:\n"+
+      "1. Rozmawiasz naturalnie z Paulin\u0105 po polsku, zadajesz pytania uzupe\u0142niaj\u0105ce gdy brak danych.\n"+
+      "2. Gdy masz wystarczaj\u0105co informacji, NA KO\u0143CU odpowiedzi do\u0142\u0105czasz blok JSON ze struktur\u0105 wyceny.\n"+
+      "3. NIE LICZYSZ CEN \u2013 aplikacja sama je wyliczy z cennika.\n\n"+
+      "FORMAT BLOKU JSON (do\u0142\u0105czaj tylko gdy masz dane do wyceny):\n"+
+      "PORTER_JSON_START\n"+
+      "{\"clientName\":\"Jan Kowalski\",\"addr\":\"\",\"rooms\":[{\"name\":\"Salon\",\"windows\":[{\"name\":\"Okno 1\",\"products\":[]}]}]}\n"+
+      "PORTER_JSON_END\n\n"+
+      "=== DOST\u0118PNE TKANINY (nazwa:cena) ===\n"+fabList+"\n\n"+
+      "=== DOST\u0118PNE TYPY \u017bALUZJI ===\n"+jzList+"\n\n"+
+      "=== TYPY PRODUKT\u00d3W ===\n"+
+      "1. ZAS\u0141ONA/FIRANA: {\"type\":\"zaslona\",\"par\":{\"wCm\":200,\"hCm\":270},\"c\":{\"mars\":\"2.3\",\"sz\":\"flex\",\"split\":\"equal\"},\"fabName\":\"Aisha\"}\n"+
+      "   mars: zak\u0142adka=2.3, transparentna=2.0, firana=2.5-3.0 | sz: flex/wave | split: equal/left/right/unequal\n"+
+      "2. \u017bALUZJA: {\"type\":\"zaluzja\",\"par\":{\"wCm\":100,\"lCm\":150},\"c\":{\"jt\":\"ba50\"}}\n"+
+      "   jt: al25, al35, ba35, ba50, ba65, bs35, bs50, bs65\n"+
+      "3. ROLETA: {\"type\":\"roleta\",\"par\":{\"wCm\":120,\"hCm\":180},\"c\":{\"rModel\":\"relax\"},\"fabName\":null}\n"+
+      "   rModel: relax, print, back, front, cascade, duo\n"+
+      "4. SZYNA: {\"type\":\"szyna\",\"par\":{\"len\":200},\"c\":{\"ks\":\"flex\"}}\n"+
+      "5. KARNISZ: {\"type\":\"karnisz\",\"par\":{\"len\":200},\"c\":{\"km\":\"slim\",\"kn\":\"am75\"}}\n\n"+
+      "ZASADY:\n"+
+      "- Je\u015bli brak wymiar\u00f3w lub tkaniny \u2013 zapytaj zanim przygotujesz wycen\u0119.\n"+
+      "- Je\u015bli podano kilka pomieszcze\u0144 \u2013 osobne rooms.\n"+
+      "- Ka\u017cda odpowied\u017a Z WYCEN\u0104 musi zawiera\u0107 blok PORTER_JSON_START...END.\n"+
+      "- Je\u015bli klient zaktualizuje dane \u2013 wy\u015blij nowy JSON z pe\u0142n\u0105 struktur\u0105.\n"+
+      "- Odpowiadaj po polsku, ciep\u0142o i profesjonalnie."
     );
   }
 
-  var SYS_EMAIL=(
-    "Jestes asystentem Porter Design. Napisz profesjonalnego maila do klienta po polsku.\n"+
-    "Zacznij: Dzien dobry [imie lub bez]. Krotkie wprowadzenie, zestawienie wyceny z cenami, laczna kwota, zaproszenie do kontaktu i doprecyzowania detali. Podpis: Porter Design.\n"+
-    "Ton: cieply i profesjonalny. Nie dodawaj nic poza mailem."
-  );
-
-  // ── CALL AI ─────────────────────────────────────────────────────────────
-  function callAI(sys,userContent,ok,fail){
-    fetch("/api/claude",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
-        max_tokens:3000,
-        system:sys,
-        messages:[{role:"user",content:userContent}]
-      })
-    }).then(function(r){return r.json();}).then(function(d){
-      if(d.error){fail(d.error.message||"Blad API");return;}
-      ok(d.content&&d.content[0]?d.content[0].text:"");
-    }).catch(function(e){fail(e.message||"Blad polaczenia");});
+  // \u2500\u2500 PARSOWANIE ODPOWIEDZI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  function parseAIResponse(text){
+    var jsonMatch=text.match(/PORTER_JSON_START\s*([\s\S]*?)\s*PORTER_JSON_END/);
+    var chatText=text.replace(/PORTER_JSON_START[\s\S]*?PORTER_JSON_END/g,"").trim();
+    var parsed=null,calcResult=null;
+    if(jsonMatch){
+      try{
+        var clean=jsonMatch[1].replace(/```json|```/g,"").trim();
+        parsed=JSON.parse(clean);
+        calcResult=enrichWithPrices(parsed);
+      }catch(e){}
+    }
+    return{chatText:chatText,parsed:parsed,calcResult:calcResult};
   }
 
-  // ── PRZELICZ CENY przez calc() ──────────────────────────────────────────
+  // \u2500\u2500 PRZELICZ CENY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function enrichWithPrices(data){
-    var total=0;
-    var roomSummary=[];
+    var total=0,roomSummary=[];
     (data.rooms||[]).forEach(function(room){
-      var roomTotal=0;
-      var winSummary=[];
+      var roomTotal=0,winSummary=[];
       (room.windows||[]).forEach(function(win){
-        var winTotal=0;
-        var prodSummary=[];
+        var winTotal=0,prodSummary=[];
         (win.products||[]).forEach(function(prod){
-          // Uzupelnij fabP i fabW z tablicy FABRICS
           if(prod.fabName){
             var fab=FABRICS.find(function(f){return f.name===prod.fabName;});
             if(fab){prod.fabP=fab.brutto;prod.fabW=fab.width||300;}
           }
-          // Uzupelnij panels dla zaslon/firan
           var prodForCalc=prod;
           if(prod.type==="zaslona"||prod.type==="firana"){
-            var panels=getPanelsForProd(prod);
-            prodForCalc=Object.assign({},prod,{panels:panels});
+            prodForCalc=Object.assign({},prod,{panels:getPanelsForProd(prod)});
           }
           var res=calc(prodForCalc);
           prod.mp=res.total||0;
           winTotal+=prod.mp;
-          var typeLabel={zaslona:"Zasłona",firana:"Firana",zaluzja:"Żaluzja",roleta:"Roleta rzymska",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
-          var fabInfo=prod.fabName?" ("+prod.fabName+")":"";
-          var warnInfo=res.warn?" ⚠ "+res.warn:"";
-          prodSummary.push({
-            label:typeLabel+fabInfo,
-            price:prod.mp,
-            lines:res.lines||[],
-            warn:res.warn||null
-          });
+          var typeLabel={zaslona:"Zas\u0142ona",firana:"Firana",zaluzja:"\u017baluzja",roleta:"Roleta rzymska",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
+          prodSummary.push({label:typeLabel+(prod.fabName?" ("+prod.fabName+")":""),price:prod.mp,lines:(res.lines||[]),warn:res.warn||null});
         });
         roomTotal+=winTotal;
         winSummary.push({name:win.name,total:winTotal,products:prodSummary});
@@ -4465,293 +4421,257 @@ function ModalAIValuation(p){
     return{rooms:roomSummary,total:total,data:data};
   }
 
-  // ── KROK 1: Analizuj i wylicz ───────────────────────────────────────────
-  function doAnalyze(){
-    if(!inputText.trim()&&!attachments.length)return;
-    setLoading(true);setError(null);setParsed(null);setCalcResult(null);
-    setSaved(false);setSavedClient(null);setEmailText(null);
+  // \u2500\u2500 WYSLIJ WIADOMOSC \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  function sendMessage(){
+    var text=inputText.trim();
+    if(!text&&!attachments.length)return;
+    if(loading)return;
 
-    // Buduj wiadomosc z tekstem i ewentualnymi obrazkami
     var userContent;
     if(attachments.length){
       var parts=[];
       attachments.forEach(function(att){
         parts.push({type:"image",source:{type:"base64",media_type:att.mediaType,data:att.data}});
       });
-      if(inputText.trim())parts.push({type:"text",text:inputText.trim()});
-      else parts.push({type:"text",text:"Przeanalizuj ten rzut mieszkania i wyodrebnij pomieszczenia oraz okna."});
+      parts.push({type:"text",text:text||"Przeanalizuj za\u0142\u0105czone zdj\u0119cie i wycen."});
       userContent=parts;
     }else{
-      userContent=inputText.trim();
+      userContent=text;
     }
 
-    callAI(buildSystemPrompt(),userContent,
-      function(jsonTxt){
-        var data;
-        try{
-          var clean=jsonTxt.replace(/```json|```/g,"").trim();
-          data=JSON.parse(clean);
-        }catch(e){
-          setError("AI zwrocilo niepoprawny JSON. Sprobuj ponownie lub uproscil zapytanie.\n\nOdpowiedz AI: "+jsonTxt.slice(0,200));
-          setLoading(false);return;
+    var userMsg={role:"user",text:text,attachments:attachments.slice()};
+    var newMessages=messages.concat([userMsg]);
+    setMessages(newMessages);
+    setInputText("");
+    setAttachments([]);
+    setError(null);
+    setLoading(true);
+
+    // Pelna historia dla API
+    var apiMessages=newMessages.map(function(m){
+      if(m.role==="user"){
+        if(m.attachments&&m.attachments.length){
+          var pts=[];
+          m.attachments.forEach(function(att){
+            pts.push({type:"image",source:{type:"base64",media_type:att.mediaType,data:att.data}});
+          });
+          pts.push({type:"text",text:m.text||"Przeanalizuj zdj\u0119cie."});
+          return{role:"user",content:pts};
         }
-        var result=enrichWithPrices(data);
-        setParsed(data);
-        setCalcResult(result);
-        setLoading(false);
-      },
-      function(e){setError(e);setLoading(false);}
-    );
-  }
-
-  // ── KROK 2: Zapisz klienta ──────────────────────────────────────────────
-  function doSave(){
-    if(!parsed)return;
-    setSaveLoading(true);setError(null);
-    var sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3VzanpZZnd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NjA5NzcsImV4cCI6MjA2MDEzNjk3N30.bJcRxoiVjaSG6Z4yFU3FP2VzDM3p2HV3o2MDcCilJFA";
-    var name=parsed.clientName||"Nowy klient AI";
-    // Zbuduj pelna strukture rooms ze wzorcem aplikacji
-    var rooms=(parsed.rooms||[]).map(function(r,ri){
-      return {
-        id:Date.now()+ri,
-        name:r.name||"Pokój "+(ri+1),
-        img:IMG_ROOM_SALON,
-        windows:(r.windows||[]).map(function(w,wi){
-          return {
-            id:Date.now()+ri*100+wi,
-            name:w.name||"Okno "+(wi+1),
-            products:(w.products||[])
-          };
-        })
-      };
+        return{role:"user",content:m.text};
+      }
+      return{role:"assistant",content:m.rawText||m.text};
     });
-    fetch("https://rkcidwusjzvfwxszotnb.supabase.co/rest/v1/clients",{
+
+    fetch("/api/claude",{
       method:"POST",
-      headers:{"Content-Type":"application/json","apikey":sbKey,"Prefer":"return=representation"},
-      body:JSON.stringify({name:name,addr:parsed.addr||"",rooms:rooms})
-    }).then(function(r){return r.json();}).then(function(res){
-      var cl=res&&res[0]?res[0]:{id:Date.now(),name:name,addr:parsed.addr||"",rooms:rooms};
-      if(p.setClients)p.setClients(function(cs){return cs.concat([cl]);});
-      if(p.setCurClientId)p.setCurClientId(cl.id);
-      setSavedClient(cl);setSaved(true);setSaveLoading(false);
-    }).catch(function(){
-      var cl={id:Date.now(),name:name,addr:parsed.addr||"",rooms:rooms};
-      if(p.setClients)p.setClients(function(cs){return cs.concat([cl]);});
-      if(p.setCurClientId)p.setCurClientId(cl.id);
-      setSavedClient(cl);setSaved(true);setSaveLoading(false);
-    });
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:3000,
+        system:buildSystemPrompt(),
+        messages:apiMessages
+      })
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
+      var raw=d.content&&d.content[0]?d.content[0].text:"";
+      var parsed=parseAIResponse(raw);
+      var assistantMsg={role:"assistant",text:parsed.chatText,rawText:raw,calcResult:parsed.calcResult};
+      setMessages(function(prev){return prev.concat([assistantMsg]);});
+      if(parsed.parsed){setLastParsed(parsed.parsed);setLastCalc(parsed.calcResult);setSaved(false);}
+      setLoading(false);
+    }).catch(function(e){setError(e.message||"B\u0142\u0105d po\u0142\u0105czenia");setLoading(false);});
   }
 
-  // ── KROK 3: Generuj email ───────────────────────────────────────────────
-  function doEmail(){
-    if(!calcResult)return;
-    setEmailLoading(true);setError(null);setEmailText(null);
-    // Buduj czytelne podsumowanie wyceny dla AI
-    var summary="Klient: "+(parsed.clientName||"Klient")+"\n\n";
-    calcResult.rooms.forEach(function(room){
-      summary+="== "+room.name+" ==\n";
-      room.windows.forEach(function(win){
-        summary+=win.name+":\n";
-        win.products.forEach(function(prod){
-          summary+="  - "+prod.label+": "+roundTo10(prod.price)+" PLN\n";
-          (prod.lines||[]).forEach(function(l){summary+="    "+l+"\n";});
-        });
-      });
-    });
-    summary+="\nLACZNA KWOTA: "+roundTo10(calcResult.total)+" PLN";
-    callAI(SYS_EMAIL,summary,
-      function(t){setEmailText(t);setEmailLoading(false);},
-      function(e){setError(e);setEmailLoading(false);}
-    );
-  }
-
-  function copyEmail(){
-    if(!emailRef.current)return;
-    navigator.clipboard.writeText(emailRef.current.value).then(function(){
-      setEmailCopied(true);setTimeout(function(){setEmailCopied(false);},2000);
-    });
-  }
-
-  function goToClient(){if(p.setScreen)p.setScreen("rooms");p.onClose();}
-  function reset(){
-    setInputText("");setParsed(null);setCalcResult(null);setEmailText(null);
-    setError(null);setSaved(false);setSavedClient(null);setAttachments([]);
-  }
-
+  // \u2500\u2500 PLIKI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function handleFiles(files){
-    Array.from(files).filter(function(f){return f.type.startsWith("image/");})
-    .slice(0,3).forEach(function(file){
+    var arr=Array.prototype.slice.call(files);
+    arr.slice(0,3-attachments.length).forEach(function(file){
       var reader=new FileReader();
       reader.onload=function(ev){
-        var d=ev.target.result,c=d.indexOf(",");
         setAttachments(function(prev){
           if(prev.length>=3)return prev;
-          return prev.concat([{name:file.name,mediaType:file.type,data:d.slice(c+1)}]);
+          return prev.concat([{name:file.name,mediaType:file.type||"image/jpeg",data:ev.target.result.split(",")[1]}]);
         });
       };
       reader.readAsDataURL(file);
     });
   }
-
-  function onDrop(ev){ev.preventDefault();handleFiles(ev.dataTransfer.files);}
+  function onDrop(e){e.preventDefault();handleFiles(e.dataTransfer.files);}
   function removeAtt(i){setAttachments(function(prev){return prev.filter(function(_,idx){return idx!==i;});});}
 
-  // ── UI helpers ──────────────────────────────────────────────────────────
-  var DOTS=ce("span",{style:{display:"flex",gap:4,alignItems:"center"}},
-    ce("span",{style:{animation:"pulse 1.2s infinite",fontSize:13}},"●"),
-    ce("span",{style:{animation:"pulse 1.2s infinite 0.2s",fontSize:13}},"●"),
-    ce("span",{style:{animation:"pulse 1.2s infinite 0.4s",fontSize:13}},"●")
-  );
-
-  function Btn(label,onClick,disabled,accent){
-    return ce("button",{onClick:onClick,disabled:!!disabled,style:{
-      padding:"10px 16px",borderRadius:10,border:"none",
-      background:disabled?"var(--bd2)":accent?"var(--t1)":"var(--bg3)",
-      color:disabled?"var(--t3)":accent?"#fff":"var(--t1)",
-      fontSize:13,fontWeight:600,cursor:disabled?"not-allowed":"pointer",flexShrink:0,
-      transition:"background 0.15s"
-    }},label);
+  // \u2500\u2500 ZAPIS KLIENTA \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  function doSave(){
+    if(!lastParsed)return;
+    setSaveLoading(true);setError(null);
+    var sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3VzanpZZnd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NjA5NzcsImV4cCI6MjA2MDEzNjk3N30.bJcRxoiVjaSG6Z4yFU3FP2VzDM3p2HV3o2MDcCilJFA";
+    var name=lastParsed.clientName||"Nowy klient AI";
+    var rooms=(lastParsed.rooms||[]).map(function(r,ri){
+      return{id:Date.now()+ri,name:r.name||"Pok\u00f3j "+(ri+1),img:IMG_ROOM_SALON,
+        windows:(r.windows||[]).map(function(w,wi){
+          return{id:Date.now()+ri*100+wi,name:w.name||"Okno "+(wi+1),products:(w.products||[])};
+        })};
+    });
+    fetch("https://rkcidwusjzvfwxszotnb.supabase.co/rest/v1/clients",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":sbKey,"Prefer":"return=representation"},
+      body:JSON.stringify({name:name,addr:lastParsed.addr||"",rooms:rooms})
+    }).then(function(r){return r.json();}).then(function(res){
+      var cl=res&&res[0]?res[0]:null;
+      if(cl){
+        setSaved(true);setSavedClient(cl);
+        p.setClients&&p.setClients(function(prev){return[cl].concat(prev);});
+        setSaveLoading(false);
+        setMessages(function(prev){return prev.concat([{role:"assistant",text:"\u2713 Klient \u201e"+cl.name+"\u201d zosta\u0142 zapisany w aplikacji. Mo\u017cesz przej\u015b\u0107 do jego karty lub kontynuowa\u0107 rozmow\u0119."}]);});
+      }else{
+        setError("B\u0142\u0105d zapisu do bazy");setSaveLoading(false);
+      }
+    }).catch(function(e){setError(e.message);setSaveLoading(false);});
   }
 
-  var canAnalyze=!loading&&(inputText.trim().length>0||attachments.length>0);
+  function goToClient(){
+    if(!savedClient)return;
+    p.setCurClientId&&p.setCurClientId(savedClient.id);
+    p.setScreen&&p.setScreen("client");
+    p.onClose();
+  }
 
-  // ── RENDER ───────────────────────────────────────────────────────────────
+  // \u2500\u2500 RENDER BABELKI WYCENY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  function renderCalcResult(cr){
+    if(!cr)return null;
+    return ce("div",{style:{marginTop:8,background:"var(--bg)",borderRadius:10,border:"1px solid var(--bd2)",overflow:"hidden",fontSize:12}},
+      cr.rooms.map(function(room,ri){
+        return ce("div",{key:ri},
+          cr.rooms.length>1?ce("div",{style:{padding:"6px 12px 2px",fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em",borderTop:ri>0?"1px solid var(--bd3)":"none"}},room.name):null,
+          room.windows.map(function(win,wi){
+            return ce("div",{key:wi,style:{padding:"4px 12px 8px"}},
+              (cr.rooms.length>1||room.windows.length>1)?ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:3}},win.name):null,
+              win.products.map(function(prod,pi){
+                return ce("div",{key:pi,style:{display:"flex",justifyContent:"space-between",gap:8,padding:"4px 0",borderBottom:"0.5px solid var(--bd3)"}},
+                  ce("div",{style:{flex:1,color:"var(--t1)"}},
+                    (pi+1)+". "+prod.label,
+                    prod.warn?ce("span",{style:{color:"#b45309",marginLeft:4}},"\u26a0\ufe0f "+prod.warn):null
+                  ),
+                  ce("div",{style:{fontWeight:700,color:"var(--t1)",flexShrink:0}},prod.price>0?roundTo10(prod.price)+" z\u0142":"\u2013")
+                );
+              })
+            );
+          })
+        );
+      }),
+      ce("div",{style:{padding:"8px 12px",borderTop:"2px solid var(--bd2)",display:"flex",justifyContent:"space-between",background:"var(--t1)"}},
+        ce("span",{style:{color:"rgba(255,255,255,0.7)",fontSize:12}},"RAZEM"),
+        ce("span",{style:{color:"#fff",fontWeight:700,fontSize:15}},roundTo10(cr.total)+" z\u0142")
+      )
+    );
+  }
+
+  // \u2500\u2500 RENDER POJEDYNCZEJ WIADOMOSCI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  function renderMessage(msg,idx){
+    var isUser=msg.role==="user";
+    return ce("div",{key:idx,style:{display:"flex",flexDirection:"column",alignItems:isUser?"flex-end":"flex-start",gap:4,marginBottom:14}},
+      msg.attachments&&msg.attachments.length>0
+        ?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end",marginBottom:4}},
+            msg.attachments.map(function(att,ai){
+              return ce("img",{key:ai,src:"data:"+att.mediaType+";base64,"+att.data,style:{width:60,height:60,objectFit:"cover",borderRadius:8,border:"1px solid var(--bd2)"}});
+            })
+          )
+        :null,
+      msg.text?ce("div",{style:{
+        maxWidth:"85%",padding:"10px 14px",
+        borderRadius:isUser?"16px 16px 4px 16px":"16px 16px 16px 4px",
+        background:isUser?"var(--t1)":"var(--bg2)",
+        color:isUser?"#fff":"var(--t1)",
+        fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",
+        border:isUser?"none":"1px solid var(--bd2)"
+      }},msg.text):null,
+      msg.calcResult?renderCalcResult(msg.calcResult):null
+    );
+  }
+
+  var canSend=!loading&&(inputText.trim().length>0||attachments.length>0);
+
+  // \u2500\u2500 RENDER \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   return ce("div",{
     style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"flex-start",justifyContent:"flex-end"},
     onClick:function(e){if(e.target===e.currentTarget)p.onClose();}
   },
-  ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:620,height:"100vh",display:"flex",flexDirection:"column",boxShadow:"-4px 0 40px rgba(0,0,0,0.25)",overflowY:"auto"}},
+  ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:620,height:"100vh",display:"flex",flexDirection:"column",boxShadow:"-4px 0 40px rgba(0,0,0,0.25)"}},
 
-    // Header
-    ce("div",{style:{padding:"18px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:12,background:"var(--bg2)",position:"sticky",top:0,zIndex:10,flexShrink:0}},
-      ce("div",{style:{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#1a1a18,#3a3a38)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}},"\uD83E\uDD16"),
+    // HEADER
+    ce("div",{style:{padding:"14px 18px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:10,background:"var(--bg2)",flexShrink:0}},
+      ce("div",{style:{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#1a1a18,#3a3a38)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"\uD83E\uDD16"),
       ce("div",{style:{flex:1}},
-        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}},"Wycena AI"),
-        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},"AI odczytuje dane \u2192 aplikacja liczy ceny z cennika")
+        ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)"}},"Asystent Wyceny AI"),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},"Opisz zapytanie \u2013 zapytam o brakuj\u0105ce dane i wylicz\u0119 wycen\u0119")
       ),
-      ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",padding:"4px 8px"}},"\u00D7")
+      lastCalc&&!saved
+        ?ce("button",{onClick:doSave,disabled:saveLoading,
+            style:{padding:"6px 12px",borderRadius:8,border:"none",background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:600,cursor:saveLoading?"wait":"pointer",flexShrink:0,whiteSpace:"nowrap"}
+          },saveLoading?"\u23F3 Zapisuj\u0119...":"\uD83D\uDCBE Zapisz klienta")
+        :null,
+      saved&&savedClient
+        ?ce("button",{onClick:goToClient,
+            style:{padding:"6px 12px",borderRadius:8,border:"none",background:"#15803d",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}
+          },"\u2192 Przejd\u017A do klienta")
+        :null,
+      ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",padding:"4px 6px",flexShrink:0}},"\u00D7")
     ),
 
-    // Body
-    ce("div",{style:{padding:"20px",display:"flex",flexDirection:"column",gap:18,flex:1}},
-
-      // KROK 1: Input
-      ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"1 / Zapytanie klienta"),
-        ce("textarea",{
-          value:inputText,onChange:function(ev){setInputText(ev.target.value);},
-          onKeyDown:function(ev){if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey))doAnalyze();},
-          placeholder:"Wklej maila od klienta lub opisz zapytanie...\n\nPrzyklad: Potrzebuje zaslony do salonu (okno 200x270cm, tkanina Aisha) i zaluzje drewniane 50mm do gabinetu (120x150cm).\n\n(Ctrl+Enter aby wyslac)",
-          rows:5,
-          style:{width:"100%",padding:"12px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit",lineHeight:1.6,outline:"none",boxSizing:"border-box"}
-        }),
-
-        // Drag & drop
-        ce("div",{
-          onDragOver:function(e){e.preventDefault();},onDrop:onDrop,
-          onClick:function(){if(attachments.length<3)fileRef.current&&fileRef.current.click();},
-          style:{border:"2px dashed var(--bd2)",borderRadius:10,padding:"12px 14px",background:"var(--bg2)",cursor:attachments.length>=3?"default":"pointer",display:"flex",flexDirection:"column",gap:6}
-        },
-          ce("div",{style:{display:"flex",alignItems:"center",gap:8,color:"var(--t2)",fontSize:13}},
-            ce("span",{style:{fontSize:18}},"\uD83D\uDDBC\uFE0F"),
-            ce("span",{},"Dodaj rzut mieszkania lub zdj\u0119cie okna"),
-            ce("span",{style:{fontSize:11,color:"var(--t3)",marginLeft:"auto"}},"max 3 obrazki")
-          ),
-          attachments.length>0
-            ?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-                attachments.map(function(att,i){
-                  return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:5,background:"var(--bg3)",borderRadius:8,padding:"4px 10px",fontSize:12}},
-                    ce("img",{src:"data:"+att.mediaType+";base64,"+att.data,style:{width:32,height:32,objectFit:"cover",borderRadius:4}}),
-                    ce("span",{style:{maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:"var(--t1)"}},att.name),
-                    ce("button",{onClick:function(e){e.stopPropagation();removeAtt(i);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:16,lineHeight:1}},"\u00D7")
-                  );
-                })
-              )
-            :ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Przeci\u0105gnij lub kliknij aby wybra\u0107"),
-          ce("input",{ref:fileRef,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:function(ev){handleFiles(ev.target.files);}})
-        ),
-
-        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-          Btn(loading?"\u23F3 Analizuj\u0119...":"\u2192 Analizuj i wyce\u0144",doAnalyze,!canAnalyze,true),
-          (calcResult||attachments.length>0)?Btn("Wyczy\u015b\u0107",reset,false,false):null
-        )
-      ),
-
-      // Ładowanie
-      loading?ce("div",{style:{padding:"14px",background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:10,color:"var(--t3)",fontSize:13}},
-        DOTS,ce("span",{},"AI analizuje dane, aplikacja liczy ceny...")
-      ):null,
-
-      // WYNIK WYCENY
-      calcResult&&!loading?ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
-
-        // Tabela wynikow
-        ce("div",{style:{display:"flex",flexDirection:"column",gap:4}},
-          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"Wycena (liczona z cennika aplikacji)"),
-          ce("div",{style:{background:"var(--bg2)",borderRadius:12,border:"1px solid var(--bd2)",overflow:"hidden"}},
-            calcResult.rooms.map(function(room,ri){
-              return ce("div",{key:ri},
-                ce("div",{style:{padding:"10px 14px 4px",fontSize:12,fontWeight:700,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",borderTop:ri>0?"1px solid var(--bd3)":"none"}},room.name),
-                room.windows.map(function(win,wi){
-                  return ce("div",{key:wi,style:{padding:"4px 14px 8px"}},
-                    ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:4}},win.name),
-                    win.products.map(function(prod,pi){
-                      return ce("div",{key:pi,style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,padding:"5px 0",borderBottom:"0.5px solid var(--bd3)"}},
-                        ce("div",{style:{flex:1}},
-                          ce("div",{style:{fontSize:13,color:"var(--t1)"}},(pi+1)+". "+prod.label),
-                          prod.lines.length>0?ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5,marginTop:2}},prod.lines.join(" · ")):null,
-                          prod.warn?ce("div",{style:{fontSize:11,color:"#b45309",marginTop:2}},"\u26A0\uFE0F "+prod.warn):null,
-                          prod.price===0?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"(brak danych – uzupelnij w aplikacji)"):null
-                        ),
-                        ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",flexShrink:0}},prod.price>0?roundTo10(prod.price)+" z\u0142":"-")
-                      );
-                    })
-                  );
-                })
-              );
-            }),
-            ce("div",{style:{padding:"12px 14px",borderTop:"2px solid var(--bd2)",display:"flex",justifyContent:"space-between",alignItems:"center",background:"var(--t1)"}},
-              ce("span",{style:{fontSize:13,color:"rgba(255,255,255,0.7)",letterSpacing:"0.05em"}},"RAZEM"),
-              ce("span",{style:{fontSize:18,fontWeight:700,color:"#fff"}},roundTo10(calcResult.total)+" z\u0142")
+    // OBSZAR CZATU
+    ce("div",{style:{flex:1,overflowY:"auto",padding:"16px 18px",display:"flex",flexDirection:"column"}},
+      messages.length===0
+        ?ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-start",marginBottom:14}},
+            ce("div",{style:{maxWidth:"85%",padding:"10px 14px",borderRadius:"16px 16px 16px 4px",background:"var(--bg2)",color:"var(--t1)",fontSize:13,lineHeight:1.6,border:"1px solid var(--bd2)"}},
+              "Cze\u015b\u0107! Jestem asystentem Pauliny Porter. \uD83D\uDC4B\n\n"+
+              "Opisz zapytanie klienta \u2013 mo\u017cesz wklei\u0107 maila, opisa\u0107 s\u0142ownie lub przes\u0142a\u0107 zdj\u0119cie rzutu. "+
+              "Zapytam o brakuj\u0105ce dane i przygotujem\u00f3 wycen\u0119 od razu z cennika aplikacji."
             )
           )
-        ),
+        :null,
+      messages.map(renderMessage),
+      loading?ce("div",{style:{display:"flex",alignItems:"flex-start",marginBottom:12}},
+          ce("div",{style:{padding:"10px 14px",borderRadius:"16px 16px 16px 4px",background:"var(--bg2)",border:"1px solid var(--bd2)"}},DOTS)
+        ):null,
+      error?ce("div",{style:{padding:"10px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,fontSize:12,color:"#b91c1c",margin:"0 0 12px",whiteSpace:"pre-wrap"}},"\u26A0\uFE0F "+error):null,
+      ce("div",{ref:bottomRef})
+    ),
 
-        // KROK 2: Zapis klienta
-        ce("div",{style:{padding:"14px 16px",background:saved?"#f0fdf4":"var(--bg2)",borderRadius:12,border:"1.5px solid "+(saved?"#86efac":"var(--bd2)"),display:"flex",flexDirection:"column",gap:8}},
-          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"2 / Zapis klienta w aplikacji"),
-          saved
-            ?ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-                ce("div",{style:{fontSize:13,fontWeight:600,color:"#15803d"}},"\u2713 Zapisano: "+savedClient.name),
-                Btn("\u2192 Przejd\u017A do klienta",goToClient,false,true)
-              )
-            :ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
-                ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},"Zapisuje klienta z pomieszczeniami, oknami i produktami. Ceny b\u0119d\u0105 przeliczone automatycznie."),
-                ce("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
-                  Btn(saveLoading?"\u23F3 Zapisuj\u0119...":"\uD83D\uDCBE Zapisz klienta",doSave,saveLoading,true),
-                  saveLoading?DOTS:null
-                )
-              )
-        ),
-
-        // KROK 3: Email
-        ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase"}},"3 / Mail do klienta"),
-          !emailText&&!emailLoading?Btn("\u2709\uFE0F Generuj maila z wycen\u0105",doEmail,false,false):null,
-          emailLoading?ce("div",{style:{padding:"12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",display:"flex",gap:8,alignItems:"center",color:"var(--t3)"}},DOTS):null,
-          emailText?ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-            ce("textarea",{ref:emailRef,value:emailText,onChange:function(ev){setEmailText(ev.target.value);},rows:10,
-              style:{width:"100%",padding:"12px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",fontFamily:"inherit",lineHeight:1.6,resize:"vertical",outline:"none",boxSizing:"border-box"}}),
-            ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-              Btn(emailCopied?"\u2713 Skopiowano!":"\uD83D\uDCCB Kopiuj maila",copyEmail,false,emailCopied),
-              Btn("\uD83D\uDD04 Generuj ponownie",doEmail,emailLoading,false)
-            )
-          ):null
-        )
-      ):null,
-
-      // Błąd
-      error?ce("div",{style:{padding:"12px 14px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:10,fontSize:12,color:"#b91c1c",whiteSpace:"pre-wrap"}},"\u26A0\uFE0F "+error):null
+    // STOPKA: INPUT
+    ce("div",{style:{flexShrink:0,borderTop:"1px solid var(--bd2)",background:"var(--bg2)",padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}},
+      attachments.length>0
+        ?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+            attachments.map(function(att,i){
+              return ce("div",{key:i,style:{position:"relative"}},
+                ce("img",{src:"data:"+att.mediaType+";base64,"+att.data,style:{width:48,height:48,objectFit:"cover",borderRadius:8,border:"1px solid var(--bd2)"}}),
+                ce("button",{onClick:function(){removeAtt(i);},
+                  style:{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",border:"none",background:"var(--t1)",color:"#fff",cursor:"pointer",fontSize:11,lineHeight:"18px",textAlign:"center",padding:0}
+                },"\u00D7")
+              );
+            })
+          )
+        :null,
+      ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
+        ce("button",{
+          onClick:function(){fileRef.current&&fileRef.current.click();},
+          disabled:attachments.length>=3,
+          title:"Do\u0142\u0105cz zdj\u0119cie",
+          style:{padding:"9px 10px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"var(--bg)",color:attachments.length>=3?"var(--t3)":"var(--t2)",cursor:attachments.length>=3?"not-allowed":"pointer",fontSize:16,flexShrink:0,alignSelf:"flex-end"}
+        },"\uD83D\uDDBC\uFE0F"),
+        ce("input",{ref:fileRef,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:function(ev){handleFiles(ev.target.files);ev.target.value="";}}),
+        ce("textarea",{
+          value:inputText,
+          onChange:function(ev){setInputText(ev.target.value);},
+          onKeyDown:function(ev){if(ev.key==="Enter"&&!ev.shiftKey){ev.preventDefault();sendMessage();}},
+          placeholder:"Napisz wiadomo\u015b\u0107... (Enter = wy\u015blij, Shift+Enter = nowa linia)",
+          rows:2,
+          style:{flex:1,padding:"9px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",fontFamily:"inherit",lineHeight:1.5,outline:"none",resize:"none",boxSizing:"border-box"}
+        }),
+        ce("button",{
+          onClick:sendMessage,disabled:!canSend,
+          style:{padding:"9px 14px",borderRadius:10,border:"none",background:canSend?"var(--t1)":"var(--bd2)",color:canSend?"#fff":"var(--t3)",fontSize:16,cursor:canSend?"pointer":"not-allowed",flexShrink:0,alignSelf:"flex-end"}
+        },loading?"\u23F3":"\u2191")
+      )
     )
   ));
 }
