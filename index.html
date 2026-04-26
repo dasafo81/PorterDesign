@@ -4227,7 +4227,10 @@ function App(){
         ce("img",{src:LOGO_SRC,alt:"PD",style:{height:22,opacity:0.9}}),
         ce("span",{style:{fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)",fontWeight:500}},"Porter Design Assistant")
       ),
-      ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI")
+      ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},ce("span",{style:{display:"flex",alignItems:"center",gap:5}},
+          ce("span",{style:{display:"inline-flex",alignItems:"center",justifyContent:"center",width:15,height:15,borderRadius:"50%",background:"linear-gradient(135deg,#cc785c,#c96442)",fontSize:8,fontWeight:800,color:"#fff",flexShrink:0,letterSpacing:"-0.01em"}},"C"),
+          "AI"
+        ))
     ),
     screen!=="home"?ce(BC,{}):null,
     content,
@@ -4339,6 +4342,9 @@ function ModalAIValuation(p){
   useEffect(function(){
     if(bottomRef.current)bottomRef.current.scrollIntoView({behavior:"smooth"});
   },[messages,loading]);
+  useEffect(function(){
+    setMessages([{role:"assistant",text:"W czym mog\u0119 pom\u00f3c?"}]);
+  },[]);
 
   // \u2500\u2500 SYSTEM PROMPT \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function buildSystemPrompt(){
@@ -4472,7 +4478,10 @@ function ModalAIValuation(p){
         system:buildSystemPrompt(),
         messages:apiMessages
       })
-    }).then(function(r){return r.json();}).then(function(d){
+    }).then(function(r){
+      if(!r.ok)return r.text().then(function(t){try{var j=JSON.parse(t);throw new Error(j.error&&j.error.message?j.error.message:"B\u0142\u0105d serwera "+r.status);}catch(e2){throw new Error("B\u0142\u0105d serwera "+r.status);}});
+      return r.json();
+    }).then(function(d){
       if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
       var raw=d.content&&d.content[0]?d.content[0].text:"";
       var parsed=parseAIResponse(raw);
@@ -4538,15 +4547,15 @@ function ModalAIValuation(p){
 
   // \u2500\u2500 RENDER BABELKI WYCENY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function renderCalcResult(cr){
-    if(!cr)return null;
+    if(!cr||!cr.rooms)return null;
     return ce("div",{style:{marginTop:8,background:"var(--bg)",borderRadius:10,border:"1px solid var(--bd2)",overflow:"hidden",fontSize:12}},
-      cr.rooms.map(function(room,ri){
+      (cr.rooms||[]).map(function(room,ri){
         return ce("div",{key:ri},
           cr.rooms.length>1?ce("div",{style:{padding:"6px 12px 2px",fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em",borderTop:ri>0?"1px solid var(--bd3)":"none"}},room.name):null,
-          room.windows.map(function(win,wi){
+          (room.windows||[]).map(function(win,wi){
             return ce("div",{key:wi,style:{padding:"4px 12px 8px"}},
               (cr.rooms.length>1||room.windows.length>1)?ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:3}},win.name):null,
-              win.products.map(function(prod,pi){
+              (win.products||[]).map(function(prod,pi){
                 return ce("div",{key:pi,style:{display:"flex",justifyContent:"space-between",gap:8,padding:"4px 0",borderBottom:"0.5px solid var(--bd3)"}},
                   ce("div",{style:{flex:1,color:"var(--t1)"}},
                     (pi+1)+". "+prod.label,
@@ -4600,7 +4609,11 @@ function ModalAIValuation(p){
 
     // HEADER
     ce("div",{style:{padding:"14px 18px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:10,background:"var(--bg2)",flexShrink:0}},
-      ce("div",{style:{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#1a1a18,#3a3a38)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}},"\uD83E\uDD16"),
+      ce("div",{style:{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#cc785c,#c96442)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+        ce("svg",{width:20,height:20,viewBox:"0 0 24 24",fill:"none",xmlns:"http://www.w3.org/2000/svg"},
+          ce("path",{fillRule:"evenodd",clipRule:"evenodd",d:"M12 2.5c-1.5 0-2.8.6-3.8 1.5L4.5 7.7C3.6 8.6 3 9.9 3 11.3v1.4c0 1.4.6 2.7 1.5 3.6l3.7 3.7c1 .9 2.3 1.5 3.8 1.5s2.8-.6 3.8-1.5l3.7-3.7c1-.9 1.5-2.2 1.5-3.6v-1.4c0-1.4-.6-2.7-1.5-3.6L15.8 4c-1-.9-2.3-1.5-3.8-1.5zm-1 5.5a1 1 0 1 1 2 0v4a1 1 0 1 1-2 0V8zm1 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2z",fill:"#fff"})
+        )
+      ),
       ce("div",{style:{flex:1}},
         ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)"}},"Asystent Wyceny AI"),
         ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},"Opisz zapytanie \u2013 zapytam o brakuj\u0105ce dane i wylicz\u0119 wycen\u0119")
