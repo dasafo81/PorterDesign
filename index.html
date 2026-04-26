@@ -4342,9 +4342,7 @@ function ModalAIValuation(p){
   useEffect(function(){
     if(bottomRef.current)bottomRef.current.scrollIntoView({behavior:"smooth"});
   },[messages,loading]);
-  useEffect(function(){
-    setMessages([{role:"assistant",text:"W czym mog\u0119 pom\u00f3c?"}]);
-  },[]);
+
 
   // \u2500\u2500 SYSTEM PROMPT \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function buildSystemPrompt(){
@@ -4453,8 +4451,8 @@ function ModalAIValuation(p){
     setError(null);
     setLoading(true);
 
-    // Pelna historia dla API
-    var apiMessages=newMessages.map(function(m){
+    // Pelna historia dla API - filtruj tylko prawdziwe wiadomosci (nie powitalne)
+    var apiMessages=newMessages.filter(function(m){return !m._greeting;}).map(function(m){
       if(m.role==="user"){
         if(m.attachments&&m.attachments.length){
           var pts=[];
@@ -4464,9 +4462,9 @@ function ModalAIValuation(p){
           pts.push({type:"text",text:m.text||"Przeanalizuj zdj\u0119cie."});
           return{role:"user",content:pts};
         }
-        return{role:"user",content:m.text};
+        return{role:"user",content:m.text||" "};
       }
-      return{role:"assistant",content:m.rawText||m.text};
+      return{role:"assistant",content:m.rawText||m.text||" "};
     });
 
     fetch("/api/claude",{
@@ -4478,11 +4476,8 @@ function ModalAIValuation(p){
         system:buildSystemPrompt(),
         messages:apiMessages
       })
-    }).then(function(r){
-      if(!r.ok)return r.text().then(function(t){try{var j=JSON.parse(t);throw new Error(j.error&&j.error.message?j.error.message:"B\u0142\u0105d serwera "+r.status);}catch(e2){throw new Error("B\u0142\u0105d serwera "+r.status);}});
-      return r.json();
-    }).then(function(d){
-      if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d.error||d.type==="error"){setError((d.error&&d.error.message)||d.message||"B\u0142\u0105d API");setLoading(false);return;}
       var raw=d.content&&d.content[0]?d.content[0].text:"";
       var parsed=parseAIResponse(raw);
       var assistantMsg={role:"assistant",text:parsed.chatText,rawText:raw,calcResult:parsed.calcResult};
@@ -4633,15 +4628,11 @@ function ModalAIValuation(p){
 
     // OBSZAR CZATU
     ce("div",{style:{flex:1,overflowY:"auto",padding:"16px 18px",display:"flex",flexDirection:"column"}},
-      messages.length===0
-        ?ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-start",marginBottom:14}},
-            ce("div",{style:{maxWidth:"85%",padding:"10px 14px",borderRadius:"16px 16px 16px 4px",background:"var(--bg2)",color:"var(--t1)",fontSize:13,lineHeight:1.6,border:"1px solid var(--bd2)"}},
-              "Cze\u015b\u0107! Jestem asystentem Pauliny Porter. \uD83D\uDC4B\n\n"+
-              "Opisz zapytanie klienta \u2013 mo\u017cesz wklei\u0107 maila, opisa\u0107 s\u0142ownie lub przes\u0142a\u0107 zdj\u0119cie rzutu. "+
-              "Zapytam o brakuj\u0105ce dane i przygotujem\u00f3 wycen\u0119 od razu z cennika aplikacji."
-            )
+      ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"flex-start",marginBottom:14}},
+          ce("div",{style:{maxWidth:"85%",padding:"10px 14px",borderRadius:"16px 16px 16px 4px",background:"var(--bg2)",color:"var(--t1)",fontSize:13,lineHeight:1.6,border:"1px solid var(--bd2)"}},
+            "W czym mog\u0119 pom\u00f3c?"
           )
-        :null,
+        ),
       messages.map(renderMessage),
       loading?ce("div",{style:{display:"flex",alignItems:"flex-start",marginBottom:12}},
           ce("div",{style:{padding:"10px 14px",borderRadius:"16px 16px 16px 4px",background:"var(--bg2)",border:"1px solid var(--bd2)"}},DOTS)
