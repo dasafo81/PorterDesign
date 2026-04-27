@@ -4561,7 +4561,7 @@ function ModalAIValuation(p){
   function doSave(){
     if(!lastParsed)return;
     setSaveLoading(true);setError(null);
-    var name=lastParsed.clientName||"Nowy klient AI";
+    var name=(lastParsed.clientName&&lastParsed.clientName!=="Nowy klient"&&lastParsed.clientName!=="Klient")?lastParsed.clientName:window.prompt("Imię i nazwisko klienta:","") ||"Nowy klient AI";
     var now=Date.now();
     var rooms=(lastParsed.rooms||[]).map(function(r,ri){
       var roomName=r.name||"Pokój "+(ri+1);
@@ -4581,7 +4581,11 @@ function ModalAIValuation(p){
             var clean={id:now+ri*1000+wi*100+pi,type:prod.type};
             if(prod.par)clean.par=prod.par;
             if(prod.c)clean.c=prod.c;
-            if(prod.fabName)clean.fabName=prod.fabName;
+            if(prod.fabName){
+              clean.fabName=prod.fabName;
+              var fabObj=FABRICS.find(function(f){return f.name===prod.fabName;});
+              if(fabObj){clean.fabP=fabObj.brutto;clean.fabW=fabObj.width||0;}
+            }
             if(prod.variant)clean.variant=prod.variant;
             return clean;
           });
