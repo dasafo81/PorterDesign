@@ -682,7 +682,7 @@ var FABRICS=[
 var PROD_TYPES=[
   {id:"zaslona",label:"Zas\u0142ona",icon:"🪟"},
   {id:"firana",label:"Firana",icon:"🌿"},
-  {id:"zaluzja",label:"Żaluzja",icon:"🪟"},
+  {id:"zaluzja",label:"Żaluzje",icon:"🪟"},
   {id:"roleta",label:"Roleta rzymska",icon:"2b1b"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
@@ -1582,7 +1582,7 @@ function generateSimplifiedPDF(client,comm,montaz){
     if(type==="zaslona")return "Zas\u0142ony";
     if(type==="firana")return "Firany";
     if(type==="roleta")return count===1?"Roleta":"Rolety";
-    if(type==="zaluzja")return count===1?"Zaluzja":count<5?"Zaluzje":"Zaluzji";
+    if(type==="zaluzja")return count===1?"żaluzje":count<5?"żaluzje":"żaluzji";
     if(type==="plisa")return count===1?"Plisa":"Plisy";
     if(type==="karnisz")return count===1?"Karnisz":"Karnisze";
     if(type==="szyna")return count===1?"Szyna":"Szyny";
@@ -4479,7 +4479,7 @@ function ModalAIValuation(p){
           var res=calc(prodForCalc);
           prod.mp=res.total||0;
           winTotal+=prod.mp;
-          var typeLabel={zaslona:"Zas\u0142ony",firana:"Firany",zaluzja:"\u017baluzja",roleta:"Roleta rzymska",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
+          var typeLabel={zaslona:"Zas\u0142ony",firana:"Firany",zaluzja:"\u017caluzje",roleta:"Roleta rzymska",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
           prodSummary.push({label:typeLabel+(prod.fabName?" ("+prod.fabName+")":""),price:prod.mp,lines:(res.lines||[]),warn:res.warn||null});
         });
         roomTotal+=winTotal;
