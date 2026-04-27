@@ -1251,7 +1251,7 @@ function openPDFWindow(htmlContent, title){
   w.document.open();
   w.document.write(htmlContent);
   w.document.close();
-  setTimeout(function(){w.focus();},200);
+  setTimeout(function(){w.focus();w.print();},200);
 }
 
 function makeTableHTML(headers, rows, caption){
