@@ -4610,7 +4610,7 @@ function ModalAIValuation(p){
   function goToClient(){
     if(!savedClient)return;
     p.setCurClientId&&p.setCurClientId(savedClient.id);
-    p.setScreen&&p.setScreen("client");
+    p.setScreen&&p.setScreen("rooms");
     p.onClose();
   }
 
