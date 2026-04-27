@@ -4321,6 +4321,7 @@ function ModalClientEmail(p){
 
 function ModalAIValuation(p){
   var useState=React.useState,useRef=React.useRef,useEffect=React.useEffect;
+  var sq1=useState({}),quizAnswers=sq1[0],setQuizAnswers=sq1[1];
   var DOTS=ce("span",null,
     ce("span",{style:{animation:"pulse 1.2s ease-in-out infinite",animationDelay:"0s",display:"inline-block",marginRight:3}},"•"),
     ce("span",{style:{animation:"pulse 1.2s ease-in-out infinite",animationDelay:"0.2s",display:"inline-block",marginRight:3}},"•"),
@@ -4355,8 +4356,11 @@ function ModalAIValuation(p){
     }).join("\n");
     var lines=[
       "Jesteś asystentem Pauliny Porter, właścicielki pracowni Porter Design.",
-      "Pracujesz z PAULINĄ, nie z klientem. Paulina wkleja Ci mail lub opisuje zapytanie klienta.",
-      "Rozmawiasz z Pauliną w trybie roboczym — krótko, konkretnie, bez uprzejmości kierowanych do klienta.",
+      "Pracujesz z PAULINĄ — właścicielką firmy. Ona wkleja Ci maile lub opisuje zapytania klientów.",
+      "ZAWSZE piszesz DO PAULINY, nigdy do klienta. Nawet jeśli mail jest od klientki w 1. osobie — Ty odpowiadasz Paulinie.",
+      "Styl: roboczy, rzeczowy. Żadnych 'Dzień dobry Pani Kasiu', 'Dziękujemy za zapytanie' itp.",
+      "ZŁA odpowiedź: 'Dziękuję za zapytanie, potrzebuję kilku szczegółów...'",
+      "DOBRA odpowiedź: 'Brakuje wymiarów okien. Salon: ile okien? Sypialnia: szerokość 145cm — to wnęka czy całe okno?'",
       "",
       "TWOJE ZADANIE:",
       "Na podstawie informacji od Pauliny stworzysz strukturę JSON dla aplikacji:",
@@ -4391,6 +4395,13 @@ function ModalAIValuation(p){
       "  len = długość (cm) | ks: flex | wave",
       '  JSON: {"type":"szyna","par":{"len":200},"c":{"ks":"flex"}}',
       "",
+      "KIEDY PYTASZ O BRAKUJĄCE DANE — użyj formatu quizu:",
+      "PORTER_QUESTIONS_START",
+      "[{\"label\":\"Szerokość okna w Salonie\",\"placeholder\":\"np. 180\"},{\"label\":\"Wysokość od szyny do podłogi\",\"placeholder\":\"np. 260\"}]",
+      "PORTER_QUESTIONS_END",
+      "Max 4 pytania naraz. Użyj tego formatu ZAMIAST pisania pytań w tekście.",
+      "Jeśli masz wystarczająco danych — nie używaj quizu, od razu generuj JSON.",
+      "",
       "ZASADY:",
       "- NIE pytaj o nazwy okien — użyj Okno 1, Okno 2 jeśli brak nazwy.",
       "- NIE proponuj tkanin — użyj tylko jeśli klient poda nazwę z listy poniżej.",
@@ -4414,8 +4425,12 @@ function ModalAIValuation(p){
   // \u2500\u2500 PARSOWANIE ODPOWIEDZI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function parseAIResponse(text){
     var jsonMatch=text.match(/PORTER_JSON_START\s*([\s\S]*?)\s*PORTER_JSON_END/);
-    var chatText=text.replace(/PORTER_JSON_START[\s\S]*?PORTER_JSON_END/g,"").trim();
-    var parsed=null,calcResult=null;
+    var qMatch=text.match(/PORTER_QUESTIONS_START\s*([\s\S]*?)\s*PORTER_QUESTIONS_END/);
+    var chatText=text
+      .replace(/PORTER_JSON_START[\s\S]*?PORTER_JSON_END/g,"")
+      .replace(/PORTER_QUESTIONS_START[\s\S]*?PORTER_QUESTIONS_END/g,"")
+      .trim();
+    var parsed=null,calcResult=null,questions=null;
     if(jsonMatch){
       try{
         var clean=jsonMatch[1].replace(/```json|```/g,"").trim();
@@ -4423,7 +4438,13 @@ function ModalAIValuation(p){
         calcResult=enrichWithPrices(parsed);
       }catch(e){}
     }
-    return{chatText:chatText,parsed:parsed,calcResult:calcResult};
+    if(qMatch){
+      try{
+        var qclean=qMatch[1].replace(/```json|```/g,"").trim();
+        questions=JSON.parse(qclean);
+      }catch(e){}
+    }
+    return{chatText:chatText,parsed:parsed,calcResult:calcResult,questions:questions};
   }
 
   // \u2500\u2500 PRZELICZ CENY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -4512,7 +4533,7 @@ function ModalAIValuation(p){
       if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
       var raw=d.content&&d.content[0]?d.content[0].text:"";
       var parsed=parseAIResponse(raw);
-      var assistantMsg={role:"assistant",text:parsed.chatText,rawText:raw,calcResult:parsed.calcResult};
+      var assistantMsg={role:"assistant",text:parsed.chatText,rawText:raw,calcResult:parsed.calcResult,questions:parsed.questions||null};
       setMessages(function(prev){return prev.concat([assistantMsg]);});
       if(parsed.parsed){setLastParsed(parsed.parsed);setLastCalc(parsed.calcResult);setSaved(false);}
       setLoading(false);
@@ -4598,6 +4619,80 @@ function ModalAIValuation(p){
     );
   }
 
+  // RENDER QUIZU
+  function renderQuiz(questions,msgIdx){
+    if(!questions||!questions.length)return null;
+    var isLast=msgIdx===messages.length-1;
+    var prefix="q"+msgIdx+"_";
+    function handleSend(){
+      var parts=questions.map(function(q,qi){
+        var key=prefix+qi;
+        var val=(quizAnswers[key]||"").trim();
+        return q.label+": "+(val||"(brak)");
+      });
+      var combined=parts.join("\n");
+      setInputText("");
+      var next=Object.assign({},quizAnswers);
+      questions.forEach(function(_,qi){delete next[prefix+qi];});
+      setQuizAnswers(next);
+      var userMsg={role:"user",text:combined};
+      var newMessages=messages.concat([userMsg]);
+      setMessages(newMessages);
+      setLoading(true);setError(null);
+      var apiMessages=newMessages.filter(function(m){return !m._greeting;}).map(function(m){
+        if(m.role==="user")return{role:"user",content:m.text||" "};
+        return{role:"assistant",content:m.rawText||m.text||" "};
+      });
+      fetch("/api/claude",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({system:buildSystemPrompt(),messages:apiMessages,max_tokens:1500})
+      }).then(function(r){return r.json();}).then(function(d){
+        if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
+        var raw=d.content&&d.content[0]?d.content[0].text:"";
+        var resp=parseAIResponse(raw);
+        var aMsg={role:"assistant",text:resp.chatText,rawText:raw,calcResult:resp.calcResult,questions:resp.questions||null};
+        setMessages(function(prev){return prev.concat([aMsg]);});
+        if(resp.parsed){setLastParsed(resp.parsed);setLastCalc(resp.calcResult);setSaved(false);}
+        setLoading(false);
+      }).catch(function(e){setError(e.message||"B\u0142\u0105d po\u0142\u0105czenia");setLoading(false);});
+    }
+    return ce("div",{style:{marginTop:8,background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:12,overflow:"hidden",maxWidth:"85%"}},
+      questions.map(function(q,qi){
+        var key=prefix+qi;
+        return ce("div",{key:qi,style:{padding:"10px 14px",borderBottom:qi<questions.length-1?"1px solid var(--bd3)":"none"}},
+          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t2)",marginBottom:5,textTransform:"uppercase",letterSpacing:"0.04em"}},q.label),
+          ce("input",{
+            type:"text",
+            placeholder:q.placeholder||"",
+            value:quizAnswers[key]||"",
+            disabled:!isLast||loading,
+            onChange:function(ev){
+              var v=ev.target.value;
+              var ki=key;
+              setQuizAnswers(function(prev){var n=Object.assign({},prev);n[ki]=v;return n;});
+            },
+            onKeyDown:function(ev){if(ev.key==="Enter"){ev.preventDefault();handleSend();}},
+            style:{
+              width:"100%",boxSizing:"border-box",
+              padding:"7px 10px",borderRadius:7,
+              border:"1.5px solid var(--bd2)",
+              background:"var(--bg2)",color:"var(--t1)",
+              fontSize:13,outline:"none",
+              opacity:(!isLast||loading)?0.5:1
+            }
+          })
+        );
+      }),
+      isLast&&!loading?ce("div",{style:{padding:"8px 14px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)"}},
+        ce("button",{
+          onClick:handleSend,
+          style:{width:"100%",padding:"9px",borderRadius:8,border:"none",
+            background:"var(--t1)",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}
+        },"Wy\u015blij \u2192")
+      ):null
+    );
+  }
+
   // \u2500\u2500 RENDER POJEDYNCZEJ WIADOMOSCI \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function renderMessage(msg,idx){
     var isUser=msg.role==="user";
@@ -4617,7 +4712,8 @@ function ModalAIValuation(p){
         fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",
         border:isUser?"none":"1px solid var(--bd2)"
       }},msg.text):null,
-      msg.calcResult?renderCalcResult(msg.calcResult):null
+      msg.calcResult?renderCalcResult(msg.calcResult):null,
+      msg.questions?renderQuiz(msg.questions,idx):null
     );
   }
 
