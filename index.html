@@ -4563,16 +4563,37 @@ function ModalAIValuation(p){
     setSaveLoading(true);setError(null);
     var sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3VzanpZZnd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NjA5NzcsImV4cCI6MjA2MDEzNjk3N30.bJcRxoiVjaSG6Z4yFU3FP2VzDM3p2HV3o2MDcCilJFA";
     var name=lastParsed.clientName||"Nowy klient AI";
+    var now=Date.now();
     var rooms=(lastParsed.rooms||[]).map(function(r,ri){
-      return{id:Date.now()+ri,name:r.name||"Pok\u00f3j "+(ri+1),img:IMG_ROOM_SALON,
+      var roomName=r.name||"Pokój "+(ri+1);
+      var roomLow=roomName.toLowerCase();
+      var roomImg=roomLow.indexOf("salon")>=0?IMG_ROOM_SALON
+        :roomLow.indexOf("sypial")>=0?IMG_ROOM_SYPIALNIA
+        :roomLow.indexOf("kuchn")>=0?IMG_ROOM_KUCHNIA
+        :roomLow.indexOf("gabinet")>=0?IMG_ROOM_GABINET
+        :IMG_ROOM_SALON;
+      return{
+        id:now+ri,
+        name:roomName,
+        img:roomImg,
         windows:(r.windows||[]).map(function(w,wi){
-          return{id:Date.now()+ri*100+wi,name:w.name||"Okno "+(wi+1),products:(w.products||[])};
-        })};
+          // Wyczysc produkty - tylko pola ktore aplikacja rozumie
+          var prods=(w.products||[]).map(function(prod,pi){
+            var clean={id:now+ri*1000+wi*100+pi,type:prod.type};
+            if(prod.par)clean.par=prod.par;
+            if(prod.c)clean.c=prod.c;
+            if(prod.fabName)clean.fabName=prod.fabName;
+            if(prod.variant)clean.variant=prod.variant;
+            return clean;
+          });
+          return{id:now+ri*100+wi,name:w.name||"Okno "+(wi+1),products:prods};
+        })
+      };
     });
     fetch("https://rkcidwusjzvfwxszotnb.supabase.co/rest/v1/clients",{
       method:"POST",
       headers:{"Content-Type":"application/json","apikey":sbKey,"Prefer":"return=representation"},
-      body:JSON.stringify({name:name,addr:lastParsed.addr||"",rooms:rooms})
+      body:JSON.stringify({name:name,addr:lastParsed.addr||"",phone:"",email:"",rooms:rooms})
     }).then(function(r){return r.json();}).then(function(res){
       var cl=res&&res[0]?res[0]:null;
       if(cl){
