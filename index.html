@@ -1142,7 +1142,8 @@ function buildOfferRows(client){
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
         var desc=prodLabel+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
-        rows.push({lp:lp++,name:desc,qty:1,unit:"szt.",cenaJedn:total,total:total});
+        var isKurtain=(p.type==="zaslona"||p.type==="firana");
+        rows.push({lp:lp++,name:desc,qty:1,unit:isKurtain?"kpl.":"szt.",cenaJedn:total,total:total});
       });
     });
   });
@@ -1251,7 +1252,7 @@ function openPDFWindow(htmlContent, title){
   w.document.open();
   w.document.write(htmlContent);
   w.document.close();
-  setTimeout(function(){w.focus();w.print();},200);
+  setTimeout(function(){w.focus();},200);
 }
 
 function makeTableHTML(headers, rows, caption){
@@ -1291,7 +1292,8 @@ function pdfStyles(){
   </style>`;
 }
 
-function generateOfferPDF(client,comm){
+function generateOfferPDF(client,comm,montaz){
+  montaz=montaz||0;
   comm=comm||0;
   var rows=buildOfferRows(client);
   if(!rows.length){alert("Brak wycenionych produktów.");return;}
@@ -1351,9 +1353,11 @@ function generateOfferPDF(client,comm){
   </div>
   <div class="footer"><span>${SELLER.name} | ${SELLER.city}</span><span>Strona 1</span></div>
   </body></html>`;
+  var montazVal=montaz>0?roundTo10(total*montaz):0;
   var offerNotes=window.prompt("Uwagi do oferty (opcjonalne):", "") || "";
   if(offerNotes===null)return;
   if(offerNotes) html=html.replace('<div class="notes">Niniejszy dokument nie jest fakturą','<div class="notes">'+ offerNotes +'<br><br>Niniejszy dokument nie jest fakturą');
+  if(montazVal>0) html=html.replace('<div class="sum-box">','<div style="margin:4mm 0;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;"><span style="font-size:12px;color:#8B5E3C;">Monta\u017c dekoracji okiennych</span><span style="font-size:13px;font-weight:700;color:#8B5E3C;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div><div class="sum-box">');
   openPDFWindow(html, offerNo);
 }
 
@@ -1557,8 +1561,9 @@ function generateFabricOrderPDF(client){
 }
 
 // ── WYCENA UPROSZCZONA PDF ─────────────────────────────────────────────────
-function generateSimplifiedPDF(client,comm){
+function generateSimplifiedPDF(client,comm,montaz){
   comm=comm||0;
+  montaz=montaz||0;
   if(!(client.rooms||[]).length){alert("Brak pomieszczeń.");return;}
   var now=new Date();
   var dateStr=now.toLocaleDateString("pl-PL");
@@ -1574,8 +1579,8 @@ function generateSimplifiedPDF(client,comm){
 
   // Pomocnik: liczba mnoga dla typów produktów
   function pluralProd(type,count){
-    if(type==="zaslona")return count===1?"Zas\u0142ona":"Zas\u0142ony";
-    if(type==="firana")return count===1?"Firana":"Firany";
+    if(type==="zaslona")return "Zas\u0142ony";
+    if(type==="firana")return "Firany";
     if(type==="roleta")return count===1?"Roleta":"Rolety";
     if(type==="zaluzja")return count===1?"Zaluzja":count<5?"Zaluzje":"Zaluzji";
     if(type==="plisa")return count===1?"Plisa":"Plisy";
@@ -1614,7 +1619,8 @@ function generateSimplifiedPDF(client,comm){
       var d=typeData[key];
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):pluralProd(d.type,d.count);
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
+      var isKpl=(d.type==="zaslona"||d.type==="firana");
+      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
     return {rows:rows,total:total};
   }
@@ -1675,12 +1681,12 @@ function generateSimplifiedPDF(client,comm){
       +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
       +"<div style=\"font-size:10px;color:#8B5E3C;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
       +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
-      +"<div style=\"font-size:9px;color:#888;margin:0 0 6mm;padding-bottom:4mm;border-bottom:1px solid #ede3d9;\">Dokument pogl\u0105dowy \u2014 orientacyjna wycena z podzia\u0142em na pomieszczenia. Szczeg\u00f3\u0142owe zestawienie w ofercie w\u0142a\u015bciwej.</div>"
+
       +roomSections2
       +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
       +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">\u0141\u0105cznie ca\u0142a realizacja</span>"
       +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>"
-      +"<div class=\"notes\" style=\"margin-top:6mm;\"><strong>Monta\u017c i stylizacja tkanin wynosi 10% warto\u015bci zam\u00f3wienia.</strong></div>"
+      +(montaz>0?"<div style=\"margin-top:4mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#8B5E3C;\">Monta\u017c dekoracji okiennych</span><span style=\"font-size:14px;font-weight:700;color:#8B5E3C;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
       +"<div class=\"sign-block\">"
       +"<div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
       +"<div class=\"sign\">Akceptacja klienta</div>"
@@ -1694,13 +1700,13 @@ function generateSimplifiedPDF(client,comm){
     var opened=0;
     variantLabelsSorted.forEach(function(lbl){
       var h=buildOnePDF(lbl);
-      if(h){openPDFWindow(h,"wycena-uproszczona-wariant"+lbl+"-"+offerNo);opened++;}
+      if(h){var clientSlug2=(client.name||"").replace(/\s+/g,"-");openPDFWindow(h,clientSlug2+"-Oferta-aranzacji-okiennych-wariant"+lbl);opened++;}
     });
     if(!opened){alert("Brak pozycji do wyceny.");}
   } else {
     var h=buildOnePDF(null);
     if(!h){alert("Brak pozycji do wyceny.");return;}
-    openPDFWindow(h,"wycena-uproszczona-"+offerNo);
+    var clientSlug3=(client.name||"").replace(/\s+/g,"-");openPDFWindow(h,clientSlug3+"-Oferta-aranzacji-okiennych");
   }
 
 }
@@ -3708,6 +3714,7 @@ function App(){
   var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
   var s14b=useState(false),showEmailModal=s14b[0],setShowEmailModal=s14b[1];
+  var s14m=useState(""),montazInput=s14m[0],setMontazInput=s14m[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
@@ -4197,6 +4204,12 @@ function App(){
         commissionInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+commissionInput+"%"):null,
         commissionInput?ce("button",{onClick:function(){setCommissionInput("");},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
       ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:0,display:"flex",alignItems:"center",gap:12}},
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Monta\u017c (%)"),
+        ce("input",{type:"number",min:0,max:100,step:1,value:montazInput,onChange:function(ev){setMontazInput(ev.target.value);},placeholder:"np. 10",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+"%"):null,
+        montazInput?ce("button",{onClick:function(){setMontazInput("");},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
+      ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:0}},
         ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.75)",letterSpacing:"0.04em"}},
           hasAnyVariants
@@ -4207,8 +4220,8 @@ function App(){
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
-        ce("button",{onClick:function(){generateOfferPDF(curClient,comm);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena PDF"),
-        ce("button",{onClick:function(){generateSimplifiedPDF(curClient,comm);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
+        ce("button",{onClick:function(){generateOfferPDF(curClient,comm,(+montazInput||0)/100);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena PDF"),
+        ce("button",{onClick:function(){generateSimplifiedPDF(curClient,comm,(+montazInput||0)/100);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
         ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:function(){generateFabricOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){generateKarniszOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
@@ -4466,7 +4479,7 @@ function ModalAIValuation(p){
           var res=calc(prodForCalc);
           prod.mp=res.total||0;
           winTotal+=prod.mp;
-          var typeLabel={zaslona:"Zas\u0142ona",firana:"Firana",zaluzja:"\u017baluzja",roleta:"Roleta rzymska",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
+          var typeLabel={zaslona:"Zas\u0142ony",firana:"Firany",zaluzja:"\u017baluzja",roleta:"Roleta rzymska",szyna:"Szyna",karnisz:"Karnisz elektryczny"}[prod.type]||prod.type;
           prodSummary.push({label:typeLabel+(prod.fabName?" ("+prod.fabName+")":""),price:prod.mp,lines:(res.lines||[]),warn:res.warn||null});
         });
         roomTotal+=winTotal;
