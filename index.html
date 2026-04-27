@@ -4561,7 +4561,6 @@ function ModalAIValuation(p){
   function doSave(){
     if(!lastParsed)return;
     setSaveLoading(true);setError(null);
-    var sbKey="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3VzanpZZnd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1NjA5NzcsImV4cCI6MjA2MDEzNjk3N30.bJcRxoiVjaSG6Z4yFU3FP2VzDM3p2HV3o2MDcCilJFA";
     var name=lastParsed.clientName||"Nowy klient AI";
     var now=Date.now();
     var rooms=(lastParsed.rooms||[]).map(function(r,ri){
@@ -4590,11 +4589,8 @@ function ModalAIValuation(p){
         })
       };
     });
-    fetch("https://rkcidwusjzvfwxszotnb.supabase.co/rest/v1/clients",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","apikey":sbKey,"Prefer":"return=representation"},
-      body:JSON.stringify({name:name,addr:lastParsed.addr||"",phone:"",email:"",rooms:rooms})
-    }).then(function(r){return r.json();}).then(function(res){
+    sbFetch("POST","clients",{name:name,addr:lastParsed.addr||"",phone:"",email:"",rooms:rooms})
+    .then(function(res){
       var cl=res&&res[0]?res[0]:null;
       if(cl){
         setSaved(true);setSavedClient(cl);
