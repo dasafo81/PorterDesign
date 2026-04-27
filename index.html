@@ -1582,7 +1582,7 @@ function generateSimplifiedPDF(client,comm,montaz){
     if(type==="zaslona")return "Zas\u0142ony";
     if(type==="firana")return "Firany";
     if(type==="roleta")return count===1?"Roleta":"Rolety";
-    if(type==="zaluzja")return count===1?"żaluzje":count<5?"żaluzje":"żaluzji";
+    if(type==="zaluzja")return count===1?"Żaluzje":count<5?"Żaluzje":"Żaluzji";
     if(type==="plisa")return count===1?"Plisa":"Plisy";
     if(type==="karnisz")return count===1?"Karnisz":"Karnisze";
     if(type==="szyna")return count===1?"Szyna":"Szyny";
@@ -1686,7 +1686,7 @@ function generateSimplifiedPDF(client,comm,montaz){
       +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
       +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">\u0141\u0105cznie ca\u0142a realizacja</span>"
       +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>"
-      +(montaz>0?"<div style=\"margin-top:4mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#8B5E3C;\">Monta\u017c dekoracji okiennych</span><span style=\"font-size:14px;font-weight:700;color:#8B5E3C;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
+      +(montaz>0?"<div style=\"margin-top:4mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#8B5E3C;\">Monta\u017c dekoracji okiennych (p\u0142atny dodatkowo)</span><span style=\"font-size:14px;font-weight:700;color:#8B5E3C;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
       +"<div class=\"sign-block\">"
       +"<div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
       +"<div class=\"sign\">Akceptacja klienta</div>"
@@ -1700,13 +1700,13 @@ function generateSimplifiedPDF(client,comm,montaz){
     var opened=0;
     variantLabelsSorted.forEach(function(lbl){
       var h=buildOnePDF(lbl);
-      if(h){var clientSlug2=(client.name||"").replace(/\s+/g,"-");openPDFWindow(h,clientSlug2+"-Oferta-aranzacji-okiennych-wariant"+lbl);opened++;}
+      if(h){var clientSlug2=(client.name||"");openPDFWindow(h,clientSlug2+" - Oferta Aranżacji Okiennych (wariant "+lbl+")");opened++;}
     });
     if(!opened){alert("Brak pozycji do wyceny.");}
   } else {
     var h=buildOnePDF(null);
     if(!h){alert("Brak pozycji do wyceny.");return;}
-    var clientSlug3=(client.name||"").replace(/\s+/g,"-");openPDFWindow(h,clientSlug3+"-Oferta-aranzacji-okiennych");
+    var clientSlug3=(client.name||"");openPDFWindow(h,clientSlug3+" - Oferta Aranżacji Okiennych");
   }
 
 }
