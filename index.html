@@ -84,6 +84,28 @@ var sbApi = {
   // Usuń klienta
   deleteClient: function(id){
     return sbFetch("DELETE","clients?id=eq."+id);
+  },
+  // ── DEALS (CRM) ──
+  getDeals: function(){
+    return sbFetch("GET","deals?select=*&order=created_at.asc");
+  },
+  addDeal: function(clientId){
+    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,followup_date:null});
+  },
+  updateDeal: function(id,data){
+    return sbFetch("PATCH","deals?id=eq."+id,data);
+  },
+  deleteDeal: function(id){
+    return sbFetch("DELETE","deals?id=eq."+id);
+  },
+  getAttachments: function(dealId){
+    return sbFetch("GET","deal_attachments?deal_id=eq."+dealId+"&select=*&order=created_at.asc");
+  },
+  addAttachment: function(dealId,url,name){
+    return sbFetch("POST","deal_attachments",{deal_id:dealId,url:url,name:name||""});
+  },
+  deleteAttachment: function(id){
+    return sbFetch("DELETE","deal_attachments?id=eq."+id);
   }
 };
 
@@ -1674,7 +1696,7 @@ function generateSimplifiedPDF(client,comm,montaz){
     if(!grandTotal2)return null;
 
     var variantSuffix=variantLabel?" \u2014 Wariant "+variantLabel:"";
-    var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Aranżacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
+    var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u0144\u017cacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
       +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
       +"<div class=\"header\" style=\"padding-top:2mm;\">"
       +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
@@ -3699,9 +3721,357 @@ function ProdCard(p){
   );
 }
 
+
+// ── CRM ─────────────────────────────────────────────────────────────────────
+
+var CRM_STAGES=[
+  {id:"zapytanie",  label:"Zapytanie",  color:"#6366f1"},
+  {id:"pomiar",     label:"Pomiar",     color:"#f59e0b"},
+  {id:"wycena",     label:"Wycena",     color:"#3b82f6"},
+  {id:"zamowienie", label:"Zamówienie", color:"#8b5cf6"},
+  {id:"realizacja", label:"Realizacja", color:"#10b981"},
+  {id:"zakonczone", label:"Zakończone", color:"#6b7280"}
+];
+
+function clientTotal2(cl){
+  if(!cl||!cl.rooms)return 0;
+  return (cl.rooms||[]).reduce(function(a,r){
+    return a+(r.windows||[]).reduce(function(b,w){
+      return b+(w.products||[]).reduce(function(c,p){
+        return c+(p.mp!=null?p.mp:0);
+      },0);
+    },0);
+  },0);
+}
+
+function fmtDate(iso){
+  if(!iso)return null;
+  var d=new Date(iso);
+  return d.toLocaleDateString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric"});
+}
+
+function gcalLink(title,date,desc){
+  if(!date)return null;
+  var d=new Date(date);
+  var pad=function(n){return String(n).padStart(2,"0");};
+  var ymd=d.getFullYear()+""+pad(d.getMonth()+1)+""+pad(d.getDate());
+  var start=ymd+"T090000";
+  var end=ymd+"T100000";
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(title)+"&dates="+start+"/"+end+"&details="+encodeURIComponent(desc||"");
+}
+
+// ── MODAL DEAL ───────────────────────────────────────────────────────────────
+function ModalDeal(p){
+  // p: deal, client, onSave(data), onDelete, onClose, onGoToClient
+  var d=p.deal;
+  var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
+  var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
+  var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
+  var sfu=useState(d.followup_date?d.followup_date.slice(0,16):""),followDate=sfu[0],setFollowDate=sfu[1];
+  var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
+  var sul=useState(false),uploading=sul[0],setUploading=sul[1];
+  var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
+  var cl=p.client;
+
+  React.useEffect(function(){
+    sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
+  },[d.id]);
+
+  function save(){
+    setBusy(true);
+    sbApi.updateDeal(d.id,{
+      notes:notes,
+      visit_date:visitDate||null,
+      delivery_date:delivDate||null,
+      followup_date:followDate||null,
+      updated_at:new Date().toISOString()
+    }).then(function(){
+      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,followup_date:followDate||null});
+      setBusy(false);
+      p.onClose();
+    }).catch(function(e){alert("Błąd: "+e.message);setBusy(false);});
+  }
+
+  function deleteAttach(id){
+    sbApi.deleteAttachment(id).then(function(){
+      setAttachments(function(a){return a.filter(function(x){return x.id!==id;});});
+    });
+  }
+
+  function uploadFile(file){
+    // Upload do Supabase Storage bucket "deal-attachments"
+    setUploading(true);
+    var path="deals/"+d.id+"/"+Date.now()+"_"+file.name.replace(/\s/g,"_");
+    var uploadUrl=SB_URL+"/storage/v1/object/deal-attachments/"+path;
+    fetch(uploadUrl,{
+      method:"POST",
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":file.type,"x-upsert":"true"},
+      body:file
+    }).then(function(r){
+      if(!r.ok)return r.text().then(function(t){throw new Error(t);});
+      var publicUrl=SB_URL+"/storage/v1/object/public/deal-attachments/"+path;
+      return sbApi.addAttachment(d.id,publicUrl,file.name);
+    }).then(function(res){
+      var att=res&&res[0]?res[0]:{id:Date.now(),url:"",name:file.name};
+      setAttachments(function(a){return a.concat([att]);});
+      setUploading(false);
+    }).catch(function(e){alert("Błąd uploadu: "+e.message);setUploading(false);});
+  }
+
+  var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
+  var LBL={fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4,display:"block"};
+
+  var clientName=cl?cl.name:"(brak klienta)";
+  var total=cl?clientTotal2(cl):0;
+
+  function CalBtn(props){
+    var url=gcalLink(props.title,props.date,"Klient: "+clientName);
+    if(!props.date||!url)return null;
+    return ce("a",{href:url,target:"_blank",rel:"noopener noreferrer",
+      style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#4285f4",textDecoration:"none",border:"1px solid #4285f4",borderRadius:6,padding:"2px 7px",marginLeft:6,verticalAlign:"middle"}
+    },"\uD83D\uDCC5 Dodaj do kalendarza");
+  }
+
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0"}},
+    ce("div",{style:{background:"var(--bg2)",width:"100%",maxWidth:540,borderRadius:"20px 20px 0 0",maxHeight:"92vh",overflowY:"auto",padding:"24px 20px 32px"}},
+      // Header
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}},
+        ce("div",null,
+          ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},"Karta dealu"),
+          ce("div",{style:{fontSize:13,color:"var(--t3)",marginTop:2}},clientName)
+        ),
+        ce("button",{onClick:p.onClose,style:{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"var(--t3)",padding:"4px 6px"}},"\u00D7")
+      ),
+      // Wartość wyceny + przejdź
+      total>0?ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"12px 14px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        ce("div",null,
+          ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:2}},"WARTOŚĆ WYCENY"),
+          ce("div",{style:{fontSize:20,fontWeight:700,color:"var(--t1)"}},Math.round(total/10)*10+" zł")
+        ),
+        ce("button",{onClick:p.onGoToClient,style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",borderRadius:9,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:"var(--t1)"}},"\u2192 Przejdź do wyceny")
+      ):null,
+      // Daty z przyciskami kalendarza
+      ce("div",{style:{marginBottom:16}},
+        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:4}},
+          ce("label",{style:LBL,style:{...LBL,marginBottom:0}},"TERMIN POMIARU"),
+          ce(CalBtn,{title:"Pomiar — "+clientName,date:visitDate})
+        ),
+        ce("input",{type:"datetime-local",value:visitDate,onChange:function(e){setVisitDate(e.target.value);},style:IST})
+      ),
+      ce("div",{style:{marginBottom:16}},
+        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:4}},
+          ce("label",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:0,display:"block"}},"TERMIN REALIZACJI"),
+          ce(CalBtn,{title:"Realizacja — "+clientName,date:delivDate})
+        ),
+        ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST})
+      ),
+      ce("div",{style:{marginBottom:16}},
+        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:4}},
+          ce("label",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:0,display:"block"}},"FOLLOW-UP"),
+          ce(CalBtn,{title:"Follow-up — "+clientName,date:followDate})
+        ),
+        ce("input",{type:"datetime-local",value:followDate,onChange:function(e){setFollowDate(e.target.value);},style:IST})
+      ),
+      // Notatki
+      ce("div",{style:{marginBottom:16}},
+        ce("label",{style:LBL},"NOTATKI"),
+        ce("textarea",{value:notes,onChange:function(e){setNotes(e.target.value);},rows:4,placeholder:"Historia kontaktu, uwagi...",style:{...IST,resize:"vertical",lineHeight:1.5}})
+      ),
+      // Załączniki
+      ce("div",{style:{marginBottom:20}},
+        ce("label",{style:LBL},"ZA\u0141\u0104CZNIKI"),
+        attachments.length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:8}},
+          attachments.map(function(a){
+            var isImg=/\.(jpg|jpeg|png|gif|webp)$/i.test(a.name||a.url);
+            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:8,padding:"6px 10px",border:"1px solid var(--bd2)"}},
+              isImg?ce("img",{src:a.url,alt:a.name,style:{width:36,height:36,borderRadius:6,objectFit:"cover",flexShrink:0}}):ce("span",{style:{fontSize:18}},"\uD83D\uDCCE"),
+              ce("a",{href:a.url,target:"_blank",rel:"noopener noreferrer",style:{flex:1,fontSize:12,color:"var(--t1)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.name||"Plik"),
+              ce("button",{onClick:function(){deleteAttach(a.id);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:16,padding:"0 2px",opacity:0.5}},"\u00D7")
+            );
+          })
+        ):null,
+        ce("label",{style:{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",border:"1.5px dashed var(--bd2)",borderRadius:9,cursor:"pointer",fontSize:13,color:"var(--t3)"}},
+          uploading?"\u23F3 Wysyłanie...":"\uFF0B Dodaj zdjęcie / plik",
+          ce("input",{type:"file",accept:"image/*,.pdf",style:{display:"none"},onChange:function(e){var f=e.target.files&&e.target.files[0];if(f)uploadFile(f);e.target.value="";},disabled:uploading})
+        )
+      ),
+      // Przyciski
+      ce("div",{style:{display:"flex",gap:10}},
+        ce("button",{onClick:save,disabled:busy,style:{flex:1,padding:"13px",borderRadius:11,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:700,cursor:busy?"wait":"pointer"}},busy?"Zapisuję...":"Zapisz"),
+        ce("button",{onClick:function(){if(window.confirm("Usunąć ten deal?"))p.onDelete();},style:{padding:"13px 16px",borderRadius:11,border:"1px solid var(--bd2)",background:"none",color:"var(--t3)",fontSize:13,cursor:"pointer"}},"Usuń")
+      )
+    )
+  );
+}
+
+// ── SCREEN CRM ───────────────────────────────────────────────────────────────
+function ScreenCRM(p){
+  // p: clients, setScreen, setAppMode, setCurClientId
+  var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
+  var sDrag=useState(null),dragId=sDrag[0],setDragId=sDrag[1];
+  var sDragOver=useState(null),dragOver=sDragOver[0],setDragOver=sDragOver[1];
+  var sModal=useState(null),modalDeal=sModal[0],setModalDeal=sModal[1];
+  var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
+  var sNewClient=useState(""),newClientId=sNewClient[0],setNewClientId=sNewClient[1];
+  var sAdding=useState(false),adding=sAdding[0],setAdding=sAdding[1];
+
+  React.useEffect(function(){
+    sbApi.getDeals().then(function(data){
+      setDeals(data||[]);
+      setLoadingDeals(false);
+    }).catch(function(){setDeals([]);setLoadingDeals(false);});
+  },[]);
+
+  function addDeal(){
+    if(!newClientId){return;}
+    setAdding(true);
+    sbApi.addDeal(newClientId).then(function(res){
+      var d=res&&res[0]?res[0]:null;
+      if(d){setDeals(function(prev){return prev.concat([d]);});}
+      setNewClientId("");
+      setAdding(false);
+    }).catch(function(e){alert("Błąd: "+e.message);setAdding(false);});
+  }
+
+  function moveStage(dealId,stage){
+    setDeals(function(prev){return prev.map(function(d){return d.id===dealId?Object.assign({},d,{stage:stage}):d;});});
+    sbApi.updateDeal(dealId,{stage:stage,updated_at:new Date().toISOString()});
+  }
+
+  function openDeal(deal){setModalDeal(deal);}
+
+  function onDealSave(dealId,data){
+    setDeals(function(prev){return prev.map(function(d){return d.id===dealId?Object.assign({},d,data):d;});});
+    setModalDeal(null);
+  }
+
+  function onDealDelete(dealId){
+    sbApi.deleteDeal(dealId).then(function(){
+      setDeals(function(prev){return prev.filter(function(d){return d.id!==dealId;});});
+      setModalDeal(null);
+    }).catch(function(e){alert("Błąd: "+e.message);});
+  }
+
+  function goToClient(clientId){
+    p.setCurClientId(clientId);
+    p.setScreen("rooms");
+    p.setAppMode("wyceniarka");
+  }
+
+  if(loadingDeals){
+    return ce("div",{style:{textAlign:"center",padding:"3rem",color:"var(--t3)",fontSize:13}},"Ładowanie CRM...");
+  }
+
+  // Klienci bez dealu (do dodania)
+  var dealClientIds=(deals||[]).map(function(d){return String(d.client_id);});
+  var clientsForSelect=p.clients.filter(function(cl){return !dealClientIds.includes(String(cl.id));});
+
+  return ce("div",null,
+    // Panel dodawania dealu
+    ce("div",{style:{display:"flex",gap:8,marginBottom:"1.2rem",alignItems:"center"}},
+      ce("select",{
+        value:newClientId,
+        onChange:function(e){setNewClientId(e.target.value);},
+        style:{flex:1,padding:"9px 11px",borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:newClientId?"var(--t1)":"var(--t3)",fontFamily:"inherit"}
+      },
+        ce("option",{value:""},"Wybierz klienta…"),
+        clientsForSelect.map(function(cl){
+          return ce("option",{key:cl.id,value:cl.id},cl.name);
+        })
+      ),
+      ce("button",{
+        onClick:addDeal,
+        disabled:!newClientId||adding,
+        style:{padding:"9px 16px",borderRadius:10,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:13,fontWeight:700,cursor:!newClientId||adding?"not-allowed":"pointer",opacity:!newClientId?0.4:1,whiteSpace:"nowrap"}
+      },adding?"\u23F3":"+ Deal")
+    ),
+    // Kanban
+    ce("div",{style:{display:"flex",gap:10,overflowX:"auto",paddingBottom:12,marginLeft:-4,paddingLeft:4}},
+      CRM_STAGES.map(function(stage){
+        var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
+        var isOver=dragOver===stage.id;
+        return ce("div",{
+          key:stage.id,
+          onDragOver:function(e){e.preventDefault();setDragOver(stage.id);},
+          onDrop:function(e){
+            e.preventDefault();
+            if(dragId&&dragId!==stage.id){moveStage(dragId,stage.id);}
+            setDragId(null);setDragOver(null);
+          },
+          onDragLeave:function(){setDragOver(null);},
+          style:{
+            minWidth:200,width:200,flexShrink:0,
+            background:isOver?"rgba(99,102,241,0.06)":"var(--bg2)",
+            border:isOver?"1.5px solid "+stage.color:"1px solid var(--bd2)",
+            borderRadius:14,padding:"10px 8px",
+            transition:"border .15s, background .15s"
+          }
+        },
+          // Nagłówek kolumny
+          ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:8,borderBottom:"1px solid var(--bd3)"}},
+            ce("div",{style:{width:9,height:9,borderRadius:"50%",background:stage.color,flexShrink:0}}),
+            ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.06em",textTransform:"uppercase",flex:1}},stage.label),
+            ce("div",{style:{fontSize:11,color:"var(--t3)",fontWeight:500}},stageDeals.length||"")
+          ),
+          // Karty
+          stageDeals.map(function(deal){
+            var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
+            var name=cl?cl.name:"(nieznany)";
+            var total=cl?clientTotal2(cl):0;
+            var hasVisit=deal.visit_date;
+            var hasDelivery=deal.delivery_date;
+            var hasFollowup=deal.followup_date;
+            return ce("div",{
+              key:deal.id,
+              draggable:true,
+              onDragStart:function(){setDragId(deal.id);},
+              onDragEnd:function(){setDragId(null);setDragOver(null);},
+              onClick:function(){openDeal(deal);},
+              style:{
+                background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,
+                padding:"10px 11px",marginBottom:8,cursor:"pointer",
+                boxShadow:"0 1px 4px rgba(0,0,0,0.05)",
+                borderLeft:"3px solid "+stage.color,
+                transition:"box-shadow .15s",
+                opacity:dragId===deal.id?0.4:1
+              }
+            },
+              ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
+              total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" zł"):null,
+              (hasVisit||hasDelivery||hasFollowup)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
+                hasVisit?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
+                  ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
+                ):null,
+                hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
+                  ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
+                ):null,
+                hasFollowup?ce("div",{style:{fontSize:10,color:"#f59e0b",display:"flex",alignItems:"center",gap:3}},
+                  ce("span",null,"\u23F0"),ce("span",null,"Follow-up: "+fmtDate(deal.followup_date))
+                ):null
+              ):null,
+              deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
+            );
+          }),
+          stageDeals.length===0?ce("div",{style:{fontSize:11,color:"var(--t3)",textAlign:"center",padding:"18px 0",opacity:0.5}},"Brak"):null
+        );
+      })
+    ),
+    // Modal
+    modalDeal?ce(ModalDeal,{
+      deal:modalDeal,
+      client:p.clients.find(function(c){return String(c.id)===String(modalDeal.client_id);})||null,
+      onSave:function(data){onDealSave(modalDeal.id,data);},
+      onDelete:function(){onDealDelete(modalDeal.id);},
+      onClose:function(){setModalDeal(null);},
+      onGoToClient:function(){goToClient(modalDeal.client_id);}
+    }):null
+  );
+}
+
 // ── APP ────────────────────────────────────────────────────────────────────
 
 function App(){
+  var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
   var s2=useState([]),clients=s2[0],setClients=s2[1];
   var s3=useState(null),curClientId=s3[0],setCurClientId=s3[1];
@@ -4234,16 +4604,36 @@ function App(){
     // Save status
     saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"#c0392b":"var(--t2)",color:"#fff",fontSize:12,padding:"6px 18px",borderRadius:"0 0 10px 10px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 2px 8px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuję...":saveStatus==="ok"?"✓ Zapisano":"⚠ Błąd zapisu"):null,
     // Topbar (always visible)
-    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1.2rem",paddingBottom:"1rem",borderBottom:"1px solid var(--bd3)"}},
-      screen!=="home"?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"none",cursor:"pointer",padding:"4px 0",color:"var(--t3)",fontSize:13,letterSpacing:"0.08em",display:"flex",alignItems:"center",gap:4}},"\u2190 Wstecz"):ce("div",{style:{width:20}}),
+    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",paddingBottom:"1rem",borderBottom:"1px solid var(--bd3)"}},
+      appMode==="wyceniarka"&&screen!=="home"?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"none",cursor:"pointer",padding:"4px 0",color:"var(--t3)",fontSize:13,letterSpacing:"0.08em",display:"flex",alignItems:"center",gap:4}},"\u2190 Wstecz"):ce("div",{style:{width:20}}),
       ce("div",{style:{display:"flex",alignItems:"center",gap:10}},
         ce("img",{src:LOGO_SRC,alt:"PD",style:{height:22,opacity:0.9}}),
         ce("span",{style:{fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)",fontWeight:500}},"Porter Design Assistant")
       ),
-      ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI")
+      appMode==="wyceniarka"?ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI"):ce("div",{style:{width:20}})
     ),
-    screen!=="home"?ce(BC,{}):null,
-    content,
+    // Zakładki Wyceniarka / CRM
+    ce("div",{style:{display:"flex",gap:4,marginBottom:"1.2rem",background:"var(--bg2)",borderRadius:12,padding:4,border:"1px solid var(--bd2)"}},
+      ["wyceniarka","crm"].map(function(mode){
+        var active=appMode===mode;
+        var labels={wyceniarka:"\uD83D\uDCCB Wyceniarka",crm:"\uD83D\uDCC8 CRM"};
+        return ce("button",{key:mode,onClick:function(){setAppMode(mode);},style:{
+          flex:1,padding:"9px 0",borderRadius:9,border:"none",
+          background:active?"var(--bg)":"transparent",
+          color:active?"var(--t1)":"var(--t3)",
+          fontWeight:active?700:400,fontSize:13,cursor:"pointer",
+          boxShadow:active?"0 1px 4px rgba(0,0,0,0.08)":"none",
+          transition:"all .15s",letterSpacing:"0.02em"
+        }},labels[mode]);
+      })
+    ),
+    // Treść główna
+    appMode==="crm"
+      ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId})
+      : ce(Fragment,null,
+          screen!=="home"?ce(BC,{}):null,
+          content
+        ),
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
