@@ -4681,7 +4681,8 @@ function ScreenCRM(p){
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
   var sDrag=useState(null),dragId=sDrag[0],setDragId=sDrag[1];
   var sDragOver=useState(null),dragOver=sDragOver[0],setDragOver=sDragOver[1];
-  var touchRef=useRef({id:null,moved:false,startX:0,startY:0});
+  var sDragReady=useState(null),dragReady=sDragReady[0],setDragReady=sDragReady[1];
+  var touchRef=useRef({id:null,moved:false,startX:0,startY:0,over:null});
   var sModal=useState(null),modalDeal=sModal[0],setModalDeal=sModal[1];
   var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
   var sNewClient=useState(""),newClientId=sNewClient[0],setNewClientId=sNewClient[1];
@@ -4761,7 +4762,28 @@ function ScreenCRM(p){
     ),
     // Widok zależny od sub-zakładki
     crmTab==="kalendarz"?ce(CRMKalendarz,{deals:deals||[],clients:p.clients,onDealClick:function(d){setModalDeal(d);},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady}):null,
-    crmTab==="kanban"?ce("div",null,
+    crmTab==="kanban"?ce("div",{
+      onTouchMove:function(e){
+        if(!touchRef.current.id)return;
+        e.preventDefault();
+        var t=e.touches[0];
+        var dx=t.clientX-touchRef.current.startX,dy=t.clientY-touchRef.current.startY;
+        if(Math.sqrt(dx*dx+dy*dy)>8)touchRef.current.moved=true;
+        setDragId(touchRef.current.id);
+        var el=document.elementFromPoint(t.clientX,t.clientY);
+        var col=el&&el.closest("[data-stage]");
+        var sid=col?col.getAttribute("data-stage"):null;
+        touchRef.current.over=sid;
+        setDragOver(sid);
+      },
+      onTouchEnd:function(){
+        var moved=touchRef.current.moved,fromId=touchRef.current.id,over=touchRef.current.over;
+        touchRef.current={id:null,moved:false,startX:0,startY:0};
+        setDragId(null);setDragOver(null);
+        if(moved&&over&&over!==fromId){moveStage(fromId,over);}
+      },
+      style:{}
+    },
     // Panel dodawania dealu
     ce("div",{style:{display:"flex",gap:8,marginBottom:"1.2rem",alignItems:"center"}},
       ce("select",{
@@ -4817,32 +4839,14 @@ function ScreenCRM(p){
             var hasDelivery=deal.delivery_date;
             return ce("div",{
               key:deal.id,
-              draggable:true,
+              draggable:dragReady===deal.id,
+              onMouseDown:function(){setDragReady(deal.id);},
+              onMouseUp:function(){setDragReady(null);},
               onDragStart:function(){setDragId(deal.id);},
-              onDragEnd:function(){setDragId(null);setDragOver(null);},
+              onDragEnd:function(){setDragReady(null);setDragId(null);setDragOver(null);},
               onClick:function(){if(!touchRef.current.moved){openDeal(deal);}},
               onTouchStart:function(e){
                 touchRef.current={id:deal.id,moved:false,startX:e.touches[0].clientX,startY:e.touches[0].clientY};
-              },
-              onTouchMove:function(e){
-                e.preventDefault();
-                var t=e.touches[0];
-                var dx=t.clientX-touchRef.current.startX, dy=t.clientY-touchRef.current.startY;
-                if(Math.sqrt(dx*dx+dy*dy)>6)touchRef.current.moved=true;
-                setDragId(touchRef.current.id);
-                var el=document.elementFromPoint(t.clientX,t.clientY);
-                var col=el&&el.closest("[data-stage]");
-                setDragOver(col?col.getAttribute("data-stage"):null);
-              },
-              onTouchEnd:function(){
-                var moved=touchRef.current.moved, fromId=touchRef.current.id;
-                touchRef.current={id:null,moved:false,startX:0,startY:0};
-                setDragId(null);
-                setDragOver(function(over){
-                  if(moved&&over&&over!==fromId)moveStage(fromId,over);
-                  return null;
-                });
-                if(!moved){openDeal(deal);}
               },
               style:{
                 background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,
