@@ -17,6 +17,90 @@ import { FABRICS, PROD_TYPES, JZ, JZ_ZONES, JZ_LABELS, JZALUZJA_MOTORS, JZALUZJA
 } from '../constants/data.js';
 const ce = React.createElement;
 
+export const MOCK_SENT = [
+  {id:"m1", to:"anna.kowalska@gmail.com", toName:"Anna Kowalska", subject:"Oferta aranżacji okiennych – Salon", date:"2025-04-22T10:14:00", preview:"W nawiązaniu do naszego spotkania, przesyłam w załączeniu PDF z wyceną...", body:"Dzień dobry,\n\nW nawiązaniu do naszego spotkania, przesyłam w załączeniu PDF z wyceną Pani zamówienia.\n\nOrientacyjna wartość realizacji: 4 800 zł brutto\n(zaliczka 50% = 2 400 zł)\n\nPozdrawiam serdecznie,\nPaulina Porter"},
+  {id:"m2", to:"marek.nowak@wp.pl",       toName:"Marek Nowak",    subject:"Potwierdzenie zamówienia – rolety zaciemniające", date:"2025-04-18T14:32:00", preview:"Dziękuję za wpłatę zaliczki. Potwierdzam przyjęcie zamówienia na...", body:"Dzień dobry,\n\nDziękuję za wpłatę zaliczki. Potwierdzam przyjęcie zamówienia na rolety zaciemniające.\n\nCzas realizacji: ok. 4 tygodnie.\n\nPozdrawiam,\nPaulina Porter"},
+  {id:"m3", to:"julia.wozniak@onet.pl",   toName:"Julia Woźniak",  subject:"Przypomnienie – wycena zasłon", date:"2025-04-10T09:05:00", preview:"Pozwalam sobie przypomnieć o przesłanej wycenie zasłon do salonu...", body:"Dzień dobry,\n\nPozwalam sobie przypomnieć o przesłanej wycenie zasłon do salonu. Jeśli ma Pani pytania, chętnie się spotkam lub porozmawiam telefonicznie.\n\nPozdrawiam,\nPaulina Porter"}
+];
+
+export const MOCK_CONTACTS = [
+  {email:"anna.kowalska@gmail.com",    name:"Anna Kowalska"},
+  {email:"marek.nowak@wp.pl",          name:"Marek Nowak"},
+  {email:"julia.wozniak@onet.pl",      name:"Julia Woźniak"},
+  {email:"tomasz.lewandowski@o2.pl",   name:"Tomasz Lewandowski"},
+  {email:"katarzyna.wisniewska@wp.pl", name:"Katarzyna Wiśniewska"}
+];
+
+export const MAIL_TEMPLATES = [
+  {
+    id:"oferta",
+    label:"Oferta",
+    icon:"\uD83D\uDCCB",
+    subject:"Oferta aranżacji okiennych \u2013 {clientName}",
+    body:"Dzie\u0144 dobry,\n\nW nawi\u0105zaniu do naszej rozmowy, przesy\u0142am w za\u0142\u0105czeniu PDF z przybli\u017con\u0105 wycen\u0105 {honorific} zam\u00f3wienia.\n\nOrientacyjna warto\u015b\u0107 realizacji: {total} z\u0142 brutto\n(zaliczka 50% = {zaliczka} z\u0142)\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wp\u0142aty zaliczki.\n\nCh\u0119tnie przyjad\u0119 z wzornikami tkanin.\nKoszt pomiaru z dojazdem: 250 PLN (odliczane od warto\u015bci zam\u00f3wienia).\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design"
+  },
+  {
+    id:"potwierdzenie",
+    label:"Potwierdzenie",
+    icon:"\u2705",
+    subject:"Potwierdzenie zam\u00f3wienia \u2013 Porter Design",
+    body:"Dzie\u0144 dobry,\n\nDzi\u0119kuj\u0119 za wp\u0142at\u0119 zaliczki. Potwierdzam przyj\u0119cie {honorific} zam\u00f3wienia do realizacji.\n\nSzacowany czas realizacji: ok. 4 tygodnie.\nO post\u0119pach b\u0119d\u0119 informowa\u0107 na bie\u017c\u0105co.\n\nPozdrawiam,\nPaulina Porter\nPorter Design"
+  },
+  {
+    id:"przypomnienie",
+    label:"Przypomnienie",
+    icon:"\uD83D\uDD14",
+    subject:"Przypomnienie \u2013 wycena Porter Design",
+    body:"Dzie\u0144 dobry,\n\nPozwalam sobie przypomnie\u0107 o przes\u0142anej wycenie. Oferta wa\u017cna jest przez 30 dni.\n\nJe\u015bli ma {honorific2} pytania lub \u017cyczenia zmian \u2014 ch\u0119tnie porozmawiam.\n\nPozdrawiam,\nPaulina Porter\nPorter Design"
+  },
+  {
+    id:"wlasny",
+    label:"W\u0142asny",
+    icon:"\u270F\uFE0F",
+    subject:"",
+    body:""
+  }
+];
+
+export function fillTemplate(tpl, client, clients){
+  var cl = client || {};
+  var honorific = cl.gender==="male" ? "Pana" : "Pani";
+  var honorific2 = cl.gender==="male" ? "Pan" : "Pani";
+  var total = 0;
+  if(cl.rooms){
+    total = roundTo10((cl.rooms||[]).reduce(function(a,r){
+      return a+(r.windows||[]).reduce(function(b,w){
+        return b+(w.products||[]).reduce(function(c,prod){
+          var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;
+          return c+(prod.mp!=null?prod.mp:(calc(pfc).total||0));
+        },0);
+      },0);
+    },0));
+  }
+  var zaliczka = roundTo10(total*0.5);
+  return {
+    subject: tpl.subject
+      .replace("{clientName}", cl.name||"")
+      .replace("{honorific}", honorific),
+    body: tpl.body
+      .replace(/{honorific2}/g, honorific2)
+      .replace(/{honorific}/g, honorific)
+      .replace(/{clientName}/g, cl.name||"")
+      .replace(/{total}/g, total>0?String(total):"___")
+      .replace(/{zaliczka}/g, zaliczka>0?String(zaliczka):"___")
+  };
+}
+
+export function fmtMailDate(iso){
+  if(!iso)return "";
+  var d=new Date(iso);
+  var today=new Date();
+  var isToday=d.toDateString()===today.toDateString();
+  if(isToday) return d.toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"});
+  return d.toLocaleDateString("pl-PL",{day:"2-digit",month:"2-digit"});
+}
+
+
 export function ScreenMail(p){
   var useState=React.useState, useEffect=React.useEffect, useRef=React.useRef;
   var clients = p.clients||[];

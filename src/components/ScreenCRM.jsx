@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   PointerSensor,
   TouchSensor,
   useSensor,
@@ -713,7 +713,7 @@ function KanbanBoard(kp){
   var colProps={deals:deals,clients:clients,activeDeal:activeDeal,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2};
   return ce(DndContext,{
     sensors:sensors,
-    collisionDetection:closestCenter,
+    collisionDetection:closestCorners,
     onDragStart:handleDragStart,
     onDragEnd:handleDragEnd
   },
