@@ -37,6 +37,14 @@
     button,input,select{font-family:inherit;}
     .footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:9px;color:var(--t3);letter-spacing:0.16em;text-transform:uppercase;margin-top:auto;opacity:0.5;}
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@3.0.0-rc.0/release/stable/index.min.js"></script>
+  <script>
+    window.addEventListener('load', function(){
+      MobileDragDrop.polyfill({holdToDrag: 300, scrollAnticipationSize:0, scrollSpeed:0});
+    });
+    // Required for iOS Safari
+    window.addEventListener('touchmove', function(){}, {passive: false});
+  </script>
 </head>
 <body>
 <div id="root"><div class="app-inner"><div id="app-mount"></div></div><div style="text-align:center;padding:0.8rem 1rem 1.4rem;font-size:8px;color:var(--t3);letter-spacing:0.18em;text-transform:uppercase;border-top:0.5px solid var(--bd3);opacity:0.6;margin-top:auto;">Created by Porter Design &nbsp;·&nbsp; <span id="app-version" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Historia zmian">v1.2.0</span></div></div>
@@ -156,7 +164,7 @@ var IMG_MODEL_TASMA      = imgUrl("zasony/model-tasma.jpg");
 var IMG_MODEL_WAVE       = imgUrl("zasony/model-wave.jpg");
 var IMG_MODEL_FALDA      = imgUrl("zasony/model-falda.jpg");
 
-var ce=React.createElement,useState=React.useState,useRef=React.useRef,Fragment=React.Fragment;
+var ce=React.createElement,useState=React.useState,Fragment=React.Fragment;
 
 var JZ={
   al25:{30:{30:149,40:153,50:158,60:163,70:172,80:172,90:181,100:194,110:199,120:204,130:208,140:213,150:217,160:226,170:231,180:235,190:240,200:244,210:249,220:262,230:267,240:271,250:276,260:281,270:286,280:290,290:295},40:{30:158,40:163,50:167,60:176,70:181,80:199,90:208,100:213,110:217,120:226,130:231,140:240,150:244,160:249,170:258,180:262,190:276,200:285,210:290,220:299,230:303,240:312,250:318,260:323,270:328,280:334,290:339},50:{30:163,40:172,50:181,60:199,70:208,80:213,90:222,100:231,110:240,120:244,130:253,140:262,150:267,160:285,170:294,180:303,190:308,200:317,210:326,220:335,230:339,240:348,250:354,260:360,270:366,280:372,290:378},60:{30:172,40:181,50:199,60:208,70:222,80:226,90:240,100:249,110:258,120:267,130:276,140:294,150:303,160:312,170:321,180:330,190:339,200:348,210:362,220:366,230:380,240:389,250:395,260:402,270:409,280:416,290:423},70:{30:194,40:208,50:217,60:231,70:240,80:249,90:262,100:271,110:280,120:294,130:312,140:326,150:335,160:348,170:357,180:366,190:375,200:389,210:403,220:411,230:425,240:434,250:442,260:449,270:457,280:464,290:472},80:{30:204,40:217,50:226,60:240,70:253,80:262,90:276,100:290,110:303,120:321,130:335,140:348,150:362,160:375,170:385,180:398,190:407,200:421,210:434,220:448,230:461,240:475,250:483,260:491,270:500,280:508,290:516},90:{30:213,40:226,50:240,60:253,70:267,80:280,90:294,100:308,110:330,120:344,130:357,140:371,150:385,160:398,170:411,180:430,190:439,200:457,210:470,220:484,230:498,240:511,250:520,260:529,270:537,280:546,290:556},100:{30:217,40:235,50:249,60:262,70:280,80:294,90:308,100:335,110:348,120:362,130:380,140:398,150:411,160:425,170:439,180:457,190:470,200:488,210:507,220:520,230:534,240:552,250:561,260:571,270:580,280:590,290:600},110:{30:231,40:249,50:267,60:285,70:299,80:317,90:344,100:357,110:375,120:394,130:411,140:430,150:443,160:461,170:475,180:493,190:511,200:529,210:548,220:561,230:579,240:597,250:607,260:617,270:628,280:639,290:649},120:{30:240,40:258,50:276,60:294,70:312,80:339,90:362,100:375,110:398,120:411,130:434,140:452,150:470,160:488,170:507,180:525,190:543,200:561,210:579,220:597,230:615,240:638,250:649,260:660,270:671,280:682,290:694},130:{30:249,40:267,50:285,60:308,70:339,80:353,90:375,100:394,110:416,120:434,130:457,140:475,150:493,160:516,170:534,180:556,190:570,200:592,210:615,220:633,230:656,240:674,250:685,260:697,270:709,280:721,290:733},140:{30:262,40:285,50:303,60:326,70:357,80:375,90:398,100:421,110:443,120:461,130:484,140:507,150:525,160:548,170:570,180:592,190:611,200:633,210:656,220:674,230:696,240:724,250:736,260:748,270:761,280:774,290:787},150:{30:267,40:294,50:312,60:335,70:371,80:394,90:416,100:439,110:461,120:484,130:507,140:529,150:552,160:574,170:597,180:620,190:642,200:665,210:692,220:710,230:737,240:760,250:773,260:786,270:799,280:813,290:826},160:{30:276,40:303,50:321,60:357,70:385,80:407,90:434,100:457,110:480,120:502,130:529,140:556,150:579,160:602,170:624,180:651,190:674,200:696,210:724,220:746,230:774,240:800,250:814,260:828,270:842,280:856,290:871},170:{30:285,40:312,50:344,60:371,70:398,80:421,90:452,100:475,110:502,120:525,130:552,140:579,150:602,160:629,170:651,180:683,190:706,200:733,210:760,220:783,230:810,240:837,250:851,260:865,270:880,280:895,290:910},180:{30:308,40:339,50:362,60:389,70:421,80:443,90:475,100:498,110:529,120:552,130:579,140:611,150:633,160:665,170:688,180:719,190:742,200:774,210:800,220:823,230:855,240:886,250:902,260:917,270:932,280:948,290:964},190:{30:317,40:348,50:371,60:403,70:434,80:461,90:488,100:516,110:548,120:574,130:602,140:633,150:660,160:692,170:715,180:746,190:774,200:805,210:837,220:859,230:891,240:923,250:938,260:954,270:970,280:987,290:1004},200:{30:321,40:357,50:380,60:416,70:448,80:475,90:507,100:534,110:565,120:592,130:624,140:660,150:688,160:719,170:746,180:778,190:805,200:837,210:868,220:896,230:927,240:964,250:980,260:996,270:1013,280:1030},210:{30:330,40:366,50:394,60:425,70:461,80:488,90:525,100:552,110:588,120:615,130:647,140:683,150:710,160:746,170:774,180:810,190:837,200:868,210:905,220:932,230:968,240:1000,250:1017,260:1034,270:1051},220:{30:339,40:375,50:403,60:439,70:475,80:502,90:538,100:570,110:606,120:633,130:669,140:706,150:737,160:774,170:800,180:837,190:868,200:905,210:941,220:968,230:1004,240:1040,250:1058,260:1076},230:{30:344,40:385,50:411,60:452,70:488,80:520,90:556,100:588,110:624,120:656,130:692,140:733,150:760,160:800,170:828,180:868,190:896,200:936,210:973,220:1004,230:1040,240:1081},240:{30:353,40:394,50:425,60:461,70:502,80:534,90:574,100:606,110:647,120:678,130:715,140:755,150:787,160:828,170:859,180:896,190:927,200:968,210:1009,220:1040,230:1076},250:{},260:{},270:{}},
@@ -4681,8 +4689,6 @@ function ScreenCRM(p){
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
   var sDrag=useState(null),dragId=sDrag[0],setDragId=sDrag[1];
   var sDragOver=useState(null),dragOver=sDragOver[0],setDragOver=sDragOver[1];
-  var sDragReady=useState(null),dragReady=sDragReady[0],setDragReady=sDragReady[1];
-  var touchRef=useRef({id:null,moved:false,startX:0,startY:0,over:null});
   var sModal=useState(null),modalDeal=sModal[0],setModalDeal=sModal[1];
   var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
   var sNewClient=useState(""),newClientId=sNewClient[0],setNewClientId=sNewClient[1];
@@ -4762,28 +4768,7 @@ function ScreenCRM(p){
     ),
     // Widok zależny od sub-zakładki
     crmTab==="kalendarz"?ce(CRMKalendarz,{deals:deals||[],clients:p.clients,onDealClick:function(d){setModalDeal(d);},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady}):null,
-    crmTab==="kanban"?ce("div",{
-      onTouchMove:function(e){
-        if(!touchRef.current.id)return;
-        e.preventDefault();
-        var t=e.touches[0];
-        var dx=t.clientX-touchRef.current.startX,dy=t.clientY-touchRef.current.startY;
-        if(Math.sqrt(dx*dx+dy*dy)>8)touchRef.current.moved=true;
-        setDragId(touchRef.current.id);
-        var el=document.elementFromPoint(t.clientX,t.clientY);
-        var col=el&&el.closest("[data-stage]");
-        var sid=col?col.getAttribute("data-stage"):null;
-        touchRef.current.over=sid;
-        setDragOver(sid);
-      },
-      onTouchEnd:function(){
-        var moved=touchRef.current.moved,fromId=touchRef.current.id,over=touchRef.current.over;
-        touchRef.current={id:null,moved:false,startX:0,startY:0};
-        setDragId(null);setDragOver(null);
-        if(moved&&over&&over!==fromId){moveStage(fromId,over);}
-      },
-      style:{}
-    },
+    crmTab==="kanban"?ce("div",null,
     // Panel dodawania dealu
     ce("div",{style:{display:"flex",gap:8,marginBottom:"1.2rem",alignItems:"center"}},
       ce("select",{
@@ -4817,7 +4802,6 @@ function ScreenCRM(p){
             setDragId(null);setDragOver(null);
           },
           onDragLeave:function(){setDragOver(null);},
-          "data-stage":stage.id,
           style:{
             minWidth:190,width:190,flexShrink:0,
             background:isOver?"rgba(99,102,241,0.06)":"var(--bg2)",
@@ -4839,15 +4823,10 @@ function ScreenCRM(p){
             var hasDelivery=deal.delivery_date;
             return ce("div",{
               key:deal.id,
-              draggable:dragReady===deal.id,
-              onMouseDown:function(){setDragReady(deal.id);},
-              onMouseUp:function(){setDragReady(null);},
-              onDragStart:function(){setDragId(deal.id);},
-              onDragEnd:function(){setDragReady(null);setDragId(null);setDragOver(null);},
-              onClick:function(){if(!touchRef.current.moved){openDeal(deal);}},
-              onTouchStart:function(e){
-                touchRef.current={id:deal.id,moved:false,startX:e.touches[0].clientX,startY:e.touches[0].clientY};
-              },
+              draggable:true,
+              onDragStart:function(e){e.dataTransfer.setData('text/plain',String(deal.id));setDragId(deal.id);},
+              onDragEnd:function(){setDragId(null);setDragOver(null);},
+              onClick:function(){openDeal(deal);},
               style:{
                 background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,
                 padding:"10px 11px",marginBottom:8,cursor:"pointer",
