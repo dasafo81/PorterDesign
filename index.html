@@ -4441,6 +4441,7 @@ function App(){
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
   // confirmDelete: {type:"client"|"room"|"window", label:str, onConfirm:fn}
   var sHS=useState(""),homeSearch=sHS[0],setHomeSearch=sHS[1];
+  var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
 
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
@@ -4687,23 +4688,13 @@ function App(){
     var cl_zreal=filtered.filter(function(cl){return cl.status==="zrealizowane";});
     var cl_odrz=filtered.filter(function(cl){return cl.status==="odrzucone";});
 
-    function StatusSection(ssp){
-      if(ssp.list.length===0&&!q)return null;
-      var scfg=STATUS_CFG[ssp.sid];
-      return ce(Fragment,null,
-        ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8,marginTop:ssp.first?0:18}},
-          ce("div",{style:{width:8,height:8,borderRadius:"50%",background:scfg.color,flexShrink:0}}),
-          ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t2)",letterSpacing:"0.12em",textTransform:"uppercase"}},
-            scfg.label+" ("+ssp.list.length+")"
-          )
-        ),
-        ssp.list.length===0
-          ?ce("div",{style:{color:"var(--t3)",fontSize:12,paddingLeft:16,marginBottom:4}},"Brak")
-          :ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-              ssp.list.map(function(cl){return ce(ClientTile,{key:cl.id,cl:cl});})
-            )
-      );
-    }
+    var TAB_LIST=[
+      {sid:"nowe",      list:cl_nowe},
+      {sid:"zrealizowane",list:cl_zreal},
+      {sid:"odrzucone", list:cl_odrz}
+    ];
+    var activeTab=q?"nowe":homeTab;
+    var activeList=q?filtered:(TAB_LIST.find(function(t){return t.sid===activeTab;})||TAB_LIST[0]).list;
 
     content=ce(Fragment,null,
       ce("div",{style:{textAlign:"center",padding:"1.5rem 0 1rem"}},
@@ -4730,12 +4721,29 @@ function App(){
         ce("span",{style:{fontSize:22,lineHeight:1,fontWeight:300}},"+"),
         ce("span",{style:{fontSize:14}},"Nowy klient")
       ),
+      !q?ce("div",{style:{display:"flex",gap:4,marginBottom:16,background:"var(--bg2)",borderRadius:12,padding:3,border:"1px solid var(--bd2)"}},
+        TAB_LIST.map(function(t){
+          var act=homeTab===t.sid;
+          var scfg=STATUS_CFG[t.sid];
+          return ce("button",{key:t.sid,onClick:function(){setHomeTab(t.sid);},style:{
+            flex:1,padding:"8px 4px",borderRadius:9,border:"none",
+            background:act?"var(--bg)":"transparent",
+            color:act?scfg.color:"var(--t3)",
+            fontSize:11,fontWeight:act?700:500,cursor:"pointer",
+            boxShadow:act?"0 1px 4px rgba(0,0,0,0.08)":"none",
+            transition:"all .15s",letterSpacing:"0.06em",textTransform:"uppercase",
+            display:"flex",flexDirection:"column",alignItems:"center",gap:2
+          }},
+            ce("span",{style:{fontSize:15,lineHeight:1,display:"block",width:8,height:8,borderRadius:"50%",background:act?scfg.color:"var(--bd2)",margin:"0 auto 3px"}}),
+            ce("span",null,scfg.label),
+            ce("span",{style:{fontSize:10,opacity:0.7}},(t.list.length>0?t.list.length:"0")+" klient\xf3w")
+          );
+        })
+      ):null,
       q&&filtered.length===0
-        ?ce("div",{style:{color:"var(--t3)",fontSize:13,textAlign:"center",padding:"2rem 0"}},"Brak wynik\u00f3w dla \u201e"+q+"\u201d")
-        :ce(Fragment,null,
-            ce(StatusSection,{sid:"nowe",list:cl_nowe,first:true}),
-            ce(StatusSection,{sid:"zrealizowane",list:cl_zreal,first:false}),
-            ce(StatusSection,{sid:"odrzucone",list:cl_odrz,first:false})
+        ?ce("div",{style:{color:"var(--t3)",fontSize:13,textAlign:"center",padding:"2rem 0"}},"Brak wynik\xf3w dla \u201e"+q+"\u201d")
+        :ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            activeList.map(function(cl){return ce(ClientTile,{key:cl.id,cl:cl});})
           )
     );
     } // end else
