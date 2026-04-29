@@ -4228,14 +4228,7 @@ function ScreenCRM(p){
           CRM_STAGES.map(function(stage){return ce(KanbanCol,{key:stage.id,stage:stage});})
         ),
         // Separator + sekcja Odrzucone poniżej
-        ce("div",{style:{margin:"14px 0 8px",display:"flex",alignItems:"center",gap:10}},
-          ce("div",{style:{flex:1,height:1,background:"var(--bd2)"}}),
-          ce("div",{style:{fontSize:10,fontWeight:700,color:"#ef4444",letterSpacing:"0.12em",textTransform:"uppercase",display:"flex",alignItems:"center",gap:5}},
-            ce("span",{style:{fontSize:13}},"\u26A0\uFE0F"),
-            "Odrzucone — poza lejkiem"
-          ),
-          ce("div",{style:{flex:1,height:1,background:"var(--bd2)"}})
-        ),
+        ce("div",{style:{margin:"14px 0 8px",height:1,background:"var(--bd2)"}}),
         ce("div",{style:{display:"flex",gap:10,paddingBottom:4,marginLeft:-4,paddingLeft:4}},
           ce(KanbanCol,{stage:STAGE_ODRZUCONE})
         )
