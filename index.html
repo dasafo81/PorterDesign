@@ -3914,32 +3914,13 @@ var GCAL_SCOPES="https://www.googleapis.com/auth/calendar.readonly https://www.g
 
 function CRMKalendarz(p){
   // p: deals, clients, onDealClick
-  var sToken=useState(null),gcalToken=sToken[0],setGcalToken=sToken[1];
+  // Token i GSI przekazywane z ScreenCRM (przeżywają przełączanie zakładek)
+  var gcalToken=p.gcalToken, setGcalToken=p.setGcalToken, gsiReady=p.gsiReady;
   var sEvents=useState([]),gcalEvents=sEvents[0],setGcalEvents=sEvents[1];
   var sLoadingEv=useState(false),loadingEv=sLoadingEv[0],setLoadingEv=sLoadingEv[1];
   var sErrEv=useState(null),errEv=sErrEv[0],setErrEv=sErrEv[1];
   var sView=useState("month"),calView=sView[0],setCalView=sView[1];
   var sRefDate=useState(function(){return new Date();}),refDate=sRefDate[0],setRefDate=sRefDate[1];
-  var sGsiReady=useState(false),gsiReady=sGsiReady[0],setGsiReady=sGsiReady[1];
-  var sAddingTo=useState(null),addingTo=sAddingTo[0],setAddingTo=sAddingTo[1]; // ev deal for quick-add
-
-  // Załaduj GSI script raz
-  React.useEffect(function(){
-    if(window.google&&window.google.accounts){setGsiReady(true);return;}
-    var sc=document.createElement("script");
-    sc.src="https://accounts.google.com/gsi/client";
-    sc.async=true;
-    sc.onload=function(){setGsiReady(true);};
-    document.head.appendChild(sc);
-    // Przywróć token z localStorage
-    try{
-      var saved=localStorage.getItem("pd_gcal_token");
-      var exp=localStorage.getItem("pd_gcal_token_exp");
-      if(saved&&exp&&Date.now()<Number(exp)){
-        setGcalToken(saved);
-      }
-    }catch(e){}
-  },[]);
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
   React.useEffect(function(){
@@ -4233,6 +4214,16 @@ function CRMKalendarz(p){
 function ScreenCRM(p){
   // p: clients, setScreen, setAppMode, setCurClientId
   var sCrmTab=useState("kanban"),crmTab=sCrmTab[0],setCrmTab=sCrmTab[1];
+  // GCal token przeżywa przełączanie zakładek
+  var sGcalTok=useState(function(){
+    try{var t=localStorage.getItem("pd_gcal_token");var e=localStorage.getItem("pd_gcal_token_exp");if(t&&e&&Date.now()<Number(e))return t;}catch(x){}return null;
+  }),gcalToken=sGcalTok[0],setGcalToken=sGcalTok[1];
+  var sGsiRdy=useState(false),gsiReady=sGsiRdy[0],setGsiReady=sGsiRdy[1];
+  React.useEffect(function(){
+    if(window.google&&window.google.accounts){setGsiReady(true);return;}
+    var sc=document.createElement("script");sc.src="https://accounts.google.com/gsi/client";sc.async=true;
+    sc.onload=function(){setGsiReady(true);};document.head.appendChild(sc);
+  },[]);
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
   var sDrag=useState(null),dragId=sDrag[0],setDragId=sDrag[1];
   var sDragOver=useState(null),dragOver=sDragOver[0],setDragOver=sDragOver[1];
@@ -4314,7 +4305,7 @@ function ScreenCRM(p){
       })
     ),
     // Widok zależny od sub-zakładki
-    crmTab==="kalendarz"?ce(CRMKalendarz,{deals:deals||[],clients:p.clients,onDealClick:function(d){setModalDeal(d);}}):null,
+    crmTab==="kalendarz"?ce(CRMKalendarz,{deals:deals||[],clients:p.clients,onDealClick:function(d){setModalDeal(d);},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady}):null,
     crmTab==="kanban"?ce("div",null,
     // Panel dodawania dealu
     ce("div",{style:{display:"flex",gap:8,marginBottom:"1.2rem",alignItems:"center"}},
