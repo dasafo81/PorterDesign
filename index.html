@@ -3904,9 +3904,150 @@ function ModalDeal(p){
   );
 }
 
+// ── CRM KALENDARZ ────────────────────────────────────────────────────────────
+function CRMKalendarz(p){
+  // p: deals, clients, onDealClick
+  var sGcal=useState(false),gcalLoaded=sGcal[0],setGcalLoaded=sGcal[1];
+  var sEmail=useState(""),gcalEmail=sEmail[0],setGcalEmail=sEmail[1];
+  var sSaved=useState(false),emailSaved=sSaved[0],setEmailSaved=sSaved[1];
+
+  // Pobierz zapisany email z localStorage
+  React.useEffect(function(){
+    try{var e=localStorage.getItem("pd_gcal_email");if(e){setGcalEmail(e);setGcalLoaded(true);}}catch(err){}
+  },[]);
+
+  function saveEmail(){
+    if(!gcalEmail||!gcalEmail.includes("@")){return;}
+    try{localStorage.setItem("pd_gcal_email",gcalEmail);}catch(err){}
+    setGcalLoaded(true);
+    setEmailSaved(true);
+  }
+
+  // Zbierz nadchodzące eventy z dealów
+  var now=new Date();
+  var events=[];
+  (p.deals||[]).forEach(function(deal){
+    var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
+    var name=cl?cl.name:"Klient";
+    if(deal.visit_date){
+      var d=new Date(deal.visit_date);
+      events.push({date:d,label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});
+    }
+    if(deal.delivery_date){
+      var d2=new Date(deal.delivery_date);
+      events.push({date:d2,label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});
+    }
+    if(deal.followup_date){
+      var d3=new Date(deal.followup_date);
+      events.push({date:d3,label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});
+    }
+  });
+  events.sort(function(a,b){return a.date-b.date;});
+  var upcoming=events.filter(function(e){return e.date>=now;});
+  var past=events.filter(function(e){return e.date<now;}).reverse().slice(0,5);
+
+  function gcalEmbedUrl(email){
+    // Embed Google Calendar dla danego konta
+    return "https://calendar.google.com/calendar/embed?src="+encodeURIComponent(email)
+      +"&ctz=Europe%2FWarsaw&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&mode=WEEK";
+  }
+
+  function gcalNewEvent(title,date,desc){
+    var d=new Date(date);
+    var pad=function(n){return String(n).padStart(2,"0");};
+    var ymd=d.getFullYear()+""+pad(d.getMonth()+1)+""+pad(d.getDate());
+    var h=pad(d.getHours()),m=pad(d.getMinutes());
+    var start=ymd+"T"+h+m+"00";
+    var end=ymd+"T"+(pad(d.getHours()+1))+m+"00";
+    var url="https://calendar.google.com/calendar/render?action=TEMPLATE"
+      +"&text="+encodeURIComponent(title)
+      +"&dates="+start+"/"+end
+      +"&details="+encodeURIComponent(desc||"");
+    window.open(url,"_blank");
+  }
+
+  var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
+
+  return ce("div",null,
+    // Konfiguracja emaila Google
+    ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:16}},
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}},
+        "\uD83D\uDD17 Konto Google Calendar"
+      ),
+      ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+        ce("input",{
+          type:"email",
+          value:gcalEmail,
+          onChange:function(e){setGcalEmail(e.target.value);setEmailSaved(false);setGcalLoaded(false);},
+          placeholder:"tw\u00f3j@gmail.com",
+          style:{...IST,flex:1,marginBottom:0}
+        }),
+        ce("button",{
+          onClick:saveEmail,
+          style:{padding:"9px 16px",borderRadius:9,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
+        },emailSaved?"\u2713 Zapisano":"Po\u0142\u0105cz")
+      ),
+      emailSaved?ce("div",{style:{fontSize:11,color:"#10b981",marginTop:6}},
+        "\u2713 Konto po\u0142\u0105czone. Wbudowany kalendarz poni\u017cej."
+      ):null
+    ),
+    // Lista nadchodzących eventów z dealów
+    ce("div",{style:{marginBottom:16}},
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}},
+        "Nadchodz\u0105ce terminy"+(upcoming.length?" ("+upcoming.length+")":"")
+      ),
+      upcoming.length===0
+        ?ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"12px 0",opacity:0.6}},"Brak zaplanowanych termin\u00f3w. Dodaj daty w kartach deal\u00f3w.")
+        :upcoming.slice(0,10).map(function(ev,i){
+          return ce("div",{key:i,
+            onClick:function(){p.onDealClick&&p.onDealClick(ev.deal);},
+            style:{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,marginBottom:8,cursor:"pointer"}
+          },
+            ce("div",{style:{flexShrink:0,textAlign:"center",minWidth:36}},
+              ce("div",{style:{fontSize:18,fontWeight:700,color:ev.color,lineHeight:1}},ev.date.getDate()),
+              ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}},
+                ev.date.toLocaleDateString("pl-PL",{month:"short"})
+              )
+            ),
+            ce("div",{style:{flex:1}},
+              ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)"}},""+ev.label+" \u2014 "+ev.client),
+              ce("div",{style:{fontSize:11,color:"var(--t3)"}},(ev.date.getHours()?"g. "+ev.date.getHours()+":"+String(ev.date.getMinutes()).padStart(2,"0")+" \u00b7 ":"")
+                +ev.date.toLocaleDateString("pl-PL",{weekday:"long"})
+              )
+            ),
+            ce("button",{
+              onClick:function(e){
+                e.stopPropagation();
+                gcalNewEvent(ev.label+" \u2014 "+ev.client,ev.date,"Klient: "+ev.client);
+              },
+              style:{padding:"5px 10px",borderRadius:7,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}
+            },"\uD83D\uDCC5 GCal")
+          );
+        })
+    ),
+    // Embed kalendarza Google
+    gcalLoaded&&gcalEmail?ce("div",{style:{marginBottom:16}},
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}},
+        "Tw\u00f3j Kalendarz Google"
+      ),
+      ce("div",{style:{borderRadius:12,overflow:"hidden",border:"1px solid var(--bd2)",background:"var(--bg2)"}},
+        ce("iframe",{
+          src:gcalEmbedUrl(gcalEmail),
+          style:{width:"100%",height:480,border:"none",display:"block"},
+          title:"Google Calendar"
+        })
+      ),
+      ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,textAlign:"center"}},
+        "Kalendarz wymaga zalogowania w przegl\u0105darce na konto "+gcalEmail
+      )
+    ):null
+  );
+}
+
 // ── SCREEN CRM ───────────────────────────────────────────────────────────────
 function ScreenCRM(p){
   // p: clients, setScreen, setAppMode, setCurClientId
+  var sCrmTab=useState("kanban"),crmTab=sCrmTab[0],setCrmTab=sCrmTab[1];
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
   var sDrag=useState(null),dragId=sDrag[0],setDragId=sDrag[1];
   var sDragOver=useState(null),dragOver=sDragOver[0],setDragOver=sDragOver[1];
@@ -3967,6 +4108,20 @@ function ScreenCRM(p){
   var clientsForSelect=p.clients.filter(function(cl){return !dealClientIds.includes(String(cl.id));});
 
   return ce("div",null,
+    // Sub-zakładki CRM: Kanban / Kalendarz
+    ce("div",{style:{display:"flex",gap:4,marginBottom:"1rem",background:"var(--bg2)",borderRadius:10,padding:3,border:"1px solid var(--bd2)",alignSelf:"flex-start"}},
+      [{id:"kanban",label:"\uD83D\uDCCC Kanban"},{id:"kalendarz",label:"\uD83D\uDCC5 Kalendarz Google"}].map(function(t){
+        var act=crmTab===t.id;
+        return ce("button",{key:t.id,onClick:function(){setCrmTab(t.id);},style:{
+          padding:"7px 14px",borderRadius:8,border:"none",fontSize:12,fontWeight:act?700:400,
+          background:act?"var(--bg)":"transparent",color:act?"var(--t1)":"var(--t3)",
+          cursor:"pointer",boxShadow:act?"0 1px 3px rgba(0,0,0,0.08)":"none",transition:"all .15s"
+        }},t.label);
+      })
+    ),
+    // Widok zależny od sub-zakładki
+    crmTab==="kalendarz"?ce(CRMKalendarz,{deals:deals||[],clients:p.clients,onDealClick:function(d){setModalDeal(d);}}):null,
+    crmTab==="kanban"?ce("div",null,
     // Panel dodawania dealu
     ce("div",{style:{display:"flex",gap:8,marginBottom:"1.2rem",alignItems:"center"}},
       ce("select",{
@@ -4056,6 +4211,7 @@ function ScreenCRM(p){
         );
       })
     ),
+    ):null,
     // Modal
     modalDeal?ce(ModalDeal,{
       deal:modalDeal,
@@ -4612,28 +4768,42 @@ function App(){
       ),
       appMode==="wyceniarka"?ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI"):ce("div",{style:{width:20}})
     ),
-    // Zakładki Wyceniarka / CRM
-    ce("div",{style:{display:"flex",gap:4,marginBottom:"1.2rem",background:"var(--bg2)",borderRadius:12,padding:4,border:"1px solid var(--bd2)"}},
-      ["wyceniarka","crm"].map(function(mode){
-        var active=appMode===mode;
-        var labels={wyceniarka:"\uD83D\uDCCB Wyceniarka",crm:"\uD83D\uDCC8 CRM"};
-        return ce("button",{key:mode,onClick:function(){setAppMode(mode);},style:{
-          flex:1,padding:"9px 0",borderRadius:9,border:"none",
-          background:active?"var(--bg)":"transparent",
-          color:active?"var(--t1)":"var(--t3)",
-          fontWeight:active?700:400,fontSize:13,cursor:"pointer",
-          boxShadow:active?"0 1px 4px rgba(0,0,0,0.08)":"none",
-          transition:"all .15s",letterSpacing:"0.02em"
-        }},labels[mode]);
+    // Zakładki główne (4 moduły)
+    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4,marginBottom:"1.2rem",background:"var(--bg2)",borderRadius:12,padding:4,border:"1px solid var(--bd2)"}},
+      [
+        {id:"wyceniarka", label:"Wyceny",  icon:"\uD83D\uDCCB"},
+        {id:"crm",        label:"CRM",     icon:"\uD83D\uDCC8"},
+        {id:"mail",       label:"Mail",    icon:"\u2709",  soon:true},
+        {id:"faktury",    label:"Faktury", icon:"\uD83E\uDDFE", soon:true}
+      ].map(function(tab){
+        var active=appMode===tab.id;
+        return ce("button",{key:tab.id,
+          onClick:function(){if(!tab.soon)setAppMode(tab.id);},
+          style:{
+            padding:"8px 0 7px",borderRadius:9,border:"none",
+            background:active?"var(--bg)":"transparent",
+            color:active?"var(--t1)":tab.soon?"var(--bd2)":"var(--t3)",
+            fontWeight:active?700:400,fontSize:11,cursor:tab.soon?"default":"pointer",
+            boxShadow:active?"0 1px 4px rgba(0,0,0,0.08)":"none",
+            transition:"all .15s",letterSpacing:"0.01em",
+            display:"flex",flexDirection:"column",alignItems:"center",gap:2
+          }
+        },
+          ce("span",{style:{fontSize:16,lineHeight:1}},tab.icon),
+          ce("span",null,tab.label),
+          tab.soon?ce("span",{style:{fontSize:8,color:"var(--t3)",letterSpacing:"0.05em",opacity:0.6}},"wkr\u00f3tce"):null
+        );
       })
     ),
     // Treść główna
     appMode==="crm"
       ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId})
-      : ce(Fragment,null,
-          screen!=="home"?ce(BC,{}):null,
-          content
-        ),
+      : appMode==="mail"||appMode==="faktury"
+        ? null
+        : ce(Fragment,null,
+            screen!=="home"?ce(BC,{}):null,
+            content
+          ),
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
