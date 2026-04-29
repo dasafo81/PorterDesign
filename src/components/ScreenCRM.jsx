@@ -7,7 +7,6 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
-  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -630,12 +629,12 @@ function DealCard(cp){
 function KanbanCol(kp){
   var stage=kp.stage;var deals=kp.deals;var activeDeal=kp.activeDeal;
   var clients=kp.clients;var openDeal=kp.openDeal;var fmtDate=kp.fmtDate;var clientTotal2=kp.clientTotal2;
+  var isOver=kp.overStageId===stage.id;
   var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
   var dealIds=stageDeals.map(function(d){return String(d.id);});
-  var refDrop=useDroppable({id:stage.id});
-  var isOver=refDrop.isOver;
+  // Add a placeholder sortable item so empty columns are droppable
+  var allIds=dealIds.concat([stage.id+"__placeholder"]);
   return ce("div",{
-    ref:refDrop.setNodeRef,
     style:{
       minWidth:190,width:190,flexShrink:0,
       background:isOver?"rgba(99,102,241,0.05)":"var(--bg2)",
@@ -649,7 +648,7 @@ function KanbanCol(kp){
       ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.06em",textTransform:"uppercase",flex:1}},stage.label),
       ce("div",{style:{fontSize:11,color:"var(--t3)",fontWeight:500}},stageDeals.length||"")
     ),
-    ce(SortableContext,{items:dealIds,strategy:verticalListSortingStrategy},
+    ce(SortableContext,{items:allIds,strategy:verticalListSortingStrategy},
       stageDeals.map(function(deal){
         return ce(DealCard,{key:deal.id,deal:deal,stage:stage,isDragging:activeDeal&&activeDeal.id===deal.id,
           clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2});
@@ -682,39 +681,57 @@ function KanbanBoard(kp){
   var deals=kp.deals;var clients=kp.clients;var activeDeal=kp.activeDeal;
   var setActiveDeal=kp.setActiveDeal;var moveStage=kp.moveStage;
   var openDeal=kp.openDeal;var fmtDate=kp.fmtDate;var clientTotal2=kp.clientTotal2;
+  var sOver=useState(null),overStageId=sOver[0],setOverStageId=sOver[1];
 
   var sensors=useSensors(
     useSensor(PointerSensor,{activationConstraint:{distance:8}}),
     useSensor(TouchSensor,{activationConstraint:{delay:0,tolerance:8}})
   );
 
+  var allStages=CRM_STAGES.concat([STAGE_ODRZUCONE]);
+
+  function getStageFromOver(overId){
+    if(!overId)return null;
+    // Direct stage id (placeholder or stage id)
+    var s=allStages.find(function(st){return String(st.id)===String(overId)||overId===st.id+"__placeholder";});
+    if(s)return s;
+    // It's a deal id — find which stage that deal is in
+    var d=(deals||[]).find(function(dl){return String(dl.id)===String(overId);});
+    if(d)return allStages.find(function(st){return st.id===d.stage;})||null;
+    return null;
+  }
+
   function handleDragStart(event){
     var deal=(deals||[]).find(function(d){return String(d.id)===String(event.active.id);});
     setActiveDeal(deal||null);
   }
 
+  function handleDragOver(event){
+    var overId=event.over&&event.over.id;
+    var s=getStageFromOver(overId);
+    setOverStageId(s?s.id:null);
+  }
+
   function handleDragEnd(event){
     var overId=event.over&&event.over.id;
     setActiveDeal(null);
+    setOverStageId(null);
     if(!overId||!event.active.id)return;
     var dealId=Number(event.active.id);
-    var allStages=CRM_STAGES.concat([STAGE_ODRZUCONE]);
-    var targetStage=allStages.find(function(s){return String(s.id)===String(overId);});
-    if(!targetStage){
-      var targetDeal=(deals||[]).find(function(d){return String(d.id)===String(overId);});
-      if(targetDeal){targetStage=allStages.find(function(s){return s.id===targetDeal.stage;});}
-    }
+    var targetStage=getStageFromOver(overId);
     var currentDeal=(deals||[]).find(function(d){return d.id===dealId;});
     if(!targetStage||!currentDeal)return;
     if(targetStage.id===currentDeal.stage)return;
     moveStage(dealId,targetStage.id);
   }
 
-  var colProps={deals:deals,clients:clients,activeDeal:activeDeal,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2};
+  var colProps={deals:deals,clients:clients,activeDeal:activeDeal,openDeal:openDeal,
+    fmtDate:fmtDate,clientTotal2:clientTotal2,overStageId:overStageId};
   return ce(DndContext,{
     sensors:sensors,
     collisionDetection:closestCorners,
     onDragStart:handleDragStart,
+    onDragOver:handleDragOver,
     onDragEnd:handleDragEnd
   },
     ce(Fragment,null,
