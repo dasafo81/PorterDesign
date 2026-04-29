@@ -4825,12 +4825,16 @@ function ScreenCRM(p){
             var hasDelivery=deal.delivery_date;
             return ce("div",{
               key:deal.id,
-              draggable:dragRef.current.ready===deal.id,
-              onMouseDown:function(){dragRef.current.ready=deal.id;},
-              onMouseUp:function(){dragRef.current.ready=null;},
-              onDragStart:function(e){e.dataTransfer.effectAllowed="move";setDragId(deal.id);},
-              onDragEnd:function(){dragRef.current.ready=null;setDragId(null);setDragOver(null);},
-              onClick:function(){openDeal(deal);},
+              draggable:true,
+              onDragStart:function(e){
+                var img=document.createElement("img");img.src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+                e.dataTransfer.setDragImage(img,0,0);
+                e.dataTransfer.effectAllowed="move";
+                dragRef.current.dragging=true;
+                setDragId(deal.id);
+              },
+              onDragEnd:function(){dragRef.current.dragging=false;setDragId(null);setDragOver(null);},
+              onClick:function(){if(!dragRef.current.dragging){openDeal(deal);}},
               onTouchStart:function(e){dragRef.current={id:deal.id,moved:false,startX:e.touches[0].clientX,startY:e.touches[0].clientY};},
               onTouchMove:function(e){
                 if(!dragRef.current.id)return;
