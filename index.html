@@ -93,7 +93,7 @@ var sbApi = {
     return sbFetch("GET","deals?select=*&order=created_at.asc");
   },
   addDeal: function(clientId){
-    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,followup_date:null});
+    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,followup_date:null,acquisition:null});
   },
   updateDeal: function(id,data){
     return sbFetch("PATCH","deals?id=eq."+id,data);
@@ -3772,12 +3772,11 @@ function ModalDeal(p){
   var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
   var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
   var sfu=useState(d.followup_date?d.followup_date.slice(0,16):""),followDate=sfu[0],setFollowDate=sfu[1];
+  var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
-  var set1=useState("Pomiar"),evType1=set1[0],setEvType1=set1[1];
-  var set2=useState("Montaż"),evType2=set2[0],setEvType2=set2[1];
-  var set3=useState("Follow-up"),evType3=set3[0],setEvType3=set3[1];
+  var sqv=useState(false),showQuote=sqv[0],setShowQuote=sqv[1];
   var cl=p.client;
 
   React.useEffect(function(){
@@ -3791,12 +3790,13 @@ function ModalDeal(p){
       visit_date:visitDate||null,
       delivery_date:delivDate||null,
       followup_date:followDate||null,
+      acquisition:acquisition||null,
       updated_at:new Date().toISOString()
     }).then(function(){
-      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,followup_date:followDate||null});
+      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,followup_date:followDate||null,acquisition:acquisition||null});
       setBusy(false);
       p.onClose();
-    }).catch(function(e){alert("Błąd: "+e.message);setBusy(false);});
+    }).catch(function(e){alert("B\u0142\u0105d: "+e.message);setBusy(false);});
   }
 
   function deleteAttach(id){
@@ -3806,7 +3806,6 @@ function ModalDeal(p){
   }
 
   function uploadFile(file){
-    // Upload do Supabase Storage bucket "deal-attachments"
     setUploading(true);
     var path="deals/"+d.id+"/"+Date.now()+"_"+file.name.replace(/\s/g,"_");
     var uploadUrl=SB_URL+"/storage/v1/object/deal-attachments/"+path;
@@ -3822,11 +3821,12 @@ function ModalDeal(p){
       var att=res&&res[0]?res[0]:{id:Date.now(),url:"",name:file.name};
       setAttachments(function(a){return a.concat([att]);});
       setUploading(false);
-    }).catch(function(e){alert("Błąd uploadu: "+e.message);setUploading(false);});
+    }).catch(function(e){alert("B\u0142\u0105d uploadu: "+e.message);setUploading(false);});
   }
 
   var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
-  var LBL={fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4,display:"block"};
+  var LBL={fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6,display:"block"};
+  var SEC={marginBottom:20};
 
   var clientName=cl?cl.name:"(brak klienta)";
   var total=cl?clientTotal2(cl):0;
@@ -3835,77 +3835,142 @@ function ModalDeal(p){
     var url=gcalLink(props.title,props.date,"Klient: "+clientName);
     if(!props.date||!url)return null;
     return ce("a",{href:url,target:"_blank",rel:"noopener noreferrer",
-      style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#4285f4",textDecoration:"none",border:"1px solid #4285f4",borderRadius:6,padding:"2px 7px",marginLeft:6,verticalAlign:"middle"}
-    },"\uD83D\uDCC5 Dodaj do kalendarza");
+      style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#4285f4",textDecoration:"none",border:"1px solid #4285f4",borderRadius:6,padding:"2px 7px",marginLeft:8,verticalAlign:"middle",flexShrink:0}
+    },"\uD83D\uDCC5 Dodaj do GCal");
   }
 
-  var EV_TYPES=["Spotkanie","Pomiar","Montaż","Inne"];
-  function EvTypePills(props){
-    return ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}},
-      EV_TYPES.map(function(t){
-        var active=props.value===t;
-        return ce("button",{key:t,onClick:function(){props.onChange(t);},
-          style:{
-            padding:"4px 13px",fontSize:11,fontWeight:active?700:500,
-            borderRadius:20,border:"1.5px solid "+(active?"var(--t1)":"var(--bd2)"),
-            background:active?"var(--t1)":"transparent",
-            color:active?"var(--bg2)":"var(--t3)",
-            cursor:"pointer",transition:"all 0.15s"
-          }
-        },t);
-      })
+  // ── Wycena uproszczona inline ──
+  function QuoteSection(){
+    if(!cl||!(cl.rooms&&cl.rooms.length))return ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"10px 0"}},"Brak wyceny");
+    var rows=[];
+    var grand=0;
+    (cl.rooms||[]).forEach(function(r){
+      var roomTot=0;
+      (r.windows||[]).forEach(function(w){
+        var winTot=(w.products||[]).reduce(function(a,pr){return a+(pr.mp!=null?pr.mp:0);},0);
+        roomTot+=winTot;
+      });
+      if(!roomTot)return;
+      grand+=roomTot;
+      rows.push({room:r.name||"Pom\u00f3j",windows:r.windows,roomTot:roomTot});
+    });
+    if(!rows.length)return ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"10px 0"}},"Brak wyceny");
+    return ce("div",null,
+      rows.map(function(row,ri){
+        return ce("div",{key:ri,style:{marginBottom:12}},
+          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4}},row.room),
+          (row.windows||[]).filter(function(w){
+            return (w.products||[]).some(function(pr){return pr.mp!=null&&pr.mp>0;});
+          }).map(function(w,wi){
+            var winTot=(w.products||[]).reduce(function(a,pr){return a+(pr.mp!=null?pr.mp:0);},0);
+            return ce("div",{key:wi,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 10px",background:"var(--bg)",borderRadius:7,marginBottom:3}},
+              ce("span",{style:{fontSize:12,color:"var(--t1)"}},(w.name||"Okno "+(wi+1))),
+              ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t1)"}},Math.round(winTot/10)*10+" z\u0142")
+            );
+          })
+        );
+      }),
+      ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 10px",borderTop:"2px solid var(--bd2)",marginTop:6}},
+        ce("span",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"RAZEM"),
+        ce("span",{style:{fontSize:16,fontWeight:800,color:"var(--t1)"}},Math.round(grand/10)*10+" z\u0142")
+      )
     );
   }
 
+  var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowro\u0144","Projektant"];
+
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0"}},
     ce("div",{style:{background:"var(--bg2)",width:"100%",maxWidth:540,borderRadius:"20px 20px 0 0",maxHeight:"92vh",overflowY:"auto",padding:"24px 20px 32px"}},
-      // Header
-      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}},
+
+      // ── Header ──
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}},
         ce("div",null,
-          ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},"Karta dealu"),
+          ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},"Karta Deala"),
           ce("div",{style:{fontSize:13,color:"var(--t3)",marginTop:2}},clientName)
         ),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"var(--t3)",padding:"4px 6px"}},"\u00D7")
       ),
-      // Wartość wyceny + przejdź
-      total>0?ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"12px 14px",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between"}},
-        ce("div",null,
-          ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:2}},"WARTOŚĆ WYCENY"),
-          ce("div",{style:{fontSize:20,fontWeight:700,color:"var(--t1)"}},Math.round(total/10)*10+" zł")
-        ),
-        ce("button",{onClick:p.onGoToClient,style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",borderRadius:9,padding:"8px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:"var(--t1)"}},"\u2192 Przejdź do wyceny")
+
+      // ── Dane klienta ──
+      cl?ce("div",{style:{...SEC,background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"12px 14px"}},
+        ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:8}},"DANE KLIENTA"),
+        cl.phone?ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+          ce("span",{style:{fontSize:12,color:"var(--t3)",width:56}},"Telefon"),
+          ce("a",{href:"tel:"+cl.phone,style:{fontSize:13,color:"var(--t1)",textDecoration:"none",fontWeight:500}},cl.phone)
+        ):null,
+        cl.email?ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+          ce("span",{style:{fontSize:12,color:"var(--t3)",width:56}},"E-mail"),
+          ce("a",{href:"mailto:"+cl.email,style:{fontSize:13,color:"var(--t1)",textDecoration:"none",fontWeight:500}},cl.email)
+        ):null,
+        cl.addr?ce("div",{style:{display:"flex",alignItems:"flex-start",gap:8}},
+          ce("span",{style:{fontSize:12,color:"var(--t3)",width:56,paddingTop:1}},"Adres"),
+          ce("span",{style:{fontSize:13,color:"var(--t1)"}},cl.addr)
+        ):null,
+        ce("button",{onClick:p.onGoToClient,style:{marginTop:10,width:"100%",border:"1.5px solid var(--bd2)",background:"transparent",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:"var(--t1)"}},"\u2192 Przej\u015b\u0107 do klienta")
       ):null,
-      // Daty z przyciskami kalendarza
-      ce("div",{style:{marginBottom:16}},
-        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:6}},
-          ce("label",{style:{...LBL,marginBottom:0}},"TERMIN POMIARU"),
-          ce(CalBtn,{title:evType1+" — "+clientName,date:visitDate})
-        ),
-        ce(EvTypePills,{value:evType1,onChange:setEvType1}),
-        ce("input",{type:"datetime-local",value:visitDate,onChange:function(e){setVisitDate(e.target.value);},style:IST})
+
+      // ── Sposób pozyskania ──
+      ce("div",{style:SEC},
+        ce("label",{style:LBL},"SPOS\u00d3B POZYSKANIA"),
+        ce("select",{value:acquisition,onChange:function(e){setAcquisition(e.target.value);},style:{...IST,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}},
+          ACQUISITION_OPTIONS.map(function(o){
+            return ce("option",{key:o,value:o},o||"— wybierz \u017ar\u00f3d\u0142o —");
+          })
+        )
       ),
-      ce("div",{style:{marginBottom:16}},
-        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:6}},
-          ce("label",{style:{...LBL,marginBottom:0}},"TERMIN REALIZACJI"),
-          ce(CalBtn,{title:evType2+" — "+clientName,date:delivDate})
+
+      // ── Terminarz ──
+      ce("div",{style:{...SEC,background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"14px 14px 10px"}},
+        ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:12}},"TERMINARZ"),
+        ce("div",{style:{marginBottom:12}},
+          ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}},
+            ce("label",{style:{...LBL,marginBottom:0}},"Spotkanie / Pomiar"),
+            ce(CalBtn,{title:"Spotkanie \u2014 "+clientName,date:visitDate})
+          ),
+          ce("input",{type:"datetime-local",value:visitDate,onChange:function(e){setVisitDate(e.target.value);},style:IST})
         ),
-        ce(EvTypePills,{value:evType2,onChange:setEvType2}),
-        ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST})
+        ce("div",null,
+          ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}},
+            ce("label",{style:{...LBL,marginBottom:0}},"Monta\u017c"),
+            ce(CalBtn,{title:"Monta\u017c \u2014 "+clientName,date:delivDate})
+          ),
+          ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST})
+        )
       ),
-      ce("div",{style:{marginBottom:16}},
-        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:6}},
+
+      // ── Follow-up ──
+      ce("div",{style:SEC},
+        ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}},
           ce("label",{style:{...LBL,marginBottom:0}},"FOLLOW-UP"),
-          ce(CalBtn,{title:evType3+" — "+clientName,date:followDate})
+          ce(CalBtn,{title:"Follow-up \u2014 "+clientName,date:followDate})
         ),
-        ce(EvTypePills,{value:evType3,onChange:setEvType3}),
         ce("input",{type:"datetime-local",value:followDate,onChange:function(e){setFollowDate(e.target.value);},style:IST})
       ),
-      // Notatki
-      ce("div",{style:{marginBottom:16}},
+
+      // ── Wycena ──
+      total>0?ce("div",{style:SEC},
+        ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
+          ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase"}},"WYCENA"),
+          ce("button",{onClick:function(){setShowQuote(function(v){return !v;});},
+            style:{fontSize:11,color:"var(--t3)",background:"none",border:"1px solid var(--bd2)",borderRadius:6,padding:"2px 9px",cursor:"pointer"}
+          },showQuote?"zwiń \u25b2":"rozwiń \u25bc")
+        ),
+        ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"12px 14px"}},
+          ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showQuote?12:0}},
+            ce("span",{style:{fontSize:13,color:"var(--t3)"}},"Warto\u015b\u0107 zamówienia"),
+            ce("span",{style:{fontSize:20,fontWeight:800,color:"var(--t1)"}},Math.round(total/10)*10+" z\u0142")
+          ),
+          showQuote?ce(QuoteSection,null):null
+        )
+      ):null,
+
+      // ── Notatki ──
+      ce("div",{style:SEC},
         ce("label",{style:LBL},"NOTATKI"),
         ce("textarea",{value:notes,onChange:function(e){setNotes(e.target.value);},rows:4,placeholder:"Historia kontaktu, uwagi...",style:{...IST,resize:"vertical",lineHeight:1.5}})
       ),
-      // Załączniki
+
+      // ── Załączniki ──
       ce("div",{style:{marginBottom:20}},
         ce("label",{style:LBL},"ZA\u0141\u0104CZNIKI"),
         attachments.length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:8}},
@@ -3923,10 +3988,11 @@ function ModalDeal(p){
           ce("input",{type:"file",accept:"image/*,.pdf",style:{display:"none"},onChange:function(e){var f=e.target.files&&e.target.files[0];if(f)uploadFile(f);e.target.value="";},disabled:uploading})
         )
       ),
-      // Przyciski
+
+      // ── Przyciski ──
       ce("div",{style:{display:"flex",gap:10}},
         ce("button",{onClick:save,disabled:busy,style:{flex:1,padding:"13px",borderRadius:11,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:700,cursor:busy?"wait":"pointer"}},busy?"Zapisuję...":"Zapisz"),
-        ce("button",{onClick:function(){if(window.confirm("Usunąć ten deal?"))p.onDelete();},style:{padding:"13px 16px",borderRadius:11,border:"1px solid var(--bd2)",background:"none",color:"var(--t3)",fontSize:13,cursor:"pointer"}},"Usuń")
+        ce("button",{onClick:function(){if(window.confirm("Usun\u0105\u0107 ten deal?"))p.onDelete();},style:{padding:"13px 16px",borderRadius:11,border:"1px solid var(--bd2)",background:"none",color:"var(--t3)",fontSize:13,cursor:"pointer"}},"Usu\u0144")
       )
     )
   );
