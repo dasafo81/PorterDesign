@@ -3742,7 +3742,8 @@ function clientTotal2(cl){
   return (cl.rooms||[]).reduce(function(a,r){
     return a+(r.windows||[]).reduce(function(b,w){
       return b+(w.products||[]).reduce(function(c,p){
-        return c+(p.mp!=null?p.mp:0);
+        var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
+        return c+(p.mp!=null?p.mp:(calc(pfc).total||0));
       },0);
     },0);
   },0);
@@ -3771,7 +3772,6 @@ function ModalDeal(p){
   var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
   var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
   var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
-  var sfu=useState(d.followup_date?d.followup_date.slice(0,16):""),followDate=sfu[0],setFollowDate=sfu[1];
   var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
@@ -3789,11 +3789,10 @@ function ModalDeal(p){
       notes:notes,
       visit_date:visitDate||null,
       delivery_date:delivDate||null,
-      followup_date:followDate||null,
       acquisition:acquisition||null,
       updated_at:new Date().toISOString()
     }).then(function(){
-      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,followup_date:followDate||null,acquisition:acquisition||null});
+      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,acquisition:acquisition||null});
       setBusy(false);
       p.onClose();
     }).catch(function(e){alert("B\u0142\u0105d: "+e.message);setBusy(false);});
@@ -3906,7 +3905,7 @@ function ModalDeal(p){
           ce("span",{style:{fontSize:12,color:"var(--t3)",width:56,paddingTop:1}},"Adres"),
           ce("span",{style:{fontSize:13,color:"var(--t1)"}},cl.addr)
         ):null,
-        ce("button",{onClick:p.onGoToClient,style:{marginTop:10,width:"100%",border:"1.5px solid var(--bd2)",background:"transparent",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:"var(--t1)"}},"\u2192 Przej\u015b\u0107 do klienta")
+        ce("button",{onClick:p.onGoToClient,style:{marginTop:10,width:"100%",border:"1.5px solid var(--bd2)",background:"transparent",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:"var(--t1)"}},"\u2192 Przej\u015b\u0107 do wyceny")
       ):null,
 
       // ── Sposób pozyskania ──
@@ -3936,15 +3935,6 @@ function ModalDeal(p){
           ),
           ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST})
         )
-      ),
-
-      // ── Follow-up ──
-      ce("div",{style:SEC},
-        ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}},
-          ce("label",{style:{...LBL,marginBottom:0}},"FOLLOW-UP"),
-          ce(CalBtn,{title:"Follow-up \u2014 "+clientName,date:followDate})
-        ),
-        ce("input",{type:"datetime-local",value:followDate,onChange:function(e){setFollowDate(e.target.value);},style:IST})
       ),
 
       // ── Wycena ──
@@ -4449,7 +4439,6 @@ function ScreenCRM(p){
             var total=cl?clientTotal2(cl):0;
             var hasVisit=deal.visit_date;
             var hasDelivery=deal.delivery_date;
-            var hasFollowup=deal.followup_date;
             return ce("div",{
               key:deal.id,
               draggable:true,
@@ -4467,15 +4456,12 @@ function ScreenCRM(p){
             },
               ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
               total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" z\u0142"):null,
-              (hasVisit||hasDelivery||hasFollowup)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
+              (hasVisit||hasDelivery)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
                 hasVisit?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
                   ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
                 ):null,
                 hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
                   ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
-                ):null,
-                hasFollowup?ce("div",{style:{fontSize:10,color:"#f59e0b",display:"flex",alignItems:"center",gap:3}},
-                  ce("span",null,"\u23F0"),ce("span",null,"Follow-up: "+fmtDate(deal.followup_date))
                 ):null
               ):null,
               deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
@@ -5694,7 +5680,7 @@ function ModalAIValuation(p){
       saved&&savedClient
         ?ce("button",{onClick:goToClient,
             style:{padding:"6px 12px",borderRadius:8,border:"none",background:"#15803d",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}
-          },"\u2192 Przejd\u017A do klienta")
+          },"\u2192 Przejd\u017A do wyceny")
         :null,
       ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",padding:"4px 6px",flexShrink:0}},"\u00D7")
     ),
