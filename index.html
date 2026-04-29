@@ -3909,142 +3909,323 @@ function ModalDeal(p){
 }
 
 // ── CRM KALENDARZ ────────────────────────────────────────────────────────────
+var GCAL_CLIENT_ID="818744143681-cab0a79h5hoo4l4cracnltnh2bldi62r.apps.googleusercontent.com";
+var GCAL_SCOPES="https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+
 function CRMKalendarz(p){
   // p: deals, clients, onDealClick
-  var sGcal=useState(false),gcalLoaded=sGcal[0],setGcalLoaded=sGcal[1];
-  var sEmail=useState(""),gcalEmail=sEmail[0],setGcalEmail=sEmail[1];
-  var sSaved=useState(false),emailSaved=sSaved[0],setEmailSaved=sSaved[1];
+  var sToken=useState(null),gcalToken=sToken[0],setGcalToken=sToken[1];
+  var sEvents=useState([]),gcalEvents=sEvents[0],setGcalEvents=sEvents[1];
+  var sLoadingEv=useState(false),loadingEv=sLoadingEv[0],setLoadingEv=sLoadingEv[1];
+  var sErrEv=useState(null),errEv=sErrEv[0],setErrEv=sErrEv[1];
+  var sView=useState("month"),calView=sView[0],setCalView=sView[1];
+  var sRefDate=useState(function(){return new Date();}),refDate=sRefDate[0],setRefDate=sRefDate[1];
+  var sGsiReady=useState(false),gsiReady=sGsiReady[0],setGsiReady=sGsiReady[1];
+  var sAddingTo=useState(null),addingTo=sAddingTo[0],setAddingTo=sAddingTo[1]; // ev deal for quick-add
 
-  // Pobierz zapisany email z localStorage
+  // Załaduj GSI script raz
   React.useEffect(function(){
-    try{var e=localStorage.getItem("pd_gcal_email");if(e){setGcalEmail(e);setGcalLoaded(true);}}catch(err){}
+    if(window.google&&window.google.accounts){setGsiReady(true);return;}
+    var sc=document.createElement("script");
+    sc.src="https://accounts.google.com/gsi/client";
+    sc.async=true;
+    sc.onload=function(){setGsiReady(true);};
+    document.head.appendChild(sc);
+    // Przywróć token z localStorage
+    try{
+      var saved=localStorage.getItem("pd_gcal_token");
+      var exp=localStorage.getItem("pd_gcal_token_exp");
+      if(saved&&exp&&Date.now()<Number(exp)){
+        setGcalToken(saved);
+      }
+    }catch(e){}
   },[]);
 
-  function saveEmail(){
-    if(!gcalEmail||!gcalEmail.includes("@")){return;}
-    try{localStorage.setItem("pd_gcal_email",gcalEmail);}catch(err){}
-    setGcalLoaded(true);
-    setEmailSaved(true);
+  // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
+  React.useEffect(function(){
+    if(!gcalToken) return;
+    fetchEvents(gcalToken);
+  },[gcalToken, refDate.getFullYear(), refDate.getMonth(), calView]);
+
+  function login(){
+    if(!gsiReady||!window.google){alert("Biblioteka Google nie załadowana. Odśwież stronę.");return;}
+    var client=window.google.accounts.oauth2.initTokenClient({
+      client_id:GCAL_CLIENT_ID,
+      scope:GCAL_SCOPES,
+      callback:function(resp){
+        if(resp.error){setErrEv("Błąd logowania: "+resp.error);return;}
+        var tok=resp.access_token;
+        var exp=Date.now()+(resp.expires_in||3600)*1000;
+        try{localStorage.setItem("pd_gcal_token",tok);localStorage.setItem("pd_gcal_token_exp",String(exp));}catch(e){}
+        setGcalToken(tok);
+        setErrEv(null);
+      }
+    });
+    client.requestAccessToken();
   }
 
-  // Zbierz nadchodzące eventy z dealów
+  function logout(){
+    try{localStorage.removeItem("pd_gcal_token");localStorage.removeItem("pd_gcal_token_exp");}catch(e){}
+    setGcalToken(null);
+    setGcalEvents([]);
+  }
+
+  function fetchEvents(token){
+    setLoadingEv(true);setErrEv(null);
+    // Oblicz zakres dat wg widoku
+    var from,to;
+    if(calView==="week"){
+      var dow=refDate.getDay();
+      var mon=new Date(refDate);mon.setDate(refDate.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+      var sun=new Date(mon);sun.setDate(mon.getDate()+6);sun.setHours(23,59,59,999);
+      from=mon;to=sun;
+    } else {
+      from=new Date(refDate.getFullYear(),refDate.getMonth(),1);
+      to=new Date(refDate.getFullYear(),refDate.getMonth()+1,0,23,59,59,999);
+    }
+    var url="https://www.googleapis.com/calendar/v3/calendars/primary/events"
+      +"?timeMin="+encodeURIComponent(from.toISOString())
+      +"&timeMax="+encodeURIComponent(to.toISOString())
+      +"&singleEvents=true&orderBy=startTime&maxResults=200";
+    fetch(url,{headers:{Authorization:"Bearer "+token}})
+      .then(function(r){
+        if(r.status===401){logout();setErrEv("Sesja wygasła — zaloguj się ponownie.");throw new Error("401");}
+        return r.json();
+      })
+      .then(function(data){
+        setGcalEvents(data.items||[]);
+        setLoadingEv(false);
+      })
+      .catch(function(e){
+        if(e.message!=="401") setErrEv("Błąd pobierania kalendarza.");
+        setLoadingEv(false);
+      });
+  }
+
+  // Zbierz terminy z dealów
   var now=new Date();
-  var events=[];
+  var dealEvents=[];
   (p.deals||[]).forEach(function(deal){
     var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
     var name=cl?cl.name:"Klient";
-    if(deal.visit_date){
-      var d=new Date(deal.visit_date);
-      events.push({date:d,label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});
-    }
-    if(deal.delivery_date){
-      var d2=new Date(deal.delivery_date);
-      events.push({date:d2,label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});
-    }
-    if(deal.followup_date){
-      var d3=new Date(deal.followup_date);
-      events.push({date:d3,label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});
-    }
+    if(deal.visit_date){dealEvents.push({date:new Date(deal.visit_date),label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});}
+    if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});}
+    if(deal.followup_date){dealEvents.push({date:new Date(deal.followup_date),label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});}
   });
-  events.sort(function(a,b){return a.date-b.date;});
-  var upcoming=events.filter(function(e){return e.date>=now;});
-  var past=events.filter(function(e){return e.date<now;}).reverse().slice(0,5);
+  dealEvents.sort(function(a,b){return a.date-b.date;});
+  var upcoming=dealEvents.filter(function(e){return e.date>=now;});
 
-  function gcalEmbedUrl(email){
-    // Embed Google Calendar dla danego konta
-    return "https://calendar.google.com/calendar/embed?src="+encodeURIComponent(email)
-      +"&ctz=Europe%2FWarsaw&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&mode=WEEK";
-  }
-
-  function gcalNewEvent(title,date,desc){
-    var d=new Date(date);
+  function addDealEventToGcal(ev){
+    if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
+    var d=ev.date;
     var pad=function(n){return String(n).padStart(2,"0");};
-    var ymd=d.getFullYear()+""+pad(d.getMonth()+1)+""+pad(d.getDate());
-    var h=pad(d.getHours()),m=pad(d.getMinutes());
-    var start=ymd+"T"+h+m+"00";
-    var end=ymd+"T"+(pad(d.getHours()+1))+m+"00";
-    var url="https://calendar.google.com/calendar/render?action=TEMPLATE"
-      +"&text="+encodeURIComponent(title)
-      +"&dates="+start+"/"+end
-      +"&details="+encodeURIComponent(desc||"");
-    window.open(url,"_blank");
+    var body={
+      summary:ev.label+" \u2014 "+ev.client,
+      description:"Klient: "+ev.client+(ev.deal&&ev.deal.title?" | Deal: "+ev.deal.title:""),
+      start:{dateTime:d.toISOString(),timeZone:"Europe/Warsaw"},
+      end:{dateTime:new Date(d.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
+    };
+    fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events",{
+      method:"POST",
+      headers:{Authorization:"Bearer "+gcalToken,"Content-Type":"application/json"},
+      body:JSON.stringify(body)
+    }).then(function(r){return r.json();}).then(function(){
+      fetchEvents(gcalToken);
+      alert("Dodano do Google Calendar!");
+    }).catch(function(){alert("B\u0142\u0105d dodawania zdarzenia.");});
   }
 
-  var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
+  // ── Pomocniki kalendarza ──
+  function isSameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
 
-  return ce("div",null,
-    // Konfiguracja emaila Google
-    ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:16}},
-      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}},
-        "\uD83D\uDD17 Konto Google Calendar"
+  function getEventsForDay(date){
+    var result=[];
+    // GCal events
+    gcalEvents.forEach(function(ev){
+      var start=ev.start&&(ev.start.dateTime||ev.start.date);
+      if(!start) return;
+      var d=new Date(start);
+      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:"#4285f4",time:ev.start.dateTime?d:null});
+    });
+    // Deal events
+    dealEvents.forEach(function(ev){
+      if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,dealEv:ev});
+    });
+    result.sort(function(a,b){return (a.time||0)-(b.time||0);});
+    return result;
+  }
+
+  function prevPeriod(){
+    var d=new Date(refDate);
+    if(calView==="week") d.setDate(d.getDate()-7);
+    else d.setMonth(d.getMonth()-1);
+    setRefDate(d);
+  }
+  function nextPeriod(){
+    var d=new Date(refDate);
+    if(calView==="week") d.setDate(d.getDate()+7);
+    else d.setMonth(d.getMonth()+1);
+    setRefDate(d);
+  }
+  function goToday(){setRefDate(new Date());}
+
+  // ── Render widoku miesięcznego ──
+  function renderMonthView(){
+    var year=refDate.getFullYear(),month=refDate.getMonth();
+    var firstDay=new Date(year,month,1);
+    var lastDay=new Date(year,month+1,0);
+    var startDow=firstDay.getDay()===0?6:firstDay.getDay()-1; // Mon=0
+    var totalCells=Math.ceil((startDow+lastDay.getDate())/7)*7;
+    var days=[];
+    for(var i=0;i<totalCells;i++){
+      var dayNum=i-startDow+1;
+      if(dayNum<1||dayNum>lastDay.getDate()) days.push(null);
+      else days.push(new Date(year,month,dayNum));
+    }
+    var today=new Date();
+    var DOW_LABELS=["\u2160 Pon","\u2161 Wt","\u2162 \u015ar","\u2163 Czw","\u2164 Pt","\u2165 Sob","\u2166 Nd"];
+    var DOW_PL=["Pon","Wt","\u015ar","Czw","Pt","Sob","Nd"];
+    return ce("div",null,
+      // Nagłówki dni
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:1}},
+        DOW_PL.map(function(d,i){return ce("div",{key:i,style:{textAlign:"center",fontSize:10,fontWeight:700,color:"var(--t3)",padding:"6px 0",letterSpacing:"0.07em",textTransform:"uppercase",background:"var(--bg2)"}},d);})
       ),
-      ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-        ce("input",{
-          type:"email",
-          value:gcalEmail,
-          onChange:function(e){setGcalEmail(e.target.value);setEmailSaved(false);setGcalLoaded(false);},
-          placeholder:"tw\u00f3j@gmail.com",
-          style:{...IST,flex:1,marginBottom:0}
-        }),
-        ce("button",{
-          onClick:saveEmail,
-          style:{padding:"9px 16px",borderRadius:9,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}
-        },emailSaved?"\u2713 Zapisano":"Po\u0142\u0105cz")
-      ),
-      emailSaved?ce("div",{style:{fontSize:11,color:"#10b981",marginTop:6}},
-        "\u2713 Konto po\u0142\u0105czone. Wbudowany kalendarz poni\u017cej."
-      ):null
-    ),
-    // Lista nadchodzących eventów z dealów
-    ce("div",{style:{marginBottom:16}},
-      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}},
-        "Nadchodz\u0105ce terminy"+(upcoming.length?" ("+upcoming.length+")":"")
-      ),
-      upcoming.length===0
-        ?ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"12px 0",opacity:0.6}},"Brak zaplanowanych termin\u00f3w. Dodaj daty w kartach deal\u00f3w.")
-        :upcoming.slice(0,10).map(function(ev,i){
-          return ce("div",{key:i,
-            onClick:function(){p.onDealClick&&p.onDealClick(ev.deal);},
-            style:{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,marginBottom:8,cursor:"pointer"}
-          },
-            ce("div",{style:{flexShrink:0,textAlign:"center",minWidth:36}},
-              ce("div",{style:{fontSize:18,fontWeight:700,color:ev.color,lineHeight:1}},ev.date.getDate()),
-              ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}},
-                ev.date.toLocaleDateString("pl-PL",{month:"short"})
-              )
-            ),
-            ce("div",{style:{flex:1}},
-              ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)"}},""+ev.label+" \u2014 "+ev.client),
-              ce("div",{style:{fontSize:11,color:"var(--t3)"}},(ev.date.getHours()?"g. "+ev.date.getHours()+":"+String(ev.date.getMinutes()).padStart(2,"0")+" \u00b7 ":"")
-                +ev.date.toLocaleDateString("pl-PL",{weekday:"long"})
-              )
-            ),
-            ce("button",{
-              onClick:function(e){
-                e.stopPropagation();
-                gcalNewEvent(ev.label+" \u2014 "+ev.client,ev.date,"Klient: "+ev.client);
-              },
-              style:{padding:"5px 10px",borderRadius:7,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:11,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}
-            },"\uD83D\uDCC5 GCal")
+      // Siatka dni
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}},
+        days.map(function(d,i){
+          if(!d) return ce("div",{key:i,style:{background:"var(--bg2)",minHeight:80,opacity:0.3}});
+          var evs=getEventsForDay(d);
+          var isToday=isSameDay(d,today);
+          var isCurrentMonth=d.getMonth()===month;
+          return ce("div",{key:i,style:{background:"var(--bg)",minHeight:80,padding:"4px 5px",border:"1px solid var(--bd2)",borderTop:isToday?"2px solid var(--t1)":"1px solid var(--bd2)",position:"relative"}},
+            ce("div",{style:{fontSize:11,fontWeight:isToday?700:400,color:isToday?"var(--t1)":"var(--t3)",background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?20:null,height:isToday?20:null,borderRadius:isToday?10:null,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:2}},d.getDate()),
+            evs.slice(0,3).map(function(ev,ei){return ce("div",{key:ei,title:ev.title,style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:ev.dealEv?"pointer":"default",fontWeight:600},onClick:ev.dealEv?function(){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}:null},
+              (ev.time?(new Date(ev.time).getHours()+":"+String(new Date(ev.time).getMinutes()).padStart(2,"0")+" "):"")+ ev.title
+            );}),
+            evs.length>3?ce("div",{style:{fontSize:9,color:"var(--t3)",marginTop:1}},"+"+( evs.length-3)+" więcej"):null
           );
         })
-    ),
-    // Embed kalendarza Google
-    gcalLoaded&&gcalEmail?ce("div",{style:{marginBottom:16}},
-      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}},
-        "Tw\u00f3j Kalendarz Google"
-      ),
-      ce("div",{style:{borderRadius:12,overflow:"hidden",border:"1px solid var(--bd2)",background:"var(--bg2)"}},
-        ce("iframe",{
-          src:gcalEmbedUrl(gcalEmail),
-          style:{width:"100%",height:480,border:"none",display:"block"},
-          title:"Google Calendar"
-        })
-      ),
-      ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,textAlign:"center"}},
-        "Kalendarz wymaga zalogowania w przegl\u0105darce na konto "+gcalEmail
       )
-    ):null
+    );
+  }
+
+  // ── Render widoku tygodniowego ──
+  function renderWeekView(){
+    var dow=refDate.getDay();
+    var mon=new Date(refDate);mon.setDate(refDate.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+    var weekDays=[];
+    for(var i=0;i<7;i++){var d2=new Date(mon);d2.setDate(mon.getDate()+i);weekDays.push(d2);}
+    var DOW_PL=["Pon","Wt","\u015ar","Czw","Pt","Sob","Nd"];
+    var today=new Date();
+    var hours=[];for(var h=7;h<22;h++) hours.push(h);
+
+    return ce("div",{style:{overflowX:"auto"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"44px repeat(7,1fr)",minWidth:520}},
+        // Nagłówek
+        ce("div",{style:{background:"var(--bg2)"}}),
+        weekDays.map(function(d,i){
+          var isToday=isSameDay(d,today);
+          return ce("div",{key:i,style:{textAlign:"center",padding:"6px 2px",background:"var(--bg2)",borderLeft:"1px solid var(--bd2)"}},
+            ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em"}},DOW_PL[i]),
+            ce("div",{style:{fontSize:16,fontWeight:700,color:isToday?"var(--t1)":"var(--t2)",background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?28:null,height:isToday?28:null,borderRadius:isToday?14:null,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto"}},d.getDate())
+          );
+        }),
+        // Godziny
+        hours.map(function(h){
+          return [
+            ce("div",{key:"h"+h,style:{fontSize:9,color:"var(--t3)",textAlign:"right",paddingRight:6,paddingTop:2,borderTop:"1px solid var(--bd2)"}},h+":00"),
+            weekDays.map(function(d,di){
+              var evs=getEventsForDay(d).filter(function(ev){return ev.time&&new Date(ev.time).getHours()===h;});
+              return ce("div",{key:"d"+di,style:{borderLeft:"1px solid var(--bd2)",borderTop:"1px solid var(--bd2)",minHeight:36,padding:2,position:"relative"}},
+                evs.map(function(ev,ei){return ce("div",{key:ei,title:ev.title,onClick:ev.dealEv?function(){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}:null,style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:ev.dealEv?"pointer":"default",fontWeight:600}},ev.title);})
+              );
+            })
+          ];
+        })
+      )
+    );
+  }
+
+  // ── Nagłówek okresu ──
+  var MONTHS_PL=["\u0161ycze\u0144","luty","marzec","kwiecień","maj","czerwiec","lipiec","sierpień","wrzesień","październik","listopad","grudzień"];
+  var MONTHS_PL2=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+  function periodLabel(){
+    if(calView==="month") return MONTHS_PL2[refDate.getMonth()]+" "+refDate.getFullYear();
+    var dow=refDate.getDay();
+    var mon=new Date(refDate);mon.setDate(refDate.getDate()-(dow===0?6:dow-1));
+    var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    return mon.getDate()+"."+(mon.getMonth()+1<10?"0":"")+(mon.getMonth()+1)+" \u2014 "+sun.getDate()+"."+(sun.getMonth()+1<10?"0":"")+(sun.getMonth()+1)+"."+sun.getFullYear();
+  }
+
+  var BTN={padding:"7px 14px",borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer"};
+  var BTN_ACT={padding:"7px 14px",borderRadius:8,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:"pointer"};
+
+  return ce("div",null,
+
+    // ── Pasek logowania Google ──
+    ce("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14,background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"10px 14px"}},
+      ce("span",{style:{fontSize:13,fontWeight:700,color:"var(--t2)",flex:1}},
+        gcalToken?"\u2713 Po\u0142\u0105czono z Google Calendar":"Google Calendar"
+      ),
+      gcalToken
+        ?ce("button",{onClick:function(){fetchEvents(gcalToken);},disabled:loadingEv,style:{...BTN,borderColor:"#4285f4",color:"#4285f4",marginRight:4}},loadingEv?"\u23F3 Odświeżam...":"\u21BA Odśwież")
+        :null,
+      gcalToken
+        ?ce("button",{onClick:logout,style:{...BTN,color:"#ef4444",borderColor:"#ef4444"}},"Wyloguj")
+        :ce("button",{onClick:login,style:{...BTN_ACT,background:"#4285f4"}},"\uD83D\uDD11 Zaloguj przez Google")
+    ),
+
+    errEv?ce("div",{style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#ef4444",marginBottom:12}},errEv):null,
+
+    // ── Nadchodzące terminy z dealów ──
+    upcoming.length>0?ce("div",{style:{marginBottom:14}},
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}},"Nadchodz\u0105ce terminy ("+upcoming.length+")"),
+      ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+        upcoming.slice(0,6).map(function(ev,i){
+          return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,cursor:"pointer"},onClick:function(){p.onDealClick&&p.onDealClick(ev.deal);}},
+            ce("div",{style:{flexShrink:0,textAlign:"center",minWidth:32}},
+              ce("div",{style:{fontSize:16,fontWeight:700,color:ev.color,lineHeight:1}},ev.date.getDate()),
+              ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase"}},ev.date.toLocaleDateString("pl-PL",{month:"short"}))
+            ),
+            ce("div",{style:{flex:1,fontSize:12,fontWeight:600,color:"var(--t1)"}},ev.label+" \u2014 "+ev.client),
+            gcalToken?ce("button",{onClick:function(e){e.stopPropagation();addDealEventToGcal(ev);},style:{padding:"4px 9px",borderRadius:6,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:10,cursor:"pointer",flexShrink:0}},"\uD83D\uDCC5 Dodaj do GCal"):null
+          );
+        })
+      )
+    ):null,
+
+    // ── Widok kalendarza ──
+    ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:12,overflow:"hidden"}},
+
+      // Toolbar
+      ce("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg2)"}},
+        ce("button",{onClick:goToday,style:BTN},"Dzisiaj"),
+        ce("button",{onClick:prevPeriod,style:{...BTN,padding:"7px 10px"}},"\u2039"),
+        ce("button",{onClick:nextPeriod,style:{...BTN,padding:"7px 10px"}},"\u203a"),
+        ce("span",{style:{flex:1,fontSize:14,fontWeight:700,color:"var(--t1)",textAlign:"center"}},periodLabel()),
+        ce("div",{style:{display:"flex",gap:4}},
+          ce("button",{onClick:function(){setCalView("month");},style:calView==="month"?BTN_ACT:BTN},"Miesi\u0105c"),
+          ce("button",{onClick:function(){setCalView("week");},style:calView==="week"?BTN_ACT:BTN},"Tydzie\u0144")
+        )
+      ),
+
+      // Legenda
+      ce("div",{style:{display:"flex",gap:12,padding:"6px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg2)",flexWrap:"wrap"}},
+        ce("span",{style:{fontSize:10,color:"#4285f4",fontWeight:600}},"● Google Calendar"),
+        ce("span",{style:{fontSize:10,color:"#3b82f6",fontWeight:600}},"● Pomiar"),
+        ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Realizacja"),
+        ce("span",{style:{fontSize:10,color:"#f59e0b",fontWeight:600}},"● Follow-up"),
+        loadingEv?ce("span",{style:{fontSize:10,color:"var(--t3)",marginLeft:"auto"}},"\u23F3 Ładuję zdarzenia..."):null
+      ),
+
+      // Kalendarz
+      ce("div",{style:{padding:calView==="month"?0:0}},
+        !gcalToken?ce("div",{style:{padding:"32px",textAlign:"center",color:"var(--t3)",fontSize:13}},
+          "Zaloguj si\u0119 przez Google, aby zobaczy\u0107 pe\u0142ny kalendarz ze zdarzeniami.\nTerminy z deal\u00f3w widoczne powy\u017cej."
+        ):
+        calView==="month"?renderMonthView():renderWeekView()
+      )
+    )
   );
 }
 
