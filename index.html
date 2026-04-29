@@ -3775,6 +3775,9 @@ function ModalDeal(p){
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
+  var set1=useState(\"Pomiar\"),evType1=set1[0],setEvType1=set1[1];
+  var set2=useState(\"Monta\u017c\"),evType2=set2[0],setEvType2=set2[1];
+  var set3=useState(\"Follow-up\"),evType3=set3[0],setEvType3=set3[1];
   var cl=p.client;
 
   React.useEffect(function(){
@@ -3836,6 +3839,24 @@ function ModalDeal(p){
     },"\uD83D\uDCC5 Dodaj do kalendarza");
   }
 
+  var EV_TYPES=["Spotkanie","Pomiar","Montaż","Inne"];
+  function EvTypePills(props){
+    return ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}},
+      EV_TYPES.map(function(t){
+        var active=props.value===t;
+        return ce("button",{key:t,onClick:function(){props.onChange(t);},
+          style:{
+            padding:"4px 13px",fontSize:11,fontWeight:active?700:500,
+            borderRadius:20,border:"1.5px solid "+(active?"var(--t1)":"var(--bd2)"),
+            background:active?"var(--t1)":"transparent",
+            color:active?"var(--bg2)":"var(--t3)",
+            cursor:"pointer",transition:"all 0.15s"
+          }
+        },t);
+      })
+    );
+  }
+
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0"}},
     ce("div",{style:{background:"var(--bg2)",width:"100%",maxWidth:540,borderRadius:"20px 20px 0 0",maxHeight:"92vh",overflowY:"auto",padding:"24px 20px 32px"}},
       // Header
@@ -3856,24 +3877,27 @@ function ModalDeal(p){
       ):null,
       // Daty z przyciskami kalendarza
       ce("div",{style:{marginBottom:16}},
-        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:4}},
-          ce("label",{style:LBL,style:{...LBL,marginBottom:0}},"TERMIN POMIARU"),
-          ce(CalBtn,{title:"Pomiar — "+clientName,date:visitDate})
+        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:6}},
+          ce("label",{style:{...LBL,marginBottom:0}},"TERMIN POMIARU"),
+          ce(CalBtn,{title:evType1+" — "+clientName,date:visitDate})
         ),
+        ce(EvTypePills,{value:evType1,onChange:setEvType1}),
         ce("input",{type:"datetime-local",value:visitDate,onChange:function(e){setVisitDate(e.target.value);},style:IST})
       ),
       ce("div",{style:{marginBottom:16}},
-        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:4}},
-          ce("label",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:0,display:"block"}},"TERMIN REALIZACJI"),
-          ce(CalBtn,{title:"Realizacja — "+clientName,date:delivDate})
+        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:6}},
+          ce("label",{style:{...LBL,marginBottom:0}},"TERMIN REALIZACJI"),
+          ce(CalBtn,{title:evType2+" — "+clientName,date:delivDate})
         ),
+        ce(EvTypePills,{value:evType2,onChange:setEvType2}),
         ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST})
       ),
       ce("div",{style:{marginBottom:16}},
-        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:4}},
-          ce("label",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:0,display:"block"}},"FOLLOW-UP"),
-          ce(CalBtn,{title:"Follow-up — "+clientName,date:followDate})
+        ce("div",{style:{display:"flex",alignItems:"center",marginBottom:6}},
+          ce("label",{style:{...LBL,marginBottom:0}},"FOLLOW-UP"),
+          ce(CalBtn,{title:evType3+" — "+clientName,date:followDate})
         ),
+        ce(EvTypePills,{value:evType3,onChange:setEvType3}),
         ce("input",{type:"datetime-local",value:followDate,onChange:function(e){setFollowDate(e.target.value);},style:IST})
       ),
       // Notatki
