@@ -4681,6 +4681,7 @@ function ScreenCRM(p){
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
   var sDrag=useState(null),dragId=sDrag[0],setDragId=sDrag[1];
   var sDragOver=useState(null),dragOver=sDragOver[0],setDragOver=sDragOver[1];
+  var dragRef=useRef({id:null,moved:false});
   var sModal=useState(null),modalDeal=sModal[0],setModalDeal=sModal[1];
   var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
   var sNewClient=useState(""),newClientId=sNewClient[0],setNewClientId=sNewClient[1];
@@ -4787,13 +4788,8 @@ function ScreenCRM(p){
         var isOver=dragOver===stage.id;
         return ce("div",{
           key:stage.id,
-          onDragOver:function(e){e.preventDefault();setDragOver(stage.id);},
-          onDrop:function(e){
-            e.preventDefault();
-            if(dragId&&dragId!==stage.id){moveStage(dragId,stage.id);}
-            setDragId(null);setDragOver(null);
-          },
-          onDragLeave:function(){setDragOver(null);},
+          onPointerEnter:function(){if(dragRef.current.id){setDragOver(stage.id);}},
+          onPointerLeave:function(){if(dragRef.current.id){setDragOver(null);}},
           style:{
             minWidth:190,width:190,flexShrink:0,
             background:isOver?"rgba(99,102,241,0.06)":"var(--bg2)",
@@ -4815,13 +4811,33 @@ function ScreenCRM(p){
             var hasDelivery=deal.delivery_date;
             return ce("div",{
               key:deal.id,
-              draggable:true,
-              onDragStart:function(){setDragId(deal.id);},
-              onDragEnd:function(){setDragId(null);setDragOver(null);},
-              onClick:function(){openDeal(deal);},
+              onPointerDown:function(e){
+                e.currentTarget.setPointerCapture(e.pointerId);
+                dragRef.current={id:deal.id,moved:false};
+              },
+              onPointerMove:function(e){
+                if(!dragRef.current.id)return;
+                if(!dragRef.current.moved){dragRef.current.moved=true;setDragId(deal.id);}
+              },
+              onPointerUp:function(e){
+                var wasDrag=dragRef.current.moved;
+                var fromId=dragRef.current.id;
+                dragRef.current={id:null,moved:false};
+                setDragId(null);
+                if(wasDrag){
+                  setDragOver(function(over){
+                    if(over&&over!==fromId){moveStage(fromId,over);}
+                    return null;
+                  });
+                } else {
+                  openDeal(deal);
+                }
+              },
+              onPointerCancel:function(){dragRef.current={id:null,moved:false};setDragId(null);setDragOver(null);},
               style:{
+                touchAction:"none",
                 background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,
-                padding:"10px 11px",marginBottom:8,cursor:"pointer",
+                padding:"10px 11px",marginBottom:8,cursor:"grab",
                 boxShadow:"0 1px 4px rgba(0,0,0,0.05)",
                 borderLeft:"3px solid "+stage.color,
                 transition:"box-shadow .15s",
