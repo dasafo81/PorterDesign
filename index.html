@@ -37,9 +37,9 @@
     button,input,select{font-family:inherit;}
     .footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:9px;color:var(--t3);letter-spacing:0.16em;text-transform:uppercase;margin-top:auto;opacity:0.5;}
   /* Sortable.js kanban */
-  .kanban-ghost{opacity:0.25;background:var(--t1)!important;border-color:var(--t1)!important;}
-  .kanban-chosen{box-shadow:0 6px 24px rgba(0,0,0,0.18)!important;cursor:grabbing!important;}
-  .kanban-drag{opacity:0.9;box-shadow:0 8px 32px rgba(0,0,0,0.22)!important;cursor:grabbing!important;transform:rotate(1.5deg);}
+  .kanban-ghost{opacity:0!important;}
+  .kanban-chosen{opacity:1;}
+  .kanban-drag{opacity:0.95;box-shadow:0 10px 36px rgba(0,0,0,0.22)!important;cursor:grabbing!important;transform:rotate(1deg) scale(1.03);transition:none!important;}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
@@ -4790,35 +4790,37 @@ function ScreenCRM(p){
         var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
         var listRef=React.useRef(null);
         var sortableRef=React.useRef(null);
-        // Inicjalizacja Sortable na mount / aktualizacja gdy zmienia się stage
+        // moveStageRef — żeby onEnd zawsze miał aktualną referencję do moveStage
+        // bez dodawania jej do dependency array (co niszczyłoby Sortable przy każdym render)
+        var moveStageRef=React.useRef(moveStage);
+        React.useEffect(function(){moveStageRef.current=moveStage;});
+
         React.useEffect(function(){
           if(!listRef.current||typeof Sortable==="undefined")return;
-          if(sortableRef.current){sortableRef.current.destroy();}
           sortableRef.current=Sortable.create(listRef.current,{
-            group:"kanban",           // wspólna grupa = przeciąganie między kolumnami
-            animation:150,
-            delay:0,                  // bez opóźnienia — responsywny od razu
-            delayOnTouchOnly:false,
-            touchStartThreshold:3,    // px — minimalne przesunięcie zanim drag aktywny
+            group:"kanban",
+            animation:120,
+            forceFallback:true,       // jeden spójny mechanizm: touch + mouse, bez native HTML5 DnD
+            fallbackTolerance:5,      // px — minimalne przesunięcie żeby odróżnić tap od drag
+            fallbackOnBody:true,      // ghost renderuje się na body — nie ucina go overflow:hidden kolumny
+            swapThreshold:0.65,
             ghostClass:"kanban-ghost",
             chosenClass:"kanban-chosen",
             dragClass:"kanban-drag",
-            forceFallback:false,      // natywny DnD tam gdzie działa, fallback na touch
-            fallbackTolerance:3,
             onEnd:function(evt){
               var dealId=Number(evt.item.getAttribute("data-deal-id"));
               var toStageId=evt.to.getAttribute("data-stage-list");
               var fromStageId=evt.from.getAttribute("data-stage-list");
               if(!dealId||!toStageId)return;
               if(toStageId===fromStageId&&evt.oldIndex===evt.newIndex)return;
-              // Sortable przeniósł DOM — cofamy (React jest źródłem prawdy)
-              // React odrenderuje po moveStage i Sortable dostanie aktualny DOM
-              evt.from.insertBefore(evt.item,evt.from.children[evt.oldIndex]||null);
-              moveStage(dealId,toStageId);
+              // NIE cofamy DOM — pozwalamy Sortable zostawić kartę tam gdzie ją upuszczono.
+              // moveStage aktualizuje React state → React rerenderuje wszystkie kolumny →
+              // Sortable dostaje świeży, poprawny DOM. Bez konfliktu.
+              moveStageRef.current(dealId,toStageId);
             }
           });
           return function(){if(sortableRef.current){sortableRef.current.destroy();sortableRef.current=null;}};
-        },[stage.id,deals]);
+        },[stage.id]);
 
         return ce("div",{
           style:{
