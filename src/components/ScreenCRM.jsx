@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { sbApi } from '../lib/supabase.js';
-import { LOGO_SRC } from '../constants/data.js';
+import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10 } from '../constants/data.js';
 const ce = React.createElement;
 
 
