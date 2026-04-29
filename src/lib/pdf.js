@@ -1,3 +1,4 @@
+import React from 'react';
 import { sbApi } from './supabase.js';
 const ce = React.createElement;
 
