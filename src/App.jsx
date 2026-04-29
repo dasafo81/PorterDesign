@@ -1,7 +1,16 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { sbApi } from './lib/supabase.js';
-import { LOGO_SRC, FABRICS } from './constants/data.js';
-import { generateFabricOrderPDF, generateClientEmail, generateSewingOrderPDF } from './lib/pdf.js';
+import {
+  FABRICS, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
+  IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
+  KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, SELLER,
+  buildFabricRows, buildOfferRows, buildSewingRows, calc,
+  formatPLN, generateKarniszOrderPDF, generateOfferPDF,
+  getPanelsForProd, mg, roundTo10
+} from './constants/data.js';
+import {
+  generateClientEmail, generateFabricOrderPDF, generateSewingOrderPDF, generateSimplifiedPDF
+} from './lib/pdf.js';
 import { ModalClient } from './components/ModalClient.jsx';
 import { ModalSewing } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';

@@ -1,5 +1,12 @@
 import { sbApi } from './supabase.js';
-import { FABRICS } from '../constants/data.js';
+const ce = React.createElement;
+
+import {
+  BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES,
+  SELLER, buildFabricRows, buildSewingRows, calc,
+  getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
+  openPDFWindow, pdfStyles, roundTo10
+} from '../constants/data.js';
 
 export function generateFabricOrderPDF(client){
   var rows=buildFabricRows(client);
@@ -317,70 +324,6 @@ export function generateSewingOrderPDF(client, modalData){
 
 
 // ── UI COMPONENTS ──────────────────────────────────────────────────────────
-
-export function Chip(p){
-  return ce("button",{onClick:p.onClick,style:{padding:"12px 22px",borderRadius:24,border:"1.5px solid "+(p.active?"var(--gr)":"var(--bd2)"),background:p.active?"var(--grl)":"transparent",color:p.active?"var(--grd)":"var(--t1)",fontSize:15,cursor:"pointer",marginBottom:6,transition:"all .15s",minHeight:50,fontWeight:p.active?600:400}},p.label);
-}
-export function Chips(p){return ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}},p.items.filter(Boolean));}
-export function Fld(p){return ce("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:p.noMb?0:4}},ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase"}},(p.label||"").toUpperCase()),p.children);}
-export function Section(p){
-  return ce("div",{style:{borderTop:"1px solid var(--bd3)",paddingTop:20,marginTop:20}},
-    ce("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:18}},
-      ce("div",{style:{width:26,height:26,borderRadius:13,background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},p.num),
-      ce("span",{style:{fontSize:16,fontWeight:600,color:"var(--t1)",letterSpacing:"0.01em"}},p.title)
-    ),
-    p.children
-  );
-}
-
-export function FabPicker(p){
-  var qs=useState("");var q=qs[0],setQ=qs[1];
-  var os=useState(false);var open=os[0],setOpen=os[1];
-  var list=q?FABRICS.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):FABRICS;
-  var sf=FABRICS.find(function(f){return f.name===p.fabName;});
-  var hasSelection=p.fabName||p.fabMan!=null;
-  return ce("div",{style:{border:"1.5px solid "+(open?"var(--t1)":"var(--bd2)"),borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4,transition:"border-color .15s"}},
-    ce("div",{
-      onClick:function(){setOpen(!open);},
-      style:{padding:"14px 16px",background:open?"var(--grl)":"var(--bg2)",fontSize:13,fontWeight:500,color:"var(--t1)",display:"flex",alignItems:"center",gap:10,cursor:"pointer",userSelect:"none",transition:"background .15s"}
-    },
-      ce("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:open?"var(--grd)":"var(--t2)",textTransform:"uppercase",flexShrink:0}},"Tkanina"),
-      hasSelection?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-        sf?(p.fabName+" · "+sf.brutto+" zł/mb"):("ręczna: "+p.fabMan+" zł/mb")
-      ):ce("span",{style:{color:"var(--t3)",fontSize:13,flex:1}},
-        "nie wybrano — kliknij aby wybrać"
-      ),
-      ce("span",{style:{color:"var(--t3)",fontSize:16,transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,lineHeight:1,display:"inline-block"}},"⌄")
-    ),
-    open?ce("div",null,
-      ce("input",{autoFocus:true,value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny po nazwie lub dostawcy...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
-      ce("div",{style:{maxHeight:240,overflowY:"auto"}},
-        list.map(function(f){
-          var active=p.fabName===f.name;
-          return ce("div",{key:f.name,
-            onClick:function(){p.onSelect(f);setOpen(false);setQ("");},
-            style:{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",borderBottom:"1px solid var(--bd3)",cursor:"pointer",fontSize:15,background:active?"var(--grl)":"var(--bg)"}
-          },
-            active?ce("span",{style:{color:"var(--gr)",fontSize:14,flexShrink:0,width:16}},"✓"):ce("span",{style:{width:16,flexShrink:0}}),
-            ce("span",{style:{flex:1,fontWeight:active?600:500,color:"var(--t1)"}},f.name),
-            ce("span",{style:{fontSize:11,color:"var(--t3)",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod),
-            ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap",fontSize:13}},f.width+"cm"),
-            ce("span",{style:{color:"var(--grd)",fontWeight:600,whiteSpace:"nowrap",fontSize:13}},f.brutto+" zł")
-          );
-        })
-      ),
-      ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
-        ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}}),
-        ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
-        ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
-      )
-    ):null
-  );
-}
-
-// ── MODALS ─────────────────────────────────────────────────────────────────
-
 
 export function generateSewingOrderPDFFromRows(rows, client, modalData){
   if(!rows.length){alert('Brak wybranych pozycji.');return;}
