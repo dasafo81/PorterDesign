@@ -71,7 +71,7 @@ function sbFetch(method, path, body){
 var sbApi = {
   // Pobierz wszystkich klientów
   getClients: function(){
-    return sbFetch("GET","clients?select=*&order=created_at.desc");
+    return sbFetch("GET","clients?select=*&order=id.desc");
   },
   // Dodaj nowego klienta
   addClient: function(name, addr, phone, email){
@@ -4315,7 +4315,7 @@ function App(){
   function addClient(name,addr,phone,email){
     sbApi.addClient(name,addr,phone,email).then(function(data){
       var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
-      setClients(function(cs){return cs.concat([newCl]);});
+      setClients(function(cs){return [newCl].concat(cs);});
       setCurClientId(newCl.id);
       setScreen("rooms");
     }).catch(function(e){
