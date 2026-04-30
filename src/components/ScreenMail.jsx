@@ -306,7 +306,7 @@ function AttachmentsSection(p){
             style:Object.assign({},S.btnGhost,{fontSize:12,
               background:showPicker?"var(--grl)":"var(--bg2)",
               border:"1px solid "+(showPicker?"var(--gr)":"var(--bd2)"),
-              color:showPicker?"var(--grd)":"var(--t2)"},)},
+              color:showPicker?"var(--grd)":"var(--t2)"}),
             ce("span",{style:{fontSize:14}},"\uD83D\uDCC4"),"\u00a0PDF z wyceny",
             ce("span",{style:{fontSize:10,marginLeft:4}}},"\u25be")
           ),
