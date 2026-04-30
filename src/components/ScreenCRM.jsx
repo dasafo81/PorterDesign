@@ -664,7 +664,7 @@ function KanbanBoard(kp){
   function onDragEnd(result){
     console.log("[kanban] onDragEnd", result.draggableId, "->", result.destination&&result.destination.droppableId, result);
     if(!result.destination)return;
-    var dealId=Number(result.draggableId);
+    var dealId=result.draggableId;
     var toStage=result.destination.droppableId;
     var fromStage=result.source.droppableId;
     console.log("[kanban] moving dealId="+dealId+" from="+fromStage+" to="+toStage);
@@ -728,10 +728,10 @@ export function ScreenCRM(p){
 
   function moveStage(dealId,stage){
     console.log("[kanban] moveStage called dealId="+dealId+" stage="+stage);
-    var deal=(deals||[]).find(function(d){return d.id===dealId;});
+    var deal=(deals||[]).find(function(d){return String(d.id)===String(dealId);});
     console.log("[kanban] found deal:", deal, "all deals:", (deals||[]).map(function(d){return d.id;}));
     var stageObj=CRM_STAGES.find(function(s){return s.id===stage;});
-    setDeals(function(prev){return prev.map(function(d){return d.id===dealId?Object.assign({},d,{stage:stage}):d;});});
+    setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,{stage:stage}):d;});});
     sbApi.updateDeal(dealId,{stage:stage,updated_at:new Date().toISOString()});
     // Zaktualizuj status klienta
     if(deal&&stageObj){
