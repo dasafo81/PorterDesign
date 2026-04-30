@@ -308,7 +308,7 @@ function AttachmentsSection(p){
               border:"1px solid "+(showPicker?"var(--gr)":"var(--bd2)"),
               color:showPicker?"var(--grd)":"var(--t2)"}),
             ce("span",{style:{fontSize:14}},"\uD83D\uDCC4"),"\u00a0PDF z wyceny",
-            ce("span",{style:{fontSize:10,marginLeft:4}}},"\u25be")
+            ce("span",{style:{fontSize:10,marginLeft:4}},"\u25be")
           ),
           showPicker?ce("div",{style:{position:"absolute",bottom:"calc(100% + 6px)",left:0,
             background:"var(--bg1)",border:"1px solid var(--bd2)",borderRadius:12,
