@@ -1,19 +1,5 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
-import {
-  DndContext,
-  closestCorners,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi } from '../lib/supabase.js';
 import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10 } from '../constants/data.js';
 const ce = React.createElement;
@@ -585,170 +571,121 @@ export function CRMKalendarz(p){
 
 // ── SCREEN CRM ───────────────────────────────────────────────────────────────
 
-// ── Kanban components (must be top-level for React hooks rules) ──────────────
+// ── Kanban — @hello-pangea/dnd ───────────────────────────────────────────────
 
 function DealCard(cp){
-  var deal=cp.deal;var stage=cp.stage;var isDragging=cp.isDragging;
-  var clients=cp.clients;var openDeal=cp.openDeal;var fmtDate=cp.fmtDate;var clientTotal2=cp.clientTotal2;
-  var ref=useSortable({id:String(deal.id)});
-  var setNodeRef=ref.setNodeRef;var attributes=ref.attributes;
-  var listeners=ref.listeners;var transform=ref.transform;var transition=ref.transition;
-  var style={
-    transform:CSS.Transform.toString(transform),
-    transition:transition,
-    opacity:isDragging?0:1,
-  };
+  var deal=cp.deal; var stage=cp.stage; var index=cp.index;
+  var clients=cp.clients; var openDeal=cp.openDeal;
+  var fmtDate=cp.fmtDate; var clientTotal2=cp.clientTotal2;
   var cl=clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
   var name=cl?cl.name:"(nieznany)";
   var total=cl?clientTotal2(cl):0;
-  var hasVisit=deal.visit_date;var hasDelivery=deal.delivery_date;
-  return ce("div",{
-    ref:setNodeRef,style:Object.assign({},style,{
-      background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,
-      padding:"10px 11px",marginBottom:8,cursor:"grab",
-      boxShadow:"0 1px 4px rgba(0,0,0,0.05)",
-      borderLeft:"3px solid "+stage.color,touchAction:"none",userSelect:"none"
+  var hasVisit=deal.visit_date; var hasDelivery=deal.delivery_date;
+  return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
+    return ce("div",Object.assign({
+      ref:provided.innerRef
+    },provided.draggableProps,provided.dragHandleProps,{
+      onClick:function(){if(!snapshot.isDragging){openDeal(deal);}},
+      style:Object.assign({},provided.draggableProps.style,{
+        background:"var(--bg)",
+        border:"1px solid var(--bd2)",
+        borderRadius:11,
+        padding:"10px 11px",
+        marginBottom:8,
+        cursor:snapshot.isDragging?"grabbing":"grab",
+        boxShadow:snapshot.isDragging?"0 8px 24px rgba(0,0,0,0.18)":"0 1px 4px rgba(0,0,0,0.05)",
+        borderLeft:"3px solid "+stage.color,
+        opacity:snapshot.isDragging?0.95:1,
+        transform:snapshot.isDragging?provided.draggableProps.style.transform+" rotate(1deg)":provided.draggableProps.style.transform,
+        userSelect:"none"
+      })
     }),
-    onClick:function(e){if(!ref.isDragging){openDeal(deal);}},
-    ...attributes,...listeners
-  },
-    ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
-    total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" z\u0142"):null,
-    (hasVisit||hasDelivery)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
-      hasVisit?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
-        ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
+      ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
+      total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" z\u0142"):null,
+      (hasVisit||hasDelivery)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
+        hasVisit?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
+          ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
+        ):null,
+        hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
+          ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
+        ):null
       ):null,
-      hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
-        ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
-      ):null
-    ):null,
-    deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
-  );
+      deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
+    );
+  });
 }
 
 function KanbanCol(kp){
-  var stage=kp.stage;var deals=kp.deals;var activeDeal=kp.activeDeal;
-  var clients=kp.clients;var openDeal=kp.openDeal;var fmtDate=kp.fmtDate;var clientTotal2=kp.clientTotal2;
-  var isOver=kp.overStageId===stage.id;
+  var stage=kp.stage; var deals=kp.deals;
+  var clients=kp.clients; var openDeal=kp.openDeal;
+  var fmtDate=kp.fmtDate; var clientTotal2=kp.clientTotal2;
   var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
-  var dealIds=stageDeals.map(function(d){return String(d.id);});
-  // Add a placeholder sortable item so empty columns are droppable
-  var allIds=dealIds.concat([stage.id+"__placeholder"]);
-  return ce("div",{
-    style:{
-      minWidth:190,width:190,flexShrink:0,
-      background:isOver?"rgba(99,102,241,0.05)":"var(--bg2)",
-      border:isOver?"1.5px solid "+stage.color:"1px solid var(--bd2)",
-      borderRadius:14,padding:"10px 8px",
-      transition:"border .12s, background .12s"
-    }
-  },
-    ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:8,borderBottom:"1px solid var(--bd3)"}},
-      ce("div",{style:{width:9,height:9,borderRadius:"50%",background:stage.color,flexShrink:0}}),
-      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.06em",textTransform:"uppercase",flex:1}},stage.label),
-      ce("div",{style:{fontSize:11,color:"var(--t3)",fontWeight:500}},stageDeals.length||"")
-    ),
-    ce(SortableContext,{items:allIds,strategy:verticalListSortingStrategy},
-      stageDeals.map(function(deal){
-        return ce(DealCard,{key:deal.id,deal:deal,stage:stage,isDragging:activeDeal&&activeDeal.id===deal.id,
-          clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2});
-      }),
-      stageDeals.length===0?ce("div",{style:{fontSize:11,color:"var(--t3)",textAlign:"center",padding:"18px 0",opacity:0.5}},"Brak"):null
+  return ce("div",{style:{minWidth:190,width:190,flexShrink:0}},
+    ce("div",{style:{
+      background:"var(--bg2)",border:"1px solid var(--bd2)",
+      borderRadius:14,padding:"10px 8px",height:"100%"
+    }},
+      ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:8,borderBottom:"1px solid var(--bd3)"}},
+        ce("div",{style:{width:9,height:9,borderRadius:"50%",background:stage.color,flexShrink:0}}),
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.06em",textTransform:"uppercase",flex:1}},stage.label),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",fontWeight:500}},stageDeals.length||"")
+      ),
+      ce(Droppable,{droppableId:stage.id},function(provided,snapshot){
+        return ce("div",Object.assign({
+          ref:provided.innerRef,
+          style:{
+            minHeight:60,
+            background:snapshot.isDraggingOver?"rgba(99,102,241,0.06)":"transparent",
+            borderRadius:8,
+            transition:"background .15s",
+            padding:"2px 0"
+          }
+        },provided.droppableProps),
+          stageDeals.map(function(deal,i){
+            return ce(DealCard,{
+              key:deal.id,deal:deal,stage:stage,index:i,
+              clients:clients,openDeal:openDeal,
+              fmtDate:fmtDate,clientTotal2:clientTotal2
+            });
+          }),
+          provided.placeholder,
+          stageDeals.length===0&&!snapshot.isDraggingOver?
+            ce("div",{style:{fontSize:11,color:"var(--t3)",textAlign:"center",padding:"18px 0",opacity:0.5}},"Brak"):null
+        );
+      })
     )
-  );
-}
-
-function DealGhost(gp){
-  var deal=gp.deal;var clients=gp.clients;var clientTotal2=gp.clientTotal2;
-  var cl=clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
-  var name=cl?cl.name:"(nieznany)";
-  var allStages=CRM_STAGES.concat([STAGE_ODRZUCONE]);
-  var stage=allStages.find(function(s){return s.id===deal.stage;})||CRM_STAGES[0];
-  var total=cl?clientTotal2(cl):0;
-  return ce("div",{style:{
-    background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,
-    padding:"10px 11px",width:190,
-    boxShadow:"0 12px 40px rgba(0,0,0,0.22)",
-    borderLeft:"3px solid "+stage.color,
-    transform:"rotate(2deg) scale(1.04)",opacity:0.96,cursor:"grabbing"
-  }},
-    ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",lineHeight:1.3}},name),
-    total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginTop:4}},Math.round(total/10)*10+" z\u0142"):null
   );
 }
 
 function KanbanBoard(kp){
-  var deals=kp.deals;var clients=kp.clients;var activeDeal=kp.activeDeal;
-  var setActiveDeal=kp.setActiveDeal;var moveStage=kp.moveStage;
-  var openDeal=kp.openDeal;var fmtDate=kp.fmtDate;var clientTotal2=kp.clientTotal2;
-  var sOver=useState(null),overStageId=sOver[0],setOverStageId=sOver[1];
-  var overStageRef=useRef(null);
+  var deals=kp.deals; var clients=kp.clients; var moveStage=kp.moveStage;
+  var openDeal=kp.openDeal; var fmtDate=kp.fmtDate; var clientTotal2=kp.clientTotal2;
 
-  var sensors=useSensors(
-    useSensor(PointerSensor,{activationConstraint:{distance:8}}),
-    useSensor(TouchSensor,{activationConstraint:{delay:0,tolerance:8}})
-  );
-
-  var allStages=CRM_STAGES.concat([STAGE_ODRZUCONE]);
-
-  function getStageFromOver(overId){
-    if(!overId)return null;
-    var s=allStages.find(function(st){return String(st.id)===String(overId)||overId===st.id+"__placeholder";});
-    if(s)return s;
-    var d=(deals||[]).find(function(dl){return String(dl.id)===String(overId);});
-    if(d)return allStages.find(function(st){return st.id===d.stage;})||null;
-    return null;
+  function onDragEnd(result){
+    if(!result.destination)return;
+    var dealId=Number(result.draggableId);
+    var toStage=result.destination.droppableId;
+    var fromStage=result.source.droppableId;
+    if(toStage===fromStage)return;
+    moveStage(dealId,toStage);
   }
 
-  function handleDragStart(event){
-    var deal=(deals||[]).find(function(d){return String(d.id)===String(event.active.id);});
-    setActiveDeal(deal||null);
-    overStageRef.current=null;
-  }
-
-  function handleDragOver(event){
-    var overId=event.over&&event.over.id;
-    var s=getStageFromOver(overId);
-    var sid=s?s.id:null;
-    overStageRef.current=sid;
-    setOverStageId(sid);
-  }
-
-  function handleDragEnd(event){
-    var targetStageId=overStageRef.current;
-    overStageRef.current=null;
-    setActiveDeal(null);
-    setOverStageId(null);
-    if(!targetStageId||!event.active.id)return;
-    var dealId=Number(event.active.id);
-    var currentDeal=(deals||[]).find(function(d){return d.id===dealId;});
-    if(!currentDeal||targetStageId===currentDeal.stage)return;
-    moveStage(dealId,targetStageId);
-  }
-
-  var colProps={deals:deals,clients:clients,activeDeal:activeDeal,openDeal:openDeal,
-    fmtDate:fmtDate,clientTotal2:clientTotal2,overStageId:overStageId};
-  return ce(DndContext,{
-    sensors:sensors,
-    collisionDetection:closestCorners,
-    onDragStart:handleDragStart,
-    onDragOver:handleDragOver,
-    onDragEnd:handleDragEnd
-  },
+  var colProps={deals:deals,clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2};
+  return ce(DragDropContext,{onDragEnd:onDragEnd},
     ce(Fragment,null,
       ce("div",{style:{display:"flex",gap:10,overflowX:"auto",paddingBottom:12,marginLeft:-4,paddingLeft:4}},
-        CRM_STAGES.map(function(stage){return ce(KanbanCol,Object.assign({key:stage.id,stage:stage},colProps));})
+        CRM_STAGES.map(function(stage){
+          return ce(KanbanCol,Object.assign({key:stage.id,stage:stage},colProps));
+        })
       ),
       ce("div",{style:{margin:"14px 0 8px",height:1,background:"var(--bd2)"}}),
       ce("div",{style:{display:"flex",gap:10,paddingBottom:4,marginLeft:-4,paddingLeft:4}},
         ce(KanbanCol,Object.assign({stage:STAGE_ODRZUCONE},colProps))
-      ),
-      ce(DragOverlay,null,
-        activeDeal?ce(DealGhost,{deal:activeDeal,clients:clients,clientTotal2:clientTotal2}):null
       )
     )
   );
 }
+
 
 export function ScreenCRM(p){
   // p: clients, setScreen, setAppMode, setCurClientId
@@ -764,7 +701,6 @@ export function ScreenCRM(p){
     sc.onload=function(){setGsiReady(true);};document.head.appendChild(sc);
   },[]);
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
-  var sActiveDeal=useState(null),activeDeal=sActiveDeal[0],setActiveDeal=sActiveDeal[1];
   var sModal=useState(null),modalDeal=sModal[0],setModalDeal=sModal[1];
   var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
   var sNewClient=useState(""),newClientId=sNewClient[0],setNewClientId=sNewClient[1];
@@ -863,10 +799,9 @@ export function ScreenCRM(p){
         style:{padding:"9px 16px",borderRadius:10,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:13,fontWeight:700,cursor:!newClientId||adding?"not-allowed":"pointer",opacity:!newClientId?0.4:1,whiteSpace:"nowrap"}
       },adding?"\u23F3":"+ Deal")
     ),
-    // Kanban — KanbanBoard component (hooks at top level)
+    // Kanban
     ce(KanbanBoard,{
-      deals:deals,clients:p.clients,activeDeal:activeDeal,
-      setActiveDeal:setActiveDeal,moveStage:moveStage,
+      deals:deals,clients:p.clients,moveStage:moveStage,
       openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2
     }),
     ):null,
