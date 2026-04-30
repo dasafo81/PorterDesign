@@ -682,6 +682,7 @@ function KanbanBoard(kp){
   var setActiveDeal=kp.setActiveDeal;var moveStage=kp.moveStage;
   var openDeal=kp.openDeal;var fmtDate=kp.fmtDate;var clientTotal2=kp.clientTotal2;
   var sOver=useState(null),overStageId=sOver[0],setOverStageId=sOver[1];
+  var overStageRef=useRef(null);
 
   var sensors=useSensors(
     useSensor(PointerSensor,{activationConstraint:{distance:8}}),
@@ -692,10 +693,8 @@ function KanbanBoard(kp){
 
   function getStageFromOver(overId){
     if(!overId)return null;
-    // Direct stage id (placeholder or stage id)
     var s=allStages.find(function(st){return String(st.id)===String(overId)||overId===st.id+"__placeholder";});
     if(s)return s;
-    // It's a deal id — find which stage that deal is in
     var d=(deals||[]).find(function(dl){return String(dl.id)===String(overId);});
     if(d)return allStages.find(function(st){return st.id===d.stage;})||null;
     return null;
@@ -704,25 +703,27 @@ function KanbanBoard(kp){
   function handleDragStart(event){
     var deal=(deals||[]).find(function(d){return String(d.id)===String(event.active.id);});
     setActiveDeal(deal||null);
+    overStageRef.current=null;
   }
 
   function handleDragOver(event){
     var overId=event.over&&event.over.id;
     var s=getStageFromOver(overId);
-    setOverStageId(s?s.id:null);
+    var sid=s?s.id:null;
+    overStageRef.current=sid;
+    setOverStageId(sid);
   }
 
   function handleDragEnd(event){
-    var overId=event.over&&event.over.id;
+    var targetStageId=overStageRef.current;
+    overStageRef.current=null;
     setActiveDeal(null);
     setOverStageId(null);
-    if(!overId||!event.active.id)return;
+    if(!targetStageId||!event.active.id)return;
     var dealId=Number(event.active.id);
-    var targetStage=getStageFromOver(overId);
     var currentDeal=(deals||[]).find(function(d){return d.id===dealId;});
-    if(!targetStage||!currentDeal)return;
-    if(targetStage.id===currentDeal.stage)return;
-    moveStage(dealId,targetStage.id);
+    if(!currentDeal||targetStageId===currentDeal.stage)return;
+    moveStage(dealId,targetStageId);
   }
 
   var colProps={deals:deals,clients:clients,activeDeal:activeDeal,openDeal:openDeal,
