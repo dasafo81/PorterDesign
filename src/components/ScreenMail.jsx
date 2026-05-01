@@ -37,6 +37,7 @@ var APP_PDF_OPTIONS = [
 ];
 
 var SYSTEM_FOLDERS = [
+  {id:"inbox",label:"Skrzynka",icon:"\uD83D\uDCE5"},
   {id:"compose",label:"Nowa wiadomo\u015b\u0107",icon:"\u270F\uFE0F"},
   {id:"sent",label:"Wys\u0142ane",icon:"\uD83D\uDCE4"},
   {id:"drafts",label:"Robocze",icon:"\uD83D\uDCDD"},
@@ -336,11 +337,46 @@ function AttachmentsSection(p){
 function MailList(p){
   var us=React.useState;
   var sf=us(""),filter=sf[0],setFilter=sf[1];
-  var filtered=(p.mails||[]).filter(function(m){
+  var isInbox=p.folder==="inbox";
+
+  // Pole do wyszukiwania zależne od folderu (Inbox: from, Sent: to)
+  function searchableText(m){
+    if(isInbox)return ((m.fromName||"")+" "+(m.from||"")+" "+(m.subject||"")+" "+(m.preview||"")).toLowerCase();
+    return ((m.toName||"")+" "+(m.to||"")+" "+(m.subject||"")+" "+(m.preview||"")).toLowerCase();
+  }
+  function displayName(m){
+    if(isInbox)return m.fromName||m.from||"(bez nadawcy)";
+    return m.toName||m.to||"(bez adresata)";
+  }
+
+  // Grupowanie po conversationId — dla wszystkich folderów które mają tę informację
+  // (Inbox + Sent z Outlooka). Drafts i custom foldery nie używają conversationId.
+  var threads=[];
+  if(p.mails&&p.mails.length){
+    var byConv={};
+    p.mails.forEach(function(m){
+      var key=m.conversationId||("solo_"+m.id);
+      if(!byConv[key]){byConv[key]={key:key,mails:[]};}
+      byConv[key].mails.push(m);
+    });
+    Object.keys(byConv).forEach(function(k){
+      var t=byConv[k];
+      // Najnowsza wiadomość z wątku reprezentuje wątek
+      t.mails.sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+      t.head=t.mails[0];
+      t.count=t.mails.length;
+      threads.push(t);
+    });
+    threads.sort(function(a,b){return new Date(b.head.date)-new Date(a.head.date);});
+  }
+
+  var filtered=threads.filter(function(t){
     if(!filter)return true;
     var q=filter.toLowerCase();
-    return (m.toName||"").toLowerCase().includes(q)||(m.to||"").toLowerCase().includes(q)||(m.subject||"").toLowerCase().includes(q);
+    // Pasuje jeśli którakolwiek wiadomość w wątku pasuje
+    return t.mails.some(function(m){return searchableText(m).indexOf(q)>=0;});
   });
+
   return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
     ce("div",{style:{paddingBottom:10,flexShrink:0}},
       ce("div",{style:{position:"relative"}},
@@ -355,22 +391,28 @@ function MailList(p){
           ce("div",{style:{fontSize:32,opacity:0.4}},"\uD83D\uDCEC"),
           ce("div",{style:{fontSize:13}},"Brak wiadomo\u015bci")
         )
-        :filtered.map(function(m){
-          var sel=p.selectedId===m.id;
+        :filtered.map(function(t){
+          var m=t.head;
+          var selectedInThread=p.selectedId&&t.mails.some(function(x){return x.id===p.selectedId;});
           var colors=["#c8a96a","#8b7355","#a0956e","#7a6e52","#b8a882"];
-          var ci=(m.toName||m.to||"").charCodeAt(0)%colors.length;
-          return ce("div",{key:m.id,onClick:function(){p.onSelect(m);},
+          var nm=displayName(m);
+          var ci=Math.abs((nm||"").charCodeAt(0)||0)%colors.length;
+          var unread=isInbox&&t.mails.some(function(x){return x.isRead===false;});
+          return ce("div",{key:t.key,onClick:function(){p.onSelect(t);},
             style:{padding:"10px 12px",borderRadius:10,cursor:"pointer",
-              background:sel?"var(--wb)":"transparent",
-              border:"1px solid "+(sel?"var(--wbd)":"transparent"),
+              background:selectedInThread?"var(--wb)":"transparent",
+              border:"1px solid "+(selectedInThread?"var(--wbd)":"transparent"),
               transition:"all .12s",display:"flex",gap:10,alignItems:"flex-start"}},
-            ce(Avatar,{size:34,bg:sel?colors[ci]:colors[ci]+"99",label:initials(m.toName||m.to)}),
+            ce(Avatar,{size:34,bg:selectedInThread?colors[ci]:colors[ci]+"99",label:initials(nm)}),
             ce("div",{style:{flex:1,minWidth:0}},
               ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}},
-                ce("span",{style:{fontSize:13,fontWeight:sel?700:600,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"68%"}},m.toName||m.to),
+                ce("span",{style:{fontSize:13,fontWeight:(selectedInThread||unread)?700:600,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"68%"}},
+                  nm,
+                  t.count>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,marginLeft:6}},"("+t.count+")"):null
+                ),
                 ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},fmtMailDate(m.date))
               ),
-              ce("div",{style:{fontSize:12,color:sel?"var(--wt)":"var(--t2)",fontWeight:600,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
+              ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t2)",fontWeight:unread?700:600,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
               ce("div",{style:{fontSize:11,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview),
               (m.attachments&&m.attachments.length>0)?ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:4}},
                 "\uD83D\uDCCE ",m.attachments.length," za\u0142."
@@ -382,36 +424,104 @@ function MailList(p){
   );
 }
 
+// Pomocnik: zamienia HTML body z Outlooka na bezpieczny tekst do wyświetlenia
+// Outlook może zwracać body jako HTML lub Text. Dla widoku w aplikacji konwertujemy
+// HTML do "czystego" textu (zachowujemy paragrafy/linie), bo nie chcemy XSS-a.
+function htmlToText(html){
+  if(!html)return "";
+  var tmp=document.createElement("div");
+  tmp.innerHTML=html;
+  // <br> i </p> → newline; reszta tekstu po prostu
+  tmp.querySelectorAll("br").forEach(function(br){br.replaceWith("\n");});
+  tmp.querySelectorAll("p,div").forEach(function(p){p.append("\n");});
+  return (tmp.innerText||tmp.textContent||"").trim();
+}
+
 function MailPreview(p){
-  var m=p.mail;
-  var us=React.useState;
+  var thread=p.thread; // {key, head, mails:[...]} albo null
+  var us=React.useState, ue=React.useEffect;
   var sm=us(false),showMove=sm[0],setShowMove=sm[1];
-  if(!m)return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:12,color:"var(--t3)"}},
+  // Cache body per messageId — żeby przy ponownym kliknięciu nie pobierać znowu
+  var sb=us({}),bodies=sb[0],setBodies=sb[1];
+  var sl=us({}),loadingBody=sl[0],setLoadingBody=sl[1];
+  // Zwinięte/rozwinięte wiadomości w wątku — domyślnie tylko najnowsza rozwinięta
+  var se=us({}),expanded=se[0],setExpanded=se[1];
+
+  // Pomocnicza funkcja — pobiera body wiadomości on-demand
+  function fetchBody(mid){
+    if(!p.accessToken||!mid)return;
+    if(bodies[mid]||loadingBody[mid])return;
+    setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
+    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"?$select=body",{
+      headers:{"Authorization":"Bearer "+p.accessToken}
+    })
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(data){
+      var content="";
+      if(data&&data.body){
+        if(data.body.contentType&&data.body.contentType.toLowerCase()==="html"){
+          content=htmlToText(data.body.content||"");
+        } else {
+          content=data.body.content||"";
+        }
+      }
+      setBodies(function(prev){var n=Object.assign({},prev);n[mid]=content||"(pusta tre\u015b\u0107)";return n;});
+      setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+    })
+    .catch(function(){
+      setBodies(function(prev){var n=Object.assign({},prev);n[mid]="(b\u0142\u0105d pobierania tre\u015bci)";return n;});
+      setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+    });
+  }
+
+  // Przy zmianie wątku — rozwiń najnowszą wiadomość i pobierz jej body jeśli jeszcze nie ma
+  ue(function(){
+    if(!thread)return;
+    var head=thread.head;
+    if(head){
+      setExpanded(function(prev){var n={};n[head.id]=true;return n;});
+      // Body pobieramy tylko dla wiadomości z Inboxu (Sent ma już cały body=preview)
+      if(head.folder==="inbox"&&!head.body)fetchBody(head.id);
+    }
+  // eslint-disable-next-line
+  },[thread?thread.key:null]);
+
+  if(!thread)return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:12,color:"var(--t3)"}},
     ce("div",{style:{fontSize:48,opacity:0.2}},"\uD83D\uDCE9"),
     ce("div",{style:{fontSize:13}},"Wybierz wiadomo\u015b\u0107")
   );
+
+  // mails posortowane od najnowszej do najstarszej (już posortowane w MailList)
+  var mails=thread.mails;
+  var head=thread.head;
+
+  function displayPerson(m){
+    if(m.folder==="inbox")return {name:m.fromName||m.from||"(bez nadawcy)",addr:m.from||""};
+    return {name:m.toName||m.to||"(bez adresata)",addr:m.to||""};
+  }
+
+  function toggleExpand(mid){
+    setExpanded(function(prev){
+      var n=Object.assign({},prev);
+      n[mid]=!n[mid];
+      return n;
+    });
+    if(!expanded[mid]){
+      // Przy rozwijaniu pobierz body jeśli to inbox i jeszcze nie ma
+      var msg=mails.find(function(x){return x.id===mid;});
+      if(msg&&msg.folder==="inbox"&&!msg.body&&!bodies[mid])fetchBody(mid);
+    }
+  }
+
+  // Header wątku — bierze nazwę z najnowszej wiadomości
+  var headPerson=displayPerson(head);
+
   return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
     ce("div",{style:{padding:"16px 20px 14px",borderBottom:"1px solid var(--bd2)",flexShrink:0}},
-      ce("div",{style:{fontWeight:700,fontSize:16,color:"var(--t1)",marginBottom:10,lineHeight:1.3}},m.subject),
-      ce("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:12}},
-        ce(Avatar,{size:36,bg:"#c8a96a",label:initials(m.toName||m.to)}),
-        ce("div",{style:{flex:1}},
-          ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},m.toName||m.to),
-          ce("div",{style:{fontSize:11,color:"var(--t3)"}},"\u2192 "+m.to)
-        ),
-        ce("div",{style:{fontSize:11,color:"var(--t3)"}},
-          new Date(m.date).toLocaleString("pl-PL",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"})
-        )
+      ce("div",{style:{fontWeight:700,fontSize:16,color:"var(--t1)",marginBottom:10,lineHeight:1.3,display:"flex",alignItems:"center",gap:8}},
+        head.subject,
+        mails.length>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,padding:"2px 8px",borderRadius:10,background:"var(--bg3)"}},mails.length+" wiadomo\u015bci"):null
       ),
-      (m.attachments&&m.attachments.length>0)?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
-        m.attachments.map(function(att){
-          return ce("div",{key:att.id||att.name,style:{display:"flex",alignItems:"center",gap:6,padding:"5px 12px 5px 8px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
-            ce("span",null,att.type==="app"?"\uD83D\uDCC4":"\uD83D\uDCCE"),
-            ce("span",{style:{color:"var(--t1)"}},att.name),
-            att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:2}},fmtBytes(att.size)):null
-          );
-        })
-      ):null,
       ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
         ce("button",{onClick:p.onCalendar,style:BGHOST},"\uD83D\uDCC5 Dodaj do kalendarza"),
         ce("div",{style:{position:"relative"}},
@@ -420,7 +530,7 @@ function MailPreview(p){
             (p.customFolders||[]).length===0
               ?ce("div",{style:{padding:"12px 14px",fontSize:12,color:"var(--t3)",fontStyle:"italic"}},"Brak w\u0142asnych folder\u00f3w")
               :(p.customFolders||[]).map(function(f){
-                return ce("div",{key:f.id,onClick:function(){p.onMove(m,f.id);setShowMove(false);},
+                return ce("div",{key:f.id,onClick:function(){p.onMove(head,f.id);setShowMove(false);},
                   style:{padding:"9px 14px",fontSize:13,cursor:"pointer",borderBottom:"1px solid var(--bd3)",display:"flex",alignItems:"center",gap:8}},
                   f.icon," ",f.label);
               })
@@ -428,7 +538,53 @@ function MailPreview(p){
         )
       )
     ),
-    ce("div",{style:{flex:1,overflowY:"auto",padding:"16px 20px",fontSize:13,color:"var(--t1)",lineHeight:1.9,whiteSpace:"pre-wrap",fontFamily:"inherit"}},m.body)
+    ce("div",{style:{flex:1,overflowY:"auto"}},
+      mails.map(function(m,idx){
+        var per=displayPerson(m);
+        var isExp=!!expanded[m.id];
+        var hasBody=!!(m.body||bodies[m.id]);
+        var bodyText=m.body||bodies[m.id]||"";
+        var loading=!!loadingBody[m.id];
+        var sentByMe=m.folder==="sent";
+        return ce("div",{key:m.id,style:{borderBottom:"1px solid var(--bd2)"}},
+          ce("div",{onClick:function(){toggleExpand(m.id);},
+            style:{padding:"14px 20px 10px",cursor:"pointer",display:"flex",gap:10,alignItems:"flex-start",
+              background:isExp?"transparent":"var(--bg2)"}},
+            ce(Avatar,{size:32,bg:sentByMe?"#a0956e":"#c8a96a",label:initials(per.name)}),
+            ce("div",{style:{flex:1,minWidth:0}},
+              ce("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:10,marginBottom:2}},
+                ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                  sentByMe?ce("span",{style:{color:"var(--t3)",fontWeight:500,marginRight:4}},"Ja \u2192"):null,
+                  per.name
+                ),
+                ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0}},
+                  ce("span",{style:{fontSize:11,color:"var(--t3)"}},
+                    new Date(m.date).toLocaleString("pl-PL",{day:"2-digit",month:"short",year:"2-digit",hour:"2-digit",minute:"2-digit"})
+                  ),
+                  ce("span",{style:{fontSize:11,color:"var(--t3)"}},isExp?"\u25B4":"\u25BE")
+                )
+              ),
+              ce("div",{style:{fontSize:11,color:"var(--t3)"}},per.addr),
+              !isExp?ce("div",{style:{fontSize:12,color:"var(--t2)",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview):null
+            )
+          ),
+          isExp?ce("div",{style:{padding:"4px 20px 18px",fontSize:13,color:"var(--t1)",lineHeight:1.85,whiteSpace:"pre-wrap",fontFamily:"inherit"}},
+            (m.attachments&&m.attachments.length>0)?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+              m.attachments.map(function(att,j){
+                return ce("div",{key:(att.id||att.name||"")+j,style:{display:"flex",alignItems:"center",gap:6,padding:"5px 12px 5px 8px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
+                  ce("span",null,att.type==="app"?"\uD83D\uDCC4":"\uD83D\uDCCE"),
+                  ce("span",{style:{color:"var(--t1)"}},att.name||"Za\u0142\u0105cznik"),
+                  att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:2}},fmtBytes(att.size)):null
+                );
+              })
+            ):null,
+            loading
+              ?ce("div",{style:{color:"var(--t3)",fontStyle:"italic"}},"\u23F3 Wczytywanie tre\u015bci\u2026")
+              :hasBody?bodyText:ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},m.preview||"(brak tre\u015bci)")
+          ):null
+        );
+      })
+    )
   );
 }
 
@@ -491,11 +647,11 @@ export function ScreenMail(p){
   var sacc=us(null),msAccount=sacc[0],setMsAccount=sacc[1];
   var slogging=us(false),logging=slogging[0],setLogging=slogging[1];
   var suf=us([]),userFolders=suf[0],setUserFolders=suf[1];
-  var saf=us("compose"),activeFolder=saf[0],setActiveFolder=saf[1];
+  var saf=us("inbox"),activeFolder=saf[0],setActiveFolder=saf[1];
   var snf=us(false),showNF=snf[0],setShowNF=snf[1];
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
   var sloadingMails=us(false),loadingMails=sloadingMails[0],setLoadingMails=sloadingMails[1];
-  var ssel=us(null),selMail=ssel[0],setSelMail=ssel[1];
+  var ssel=us(null),selThread=ssel[0],setSelThread=ssel[1];
   var sdr=us([]),drafts=sdr[0],setDrafts=sdr[1];
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
   var st=us("oferta"),selTemplate=st[0],setSelTemplate=st[1];
@@ -530,21 +686,49 @@ export function ScreenMail(p){
   ue(function(){
     if(!accessToken)return;
     setLoadingMails(true);
-    fetch("https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,sentDateTime,bodyPreview,hasAttachments&$orderby=sentDateTime desc",{
-      headers:{"Authorization":"Bearer "+accessToken}
-    })
-    .then(function(r){return r.json();})
-    .then(function(data){
-      var mapped=(data.value||[]).map(function(m){
-        var rec=(m.toRecipients&&m.toRecipients[0]&&m.toRecipients[0].emailAddress)||{};
-        return {id:m.id,folder:"sent",to:rec.address||"",toName:rec.name||rec.address||"",
-          subject:m.subject||"",date:m.sentDateTime||new Date().toISOString(),
-          preview:m.bodyPreview||"",body:m.bodyPreview||"",
-          attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[]};
+
+    var inboxUrl="https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$select=subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
+    var sentUrl="https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,sentDateTime,bodyPreview,hasAttachments,conversationId&$orderby=sentDateTime desc";
+
+    function fetchJson(url){
+      return fetch(url,{headers:{"Authorization":"Bearer "+accessToken}})
+        .then(function(r){return r.ok?r.json():{value:[]};})
+        .catch(function(){return {value:[]};});
+    }
+
+    Promise.all([fetchJson(inboxUrl),fetchJson(sentUrl)]).then(function(results){
+      var inboxData=results[0],sentData=results[1];
+      var inboxMails=(inboxData.value||[]).map(function(m){
+        var fromAddr=(m.from&&m.from.emailAddress)||{};
+        return {
+          id:m.id,folder:"inbox",
+          from:fromAddr.address||"",fromName:fromAddr.name||fromAddr.address||"",
+          to:"",toName:"",
+          subject:m.subject||"",
+          date:m.receivedDateTime||new Date().toISOString(),
+          preview:m.bodyPreview||"",body:null, // body dociągamy on-demand
+          attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
+          conversationId:m.conversationId||null,
+          isRead:m.isRead!==false
+        };
       });
-      setAllMails(mapped);setLoadingMails(false);
-    })
-    .catch(function(){setLoadingMails(false);});
+      var sentMails=(sentData.value||[]).map(function(m){
+        var rec=(m.toRecipients&&m.toRecipients[0]&&m.toRecipients[0].emailAddress)||{};
+        return {
+          id:m.id,folder:"sent",
+          from:"",fromName:"",
+          to:rec.address||"",toName:rec.name||rec.address||"",
+          subject:m.subject||"",
+          date:m.sentDateTime||new Date().toISOString(),
+          preview:m.bodyPreview||"",body:m.bodyPreview||"",
+          attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
+          conversationId:m.conversationId||null,
+          isRead:true
+        };
+      });
+      setAllMails(inboxMails.concat(sentMails));
+      setLoadingMails(false);
+    });
   },[accessToken]);
 
   ue(function(){
@@ -627,7 +811,7 @@ export function ScreenMail(p){
 
   function moveMail(mail,folderId){
     setAllMails(function(prev){return prev.map(function(m){return m.id===mail.id?Object.assign({},m,{folder:folderId}):m;});});
-    setSelMail(null);
+    setSelThread(null);
   }
 
   if(!logged){
@@ -738,14 +922,15 @@ export function ScreenMail(p){
     rightContent=ce(TemplatesView,{templates:MAIL_TEMPLATES,onUseTemplate:function(tpl){setSelTemplate(tpl.id);setActiveFolder("compose");}});
   } else {
     var folderMails=allMails.filter(function(m){return m.folder===activeFolder;});
+    var loaderActive=loadingMails&&(activeFolder==="sent"||activeFolder==="inbox");
     rightContent=ce("div",{style:{display:"flex",height:"100%",minHeight:0}},
       ce("div",{style:{width:280,flexShrink:0,borderRight:"1px solid var(--bd2)",paddingRight:12,display:"flex",flexDirection:"column"}},
-        loadingMails&&activeFolder==="sent"
+        loaderActive
           ?ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:8,color:"var(--t3)",fontSize:13}},"\u23F3 Wczytywanie\u2026")
-          :ce(MailList,{mails:folderMails,onSelect:setSelMail,selectedId:selMail?selMail.id:null})
+          :ce(MailList,{mails:folderMails,folder:activeFolder,onSelect:setSelThread,selectedId:selThread&&selThread.head?selThread.head.id:null})
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
-        ce(MailPreview,{mail:selMail,onCalendar:function(){if(selMail)setCalMail(selMail);},customFolders:userFolders,onMove:moveMail})
+        ce(MailPreview,{thread:selThread,accessToken:accessToken,onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},customFolders:userFolders,onMove:moveMail})
       )
     );
   }
@@ -770,7 +955,7 @@ export function ScreenMail(p){
         SYSTEM_FOLDERS.map(function(f){
           var active=activeFolder===f.id;
           var badge=f.id==="drafts"&&drafts.length>0?drafts.length:null;
-          return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelMail(null);},
+          return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelThread(null);},
             style:{width:"100%",textAlign:"left",padding:"8px 10px",borderRadius:9,border:"none",
               background:active?"var(--wb)":"transparent",color:active?"var(--wt)":"var(--t2)",
               fontSize:13,fontWeight:active?700:500,cursor:"pointer",
@@ -786,7 +971,7 @@ export function ScreenMail(p){
           userFolders.map(function(f){
             var active=activeFolder===f.id;
             var cnt=allMails.filter(function(m){return m.folder===f.id;}).length;
-            return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelMail(null);},
+            return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelThread(null);},
               style:{width:"100%",textAlign:"left",padding:"8px 10px",borderRadius:9,border:"none",
                 background:active?"var(--wb)":"transparent",color:active?"var(--wt)":"var(--t2)",
                 fontSize:13,fontWeight:active?700:500,cursor:"pointer",
