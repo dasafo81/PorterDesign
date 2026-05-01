@@ -23,23 +23,29 @@ var msalConfig = {
 };
 
 var _instance = null;
-var _initialized = false;
+var _initPromise = null;
 
-async function getInstance() {
-  if (!_instance) {
-    _instance = new msal.PublicClientApplication(msalConfig);
-  }
-  if (!_initialized) {
-    await _instance.initialize();
-    _initialized = true;
-  }
-  return _instance;
+function getInstance() {
+  if (_initPromise) return _initPromise;
+  _instance = new msal.PublicClientApplication(msalConfig);
+  _initPromise = _instance.initialize().then(function(){
+    // Obsłuż redirect po powrocie z Microsoftu
+    return _instance.handleRedirectPromise();
+  }).then(function(response){
+    return _instance;
+  });
+  return _initPromise;
 }
+
+// Inicjalizuj od razu przy załadowaniu modułu (żeby przechwycić redirect)
+getInstance().catch(function(e){console.error("MSAL init error",e);});
 
 export async function msalLogin() {
   var inst = await getInstance();
-  var result = await inst.loginPopup({ scopes: MSAL_SCOPES });
-  return result;
+  // Redirect zamiast popup — bardziej niezawodne na tablecie/mobile
+  await inst.loginRedirect({ scopes: MSAL_SCOPES });
+  // Funkcja nigdy nie wróci — strona się przeładuje
+  return null;
 }
 
 export async function msalGetToken() {
@@ -53,16 +59,21 @@ export async function msalGetToken() {
     });
     return result.accessToken;
   } catch (e) {
-    // silent fail → popup
-    var result2 = await inst.acquireTokenPopup({ scopes: MSAL_SCOPES });
-    return result2.accessToken;
+    await inst.acquireTokenRedirect({ scopes: MSAL_SCOPES, account: accounts[0] });
+    return null;
   }
+}
+
+export async function msalGetActiveAccount() {
+  var inst = await getInstance();
+  var accounts = inst.getAllAccounts();
+  return accounts[0] || null;
 }
 
 export async function msalLogout() {
   var inst = await getInstance();
   var accounts = inst.getAllAccounts();
-  await inst.logoutPopup({
+  await inst.logoutRedirect({
     account: accounts[0] || null,
     postLogoutRedirectUri: window.location.origin
   });
