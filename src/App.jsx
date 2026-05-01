@@ -24,28 +24,10 @@ const ce = React.createElement;
 
 
 export function App(){
-  // ── AUTH: sesja użytkownika ──────────────────────────────────────────────────────────────────
+  // ── AUTH ────────────────────────────────────────────────────────────────────
+  // KRYTYCZNE: wszystkie hooki MUSZĄ być wywołane PRZED jakimkolwiek if/return
+  // (React Rules of Hooks - liczba hooków musi być stała między renderami)
   var sSession=useState(function(){return loadSession();}),session=sSession[0],setSession=sSession[1];
-
-  // Auto-refresh tokenu co 50 minut
-  React.useEffect(function(){
-    if(!session)return;
-    var interval=setInterval(function(){
-      refreshSession().then(function(s){
-        if(!s)setSession(null);
-      });
-    },50*60*1000);
-    return function(){clearInterval(interval);};
-  },[session]);
-
-  // Jeśli brak sesji → wyświetl ekran logowania
-  if(!session){
-    return React.createElement(ScreenLogin,{onLogin:function(s){
-      setTimeout(function(){setSession(s);},0);
-    }});
-  }
-  // ────────────────────────────────────────────────────────────────────────────────
-
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
   var s2=useState([]),clients=s2[0],setClients=s2[1];
@@ -67,6 +49,35 @@ export function App(){
   var sHS=useState(""),homeSearch=sHS[0],setHomeSearch=sHS[1];
   var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
 
+  // Auto-refresh tokenu co 50 minut
+  React.useEffect(function(){
+    if(!session)return;
+    var interval=setInterval(function(){
+      refreshSession().then(function(s){
+        if(!s)setSession(null);
+      });
+    },50*60*1000);
+    return function(){clearInterval(interval);};
+  },[session]);
+
+  // Załaduj klientów z Supabase gdy użytkownik jest zalogowany
+  React.useEffect(function(){
+    if(!session)return;
+    sbApi.getClients().then(function(data){
+      setClients(data||[]);
+      setLoading(false);
+    }).catch(function(e){
+      console.error("Błąd ładowania:",e);
+      setLoading(false);
+    });
+  },[session]);
+
+  // DOPIERO TERAZ early return jest bezpieczny - po wszystkich hookach
+  if(!session){
+    return React.createElement(ScreenLogin,{onLogin:function(s){setSession(s);}});
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
 
@@ -76,17 +87,6 @@ export function App(){
   function hasWinData(w){return !!(w.products&&w.products.length>0);}
   function hasRoomData(r){return !!(r.windows&&r.windows.some(function(w){return hasWinData(w);}));}
   function hasClientData(cl){return !!(cl.rooms&&cl.rooms.some(function(r){return hasRoomData(r)||r.windows&&r.windows.length>0;}));}
-
-  // Załaduj klientów z Supabase przy starcie
-  React.useEffect(function(){
-    sbApi.getClients().then(function(data){
-      setClients(data||[]);
-      setLoading(false);
-    }).catch(function(e){
-      console.error("Błąd ładowania:",e);
-      setLoading(false);
-    });
-  },[]);
 
   // Zapisz zmiany w Supabase z debounce
   function saveClientToSb(id, data){
