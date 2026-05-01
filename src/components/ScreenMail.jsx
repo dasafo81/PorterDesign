@@ -1,19 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10 } from '../constants/data.js';
+import { msalLogin, msalGetToken, msalLogout } from '../msal.js';
 const ce = React.createElement;
 
-export const MOCK_SENT = [
-  {id:"m1",folder:"sent",to:"anna.kowalska@gmail.com",toName:"Anna Kowalska",subject:"Oferta \u2013 Salon",date:"2025-04-22T10:14:00",preview:"Przesy\u0142am PDF z wycen\u0105...",body:"Dzie\u0144 dobry,\n\nPrzesy\u0142am wycen\u0119.\n\nPozdrawiam,\nPaulina Porter",attachments:[{id:"a1",name:"Oferta.pdf",size:142000,type:"app"}]},
-  {id:"m2",folder:"sent",to:"marek.nowak@wp.pl",toName:"Marek Nowak",subject:"Potwierdzenie zam\u00f3wienia",date:"2025-04-18T14:32:00",preview:"Potwierdzam przyj\u0119cie...",body:"Dzie\u0144 dobry,\n\nPotwierdzam zam\u00f3wienie.\n\nPozdrawiam,\nPaulina Porter",attachments:[]},
-  {id:"m3",folder:"sent",to:"julia.wozniak@onet.pl",toName:"Julia Wo\u017aniak",subject:"Przypomnienie \u2013 wycena",date:"2025-04-10T09:05:00",preview:"Przypominam o wycenie...",body:"Dzie\u0144 dobry,\n\nPrzypominam o wycenie.\n\nPozdrawiam,\nPaulina Porter",attachments:[]}
-];
+export const MOCK_SENT = [];
 
-export const MOCK_CONTACTS = [
-  {email:"anna.kowalska@gmail.com",name:"Anna Kowalska"},
-  {email:"marek.nowak@wp.pl",name:"Marek Nowak"},
-  {email:"julia.wozniak@onet.pl",name:"Julia Wo\u017aniak"},
-  {email:"tomasz.lewandowski@o2.pl",name:"Tomasz Lewandowski"}
-];
+export const MOCK_CONTACTS = [];
 
 export const MAIL_TEMPLATES = [
   {
@@ -122,9 +114,9 @@ function ModalCalendar(p){
     ce("div",{style:{background:"var(--bg1)",borderRadius:16,padding:28,width:"100%",maxWidth:420,
       boxShadow:"0 20px 60px rgba(0,0,0,0.25)",display:"flex",flexDirection:"column",gap:16}},
       ce("div",{style:{display:"flex",alignItems:"center",gap:12}},
-        ce("div",{style:{width:44,height:44,borderRadius:12,background:"#4285f4",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}},"\uD83D\uDCC5"),
+        ce("div",{style:{width:44,height:44,borderRadius:12,background:"#0078d4",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}},"\uD83D\uDCC5"),
         ce("div",{style:{flex:1}},
-          ce("div",{style:{fontWeight:700,fontSize:15,color:"var(--t1)"}},"Dodaj do Google Calendar"),
+          ce("div",{style:{fontWeight:700,fontSize:15,color:"var(--t1)"}},"Dodaj do kalendarza Outlook"),
           ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:2}},"Zaplanuj follow-up")
         ),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"var(--bg2)",width:28,height:28,borderRadius:8,cursor:"pointer",color:"var(--t3)",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}},"\u00d7")
@@ -157,15 +149,22 @@ function ModalCalendar(p){
         ce("button",{onClick:p.onClose,style:BGHOST},"Anuluj"),
         ce("button",{
             onClick:function(){
-              p.onSave({summary:title,description:note,
-                start:{dateTime:new Date(dt).toISOString()},
-                end:{dateTime:new Date(new Date(dt).getTime()+dur*60000).toISOString()}});
+              var startDt=new Date(dt).toISOString();
+              var endDt=new Date(new Date(dt).getTime()+dur*60000).toISOString();
+              if(p.accessToken){
+                fetch("https://graph.microsoft.com/v1.0/me/events",{
+                  method:"POST",
+                  headers:{"Authorization":"Bearer "+p.accessToken,"Content-Type":"application/json"},
+                  body:JSON.stringify({subject:title,body:{contentType:"Text",content:note},start:{dateTime:startDt,timeZone:"Europe/Warsaw"},end:{dateTime:endDt,timeZone:"Europe/Warsaw"}})
+                }).then(function(r){return r.json();}).then(function(evt){p.onSave({summary:evt.subject||title,description:note,start:{dateTime:startDt},end:{dateTime:endDt}});}).catch(function(){p.onSave({summary:title,description:note,start:{dateTime:startDt},end:{dateTime:endDt}});});
+              } else {
+                p.onSave({summary:title,description:note,start:{dateTime:startDt},end:{dateTime:endDt}});
+              }
             },
-            style:Object.assign({},BPRIM,{flex:1,background:"#4285f4"})
+            style:Object.assign({},BPRIM,{flex:1,background:"#0078d4"})
           },"\uD83D\uDCC5 Zapisz w kalendarzu"
         )
       ),
-      ce("div",{style:{fontSize:10,color:"var(--t3)",textAlign:"center"}},"Prototyp \u2014 Google Calendar API OAuth2")
     )
   );
 }
@@ -488,10 +487,14 @@ export function ScreenMail(p){
   var clients=p.clients||[];
 
   var sa=us(false),logged=sa[0],setLogged=sa[1];
+  var stok=us(null),accessToken=stok[0],setAccessToken=stok[1];
+  var sacc=us(null),msAccount=sacc[0],setMsAccount=sacc[1];
+  var slogging=us(false),logging=slogging[0],setLogging=slogging[1];
   var suf=us([]),userFolders=suf[0],setUserFolders=suf[1];
   var saf=us("compose"),activeFolder=saf[0],setActiveFolder=saf[1];
   var snf=us(false),showNF=snf[0],setShowNF=snf[1];
-  var smails=us(MOCK_SENT),allMails=smails[0],setAllMails=smails[1];
+  var smails=us([]),allMails=smails[0],setAllMails=smails[1];
+  var sloadingMails=us(false),loadingMails=sloadingMails[0],setLoadingMails=sloadingMails[1];
   var ssel=us(null),selMail=ssel[0],setSelMail=ssel[1];
   var sdr=us([]),drafts=sdr[0],setDrafts=sdr[1];
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
@@ -505,8 +508,29 @@ export function ScreenMail(p){
   var ssending=us(false),sending=ssending[0],setSending=ssending[1];
   var scal=us(null),calMail=scal[0],setCalMail=scal[1];
   var scalok=us(null),calSaved=scalok[0],setCalSaved=scalok[1];
+  var serr=us(null),sendError=serr[0],setSendError=serr[1];
 
   var selClient=clients.find(function(c){return String(c.id)===String(selClientId);})||null;
+
+  ue(function(){
+    if(!accessToken)return;
+    setLoadingMails(true);
+    fetch("https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,sentDateTime,bodyPreview,hasAttachments&$orderby=sentDateTime desc",{
+      headers:{"Authorization":"Bearer "+accessToken}
+    })
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var mapped=(data.value||[]).map(function(m){
+        var rec=(m.toRecipients&&m.toRecipients[0]&&m.toRecipients[0].emailAddress)||{};
+        return {id:m.id,folder:"sent",to:rec.address||"",toName:rec.name||rec.address||"",
+          subject:m.subject||"",date:m.sentDateTime||new Date().toISOString(),
+          preview:m.bodyPreview||"",body:m.bodyPreview||"",
+          attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[]};
+      });
+      setAllMails(mapped);setLoadingMails(false);
+    })
+    .catch(function(){setLoadingMails(false);});
+  },[accessToken]);
 
   ue(function(){
     var tpl=MAIL_TEMPLATES.find(function(t){return t.id===selTemplate;})||MAIL_TEMPLATES[0];
@@ -526,8 +550,7 @@ export function ScreenMail(p){
     if(val.length<2){setContactSug([]);return;}
     var q=val.toLowerCase();
     var fc=clients.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).map(function(c){return {email:c.email,name:c.name};});
-    var fm=MOCK_CONTACTS.filter(function(c){return c.name.toLowerCase().includes(q)||c.email.toLowerCase().includes(q);});
-    var merged=fc.concat(fm).reduce(function(acc,c){if(!acc.find(function(x){return x.email===c.email;}))acc.push(c);return acc;},[]).slice(0,5);
+    var merged=fc.reduce(function(acc,c){if(!acc.find(function(x){return x.email===c.email;}))acc.push(c);return acc;},[]).slice(0,5);
     setContactSug(merged);
   }
 
@@ -548,15 +571,43 @@ export function ScreenMail(p){
   function handleSend(){
     if(!toEmail||!subject||!body)return;
     setSending(true);
-    setTimeout(function(){
-      var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:selClient?selClient.name:toEmail,
-        subject:subject,date:new Date().toISOString(),preview:body.slice(0,80)+"...",
-        body:body,attachments:attachments.slice()};
-      setAllMails(function(prev){return [nm].concat(prev);});
-      setSending(false); setJustSent(true);
-      setTimeout(function(){setJustSent(false);},3000);
-      setCalMail(nm);
-    },900);
+    setSendError(null);
+    var toName=selClient?selClient.name:toEmail;
+    var uploadFiles=attachments.filter(function(a){return a.type==="upload"&&a.file;}).map(function(a){return a.file;});
+    function doSend(atts){
+      var msgPayload={
+        subject:subject,
+        body:{contentType:"Text",content:body},
+        toRecipients:[{emailAddress:{address:toEmail,name:toName}}]
+      };
+      if(atts&&atts.length>0)msgPayload.attachments=atts;
+      fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+        method:"POST",
+        headers:{"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"},
+        body:JSON.stringify({message:msgPayload,saveToSentItems:true})
+      })
+      .then(function(r){
+        if(!r.ok)return r.json().then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+r.status+")");});
+        var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:toName,
+          subject:subject,date:new Date().toISOString(),preview:body.slice(0,80)+"...",
+          body:body,attachments:attachments.slice()};
+        setAllMails(function(prev){return [nm].concat(prev);});
+        setSending(false); setJustSent(true);
+        setTimeout(function(){setJustSent(false);},3000);
+        setCalMail(nm);
+        setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
+      })
+      .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
+    }
+    if(uploadFiles.length>0){
+      Promise.all(uploadFiles.map(function(file){
+        return file.arrayBuffer().then(function(ab){
+          var bytes=new Uint8Array(ab),binary="";
+          for(var i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
+          return {"@odata.type":"#microsoft.graph.fileAttachment",name:file.name,contentType:file.type||"application/octet-stream",contentBytes:btoa(binary)};
+        });
+      })).then(function(atts){doSend(atts);}).catch(function(){doSend([]);});
+    } else {doSend([]);}
   }
 
   function moveMail(mail,folderId){
@@ -568,22 +619,40 @@ export function ScreenMail(p){
     return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px",minHeight:300,gap:16,textAlign:"center"}},
       ce("div",{style:{width:64,height:64,borderRadius:16,background:"#0078d4",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:4}},"\u2709\uFE0F"),
       ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},"Modu\u0142 Mail"),
-      ce("div",{style:{fontSize:13,color:"var(--t2)",maxWidth:280,lineHeight:1.7}},"Zaloguj si\u0119 kontem Microsoft, by wysy\u0142a\u0107 maile przez Outlooka."),
-      ce("button",{onClick:function(){setLogged(true);},style:{display:"flex",alignItems:"center",gap:12,padding:"12px 24px",borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",fontSize:14,fontWeight:600,color:"var(--t1)",marginTop:8,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
-        ce("svg",{width:20,height:20,viewBox:"0 0 21 21"},
-          ce("rect",{x:1,y:1,width:9,height:9,fill:"#f25022"}),
-          ce("rect",{x:11,y:1,width:9,height:9,fill:"#7fba00"}),
-          ce("rect",{x:1,y:11,width:9,height:9,fill:"#00a4ef"}),
-          ce("rect",{x:11,y:11,width:9,height:9,fill:"#ffb900"})
-        ),
-        "Zaloguj si\u0119 przez Microsoft"
+      ce("div",{style:{fontSize:13,color:"var(--t2)",maxWidth:300,lineHeight:1.7}},"Zaloguj si\u0119 kontem Microsoft, by wysy\u0142a\u0107 maile przez Outlooka i zapisywa\u0107 zdarzenia w kalendarzu."),
+      ce("button",{
+        disabled:logging,
+        onClick:function(){
+          setLogging(true);
+          msalLogin()
+            .then(function(result){setMsAccount(result.account);return msalGetToken();})
+            .then(function(token){setAccessToken(token);setLogged(true);setLogging(false);})
+            .catch(function(e){
+              setLogging(false);
+              console.error("MSAL login error",e);
+              if(e.errorCode!=="user_cancelled"){alert("B\u0142\u0105d logowania: "+(e.message||e.errorCode||"nieznany b\u0142\u0105d"));}
+            });
+        },
+        style:{display:"flex",alignItems:"center",gap:12,padding:"12px 24px",borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:logging?"wait":"pointer",fontSize:14,fontWeight:600,color:"var(--t1)",marginTop:8,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",opacity:logging?0.7:1}},
+        logging
+          ?ce("span",{style:{fontSize:16}},"\u23F3")
+          :ce("svg",{width:20,height:20,viewBox:"0 0 21 21"},
+            ce("rect",{x:1,y:1,width:9,height:9,fill:"#f25022"}),
+            ce("rect",{x:11,y:1,width:9,height:9,fill:"#7fba00"}),
+            ce("rect",{x:1,y:11,width:9,height:9,fill:"#00a4ef"}),
+            ce("rect",{x:11,y:11,width:9,height:9,fill:"#ffb900"})
+          ),
+        logging?"Logowanie...":"Zaloguj si\u0119 przez Microsoft"
       ),
-      ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Prototyp \u2014 klikni\u0119cie symuluje logowanie")
+      ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Otworzy si\u0119 okno logowania Microsoft")
     );
   }
 
+  var accountEmail=msAccount?(msAccount.username||"paulina@porterdesign.pl"):"paulina@porterdesign.pl";
+
   var composerPanel=ce("div",{style:{flex:1,display:"flex",flexDirection:"column",overflowY:"auto",gap:0}},
     ce("div",{style:Object.assign({},LSML,{marginBottom:12})},"Nowa wiadomo\u015b\u0107"),
+    sendError?ce("div",{style:{marginBottom:10,padding:"10px 12px",background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:9,fontSize:12,color:"#b91c1c",display:"flex",alignItems:"center",gap:8}},ce("span",{style:{fontSize:16}},"\u26a0\ufe0f"),ce("span",{style:{flex:1}},sendError),ce("button",{onClick:function(){setSendError(null);},style:{border:"none",background:"none",cursor:"pointer",color:"#b91c1c",fontSize:16}},"\u00d7")):null,
     ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Klient"),
       ce("select",{value:selClientId||"",onChange:function(e){setSelClientId(e.target.value||null);},style:Object.assign({},INP,{appearance:"none",WebkitAppearance:"none"})},
@@ -656,7 +725,9 @@ export function ScreenMail(p){
     var folderMails=allMails.filter(function(m){return m.folder===activeFolder;});
     rightContent=ce("div",{style:{display:"flex",height:"100%",minHeight:0}},
       ce("div",{style:{width:280,flexShrink:0,borderRight:"1px solid var(--bd2)",paddingRight:12,display:"flex",flexDirection:"column"}},
-        ce(MailList,{mails:folderMails,onSelect:setSelMail,selectedId:selMail?selMail.id:null})
+        loadingMails&&activeFolder==="sent"
+          ?ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:8,color:"var(--t3)",fontSize:13}},"\u23F3 Wczytywanie\u2026")
+          :ce(MailList,{mails:folderMails,onSelect:setSelMail,selectedId:selMail?selMail.id:null})
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
         ce(MailPreview,{mail:selMail,onCalendar:function(){if(selMail)setCalMail(selMail);},customFolders:userFolders,onMove:moveMail})
@@ -668,14 +739,14 @@ export function ScreenMail(p){
     ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:"var(--bg2)",borderRadius:10,marginBottom:12,border:"1px solid var(--bd2)",flexShrink:0,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
       ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
         ce("div",{style:{width:8,height:8,borderRadius:"50%",background:"#10b981",flexShrink:0,boxShadow:"0 0 0 2px rgba(16,185,129,0.2)"}}),
-        ce("span",{style:{fontSize:12,color:"var(--t2)"}},"Zalogowano jako\u00a0",ce("strong",{style:{color:"var(--t1)"}},"paulina@porterdesign.pl"))
+        ce("span",{style:{fontSize:12,color:"var(--t2)"}},"Zalogowano jako\u00a0",ce("strong",{style:{color:"var(--t1)"}},accountEmail))
       ),
-      ce("button",{onClick:function(){setLogged(false);},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
+      ce("button",{onClick:function(){msalLogout().catch(function(){}).finally(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
     ),
 
     calSaved?ce("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#ecfdf5",borderRadius:10,marginBottom:10,flexShrink:0,border:"1px solid #6ee7b7",fontSize:13,color:"#065f46"}},
       ce("span",{style:{fontSize:18}},"\uD83D\uDCC5"),
-      ce("div",null,"Dodano: ",ce("strong",null,calSaved.summary)),
+      ce("div",null,"Dodano do kalendarza: ",ce("strong",null,calSaved.summary)),
       ce("button",{onClick:function(){setCalSaved(null);},style:{marginLeft:"auto",border:"none",background:"rgba(6,95,70,0.08)",borderRadius:6,cursor:"pointer",color:"#065f46",fontSize:16,width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center"}},"\u00d7")
     ):null,
 
