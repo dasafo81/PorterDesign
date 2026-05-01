@@ -32,7 +32,7 @@ export function App(){
     if(!session)return;
     var interval=setInterval(function(){
       refreshSession().then(function(s){
-        if(!s)setTimeout(function(){setSession(null);},0);
+        if(!s)setSession(null);
       });
     },50*60*1000);
     return function(){clearInterval(interval);};
@@ -40,7 +40,9 @@ export function App(){
 
   // Jeśli brak sesji → wyświetl ekran logowania
   if(!session){
-    return React.createElement(ScreenLogin,{onLogin:function(s){setSession(s);}});
+    return React.createElement(ScreenLogin,{onLogin:function(s){
+      setTimeout(function(){setSession(s);},0);
+    }});
   }
   // ────────────────────────────────────────────────────────────────────────────────
 
@@ -656,12 +658,7 @@ export function App(){
       ce("div",{style:{display:"flex",alignItems:"center",gap:6}},
         appMode==="wyceniarka"?ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI"):ce("div",{style:{width:20}}),
         ce("button",{
-          onClick:function(){
-            signOut().then(function(){
-              // setTimeout zapewnia że setSession wywoła się poza aktualnym cyklem renderowania
-              setTimeout(function(){setSession(null);},0);
-            });
-          },
+          onClick:function(){signOut().then(function(){setSession(null);});},
           title:"Wyloguj",
           style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t3)",fontSize:13,lineHeight:1,flexShrink:0}
         },"\u23FB")
