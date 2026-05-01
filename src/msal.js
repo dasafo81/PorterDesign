@@ -17,8 +17,8 @@ var msalConfig = {
     redirectUri: window.location.origin
   },
   cache: {
-    cacheLocation: "sessionStorage",
-    storeAuthStateInCookie: false
+    cacheLocation: "localStorage",
+    storeAuthStateInCookie: true
   }
 };
 
@@ -59,8 +59,15 @@ export async function msalGetToken() {
     });
     return result.accessToken;
   } catch (e) {
-    await inst.acquireTokenRedirect({ scopes: MSAL_SCOPES, account: accounts[0] });
-    return null;
+    // Silent refresh nie zadziałał — odróżniamy interakcję wymaganą od innych błędów
+    if (e && (e.name === "InteractionRequiredAuthError" || e.errorCode === "interaction_required" || e.errorCode === "consent_required" || e.errorCode === "login_required")) {
+      // Sygnalizujemy wywołującemu, że trzeba interakcji — niech UI zdecyduje
+      var err = new Error("MS_INTERACTION_REQUIRED");
+      err.code = "MS_INTERACTION_REQUIRED";
+      throw err;
+    }
+    // Inne błędy (sieć itp.) — propaguj jak są
+    throw e;
   }
 }
 
