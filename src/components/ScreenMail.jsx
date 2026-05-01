@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10 } from '../constants/data.js';
-import { msalLogin, msalGetToken, msalLogout } from '../msal.js';
+import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 const ce = React.createElement;
 
 export const MOCK_SENT = [];
@@ -511,6 +511,21 @@ export function ScreenMail(p){
   var serr=us(null),sendError=serr[0],setSendError=serr[1];
 
   var selClient=clients.find(function(c){return String(c.id)===String(selClientId);})||null;
+
+  // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
+  ue(function(){
+    msalGetActiveAccount().then(function(acc){
+      if(acc){
+        setMsAccount(acc);
+        return msalGetToken().then(function(token){
+          if(token){
+            setAccessToken(token);
+            setLogged(true);
+          }
+        });
+      }
+    }).catch(function(e){console.error("MSAL session check error",e);});
+  },[]);
 
   ue(function(){
     if(!accessToken)return;
