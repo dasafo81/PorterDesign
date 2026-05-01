@@ -1,14 +1,20 @@
 export const SB_URL="https://rkcidwusjzvfwxszotnb.supabase.co";
 export const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3Vzanp2Znd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDU4NzIsImV4cCI6MjA5MDE4MTg3Mn0.N-frD06x0MzSg8dHmz-xneA16QvVrBmAYUg3ileNpXw";
 
+// Import funkcji pobierającej token sesji zalogowanego użytkownika
+import { getAccessToken } from './auth.js';
+
 function sbFetch(method, path, body){
+  // Używamy tokenu sesji (zalogowany użytkownik) zamiast anon key
+  // Dzięki temu RLS w Supabase prawidłowo weryfikuje uprawnienia
+  var token = getAccessToken() || SB_KEY;
   return fetch(SB_URL+"/rest/v1/"+path, {
     method: method,
     headers: {
       "apikey": SB_KEY,
-      "Authorization": "Bearer "+SB_KEY,
+      "Authorization": "Bearer "+token,
       "Content-Type": "application/json",
-      "Prefer": method==="POST"?"return=representation":"return=representation"
+      "Prefer": "return=representation"
     },
     body: body ? JSON.stringify(body) : undefined
   }).then(function(r){
