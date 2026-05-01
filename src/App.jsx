@@ -24,10 +24,26 @@ const ce = React.createElement;
 
 
 export function App(){
-  // ── AUTH ──────────────────────────────────────────────────────────────────
+  // ── AUTH: sesja użytkownika ──────────────────────────────────────────────────────────────────
   var sSession=useState(function(){return loadSession();}),session=sSession[0],setSession=sSession[1];
 
-  // Wszystkie hooki MUSZĄ być przed jakimkolwiek return (reguła Hooks)
+  // Auto-refresh tokenu co 50 minut
+  React.useEffect(function(){
+    if(!session)return;
+    var interval=setInterval(function(){
+      refreshSession().then(function(s){
+        if(!s)setTimeout(function(){setSession(null);},0);
+      });
+    },50*60*1000);
+    return function(){clearInterval(interval);};
+  },[session]);
+
+  // Jeśli brak sesji → wyświetl ekran logowania
+  if(!session){
+    return React.createElement(ScreenLogin,{onLogin:function(s){setSession(s);}});
+  }
+  // ────────────────────────────────────────────────────────────────────────────────
+
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
   var s2=useState([]),clients=s2[0],setClients=s2[1];
@@ -48,23 +64,6 @@ export function App(){
   // confirmDelete: {type:"client"|"room"|"window", label:str, onConfirm:fn}
   var sHS=useState(""),homeSearch=sHS[0],setHomeSearch=sHS[1];
   var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
-
-  // Auto-refresh tokenu co 50 minut
-  React.useEffect(function(){
-    if(!session)return;
-    var interval=setInterval(function(){
-      refreshSession().then(function(s){
-        if(!s)setSession(null);
-      });
-    },50*60*1000);
-    return function(){clearInterval(interval);};
-  },[session]);
-
-  // Brak sesji → ekran logowania (PO wszystkich hookach)
-  if(!session){
-    return React.createElement(ScreenLogin,{onLogin:function(s){setSession(s);}});
-  }
-  // ──────────────────────────────────────────────────────────────────────────
 
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
@@ -657,7 +656,12 @@ export function App(){
       ce("div",{style:{display:"flex",alignItems:"center",gap:6}},
         appMode==="wyceniarka"?ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI"):ce("div",{style:{width:20}}),
         ce("button",{
-          onClick:function(){signOut().then(function(){setSession(null);});},
+          onClick:function(){
+            signOut().then(function(){
+              // setTimeout zapewnia że setSession wywoła się poza aktualnym cyklem renderowania
+              setTimeout(function(){setSession(null);},0);
+            });
+          },
           title:"Wyloguj",
           style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t3)",fontSize:13,lineHeight:1,flexShrink:0}
         },"\u23FB")
