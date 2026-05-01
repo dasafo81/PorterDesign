@@ -52,6 +52,7 @@ export function ModalDeal(p){
   var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
   var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
   var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
+  var sii=useState(d.installer_id||""),installerId=sii[0],setInstallerId=sii[1];
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
@@ -64,14 +65,16 @@ export function ModalDeal(p){
 
   function save(){
     setBusy(true);
+    var iid=installerId?Number(installerId):null;
     sbApi.updateDeal(d.id,{
       notes:notes,
       visit_date:visitDate||null,
       delivery_date:delivDate||null,
+      installer_id:iid,
       acquisition:acquisition||null,
       updated_at:new Date().toISOString()
     }).then(function(){
-      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,acquisition:acquisition||null});
+      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,installer_id:iid,acquisition:acquisition||null});
       setBusy(false);
       p.onClose();
     }).catch(function(e){alert("B\u0142\u0105d: "+e.message);setBusy(false);});
@@ -212,7 +215,14 @@ export function ModalDeal(p){
             ce("label",{style:{...LBL,marginBottom:0}},"Monta\u017c"),
             ce(CalBtn,{title:"Monta\u017c \u2014 "+clientName,date:delivDate})
           ),
-          ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST})
+          ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:{...IST,marginBottom:8}}),
+          ce("label",{style:{...LBL,marginTop:6}},"Przypisany monta\u017cysta"),
+          ce("select",{value:installerId,onChange:function(e){setInstallerId(e.target.value);},style:{...IST,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}},
+            ce("option",{value:""},"\u2014 brak \u2014"),
+            (p.installers||[]).map(function(ins){
+              return ce("option",{key:ins.id,value:ins.id},ins.name+" ("+ins.email+")");
+            })
+          )
         )
       ),
 
@@ -267,9 +277,144 @@ export function ModalDeal(p){
   );
 }
 
+// ── MODAL UDOSTĘPNIANIA WYDARZENIA ───────────────────────────────────────────
+function ModalShareEvent(p){
+  // p: ev (event z dealEvents), installers, onClose, onShare(opts)
+  var ev=p.ev;
+  var presetIns=ev.installer||null;
+  var sSel=useState(presetIns?String(presetIns.id):""),selectedId=sSel[0],setSelectedId=sSel[1];
+  var sCustom=useState(""),customEmail=sCustom[0],setCustomEmail=sCustom[1];
+  var sExtra=useState([]),extraEmails=sExtra[0],setExtraEmails=sExtra[1];
+  var sNote=useState(""),note=sNote[0],setNote=sNote[1];
+  var sDur=useState("120"),durationMin=sDur[0],setDurationMin=sDur[1];
+
+  function addCustomEmail(){
+    var e=customEmail.trim();
+    if(!e) return;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){alert("Nieprawid\u0142owy e-mail.");return;}
+    if(extraEmails.indexOf(e)===-1) setExtraEmails(extraEmails.concat([e]));
+    setCustomEmail("");
+  }
+  function removeExtra(e){setExtraEmails(extraEmails.filter(function(x){return x!==e;}));}
+
+  function send(){
+    var emails=[];
+    var color=null;
+    var ins=null;
+    if(selectedId){
+      ins=p.installers.find(function(x){return String(x.id)===String(selectedId);});
+      if(ins){emails.push(ins.email);color=ins.color;}
+    }
+    extraEmails.forEach(function(e){if(emails.indexOf(e)===-1) emails.push(e);});
+    if(!emails.length){alert("Wybierz monta\u017cyst\u0119 lub dodaj e-mail.");return;}
+    p.onShare({attendeeEmails:emails,color:color,note:note,durationMin:Number(durationMin)||120,installerId:ins?ins.id:null});
+  }
+
+  var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
+  var LBL={fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6,display:"block"};
+
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2100,display:"flex",alignItems:"flex-end",justifyContent:"center"}},
+    ce("div",{style:{background:"var(--bg2)",width:"100%",maxWidth:480,borderRadius:"20px 20px 0 0",maxHeight:"92vh",overflowY:"auto",padding:"22px 20px 28px"}},
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
+        ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},"Udost\u0119pnij wydarzenie"),
+        ce("button",{onClick:p.onClose,style:{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"var(--t3)"}},"\u00D7")
+      ),
+      ce("div",{style:{fontSize:13,color:"var(--t3)",marginBottom:18}},
+        ev.label+" \u2014 "+ev.client+" \u00b7 "+ev.date.toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})
+      ),
+
+      // Wybór montażysty
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"Monta\u017cysta z listy"),
+        ce("select",{value:selectedId,onChange:function(e){setSelectedId(e.target.value);},style:{...IST,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}},
+          ce("option",{value:""},"\u2014 wybierz \u2014"),
+          (p.installers||[]).map(function(ins){
+            return ce("option",{key:ins.id,value:ins.id},ins.name+" ("+ins.email+")");
+          })
+        ),
+        selectedId?(function(){
+          var ins=(p.installers||[]).find(function(x){return String(x.id)===String(selectedId);});
+          return ins?ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:6,fontSize:11,color:"var(--t3)"}},
+            ce("span",{style:{display:"inline-block",width:12,height:12,borderRadius:6,background:ins.color||"#10b981"}}),
+            "Kolor wydarzenia w GCal"
+          ):null;
+        })():null
+      ),
+
+      // Dodatkowe e-maile
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"Dodatkowy e-mail (opcjonalnie)"),
+        ce("div",{style:{display:"flex",gap:6}},
+          ce("input",{type:"email",value:customEmail,onChange:function(e){setCustomEmail(e.target.value);},onKeyDown:function(e){if(e.key==="Enter"){e.preventDefault();addCustomEmail();}},placeholder:"jan@example.com",style:{...IST,flex:1}}),
+          ce("button",{onClick:addCustomEmail,style:{padding:"9px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t1)",fontSize:13,fontWeight:600,cursor:"pointer"}},"+ Dodaj")
+        ),
+        extraEmails.length>0?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}},
+          extraEmails.map(function(e){
+            return ce("div",{key:e,style:{display:"inline-flex",alignItems:"center",gap:5,padding:"3px 8px",background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,fontSize:11,color:"var(--t1)"}},
+              e,
+              ce("button",{onClick:function(){removeExtra(e);},style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:0,lineHeight:1}},"\u00D7")
+            );
+          })
+        ):null
+      ),
+
+      // Czas trwania
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"Czas trwania (min)"),
+        ce("select",{value:durationMin,onChange:function(e){setDurationMin(e.target.value);},style:{...IST,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}},
+          ["60","90","120","180","240","360"].map(function(m){return ce("option",{key:m,value:m},m+" min");})
+        )
+      ),
+
+      // Notatka
+      ce("div",{style:{marginBottom:18}},
+        ce("label",{style:LBL},"Uwagi dla monta\u017cysty (opcjonalnie)"),
+        ce("textarea",{value:note,onChange:function(e){setNote(e.target.value);},rows:3,placeholder:"np. Klucze u s\u0105siada, w domu pies...",style:{...IST,resize:"vertical",lineHeight:1.5}})
+      ),
+
+      // Przyciski
+      ce("div",{style:{display:"flex",gap:10}},
+        ce("button",{onClick:send,style:{flex:1,padding:"13px",borderRadius:11,border:"none",background:"#10b981",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}},"\uD83D\uDCE4 Wy\u015blij zaproszenie"),
+        ce("button",{onClick:p.onClose,style:{padding:"13px 16px",borderRadius:11,border:"1px solid var(--bd2)",background:"none",color:"var(--t3)",fontSize:13,cursor:"pointer"}},"Anuluj")
+      ),
+      ce("div",{style:{fontSize:10,color:"var(--t3)",textAlign:"center",marginTop:10,lineHeight:1.5}},
+        "Monta\u017cysta otrzyma e-mail z zaproszeniem do swojego Google Calendar."
+      )
+    )
+  );
+}
+
 // ── CRM KALENDARZ ────────────────────────────────────────────────────────────
 export const GCAL_CLIENT_ID ="818744143681-cab0a79h5hoo4l4cracnltnh2bldi62r.apps.googleusercontent.com";
 export const GCAL_SCOPES ="https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events";
+
+// ── Mapowanie HEX → Google Calendar colorId (11 predefiniowanych kolorów eventów) ──
+// Source: https://developers.google.com/calendar/api/v3/reference/colors
+export var GCAL_EVENT_COLORS=[
+  {id:"1",  hex:"#7986cb", name:"Lawenda"},
+  {id:"2",  hex:"#33b679", name:"Sza\u0142wia"},
+  {id:"3",  hex:"#8e24aa", name:"Winogron"},
+  {id:"4",  hex:"#e67c73", name:"Flaming"},
+  {id:"5",  hex:"#f6c026", name:"Banan"},
+  {id:"6",  hex:"#f5511d", name:"Mandarynka"},
+  {id:"7",  hex:"#039be5", name:"Paw"},
+  {id:"8",  hex:"#616161", name:"Grafit"},
+  {id:"9",  hex:"#3f51b5", name:"Bor\u00f3wka"},
+  {id:"10", hex:"#0b8043", name:"Bazylia"},
+  {id:"11", hex:"#d60000", name:"Pomidor"}
+];
+function hexToRgb(h){h=h.replace("#","");return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+export function nearestGcalColorId(hex){
+  if(!hex) return null;
+  var t=hexToRgb(hex);
+  var best=GCAL_EVENT_COLORS[0],bestD=1e9;
+  GCAL_EVENT_COLORS.forEach(function(c){
+    var r=hexToRgb(c.hex);
+    var d=(t[0]-r[0])*(t[0]-r[0])+(t[1]-r[1])*(t[1]-r[1])+(t[2]-r[2])*(t[2]-r[2]);
+    if(d<bestD){bestD=d;best=c;}
+  });
+  return best.id;
+}
 
 export function CRMKalendarz(p){
   // p: deals, clients, onDealClick
@@ -280,6 +425,7 @@ export function CRMKalendarz(p){
   var sErrEv=useState(null),errEv=sErrEv[0],setErrEv=sErrEv[1];
   var sView=useState("month"),calView=sView[0],setCalView=sView[1];
   var sRefDate=useState(function(){return new Date();}),refDate=sRefDate[0],setRefDate=sRefDate[1];
+  var sShare=useState(null),shareEv=sShare[0],setShareEv=sShare[1];
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
   React.useEffect(function(){
@@ -349,30 +495,53 @@ export function CRMKalendarz(p){
     var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
     var name=cl?cl.name:"Klient";
     if(deal.visit_date){dealEvents.push({date:new Date(deal.visit_date),label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});}
-    if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});}
-    if(deal.followup_date){dealEvents.push({date:new Date(deal.followup_date),label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});}
+    if(deal.delivery_date){
+      var ins=(p.installers||[]).find(function(x){return String(x.id)===String(deal.installer_id);});
+      var col=ins&&ins.color?ins.color:"#10b981";
+      dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDD27 Monta\u017c",client:name,deal:deal,color:col,type:"delivery",installer:ins||null});
+    }
   });
   dealEvents.sort(function(a,b){return a.date-b.date;});
   var upcoming=dealEvents.filter(function(e){return e.date>=now;});
 
-  function addDealEventToGcal(ev){
+  function addDealEventToGcal(ev,opts){
     if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
+    opts=opts||{};
     var d=ev.date;
-    var pad=function(n){return String(n).padStart(2,"0");};
+    var cl=p.clients.find(function(c){return String(c.id)===String(ev.deal&&ev.deal.client_id);})||null;
+    var addr=cl&&cl.addr?cl.addr:"";
+    var phone=cl&&cl.phone?cl.phone:"";
+    var desc="Klient: "+ev.client
+      +(phone?"\nTel: "+phone:"")
+      +(addr?"\nAdres: "+addr:"")
+      +(opts.note?"\n\nUwagi: "+opts.note:"");
     var body={
       summary:ev.label+" \u2014 "+ev.client,
-      description:"Klient: "+ev.client+(ev.deal&&ev.deal.title?" | Deal: "+ev.deal.title:""),
+      description:desc,
+      location:addr||undefined,
       start:{dateTime:d.toISOString(),timeZone:"Europe/Warsaw"},
-      end:{dateTime:new Date(d.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
+      end:{dateTime:new Date(d.getTime()+(opts.durationMin||60)*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
-    fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events",{
+    if(opts.color) body.colorId=nearestGcalColorId(opts.color);
+    else if(ev.installer&&ev.installer.color) body.colorId=nearestGcalColorId(ev.installer.color);
+    if(opts.attendeeEmails&&opts.attendeeEmails.length){
+      body.attendees=opts.attendeeEmails.map(function(e){return {email:e};});
+    }
+    var url="https://www.googleapis.com/calendar/v3/calendars/primary/events";
+    if(body.attendees) url+="?sendUpdates=all";
+    fetch(url,{
       method:"POST",
       headers:{Authorization:"Bearer "+gcalToken,"Content-Type":"application/json"},
       body:JSON.stringify(body)
-    }).then(function(r){return r.json();}).then(function(){
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){throw new Error(t);});
+      return r.json();
+    }).then(function(){
       fetchEvents(gcalToken);
-      alert("Dodano do Google Calendar!");
-    }).catch(function(){alert("B\u0142\u0105d dodawania zdarzenia.");});
+      alert(opts.attendeeEmails&&opts.attendeeEmails.length
+        ?"Dodano do Google Calendar i wys\u0142ano zaproszenie!"
+        :"Dodano do Google Calendar!");
+    }).catch(function(e){alert("B\u0142\u0105d dodawania: "+e.message);});
   }
 
   // ── Pomocniki kalendarza ──
@@ -522,13 +691,17 @@ export function CRMKalendarz(p){
       ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}},"Nadchodz\u0105ce terminy ("+upcoming.length+")"),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
         upcoming.slice(0,6).map(function(ev,i){
-          return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,cursor:"pointer"},onClick:function(){p.onDealClick&&p.onDealClick(ev.deal);}},
+          return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,cursor:"pointer"},onClick:function(){p.onDealClick&&p.onDealClick(ev.deal);}},
             ce("div",{style:{flexShrink:0,textAlign:"center",minWidth:32}},
               ce("div",{style:{fontSize:16,fontWeight:700,color:ev.color,lineHeight:1}},ev.date.getDate()),
               ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase"}},ev.date.toLocaleDateString("pl-PL",{month:"short"}))
             ),
-            ce("div",{style:{flex:1,fontSize:12,fontWeight:600,color:"var(--t1)"}},ev.label+" \u2014 "+ev.client),
-            gcalToken?ce("button",{onClick:function(e){e.stopPropagation();addDealEventToGcal(ev);},style:{padding:"4px 9px",borderRadius:6,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:10,cursor:"pointer",flexShrink:0}},"\uD83D\uDCC5 Dodaj do GCal"):null
+            ce("div",{style:{flex:1,minWidth:0}},
+              ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},ev.label+" \u2014 "+ev.client),
+              ev.installer?ce("div",{style:{fontSize:10,color:ev.installer.color||"var(--t3)",fontWeight:600,marginTop:1}},"\uD83D\uDC77 "+ev.installer.name):null
+            ),
+            gcalToken&&ev.type==="delivery"?ce("button",{onClick:function(e){e.stopPropagation();setShareEv(ev);},style:{padding:"4px 9px",borderRadius:6,border:"1px solid #10b981",background:"none",color:"#10b981",fontSize:10,cursor:"pointer",flexShrink:0,fontWeight:600}},"\uD83D\uDCE4 Udost\u0119pnij"):null,
+            gcalToken?ce("button",{onClick:function(e){e.stopPropagation();addDealEventToGcal(ev);},style:{padding:"4px 9px",borderRadius:6,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:10,cursor:"pointer",flexShrink:0}},"\uD83D\uDCC5 GCal"):null
           );
         })
       )
@@ -550,11 +723,13 @@ export function CRMKalendarz(p){
       ),
 
       // Legenda
-      ce("div",{style:{display:"flex",gap:12,padding:"6px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg2)",flexWrap:"wrap"}},
+      ce("div",{style:{display:"flex",gap:12,padding:"6px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg2)",flexWrap:"wrap",alignItems:"center"}},
         ce("span",{style:{fontSize:10,color:"#4285f4",fontWeight:600}},"● Google Calendar"),
         ce("span",{style:{fontSize:10,color:"#3b82f6",fontWeight:600}},"● Pomiar"),
-        ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Realizacja"),
-        ce("span",{style:{fontSize:10,color:"#f59e0b",fontWeight:600}},"● Follow-up"),
+        ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Monta\u017c (nieprzypisany)"),
+        (p.installers||[]).map(function(ins){
+          return ce("span",{key:ins.id,style:{fontSize:10,color:ins.color||"#10b981",fontWeight:600}},"● "+ins.name);
+        }),
         loadingEv?ce("span",{style:{fontSize:10,color:"var(--t3)",marginLeft:"auto"}},"\u23F3 Ładuję zdarzenia..."):null
       ),
 
@@ -565,7 +740,23 @@ export function CRMKalendarz(p){
         ):
         calView==="month"?renderMonthView():renderWeekView()
       )
-    )
+    ),
+
+    // ── Modal udostępniania ──
+    shareEv?ce(ModalShareEvent,{
+      ev:shareEv,
+      installers:p.installers||[],
+      onClose:function(){setShareEv(null);},
+      onShare:function(opts){
+        addDealEventToGcal(shareEv,opts);
+        if(opts.installerId&&shareEv.deal&&shareEv.deal.installer_id!==opts.installerId){
+          sbApi.updateDeal(shareEv.deal.id,{installer_id:opts.installerId,updated_at:new Date().toISOString()})
+            .then(function(){p.onInstallerAssigned&&p.onInstallerAssigned(shareEv.deal.id,opts.installerId);})
+            .catch(function(){});
+        }
+        setShareEv(null);
+      }
+    }):null
   );
 }
 
@@ -607,7 +798,7 @@ function DealCard(cp){
           ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
         ):null,
         hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
-          ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
+          ce("span",null,"\uD83D\uDD27"),ce("span",null,"Monta\u017c: "+fmtDate(deal.delivery_date))
         ):null
       ):null,
       deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
@@ -687,6 +878,116 @@ function KanbanBoard(kp){
 }
 
 
+// ── CRM MONTAŻYŚCI ───────────────────────────────────────────────────────────
+function CRMMontazysci(p){
+  // p: installers, onChange
+  var sEdit=useState(null),editing=sEdit[0],setEditing=sEdit[1];
+  var sBusy=useState(false),busy=sBusy[0],setBusy=sBusy[1];
+
+  function startNew(){
+    setEditing({id:null,name:"",email:"",phone:"",color:"#10b981"});
+  }
+  function startEdit(ins){
+    setEditing({id:ins.id,name:ins.name||"",email:ins.email||"",phone:ins.phone||"",color:ins.color||"#10b981"});
+  }
+  function save(){
+    if(!editing.name.trim()||!editing.email.trim()){alert("Imi\u0119 i e-mail s\u0105 wymagane.");return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editing.email.trim())){alert("Nieprawid\u0142owy e-mail.");return;}
+    setBusy(true);
+    var data={name:editing.name.trim(),email:editing.email.trim(),phone:editing.phone.trim(),color:editing.color};
+    var prom=editing.id?sbApi.updateInstaller(editing.id,data):sbApi.addInstaller(data);
+    prom.then(function(){
+      setBusy(false);
+      setEditing(null);
+      p.onChange&&p.onChange();
+    }).catch(function(e){alert("B\u0142\u0105d: "+e.message);setBusy(false);});
+  }
+  function del(ins){
+    if(!window.confirm("Usun\u0105\u0107 monta\u017cyst\u0119 "+ins.name+"?")) return;
+    sbApi.deleteInstaller(ins.id).then(function(){
+      p.onChange&&p.onChange();
+    }).catch(function(e){alert("B\u0142\u0105d: "+e.message);});
+  }
+
+  var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
+  var LBL={fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6,display:"block"};
+  var COLOR_PRESETS=["#10b981","#3b82f6","#f59e0b","#ef4444","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#6366f1"];
+
+  return ce("div",null,
+    // Lista
+    ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+      ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)"}},"Lista monta\u017cyst\u00f3w ("+(p.installers||[]).length+")"),
+      ce("button",{onClick:startNew,style:{padding:"8px 14px",borderRadius:9,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:700,cursor:"pointer"}},"+ Dodaj monta\u017cyst\u0119")
+    ),
+
+    (p.installers||[]).length===0?ce("div",{style:{textAlign:"center",padding:"2.5rem 1rem",color:"var(--t3)",fontSize:13,background:"var(--bg2)",borderRadius:11,border:"1px dashed var(--bd2)"}},
+      "Brak monta\u017cyst\u00f3w. Dodaj pierwszego, aby udost\u0119pnia\u0107 im wydarzenia."
+    ):ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+      (p.installers||[]).map(function(ins){
+        return ce("div",{key:ins.id,style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,borderLeft:"4px solid "+(ins.color||"#10b981")}},
+          ce("div",{style:{width:36,height:36,borderRadius:18,background:(ins.color||"#10b981")+"33",color:ins.color||"#10b981",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,flexShrink:0}},
+            (ins.name||"?").charAt(0).toUpperCase()
+          ),
+          ce("div",{style:{flex:1,minWidth:0}},
+            ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t1)"}},ins.name),
+            ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},
+              ins.email,
+              ins.phone?ce("span",null," \u00b7 "+ins.phone):null
+            )
+          ),
+          ce("button",{onClick:function(){startEdit(ins);},style:{padding:"6px 11px",borderRadius:8,border:"1px solid var(--bd2)",background:"none",color:"var(--t1)",fontSize:11,fontWeight:600,cursor:"pointer"}},"Edytuj"),
+          ce("button",{onClick:function(){del(ins);},style:{padding:"6px 9px",borderRadius:8,border:"1px solid var(--bd2)",background:"none",color:"#ef4444",fontSize:11,cursor:"pointer"}},"\u00D7")
+        );
+      })
+    ),
+
+    // Modal edycji
+    editing?ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center"}},
+      ce("div",{style:{background:"var(--bg2)",width:"100%",maxWidth:480,borderRadius:"20px 20px 0 0",maxHeight:"92vh",overflowY:"auto",padding:"22px 20px 28px"}},
+        ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}},
+          ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},editing.id?"Edytuj monta\u017cyst\u0119":"Nowy monta\u017cysta"),
+          ce("button",{onClick:function(){setEditing(null);},style:{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"var(--t3)"}},"\u00D7")
+        ),
+
+        ce("div",{style:{marginBottom:14}},
+          ce("label",{style:LBL},"Imi\u0119 i nazwisko"),
+          ce("input",{type:"text",value:editing.name,onChange:function(e){setEditing(Object.assign({},editing,{name:e.target.value}));},placeholder:"Jan Kowalski",style:IST})
+        ),
+        ce("div",{style:{marginBottom:14}},
+          ce("label",{style:LBL},"E-mail (Google Calendar)"),
+          ce("input",{type:"email",value:editing.email,onChange:function(e){setEditing(Object.assign({},editing,{email:e.target.value}));},placeholder:"jan@example.com",style:IST})
+        ),
+        ce("div",{style:{marginBottom:14}},
+          ce("label",{style:LBL},"Telefon (opcjonalnie)"),
+          ce("input",{type:"tel",value:editing.phone,onChange:function(e){setEditing(Object.assign({},editing,{phone:e.target.value}));},placeholder:"+48 ...",style:IST})
+        ),
+        ce("div",{style:{marginBottom:18}},
+          ce("label",{style:LBL},"Kolor wydarze\u0144"),
+          ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:8}},
+            COLOR_PRESETS.map(function(c){
+              var active=editing.color===c;
+              return ce("button",{key:c,onClick:function(){setEditing(Object.assign({},editing,{color:c}));},style:{width:36,height:36,borderRadius:18,border:active?"3px solid var(--t1)":"2px solid var(--bd2)",background:c,cursor:"pointer",padding:0}});
+            })
+          ),
+          ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            ce("input",{type:"color",value:editing.color,onChange:function(e){setEditing(Object.assign({},editing,{color:e.target.value}));},style:{width:40,height:32,borderRadius:6,border:"1px solid var(--bd2)",cursor:"pointer",padding:0}}),
+            ce("span",{style:{fontSize:11,color:"var(--t3)"}},"lub w\u0142asny: "+editing.color)
+          ),
+          ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:8,lineHeight:1.4}},
+            "Kolor b\u0119dzie u\u017cyty w kalendarzu i przy udost\u0119pnianiu wydarze\u0144 (Google przybli\u017cy do 11 dost\u0119pnych kolor\u00f3w event\u00f3w)."
+          )
+        ),
+
+        ce("div",{style:{display:"flex",gap:10}},
+          ce("button",{onClick:save,disabled:busy,style:{flex:1,padding:"13px",borderRadius:11,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:700,cursor:busy?"wait":"pointer"}},busy?"Zapisuj\u0119...":"Zapisz"),
+          ce("button",{onClick:function(){setEditing(null);},style:{padding:"13px 16px",borderRadius:11,border:"1px solid var(--bd2)",background:"none",color:"var(--t3)",fontSize:13,cursor:"pointer"}},"Anuluj")
+        )
+      )
+    ):null
+  );
+}
+
+
 export function ScreenCRM(p){
   // p: clients, setScreen, setAppMode, setCurClientId
   var sCrmTab=useState("kanban"),crmTab=sCrmTab[0],setCrmTab=sCrmTab[1];
@@ -705,6 +1006,15 @@ export function ScreenCRM(p){
   var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
   var sNewClient=useState(""),newClientId=sNewClient[0],setNewClientId=sNewClient[1];
   var sAdding=useState(false),adding=sAdding[0],setAdding=sAdding[1];
+  var sInstallers=useState([]),installers=sInstallers[0],setInstallers=sInstallers[1];
+
+  React.useEffect(function(){
+    sbApi.getInstallers().then(function(d){setInstallers(d||[]);}).catch(function(){});
+  },[]);
+
+  function reloadInstallers(){
+    sbApi.getInstallers().then(function(d){setInstallers(d||[]);}).catch(function(){});
+  }
 
   React.useEffect(function(){
     sbApi.getDeals().then(function(data){
@@ -767,8 +1077,8 @@ export function ScreenCRM(p){
 
   return ce("div",null,
     // Sub-zakładki CRM: Kanban / Kalendarz
-    ce("div",{style:{display:"flex",gap:4,marginBottom:"1rem",background:"var(--bg2)",borderRadius:10,padding:3,border:"1px solid var(--bd2)",alignSelf:"flex-start"}},
-      [{id:"kanban",label:"\uD83D\uDCCC Kanban"},{id:"kalendarz",label:"\uD83D\uDCC5 Kalendarz Google"}].map(function(t){
+    ce("div",{style:{display:"flex",gap:4,marginBottom:"1rem",background:"var(--bg2)",borderRadius:10,padding:3,border:"1px solid var(--bd2)",alignSelf:"flex-start",flexWrap:"wrap"}},
+      [{id:"kanban",label:"\uD83D\uDCCC Kanban"},{id:"kalendarz",label:"\uD83D\uDCC5 Kalendarz Google"},{id:"montazysci",label:"\uD83D\uDC77 Monta\u017cy\u015bci"}].map(function(t){
         var act=crmTab===t.id;
         return ce("button",{key:t.id,onClick:function(){setCrmTab(t.id);},style:{
           padding:"7px 14px",borderRadius:8,border:"none",fontSize:12,fontWeight:act?700:400,
@@ -778,7 +1088,17 @@ export function ScreenCRM(p){
       })
     ),
     // Widok zależny od sub-zakładki
-    crmTab==="kalendarz"?ce(CRMKalendarz,{deals:deals||[],clients:p.clients,onDealClick:function(d){setModalDeal(d);},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady}):null,
+    crmTab==="kalendarz"?ce(CRMKalendarz,{
+      deals:deals||[],
+      clients:p.clients,
+      installers:installers,
+      onDealClick:function(d){setModalDeal(d);},
+      onInstallerAssigned:function(dealId,instId){
+        setDeals(function(prev){return prev.map(function(d){return d.id===dealId?Object.assign({},d,{installer_id:instId}):d;});});
+      },
+      gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady
+    }):null,
+    crmTab==="montazysci"?ce(CRMMontazysci,{installers:installers,onChange:reloadInstallers}):null,
     crmTab==="kanban"?ce("div",null,
     // Panel dodawania dealu
     ce("div",{style:{display:"flex",gap:8,marginBottom:"1.2rem",alignItems:"center"}},
@@ -808,6 +1128,7 @@ export function ScreenCRM(p){
     modalDeal?ce(ModalDeal,{
       deal:modalDeal,
       client:p.clients.find(function(c){return String(c.id)===String(modalDeal.client_id);})||null,
+      installers:installers,
       onSave:function(data){onDealSave(modalDeal.id,data);},
       onDelete:function(){onDealDelete(modalDeal.id);},
       onClose:function(){setModalDeal(null);},
