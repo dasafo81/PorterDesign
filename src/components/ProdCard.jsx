@@ -1307,6 +1307,19 @@ export function ProdCard(p){
         )
       )
     );
+  }else if(prod.type==="karnisz_dek"){
+    form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"number",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST}))
+      ),
+      ce(Chips,{items:[
+        ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
+        ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
+      ]})
+    );
   }else if(prod.type==="inny"){
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
       ce(Fld,{label:"NAZWA PRODUKTU"},
