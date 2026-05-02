@@ -1137,7 +1137,9 @@ export function ScreenMail(p){
 
   // Składa pełny HTML body wiadomości — treść użytkownika (HTML z RichTextEditora)
   // + podpis (HTML + obrazek z Ustawień). Treść już jest HTML, nie escapujemy.
-  function buildMailHtml(htmlBodyInput, settings){
+  // useCid=true → obrazek wstawiany jako <img src="cid:signature-image">,
+  // wtedy musi być dołączony jako inline attachment w handleSend.
+  function buildMailHtml(htmlBodyInput, settings, useCid){
     var bodyHtml="<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"
       +(htmlBodyInput||"")
       +"</div>";
@@ -1153,10 +1155,39 @@ export function ScreenMail(p){
     }
     if(sigImg){
       if(sigHtml)sigBlock+="<br>";
-      sigBlock+="<img src=\""+sigImg+"\" alt=\"\" style=\"max-width:300px;height:auto;display:block;margin-top:8px;\">";
+      var imgSrc=useCid?"cid:signature-image":sigImg;
+      sigBlock+="<img src=\""+imgSrc+"\" alt=\"\" style=\"max-width:300px;height:auto;display:block;margin-top:8px;\">";
     }
     sigBlock+="</div>";
     return bodyHtml+sigBlock;
+  }
+
+  // Pobiera obrazek z URL i konwertuje na base64 (dla embedowania jako CID)
+  // Cache na poziomie window — jeden URL pobierany raz na sesję.
+  function fetchImageAsBase64(url){
+    if(!url)return Promise.reject(new Error("Brak URL"));
+    if(!window._porterSigImgCache)window._porterSigImgCache={};
+    var cache=window._porterSigImgCache;
+    if(cache[url])return Promise.resolve(cache[url]);
+    return fetch(url).then(function(r){
+      if(!r.ok)throw new Error("Nie uda\u0142o si\u0119 pobra\u0107 obrazka podpisu");
+      var contentType=r.headers.get("content-type")||"image/png";
+      return r.blob().then(function(blob){
+        return new Promise(function(resolve,reject){
+          var reader=new FileReader();
+          reader.onloadend=function(){
+            // FileReader zwraca "data:image/png;base64,XXXX" — wycinamy tylko XXXX
+            var dataUrl=reader.result;
+            var base64=String(dataUrl).split(",")[1]||"";
+            var result={base64:base64,contentType:contentType};
+            cache[url]=result;
+            resolve(result);
+          };
+          reader.onerror=function(){reject(new Error("B\u0142\u0105d odczytu obrazka"));};
+          reader.readAsDataURL(blob);
+        });
+      });
+    });
   }
 
   // Wyciąga plain-text preview z HTML — używane do listy w Sent (255 znaków)
@@ -1174,7 +1205,11 @@ export function ScreenMail(p){
     setSendError(null);
     var toName=selClient?selClient.name:toEmail;
     var uploadFiles=attachments.filter(function(a){return a.type==="upload"&&a.file;}).map(function(a){return a.file;});
-    var htmlBody=buildMailHtml(body, userSettings);
+    var sigImgUrl=(userSettings&&userSettings.signature_image_url)||"";
+    var hasSigImg=!!sigImgUrl;
+    // useCid=true tylko gdy faktycznie mamy obrazek do osadzenia
+    var htmlBody=buildMailHtml(body, userSettings, hasSigImg);
+
     function doSend(atts){
       var msgPayload={
         subject:subject,
@@ -1200,15 +1235,45 @@ export function ScreenMail(p){
       })
       .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
     }
-    if(uploadFiles.length>0){
-      Promise.all(uploadFiles.map(function(file){
-        return file.arrayBuffer().then(function(ab){
-          var bytes=new Uint8Array(ab),binary="";
-          for(var i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
-          return {"@odata.type":"#microsoft.graph.fileAttachment",name:file.name,contentType:file.type||"application/octet-stream",contentBytes:btoa(binary)};
-        });
-      })).then(function(atts){doSend(atts);}).catch(function(){doSend([]);});
-    } else {doSend([]);}
+
+    // Buduj attachments równolegle: (1) pliki uploadowane przez użytkownika, (2) obrazek podpisu jako inline CID
+    var promises=[];
+    // Uploaded files
+    promises.push(Promise.all(uploadFiles.map(function(file){
+      return file.arrayBuffer().then(function(ab){
+        var bytes=new Uint8Array(ab),binary="";
+        for(var i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
+        return {"@odata.type":"#microsoft.graph.fileAttachment",name:file.name,contentType:file.type||"application/octet-stream",contentBytes:btoa(binary)};
+      });
+    })));
+    // Inline signature image
+    if(hasSigImg){
+      promises.push(
+        fetchImageAsBase64(sigImgUrl).then(function(img){
+          // contentId musi pasować do "cid:signature-image" w HTML body
+          // isInline=true sprawia, że klient pocztowy wyświetla obrazek inline, nie jako załącznik
+          return [{
+            "@odata.type":"#microsoft.graph.fileAttachment",
+            name:"signature.png",
+            contentType:img.contentType,
+            contentBytes:img.base64,
+            isInline:true,
+            contentId:"signature-image"
+          }];
+        }).catch(function(e){
+          console.error("Nie uda\u0142o si\u0119 pobra\u0107 obrazka podpisu:",e);
+          // Best-effort — wysyłamy maila bez obrazka, niż blokować wysyłkę
+          return [];
+        })
+      );
+    }
+
+    Promise.all(promises).then(function(results){
+      // Spłaszcz wyniki — każda promise zwraca tablicę attachmentów
+      var allAtts=[];
+      results.forEach(function(arr){if(arr&&arr.length)allAtts=allAtts.concat(arr);});
+      doSend(allAtts);
+    }).catch(function(){doSend([]);});
   }
 
   function moveMail(mail,folderId){
