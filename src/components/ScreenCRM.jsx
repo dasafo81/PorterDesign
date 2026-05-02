@@ -727,29 +727,8 @@ function KanbanBoard(kp){
 
 export function ScreenCRM(p){
   // p: clients, setScreen, setAppMode, setCurClientId
-  var sCrmTab=useState("kanban"),crmTab=sCrmTab[0],setCrmTab=sCrmTab[1];
-  // GCal token przeżywa przełączanie zakładek; przy starcie próbujemy silent refresh
-  var sGcalTok=useState(function(){
-    // Initial state: token z cache jeśli nieprzeterminowany
-    try{var t=localStorage.getItem("pd_gcal_token");var e=localStorage.getItem("pd_gcal_token_exp");if(t&&e&&Date.now()<Number(e))return t;}catch(x){}return null;
-  }),gcalToken=sGcalTok[0],setGcalToken=sGcalTok[1];
-  var sGsiRdy=useState(false),gsiReady=sGsiRdy[0],setGsiReady=sGsiRdy[1];
-  React.useEffect(function(){
-    // Czekaj aż gcal.js załaduje GIS, potem spróbuj silent refresh jeśli mamy starą sesję
-    gcalWaitReady().then(function(){
-      setGsiReady(true);
-      // Jeśli mamy token w cache (nawet wygasły) — próbujemy silent refresh w tle
-      var hadSession=false;
-      try{hadSession=!!localStorage.getItem("pd_gcal_token");}catch(x){}
-      if(hadSession&&!gcalHasValidToken()){
-        gcalGetToken().then(function(fresh){
-          setGcalToken(fresh);
-        }).catch(function(){
-          // Silent refresh nie zadziałał — Paulina musi się zalogować ręcznie
-        });
-      }
-    }).catch(function(e){console.error("GIS load error",e);});
-  },[]);
+  // gcalToken/setGcalToken/gsiReady przekazywane z App
+  var gcalToken=p.gcalToken||null, setGcalToken=p.setGcalToken||function(){}, gsiReady=!!p.gsiReady;
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
   var sModal=useState(null),modalDeal=sModal[0],setModalDeal=sModal[1];
   var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
@@ -816,20 +795,6 @@ export function ScreenCRM(p){
   var clientsForSelect=p.clients.filter(function(cl){return !dealClientIds.includes(String(cl.id));});
 
   return ce("div",null,
-    // Sub-zakładki CRM: Kanban / Kalendarz
-    ce("div",{style:{display:"flex",gap:4,marginBottom:"1rem",background:"var(--bg2)",borderRadius:10,padding:3,border:"1px solid var(--bd2)",alignSelf:"flex-start"}},
-      [{id:"kanban",label:"\uD83D\uDCCC Kanban"},{id:"kalendarz",label:"\uD83D\uDCC5 Kalendarz Google"}].map(function(t){
-        var act=crmTab===t.id;
-        return ce("button",{key:t.id,onClick:function(){setCrmTab(t.id);},style:{
-          padding:"7px 14px",borderRadius:8,border:"none",fontSize:12,fontWeight:act?700:400,
-          background:act?"var(--bg)":"transparent",color:act?"var(--t1)":"var(--t3)",
-          cursor:"pointer",boxShadow:act?"0 1px 3px rgba(0,0,0,0.08)":"none",transition:"all .15s"
-        }},t.label);
-      })
-    ),
-    // Widok zależny od sub-zakładki
-    crmTab==="kalendarz"?ce(CRMKalendarz,{deals:deals||[],clients:p.clients,onDealClick:function(d){setModalDeal(d);},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady}):null,
-    crmTab==="kanban"?ce("div",null,
     // Panel dodawania dealu
     ce("div",{style:{display:"flex",gap:8,marginBottom:"1.2rem",alignItems:"center"}},
       ce("select",{
@@ -853,8 +818,7 @@ export function ScreenCRM(p){
       deals:deals,clients:p.clients,moveStage:moveStage,
       openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2
     }),
-    ):null,
-    // Modal
+    // Modall
     modalDeal?ce(ModalDeal,{
       deal:modalDeal,
       client:p.clients.find(function(c){return String(c.id)===String(modalDeal.client_id);})||null,
