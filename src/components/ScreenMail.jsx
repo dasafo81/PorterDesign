@@ -691,13 +691,10 @@ function SettingsView(p){
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:16,marginBottom:16}},
         ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:4}},"Podpis"),
         ce("p",{style:{fontSize:11,color:"var(--t3)",marginBottom:12}},
-          "Tekst dopisywany automatycznie pod ka\u017cd\u0105 wysy\u0142an\u0105 wiadomo\u015bci\u0105. Mo\u017cesz u\u017cy\u0107 prostego HTML (np. ",
-          ce("code",{style:{fontSize:11}},"<b>tekst</b>"),", ",ce("code",{style:{fontSize:11}},"<a href=\"...\">link</a>"),
-          ")."
+          "Tekst dopisywany automatycznie pod ka\u017cd\u0105 wysy\u0142an\u0105 wiadomo\u015bci\u0105. Mo\u017cesz formatowa\u0107 tekst, dodawa\u0107 linki i zmienia\u0107 kolor."
         ),
-        ce("textarea",{value:sigHtml,onChange:function(e){setSigHtml(e.target.value);},
-          placeholder:"Pozdrawiam\nPaulina Porter\nPorter Design\ntel. 600 000 000",
-          style:Object.assign({},INP,{minHeight:120,fontFamily:"monospace",fontSize:12,resize:"vertical"})})
+        ce(RichTextEditor,{value:sigHtml,onChange:setSigHtml,minHeight:120,
+          placeholder:"Pozdrawiam,\nPaulina Porter\nPorter Design\ntel. 600 000 000"})
       ),
 
       // ── Sekcja: Obrazek (logo/baner) ───────────────────────────────────
@@ -721,14 +718,15 @@ function SettingsView(p){
       ),
 
       // ── Sekcja: Podgląd ────────────────────────────────────────────────
+      // RichTextEditor renderuje HTML live — podgląd pokazuje tylko obrazek (tekst widać w edytorze)
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:16,marginBottom:16}},
-        ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:10}},"Podgl\u0105d podpisu"),
+        ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:10}},"Podgl\u0105d stopki"),
         ce("div",{style:{padding:14,background:"#fff",borderRadius:8,border:"1px solid var(--bd2)",fontSize:13,color:"#333",fontFamily:"Arial, sans-serif"}},
           (sigHtml||sigImg)
             ?ce("div",null,
-              sigHtml?ce("div",{style:{whiteSpace:"pre-wrap",marginBottom:sigImg?10:0},
+              sigHtml?ce("div",{style:{marginBottom:sigImg?10:0},
                 dangerouslySetInnerHTML:{__html:sigHtml}}):null,
-              sigImg?ce("img",{src:sigImg,alt:"",style:{maxWidth:200,maxHeight:120,display:"block"}}):null
+              sigImg?ce("img",{src:sigImg,alt:"",style:{maxWidth:250,maxHeight:100,display:"block"}}):null
             )
             :ce("div",{style:{color:"#999",fontStyle:"italic"}},"(podpis pusty)")
         )
@@ -1149,14 +1147,13 @@ export function ScreenMail(p){
     if(!sigHtml&&!sigImg)return bodyHtml;
     var sigBlock="<br><br><div style=\"font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#444;\">";
     if(sigHtml){
-      // signature_html jest zapisywany przez Paulinę z sekcji Ustawienia.
-      // Zachowujemy \n jako <br>, ale nie escapujemy HTML — Paulina może użyć <b>, <a> itp.
-      sigBlock+=String(sigHtml).replace(/\n/g,"<br>");
+      // signature_html jest HTML z RichTextEditora — nie konwertujemy, używamy bezpośrednio
+      sigBlock+=String(sigHtml);
     }
     if(sigImg){
       if(sigHtml)sigBlock+="<br>";
       var imgSrc=useCid?"cid:signature-image":sigImg;
-      sigBlock+="<img src=\""+imgSrc+"\" alt=\"\" style=\"max-width:300px;height:auto;display:block;margin-top:8px;\">";
+      sigBlock+="<img src=\""+imgSrc+"\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">";
     }
     sigBlock+="</div>";
     return bodyHtml+sigBlock;
