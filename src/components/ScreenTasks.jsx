@@ -136,7 +136,6 @@ function SubtaskRow(p) {
 // ── TASK CARD ────────────────────────────────────────────────────────────────
 function TaskCard(p) {
   var task = p.task;
-  var s1 = useState(false); var expanded = s1[0]; var setExpanded = s1[1];
   var s2 = useState(false); var editingTitle = s2[0]; var setEditingTitle = s2[1];
   var s3 = useState(task.title); var titleVal = s3[0]; var setTitleVal = s3[1];
   var s4 = useState(false); var addingSub = s4[0]; var setAddingSub = s4[1];
@@ -298,19 +297,6 @@ function TaskCard(p) {
             }, "📅")
           ),
 
-          // expand subtasks
-          ce("button", {
-            onClick: function() { setExpanded(function(v) { return !v; }); },
-            title: expanded ? "Zwiń" : "Rozwiń podzadania",
-            style: {
-              border: "1.5px solid var(--bd2)", background: "var(--bg2)",
-              cursor: "pointer", borderRadius: 7, padding: "4px 8px",
-              fontSize: 12, color: "var(--t2)",
-              transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform .2s"
-            }
-          }, "⌄"),
-
           // delete
           ce("button", {
             onClick: p.onDelete,
@@ -326,42 +312,35 @@ function TaskCard(p) {
     ),
 
     // ── SUBTASKS PANEL ──
-    expanded
-      ? ce("div", { style: { borderTop: "1px solid var(--bd3)", paddingTop: 6, paddingBottom: 6 } },
-          subtasks.length === 0 && !addingSub
-            ? ce("div", { style: { padding: "8px 16px 4px 36px", fontSize: 12, color: "var(--t3)" } },
-                "Brak podzadań"
-              )
-            : null,
-          subtasks.map(function(sub) {
-            return ce(SubtaskRow, {
-              key: sub.id, sub: sub,
-              onUpdate: function(patch) { updateSubtask(sub.id, patch); },
-              onDelete: function() { deleteSubtask(sub.id); }
-            });
-          }),
-          addingSub
-            ? ce("div", { style: { display: "flex", alignItems: "center", gap: 10, padding: "6px 12px 6px 36px" } },
-                ce("div", { style: { width: 16, height: 16, borderRadius: 4, border: "1.5px solid var(--bd2)", flexShrink: 0 } }),
-                ce(QuickInput, {
-                  value: newSubVal, fontSize: 13, placeholder: "Nowe podzadanie...",
-                  onChange: setNewSubVal, onConfirm: addSubtask,
-                  onCancel: function() { setAddingSub(false); setNewSubVal(""); }
-                })
-              )
-            : null,
-          ce("button", {
-            onClick: function() { setAddingSub(true); setExpanded(true); },
-            style: {
-              display: "flex", alignItems: "center", gap: 6,
-              margin: "4px 12px 4px 36px", padding: "5px 10px",
-              border: "1.5px dashed var(--bd2)", borderRadius: 8,
-              background: "transparent", cursor: "pointer",
-              fontSize: 11, color: "var(--t3)", fontFamily: "inherit"
-            }
-          }, "+ Dodaj podzadanie")
-        )
-      : null
+    ce("div", { style: { borderTop: subtasks.length > 0 || addingSub ? "1px solid var(--bd3)" : "none", paddingTop: subtasks.length > 0 || addingSub ? 6 : 0, paddingBottom: subtasks.length > 0 || addingSub ? 6 : 0 } },
+        subtasks.map(function(sub) {
+          return ce(SubtaskRow, {
+            key: sub.id, sub: sub,
+            onUpdate: function(patch) { updateSubtask(sub.id, patch); },
+            onDelete: function() { deleteSubtask(sub.id); }
+          });
+        }),
+        addingSub
+          ? ce("div", { style: { display: "flex", alignItems: "center", gap: 10, padding: "6px 12px 6px 36px" } },
+              ce("div", { style: { width: 16, height: 16, borderRadius: 4, border: "1.5px solid var(--bd2)", flexShrink: 0 } }),
+              ce(QuickInput, {
+                value: newSubVal, fontSize: 13, placeholder: "Nowe podzadanie...",
+                onChange: setNewSubVal, onConfirm: addSubtask,
+                onCancel: function() { setAddingSub(false); setNewSubVal(""); }
+              })
+            )
+          : null,
+        ce("button", {
+          onClick: function() { setAddingSub(true); },
+          style: {
+            display: "flex", alignItems: "center", gap: 6,
+            margin: "4px 12px 4px 36px", padding: "5px 10px",
+            border: "1.5px dashed var(--bd2)", borderRadius: 8,
+            background: "transparent", cursor: "pointer",
+            fontSize: 11, color: "var(--t3)", fontFamily: "inherit"
+          }
+        }, "+ Dodaj podzadanie")
+      )
   );
 }
 
