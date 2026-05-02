@@ -1340,7 +1340,7 @@ export function ProdCard(p){
         kdSegm.map(function(s,i){
           return ce("div",{key:i,style:{display:"flex",gap:8,alignItems:"center",marginBottom:8}},
             ce("select",{value:s.len,onChange:function(ev){setSegm(i,"len",Number(ev.target.value));},style:Object.assign({},IST,{flex:2,minHeight:48})},
-              kdLens.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+formatPLN(kdSzyny[l]));})
+              kdLens.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzyny[l])+"\xa0z\u0142");})
             ),
             ce("input",{type:"number",min:1,value:s.qty,onChange:function(ev){setSegm(i,"qty",parseInt(ev.target.value)||1);},style:Object.assign({},IST,{width:72,flex:"none",minHeight:48}),placeholder:"1"}),
             ce("button",{onClick:function(){removeSegm(i);},style:{border:"none",background:"var(--bg2)",color:"var(--t2)",borderRadius:8,padding:"8px 12px",cursor:"pointer",fontSize:16,lineHeight:1}},"\u00d7")
@@ -1352,7 +1352,7 @@ export function ProdCard(p){
       ),
       // zaślepki (informacyjnie)
       kdSegm.length>0?ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginBottom:14}},
-        "\u2022 Za\u015blepki "+kdMm+"mm x2 \u2014 "+formatPLN(zCena*2)+" (doliczane automatycznie)"
+        "\u2022 Za\u015blepki "+kdMm+"mm x2 \u2014 "+Math.round(zCena*2)+"\xa0z\u0142 (doliczane automatycznie)"
       ):null,
       // akcesoria
       ce("div",null,
@@ -1362,7 +1362,7 @@ export function ProdCard(p){
             var q=parseInt(kdAcc[a.id])||0;
             return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:q>0?"var(--grl)":"var(--bg2)",borderRadius:8,border:"1px solid "+(q>0?"var(--gr)":"var(--bd2)"),transition:"all .15s"}},
               ce("span",{style:{flex:1,fontSize:14,color:"var(--t1)"}},a.label),
-              ce("span",{style:{fontSize:13,color:"var(--t2)",whiteSpace:"nowrap"}},formatPLN(a.cena)+" / szt."),
+              ce("span",{style:{fontSize:13,color:"var(--t2)",whiteSpace:"nowrap"}},Math.round(a.cena)+"\xa0z\u0142 / szt."),
               ce("input",{type:"number",min:0,value:q||"",onChange:function(ev){setAcc(a.id,ev.target.value);},placeholder:"0",style:{width:60,padding:"6px 8px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)",textAlign:"center"}})
             );
           })
