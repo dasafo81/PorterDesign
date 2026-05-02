@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10 } from '../constants/data.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
+import { sbApi } from '../lib/supabase.js';
 const ce = React.createElement;
 
 export const MOCK_SENT = [];
@@ -11,19 +12,19 @@ export const MAIL_TEMPLATES = [
   {
     id:"oferta",label:"Oferta",icon:"\uD83D\uDCCB",
     subject:"Oferta \u2013 {clientName}",
-    body:"Dzie\u0144 dobry,\n\nPrzesy\u0142am wycen\u0119 {honorific} zam\u00f3wienia.\n\nWarto\u015b\u0107: {total} z\u0142\nZaliczka 50%: {zaliczka} z\u0142\n\nPozdrawiam,\nPaulina Porter",
+    body:"Dzie\u0144 dobry,\n\nPrzesy\u0142am wycen\u0119 {honorific} zam\u00f3wienia.\n\nWarto\u015b\u0107: {total} z\u0142\nZaliczka 50%: {zaliczka} z\u0142",
     suggestAttachments:["pdf_oferta","pdf_uproszczona"]
   },
   {
     id:"potwierdzenie",label:"Potwierdzenie",icon:"\u2705",
     subject:"Potwierdzenie zam\u00f3wienia",
-    body:"Dzie\u0144 dobry,\n\nPotwierdzam zam\u00f3wienie.\n\nPozdrawiam,\nPaulina Porter",
+    body:"Dzie\u0144 dobry,\n\nPotwierdzam zam\u00f3wienie.",
     suggestAttachments:["pdf_zlecenie"]
   },
   {
     id:"przypomnienie",label:"Przypomnienie",icon:"\uD83D\uDD14",
     subject:"Przypomnienie \u2013 wycena",
-    body:"Dzie\u0144 dobry,\n\nPrzypominam o wycenie. Oferta wa\u017cna 30 dni.\n\nPozdrawiam,\nPaulina Porter",
+    body:"Dzie\u0144 dobry,\n\nPrzypominam o wycenie. Oferta wa\u017cna 30 dni.",
     suggestAttachments:[]
   },
   {id:"wlasny",label:"W\u0142asny",icon:"\u270F\uFE0F",subject:"",body:"",suggestAttachments:[]}
@@ -41,7 +42,8 @@ var SYSTEM_FOLDERS = [
   {id:"compose",label:"Nowa wiadomo\u015b\u0107",icon:"\u270F\uFE0F"},
   {id:"sent",label:"Wys\u0142ane",icon:"\uD83D\uDCE4"},
   {id:"drafts",label:"Robocze",icon:"\uD83D\uDCDD"},
-  {id:"templates",label:"Szablony",icon:"\uD83D\uDCCB"}
+  {id:"templates",label:"Szablony",icon:"\uD83D\uDCCB"},
+  {id:"settings",label:"Ustawienia",icon:"\u2699\uFE0F"}
 ];
 
 export function fillTemplate(tpl,client){
@@ -588,6 +590,143 @@ function MailPreview(p){
   );
 }
 
+// ── SettingsView ────────────────────────────────────────────────────────────
+// Edytor podpisu (HTML + obrazek) zapisywany w Supabase per email użytkownika MS
+function SettingsView(p){
+  var us=React.useState, ue=React.useEffect, ur=React.useRef;
+
+  // Lokalny stan formularza (osobny od props.userSettings — żeby Paulina mogła
+  // edytować bez auto-zapisu, dopiero przycisk "Zapisz" propaguje zmiany)
+  var sH=us((p.userSettings&&p.userSettings.signature_html)||""),sigHtml=sH[0],setSigHtml=sH[1];
+  var sI=us((p.userSettings&&p.userSettings.signature_image_url)||""),sigImg=sI[0],setSigImg=sI[1];
+  var sUp=us(false),uploading=sUp[0],setUploading=sUp[1];
+  var sSv=us(false),saving=sSv[0],setSaving=sSv[1];
+  var sMsg=us(null),msg=sMsg[0],setMsg=sMsg[1];
+  var fileRef=ur(null);
+
+  // Resync kiedy props się zmienią (np. po pierwszym załadowaniu z bazy)
+  ue(function(){
+    if(p.userSettings){
+      setSigHtml(p.userSettings.signature_html||"");
+      setSigImg(p.userSettings.signature_image_url||"");
+    }
+  // eslint-disable-next-line
+  },[p.userSettings?p.userSettings.id:null]);
+
+  function onPickFile(){
+    if(fileRef.current)fileRef.current.click();
+  }
+  function onFileChange(e){
+    var f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    if(!p.userEmail){setMsg({type:"err",text:"Brak zalogowanego konta MS"});return;}
+    if(f.size>5*1024*1024){setMsg({type:"err",text:"Plik wi\u0119kszy ni\u017c 5 MB"});return;}
+    setUploading(true);setMsg(null);
+    sbApi.uploadSignatureImage(p.userEmail,f).then(function(url){
+      setSigImg(url);
+      setUploading(false);
+      setMsg({type:"ok",text:"Wgrano obrazek \u2014 nie zapomnij klikn\u0105\u0107 \"Zapisz\""});
+    }).catch(function(err){
+      setUploading(false);
+      setMsg({type:"err",text:"B\u0142\u0105d uploadu: "+(err.message||"nieznany")});
+    });
+    e.target.value="";
+  }
+  function onRemoveImage(){
+    if(!sigImg)return;
+    if(!window.confirm("Usun\u0105\u0107 obrazek z podpisu?"))return;
+    var oldUrl=sigImg;
+    setSigImg("");
+    setMsg({type:"ok",text:"Obrazek usuni\u0119ty z podpisu \u2014 nie zapomnij klikn\u0105\u0107 \"Zapisz\""});
+    // Best-effort delete ze Storage (nie blokuje UI)
+    sbApi.deleteSignatureImage(oldUrl);
+  }
+  function onSave(){
+    if(!p.userEmail){setMsg({type:"err",text:"Brak zalogowanego konta MS"});return;}
+    setSaving(true);setMsg(null);
+    sbApi.upsertUserSettings(p.userEmail,{
+      signature_html:sigHtml,
+      signature_image_url:sigImg
+    }).then(function(rows){
+      setSaving(false);
+      setMsg({type:"ok",text:"Zapisano \u2713"});
+      if(p.onSaved&&rows&&rows[0])p.onSaved(rows[0]);
+    }).catch(function(err){
+      setSaving(false);
+      setMsg({type:"err",text:"B\u0142\u0105d zapisu: "+(err.message||"nieznany")});
+    });
+  }
+
+  return ce("div",{style:{height:"100%",overflowY:"auto",padding:"4px 4px 20px"}},
+    ce("div",{style:{maxWidth:720,margin:"0 auto"}},
+      ce("h2",{style:{fontSize:18,fontWeight:700,color:"var(--t1)",marginBottom:6}},"Ustawienia poczty"),
+      ce("p",{style:{fontSize:12,color:"var(--t3)",marginBottom:20}},
+        "Konto: ",ce("strong",null,p.userEmail||"\u2014")
+      ),
+
+      // ── Sekcja: Podpis ─────────────────────────────────────────────────
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:16,marginBottom:16}},
+        ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:4}},"Podpis"),
+        ce("p",{style:{fontSize:11,color:"var(--t3)",marginBottom:12}},
+          "Tekst dopisywany automatycznie pod ka\u017cd\u0105 wysy\u0142an\u0105 wiadomo\u015bci\u0105. Mo\u017cesz u\u017cy\u0107 prostego HTML (np. ",
+          ce("code",{style:{fontSize:11}},"<b>tekst</b>"),", ",ce("code",{style:{fontSize:11}},"<a href=\"...\">link</a>"),
+          ")."
+        ),
+        ce("textarea",{value:sigHtml,onChange:function(e){setSigHtml(e.target.value);},
+          placeholder:"Pozdrawiam\nPaulina Porter\nPorter Design\ntel. 600 000 000",
+          style:Object.assign({},INP,{minHeight:120,fontFamily:"monospace",fontSize:12,resize:"vertical"})})
+      ),
+
+      // ── Sekcja: Obrazek (logo/baner) ───────────────────────────────────
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:16,marginBottom:16}},
+        ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:4}},"Obrazek w stopce"),
+        ce("p",{style:{fontSize:11,color:"var(--t3)",marginBottom:12}},"Logo lub baner pojawiaj\u0105cy si\u0119 pod tekstem podpisu (max 5 MB)."),
+        ce("input",{ref:fileRef,type:"file",accept:"image/*",style:{display:"none"},onChange:onFileChange}),
+        sigImg
+          ?ce("div",{style:{display:"flex",gap:14,alignItems:"flex-start"}},
+            ce("div",{style:{flexShrink:0,padding:8,background:"#fff",borderRadius:8,border:"1px solid var(--bd2)"}},
+              ce("img",{src:sigImg,alt:"Podpis",style:{maxWidth:200,maxHeight:120,display:"block"}})
+            ),
+            ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+              ce("button",{onClick:onPickFile,disabled:uploading,style:BGHOST},uploading?"\u23F3 Wgrywam\u2026":"Zmie\u0144 obrazek"),
+              ce("button",{onClick:onRemoveImage,style:Object.assign({},BGHOST,{color:"#b91c1c"})},"Usu\u0144 obrazek")
+            )
+          )
+          :ce("button",{onClick:onPickFile,disabled:uploading,style:BGHOST},
+            uploading?"\u23F3 Wgrywam\u2026":"\uD83D\uDCCE Wgraj obrazek"
+          )
+      ),
+
+      // ── Sekcja: Podgląd ────────────────────────────────────────────────
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:16,marginBottom:16}},
+        ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:10}},"Podgl\u0105d podpisu"),
+        ce("div",{style:{padding:14,background:"#fff",borderRadius:8,border:"1px solid var(--bd2)",fontSize:13,color:"#333",fontFamily:"Arial, sans-serif"}},
+          (sigHtml||sigImg)
+            ?ce("div",null,
+              sigHtml?ce("div",{style:{whiteSpace:"pre-wrap",marginBottom:sigImg?10:0},
+                dangerouslySetInnerHTML:{__html:sigHtml}}):null,
+              sigImg?ce("img",{src:sigImg,alt:"",style:{maxWidth:200,maxHeight:120,display:"block"}}):null
+            )
+            :ce("div",{style:{color:"#999",fontStyle:"italic"}},"(podpis pusty)")
+        )
+      ),
+
+      // ── Komunikaty ─────────────────────────────────────────────────────
+      msg?ce("div",{style:{marginBottom:12,padding:"10px 14px",borderRadius:8,fontSize:13,
+        background:msg.type==="ok"?"#dcfce7":"#fee2e2",
+        color:msg.type==="ok"?"#166534":"#991b1b",
+        border:"1px solid "+(msg.type==="ok"?"#86efac":"#fca5a5")}},msg.text):null,
+
+      // ── Akcje ──────────────────────────────────────────────────────────
+      ce("div",{style:{display:"flex",justifyContent:"flex-end",gap:8}},
+        ce("button",{onClick:onSave,disabled:saving||!p.userEmail,
+          style:Object.assign({},BPRIM,saving||!p.userEmail?{opacity:0.5,cursor:"not-allowed"}:{})},
+          saving?"\u23F3 Zapisuj\u0119\u2026":"\uD83D\uDCBE Zapisz")
+      )
+    )
+  );
+}
+
 function TemplatesView(p){
   var us=React.useState;
   var ss=us(null),selId=ss[0],setSelId=ss[1];
@@ -665,8 +804,11 @@ export function ScreenMail(p){
   var scal=us(null),calMail=scal[0],setCalMail=scal[1];
   var scalok=us(null),calSaved=scalok[0],setCalSaved=scalok[1];
   var serr=us(null),sendError=serr[0],setSendError=serr[1];
+  // Per-user ustawienia z Supabase (podpis, obrazek). null = nie załadowane jeszcze
+  var sset=us(null),userSettings=sset[0],setUserSettings=sset[1];
 
   var selClient=clients.find(function(c){return String(c.id)===String(selClientId);})||null;
+  var userEmail=msAccount&&(msAccount.username||msAccount.email)||"";
 
   // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
   ue(function(){
@@ -682,6 +824,18 @@ export function ScreenMail(p){
       }
     }).catch(function(e){console.error("MSAL session check error",e);});
   },[]);
+
+  // Załaduj ustawienia użytkownika (podpis itp.) po zalogowaniu MS
+  ue(function(){
+    if(!userEmail)return;
+    sbApi.getUserSettings(userEmail).then(function(row){
+      // Jeśli brak rekordu — ustawiamy pusty obiekt żeby UI działał (Paulina sama zapisze)
+      setUserSettings(row||{user_email:userEmail,signature_html:"",signature_image_url:""});
+    }).catch(function(e){
+      console.error("getUserSettings error",e);
+      setUserSettings({user_email:userEmail,signature_html:"",signature_image_url:""});
+    });
+  },[userEmail]);
 
   ue(function(){
     if(!accessToken)return;
@@ -767,16 +921,51 @@ export function ScreenMail(p){
     setActiveFolder("compose");
   }
 
+  // Eskejpuje znaki specjalne HTML, żeby tekst wpisany przez użytkownika
+  // (plain text) nie był interpretowany jako HTML przy wysyłce.
+  function escapeHtml(s){
+    return String(s||"")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;");
+  }
+
+  // Składa pełny HTML body wiadomości — treść użytkownika + podpis (tekst + obrazek)
+  // Treść body w obecnej wersji to plain text (zostanie zamienione na bogaty edytor w Kroku 3B).
+  // Konwersja: \n → <br>, escape HTML.
+  function buildMailHtml(plainBody, settings){
+    var bodyHtml="<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"
+      +escapeHtml(plainBody).replace(/\n/g,"<br>")
+      +"</div>";
+    var sig=settings||{};
+    var sigHtml=sig.signature_html||"";
+    var sigImg=sig.signature_image_url||"";
+    if(!sigHtml&&!sigImg)return bodyHtml;
+    var sigBlock="<br><br><div style=\"font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#444;\">";
+    if(sigHtml){
+      // signature_html jest zapisywany przez Paulinę z sekcji Ustawienia.
+      // Zachowujemy \n jako <br>, ale nie escapujemy HTML — Paulina może użyć <b>, <a> itp.
+      sigBlock+=String(sigHtml).replace(/\n/g,"<br>");
+    }
+    if(sigImg){
+      if(sigHtml)sigBlock+="<br>";
+      sigBlock+="<img src=\""+sigImg+"\" alt=\"\" style=\"max-width:300px;height:auto;display:block;margin-top:8px;\">";
+    }
+    sigBlock+="</div>";
+    return bodyHtml+sigBlock;
+  }
+
   function handleSend(){
     if(!toEmail||!subject||!body)return;
     setSending(true);
     setSendError(null);
     var toName=selClient?selClient.name:toEmail;
     var uploadFiles=attachments.filter(function(a){return a.type==="upload"&&a.file;}).map(function(a){return a.file;});
+    var htmlBody=buildMailHtml(body, userSettings);
     function doSend(atts){
       var msgPayload={
         subject:subject,
-        body:{contentType:"Text",content:body},
+        body:{contentType:"HTML",content:htmlBody},
         toRecipients:[{emailAddress:{address:toEmail,name:toName}}]
       };
       if(atts&&atts.length>0)msgPayload.attachments=atts;
@@ -895,7 +1084,19 @@ export function ScreenMail(p){
     ),
     ce("div",{style:{flex:1,display:"flex",flexDirection:"column",marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Tre\u015b\u0107"),
-      ce("textarea",{value:body,onChange:function(e){setBody(e.target.value);},style:Object.assign({},INP,{flex:1,minHeight:180,resize:"vertical",lineHeight:1.7})})
+      ce("textarea",{value:body,onChange:function(e){setBody(e.target.value);},style:Object.assign({},INP,{flex:1,minHeight:180,resize:"vertical",lineHeight:1.7})}),
+      // Informacja o automatycznie doklejanym podpisie
+      (userSettings&&(userSettings.signature_html||userSettings.signature_image_url))
+        ?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
+          "\u2139\uFE0F Podpis dopisze si\u0119 automatycznie. Zmie\u0144 go w ",
+          ce("a",{href:"#",onClick:function(e){e.preventDefault();setActiveFolder("settings");},
+            style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
+        )
+        :ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
+          "\u2139\uFE0F Brak podpisu. Skonfiguruj go w ",
+          ce("a",{href:"#",onClick:function(e){e.preventDefault();setActiveFolder("settings");},
+            style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
+        )
     ),
     ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate}),
     ce("div",{style:{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid var(--bd2)"}},
@@ -920,6 +1121,12 @@ export function ScreenMail(p){
     );
   } else if(activeFolder==="templates"){
     rightContent=ce(TemplatesView,{templates:MAIL_TEMPLATES,onUseTemplate:function(tpl){setSelTemplate(tpl.id);setActiveFolder("compose");}});
+  } else if(activeFolder==="settings"){
+    rightContent=ce(SettingsView,{
+      userEmail:userEmail,
+      userSettings:userSettings,
+      onSaved:function(row){setUserSettings(row);}
+    });
   } else {
     var folderMails=allMails.filter(function(m){return m.folder===activeFolder;});
     var loaderActive=loadingMails&&(activeFolder==="sent"||activeFolder==="inbox");
