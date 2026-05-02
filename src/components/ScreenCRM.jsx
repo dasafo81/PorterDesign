@@ -282,12 +282,41 @@ export function CRMKalendarz(p){
   var sView=useState("month"),calView=sView[0],setCalView=sView[1];
   var sRefDate=useState(function(){return new Date();}),refDate=sRefDate[0],setRefDate=sRefDate[1];
   var sNewEv=useState(null),newEvDraft=sNewEv[0],setNewEvDraft=sNewEv[1];
+  var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
   React.useEffect(function(){
     if(!gcalToken) return;
+    fetchCalendarList(gcalToken);
     fetchEvents(gcalToken);
   },[gcalToken, refDate.getFullYear(), refDate.getMonth(), calView]);
+
+  function fetchCalendarList(token){
+    function doFetch(t){
+      return fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer",{
+        headers:{Authorization:"Bearer "+t}
+      });
+    }
+    doFetch(token)
+      .then(function(r){
+        if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doFetch(fresh);});}
+        return r;
+      })
+      .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+      .then(function(data){
+        var items=(data.items||[]).map(function(c){
+          return {id:c.id,summary:c.summary,color:c.backgroundColor||"#4285f4",primary:!!c.primary};
+        });
+        // primary first, then alphabetic
+        items.sort(function(a,b){
+          if(a.primary&&!b.primary)return -1;
+          if(!a.primary&&b.primary)return 1;
+          return (a.summary||"").localeCompare(b.summary||"","pl");
+        });
+        setCalList(items);
+      })
+      .catch(function(){});
+  }
 
   function login(){
     if(!gsiReady){setErrEv("Biblioteka Google jeszcze się ładuje, spróbuj za chwilę.");return;}
@@ -319,36 +348,38 @@ export function CRMKalendarz(p){
       from=new Date(refDate.getFullYear(),refDate.getMonth(),1);
       to=new Date(refDate.getFullYear(),refDate.getMonth()+1,0,23,59,59,999);
     }
-    var url="https://www.googleapis.com/calendar/v3/calendars/primary/events"
-      +"?timeMin="+encodeURIComponent(from.toISOString())
-      +"&timeMax="+encodeURIComponent(to.toISOString())
-      +"&singleEvents=true&orderBy=startTime&maxResults=200";
-    function doFetch(t){
-      return fetch(url,{headers:{Authorization:"Bearer "+t}});
+    // Lista kalendarzy do odpytania: jeśli mamy listę, pobierz ze wszystkich; w przeciwnym razie tylko primary
+    var calsToFetch = calList.length>0 ? calList : [{id:"primary",summary:"",color:"#4285f4",primary:true}];
+    function buildUrl(calId){
+      return "https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events"
+        +"?timeMin="+encodeURIComponent(from.toISOString())
+        +"&timeMax="+encodeURIComponent(to.toISOString())
+        +"&singleEvents=true&orderBy=startTime&maxResults=200";
     }
-    doFetch(token)
-      .then(function(r){
-        if(r.status===401){
-          // Token wygasł — silent refresh i ponowna próba
-          return gcalGetToken().then(function(fresh){
-            setGcalToken(fresh);
-            return doFetch(fresh);
+    function doFetchOne(calMeta,t){
+      return fetch(buildUrl(calMeta.id),{headers:{Authorization:"Bearer "+t}})
+        .then(function(r){
+          if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return fetch(buildUrl(calMeta.id),{headers:{Authorization:"Bearer "+fresh}});});}
+          return r;
+        })
+        .then(function(r){if(!r.ok)return {items:[]};return r.json();})
+        .then(function(data){
+          return (data.items||[]).map(function(ev){
+            return Object.assign({},ev,{_calId:calMeta.id,_calColor:calMeta.color,_calName:calMeta.summary});
           });
-        }
-        return r;
-      })
-      .then(function(r){
-        if(!r.ok)throw new Error("HTTP "+r.status);
-        return r.json();
-      })
-      .then(function(data){
-        setGcalEvents(data.items||[]);
+        })
+        .catch(function(){return [];});
+    }
+    Promise.all(calsToFetch.map(function(c){return doFetchOne(c,token);}))
+      .then(function(arrays){
+        var merged=[];
+        arrays.forEach(function(a){merged=merged.concat(a);});
+        setGcalEvents(merged);
         setLoadingEv(false);
       })
       .catch(function(e){
         setLoadingEv(false);
         if(e&&e.code==="GCAL_INTERACTION_REQUIRED"){
-          // Sesja Google wygasła — wyloguj cicho, niech UI pokaże przycisk Zaloguj
           setGcalToken(null);
           setErrEv("Sesja Google wygasła — zaloguj się ponownie.");
         } else {
@@ -419,7 +450,21 @@ export function CRMKalendarz(p){
     var pad=function(n){return String(n).padStart(2,'0');};
     var dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
     var h=d.getHours();
-    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false});
+    // Domyślnie zaznaczony: primary jeśli istnieje, inaczej pierwszy z listy
+    var defaultCals=[];
+    var primary=calList.find(function(c){return c.primary;});
+    if(primary) defaultCals=[primary.id];
+    else if(calList.length>0) defaultCals=[calList[0].id];
+    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false,selectedCals:defaultCals});
+  }
+
+  function toggleCalInDraft(calId){
+    setNewEvDraft(function(d){
+      if(!d) return d;
+      var cur=d.selectedCals||[];
+      var next=cur.indexOf(calId)>=0 ? cur.filter(function(x){return x!==calId;}) : cur.concat([calId]);
+      return Object.assign({},d,{selectedCals:next});
+    });
   }
 
   function addCustomEvent(){
@@ -427,6 +472,8 @@ export function CRMKalendarz(p){
     var ev=newEvDraft;
     if(!ev.title.trim()){alert('Podaj tytu\u0142 zdarzenia.');return;}
     if(!ev.date){alert('Podaj dat\u0119.');return;}
+    var sel=ev.selectedCals||[];
+    if(sel.length===0){alert('Wybierz co najmniej jeden kalendarz.');return;}
     var start=new Date(ev.date+'T'+ev.timeFrom+':00');
     var end=new Date(ev.date+'T'+ev.timeTo+':00');
     if(end<=start){alert('Godzina zako\u0144czenia musi by\u0107 p\u00f3\u017aniejsza ni\u017c rozpocz\u0119cia.');return;}
@@ -436,28 +483,32 @@ export function CRMKalendarz(p){
       start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
       end:{dateTime:end.toISOString(),timeZone:'Europe/Warsaw'}
     };
-    function doPost(t){
-      return fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
+    function postToCal(calId,t){
+      return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events',{
         method:'POST',
         headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},
         body:JSON.stringify(body)
-      });
+      }).then(function(r){
+        if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events',{method:'POST',headers:{Authorization:'Bearer '+fresh,'Content-Type':'application/json'},body:JSON.stringify(body)});});}
+        return r;
+      }).then(function(r){
+        if(!r.ok)return r.text().then(function(){return {ok:false,calId:calId};});
+        return {ok:true,calId:calId};
+      }).catch(function(){return {ok:false,calId:calId};});
     }
     setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
-    doPost(gcalToken)
-      .then(function(r){
-        if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doPost(fresh);}); }
-        return r;
-      })
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-      .then(function(){
-        setNewEvDraft(null);
-        fetchEvents(gcalToken);
-      })
-      .catch(function(e){
-        setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
-        if(e&&e.code==='GCAL_INTERACTION_REQUIRED'){setGcalToken(null);alert('Sesja Google wygas\u0142a \u2014 zaloguj si\u0119 ponownie.');}
-        else alert('B\u0142\u0105d dodawania zdarzenia: '+(e.message||''));
+    Promise.all(sel.map(function(cid){return postToCal(cid,gcalToken);}))
+      .then(function(results){
+        var failed=results.filter(function(r){return !r.ok;});
+        if(failed.length===0){
+          setNewEvDraft(null);
+          fetchEvents(gcalToken);
+        } else {
+          setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
+          var failedNames=failed.map(function(f){var c=calList.find(function(x){return x.id===f.calId;});return c?c.summary:f.calId;}).join(', ');
+          alert('Niektóre kalendarze nie przyjęły zdarzenia: '+failedNames);
+          fetchEvents(gcalToken);
+        }
       });
   }
 
@@ -471,7 +522,7 @@ export function CRMKalendarz(p){
       var start=ev.start&&(ev.start.dateTime||ev.start.date);
       if(!start) return;
       var d=new Date(start);
-      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:"#4285f4",time:ev.start.dateTime?d:null});
+      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:ev._calColor||"#4285f4",time:ev.start.dateTime?d:null,calName:ev._calName||""});
     });
     // Deal events
     dealEvents.forEach(function(ev){
@@ -659,7 +710,7 @@ export function CRMKalendarz(p){
       onClick:function(e){if(e.target===e.currentTarget)setNewEvDraft(null);}
     },
       ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:24,width:'100%',maxWidth:420,boxShadow:'0 8px 40px rgba(0,0,0,0.2)',margin:'0 16px'}},
-        ce('div',{style:{fontSize:16,fontWeight:700,color:'var(--t1)',marginBottom:16}},'?? Nowe zdarzenie w Google Calendar'),
+        ce('div',{style:{fontSize:16,fontWeight:700,color:'var(--t1)',marginBottom:16}},'\uD83D\uDCC5 Nowe zdarzenie w Google Calendar'),
         ce('div',{style:{marginBottom:12}},
           ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'TYTU\u0141 *'),
           ce('input',{
@@ -705,6 +756,28 @@ export function CRMKalendarz(p){
             style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',resize:'none',fontFamily:'inherit'}
           })
         ),
+        ce('div',{style:{marginBottom:16}},
+          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:6}},'KALENDARZE *'),
+          calList.length===0
+            ?ce('div',{style:{fontSize:11,color:'var(--t3)',padding:'8px 10px',background:'var(--bg2)',borderRadius:8,border:'1.5px solid var(--bd2)'}},'\u23F3 \u0141aduj\u0119 list\u0119 kalendarzy...')
+            :ce('div',{style:{display:'flex',flexDirection:'column',gap:4,maxHeight:160,overflowY:'auto',padding:6,background:'var(--bg2)',borderRadius:8,border:'1.5px solid var(--bd2)'}},
+                calList.map(function(c){
+                  var checked=(newEvDraft.selectedCals||[]).indexOf(c.id)>=0;
+                  return ce('div',{
+                    key:c.id,
+                    onClick:function(){toggleCalInDraft(c.id);},
+                    style:{display:'flex',alignItems:'center',gap:8,padding:'7px 8px',borderRadius:6,cursor:'pointer',background:checked?'rgba(66,133,244,0.08)':'transparent',transition:'background .12s'}
+                  },
+                    ce('div',{style:{width:16,height:16,borderRadius:4,border:'1.5px solid '+(checked?'#4285f4':'var(--bd2)'),background:checked?'#4285f4':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+                      checked?ce('span',{style:{color:'#fff',fontSize:10,fontWeight:700,lineHeight:1}},'\u2713'):null
+                    ),
+                    ce('div',{style:{width:10,height:10,borderRadius:'50%',background:c.color,flexShrink:0}}),
+                    ce('span',{style:{fontSize:12,color:'var(--t1)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},c.summary||'(bez nazwy)'),
+                    c.primary?ce('span',{style:{fontSize:9,color:'var(--t3)',background:'var(--bg)',padding:'2px 6px',borderRadius:4,letterSpacing:'0.05em'}},'GŁÓWNY'):null
+                  );
+                })
+              )
+        ),
         ce('div',{style:{display:'flex',gap:10}},
           ce('button',{
             onClick:function(){setNewEvDraft(null);},
@@ -713,12 +786,12 @@ export function CRMKalendarz(p){
           },'Anuluj'),
           ce('button',{
             onClick:addCustomEvent,
-            disabled:newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date,
+            disabled:newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(newEvDraft.selectedCals||[]).length===0,
             style:{flex:2,padding:'10px',borderRadius:10,border:'none',
-              background:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date)?'var(--bd2)':'#4285f4',
-              color:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date)?'var(--t3)':'#fff',
+              background:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(newEvDraft.selectedCals||[]).length===0)?'var(--bd2)':'#4285f4',
+              color:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(newEvDraft.selectedCals||[]).length===0)?'var(--t3)':'#fff',
               fontSize:13,fontWeight:700,cursor:newEvDraft.saving?'wait':'pointer',fontFamily:'inherit'}
-          },newEvDraft.saving?'\u23F3 Zapisuj\u0119...':'\uD83D\uDCC5 Dodaj do Google Calendar')
+          },newEvDraft.saving?'\u23F3 Zapisuj\u0119...':((newEvDraft.selectedCals||[]).length>1?'\uD83D\uDCC5 Dodaj do '+(newEvDraft.selectedCals||[]).length+' kalendarzy':'\uD83D\uDCC5 Dodaj do Google Calendar'))
         )
       )
     ):null
