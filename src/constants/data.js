@@ -599,7 +599,28 @@ export const PROD_TYPES =[
   {id:"szyna",label:"Szyna KS",icon:"📏"},
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
   {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
+  {id:"karnisz_dek",label:"Karnisz dekoracyjny",icon:"📏"},
   {id:"inny",label:"Inny",icon:"📦"}
+];
+
+// ── KARNISZ DEKORACYJNY IMPRESS LINE SQUARE ──────────────────────────────────
+export const KD_SZYNY = {
+  20: {160:29.49, 200:36.87, 240:44.23, 300:55.29, 400:73.72, 580:106.90},
+  30: {160:35.38, 200:44.23, 240:53.07, 300:66.35, 400:88.46, 580:128.27}
+};
+export const KD_ZASLEPKI = {20: 7.73, 30: 9.75};
+export const KD_AKCESORIA = [
+  {id:"uch_suf",     label:"Uchwyt sufitowy",                      cena:5.75},
+  {id:"uch_suf_wkl", label:"Uchwyt sufitowy wklikiwany",            cena:4.01},
+  {id:"zas_uch_wkl", label:"Za\u015blepka uchwytu sufit. wklikyw.",  cena:0.64},
+  {id:"wsp_suf",     label:"Wspornik sufitowy",                     cena:13.04},
+  {id:"lac_szyny",   label:"\u0141\u0105cznik szyny",                cena:16.11},
+  {id:"pod_wsp",     label:"Podstawa wspornika",                    cena:20.78},
+  {id:"trz_wsp_9",   label:"Trzpie\u0144 wspornika 9 cm",            cena:17.70},
+  {id:"trz_wsp_914", label:"Trzpie\u0144 wspornika reg. 9-14 cm",    cena:21.28},
+  {id:"wsp_podw",    label:"Wspornik podw\xf3jny",                  cena:33.92},
+  {id:"wsp_bocz_20", label:"Wspornik boczny 20 mm",                 cena:1.80},
+  {id:"wsp_bocz_30", label:"Wspornik boczny 30 mm",                 cena:1.80},
 ];
 
 export const RCITY ={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
