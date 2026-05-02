@@ -280,11 +280,13 @@ function AttachmentsSection(p){
         return ce("div",{key:att.id,style:{display:"flex",alignItems:"center",gap:6,
           padding:"5px 10px 5px 8px",borderRadius:20,
           background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
-          ce("span",{style:{fontSize:13}},att.type==="app"?"\uD83D\uDCC4":"\uD83D\uDCCE"),
+          ce("span",{style:{fontSize:13}},att.type==="app"?"\uD83D\uDCC4":att.type==="template"?"\uD83D\uDCCE":"\uD83D\uDCCE"),
           ce("span",{style:{color:"var(--t1)",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},att.name),
           att.size
             ?ce("span",{style:{color:"var(--t3)",fontSize:10}},fmtBytes(att.size))
-            :ce("span",{style:{fontSize:10,color:"var(--gr)",fontWeight:600}},"z app"),
+            :att.type==="template"
+              ?ce("span",{style:{fontSize:10,color:"#7c3aed",fontWeight:600}},"z szablonu")
+              :ce("span",{style:{fontSize:10,color:"var(--gr)",fontWeight:600}},"z app"),
           ce("button",{onClick:function(){remove(att.id);},
             style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",
               fontSize:14,lineHeight:1,padding:"0 2px",marginLeft:2}},"\u00d7")
@@ -752,32 +754,284 @@ function SettingsView(p){
 }
 
 function TemplatesView(p){
-  var us=React.useState;
+  var us=React.useState, ue=React.useEffect, ur=React.useRef;
   var ss=us(null),selId=ss[0],setSelId=ss[1];
-  var sel=p.templates.find(function(t){return t.id===selId;})||null;
+  var sMode=us("view"),mode=sMode[0],setMode=sMode[1]; // "view"|"edit"|"new"
+  var sLabel=us(""),editLabel=sLabel[0],setEditLabel=sLabel[1];
+  var sIcon=us("\uD83D\uDCCB"),editIcon=sIcon[0],setEditIcon=sIcon[1];
+  var sSubj=us(""),editSubj=sSubj[0],setEditSubj=sSubj[1];
+  var sBody=us(""),editBody=sBody[0],setEditBody=sBody[1];
+  var sFiles=us([]),editFiles=sFiles[0],setEditFiles=sFiles[1];
+  var sSaving=us(false),saving=sSaving[0],setSaving=sSaving[1];
+  var sUploading=us(false),uploading=sUploading[0],setUploading=sUploading[1];
+  var sMsg=us(null),msg=sMsg[0],setMsg=sMsg[1];
+  var sConfDel=us(false),confDel=sConfDel[0],setConfDel=sConfDel[1];
+  var fileRef=ur(null);
+
+  var templates=p.templates||[];
+  var sel=templates.find(function(t){return t.id===selId;})||null;
+
+  function startEdit(tpl){
+    setEditLabel(tpl.label);
+    setEditIcon(tpl.icon||"\uD83D\uDCCB");
+    setEditSubj(tpl.subject||"");
+    // Body może być plain text albo HTML — detektujemy
+    var isHtml=/<[a-z][\s\S]*>/i.test(tpl.body||"");
+    setEditBody(isHtml?tpl.body:plainToHtml(tpl.body||""));
+    setEditFiles((tpl.templateFiles||[]).slice());
+    setMsg(null);
+    setConfDel(false);
+    setMode("edit");
+  }
+  function startNew(){
+    setSelId(null);
+    setEditLabel("");
+    setEditIcon("\uD83D\uDCCB");
+    setEditSubj("");
+    setEditBody("");
+    setEditFiles([]);
+    setMsg(null);
+    setConfDel(false);
+    setMode("new");
+  }
+  function cancelEdit(){
+    setMode("view");
+    setMsg(null);
+    setConfDel(false);
+  }
+
+  function onPickFile(){if(fileRef.current)fileRef.current.click();}
+
+  function onFileChange(e){
+    var f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    if(f.size>10*1024*1024){setMsg({type:"err",text:"Plik wi\u0119kszy ni\u017c 10 MB"});return;}
+    setUploading(true);setMsg(null);
+    var tmpId=selId||("new_"+Date.now());
+    sbApi.uploadTemplateFile(tmpId,f).then(function(fileObj){
+      setEditFiles(function(prev){return prev.concat([fileObj]);});
+      setUploading(false);
+    }).catch(function(err){
+      setUploading(false);
+      setMsg({type:"err",text:"B\u0142\u0105d uploadu: "+(err.message||"nieznany")});
+    });
+    e.target.value="";
+  }
+
+  function removeFile(url){
+    setEditFiles(function(prev){return prev.filter(function(f){return f.url!==url;});});
+    // Best-effort delete ze Storage
+    sbApi.deleteTemplateFile(url);
+  }
+
+  function onSave(){
+    if(!editLabel.trim()){setMsg({type:"err",text:"Podaj nazw\u0119 szablonu"});return;}
+    setSaving(true);setMsg(null);
+    var data={
+      label:editLabel.trim(),
+      icon:editIcon||"\uD83D\uDCCB",
+      subject:editSubj||"",
+      body:editBody||"",
+      template_files:editFiles,
+      suggest_attachments:sel&&sel.suggestAttachments||[]
+    };
+    var promise=mode==="new"
+      ?sbApi.addMailTemplate(data)
+      :sbApi.updateMailTemplate(selId,data);
+    promise.then(function(){
+      setSaving(false);
+      setMsg({type:"ok",text:"Zapisano \u2713"});
+      // Odśwież listę szablonów
+      return sbApi.getMailTemplates().then(function(rows){
+        var mapped=(rows||[]).map(function(r){return {
+          id:r.template_id,dbId:r.id,label:r.label,icon:r.icon||"\uD83D\uDCCB",
+          subject:r.subject||"",body:r.body||"",
+          suggestAttachments:r.suggest_attachments||[],
+          templateFiles:r.template_files||[],
+          isSystem:r.is_system||false,sortOrder:r.sort_order||0
+        };});
+        if(p.onTemplatesChange)p.onTemplatesChange(mapped);
+        // Ustaw zaznaczony na nowo dodany lub obecny
+        if(mode==="new"&&mapped.length>0){
+          var newest=mapped[mapped.length-1];
+          setSelId(newest.id);
+        }
+        setMode("view");
+      });
+    }).catch(function(err){
+      setSaving(false);
+      setMsg({type:"err",text:"B\u0142\u0105d zapisu: "+(err.message||"nieznany")});
+    });
+  }
+
+  function onDelete(){
+    if(!selId)return;
+    setSaving(true);
+    sbApi.deleteMailTemplate(selId).then(function(){
+      // Usuń pliki ze Storage (best-effort)
+      (sel&&sel.templateFiles||[]).forEach(function(f){sbApi.deleteTemplateFile(f.url);});
+      return sbApi.getMailTemplates().then(function(rows){
+        var mapped=(rows||[]).map(function(r){return {
+          id:r.template_id,dbId:r.id,label:r.label,icon:r.icon||"\uD83D\uDCCB",
+          subject:r.subject||"",body:r.body||"",
+          suggestAttachments:r.suggest_attachments||[],
+          templateFiles:r.template_files||[],
+          isSystem:r.is_system||false,sortOrder:r.sort_order||0
+        };});
+        if(p.onTemplatesChange)p.onTemplatesChange(mapped);
+        setSelId(mapped.length>0?mapped[0].id:null);
+        setMode("view");
+        setConfDel(false);
+        setSaving(false);
+      });
+    }).catch(function(err){
+      setSaving(false);
+      setMsg({type:"err",text:"B\u0142\u0105d usuwania: "+(err.message||"nieznany")});
+    });
+  }
+
+  // Prawa strona — podgląd lub edytor
+  var rightPane;
+  if(mode==="view"){
+    rightPane=sel
+      ?ce("div",{style:{display:"flex",flexDirection:"column",height:"100%",gap:12}},
+        ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexShrink:0}},
+          ce("span",{style:{fontSize:22}},sel.icon),
+          ce("div",{style:{fontWeight:700,fontSize:16,color:"var(--t1)",flex:1}},sel.label),
+          ce("button",{onClick:function(){startEdit(sel);},style:BGHOST},"\u270F\uFE0F Edytuj")
+        ),
+        ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"6px 10px",background:"var(--bg3)",borderRadius:8,flexShrink:0}},
+          "Temat: ",sel.subject||ce("em",null,"(brak)")),
+        // Podgląd treści
+        ce("div",{style:{flex:1,padding:14,background:"var(--bg2)",borderRadius:10,
+          border:"1px solid var(--bd2)",overflowY:"auto",fontSize:13,color:"var(--t1)",lineHeight:1.8},
+          dangerouslySetInnerHTML:{__html:sel.body||"<em style='color:var(--t3)'>(pusty szablon)</em>"}}),
+        // Pliki załączone do szablonu
+        (sel.templateFiles&&sel.templateFiles.length>0)?ce("div",{style:{flexShrink:0}},
+          ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t2)",marginBottom:6}},"Za\u0142\u0105czniki szablonu:"),
+          ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+            sel.templateFiles.map(function(f){
+              return ce("div",{key:f.url,style:{display:"flex",alignItems:"center",gap:6,
+                padding:"5px 12px 5px 8px",borderRadius:20,background:"var(--bg3)",
+                border:"1px solid var(--bd2)",fontSize:12}},
+                ce("span",null,"\uD83D\uDCCE"),
+                ce("span",{style:{color:"var(--t1)",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
+                f.size?ce("span",{style:{color:"var(--t3)",fontSize:10}},fmtBytes(f.size)):null
+              );
+            })
+          )
+        ):null,
+        ce("div",{style:{display:"flex",gap:8,flexShrink:0}},
+          ce("button",{onClick:function(){p.onUseTemplate(sel);},
+            style:Object.assign({},BPRIM,{flex:1})},"\u270F\uFE0F U\u017cyj szablonu"),
+          ce("button",{onClick:function(){startEdit(sel);},style:BGHOST},"\u2699\uFE0F Edytuj")
+        )
+      )
+      :ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",
+        justifyContent:"center",flex:1,gap:8,color:"var(--t3)"}},
+        ce("div",{style:{fontSize:40,opacity:0.2}},"\uD83D\uDCCB"),
+        ce("div",{style:{fontSize:13}},"Wybierz szablon lub utw\u00f3rz nowy")
+      );
+  } else {
+    // Tryb edycji / nowego szablonu
+    rightPane=ce("div",{style:{display:"flex",flexDirection:"column",height:"100%",gap:12,overflowY:"auto"}},
+      ce("div",{style:{fontWeight:700,fontSize:15,color:"var(--t1)",flexShrink:0}},
+        mode==="new"?"+ Nowy szablon":"Edytuj: "+editLabel),
+      // Nazwa + ikona
+      ce("div",{style:{display:"flex",gap:8,flexShrink:0}},
+        ce("input",{type:"text",value:editIcon,onChange:function(e){setEditIcon(e.target.value);},
+          placeholder:"\uD83D\uDCCB",style:Object.assign({},INP,{width:52,textAlign:"center",fontSize:18,padding:"8px 4px"})}),
+        ce("input",{type:"text",value:editLabel,onChange:function(e){setEditLabel(e.target.value);},
+          placeholder:"Nazwa szablonu",style:Object.assign({},INP,{flex:1})})
+      ),
+      // Temat
+      ce("input",{type:"text",value:editSubj,onChange:function(e){setEditSubj(e.target.value);},
+        placeholder:"Temat wiadomo\u015bci (opcjonalne: {clientName})",style:Object.assign({},INP,{flexShrink:0})}),
+      // Treść — RichTextEditor
+      ce("div",{style:{flex:1,minHeight:180,display:"flex",flexDirection:"column"}},
+        ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:4})},"Tre\u015b\u0107"),
+        ce(RichTextEditor,{value:editBody,onChange:setEditBody,minHeight:160,
+          placeholder:"Wpisz tre\u015b\u0107 szablonu\u2026 Dost\u0119pne zmienne: {clientName}, {total}, {zaliczka}"})
+      ),
+      // Pliki załączników
+      ce("div",{style:{flexShrink:0}},
+        ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t2)",marginBottom:8}},
+          "\uD83D\uDCCE Za\u0142\u0105czniki sta\u0142e szablonu"),
+        ce("input",{ref:fileRef,type:"file",style:{display:"none"},onChange:onFileChange}),
+        editFiles.length>0?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}},
+          editFiles.map(function(f){
+            return ce("div",{key:f.url,style:{display:"flex",alignItems:"center",gap:6,
+              padding:"5px 10px 5px 8px",borderRadius:20,background:"var(--bg3)",
+              border:"1px solid var(--bd2)",fontSize:12}},
+              ce("span",null,"\uD83D\uDCCE"),
+              ce("span",{style:{color:"var(--t1)",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.name),
+              f.size?ce("span",{style:{color:"var(--t3)",fontSize:10}},fmtBytes(f.size)):null,
+              ce("button",{onClick:function(){removeFile(f.url);},
+                style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:14,marginLeft:2}},"\u00d7")
+            );
+          })
+        ):null,
+        ce("button",{onClick:onPickFile,disabled:uploading,style:BGHOST},
+          uploading?"\u23F3 Wgrywam\u2026":"\uD83D\uDCCE Za\u0142\u0105cz plik")
+      ),
+      // Komunikaty
+      msg?ce("div",{style:{padding:"10px 14px",borderRadius:8,fontSize:13,flexShrink:0,
+        background:msg.type==="ok"?"#dcfce7":"#fee2e2",
+        color:msg.type==="ok"?"#166534":"#991b1b",
+        border:"1px solid "+(msg.type==="ok"?"#86efac":"#fca5a5")}},msg.text):null,
+      // Przyciski akcji
+      ce("div",{style:{display:"flex",gap:8,flexShrink:0,flexWrap:"wrap"}},
+        ce("button",{onClick:onSave,disabled:saving,
+          style:Object.assign({},BPRIM,{flex:1,opacity:saving?0.6:1})},
+          saving?"\u23F3 Zapisuj\u0119\u2026":"\uD83D\uDCBE Zapisz"),
+        ce("button",{onClick:cancelEdit,disabled:saving,style:BGHOST},"Anuluj"),
+        // Usuń szablon — tylko w trybie edycji istniejącego
+        mode==="edit"?ce("div",{style:{marginLeft:"auto"}},
+          !confDel
+            ?ce("button",{onClick:function(){setConfDel(true);},
+              style:Object.assign({},BGHOST,{color:"#b91c1c",borderColor:"#fca5a5"})},
+              "\uD83D\uDDD1\uFE0F Usu\u0144 szablon")
+            :ce("div",{style:{display:"flex",gap:6,alignItems:"center"}},
+              ce("span",{style:{fontSize:12,color:"#b91c1c"}},"Na pewno?"),
+              ce("button",{onClick:onDelete,disabled:saving,
+                style:Object.assign({},BGHOST,{color:"#b91c1c",borderColor:"#fca5a5",fontWeight:700})},
+                saving?"\u23F3 Usuwam\u2026":"Tak, usu\u0144"),
+              ce("button",{onClick:function(){setConfDel(false);},style:BGHOST},"Anuluj")
+            )
+        ):null
+      )
+    );
+  }
+
   return ce("div",{style:{display:"flex",height:"100%"}},
-    ce("div",{style:{width:160,borderRight:"1px solid var(--bd2)",display:"flex",flexDirection:"column",overflowY:"auto"}},
-      p.templates.map(function(tpl){
-        var active=selId===tpl.id;
-        return ce("div",{key:tpl.id,onClick:function(){setSelId(tpl.id);},
+    // Lewa kolumna — lista szablonów
+    ce("div",{style:{width:160,borderRight:"1px solid var(--bd2)",display:"flex",
+      flexDirection:"column",overflowY:"auto",flexShrink:0}},
+      templates.length===0&&mode!=="new"
+        ?ce("div",{style:{padding:14,fontSize:12,color:"var(--t3)",fontStyle:"italic"}},
+          "Brak szablonów")
+        :null,
+      templates.map(function(tpl){
+        var active=selId===tpl.id&&mode==="view";
+        return ce("div",{key:tpl.id,onClick:function(){setSelId(tpl.id);setMode("view");setMsg(null);setConfDel(false);},
           style:{padding:"12px 14px",cursor:"pointer",borderBottom:"1px solid var(--bd3)",
             background:active?"var(--wb)":"transparent",
             borderLeft:"3px solid "+(active?"var(--wbd)":"transparent")}},
           ce("div",{style:{fontSize:18,marginBottom:4}},tpl.icon),
-          ce("div",{style:{fontSize:13,fontWeight:active?700:500,color:"var(--t1)"}},tpl.label)
+          ce("div",{style:{fontSize:13,fontWeight:active?700:500,color:"var(--t1)",
+            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},tpl.label)
         );
-      })
-    ),
-    ce("div",{style:{flex:1,display:"flex",flexDirection:"column",padding:"16px 20px",gap:12,minWidth:0}},
-      sel?ce(React.Fragment,null,
-        ce("div",{style:{fontWeight:700,fontSize:15,color:"var(--t1)"}},sel.icon+" "+sel.label),
-        ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"6px 10px",background:"var(--bg3)",borderRadius:8}},"Temat: "+sel.subject),
-        ce("div",{style:{flex:1,padding:14,background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",fontSize:13,color:"var(--t1)",lineHeight:1.8,whiteSpace:"pre-wrap",overflowY:"auto"}},sel.body||ce("em",{style:{color:"var(--t3)"}},"(pusty szablon)")),
-        ce("button",{onClick:function(){p.onUseTemplate(sel);},style:Object.assign({},BPRIM,{alignSelf:"flex-start"})},"\u270F\uFE0F U\u017cyj")
-      ):ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flex:1,gap:8,color:"var(--t3)"}},
-        ce("div",{style:{fontSize:36,opacity:0.2}},"\uD83D\uDCCB"),
-        ce("div",{style:{fontSize:13}},"Wybierz szablon")
+      }),
+      // Przycisk nowego szablonu zawsze na dole
+      ce("div",{style:{marginTop:"auto",padding:10,borderTop:"1px solid var(--bd2)"}},
+        ce("button",{onClick:startNew,
+          style:Object.assign({},BGHOST,{width:"100%",fontSize:12,justifyContent:"center"})},
+          "+ Nowy szablon")
       )
+    ),
+    // Prawa kolumna — podgląd/edytor
+    ce("div",{style:{flex:1,minWidth:0,padding:"16px 20px",display:"flex",flexDirection:"column",overflow:"hidden"}},
+      rightPane
     )
   );
 }
@@ -1011,9 +1265,13 @@ export function ScreenMail(p){
   var serr=us(null),sendError=serr[0],setSendError=serr[1];
   // Per-user ustawienia z Supabase (podpis, obrazek). null = nie załadowane jeszcze
   var sset=us(null),userSettings=sset[0],setUserSettings=sset[1];
+  // Szablony z bazy — null = ładowanie, [] = puste, [...] = załadowane
+  var sdbt=us(null),dbTemplates=sdbt[0],setDbTemplates=sdbt[1];
 
   var selClient=clients.find(function(c){return String(c.id)===String(selClientId);})||null;
   var userEmail=msAccount&&(msAccount.username||msAccount.email)||"";
+  // Aktywna lista szablonów — z bazy jeśli załadowane, fallback na MAIL_TEMPLATES
+  var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
 
   // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
   ue(function(){
@@ -1030,11 +1288,33 @@ export function ScreenMail(p){
     }).catch(function(e){console.error("MSAL session check error",e);});
   },[]);
 
+  // Załaduj szablony z bazy (nie wymaga auth — baza jest publiczna)
+  ue(function(){
+    sbApi.getMailTemplates().then(function(rows){
+      // Mapuj kolumny bazy na format używany w app (template_id → id)
+      var mapped=(rows||[]).map(function(r){return {
+        id:r.template_id,
+        dbId:r.id,
+        label:r.label||"",
+        icon:r.icon||"\uD83D\uDCCB",
+        subject:r.subject||"",
+        body:r.body||"",
+        suggestAttachments:r.suggest_attachments||[],
+        templateFiles:r.template_files||[],
+        isSystem:r.is_system||false,
+        sortOrder:r.sort_order||0
+      };});
+      setDbTemplates(mapped);
+    }).catch(function(e){
+      console.error("getMailTemplates error",e);
+      setDbTemplates([]); // puste — Paulina może tworzyć nowe
+    });
+  },[]);
+
   // Załaduj ustawienia użytkownika (podpis itp.) po zalogowaniu MS
   ue(function(){
     if(!userEmail)return;
     sbApi.getUserSettings(userEmail).then(function(row){
-      // Jeśli brak rekordu — ustawiamy pusty obiekt żeby UI działał (Paulina sama zapisze)
       setUserSettings(row||{user_email:userEmail,signature_html:"",signature_image_url:""});
     }).catch(function(e){
       console.error("getUserSettings error",e);
@@ -1091,19 +1371,27 @@ export function ScreenMail(p){
   },[accessToken]);
 
   ue(function(){
-    var tpl=MAIL_TEMPLATES.find(function(t){return t.id===selTemplate;})||MAIL_TEMPLATES[0];
+    if(!activeTemplates.length)return;
+    var tpl=activeTemplates.find(function(t){return t.id===selTemplate;})||activeTemplates[0];
+    if(!tpl)return;
     var filled=fillTemplate(tpl,selClient);
     setSubject(filled.subject);
-    // Konwertuj plain text z szablonu na HTML dla RichTextEditora
-    setBody(plainToHtml(filled.body));
+    // Body szablonu może być plain text (stare) lub HTML (nowe z edytora) — konwertujemy jeśli plain
+    var isHtml=/<[a-z][\s\S]*>/i.test(filled.body);
+    setBody(isHtml?filled.body:plainToHtml(filled.body));
     if(selClient&&selClient.email)setToEmail(selClient.email);
-    if(selClient&&tpl.suggestAttachments&&tpl.suggestAttachments.length>0){
-      setAttachments(tpl.suggestAttachments.map(function(sid){
-        var opt=APP_PDF_OPTIONS.find(function(o){return o.id===sid;});
-        return opt?{id:opt.id,name:opt.label+".pdf",size:null,type:"app"}:null;
-      }).filter(Boolean));
+    // Attachments: pliki PDF z app + pliki szablonu z Storage
+    var appAtts=(tpl.suggestAttachments||[]).map(function(sid){
+      var opt=APP_PDF_OPTIONS.find(function(o){return o.id===sid;});
+      return opt?{id:opt.id,name:opt.label+".pdf",size:null,type:"app"}:null;
+    }).filter(Boolean);
+    var tplAtts=(tpl.templateFiles||[]).map(function(f){
+      return {id:"tplf_"+f.url,name:f.name,size:f.size||null,type:"template",url:f.url};
+    });
+    if(selClient&&(appAtts.length||tplAtts.length)){
+      setAttachments(appAtts.concat(tplAtts));
     } else {setAttachments([]);}
-  },[selClientId,selTemplate]);
+  },[selClientId,selTemplate,dbTemplates]);
 
   function onToChange(val){
     setToEmail(val);
@@ -1236,9 +1524,9 @@ export function ScreenMail(p){
       .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
     }
 
-    // Buduj attachments równolegle: (1) pliki uploadowane przez użytkownika, (2) obrazek podpisu jako inline CID
+    // Buduj attachments równolegle: (1) pliki uploadowane przez użytkownika, (2) pliki szablonu, (3) obrazek podpisu CID
     var promises=[];
-    // Uploaded files
+    // Uploaded files (type="upload") — bezpośrednio z File obiektu
     promises.push(Promise.all(uploadFiles.map(function(file){
       return file.arrayBuffer().then(function(ab){
         var bytes=new Uint8Array(ab),binary="";
@@ -1246,12 +1534,34 @@ export function ScreenMail(p){
         return {"@odata.type":"#microsoft.graph.fileAttachment",name:file.name,contentType:file.type||"application/octet-stream",contentBytes:btoa(binary)};
       });
     })));
-    // Inline signature image
+    // Template files (type="template") — pobieramy z Supabase Storage URL
+    var templateFiles=attachments.filter(function(a){return a.type==="template"&&a.url;});
+    if(templateFiles.length>0){
+      promises.push(Promise.all(templateFiles.map(function(att){
+        return fetch(att.url).then(function(r){
+          if(!r.ok)throw new Error("Nie mo\u017cna pobra\u0107 za\u0142\u0105cznika: "+att.name);
+          var ct=r.headers.get("content-type")||"application/octet-stream";
+          return r.blob().then(function(blob){
+            return new Promise(function(resolve,reject){
+              var reader=new FileReader();
+              reader.onloadend=function(){
+                var b64=String(reader.result).split(",")[1]||"";
+                resolve({"@odata.type":"#microsoft.graph.fileAttachment",name:att.name,contentType:ct,contentBytes:b64});
+              };
+              reader.onerror=function(){reject(new Error("B\u0142\u0105d odczytu: "+att.name));};
+              reader.readAsDataURL(blob);
+            });
+          });
+        }).catch(function(e){
+          console.error("Template file fetch error:",e);
+          return null; // best-effort — nie blokuj wysyłki
+        });
+      })).then(function(atts){return atts.filter(Boolean);}));
+    }
+    // Inline signature image (CID)
     if(hasSigImg){
       promises.push(
         fetchImageAsBase64(sigImgUrl).then(function(img){
-          // contentId musi pasować do "cid:signature-image" w HTML body
-          // isInline=true sprawia, że klient pocztowy wyświetla obrazek inline, nie jako załącznik
           return [{
             "@odata.type":"#microsoft.graph.fileAttachment",
             name:"signature.png",
@@ -1262,7 +1572,6 @@ export function ScreenMail(p){
           }];
         }).catch(function(e){
           console.error("Nie uda\u0142o si\u0119 pobra\u0107 obrazka podpisu:",e);
-          // Best-effort — wysyłamy maila bez obrazka, niż blokować wysyłkę
           return [];
         })
       );
@@ -1398,7 +1707,16 @@ export function ScreenMail(p){
       ce(DraftsView,{drafts:drafts,onOpen:openDraft,onDelete:function(id){setDrafts(function(prev){return prev.filter(function(x){return x.id!==id;});});}})
     );
   } else if(activeFolder==="templates"){
-    rightContent=ce(TemplatesView,{templates:MAIL_TEMPLATES,onUseTemplate:function(tpl){setSelTemplate(tpl.id);setActiveFolder("compose");}});
+    rightContent=ce(TemplatesView,{
+      templates:activeTemplates,
+      onUseTemplate:function(tpl){
+        setSelTemplate(tpl.id);
+        setActiveFolder("compose");
+      },
+      onTemplatesChange:function(mapped){
+        setDbTemplates(mapped);
+      }
+    });
   } else if(activeFolder==="settings"){
     rightContent=ce(SettingsView,{
       userEmail:userEmail,
