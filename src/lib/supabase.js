@@ -119,6 +119,66 @@ export const sbApi = {
         "Authorization": "Bearer "+SB_KEY
       }
     }).then(function(){return true;}).catch(function(){return false;});
+  },
+
+  // ── MAIL TEMPLATES ────────────────────────────────────────────────────────
+  getMailTemplates: function(){
+    return sbFetch("GET","mail_templates?select=*&order=sort_order.asc,created_at.asc");
+  },
+  addMailTemplate: function(data){
+    var id="tpl_"+Date.now();
+    return sbFetch("POST","mail_templates",{
+      template_id: id,
+      label: data.label||"Nowy szablon",
+      icon: data.icon||"\uD83D\uDCCB",
+      subject: data.subject||"",
+      body: data.body||"",
+      suggest_attachments: data.suggest_attachments||[],
+      template_files: data.template_files||[],
+      is_system: false,
+      sort_order: data.sort_order||99
+    });
+  },
+  updateMailTemplate: function(templateId, data){
+    return sbFetch("PATCH","mail_templates?template_id=eq."+encodeURIComponent(templateId), data);
+  },
+  deleteMailTemplate: function(templateId){
+    return sbFetch("DELETE","mail_templates?template_id=eq."+encodeURIComponent(templateId));
+  },
+  // Upload pliku załącznika do szablonu — zwraca {name, url, size}
+  uploadTemplateFile: function(templateId, file){
+    if(!file)return Promise.reject(new Error("Brak pliku"));
+    var safeName=file.name.replace(/[^a-zA-Z0-9._\-]/g,"_");
+    var path=encodeURIComponent(templateId)+"/"+Date.now()+"_"+safeName;
+    return fetch(SB_URL+"/storage/v1/object/mail-templates/"+path, {
+      method: "POST",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer "+SB_KEY,
+        "Content-Type": file.type||"application/octet-stream",
+        "x-upsert": "true"
+      },
+      body: file
+    }).then(function(r){
+      if(!r.ok)return r.text().then(function(t){throw new Error("Upload failed: "+t);});
+      return {
+        name: file.name,
+        url: SB_URL+"/storage/v1/object/public/mail-templates/"+path,
+        size: file.size
+      };
+    });
+  },
+  // Usuwa plik załącznika szablonu z bucketu (best-effort)
+  deleteTemplateFile: function(url){
+    if(!url)return Promise.resolve();
+    var marker="/mail-templates/";
+    var idx=url.indexOf(marker);
+    if(idx<0)return Promise.resolve();
+    var path=url.substring(idx+marker.length);
+    return fetch(SB_URL+"/storage/v1/object/mail-templates/"+path,{
+      method:"DELETE",
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY}
+    }).then(function(){return true;}).catch(function(){return false;});
   }
 };
 
