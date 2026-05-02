@@ -605,20 +605,29 @@ export const PROD_TYPES =[
 
 // ── KARNISZ DEKORACYJNY IMPRESS LINE SQUARE ──────────────────────────────────
 export const KD_SZYNY = {
-  20: {160:72.55, 200:90.70, 240:108.81, 300:136.01, 400:181.35, 580:262.97},
+  20: {160:72.55, 200:90.70, 240:108.81, 300:136.01, 400:181.39, 580:262.97},
   30: {160:87.03, 200:108.81, 240:130.55, 300:163.22, 400:217.61, 580:315.54}
 };
-export const KD_ZASLEPKI = {20: 19.02, 30: 23.98};
+export const KD_ZASLEPKI = {20: 19.02, 30: 23.99};
+export const KD_KOLORY = [
+  {id:"bialy_mat",   label:"Bia\u0142y matowy"},
+  {id:"nikiel",      label:"Nikiel szczotkowany"},
+  {id:"szary",       label:"Szary anodowany"},
+  {id:"antracyt",    label:"Antracyt"},
+  {id:"czarny_mat",  label:"Czarny matowy"},
+  {id:"zloty",       label:"Z\u0142oty szczotkowany"},
+  {id:"brazowy",     label:"Br\u0105zowy"}
+];
 export const KD_AKCESORIA = [
-  {id:"uch_suf",     label:"Uchwyt sufitowy",                      cena:14.14},
+  {id:"uch_suf",     label:"Uchwyt sufitowy",                      cena:14.15},
   {id:"uch_suf_wkl", label:"Uchwyt sufitowy wklikiwany",            cena:9.86},
   {id:"zas_uch_wkl", label:"Za\u015blepka uchwytu sufit. wklikyw.",  cena:1.57},
   {id:"wsp_suf",     label:"Wspornik sufitowy",                     cena:32.08},
   {id:"lac_szyny",   label:"\u0141\u0105cznik szyny",                cena:39.63},
   {id:"pod_wsp",     label:"Podstawa wspornika",                    cena:51.12},
-  {id:"trz_wsp_9",   label:"Trzpie\u0144 wspornika 9 cm",            cena:43.54},
-  {id:"trz_wsp_914", label:"Trzpie\u0144 wspornika reg. 9-14 cm",    cena:52.35},
-  {id:"wsp_podw",    label:"Wspornik podw\xf3jny",                  cena:83.44},
+  {id:"trz_wsp_9",   label:"Trzpie\u0144 wspornika 9 cm",            cena:43.52},
+  {id:"trz_wsp_914", label:"Trzpie\u0144 wspornika reg. 9-14 cm",    cena:52.37},
+  {id:"wsp_podw",    label:"Wspornik podw\xf3jny",                  cena:83.50},
   {id:"wsp_bocz_20", label:"Wspornik boczny 20 mm",                 cena:4.43},
   {id:"wsp_bocz_30", label:"Wspornik boczny 30 mm",                 cena:4.43},
 ];
@@ -996,28 +1005,28 @@ export function calc(p){
     total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318)*qty;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
   }else if(p.type==="karnisz_dek"){
-    // par.mm: 20|30, par.segmenty: [{len:160,qty:1}, ...], par.akcesoria: {uch_suf:2, ...}
-    var mm=par.mm||20;
-    var szyny=KD_SZYNY[mm]||KD_SZYNY[20];
-    var segmenty=par.segmenty||[];
-    var kdTotal=0;
-    segmenty.forEach(function(s){
-      var cena=szyny[s.len]||0;
+    // p.kdRozmiar: 20|30, p.kdSzyny: [{dlugosc:160,qty:1},...], p.kdAkc: {id:qty}, p.kdKolor: id
+    var kdR=p.kdRozmiar||20;
+    var kdSzT=KD_SZYNY[kdR]||KD_SZYNY[20];
+    var kdSzL=p.kdSzyny||[];
+    var kdT=0;
+    kdSzL.forEach(function(s){
+      var cena=kdSzT[s.dlugosc]||0;
       var q=s.qty||1;
-      kdTotal+=cena*q;
-      if(cena>0) lines.push("Szyna "+mm+"mm / "+s.len+"cm"+(q>1?" x"+q:"")+" = "+formatPLN(cena*q));
+      kdT+=cena*q;
+      if(cena>0) lines.push("Szyna "+kdR+"mm / "+s.dlugosc+"cm"+(q>1?" x"+q:"")+" = "+formatPLN(cena*q));
     });
-    // zaślepki — zawsze 2 niezależnie od liczby segmentów
-    var zCena=KD_ZASLEPKI[mm]||0;
-    kdTotal+=zCena*2;
-    lines.push("Za\u015blepki "+mm+"mm x2 = "+formatPLN(zCena*2));
-    // akcesoria
-    var acc=par.akcesoria||{};
+    if(kdSzL.length>0){
+      var kdZ=KD_ZASLEPKI[kdR]||0;
+      kdT+=kdZ*2;
+      lines.push("Za\u015blepki "+kdR+"mm x2 = "+formatPLN(kdZ*2));
+    }
+    var kdA=p.kdAkc||{};
     KD_AKCESORIA.forEach(function(a){
-      var q=parseInt(acc[a.id])||0;
-      if(q>0){kdTotal+=a.cena*q;lines.push(a.label+(q>1?" x"+q:"")+" = "+formatPLN(a.cena*q));}
+      var q=parseInt(kdA[a.id])||0;
+      if(q>0){kdT+=a.cena*q;lines.push(a.label+(q>1?" x"+q:"")+" = "+formatPLN(a.cena*q));}
     });
-    total=kdTotal;
+    total=kdT;
   }
   return{total:total,lines:lines,warn:warn};
 }
