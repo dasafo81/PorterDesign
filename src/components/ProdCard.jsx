@@ -19,7 +19,8 @@ import {
   RS_OB_C, RS_OB_D, RS_PROFIL, RS_SUPP_WIDTHS,
   RS_WIDTHS, SB_STORAGE, SELLER, WIN_PRESETS,
   calc, formatPLN, getPanelsForProd, jzLookup,
-  lookup, mg, roundTo10, rrzLookup
+  lookup, mg, roundTo10, rrzLookup,
+  KD_SZYNY, KD_ZASLEPKI, KD_AKCESORIA
 } from '../constants/data.js';
 import { generateFabricOrderPDF, generateClientEmail,
 
@@ -133,6 +134,17 @@ export function ProdCard(p){
   var prodForCalc = mg(prod, {panels: getPanelsForProd(prod)});
 
   var res=calc(prodForCalc),total=res.total,lines=res.lines,warn=res.warn;
+  // Karnisz dekoracyjny – własne obliczenie ceny
+  if(prod.type==="karnisz_dek"&&prod.mp==null){
+    var _kdRoz=prod.kdRozmiar||20;
+    var _kdSz=prod.kdSzyny||[];
+    var _kdAk=prod.kdAkc||{};
+    var _kdSzC=_kdSz.reduce(function(s,row){return s+(KD_SZYNY[_kdRoz][row.dlugosc]||0)*row.qty;},0);
+    var _kdZC=_kdSz.length>0?(KD_ZASLEPKI[_kdRoz]*2):0;
+    var _kdAkC=KD_AKCESORIA.reduce(function(s,a){return s+a.cena*(_kdAk[a.id]||0);},0);
+    total=_kdSzC+_kdZC+_kdAkC;
+    lines=[];
+  }
   var eff=prod.mp!=null?prod.mp:total;
   var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
 
@@ -1305,6 +1317,165 @@ export function ProdCard(p){
           })
         )
       )
+    );
+  }else if(prod.type==="karnisz_dek"){
+    // ── KARNISZ DEKORACYJNY ──────────────────────────────────────────────────
+    var kdRozmiar=prod.kdRozmiar||20;
+    var kdSzyny=prod.kdSzyny||[];   // [{dlugosc:160, qty:1}, ...]
+    var kdAkc=prod.kdAkc||{};      // {id: qty}
+
+    // helper: suma szyn
+    var kdSzCena=kdSzyny.reduce(function(s,row){
+      return s+(KD_SZYNY[kdRozmiar][row.dlugosc]||0)*row.qty;
+    },0);
+    // zaślepki: zawsze 2 szt (niezależnie od liczby odcinków)
+    var kdZasCena=kdSzyny.length>0?(KD_ZASLEPKI[kdRozmiar]*2):0;
+    // akcesoria
+    var kdAkcCena=KD_AKCESORIA.reduce(function(s,a){
+      var qty=kdAkc[a.id]||0;
+      return s+a.cena*qty;
+    },0);
+    var kdTotal=kdSzCena+kdZasCena+kdAkcCena;
+
+    function kdSetRozmiar(r){
+      p.onChange(mg(prod,{kdRozmiar:r,kdSzyny:[],kdAkc:{}}));
+    }
+    function kdAddSzyna(){
+      var newRow={dlugosc:160,qty:1};
+      p.onChange(mg(prod,{kdSzyny:kdSzyny.concat([newRow])}));
+    }
+    function kdUpdateSzyna(idx,field,val){
+      var updated=kdSzyny.map(function(row,i){
+        return i===idx?mg(row,{[field]:val}):row;
+      });
+      p.onChange(mg(prod,{kdSzyny:updated}));
+    }
+    function kdRemoveSzyna(idx){
+      p.onChange(mg(prod,{kdSzyny:kdSzyny.filter(function(_,i){return i!==idx;})}));
+    }
+    function kdSetAkc(id,qty){
+      var upd=Object.assign({},kdAkc);
+      if(qty<=0){delete upd[id];}else{upd[id]=qty;}
+      p.onChange(mg(prod,{kdAkc:upd}));
+    }
+
+    var dlugosci=Object.keys(KD_SZYNY[kdRozmiar]).map(Number);
+    var rowStyle={display:"flex",alignItems:"center",gap:10,marginBottom:8};
+    var selStyle=Object.assign({},IST,{flex:2,padding:"8px 10px"});
+    var numStyle=Object.assign({},IST,{width:70,padding:"8px 10px",textAlign:"right"});
+
+    form=ce("div",{style:{display:"flex",flexDirection:"column",gap:18}},
+
+      // 1. Rozmiar szyny
+      ce(Fld,{label:"ROZMIAR SZYNY"},
+        ce("div",{style:{display:"flex",gap:10}},
+          [20,30].map(function(r){
+            var active=kdRozmiar===r;
+            return ce("button",{
+              key:r,
+              onClick:function(){kdSetRozmiar(r);},
+              style:{flex:1,padding:"12px 0",borderRadius:10,border:"2px solid "+(active?"var(--gr)":"var(--bd2)"),
+                background:active?"var(--grl)":"var(--bg)",color:active?"var(--grd)":"var(--t1)",
+                fontSize:15,fontWeight:active?700:400,cursor:"pointer",transition:"all .15s"}
+            },r+" mm");
+          })
+        )
+      ),
+
+      // 2. Odcinki szyny
+      ce(Fld,{label:"ODCINKI SZYNY"},
+        ce("div",{style:{background:"var(--bg2)",borderRadius:10,padding:"12px",border:"1px solid var(--bd2)"}},
+          kdSzyny.length===0
+            ?ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"4px 0 8px"}},
+                "Brak odcink\xf3w \u2014 dodaj co najmniej jeden.")
+            :kdSzyny.map(function(row,i){
+              return ce("div",{key:i,style:rowStyle},
+                ce("select",{
+                  value:row.dlugosc,
+                  onChange:function(ev){kdUpdateSzyna(i,"dlugosc",+ev.target.value);},
+                  style:selStyle
+                },
+                  dlugosci.map(function(d){
+                    return ce("option",{key:d,value:d},d+" cm \u2014 "+(KD_SZYNY[kdRozmiar][d]).toFixed(2).replace(".",",")+"\u00a0z\u0142");
+                  })
+                ),
+                ce("input",{
+                  type:"number",min:1,max:20,
+                  value:row.qty,
+                  onChange:function(ev){kdUpdateSzyna(i,"qty",Math.max(1,+ev.target.value));},
+                  style:numStyle,
+                  title:"Ilo\u015b\u0107"
+                }),
+                ce("span",{style:{fontSize:12,color:"var(--t2)",minWidth:70,textAlign:"right"}},
+                  ((KD_SZYNY[kdRozmiar][row.dlugosc]||0)*row.qty).toFixed(2).replace(".",",")+"\u00a0z\u0142"),
+                ce("button",{
+                  onClick:function(){kdRemoveSzyna(i);},
+                  style:{border:"none",background:"none",cursor:"pointer",fontSize:18,color:"var(--t3)",padding:"0 4px",lineHeight:1}
+                },"\xd7")
+              );
+            }),
+          ce("button",{
+            onClick:kdAddSzyna,
+            style:{marginTop:8,padding:"8px 16px",borderRadius:8,border:"1.5px dashed var(--gr)",
+              background:"transparent",color:"var(--grd)",fontSize:13,cursor:"pointer",width:"100%"}
+          },"+ Dodaj odcinek szyny"),
+
+          // podsumowanie szyn + zaślepki
+          kdSzyny.length>0?ce("div",{style:{marginTop:12,paddingTop:12,borderTop:"1px solid var(--bd3)",display:"flex",flexDirection:"column",gap:4}},
+            ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--t2)"}},
+              ce("span",{},"Szyny (\u00d7"+kdSzyny.reduce(function(s,r){return s+r.qty;},0)+" szt)"),
+              ce("span",{},kdSzCena.toFixed(2).replace(".",",")+"\u00a0z\u0142")),
+            ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--gr)",fontWeight:500}},
+              ce("span",{style:{display:"flex",alignItems:"center",gap:5}},
+                "\u2713 Za\u015blepki (2 szt, ",ce("span",{style:{fontStyle:"italic"}},kdRozmiar+" mm"),")"),
+              ce("span",{},(KD_ZASLEPKI[kdRozmiar]*2).toFixed(2).replace(".",",")+"\u00a0z\u0142"))
+          ):null
+        )
+      ),
+
+      // 3. Akcesoria
+      ce(Fld,{label:"AKCESORIA (opcjonalnie)"},
+        ce("div",{style:{background:"var(--bg2)",borderRadius:10,padding:"12px",border:"1px solid var(--bd2)",display:"flex",flexDirection:"column",gap:6}},
+          KD_AKCESORIA.map(function(a){
+            var qty=kdAkc[a.id]||0;
+            var active=qty>0;
+            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:10,
+              background:active?"var(--grl)":"transparent",borderRadius:7,
+              padding:"8px 10px",border:"1px solid "+(active?"var(--grm)":"transparent"),transition:"all .15s"}},
+              ce("input",{
+                type:"checkbox",
+                checked:active,
+                onChange:function(ev){kdSetAkc(a.id,ev.target.checked?1:0);},
+                style:{width:18,height:18,cursor:"pointer",accentColor:"var(--gr)",flexShrink:0}
+              }),
+              ce("span",{style:{flex:1,fontSize:13,color:active?"var(--grd)":"var(--t1)",fontWeight:active?500:400}},a.label),
+              active?ce("input",{
+                type:"number",min:1,max:50,
+                value:qty,
+                onChange:function(ev){kdSetAkc(a.id,Math.max(1,+ev.target.value));},
+                style:{width:58,padding:"5px 8px",fontSize:13,border:"1.5px solid var(--grm)",
+                  borderRadius:6,background:"var(--bg)",color:"var(--grd)",textAlign:"right"},
+                title:"Ilo\u015b\u0107"
+              }):null,
+              ce("span",{style:{fontSize:12,color:active?"var(--gr)":"var(--t3)",minWidth:65,textAlign:"right",fontWeight:active?600:400}},
+                active?(a.cena*qty).toFixed(2).replace(".",",")+"\u00a0z\u0142":a.cena.toFixed(2).replace(".",",")+"\u00a0z\u0142/szt")
+            );
+          })
+        )
+      ),
+
+      // 4. Podsumowanie
+      kdSzyny.length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:10,padding:"14px 16px"}},
+        ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:4}},"Szyny: "+kdSzCena.toFixed(2).replace(".",",")+"\u00a0z\u0142"),
+        ce("div",{style:{fontSize:13,color:"var(--gr)",marginBottom:4}},
+          "\u2713 Za\u015blepki (2): "+(KD_ZASLEPKI[kdRozmiar]*2).toFixed(2).replace(".",",")+"\u00a0z\u0142"),
+        kdAkcCena>0?ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:4}},
+          "Akcesoria: "+kdAkcCena.toFixed(2).replace(".",",")+"\u00a0z\u0142"):null,
+        ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:700,
+          color:"var(--grd)",marginTop:8,paddingTop:10,borderTop:"1px solid var(--grm)"}},
+          ce("span",{},"Razem"),
+          ce("span",{},kdTotal.toFixed(2).replace(".",",")+"\u00a0z\u0142"))
+      ):null
     );
   }else if(prod.type==="inny"){
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
