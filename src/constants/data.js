@@ -995,6 +995,13 @@ export function calc(p){
     var rk=lookup(lenK,st);
     total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318)*qty;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
+  }else if(p.type==="karnisz_dek"){
+    var lenKd=par.len||0,ptKd=par.pt||0,arcKd=par.arc||0,qtyKd=par.qty||1;
+    if(!lenKd)return{total:0,lines:[],warn:null};
+    var stKd=c.km==="universal"?KUNIV:KSLIM;
+    var rkKd=lookup(lenKd,stKd);
+    total=(rkKd.p+ptKd*210+arcKd*318)*qtyKd;
+    lines.push("Karnisz dek. "+(c.km||"slim").toUpperCase()+" do "+rkKd.k+"cm"+(qtyKd>1?" x"+qtyKd:""));
   }
   return{total:total,lines:lines,warn:warn};
 }
