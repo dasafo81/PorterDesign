@@ -59,6 +59,29 @@ export function fillTemplate(tpl,client){
   };
 }
 
+// ── Konwersja plain text ↔ HTML dla RichTextEditora ─────────────────────────
+// Szablony i drafty są zapisywane jako plain text (z \n), ale RichTextEditor
+// pracuje na HTML. Te helpery konwertują w obie strony.
+export function plainToHtml(s){
+  if(!s)return "";
+  // Escape + zachowanie pustych linii ("\n\n" → akapity)
+  var escaped=String(s)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;");
+  // Każda linia w osobnym divie — Outlook/Gmail tak renderuje akapity
+  return escaped.split("\n").map(function(line){
+    return "<div>"+(line||"<br>")+"</div>";
+  }).join("");
+}
+
+export function htmlToPlain(html){
+  if(!html)return "";
+  var tmp=document.createElement("div");
+  tmp.innerHTML=html;
+  return (tmp.innerText||tmp.textContent||"").replace(/\n{3,}/g,"\n\n").trim();
+}
+
 export function fmtMailDate(iso){
   if(!iso)return "";
   var d=new Date(iso),t=new Date();
@@ -777,6 +800,187 @@ function DraftsView(p){
   );
 }
 
+// ── RichTextEditor ──────────────────────────────────────────────────────────
+// Edytor WYSIWYG bazujący na contentEditable + document.execCommand.
+// Toolbar: B / I / U / listy (UL/OL) / link / kolor / wyczyść formatowanie.
+// Wartość przekazywana jest jako HTML string (props.value/onChange).
+//
+// Uwaga implementacyjna: contentEditable jest "uncontrolled" z natury.
+// Synchronizujemy props.value → DOM tylko gdy faktycznie się różni od bieżącego
+// innerHTML (np. wczytanie szablonu, draftu). W innym przypadku zostawiamy
+// edytor w spokoju, żeby nie tracić cursor position.
+function RichTextEditor(p){
+  var ur=React.useRef, us=React.useState, ue=React.useEffect;
+  var ref=ur(null);
+  var sFocus=us(false),focused=sFocus[0],setFocused=sFocus[1];
+  var sColorOpen=us(false),colorOpen=sColorOpen[0],setColorOpen=sColorOpen[1];
+
+  // Placeholder dla pustego contentEditable — wstrzykuj styl raz na poziomie dokumentu
+  ue(function(){
+    var id="rte-placeholder-style";
+    if(document.getElementById(id))return;
+    var st=document.createElement("style");
+    st.id=id;
+    st.textContent=
+      "[data-rte-empty='true']:before{content:attr(data-placeholder);color:var(--t3);"+
+      "pointer-events:none;display:block;font-style:italic;}";
+    document.head.appendChild(st);
+  },[]);
+
+  // Wykrywaj czy edytor jest pusty (do pokazania placeholdera)
+  function isEmpty(html){
+    if(!html)return true;
+    // Outlook/Word czasem wkleja <p><br></p> jako "puste" — traktujemy to jako empty
+    var stripped=html.replace(/<(p|div|br)[^>]*>/gi,"").replace(/<\/(p|div)>/gi,"").replace(/&nbsp;/gi,"").trim();
+    return stripped==="";
+  }
+
+  // Synchronizacja props → DOM (tylko gdy różnica)
+  ue(function(){
+    if(!ref.current)return;
+    var current=ref.current.innerHTML;
+    var incoming=p.value||"";
+    if(current!==incoming){
+      ref.current.innerHTML=incoming;
+    }
+  // eslint-disable-next-line
+  },[p.value]);
+
+  function exec(cmd, val){
+    // Zachowujemy fokus w edytorze, żeby execCommand zadziałało na zaznaczeniu
+    if(ref.current)ref.current.focus();
+    document.execCommand(cmd, false, val||null);
+    // Po komendzie powiadom rodzica o nowym HTML
+    if(ref.current&&p.onChange)p.onChange(ref.current.innerHTML);
+  }
+
+  function onInput(){
+    if(ref.current&&p.onChange)p.onChange(ref.current.innerHTML);
+  }
+
+  function onAddLink(){
+    var sel=window.getSelection();
+    var hasText=sel&&sel.toString().length>0;
+    var url=window.prompt("Wklej adres URL:","https://");
+    if(!url)return;
+    if(hasText){
+      exec("createLink", url);
+    } else {
+      // Brak zaznaczenia — wstaw URL jako klikalny link
+      var html='<a href="'+url.replace(/"/g,"&quot;")+'" target="_blank">'+url+'</a>';
+      exec("insertHTML", html);
+    }
+  }
+
+  function onPaste(e){
+    // Wymuszamy wklejanie jako plain text — bez śmieci ze stylami z Worda/Gmaila
+    e.preventDefault();
+    var text=(e.clipboardData||window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  }
+
+  function onKeyDown(e){
+    // Tab w listach — wcięcie/odznaczenie wcięcia
+    if(e.key==="Tab"){
+      e.preventDefault();
+      exec(e.shiftKey?"outdent":"indent");
+    }
+  }
+
+  // Paleta kolorów — pasująca do palety reszty aplikacji
+  var COLORS=[
+    {name:"Domy\u015blny",val:"#222222"},
+    {name:"Czarny",val:"#000000"},
+    {name:"Szary",val:"#6b7280"},
+    {name:"Z\u0142oty",val:"#c8a96a"},
+    {name:"Br\u0105zowy",val:"#8b5a2b"},
+    {name:"Czerwony",val:"#dc2626"},
+    {name:"Zielony",val:"#059669"},
+    {name:"Niebieski",val:"#2563eb"},
+    {name:"Fioletowy",val:"#7c3aed"}
+  ];
+
+  var btn={padding:"6px 10px",borderRadius:6,border:"1px solid var(--bd2)",
+    background:"var(--bg1)",cursor:"pointer",fontSize:13,fontWeight:600,
+    color:"var(--t1)",minWidth:30,height:30,display:"inline-flex",
+    alignItems:"center",justifyContent:"center",userSelect:"none"};
+  var btnDiv={width:1,background:"var(--bd2)",margin:"0 4px",alignSelf:"stretch"};
+
+  return ce("div",{style:{border:"1px solid "+(focused?"var(--t2)":"var(--bd2)"),
+    borderRadius:9,background:"var(--bg1)",transition:"border-color .15s",
+    display:"flex",flexDirection:"column",flex:1,minHeight:p.minHeight||220,overflow:"hidden"}},
+
+    // ── Toolbar ─────────────────────────────────────────────────────────
+    ce("div",{style:{display:"flex",flexWrap:"wrap",gap:4,padding:"6px 8px",
+      borderBottom:"1px solid var(--bd2)",background:"var(--bg2)",alignItems:"center"}},
+
+      ce("button",{type:"button",onMouseDown:function(e){e.preventDefault();exec("bold");},
+        title:"Pogrubienie (Ctrl+B)",style:Object.assign({},btn,{fontWeight:800})},"B"),
+      ce("button",{type:"button",onMouseDown:function(e){e.preventDefault();exec("italic");},
+        title:"Kursywa (Ctrl+I)",style:Object.assign({},btn,{fontStyle:"italic"})},"I"),
+      ce("button",{type:"button",onMouseDown:function(e){e.preventDefault();exec("underline");},
+        title:"Podkre\u015blenie (Ctrl+U)",style:Object.assign({},btn,{textDecoration:"underline"})},"U"),
+
+      ce("div",{style:btnDiv}),
+
+      ce("button",{type:"button",onMouseDown:function(e){e.preventDefault();exec("insertUnorderedList");},
+        title:"Lista punktowana",style:btn},"\u2022 \u2022 \u2022"),
+      ce("button",{type:"button",onMouseDown:function(e){e.preventDefault();exec("insertOrderedList");},
+        title:"Lista numerowana",style:btn},"1. 2."),
+
+      ce("div",{style:btnDiv}),
+
+      ce("button",{type:"button",onMouseDown:function(e){e.preventDefault();onAddLink();},
+        title:"Wstaw link",style:btn},"\uD83D\uDD17"),
+
+      // Picker kolorów
+      ce("div",{style:{position:"relative"}},
+        ce("button",{type:"button",
+          onMouseDown:function(e){e.preventDefault();setColorOpen(function(v){return !v;});},
+          title:"Kolor tekstu",style:btn},
+          ce("span",null,"A"),
+          ce("span",{style:{display:"inline-block",width:10,height:3,background:"#dc2626",marginLeft:3}})
+        ),
+        colorOpen?ce("div",{style:{position:"absolute",top:"calc(100% + 4px)",left:0,
+          background:"var(--bg1)",border:"1px solid var(--bd2)",borderRadius:8,
+          boxShadow:"0 8px 24px rgba(0,0,0,0.15)",zIndex:200,padding:8,
+          display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:4,minWidth:140}},
+          COLORS.map(function(c){
+            return ce("button",{key:c.val,type:"button",title:c.name,
+              onMouseDown:function(e){e.preventDefault();exec("foreColor",c.val);setColorOpen(false);},
+              style:{width:36,height:28,border:"1px solid var(--bd2)",borderRadius:5,
+                background:c.val,cursor:"pointer",padding:0}});
+          })
+        ):null
+      ),
+
+      ce("div",{style:btnDiv}),
+
+      ce("button",{type:"button",
+        onMouseDown:function(e){e.preventDefault();exec("removeFormat");exec("foreColor","#222222");},
+        title:"Wyczy\u015b\u0107 formatowanie",style:Object.assign({},btn,{fontSize:11})},"\u2715")
+    ),
+
+    // ── Pole edycji ─────────────────────────────────────────────────────
+    ce("div",{
+      ref:ref,
+      contentEditable:true,
+      suppressContentEditableWarning:true,
+      onInput:onInput,
+      onPaste:onPaste,
+      onKeyDown:onKeyDown,
+      onFocus:function(){setFocused(true);setColorOpen(false);},
+      onBlur:function(){setFocused(false);},
+      "data-placeholder":p.placeholder||"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026",
+      "data-rte-empty":isEmpty(p.value)?"true":"false",
+      style:{flex:1,padding:"12px 14px",fontSize:14,lineHeight:1.7,
+        color:"var(--t1)",outline:"none",overflowY:"auto",
+        fontFamily:"Arial, Helvetica, sans-serif",
+        minHeight:p.minHeight||220}
+    })
+  );
+}
+
 export function ScreenMail(p){
   var us=React.useState, ue=React.useEffect;
   var clients=p.clients||[];
@@ -888,7 +1092,9 @@ export function ScreenMail(p){
   ue(function(){
     var tpl=MAIL_TEMPLATES.find(function(t){return t.id===selTemplate;})||MAIL_TEMPLATES[0];
     var filled=fillTemplate(tpl,selClient);
-    setSubject(filled.subject); setBody(filled.body);
+    setSubject(filled.subject);
+    // Konwertuj plain text z szablonu na HTML dla RichTextEditora
+    setBody(plainToHtml(filled.body));
     if(selClient&&selClient.email)setToEmail(selClient.email);
     if(selClient&&tpl.suggestAttachments&&tpl.suggestAttachments.length>0){
       setAttachments(tpl.suggestAttachments.map(function(sid){
@@ -907,8 +1113,16 @@ export function ScreenMail(p){
     setContactSug(merged);
   }
 
+  // Czy treść maila (HTML z RichTextEditora) jest faktycznie pusta?
+  // Pusty contentEditable może mieć w sobie <br>, <div><br></div> itp.
+  function isBodyEmpty(html){
+    if(!html)return true;
+    return htmlToPlain(html).length===0;
+  }
+  var bodyEmpty=isBodyEmpty(body);
+
   function handleSaveDraft(){
-    if(!toEmail&&!subject&&!body)return;
+    if(!toEmail&&!subject&&bodyEmpty)return;
     var d={id:"d_"+Date.now(),to:toEmail,subject:subject,body:body,attachments:attachments.slice(),savedAt:new Date().toISOString()};
     setDrafts(function(prev){return [d].concat(prev);});
     setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
@@ -921,21 +1135,11 @@ export function ScreenMail(p){
     setActiveFolder("compose");
   }
 
-  // Eskejpuje znaki specjalne HTML, żeby tekst wpisany przez użytkownika
-  // (plain text) nie był interpretowany jako HTML przy wysyłce.
-  function escapeHtml(s){
-    return String(s||"")
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;");
-  }
-
-  // Składa pełny HTML body wiadomości — treść użytkownika + podpis (tekst + obrazek)
-  // Treść body w obecnej wersji to plain text (zostanie zamienione na bogaty edytor w Kroku 3B).
-  // Konwersja: \n → <br>, escape HTML.
-  function buildMailHtml(plainBody, settings){
+  // Składa pełny HTML body wiadomości — treść użytkownika (HTML z RichTextEditora)
+  // + podpis (HTML + obrazek z Ustawień). Treść już jest HTML, nie escapujemy.
+  function buildMailHtml(htmlBodyInput, settings){
     var bodyHtml="<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"
-      +escapeHtml(plainBody).replace(/\n/g,"<br>")
+      +(htmlBodyInput||"")
       +"</div>";
     var sig=settings||{};
     var sigHtml=sig.signature_html||"";
@@ -955,8 +1159,17 @@ export function ScreenMail(p){
     return bodyHtml+sigBlock;
   }
 
+  // Wyciąga plain-text preview z HTML — używane do listy w Sent (255 znaków)
+  function htmlToPreview(html){
+    if(!html)return "";
+    var tmp=document.createElement("div");
+    tmp.innerHTML=html;
+    var txt=(tmp.innerText||tmp.textContent||"").replace(/\s+/g," ").trim();
+    return txt.slice(0,255);
+  }
+
   function handleSend(){
-    if(!toEmail||!subject||!body)return;
+    if(!toEmail||!subject||bodyEmpty)return;
     setSending(true);
     setSendError(null);
     var toName=selClient?selClient.name:toEmail;
@@ -977,7 +1190,7 @@ export function ScreenMail(p){
       .then(function(r){
         if(!r.ok)return r.json().then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+r.status+")");});
         var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:toName,
-          subject:subject,date:new Date().toISOString(),preview:body.slice(0,80)+"...",
+          subject:subject,date:new Date().toISOString(),preview:htmlToPreview(body).slice(0,80)+"...",
           body:body,attachments:attachments.slice()};
         setAllMails(function(prev){return [nm].concat(prev);});
         setSending(false); setJustSent(true);
@@ -1084,7 +1297,7 @@ export function ScreenMail(p){
     ),
     ce("div",{style:{flex:1,display:"flex",flexDirection:"column",marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Tre\u015b\u0107"),
-      ce("textarea",{value:body,onChange:function(e){setBody(e.target.value);},style:Object.assign({},INP,{flex:1,minHeight:180,resize:"vertical",lineHeight:1.7})}),
+      ce(RichTextEditor,{value:body,onChange:setBody,minHeight:200,placeholder:"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026"}),
       // Informacja o automatycznie doklejanym podpisie
       (userSettings&&(userSettings.signature_html||userSettings.signature_image_url))
         ?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
@@ -1100,13 +1313,13 @@ export function ScreenMail(p){
     ),
     ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate}),
     ce("div",{style:{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid var(--bd2)"}},
-      ce("button",{onClick:handleSaveDraft,disabled:!toEmail&&!subject&&!body,style:Object.assign({},BGHOST,{opacity:(!toEmail&&!subject&&!body)?0.4:1})},"\uD83D\uDCDD Zapisz roboczy"),
-      ce("button",{onClick:handleSend,disabled:!toEmail||!subject||!body||sending,
+      ce("button",{onClick:handleSaveDraft,disabled:!toEmail&&!subject&&bodyEmpty,style:Object.assign({},BGHOST,{opacity:(!toEmail&&!subject&&bodyEmpty)?0.4:1})},"\uD83D\uDCDD Zapisz roboczy"),
+      ce("button",{onClick:handleSend,disabled:!toEmail||!subject||bodyEmpty||sending,
         style:Object.assign({},BPRIM,{flex:1,
           background:justSent?"#059669":sending?"var(--bd2)":"var(--t1)",
           transition:"background .3s",
-          opacity:(!toEmail||!subject||!body||sending)?0.6:1,
-          cursor:(!toEmail||!subject||!body||sending)?"default":"pointer"})},
+          opacity:(!toEmail||!subject||bodyEmpty||sending)?0.6:1,
+          cursor:(!toEmail||!subject||bodyEmpty||sending)?"default":"pointer"})},
         sending?"\u2026 Wysy\u0142anie":justSent?"\u2713 Wys\u0142ano!":"\uD83D\uDCEC Wy\u015blij przez Outlook"
       )
     )
