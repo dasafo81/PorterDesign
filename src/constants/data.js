@@ -996,12 +996,28 @@ export function calc(p){
     total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318)*qty;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
   }else if(p.type==="karnisz_dek"){
-    var lenKd=par.len||0,ptKd=par.pt||0,arcKd=par.arc||0,qtyKd=par.qty||1;
-    if(!lenKd)return{total:0,lines:[],warn:null};
-    var stKd=c.km==="universal"?KUNIV:KSLIM;
-    var rkKd=lookup(lenKd,stKd);
-    total=(rkKd.p+ptKd*210+arcKd*318)*qtyKd;
-    lines.push("Karnisz dek. "+(c.km||"slim").toUpperCase()+" do "+rkKd.k+"cm"+(qtyKd>1?" x"+qtyKd:""));
+    // par.mm: 20|30, par.segmenty: [{len:160,qty:1}, ...], par.akcesoria: {uch_suf:2, ...}
+    var mm=par.mm||20;
+    var szyny=KD_SZYNY[mm]||KD_SZYNY[20];
+    var segmenty=par.segmenty||[];
+    var kdTotal=0;
+    segmenty.forEach(function(s){
+      var cena=szyny[s.len]||0;
+      var q=s.qty||1;
+      kdTotal+=cena*q;
+      if(cena>0) lines.push("Szyna "+mm+"mm / "+s.len+"cm"+(q>1?" x"+q:"")+" = "+formatPLN(cena*q));
+    });
+    // zaślepki — zawsze 2 niezależnie od liczby segmentów
+    var zCena=KD_ZASLEPKI[mm]||0;
+    kdTotal+=zCena*2;
+    lines.push("Za\u015blepki "+mm+"mm x2 = "+formatPLN(zCena*2));
+    // akcesoria
+    var acc=par.akcesoria||{};
+    KD_AKCESORIA.forEach(function(a){
+      var q=parseInt(acc[a.id])||0;
+      if(q>0){kdTotal+=a.cena*q;lines.push(a.label+(q>1?" x"+q:"")+" = "+formatPLN(a.cena*q));}
+    });
+    total=kdTotal;
   }
   return{total:total,lines:lines,warn:warn};
 }
