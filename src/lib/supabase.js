@@ -44,7 +44,7 @@ export const sbApi = {
     return sbFetch("GET","deals?select=*&order=created_at.asc");
   },
   addDeal: function(clientId){
-    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,installer_id:null,acquisition:null});
+    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,followup_date:null,acquisition:null});
   },
   updateDeal: function(id,data){
     return sbFetch("PATCH","deals?id=eq."+id,data);
@@ -61,18 +61,66 @@ export const sbApi = {
   deleteAttachment: function(id){
     return sbFetch("DELETE","deal_attachments?id=eq."+id);
   },
-  // ── INSTALLERS (Montażyści) ──
-  getInstallers: function(){
-    return sbFetch("GET","installers?select=*&order=name.asc");
+  // ── USER SETTINGS (mail) ──
+  // Per-user ustawienia modułu Mail (podpis HTML, URL obrazka stopki)
+  getUserSettings: function(email){
+    if(!email)return Promise.resolve(null);
+    return sbFetch("GET","user_settings?user_email=eq."+encodeURIComponent(email)+"&select=*").then(function(rows){
+      return (rows&&rows[0])||null;
+    });
   },
-  addInstaller: function(data){
-    return sbFetch("POST","installers",{name:data.name,email:data.email,phone:data.phone||"",color:data.color||"#10b981"});
+  upsertUserSettings: function(email, data){
+    if(!email)return Promise.reject(new Error("Brak email"));
+    // Upsert przez Prefer: resolution=merge-duplicates wymaga unique constraint na user_email — mamy go.
+    return fetch(SB_URL+"/rest/v1/user_settings", {
+      method: "POST",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer "+SB_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation,resolution=merge-duplicates"
+      },
+      body: JSON.stringify(Object.assign({user_email:email},data))
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){throw new Error(t);});
+      return r.json();
+    });
   },
-  updateInstaller: function(id,data){
-    return sbFetch("PATCH","installers?id=eq."+id,data);
+  // Upload obrazka podpisu do bucket mail-signatures
+  // Zwraca publiczny URL gotowy do wstawienia w <img src="...">
+  uploadSignatureImage: function(email, file){
+    if(!file)return Promise.reject(new Error("Brak pliku"));
+    var safeEmail=(email||"unknown").replace(/[^a-zA-Z0-9._-]/g,"_");
+    var ext=(file.name.split(".").pop()||"png").toLowerCase();
+    var path=safeEmail+"/signature_"+Date.now()+"."+ext;
+    return fetch(SB_URL+"/storage/v1/object/mail-signatures/"+path, {
+      method: "POST",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer "+SB_KEY,
+        "Content-Type": file.type||"application/octet-stream",
+        "x-upsert": "true"
+      },
+      body: file
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){throw new Error("Upload failed: "+t);});
+      return SB_URL+"/storage/v1/object/public/mail-signatures/"+path;
+    });
   },
-  deleteInstaller: function(id){
-    return sbFetch("DELETE","installers?id=eq."+id);
+  // Usuwa obrazek podpisu z bucketu (best-effort, błąd nie blokuje)
+  deleteSignatureImage: function(url){
+    if(!url)return Promise.resolve();
+    var marker="/mail-signatures/";
+    var idx=url.indexOf(marker);
+    if(idx<0)return Promise.resolve();
+    var path=url.substring(idx+marker.length);
+    return fetch(SB_URL+"/storage/v1/object/mail-signatures/"+path, {
+      method: "DELETE",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer "+SB_KEY
+      }
+    }).then(function(){return true;}).catch(function(){return false;});
   }
 };
 
