@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SB_URL, SB_KEY } from '../lib/supabase.js';
+import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 
 var ce = React.createElement;
 
@@ -401,7 +401,7 @@ export function ScreenTasks() {
         setTasks(local);
       } catch(x) { setTasks([]); }
       setLoading(false);
-      setError("Brak tabeli tasks w Supabase – działa lokalnie.");
+      setError("Błąd Supabase: " + (e && e.message ? e.message : String(e)));
     });
   }, []);
 
