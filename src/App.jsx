@@ -316,11 +316,6 @@ export function App(p){
     var activeList=q?filtered:(TAB_LIST.find(function(t){return t.sid===activeTab;})||TAB_LIST[0]).list;
 
     content=ce(Fragment,null,
-      ce("div",{style:{textAlign:"center",padding:"1.5rem 0 1rem"}},
-        ce("img",{src:LOGO_SRC,alt:"Porter Design",style:{width:40,height:"auto",opacity:0.9,display:"block",margin:"0 auto"}}),
-        ce("div",{style:{fontSize:11,letterSpacing:"0.2em",textTransform:"uppercase",color:"var(--t3)",marginTop:10,fontWeight:400}},
-          "Porter Design Assistant")
-      ),
       ce("div",{style:{position:"relative",marginBottom:16}},
         ce("span",{style:{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--t3)",pointerEvents:"none"}},"\uD83D\uDD0D"),
         ce("input",{
