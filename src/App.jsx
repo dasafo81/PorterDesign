@@ -17,7 +17,8 @@ import { ModalSewing } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker } from './components/ProdCard.jsx';
 import { ScreenMail } from './components/ScreenMail.jsx';
-import { ScreenCRM } from './components/ScreenCRM.jsx';
+import { ScreenCRM, CRMKalendarz } from './components/ScreenCRM.jsx';
+import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 import { ScreenTasks } from './components/ScreenTasks.jsx';
 const ce = React.createElement;
 
@@ -26,6 +27,21 @@ const ce = React.createElement;
 export function App(p){
   var onLogout=p&&p.onLogout?p.onLogout:function(){};
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
+  // GCal token – żyje na poziomie App żeby przeżywać przełączanie zakładek
+  var sGcalTok=useState(function(){
+    try{var t=localStorage.getItem("pd_gcal_token");var e=localStorage.getItem("pd_gcal_token_exp");if(t&&e&&Date.now()<Number(e))return t;}catch(x){}return null;
+  }),gcalToken=sGcalTok[0],setGcalToken=sGcalTok[1];
+  var sGsiRdy=useState(false),gsiReady=sGsiRdy[0],setGsiReady=sGsiRdy[1];
+  React.useEffect(function(){
+    gcalWaitReady().then(function(){
+      setGsiReady(true);
+      var hadSession=false;
+      try{hadSession=!!localStorage.getItem("pd_gcal_token");}catch(x){}
+      if(hadSession&&!gcalHasValidToken()){
+        gcalGetToken().then(function(fresh){setGcalToken(fresh);}).catch(function(){});
+      }
+    }).catch(function(){});
+  },[]);
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
   var s2=useState([]),clients=s2[0],setClients=s2[1];
   var s3=useState(null),curClientId=s3[0],setCurClientId=s3[1];
@@ -644,9 +660,9 @@ export function App(p){
       [
         {id:"wyceniarka", label:"Wyceny",  icon:"\uD83D\uDCCB"},
         {id:"crm",        label:"CRM",     icon:"\uD83D\uDCC8"},
+        {id:"kalendarz",  label:"Kalen.",  icon:"\uD83D\uDCC5"},
         {id:"mail",       label:"Mail",    icon:"\u2709"},
-        {id:"zadania",    label:"Zadania", icon:"\u2713"},
-        {id:"faktury",    label:"Faktury", icon:"\uD83E\uDDFE", soon:true}
+        {id:"zadania",    label:"Zadania", icon:"\u2713"}
       ].map(function(tab){
         var active=appMode===tab.id;
         return ce("button",{key:tab.id,
@@ -670,16 +686,17 @@ export function App(p){
     // Treść główna
     appMode==="crm"
       ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,
+          gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady,
           onClientStatusChange:function(clientId,status){
             setClients(function(cs){return cs.map(function(c){return String(c.id)===String(clientId)?Object.assign({},c,{status:status}):c;});});
           }
         })
       : appMode==="mail"
         ? ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId})
+      : appMode==="kalendarz"
+        ? ce(CRMKalendarz,{deals:[],clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
       : appMode==="zadania"
         ? ce(ScreenTasks,{})
-      : appMode==="faktury"
-        ? null
         : ce(Fragment,null,
             screen!=="home"?ce(BC,{}):null,
             content
