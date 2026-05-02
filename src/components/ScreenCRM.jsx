@@ -701,7 +701,6 @@ export function CRMKalendarz(p){
         // Typy zdarzeń z dealów
         ce("span",{style:{fontSize:10,color:"#3b82f6",fontWeight:600}},"● Pomiar"),
         ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Realizacja"),
-        ce("span",{style:{fontSize:10,color:"#f59e0b",fontWeight:600}},"● Follow-up"),
         loadingEv?ce("span",{style:{fontSize:10,color:"var(--t3)",marginLeft:"auto"}},"\u23F3 Ładuję zdarzenia..."):null
       ),
 
