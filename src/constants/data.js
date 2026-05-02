@@ -610,13 +610,13 @@ export const KD_SZYNY = {
 };
 export const KD_ZASLEPKI = {20: 19.02, 30: 23.99};
 export const KD_KOLORY = [
-  {id:"bialy_mat",   label:"Bia\u0142y matowy"},
-  {id:"nikiel",      label:"Nikiel szczotkowany"},
-  {id:"szary",       label:"Szary anodowany"},
-  {id:"antracyt",    label:"Antracyt"},
-  {id:"czarny_mat",  label:"Czarny matowy"},
-  {id:"zloty",       label:"Z\u0142oty szczotkowany"},
-  {id:"brazowy",     label:"Br\u0105zowy"}
+  {id:"bialy_mat",   label:"Bia\u0142y matowy",      bg:"linear-gradient(135deg, #f5f5f3 0%, #e8e8e6 100%)"},
+  {id:"nikiel",      label:"Nikiel szczotkowany",   bg:"repeating-linear-gradient(0deg, #b8bbc0 0px, #c8cbd0 1px, #b0b3b8 2px, #c0c3c8 3px)"},
+  {id:"szary",       label:"Szary anodowany",       bg:"linear-gradient(180deg, #d8dadd 0%, #b8babd 100%)"},
+  {id:"antracyt",    label:"Antracyt",              bg:"radial-gradient(circle at 30% 30%, #4a4a52 0%, #2a2a30 60%, #1a1a20 100%)"},
+  {id:"czarny_mat",  label:"Czarny matowy",         bg:"linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)"},
+  {id:"zloty",       label:"Z\u0142oty szczotkowany", bg:"repeating-linear-gradient(0deg, #c9a85a 0px, #d4b569 1px, #b89548 2px, #c9a85a 3px)"},
+  {id:"brazowy",     label:"Br\u0105zowy",           bg:"radial-gradient(circle at 50% 30%, #6b5d3a 0%, #4a4028 70%, #3a3220 100%)"}
 ];
 export const KD_AKCESORIA = [
   {id:"uch_suf",     label:"Uchwyt sufitowy",                      cena:14.15},
