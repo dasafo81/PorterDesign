@@ -1,7 +1,5 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { sbApi } from './lib/supabase.js';
-import { loadSession, refreshSession, signOut } from './lib/auth.js';
-import { ScreenLogin } from './components/ScreenLogin.jsx';
 import {
   FABRICS, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
@@ -19,15 +17,12 @@ import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalCo
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker } from './components/ProdCard.jsx';
 import { ScreenMail } from './components/ScreenMail.jsx';
 import { ScreenCRM } from './components/ScreenCRM.jsx';
+import { ScreenTasks } from './components/ScreenTasks.jsx';
 const ce = React.createElement;
 
 
 
 export function App(){
-  // ── AUTH ────────────────────────────────────────────────────────────────────
-  // KRYTYCZNE: wszystkie hooki MUSZĄ być wywołane PRZED jakimkolwiek if/return
-  // (React Rules of Hooks - liczba hooków musi być stała między renderami)
-  var sSession=useState(function(){return loadSession();}),session=sSession[0],setSession=sSession[1];
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
   var s2=useState([]),clients=s2[0],setClients=s2[1];
@@ -49,35 +44,6 @@ export function App(){
   var sHS=useState(""),homeSearch=sHS[0],setHomeSearch=sHS[1];
   var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
 
-  // Auto-refresh tokenu co 50 minut
-  React.useEffect(function(){
-    if(!session)return;
-    var interval=setInterval(function(){
-      refreshSession().then(function(s){
-        if(!s)setSession(null);
-      });
-    },50*60*1000);
-    return function(){clearInterval(interval);};
-  },[session]);
-
-  // Załaduj klientów z Supabase gdy użytkownik jest zalogowany
-  React.useEffect(function(){
-    if(!session)return;
-    sbApi.getClients().then(function(data){
-      setClients(data||[]);
-      setLoading(false);
-    }).catch(function(e){
-      console.error("Błąd ładowania:",e);
-      setLoading(false);
-    });
-  },[session]);
-
-  // DOPIERO TERAZ early return jest bezpieczny - po wszystkich hookach
-  if(!session){
-    return React.createElement(ScreenLogin,{onLogin:function(s){setSession(s);}});
-  }
-  // ────────────────────────────────────────────────────────────────────────────
-
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
 
@@ -87,6 +53,17 @@ export function App(){
   function hasWinData(w){return !!(w.products&&w.products.length>0);}
   function hasRoomData(r){return !!(r.windows&&r.windows.some(function(w){return hasWinData(w);}));}
   function hasClientData(cl){return !!(cl.rooms&&cl.rooms.some(function(r){return hasRoomData(r)||r.windows&&r.windows.length>0;}));}
+
+  // Załaduj klientów z Supabase przy starcie
+  React.useEffect(function(){
+    sbApi.getClients().then(function(data){
+      setClients(data||[]);
+      setLoading(false);
+    }).catch(function(e){
+      console.error("Błąd ładowania:",e);
+      setLoading(false);
+    });
+  },[]);
 
   // Zapisz zmiany w Supabase z debounce
   function saveClientToSb(id, data){
@@ -655,21 +632,15 @@ export function App(){
         ce("img",{src:LOGO_SRC,alt:"PD",style:{height:22,opacity:0.9}}),
         ce("span",{style:{fontSize:10,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)",fontWeight:500}},"Porter Design Assistant")
       ),
-      ce("div",{style:{display:"flex",alignItems:"center",gap:6}},
-        appMode==="wyceniarka"?ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI"):ce("div",{style:{width:20}}),
-        ce("button",{
-          onClick:function(){signOut().then(function(){setSession(null);});},
-          title:"Wyloguj",
-          style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t3)",fontSize:13,lineHeight:1,flexShrink:0}
-        },"\u23FB")
-      )
+      appMode==="wyceniarka"?ce("button",{onClick:function(){setShowAIModal(true);},style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 12px",borderRadius:10,color:"var(--t1)",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:5,flexShrink:0}},"\uD83E\uDD16 AI"):ce("div",{style:{width:20}})
     ),
     // Zakładki główne (4 moduły)
-    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4,marginBottom:"1.2rem",background:"var(--bg2)",borderRadius:12,padding:4,border:"1px solid var(--bd2)"}},
+    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:4,marginBottom:"1.2rem",background:"var(--bg2)",borderRadius:12,padding:4,border:"1px solid var(--bd2)"}},
       [
         {id:"wyceniarka", label:"Wyceny",  icon:"\uD83D\uDCCB"},
         {id:"crm",        label:"CRM",     icon:"\uD83D\uDCC8"},
         {id:"mail",       label:"Mail",    icon:"\u2709"},
+        {id:"zadania",    label:"Zadania", icon:"\u2713"},
         {id:"faktury",    label:"Faktury", icon:"\uD83E\uDDFE", soon:true}
       ].map(function(tab){
         var active=appMode===tab.id;
@@ -700,6 +671,8 @@ export function App(){
         })
       : appMode==="mail"
         ? ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId})
+      : appMode==="zadania"
+        ? ce(ScreenTasks,{})
       : appMode==="faktury"
         ? null
         : ce(Fragment,null,
