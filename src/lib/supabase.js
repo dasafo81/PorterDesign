@@ -71,20 +71,18 @@ export const sbApi = {
   },
   upsertUserSettings: function(email, data){
     if(!email)return Promise.reject(new Error("Brak email"));
-    // Upsert przez Prefer: resolution=merge-duplicates wymaga unique constraint na user_email — mamy go.
-    return fetch(SB_URL+"/rest/v1/user_settings", {
-      method: "POST",
-      headers: {
-        "apikey": SB_KEY,
-        "Authorization": "Bearer "+SB_KEY,
-        "Content-Type": "application/json",
-        "Prefer": "return=representation,resolution=merge-duplicates"
-      },
-      body: JSON.stringify(Object.assign({user_email:email},data))
-    }).then(function(r){
-      if(!r.ok) return r.text().then(function(t){throw new Error(t);});
-      return r.json();
-    });
+    // Sprawdź czy rekord już istnieje, potem PATCH lub POST
+    return sbFetch("GET","user_settings?user_email=eq."+encodeURIComponent(email)+"&select=id")
+      .then(function(rows){
+        var exists=rows&&rows.length>0;
+        if(exists){
+          // Rekord istnieje — aktualizuj przez PATCH
+          return sbFetch("PATCH","user_settings?user_email=eq."+encodeURIComponent(email),data);
+        } else {
+          // Brak rekordu — wstaw nowy przez POST
+          return sbFetch("POST","user_settings",Object.assign({user_email:email},data));
+        }
+      });
   },
   // Upload obrazka podpisu do bucket mail-signatures
   // Zwraca publiczny URL gotowy do wstawienia w <img src="...">
