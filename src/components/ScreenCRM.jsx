@@ -281,6 +281,7 @@ export function CRMKalendarz(p){
   var sErrEv=useState(null),errEv=sErrEv[0],setErrEv=sErrEv[1];
   var sView=useState("month"),calView=sView[0],setCalView=sView[1];
   var sRefDate=useState(function(){return new Date();}),refDate=sRefDate[0],setRefDate=sRefDate[1];
+  var sNewEv=useState(null),newEvDraft=sNewEv[0],setNewEvDraft=sNewEv[1];
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
   React.useEffect(function(){
@@ -410,6 +411,53 @@ export function CRMKalendarz(p){
         } else {
           alert("B\u0142\u0105d dodawania zdarzenia.");
         }
+      });
+  }
+
+  function openNewEventModal(defaultDate){
+    var d=defaultDate||new Date();
+    var pad=function(n){return String(n).padStart(2,'0');};
+    var dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    var h=d.getHours();
+    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false});
+  }
+
+  function addCustomEvent(){
+    if(!gcalToken){alert('Zaloguj si\u0119 najpierw do Google Calendar.');return;}
+    var ev=newEvDraft;
+    if(!ev.title.trim()){alert('Podaj tytu\u0142 zdarzenia.');return;}
+    if(!ev.date){alert('Podaj dat\u0119.');return;}
+    var start=new Date(ev.date+'T'+ev.timeFrom+':00');
+    var end=new Date(ev.date+'T'+ev.timeTo+':00');
+    if(end<=start){alert('Godzina zako\u0144czenia musi by\u0107 p\u00f3\u017aniejsza ni\u017c rozpocz\u0119cia.');return;}
+    var body={
+      summary:ev.title.trim(),
+      description:ev.description||'',
+      start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
+      end:{dateTime:end.toISOString(),timeZone:'Europe/Warsaw'}
+    };
+    function doPost(t){
+      return fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
+        method:'POST',
+        headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+    }
+    setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
+    doPost(gcalToken)
+      .then(function(r){
+        if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doPost(fresh);}); }
+        return r;
+      })
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(){
+        setNewEvDraft(null);
+        fetchEvents(gcalToken);
+      })
+      .catch(function(e){
+        setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
+        if(e&&e.code==='GCAL_INTERACTION_REQUIRED'){setGcalToken(null);alert('Sesja Google wygas\u0142a \u2014 zaloguj si\u0119 ponownie.');}
+        else alert('B\u0142\u0105d dodawania zdarzenia: '+(e.message||''));
       });
   }
 
@@ -583,7 +631,8 @@ export function CRMKalendarz(p){
         ce("span",{style:{flex:1,fontSize:14,fontWeight:700,color:"var(--t1)",textAlign:"center"}},periodLabel()),
         ce("div",{style:{display:"flex",gap:4}},
           ce("button",{onClick:function(){setCalView("month");},style:calView==="month"?BTN_ACT:BTN},"Miesi\u0105c"),
-          ce("button",{onClick:function(){setCalView("week");},style:calView==="week"?BTN_ACT:BTN},"Tydzie\u0144")
+          ce("button",{onClick:function(){setCalView("week");},style:calView==="week"?BTN_ACT:BTN},"Tydzie\u0144"),
+          gcalToken?ce("button",{onClick:function(){openNewEventModal(null);},style:Object.assign({},BTN_ACT,{background:"#4285f4",marginLeft:4})},"＋ Wydarzenie"):null
         )
       ),
 
@@ -604,6 +653,75 @@ export function CRMKalendarz(p){
         calView==="month"?renderMonthView():renderWeekView()
       )
     )
+
+    ,newEvDraft?ce('div',{
+      style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center'},
+      onClick:function(e){if(e.target===e.currentTarget)setNewEvDraft(null);}
+    },
+      ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:24,width:'100%',maxWidth:420,boxShadow:'0 8px 40px rgba(0,0,0,0.2)',margin:'0 16px'}},
+        ce('div',{style:{fontSize:16,fontWeight:700,color:'var(--t1)',marginBottom:16}},'?? Nowe zdarzenie w Google Calendar'),
+        ce('div',{style:{marginBottom:12}},
+          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'TYTU\u0141 *'),
+          ce('input',{
+            type:'text',value:newEvDraft.title,autoFocus:true,
+            onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{title:e.target.value});});},
+            onKeyDown:function(e){if(e.key==='Enter')addCustomEvent();if(e.key==='Escape')setNewEvDraft(null);},
+            placeholder:'np. Pomiar u klienta, Dostawa...',
+            style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
+          })
+        ),
+        ce('div',{style:{marginBottom:12}},
+          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'DATA *'),
+          ce('input',{
+            type:'date',value:newEvDraft.date,
+            onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{date:e.target.value});});},
+            style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
+          })
+        ),
+        ce('div',{style:{display:'flex',gap:10,marginBottom:12}},
+          ce('div',{style:{flex:1}},
+            ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'OD'),
+            ce('input',{
+              type:'time',value:newEvDraft.timeFrom,
+              onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{timeFrom:e.target.value});});},
+              style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
+            })
+          ),
+          ce('div',{style:{flex:1}},
+            ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'DO'),
+            ce('input',{
+              type:'time',value:newEvDraft.timeTo,
+              onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{timeTo:e.target.value});});},
+              style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
+            })
+          )
+        ),
+        ce('div',{style:{marginBottom:16}},
+          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'OPIS (opcjonalnie)'),
+          ce('textarea',{
+            value:newEvDraft.description,rows:3,
+            onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{description:e.target.value});});},
+            placeholder:'Dodatkowe informacje...',
+            style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',resize:'none',fontFamily:'inherit'}
+          })
+        ),
+        ce('div',{style:{display:'flex',gap:10}},
+          ce('button',{
+            onClick:function(){setNewEvDraft(null);},
+            disabled:newEvDraft.saving,
+            style:{flex:1,padding:'10px',borderRadius:10,border:'1px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}
+          },'Anuluj'),
+          ce('button',{
+            onClick:addCustomEvent,
+            disabled:newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date,
+            style:{flex:2,padding:'10px',borderRadius:10,border:'none',
+              background:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date)?'var(--bd2)':'#4285f4',
+              color:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date)?'var(--t3)':'#fff',
+              fontSize:13,fontWeight:700,cursor:newEvDraft.saving?'wait':'pointer',fontFamily:'inherit'}
+          },newEvDraft.saving?'\u23F3 Zapisuj\u0119...':'\uD83D\uDCC5 Dodaj do Google Calendar')
+        )
+      )
+    ):null
   );
 }
 
