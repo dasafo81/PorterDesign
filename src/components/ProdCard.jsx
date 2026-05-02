@@ -1336,10 +1336,13 @@ export function ProdCard(p){
       // 2. KOLOR
       ce("div",{style:{marginBottom:18}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"KOLOR"),
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(110px, 1fr))",gap:8}},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(120px, 1fr))",gap:10}},
           KD_KOLORY.map(function(k){
             var a=kdKol===k.id;
-            return ce("button",{key:k.id,onClick:function(){kdSetKol(k.id);},style:{padding:"10px 8px",borderRadius:10,border:"2px solid "+(a?"var(--gr)":"var(--bd2)"),background:a?"var(--grl)":"var(--bg)",color:a?"var(--grd)":"var(--t1)",fontSize:12,fontWeight:a?600:400,cursor:"pointer",transition:"all .15s",minHeight:44,textAlign:"center"}},k.label);
+            return ce("button",{key:k.id,onClick:function(){kdSetKol(k.id);},style:{padding:0,borderRadius:10,border:"2px solid "+(a?"var(--gr)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",transition:"all .15s",overflow:"hidden",display:"flex",flexDirection:"column"}},
+              ce("div",{style:{height:64,background:k.bg,borderBottom:"1px solid var(--bd2)"}}),
+              ce("div",{style:{padding:"8px 6px",fontSize:12,fontWeight:a?600:400,color:a?"var(--grd)":"var(--t1)",textAlign:"center",background:a?"var(--grl)":"var(--bg)"}},k.label)
+            );
           })
         )
       ),
