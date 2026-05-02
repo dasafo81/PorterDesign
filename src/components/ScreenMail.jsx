@@ -670,10 +670,13 @@ function SettingsView(p){
     sbApi.upsertUserSettings(p.userEmail,{
       signature_html:sigHtml,
       signature_image_url:sigImg
-    }).then(function(rows){
+    }).then(function(){
+      // Po upsert odczytaj świeże dane — PATCH nie zwraca body, więc nie polegamy na rows
+      return sbApi.getUserSettings(p.userEmail);
+    }).then(function(row){
       setSaving(false);
       setMsg({type:"ok",text:"Zapisano \u2713"});
-      if(p.onSaved&&rows&&rows[0])p.onSaved(rows[0]);
+      if(p.onSaved&&row)p.onSaved(row);
     }).catch(function(err){
       setSaving(false);
       setMsg({type:"err",text:"B\u0142\u0105d zapisu: "+(err.message||"nieznany")});
