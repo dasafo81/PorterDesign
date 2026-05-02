@@ -10,6 +10,7 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
   JZ_LABELS, JZ_ZONES, KARNISZ_SUPPLIERS, KN,
+  KD_AKCESORIA, KD_SZYNY, KD_ZASLEPKI,
   KP, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -1308,17 +1309,65 @@ export function ProdCard(p){
       )
     );
   }else if(prod.type==="karnisz_dek"){
+    var kdMm=par.mm||20;
+    var kdSzyny=KD_SZYNY[kdMm]||KD_SZYNY[20];
+    var kdLens=Object.keys(kdSzyny).map(Number).sort(function(a,b){return a-b;});
+    var kdSegm=par.segmenty||[];
+    var kdAcc=par.akcesoria||{};
+    function setKdMm(v){p.onChange(mg(prod,{par:mg(par,{mm:v,segmenty:[]})}));}
+    function addSegm(){p.onChange(mg(prod,{par:mg(par,{segmenty:kdSegm.concat([{len:kdLens[0],qty:1}])})}));}
+    function removeSegm(i){var ns=kdSegm.filter(function(_,idx){return idx!==i;});p.onChange(mg(prod,{par:mg(par,{segmenty:ns})}));}
+    function setSegm(i,key,val){var ns=kdSegm.map(function(s,idx){return idx===i?mg(s,Object.fromEntries([[key,val]])):s;});p.onChange(mg(prod,{par:mg(par,{segmenty:ns})}));}
+    function setAcc(id,val){var v=parseInt(val)||0;var na=mg(kdAcc,Object.fromEntries([[id,v||undefined]]));if(!v)delete na[id];p.onChange(mg(prod,{par:mg(par,{akcesoria:na})}));}
+    var zCena=KD_ZASLEPKI[kdMm]||0;
     form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
-        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
-        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"number",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST}))
+      // wybór średnicy
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"ŚREDNICA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [20,30].map(function(mm){
+            var isA=kdMm===mm;
+            return ce("button",{key:mm,onClick:function(){setKdMm(mm);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:15,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+mm+" mm":mm+" mm"
+            );
+          })
+        )
       ),
-      ce(Chips,{items:[
-        ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
-        ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
-      ]})
+      // segmenty szyn
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"SEGMENTY SZYNY"),
+        kdSegm.length===0?ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:8}},"\u2014 brak segment\u00f3w, dodaj poni\u017cej"):null,
+        kdSegm.map(function(s,i){
+          return ce("div",{key:i,style:{display:"flex",gap:8,alignItems:"center",marginBottom:8}},
+            ce("select",{value:s.len,onChange:function(ev){setSegm(i,"len",Number(ev.target.value));},style:Object.assign({},IST,{flex:2,minHeight:48})},
+              kdLens.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+formatPLN(kdSzyny[l]));})
+            ),
+            ce("input",{type:"number",min:1,value:s.qty,onChange:function(ev){setSegm(i,"qty",parseInt(ev.target.value)||1);},style:Object.assign({},IST,{width:72,flex:"none",minHeight:48}),placeholder:"1"}),
+            ce("button",{onClick:function(){removeSegm(i);},style:{border:"none",background:"var(--bg2)",color:"var(--t2)",borderRadius:8,padding:"8px 12px",cursor:"pointer",fontSize:16,lineHeight:1}},"\u00d7")
+          );
+        }),
+        ce("button",{onClick:addSegm,style:{border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t1)",borderRadius:10,padding:"10px 18px",cursor:"pointer",fontSize:14,marginTop:4}},
+          "+ Dodaj segment"
+        )
+      ),
+      // zaślepki (informacyjnie)
+      kdSegm.length>0?ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginBottom:14}},
+        "\u2022 Za\u015blepki "+kdMm+"mm x2 \u2014 "+formatPLN(zCena*2)+" (doliczane automatycznie)"
+      ):null,
+      // akcesoria
+      ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AKCESORIA"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+          KD_AKCESORIA.map(function(a){
+            var q=parseInt(kdAcc[a.id])||0;
+            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:q>0?"var(--grl)":"var(--bg2)",borderRadius:8,border:"1px solid "+(q>0?"var(--gr)":"var(--bd2)"),transition:"all .15s"}},
+              ce("span",{style:{flex:1,fontSize:14,color:"var(--t1)"}},a.label),
+              ce("span",{style:{fontSize:13,color:"var(--t2)",whiteSpace:"nowrap"}},formatPLN(a.cena)+" / szt."),
+              ce("input",{type:"number",min:0,value:q||"",onChange:function(ev){setAcc(a.id,ev.target.value);},placeholder:"0",style:{width:60,padding:"6px 8px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)",textAlign:"center"}})
+            );
+          })
+        )
+      )
     );
   }else if(prod.type==="inny"){
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
