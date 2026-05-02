@@ -10,7 +10,7 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
   JZ_LABELS, JZ_ZONES, KARNISZ_SUPPLIERS, KN,
-  KD_AKCESORIA, KD_SZYNY, KD_ZASLEPKI,
+  KD_AKCESORIA, KD_KOLORY, KD_SZYNY, KD_ZASLEPKI,
   KP, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -1309,67 +1309,78 @@ export function ProdCard(p){
       )
     );
   }else if(prod.type==="karnisz_dek"){
-    var kdMm=par.mm||20;
-    var kdSzyny=KD_SZYNY[kdMm]||KD_SZYNY[20];
-    var kdLens=Object.keys(kdSzyny).map(Number).sort(function(a,b){return a-b;});
-    var kdSegm=par.segmenty||[];
-    var kdAcc=par.akcesoria||{};
-    function setKdMm(v){p.onChange(mg(prod,{par:mg(par,{mm:v,segmenty:[]})}));}
-    function addSegm(){p.onChange(mg(prod,{par:mg(par,{segmenty:kdSegm.concat([{len:kdLens[0],qty:1}])})}));}
-    function removeSegm(i){var ns=kdSegm.filter(function(_,idx){return idx!==i;});p.onChange(mg(prod,{par:mg(par,{segmenty:ns})}));}
-    function setSegm(i,key,val){var ns=kdSegm.map(function(s,idx){return idx===i?mg(s,Object.fromEntries([[key,val]])):s;});p.onChange(mg(prod,{par:mg(par,{segmenty:ns})}));}
-    function setAcc(id,val){var v=parseInt(val)||0;var na=mg(kdAcc,Object.fromEntries([[id,v||undefined]]));if(!v)delete na[id];p.onChange(mg(prod,{par:mg(par,{akcesoria:na})}));}
-    var zCena=KD_ZASLEPKI[kdMm]||0;
+    var kdR=prod.kdRozmiar||20;
+    var kdSzT=KD_SZYNY[kdR]||KD_SZYNY[20];
+    var kdLens=Object.keys(kdSzT).map(Number).sort(function(a,b){return a-b;});
+    var kdSzL=prod.kdSzyny||[];
+    var kdAk=prod.kdAkc||{};
+    var kdKol=prod.kdKolor||"bialy_mat";
+    function kdSetR(r){p.onChange(mg(prod,{kdRozmiar:r,kdSzyny:[]}));}
+    function kdSetKol(k){p.onChange(mg(prod,{kdKolor:k}));}
+    function kdAdd(){p.onChange(mg(prod,{kdSzyny:kdSzL.concat([{dlugosc:kdLens[0],qty:1}])}));}
+    function kdUpd(i,k,v){var ns=kdSzL.map(function(s,idx){var o={};o[k]=v;return idx===i?mg(s,o):s;});p.onChange(mg(prod,{kdSzyny:ns}));}
+    function kdDel(i){p.onChange(mg(prod,{kdSzyny:kdSzL.filter(function(_,idx){return idx!==i;})}));}
+    function kdSetAk(id,v){var q=parseInt(v)||0;var na=Object.assign({},kdAk);if(q<=0)delete na[id];else na[id]=q;p.onChange(mg(prod,{kdAkc:na}));}
+    var zCena=KD_ZASLEPKI[kdR]||0;
     form=ce(Fragment,null,
-      // wybór średnicy
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"ŚREDNICA"),
+      // 1. ROZMIAR
+      ce("div",{style:{marginBottom:18}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"ROZMIAR"),
         ce("div",{style:{display:"flex",gap:10}},
-          [20,30].map(function(mm){
-            var isA=kdMm===mm;
-            return ce("button",{key:mm,onClick:function(){setKdMm(mm);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:15,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+mm+" mm":mm+" mm"
-            );
+          [20,30].map(function(r){
+            var a=kdR===r;
+            return ce("button",{key:r,onClick:function(){kdSetR(r);},style:{flex:1,padding:"14px 0",borderRadius:10,border:"2px solid "+(a?"var(--gr)":"var(--bd2)"),background:a?"var(--grl)":"var(--bg)",color:a?"var(--grd)":"var(--t1)",fontSize:15,fontWeight:a?700:400,cursor:"pointer",transition:"all .15s"}},r+" mm");
           })
         )
       ),
-      // segmenty szyn
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"SEGMENTY SZYNY"),
-        kdSegm.length===0?ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:8}},"\u2014 brak segment\u00f3w, dodaj poni\u017cej"):null,
-        kdSegm.map(function(s,i){
-          return ce("div",{key:i,style:{display:"flex",gap:8,alignItems:"center",marginBottom:8}},
-            ce("select",{value:s.len,onChange:function(ev){setSegm(i,"len",Number(ev.target.value));},style:Object.assign({},IST,{flex:2,minHeight:48})},
-              kdLens.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzyny[l])+"\xa0z\u0142");})
-            ),
-            ce("input",{type:"number",min:1,value:s.qty,onChange:function(ev){setSegm(i,"qty",parseInt(ev.target.value)||1);},style:Object.assign({},IST,{width:72,flex:"none",minHeight:48}),placeholder:"1"}),
-            ce("button",{onClick:function(){removeSegm(i);},style:{border:"none",background:"var(--bg2)",color:"var(--t2)",borderRadius:8,padding:"8px 12px",cursor:"pointer",fontSize:16,lineHeight:1}},"\u00d7")
-          );
-        }),
-        ce("button",{onClick:addSegm,style:{border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t1)",borderRadius:10,padding:"10px 18px",cursor:"pointer",fontSize:14,marginTop:4}},
-          "+ Dodaj segment"
+      // 2. KOLOR
+      ce("div",{style:{marginBottom:18}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"KOLOR"),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(110px, 1fr))",gap:8}},
+          KD_KOLORY.map(function(k){
+            var a=kdKol===k.id;
+            return ce("button",{key:k.id,onClick:function(){kdSetKol(k.id);},style:{padding:"10px 8px",borderRadius:10,border:"2px solid "+(a?"var(--gr)":"var(--bd2)"),background:a?"var(--grl)":"var(--bg)",color:a?"var(--grd)":"var(--t1)",fontSize:12,fontWeight:a?600:400,cursor:"pointer",transition:"all .15s",minHeight:44,textAlign:"center"}},k.label);
+          })
         )
       ),
-      // zaślepki (informacyjnie)
-      kdSegm.length>0?ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginBottom:14}},
-        "\u2022 Za\u015blepki "+kdMm+"mm x2 \u2014 "+Math.round(zCena*2)+"\xa0z\u0142 (doliczane automatycznie)"
+      // 3. ODCINKI SZYNY
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"ODCINKI SZYNY"),
+        ce("div",{style:{background:"var(--bg2)",borderRadius:10,padding:12,border:"1px solid var(--bd2)"}},
+          kdSzL.length===0
+            ?ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"4px 0 12px"}},"Brak odcink\u00f3w \u2014 dodaj co najmniej jeden.")
+            :kdSzL.map(function(s,i){
+              return ce("div",{key:i,style:{display:"flex",gap:8,alignItems:"center",marginBottom:8}},
+                ce("select",{value:s.dlugosc,onChange:function(ev){kdUpd(i,"dlugosc",Number(ev.target.value));},style:Object.assign({},IST,{flex:1,minHeight:48})},
+                  kdLens.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzT[l])+"\xa0z\u0142");})
+                ),
+                ce("input",{type:"number",min:1,value:s.qty,onChange:function(ev){kdUpd(i,"qty",parseInt(ev.target.value)||1);},style:Object.assign({},IST,{width:64,flex:"none",minHeight:48,textAlign:"center"})}),
+                ce("button",{onClick:function(){kdDel(i);},style:{border:"none",background:"var(--bg)",color:"var(--t2)",borderRadius:8,padding:"10px 12px",cursor:"pointer",fontSize:16,lineHeight:1}},"\u00d7")
+              );
+            }),
+          ce("button",{onClick:kdAdd,style:{width:"100%",border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t1)",borderRadius:10,padding:"12px",cursor:"pointer",fontSize:14,marginTop:kdSzL.length>0?4:0}},"+ Dodaj odcinek")
+        )
+      ),
+      // ZASLEPKI INFO
+      kdSzL.length>0?ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"10px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginBottom:14}},
+        "\u2022 Za\u015blepki "+kdR+"mm x2 \u2014 "+Math.round(zCena*2)+"\xa0z\u0142 (doliczane automatycznie)"
       ):null,
-      // akcesoria
+      // 4. AKCESORIA
       ce("div",null,
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AKCESORIA"),
         ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
           KD_AKCESORIA.map(function(a){
-            var q=parseInt(kdAcc[a.id])||0;
-            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:q>0?"var(--grl)":"var(--bg2)",borderRadius:8,border:"1px solid "+(q>0?"var(--gr)":"var(--bd2)"),transition:"all .15s"}},
+            var q=parseInt(kdAk[a.id])||0;
+            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:q>0?"var(--grl)":"var(--bg2)",borderRadius:8,border:"1px solid "+(q>0?"var(--gr)":"var(--bd2)"),transition:"all .15s"}},
               ce("span",{style:{flex:1,fontSize:14,color:"var(--t1)"}},a.label),
               ce("span",{style:{fontSize:13,color:"var(--t2)",whiteSpace:"nowrap"}},Math.round(a.cena)+"\xa0z\u0142 / szt."),
-              ce("input",{type:"number",min:0,value:q||"",onChange:function(ev){setAcc(a.id,ev.target.value);},placeholder:"0",style:{width:60,padding:"6px 8px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)",textAlign:"center"}})
+              ce("input",{type:"number",min:0,value:q||"",onChange:function(ev){kdSetAk(a.id,ev.target.value);},placeholder:"0",style:{width:60,padding:"6px 8px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)",textAlign:"center"}})
             );
           })
         )
       )
     );
-  }else if(prod.type==="inny"){
+    }else if(prod.type==="inny"){
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
       ce(Fld,{label:"NAZWA PRODUKTU"},
         ce("input",{type:"text",value:prod.innyNazwa||"",
