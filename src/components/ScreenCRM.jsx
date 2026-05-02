@@ -645,7 +645,7 @@ export function CRMKalendarz(p){
         gcalToken?"\u2713 Po\u0142\u0105czono z Google Calendar":"Google Calendar"
       ),
       gcalToken
-        ?ce("button",{onClick:function(){fetchEvents(gcalToken);},disabled:loadingEv,style:{...BTN,borderColor:"#4285f4",color:"#4285f4",marginRight:4}},loadingEv?"\u23F3 Odświeżam...":"\u21BA Odśwież")
+        ?ce("button",{onClick:function(){fetchCalendarList(gcalToken);fetchEvents(gcalToken);},disabled:loadingEv,style:{...BTN,borderColor:"#4285f4",color:"#4285f4",marginRight:4}},loadingEv?"\u23F3 Odświeżam...":"\u21BA Odśwież")
         :null,
       gcalToken
         ?ce("button",{onClick:logout,style:{...BTN,color:"#ef4444",borderColor:"#ef4444"}},"Wyloguj")
@@ -683,13 +683,22 @@ export function CRMKalendarz(p){
         ce("div",{style:{display:"flex",gap:4}},
           ce("button",{onClick:function(){setCalView("month");},style:calView==="month"?BTN_ACT:BTN},"Miesi\u0105c"),
           ce("button",{onClick:function(){setCalView("week");},style:calView==="week"?BTN_ACT:BTN},"Tydzie\u0144"),
-          gcalToken?ce("button",{onClick:function(){openNewEventModal(null);},style:Object.assign({},BTN_ACT,{background:"#4285f4",marginLeft:4})},"＋ Wydarzenie"):null
+          gcalToken?ce("button",{onClick:function(){if(gcalToken)fetchCalendarList(gcalToken);openNewEventModal(null);},style:Object.assign({},BTN_ACT,{background:"#4285f4",marginLeft:4})},"＋ Wydarzenie"):null
         )
       ),
 
-      // Legenda
+      // Legenda (dynamicznie z calList + typy z dealów)
       ce("div",{style:{display:"flex",gap:12,padding:"6px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg2)",flexWrap:"wrap"}},
-        ce("span",{style:{fontSize:10,color:"#4285f4",fontWeight:600}},"● Google Calendar"),
+        // Kalendarze Google
+        calList.map(function(c){
+          return ce("span",{key:c.id,style:{fontSize:10,color:c.color,fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}},
+            ce("span",{style:{width:8,height:8,borderRadius:"50%",background:c.color,display:"inline-block"}}),
+            c.summary||"(bez nazwy)"
+          );
+        }),
+        // Separator wizualny jeśli są kalendarze i są też terminy z dealów
+        calList.length>0?ce("span",{style:{fontSize:10,color:"var(--t3)",opacity:0.4}},"|"):null,
+        // Typy zdarzeń z dealów
         ce("span",{style:{fontSize:10,color:"#3b82f6",fontWeight:600}},"● Pomiar"),
         ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Realizacja"),
         ce("span",{style:{fontSize:10,color:"#f59e0b",fontWeight:600}},"● Follow-up"),
