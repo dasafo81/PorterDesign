@@ -598,6 +598,8 @@ export const PROD_TYPES =[
   {id:"roleta",label:"Roleta rzymska",icon:"2b1b"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
+  {id:"prestige_round",label:"Karnisz Prestige Round",icon:"⚡"},
+  {id:"prestige_square",label:"Karnisz Prestige Square",icon:"⚡"},
   {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
   {id:"karnisz_dek",label:"Karnisz dekoracyjny",icon:"📏"},
   {id:"inny",label:"Inny",icon:"📦"}
@@ -640,6 +642,54 @@ export const KSLIM ={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,50
 export const KUNIV ={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
 export const KN ={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
 export const KP ={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
+
+// ── KARNISZ PRESTIGE ROUND / SQUARE (Premium-Line) ───────────────────────────
+// Cennik hurtowy netto × VAT 1.23 × marża 2 = mnożnik 2.46
+export const PRESTIGE_WIDTHS =[100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000,1050,1100,1150,1200];
+
+export const PRESTIGE_ROUND ={
+  am75_3w_wifi:{100:2120.52,150:2216.46,200:2317.32,250:2415.72,300:2501.82,350:2612.52,400:2706.0,450:2801.94,500:2902.8,550:2996.28,600:3087.3,650:3188.16,700:3281.64,750:3377.58,800:3483.36,850:3574.38,900:3672.78,950:3763.8,1000:3864.66,1050:3958.14,1100:4054.08,1150:4152.48,1200:4248.42},
+  am70_3w_zigbee:{100:2145.12,150:2241.06,200:2341.92,250:2440.32,300:2528.88,350:2637.12,400:2730.6,450:2826.54,500:2927.4,550:3020.88,600:3111.9,650:3212.76,700:3306.24,750:3402.18,800:3507.96,850:3601.44,900:3697.38,950:3790.86,1000:3891.72,1050:3982.74,1100:4081.14,1150:4177.08,1200:4273.02},
+  am75_3w:{100:1955.7,150:2051.64,200:2154.96,250:2250.9,300:2339.46,350:2447.7,400:2541.18,450:2637.12,500:2737.98,550:2831.46,600:2922.48,650:3023.34,700:3116.82,750:3212.76,800:3318.54,850:3412.02,900:3507.96,950:3601.44,1000:3702.3,1050:3793.32,1100:3891.72,1150:3987.66,1200:4083.6},
+  am75_5w:{100:2646.96,150:2755.2,200:2868.36,250:2974.14,300:3082.38,350:3193.08,400:3301.32,450:3412.02,500:3520.26,550:3630.96,600:3744.12,650:3849.9,700:3958.14,750:4068.84,800:4177.08,850:4285.32,900:4396.02,950:4504.26,1000:4619.88,1050:4723.2,1100:4833.9,1150:4942.14,1200:5052.84},
+  am75_aku:{100:3168.48,150:3264.42,200:3365.28,250:3461.22,300:3549.78,350:3660.48,400:3751.5,450:3849.9,500:3950.76,550:4041.78,600:4135.26,650:4236.12,700:4329.6,750:4425.54,800:4531.32,850:4622.34,900:4720.74,950:4811.76,1000:4912.62,1050:5006.1,1100:5102.04,1150:5200.44,1200:5296.38}
+};
+export const PRESTIGE_ROUND_W60 ={100:83.64,150:127.92,200:169.74,250:211.56,300:253.38,350:295.2,400:339.48,450:381.3,500:423.12,550:464.94,600:509.22,650:551.04,700:592.86,750:634.68,800:678.96,850:720.78,900:762.6,950:804.42,1000:846.24,1050:890.52,1100:932.34,1150:974.16,1200:1015.98};
+export const PRESTIGE_ROUND_W80 ={100:66.42,150:98.4,200:130.38,250:164.82,300:199.26,350:231.24,400:263.22,450:297.66,500:329.64,550:361.62,600:396.06,650:428.04,700:462.48,750:494.46,800:526.44,850:560.88,900:592.86,950:624.84,1000:659.28,1050:691.26,1100:725.7,1150:757.68,1200:789.66};
+export const PRESTIGE_ROUND_TANDEM ={am75_3w_wifi:1047.96,am70_3w_zigbee:1055.34,am75_3w:1018.44,am75_5w:961.86,am75_aku:1453.86};
+
+export const PRESTIGE_SQUARE ={
+  am75_3w_wifi:{100:2004.9,150:2095.92,200:2191.86,250:2282.88,300:2366.52,350:2472.3,400:2558.4,450:2649.42,500:2745.36,550:2833.92,600:2920.02,650:3015.96,700:3104.52,750:3195.54,800:3293.94,850:3382.5,900:3473.52,950:3562.08,1000:3658.02,1050:3744.12,1100:3835.14,1150:3928.62,1200:4019.64},
+  am70_3w_zigbee:{100:2029.5,150:2120.52,200:2216.46,250:2307.48,300:2391.12,350:2494.44,400:2583.0,450:2674.02,500:2769.96,550:2856.06,600:2944.62,650:3040.56,700:3126.66,750:3220.14,800:3318.54,850:3407.1,900:3498.12,950:3584.22,1000:3680.16,1050:3768.72,1100:3859.74,1150:3950.76,1200:4041.78},
+  am75_3w:{100:1849.92,150:1940.94,200:2036.88,250:2127.9,300:2211.54,350:2314.86,400:2403.42,450:2494.44,500:2590.38,550:2678.94,600:2765.04,650:2860.98,700:2949.54,750:3040.56,800:3138.96,850:3227.52,900:3318.54,950:3407.1,1000:3500.58,1050:3589.14,1100:3680.16,1150:3771.18,1200:3864.66},
+  am75_5w:{100:2501.82,150:2607.6,200:2713.38,250:2814.24,300:2917.56,350:3020.88,400:3124.2,450:3227.52,500:3330.84,550:3434.16,600:3542.4,650:3640.8,700:3744.12,750:3847.44,800:3950.76,850:4054.08,900:4157.4,950:4260.72,1000:4368.96,1050:4469.82,1100:4573.14,1150:4676.46,1200:4779.78},
+  am75_aku:{100:2996.28,150:3087.3,200:3183.24,250:3274.26,300:3357.9,350:3461.22,400:3549.78,450:3640.8,500:3736.74,550:3822.84,600:3911.4,650:4007.34,700:4093.44,750:4186.92,800:4285.32,850:4373.88,900:4464.9,950:4551.0,1000:4646.94,1050:4735.5,1100:4826.52,1150:4917.54,1200:5011.02}
+};
+export const PRESTIGE_SQUARE_W60 ={100:84.72,150:127.92,200:169.74,250:211.56,300:253.38,350:295.2,400:338.99,450:381.3,500:423.61,550:465.92,600:508.24,650:550.79,700:593.11,750:635.42,800:677.73,850:720.04,900:762.6,950:804.91,1000:847.22,1050:889.54,1100:931.85,1150:974.41,1200:1015.98};
+export const PRESTIGE_SQUARE_W80 ={100:65.9,150:98.4,200:130.38,250:164.82,300:199.26,350:231.24,400:263.47,450:296.43,500:329.39,550:362.36,600:395.32,650:428.29,700:461.25,750:494.21,800:527.18,850:560.14,900:593.11,950:626.07,1000:659.03,1050:692.0,1100:724.96,1150:757.68,1200:789.66};
+export const PRESTIGE_SQUARE_TANDEM ={am75_3w_wifi:1047.96,am70_3w_zigbee:1055.34,am75_3w:1018.44,am75_5w:961.86,am75_aku:1453.86};
+
+export const PRESTIGE_NAPEDY =[
+  {v:"am75_3w_wifi",   l:"AM75 3W WiFi"},
+  {v:"am70_3w_zigbee", l:"AM70 3W ZigBee"},
+  {v:"am75_3w",        l:"AM75 3W (radio)"},
+  {v:"am75_5w",        l:"AM75 5W (radio + ścienny)"},
+  {v:"am75_aku",       l:"AM75 Akumulator"}
+];
+
+export const PRESTIGE_PILOTY =[
+  {v:"brak",  l:"Bez pilota",          c:0},
+  {v:"p1",    l:"Pilot 1-kanałowy",    c:185.14},
+  {v:"p6",    l:"Pilot 6-kanałowy",    c:234.68},
+  {v:"p16",   l:"Pilot 16-kanałowy",   c:318.13}
+];
+
+export const PRESTIGE_CENTRALKI =[
+  {v:"brak",   l:"Brak",                  c:0},
+  {v:"smarth", l:"Centralka SMART HOME",  c:539.77},
+  {v:"zigbee", l:"Centralka ZigBee",      c:495.44}
+];
+export const PRESTIGE_LADOWARKA =200.79; // dla AM75 Akumulator
 
 // ── ROLETA SHADOW ────────────────────────────────────────────────────────────
 // Wymiary dokładne: szerokość (kolumny) i wysokość (wiersze) w cm
@@ -1004,6 +1054,34 @@ export function calc(p){
     var rk=lookup(lenK,st);
     total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318)*qty;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
+  }else if(p.type==="prestige_round"||p.type==="prestige_square"){
+    var lenP=parseInt(par.len)||0,qty=par.qty||1;
+    if(!lenP)return{total:0,lines:[],warn:null};
+    var seria=p.type==="prestige_round"?"ROUND":"SQUARE";
+    var TAB =p.type==="prestige_round"?PRESTIGE_ROUND:PRESTIGE_SQUARE;
+    var TW60=p.type==="prestige_round"?PRESTIGE_ROUND_W60:PRESTIGE_SQUARE_W60;
+    var TW80=p.type==="prestige_round"?PRESTIGE_ROUND_W80:PRESTIGE_SQUARE_W80;
+    var TT  =p.type==="prestige_round"?PRESTIGE_ROUND_TANDEM:PRESTIGE_SQUARE_TANDEM;
+    var nap=c.pn||"am75_3w";
+    var motorTab=TAB[nap]||TAB.am75_3w;
+    var bazaP=motorTab[lenP]||0;
+    var lineSum=bazaP;
+    var napLabel=(PRESTIGE_NAPEDY.find(function(x){return x.v===nap;})||{l:nap}).l;
+    lines.push("Karnisz Prestige "+seria+" "+lenP+"cm — "+napLabel+(qty>1?" x"+qty:""));
+    // WAVE (dopłata)
+    if(c.wave==="w60"){var w=TW60[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 60 mm");}
+    else if(c.wave==="w80"){var w=TW80[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 80 mm");}
+    // Tandem
+    if(c.tandem){var t=TT[nap]||0;lineSum+=t;if(t>0)lines.push("Tandem (rozsuwanie dwustronne synchroniczne)");}
+    // Pilot
+    var pil=PRESTIGE_PILOTY.find(function(x){return x.v===(c.pp||"brak");});
+    if(pil&&pil.c>0){lineSum+=pil.c;lines.push(pil.l);}
+    // Centralka
+    var cen=PRESTIGE_CENTRALKI.find(function(x){return x.v===(c.pcn||"brak");});
+    if(cen&&cen.c>0){lineSum+=cen.c;lines.push(cen.l);}
+    // Ładowarka (tylko dla akumulatora)
+    if(nap==="am75_aku"&&c.lad){lineSum+=PRESTIGE_LADOWARKA;lines.push("Ładowarka do silnika akumulatorowego");}
+    total=lineSum*qty;
   }else if(p.type==="karnisz_dek"){
     // p.kdRozmiar: 20|30, p.kdSzyny: [{dlugosc:160,qty:1},...], p.kdAkc: {id:qty}, p.kdKolor: id
     var kdR=p.kdRozmiar||20;
@@ -1337,11 +1415,21 @@ export function buildKarniszRows(client){
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
-        if(p.type!=="karnisz"&&p.type!=="szyna")return;
+        if(p.type!=="karnisz"&&p.type!=="szyna"&&p.type!=="prestige_round"&&p.type!=="prestige_square")return;
         var pc=p.c||{},par=p.par||{};
-        var typLabel=p.type==="karnisz"?"Karnisz elektryczny "+(pc.km||"slim").toUpperCase():"Szyna KS "+(pc.ks||"flex");
+        var typLabel;
+        if(p.type==="karnisz"){
+          typLabel="Karnisz elektryczny "+(pc.km||"slim").toUpperCase();
+        }else if(p.type==="prestige_round"){
+          typLabel="Karnisz Prestige ROUND ("+(pc.pn||"am75_3w")+")";
+        }else if(p.type==="prestige_square"){
+          typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")";
+        }else{
+          typLabel="Szyna KS "+(pc.ks||"flex");
+        }
         var len=par.len||0;
         var res=calc(p);
+        var isKarnisz=(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square");
         rows.push({
           room:r.name,
           win:w.name,
@@ -1351,8 +1439,8 @@ export function buildKarniszRows(client){
           arc:par.arc||0,
           arcDepth:par.arcDepth||null,
           pts:par.pt||par.pts||0,
-          motorSide:p.type==="karnisz"?(pc.motorSide||"lewo"):null,
-          motorType:p.type==="karnisz"?(pc.motorType||"kurtyna"):null,
+          motorSide:isKarnisz?(pc.motorSide||"lewo"):null,
+          motorType:isKarnisz?(pc.motorType||"kurtyna"):null,
           supplier:p.karniszSupplier||"",
           total:res.total||0,
           lines:(res.lines||[]).join("; ")
