@@ -10,8 +10,11 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
   JZ_LABELS, JZ_ZONES, KARNISZ_SUPPLIERS, KN,
-  KD_AKCESORIA, KD_KOLORY, KD_SZYNY, KD_ZASLEPKI,
   KP, KSLIM, KUNIV, LOGO_SRC,
+  PRESTIGE_CENTRALKI, PRESTIGE_LADOWARKA, PRESTIGE_NAPEDY, PRESTIGE_PILOTY,
+  PRESTIGE_ROUND, PRESTIGE_ROUND_TANDEM, PRESTIGE_ROUND_W60, PRESTIGE_ROUND_W80,
+  PRESTIGE_SQUARE, PRESTIGE_SQUARE_TANDEM, PRESTIGE_SQUARE_W60, PRESTIGE_SQUARE_W80,
+  PRESTIGE_WIDTHS,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
@@ -27,7 +30,6 @@ import { generateFabricOrderPDF, generateClientEmail,
 
   generateSewingOrderPDF, generateSewingOrderPDFFromRows
 } from '../lib/pdf.js';
-import { ModalConfirmTypeChange } from './ModalRoom.jsx';
 const ce = React.createElement;
 
 export function Chip(p){
@@ -1308,82 +1310,104 @@ export function ProdCard(p){
         )
       )
     );
-  }else if(prod.type==="karnisz_dek"){
-    var kdR=prod.kdRozmiar||20;
-    var kdSzT=KD_SZYNY[kdR]||KD_SZYNY[20];
-    var kdLens=Object.keys(kdSzT).map(Number).sort(function(a,b){return a-b;});
-    var kdSzL=prod.kdSzyny||[];
-    var kdAk=prod.kdAkc||{};
-    var kdKol=prod.kdKolor||"bialy_mat";
-    function kdSetR(r){p.onChange(mg(prod,{kdRozmiar:r,kdSzyny:[]}));}
-    function kdSetKol(k){p.onChange(mg(prod,{kdKolor:k}));}
-    function kdAdd(){p.onChange(mg(prod,{kdSzyny:kdSzL.concat([{dlugosc:kdLens[0],qty:1}])}));}
-    function kdUpd(i,k,v){var ns=kdSzL.map(function(s,idx){var o={};o[k]=v;return idx===i?mg(s,o):s;});p.onChange(mg(prod,{kdSzyny:ns}));}
-    function kdDel(i){p.onChange(mg(prod,{kdSzyny:kdSzL.filter(function(_,idx){return idx!==i;})}));}
-    function kdSetAk(id,v){var q=parseInt(v)||0;var na=Object.assign({},kdAk);if(q<=0)delete na[id];else na[id]=q;p.onChange(mg(prod,{kdAkc:na}));}
-    var zCena=KD_ZASLEPKI[kdR]||0;
+  }else if(prod.type==="prestige_round"||prod.type==="prestige_square"){
+    var pTab =prod.type==="prestige_round"?PRESTIGE_ROUND:PRESTIGE_SQUARE;
+    var pNap =c.pn||"am75_3w";
+    var pLen =parseInt(par.len)||0;
+    var pSeria=prod.type==="prestige_round"?"ROUND":"SQUARE";
     form=ce(Fragment,null,
-      // 1. ROZMIAR
-      ce("div",{style:{marginBottom:18}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"ROZMIAR"),
-        ce("div",{style:{display:"flex",gap:10}},
-          [20,30].map(function(r){
-            var a=kdR===r;
-            return ce("button",{key:r,onClick:function(){kdSetR(r);},style:{flex:1,padding:"14px 0",borderRadius:10,border:"2px solid "+(a?"var(--gr)":"var(--bd2)"),background:a?"var(--grl)":"var(--bg)",color:a?"var(--grd)":"var(--t1)",fontSize:15,fontWeight:a?700:400,cursor:"pointer",transition:"all .15s"}},r+" mm");
-          })
-        )
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILOŚĆ SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"DŁUGOŚĆ (cm)"},
+          ce("select",{value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},style:IST},
+            ce("option",{value:""},"— wybierz —"),
+            PRESTIGE_WIDTHS.map(function(w){return ce("option",{key:w,value:w},w+" cm");})
+          )
+        ),
+        ce(Fld,{label:"WYSOKOŚĆ (cm) — opcjonalnie"},ce("input",{type:"number",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
       ),
-      // 2. KOLOR
-      ce("div",{style:{marginBottom:18}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"KOLOR"),
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(120px, 1fr))",gap:10}},
-          KD_KOLORY.map(function(k){
-            var a=kdKol===k.id;
-            return ce("button",{key:k.id,onClick:function(){kdSetKol(k.id);},style:{padding:0,borderRadius:10,border:"2px solid "+(a?"var(--gr)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",transition:"all .15s",overflow:"hidden",display:"flex",flexDirection:"column"}},
-              ce("div",{style:{height:64,background:k.bg,borderBottom:"1px solid var(--bd2)"}}),
-              ce("div",{style:{padding:"8px 6px",fontSize:12,fontWeight:a?600:400,color:a?"var(--grd)":"var(--t1)",textAlign:"center",background:a?"var(--grl)":"var(--bg)"}},k.label)
+      // SERIA — przełącznik między ROUND i SQUARE (zmienia typ produktu)
+      ce("div",{style:{marginBottom:8}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"SERIA"),
+        ce(Chips,{items:[
+          ce(Chip,{key:"r",label:"PRESTIGE ROUND",active:prod.type==="prestige_round",onClick:function(){p.onChange(mg(prod,{type:"prestige_round"}));}}),
+          ce(Chip,{key:"s",label:"PRESTIGE SQUARE",active:prod.type==="prestige_square",onClick:function(){p.onChange(mg(prod,{type:"prestige_square"}));}})
+        ]})
+      ),
+      // SILNIK
+      ce("div",{style:{marginTop:12}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"SILNIK"),
+        ce(Chips,{items:PRESTIGE_NAPEDY.map(function(x){
+          return ce(Chip,{key:x.v,label:x.l,active:(c.pn||"am75_3w")===x.v,onClick:function(){sc("pn",x.v);}});
+        })})
+      ),
+      // WAVE
+      ce("div",{style:{marginTop:12}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"WAVE (dopłata)"),
+        ce(Chips,{items:[
+          ce(Chip,{key:"n",label:"Standard",active:!c.wave||c.wave==="brak",onClick:function(){sc("wave","brak");}}),
+          ce(Chip,{key:"60",label:"WAVE 60 mm",active:c.wave==="w60",onClick:function(){sc("wave","w60");}}),
+          ce(Chip,{key:"80",label:"WAVE 80 mm",active:c.wave==="w80",onClick:function(){sc("wave","w80");}})
+        ]})
+      ),
+      // TANDEM
+      ce("div",{style:{marginTop:12}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"TANDEM (rozsuwanie dwustronne synchroniczne)"),
+        ce(Chips,{items:[
+          ce(Chip,{key:"no",label:"Nie",active:!c.tandem,onClick:function(){sc("tandem",false);}}),
+          ce(Chip,{key:"yes",label:"Tak",active:!!c.tandem,onClick:function(){sc("tandem",true);}})
+        ]})
+      ),
+      // PILOT
+      ce("div",{style:{marginTop:12}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"PILOT"),
+        ce(Chips,{items:PRESTIGE_PILOTY.map(function(x){
+          var lbl=x.c>0?x.l+" — "+roundTo10(x.c)+" zł":x.l;
+          return ce(Chip,{key:x.v,label:lbl,active:(c.pp||"brak")===x.v,onClick:function(){sc("pp",x.v);}});
+        })})
+      ),
+      // CENTRALKA
+      ce("div",{style:{marginTop:12}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"CENTRALKA SMART HOME"),
+        ce(Chips,{items:PRESTIGE_CENTRALKI.map(function(x){
+          var lbl=x.c>0?x.l+" — "+roundTo10(x.c)+" zł":x.l;
+          return ce(Chip,{key:x.v,label:lbl,active:(c.pcn||"brak")===x.v,onClick:function(){sc("pcn",x.v);}});
+        })})
+      ),
+      // ŁADOWARKA — tylko dla AM75 Akumulator
+      pNap==="am75_aku"?ce("div",{style:{marginTop:12}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ŁADOWARKA"),
+        ce(Chips,{items:[
+          ce(Chip,{key:"no",label:"Bez ładowarki",active:!c.lad,onClick:function(){sc("lad",false);}}),
+          ce(Chip,{key:"yes",label:"Ładowarka — "+roundTo10(PRESTIGE_LADOWARKA)+" zł",active:!!c.lad,onClick:function(){sc("lad",true);}})
+        ]})
+      ):null,
+      // STRONA SILNIKA
+      ce("div",{style:{marginTop:20}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
+            var isA=(c.motorSide||"lewo")===s.key;
+            return ce("button",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"✓ "+s.label:s.label
             );
           })
         )
       ),
-      // 3. ODCINKI SZYNY
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"ODCINKI SZYNY"),
-        ce("div",{style:{background:"var(--bg2)",borderRadius:10,padding:12,border:"1px solid var(--bd2)"}},
-          kdSzL.length===0
-            ?ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"4px 0 12px"}},"Brak odcink\u00f3w \u2014 dodaj co najmniej jeden.")
-            :kdSzL.map(function(s,i){
-              return ce("div",{key:i,style:{display:"flex",gap:8,alignItems:"center",marginBottom:8}},
-                ce("select",{value:s.dlugosc,onChange:function(ev){kdUpd(i,"dlugosc",Number(ev.target.value));},style:Object.assign({},IST,{flex:1,minHeight:48})},
-                  kdLens.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzT[l])+"\xa0z\u0142");})
-                ),
-                ce("input",{type:"number",min:1,value:s.qty,onChange:function(ev){kdUpd(i,"qty",parseInt(ev.target.value)||1);},style:Object.assign({},IST,{width:64,flex:"none",minHeight:48,textAlign:"center"})}),
-                ce("button",{onClick:function(){kdDel(i);},style:{border:"none",background:"var(--bg)",color:"var(--t2)",borderRadius:8,padding:"10px 12px",cursor:"pointer",fontSize:16,lineHeight:1}},"\u00d7")
-              );
-            }),
-          ce("button",{onClick:kdAdd,style:{width:"100%",border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t1)",borderRadius:10,padding:"12px",cursor:"pointer",fontSize:14,marginTop:kdSzL.length>0?4:0}},"+ Dodaj odcinek")
-        )
-      ),
-      // ZASLEPKI INFO
-      kdSzL.length>0?ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"10px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginBottom:14}},
-        "\u2022 Za\u015blepki "+kdR+"mm x2 \u2014 "+Math.round(zCena*2)+"\xa0z\u0142 (doliczane automatycznie)"
-      ):null,
-      // 4. AKCESORIA
-      ce("div",null,
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"AKCESORIA"),
-        ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
-          KD_AKCESORIA.map(function(a){
-            var q=parseInt(kdAk[a.id])||0;
-            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:q>0?"var(--grl)":"var(--bg2)",borderRadius:8,border:"1px solid "+(q>0?"var(--gr)":"var(--bd2)"),transition:"all .15s"}},
-              ce("span",{style:{flex:1,fontSize:14,color:"var(--t1)"}},a.label),
-              ce("span",{style:{fontSize:13,color:"var(--t2)",whiteSpace:"nowrap"}},Math.round(a.cena)+"\xa0z\u0142 / szt."),
-              ce("input",{type:"number",min:0,value:q||"",onChange:function(ev){kdSetAk(a.id,ev.target.value);},placeholder:"0",style:{width:60,padding:"6px 8px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)",textAlign:"center"}})
+      // TYP MONTAŻU
+      ce("div",{style:{marginTop:16}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP"),
+        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
+            var isA=(c.motorType||"kurtyna")===t.key;
+            return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"✓ "+t.label:t.label
             );
           })
         )
       )
     );
-    }else if(prod.type==="inny"){
+  }else if(prod.type==="inny"){
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
       ce(Fld,{label:"NAZWA PRODUKTU"},
         ce("input",{type:"text",value:prod.innyNazwa||"",
