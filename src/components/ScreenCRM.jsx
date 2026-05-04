@@ -466,7 +466,7 @@ export function CRMKalendarz(p){
     var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
     var name=cl?cl.name:"Klient";
     if(deal.visit_date){dealEvents.push({date:new Date(deal.visit_date),label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});}
-    if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});}
+    if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDD27 Monta\u017c",client:name,deal:deal,color:"#10b981",type:"delivery"});}
     if(deal.followup_date){dealEvents.push({date:new Date(deal.followup_date),label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});}
   });
   dealEvents.sort(function(a,b){return a.date-b.date;});
@@ -786,7 +786,7 @@ export function CRMKalendarz(p){
         calList.length>0?ce("span",{style:{fontSize:10,color:"var(--t3)",opacity:0.4}},"|"):null,
         // Typy zdarzeń z dealów
         ce("span",{style:{fontSize:10,color:"#3b82f6",fontWeight:600}},"● Pomiar"),
-        ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Realizacja"),
+        ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Monta\u017c"),
         loadingEv?ce("span",{style:{fontSize:10,color:"var(--t3)",marginLeft:"auto"}},"\u23F3 Ładuję zdarzenia..."):null
       ),
 
@@ -939,7 +939,7 @@ function DealCard(cp){
           ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
         ):null,
         hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
-          ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
+          ce("span",null,"\uD83D\uDD27"),ce("span",null,"Monta\u017c: "+fmtDate(deal.delivery_date))
         ):null
       ):null,
       deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
