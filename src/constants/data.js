@@ -598,8 +598,7 @@ export const PROD_TYPES =[
   {id:"roleta",label:"Roleta rzymska",icon:"2b1b"},
   {id:"szyna",label:"Szyna KS",icon:"📏"},
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
-  {id:"prestige_round",label:"Karnisz Prestige Round",icon:"⚡"},
-  {id:"prestige_square",label:"Karnisz Prestige Square",icon:"⚡"},
+  {id:"prestige_round",label:"Karnisz Prestige",icon:"⚡"},
   {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
   {id:"karnisz_dek",label:"Karnisz dekoracyjny",icon:"📏"},
   {id:"inny",label:"Inny",icon:"📦"}
