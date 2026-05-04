@@ -138,7 +138,8 @@ export function ProdCard(p){
 
   var res=calc(prodForCalc),total=res.total,lines=res.lines,warn=res.warn;
   var eff=prod.mp!=null?prod.mp:total;
-  var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
+  var lblFallback=prod.type==="prestige_square"?"Karnisz Prestige":prod.type;
+  var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:lblFallback}).label;
 
   function hasProdData(pr){
     return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||
@@ -148,8 +149,13 @@ export function ProdCard(p){
   var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
   var typeChips=PROD_TYPES.map(function(t){
-    return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
-      if(prod.type===t.id)return;
+    // Chip "Karnisz Prestige" reprezentuje obie serie (round i square)
+    var isPrestigeChip=t.id==="prestige_round";
+    var isActive=isPrestigeChip
+      ?(prod.type==="prestige_round"||prod.type==="prestige_square")
+      :prod.type===t.id;
+    return ce(Chip,{key:t.id,label:t.label,active:isActive,onClick:function(){
+      if(isActive)return;
       if(hasProdData(prod)){setPendingType(t);return;}
       p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined}));
     }});
