@@ -47,15 +47,18 @@ export function gcalLink(title,date,desc){
 
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
 export function ModalDeal(p){
-  // p: deal, client, gcalToken, setGcalToken, gsiReady, onSave(data), onDelete, onClose, onGoToClient
+  // p: deal, client, gcalToken, setGcalToken, gsiReady, calList, onSave(data), onDelete, onClose, onGoToClient
   var d=p.deal;
   var gcalToken=p.gcalToken||null;
   var setGcalToken=p.setGcalToken||function(){};
   var gsiReady=!!p.gsiReady;
+  var calList=p.calList||[];
+  
   var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
   var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
   var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
   var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
+  var sinstcal=useState(d.installer_calendar_id||""),installerCalId=sinstcal[0],setInstallerCalId=sinstcal[1];
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
@@ -72,10 +75,11 @@ export function ModalDeal(p){
       notes:notes,
       visit_date:visitDate||null,
       delivery_date:delivDate||null,
+      installer_calendar_id:installerCalId||null,
       acquisition:acquisition||null,
       updated_at:new Date().toISOString()
     }).then(function(){
-      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,acquisition:acquisition||null});
+      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,installer_calendar_id:installerCalId||null,acquisition:acquisition||null});
       setBusy(false);
       p.onClose();
     }).catch(function(e){alert("B\u0142\u0105d: "+e.message);setBusy(false);});
@@ -110,15 +114,27 @@ export function ModalDeal(p){
   function addToGcal(title,dateStr){
     if(!dateStr){alert("Nie wybrano daty.");return;}
     if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
+    
+    // Jeśli to montaż i wybrano kalendarz montażysty -> dodaj do tego kalendarza
+    var targetCalId = "primary";
+    var descParts=["Klient: "+(cl?cl.name:"(brak klienta)")];
+    
+    if(title.indexOf("Monta\u017c")!==-1 && installerCalId){
+      targetCalId = installerCalId;
+      var installerCal = calList.find(function(c){return c.id===installerCalId;});
+      if(installerCal) descParts.push("Monta\u017cysta: "+installerCal.summary);
+    }
+    
     var date=new Date(dateStr);
     var body={
       summary:title,
-      description:"Klient: "+(cl?cl.name:"(brak klienta)"),
+      description:descParts.join(" | "),
       start:{dateTime:date.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(date.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
+    
     function doPost(t){
-      return fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events",{
+      return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(targetCalId)+"/events",{
         method:"POST",
         headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},
         body:JSON.stringify(body)
@@ -201,6 +217,7 @@ export function ModalDeal(p){
     );
   }
 
+  var INSTALLER_OPTIONS=["","Pawe\u0142 Kowalski","Jan Nowak","Marek Wi\u015bniewski","Andrzej Kami\u0144ski"];
   var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowro\u0144","Projektant"];
 
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0"}},
@@ -258,7 +275,13 @@ export function ModalDeal(p){
             ce("label",{style:{...LBL,marginBottom:0}},"Monta\u017c"),
             ce(CalBtn,{title:"Monta\u017c \u2014 "+clientName,date:delivDate})
           ),
-          ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST})
+          ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST}),
+          gcalToken&&calList.length>0?ce("select",{value:installerCalId,onChange:function(e){setInstallerCalId(e.target.value);},style:{...IST,marginTop:6,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}},
+            ce("option",{value:""},"\u2014 wybierz kalendarz monta\u017cysty \u2014"),
+            calList.filter(function(c){return !c.primary;}).map(function(c){
+              return ce("option",{key:c.id,value:c.id},c.summary);
+            })
+          ):null
         )
       ),
 
@@ -449,14 +472,26 @@ export function CRMKalendarz(p){
   function addDealEventToGcal(ev){
     if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
     var d=ev.date;
+    
+    // Jeśli to montaż i deal ma przypisany kalendarz montażysty -> użyj go
+    var targetCalId = "primary";
+    var descParts=["Klient: "+ev.client];
+    if(ev.deal&&ev.deal.title)descParts.push("Deal: "+ev.deal.title);
+    
+    if(ev.type==="delivery"&&ev.deal&&ev.deal.installer_calendar_id){
+      targetCalId = ev.deal.installer_calendar_id;
+      var installerCal = calList.find(function(c){return c.id===ev.deal.installer_calendar_id;});
+      if(installerCal) descParts.push("Monta\u017cysta: "+installerCal.summary);
+    }
+    
     var body={
       summary:ev.label+" \u2014 "+ev.client,
-      description:"Klient: "+ev.client+(ev.deal&&ev.deal.title?" | Deal: "+ev.deal.title:""),
+      description:descParts.join(" | "),
       start:{dateTime:d.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(d.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
     function doPost(t){
-      return fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events",{
+      return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(targetCalId)+"/events",{
         method:"POST",
         headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},
         body:JSON.stringify(body)
@@ -1069,6 +1104,7 @@ export function ScreenCRM(p){
       gcalToken:gcalToken,
       setGcalToken:setGcalToken,
       gsiReady:gsiReady,
+      calList:calList,
       onSave:function(data){onDealSave(modalDeal.id,data);},
       onDelete:function(){onDealDelete(modalDeal.id);},
       onClose:function(){setModalDeal(null);},
