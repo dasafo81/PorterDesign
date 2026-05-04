@@ -937,7 +937,7 @@ function KanbanCol(kp){
   var clients=kp.clients; var openDeal=kp.openDeal;
   var fmtDate=kp.fmtDate; var clientTotal2=kp.clientTotal2;
   var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
-  return ce("div",{style:{minWidth:190,width:190,flexShrink:0}},
+  return ce("div",{style:{flex:"1 1 0",minWidth:190,maxWidth:280}},
     ce("div",{style:{
       background:"var(--bg2)",border:"1px solid var(--bd2)",
       borderRadius:14,padding:"10px 8px",height:"100%"
@@ -990,13 +990,13 @@ function KanbanBoard(kp){
   var colProps={deals:deals,clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2};
   return ce(DragDropContext,{onDragEnd:onDragEnd},
     ce(Fragment,null,
-      ce("div",{style:{display:"flex",gap:10,overflowX:"auto",paddingBottom:12,marginLeft:-4,paddingLeft:4}},
+      ce("div",{style:{display:"flex",gap:10,paddingBottom:12,marginLeft:-4,paddingLeft:4,flexWrap:"wrap"}},
         CRM_STAGES.map(function(stage){
           return ce(KanbanCol,Object.assign({key:stage.id,stage:stage},colProps));
         })
       ),
       ce("div",{style:{margin:"14px 0 8px",height:1,background:"var(--bd2)"}}),
-      ce("div",{style:{display:"flex",gap:10,paddingBottom:4,marginLeft:-4,paddingLeft:4}},
+      ce("div",{style:{display:"flex",gap:10,paddingBottom:4,marginLeft:-4,paddingLeft:4,flexWrap:"wrap"}},
         ce(KanbanCol,Object.assign({stage:STAGE_ODRZUCONE},colProps))
       )
     )
