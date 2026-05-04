@@ -132,6 +132,9 @@ export function ModalDeal(p){
       start:{dateTime:date.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(date.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
+    if(cl && cl.addr && cl.addr.trim()){
+      body.location = cl.addr.trim();
+    }
     
     function doPost(t){
       return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(targetCalId)+"/events",{
@@ -535,7 +538,7 @@ export function CRMKalendarz(p){
     var primary=calList.find(function(c){return c.primary;});
     if(primary) defaultCals=[primary.id];
     else if(calList.length>0) defaultCals=[calList[0].id];
-    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false,selectedCals:defaultCals});
+    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',location:'',saving:false,selectedCals:defaultCals});
   }
 
   function toggleCalInDraft(calId){
@@ -563,6 +566,9 @@ export function CRMKalendarz(p){
       start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
       end:{dateTime:end.toISOString(),timeZone:'Europe/Warsaw'}
     };
+    if(ev.location && ev.location.trim()){
+      body.location = ev.location.trim();
+    }
     function postToCal(calId,t){
       return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events',{
         method:'POST',
@@ -835,13 +841,22 @@ export function CRMKalendarz(p){
             })
           )
         ),
-        ce('div',{style:{marginBottom:16}},
+        ce('div',{style:{marginBottom:12}},
           ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'OPIS (opcjonalnie)'),
           ce('textarea',{
             value:newEvDraft.description,rows:3,
             onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{description:e.target.value});});},
             placeholder:'Dodatkowe informacje...',
             style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',resize:'none',fontFamily:'inherit'}
+          })
+        ),
+        ce('div',{style:{marginBottom:16}},
+          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'LOKALIZACJA (opcjonalnie)'),
+          ce('input',{
+            type:'text',value:newEvDraft.location,
+            onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{location:e.target.value});});},
+            placeholder:'np. ul. Kwiatowa 15, Warszawa',
+            style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
           })
         ),
         ce('div',{style:{marginBottom:16}},
