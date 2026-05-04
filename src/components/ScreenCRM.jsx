@@ -47,8 +47,11 @@ export function gcalLink(title,date,desc){
 
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
 export function ModalDeal(p){
-  // p: deal, client, onSave(data), onDelete, onClose, onGoToClient
+  // p: deal, client, gcalToken, setGcalToken, gsiReady, onSave(data), onDelete, onClose, onGoToClient
   var d=p.deal;
+  var gcalToken=p.gcalToken||null;
+  var setGcalToken=p.setGcalToken||function(){};
+  var gsiReady=!!p.gsiReady;
   var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
   var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
   var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
@@ -103,6 +106,46 @@ export function ModalDeal(p){
     }).catch(function(e){alert("B\u0142\u0105d uploadu: "+e.message);setUploading(false);});
   }
 
+  // ── Dodaj wydarzenie do Google Calendar przez API ──
+  function addToGcal(title,dateStr){
+    if(!dateStr){alert("Nie wybrano daty.");return;}
+    if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
+    var date=new Date(dateStr);
+    var body={
+      summary:title,
+      description:"Klient: "+(cl?cl.name:"(brak klienta)"),
+      start:{dateTime:date.toISOString(),timeZone:"Europe/Warsaw"},
+      end:{dateTime:new Date(date.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
+    };
+    function doPost(t){
+      return fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events",{
+        method:"POST",
+        headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},
+        body:JSON.stringify(body)
+      });
+    }
+    doPost(gcalToken)
+      .then(function(r){
+        if(r.status===401){
+          return gcalGetToken().then(function(fresh){
+            setGcalToken(fresh);
+            return doPost(fresh);
+          });
+        }
+        return r;
+      })
+      .then(function(r){
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        return r.json();
+      })
+      .then(function(){
+        alert("\u2705 Dodano wydarzenie do kalendarza Google.");
+      })
+      .catch(function(e){
+        alert("\u26A0\uFE0F B\u0142\u0105d: "+e.message);
+      });
+  }
+
   var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
   var LBL={fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6,display:"block"};
   var SEC={marginBottom:20};
@@ -111,10 +154,12 @@ export function ModalDeal(p){
   var total=cl?clientTotal2(cl):0;
 
   function CalBtn(props){
-    var url=gcalLink(props.title,props.date,"Klient: "+clientName);
-    if(!props.date||!url)return null;
-    return ce("a",{href:url,target:"_blank",rel:"noopener noreferrer",
-      style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#4285f4",textDecoration:"none",border:"1px solid #4285f4",borderRadius:6,padding:"2px 7px",marginLeft:8,verticalAlign:"middle",flexShrink:0}
+    // props: title, date
+    if(!props.date)return null;
+    if(!gcalToken)return null; // pokaż przycisk tylko gdy zalogowany
+    return ce("button",{
+      onClick:function(){addToGcal(props.title,props.date);},
+      style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#4285f4",background:"none",textDecoration:"none",border:"1px solid #4285f4",borderRadius:6,padding:"2px 7px",marginLeft:8,verticalAlign:"middle",flexShrink:0,cursor:"pointer"}
     },"\uD83D\uDCC5 Dodaj do GCal");
   }
 
@@ -1021,6 +1066,9 @@ export function ScreenCRM(p){
     modalDeal?ce(ModalDeal,{
       deal:modalDeal,
       client:p.clients.find(function(c){return String(c.id)===String(modalDeal.client_id);})||null,
+      gcalToken:gcalToken,
+      setGcalToken:setGcalToken,
+      gsiReady:gsiReady,
       onSave:function(data){onDealSave(modalDeal.id,data);},
       onDelete:function(){onDealDelete(modalDeal.id);},
       onClose:function(){setModalDeal(null);},
