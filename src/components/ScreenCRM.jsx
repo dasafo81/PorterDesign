@@ -1013,6 +1013,7 @@ export function ScreenCRM(p){
   var sLoading=useState(true),loadingDeals=sLoading[0],setLoadingDeals=sLoading[1];
   var sNewClient=useState(""),newClientId=sNewClient[0],setNewClientId=sNewClient[1];
   var sAdding=useState(false),adding=sAdding[0],setAdding=sAdding[1];
+  var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
 
   React.useEffect(function(){
     sbApi.getDeals().then(function(data){
@@ -1020,6 +1021,34 @@ export function ScreenCRM(p){
       setLoadingDeals(false);
     }).catch(function(){setDeals([]);setLoadingDeals(false);});
   },[]);
+
+  // Pobierz listę kalendarzy gdy mamy token
+  React.useEffect(function(){
+    if(!gcalToken) return;
+    function doFetch(t){
+      return fetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer",{
+        headers:{Authorization:"Bearer "+t}
+      });
+    }
+    doFetch(gcalToken)
+      .then(function(r){
+        if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doFetch(fresh);});}
+        return r;
+      })
+      .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+      .then(function(data){
+        var items=(data.items||[]).map(function(c){
+          return {id:c.id,summary:c.summary,color:c.backgroundColor||"#4285f4",primary:!!c.primary};
+        });
+        items.sort(function(a,b){
+          if(a.primary&&!b.primary)return -1;
+          if(!a.primary&&b.primary)return 1;
+          return (a.summary||"").localeCompare(b.summary||"","pl");
+        });
+        setCalList(items);
+      })
+      .catch(function(){});
+  },[gcalToken]);
 
   function addDeal(){
     if(!newClientId){return;}
