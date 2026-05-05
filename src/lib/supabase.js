@@ -120,35 +120,40 @@ export const sbApi = {
       }
     }).then(function(){return true;}).catch(function(){return false;});
   },
-  // ── MAIL TEMPLATES ──
-  // Tabela mail_templates: id (bigint PK), template_id (text unique business key),
-  // label, icon, subject, body, suggest_attachments jsonb, template_files jsonb,
-  // is_system, sort_order, created_at, updated_at
-  getMailTemplates: function(){
-    return sbFetch("GET","mail_templates?select=*&order=sort_order.asc,id.asc");
+  // Upload pliku załącznika stałego szablonu maila do bucket mail-template-files
+  // Zwraca obiekt {url, name, size, type} gotowy do zapisania w template_files
+  uploadTemplateFile: function(templateId, file){
+    if(!file)return Promise.reject(new Error("Brak pliku"));
+    var safeId=String(templateId||"unknown").replace(/[^a-zA-Z0-9._-]/g,"_");
+    var safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    var path=safeId+"/"+Date.now()+"_"+safeName;
+    return fetch(SB_URL+"/storage/v1/object/mail-template-files/"+path, {
+      method: "POST",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer "+SB_KEY,
+        "Content-Type": file.type||"application/octet-stream",
+        "x-upsert": "true"
+      },
+      body: file
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){throw new Error("Upload failed: "+t);});
+      return {
+        url: SB_URL+"/storage/v1/object/public/mail-template-files/"+path,
+        name: file.name,
+        size: file.size,
+        type: file.type||""
+      };
+    });
   },
-  addMailTemplate: function(data){
-    // template_id generujemy po stronie klienta — slug z timestampem
-    var tid="tpl_"+Date.now();
-    var payload=Object.assign({template_id:tid},data);
-    return sbFetch("POST","mail_templates",payload);
-  },
-  updateMailTemplate: function(templateId,data){
-    // Aktualizuj po template_id (text), nie po id (bigint) — tak app trzyma referencję
-    var payload=Object.assign({},data,{updated_at:new Date().toISOString()});
-    return sbFetch("PATCH","mail_templates?template_id=eq."+encodeURIComponent(templateId),payload);
-  },
-  deleteMailTemplate: function(templateId){
-    return sbFetch("DELETE","mail_templates?template_id=eq."+encodeURIComponent(templateId));
-  },
-  // Usuwa załącznik szablonu z bucketu mail-templates (best-effort)
+  // Usuwa plik załącznika z bucketu mail-template-files (best-effort)
   deleteTemplateFile: function(url){
     if(!url)return Promise.resolve();
-    var marker="/mail-templates/";
+    var marker="/mail-template-files/";
     var idx=url.indexOf(marker);
     if(idx<0)return Promise.resolve();
     var path=url.substring(idx+marker.length);
-    return fetch(SB_URL+"/storage/v1/object/mail-templates/"+path, {
+    return fetch(SB_URL+"/storage/v1/object/mail-template-files/"+path, {
       method: "DELETE",
       headers: {
         "apikey": SB_KEY,
