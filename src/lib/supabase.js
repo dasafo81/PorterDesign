@@ -20,7 +20,7 @@ function sbFetch(method, path, body){
 }
 
 export const sbApi = {
-  // Pobierz wszystkich klientów
+  // Pobierz wszystkich klient\u00f3w
   getClients: function(){
     return sbFetch("GET","clients?select=*&order=id.desc");
   },
@@ -28,18 +28,18 @@ export const sbApi = {
   addClient: function(name, addr, phone, email){
     return sbFetch("POST","clients",{name:name,addr:addr,phone:phone||"",email:email||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
   },
-  // Zaktualizuj rooms klienta (zapisuje cały JSON)
+  // Zaktualizuj rooms klienta (zapisuje ca\u0142y JSON)
   updateClient: function(id, data){
     return sbFetch("PATCH","clients?id=eq."+id, data);
   },
-  // Usuń klienta
+  // Usu\u0144 klienta
   deleteClient: function(id){
     return sbFetch("DELETE","clients?id=eq."+id);
   },
   updateClientStatus: function(id,status){
     return sbFetch("PATCH","clients?id=eq."+id,{status:status});
   },
-  // ── DEALS (CRM) ──
+  // \u2500\u2500 DEALS (CRM) \u2500\u2500
   getDeals: function(){
     return sbFetch("GET","deals?select=*&order=created_at.asc");
   },
@@ -61,8 +61,8 @@ export const sbApi = {
   deleteAttachment: function(id){
     return sbFetch("DELETE","deal_attachments?id=eq."+id);
   },
-  // ── USER SETTINGS (mail) ──
-  // Per-user ustawienia modułu Mail (podpis HTML, URL obrazka stopki)
+  // \u2500\u2500 USER SETTINGS (mail) \u2500\u2500
+  // Per-user ustawienia modu\u0142u Mail (podpis HTML, URL obrazka stopki)
   getUserSettings: function(email){
     if(!email)return Promise.resolve(null);
     return sbFetch("GET","user_settings?user_email=eq."+encodeURIComponent(email)+"&select=*").then(function(rows){
@@ -71,15 +71,15 @@ export const sbApi = {
   },
   upsertUserSettings: function(email, data){
     if(!email)return Promise.reject(new Error("Brak email"));
-    // Sprawdź czy rekord już istnieje, potem PATCH lub POST
+    // Sprawd\u017a czy rekord ju\u017c istnieje, potem PATCH lub POST
     return sbFetch("GET","user_settings?user_email=eq."+encodeURIComponent(email)+"&select=id")
       .then(function(rows){
         var exists=rows&&rows.length>0;
         if(exists){
-          // Rekord istnieje — aktualizuj przez PATCH
+          // Rekord istnieje \u2014 aktualizuj przez PATCH
           return sbFetch("PATCH","user_settings?user_email=eq."+encodeURIComponent(email),data);
         } else {
-          // Brak rekordu — wstaw nowy przez POST
+          // Brak rekordu \u2014 wstaw nowy przez POST
           return sbFetch("POST","user_settings",Object.assign({user_email:email},data));
         }
       });
@@ -105,7 +105,7 @@ export const sbApi = {
       return SB_URL+"/storage/v1/object/public/mail-signatures/"+path;
     });
   },
-  // Usuwa obrazek podpisu z bucketu (best-effort, błąd nie blokuje)
+  // Usuwa obrazek podpisu z bucketu (best-effort, b\u0142\u0105d nie blokuje)
   deleteSignatureImage: function(url){
     if(!url)return Promise.resolve();
     var marker="/mail-signatures/";
@@ -120,7 +120,35 @@ export const sbApi = {
       }
     }).then(function(){return true;}).catch(function(){return false;});
   },
-  // Upload pliku załącznika stałego szablonu maila do bucket mail-template-files
+  // \u2500\u2500 MAIL TEMPLATES (szablony maili) \u2500\u2500
+  // Pobierz wszystkie szablony posortowane po sort_order
+  getMailTemplates: function(){
+    return sbFetch("GET","mail_templates?select=*&order=sort_order.asc");
+  },
+  // Dodaj nowy szablon. Je\u015bli data.template_id nie podany, generuje slug z label+timestamp
+  addMailTemplate: function(data){
+    var payload=Object.assign({},data||{});
+    if(!payload.template_id){
+      var base=(payload.label||"szablon").toLowerCase()
+        .replace(/\u0105/g,"a").replace(/\u0107/g,"c").replace(/\u0119/g,"e")
+        .replace(/\u0142/g,"l").replace(/\u0144/g,"n").replace(/\u00f3/g,"o")
+        .replace(/\u015b/g,"s").replace(/\u017a/g,"z").replace(/\u017c/g,"z")
+        .replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"").substring(0,40)||"szablon";
+      payload.template_id=base+"_"+Date.now();
+    }
+    return sbFetch("POST","mail_templates",payload);
+  },
+  // Aktualizuj szablon po template_id (nie po liczbowym id)
+  updateMailTemplate: function(templateId, data){
+    if(!templateId)return Promise.reject(new Error("Brak template_id"));
+    return sbFetch("PATCH","mail_templates?template_id=eq."+encodeURIComponent(templateId),data);
+  },
+  // Usu\u0144 szablon po template_id
+  deleteMailTemplate: function(templateId){
+    if(!templateId)return Promise.reject(new Error("Brak template_id"));
+    return sbFetch("DELETE","mail_templates?template_id=eq."+encodeURIComponent(templateId));
+  },
+  // Upload pliku za\u0142\u0105cznika sta\u0142ego szablonu maila do bucket mail-template-files
   // Zwraca obiekt {url, name, size, type} gotowy do zapisania w template_files
   uploadTemplateFile: function(templateId, file){
     if(!file)return Promise.reject(new Error("Brak pliku"));
@@ -146,7 +174,7 @@ export const sbApi = {
       };
     });
   },
-  // Usuwa plik załącznika z bucketu mail-template-files (best-effort)
+  // Usuwa plik za\u0142\u0105cznika z bucketu mail-template-files (best-effort)
   deleteTemplateFile: function(url){
     if(!url)return Promise.resolve();
     var marker="/mail-template-files/";
@@ -163,7 +191,7 @@ export const sbApi = {
   }
 };
 
-// ── SUPABASE STORAGE IMAGES ───────────────────────────────────────────────
+// \u2500\u2500 SUPABASE STORAGE IMAGES \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 var SB_STORAGE = SB_URL + "/storage/v1/object/public/assets/porter-design-assets/";
 
 function imgUrl(path) {
@@ -177,11 +205,11 @@ var LOGO_SRC          = imgUrl("logo.png");
 var IMG_ROOM_SALON    = imgUrl("rooms/salon.jpg");
 var IMG_ROOM_KUCHNIA  = imgUrl("rooms/kuchnia.jpg");
 var IMG_ROOM_SYPIALNIA= imgUrl("rooms/sypialnia.jpg");
-var IMG_ROOM_POKÓJ    = imgUrl("rooms/pokoj.jpg");
+var IMG_ROOM_POK\u00d3J    = imgUrl("rooms/pokoj.jpg");
 var IMG_ROOM_GABINET  = imgUrl("rooms/gabinet.jpg");
 var IMG_OKNO          = imgUrl("rooms/okno.jpg");
 
-// Żaluzje
+// \u017baluzje
 var IMG_JZ_ALUMINIUM  = imgUrl("zaluzje/aluminium.jpg");
 var IMG_JZ_BAMBOO     = imgUrl("zaluzje/bamboo.jpg");
 var IMG_JZ_BASSWOOD   = imgUrl("zaluzje/basswood.jpg");
@@ -197,7 +225,7 @@ var IMG_ROLETA_CASCADE            = imgUrl("rolety/cascade.jpg");
 var IMG_ROLETA_LANCUSZEK_BIALY    = imgUrl("rolety/lancuszek-bialy.jpg");
 var IMG_ROLETA_LANCUSZEK_METALOWY = imgUrl("rolety/lancuszek-metalowy.jpg");
 
-// Zasłony / fałdy
+// Zas\u0142ony / fa\u0142dy
 var IMG_FALDA_POJEDYNCZA = imgUrl("zasony/falda-pojedyncza.jpg");
 var IMG_FALDA_PODWOJNA   = imgUrl("zasony/falda-podwojna.jpg");
 var IMG_FALDA_POTROJNA   = imgUrl("zasony/falda-potrojna.jpg");
