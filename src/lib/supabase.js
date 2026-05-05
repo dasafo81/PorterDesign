@@ -44,7 +44,7 @@ export const sbApi = {
     return sbFetch("GET","deals?select=*&order=created_at.asc");
   },
   addDeal: function(clientId){
-    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,followup_date:null,acquisition:null,installer_calendar_id:null});
+    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,followup_date:null,acquisition:null});
   },
   updateDeal: function(id,data){
     return sbFetch("PATCH","deals?id=eq."+id,data);
@@ -113,6 +113,42 @@ export const sbApi = {
     if(idx<0)return Promise.resolve();
     var path=url.substring(idx+marker.length);
     return fetch(SB_URL+"/storage/v1/object/mail-signatures/"+path, {
+      method: "DELETE",
+      headers: {
+        "apikey": SB_KEY,
+        "Authorization": "Bearer "+SB_KEY
+      }
+    }).then(function(){return true;}).catch(function(){return false;});
+  },
+  // ── MAIL TEMPLATES ──
+  // Tabela mail_templates: id (bigint PK), template_id (text unique business key),
+  // label, icon, subject, body, suggest_attachments jsonb, template_files jsonb,
+  // is_system, sort_order, created_at, updated_at
+  getMailTemplates: function(){
+    return sbFetch("GET","mail_templates?select=*&order=sort_order.asc,id.asc");
+  },
+  addMailTemplate: function(data){
+    // template_id generujemy po stronie klienta — slug z timestampem
+    var tid="tpl_"+Date.now();
+    var payload=Object.assign({template_id:tid},data);
+    return sbFetch("POST","mail_templates",payload);
+  },
+  updateMailTemplate: function(templateId,data){
+    // Aktualizuj po template_id (text), nie po id (bigint) — tak app trzyma referencję
+    var payload=Object.assign({},data,{updated_at:new Date().toISOString()});
+    return sbFetch("PATCH","mail_templates?template_id=eq."+encodeURIComponent(templateId),payload);
+  },
+  deleteMailTemplate: function(templateId){
+    return sbFetch("DELETE","mail_templates?template_id=eq."+encodeURIComponent(templateId));
+  },
+  // Usuwa załącznik szablonu z bucketu mail-templates (best-effort)
+  deleteTemplateFile: function(url){
+    if(!url)return Promise.resolve();
+    var marker="/mail-templates/";
+    var idx=url.indexOf(marker);
+    if(idx<0)return Promise.resolve();
+    var path=url.substring(idx+marker.length);
+    return fetch(SB_URL+"/storage/v1/object/mail-templates/"+path, {
       method: "DELETE",
       headers: {
         "apikey": SB_KEY,
