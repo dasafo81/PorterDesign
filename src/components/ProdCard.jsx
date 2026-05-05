@@ -26,7 +26,6 @@ import { generateFabricOrderPDF, generateClientEmail,
 
   generateSewingOrderPDF, generateSewingOrderPDFFromRows
 } from '../lib/pdf.js';
-import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 const ce = React.createElement;
 
 export function Chip(p){
@@ -1035,6 +1034,11 @@ export function ProdCard(p){
         ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
           ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
           ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+        ),
+        ce("div",{style:{marginTop:16}},
+          ce(Fld,{label:"WYSOKO\u015a\u0106 NADPRO\u017bA (cm)"},
+            ce("input",{type:"number",value:par.hNadproza||"",onChange:function(ev){sp("hNadproza",ev.target.value);},placeholder:"np. 20",style:IST})
+          )
         ),
         ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
         ce("div",{style:{marginTop:12}},
