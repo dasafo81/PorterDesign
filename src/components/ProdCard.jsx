@@ -9,7 +9,7 @@ import {
   IMG_ROLETA_PRINT, IMG_ROLETA_RELAX, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
-  JZ_LABELS, JZ_ZONES, KARNISZ_SUPPLIERS, KN, KN_POWER,
+  JZ_LABELS, JZ_ZONES, KARNISZ_SUPPLIERS, KN,
   KP, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -663,7 +663,15 @@ export function ProdCard(p){
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, Ivory White...",style:{padding:"16px 18px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box"}})
           )
         ),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW})
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}},
+          ce(Fld,{label:"KOLIZJE (opcjonalnie)"},
+            ce("input",{type:"text",value:c.kolizje||"",onChange:function(ev){sc("kolizje",ev.target.value||undefined);},placeholder:"np. kaloryfer 12,5 cm",style:{padding:"12px 14px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box"}})
+          ),
+          ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 WN\u0118KI (opcjonalnie)"},
+            ce("input",{type:"text",value:c.glebWneki||"",onChange:function(ev){sc("glebWneki",ev.target.value||undefined);},placeholder:"np. 18 cm",style:{padding:"12px 14px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box"}})
+          )
+        )
       ),
 
       // SEKCJA 2: Model zasłony
@@ -1266,14 +1274,8 @@ export function ProdCard(p){
       ]})
     );
   }else if(prod.type==="karnisz"){
-    var napAll=[{v:"am75",l:"A-OK AM75 \u2014 644z\u0142"},{v:"am50",l:"A-OK AM50 \u2014 1000z\u0142"},{v:"mdct",l:"Movelite DCT \u2014 902z\u0142"},{v:"mrts",l:"Movelite RTS \u2014 1056z\u0142"},{v:"glydea",l:"Glydea Ultra \u2014 2268z\u0142"},{v:"irismo",l:"Irismo WireFree \u2014 2182z\u0142"}];
+    var nap=[{v:"am75",l:"A-OK AM75 644z\u0142"},{v:"am50",l:"A-OK AM50 1000z\u0142"},{v:"mdct",l:"Movelite DCT 902z\u0142"},{v:"mrts",l:"Movelite RTS 1056z\u0142"},{v:"glydea",l:"Glydea 2268z\u0142"},{v:"irismo",l:"Irismo 2182z\u0142"}];
     var pil=[{v:"brak",l:"Brak st."},{v:"aok1b",l:"Pilot bia\u0142y 130z\u0142"},{v:"aok1c",l:"Pilot czarny 148z\u0142"},{v:"tuya",l:"Tuya 340z\u0142"},{v:"situo",l:"Situo 284z\u0142"},{v:"tahoma",l:"TaHoma 1390z\u0142"}];
-    // zasilanie: "siec" lub "aku"; brak wyboru = pokaż wszystkie
-    var kPower=c.kPower||null;
-    var nap=kPower?napAll.filter(function(x){return KN_POWER[x.v]===kPower;}):napAll;
-    // jeśli aktualnie wybrany silnik nie pasuje do nowego zasilania, wyczyść go
-    var curKn=c.kn||"am75";
-    var knMismatch=kPower&&KN_POWER[curKn]&&KN_POWER[curKn]!==kPower;
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
@@ -1287,14 +1289,7 @@ export function ProdCard(p){
         ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
         ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
       ]}),
-      ce("div",{style:{marginTop:12}},
-        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"ZASILANIE SILNIKA"),
-        ce(Chips,{items:[
-          ce(Chip,{key:"siec",label:"\uD83D\uDD0C 230V \u2014 sieciowy",active:kPower==="siec",onClick:function(){var newC=mg(c,{kPower:"siec"});if(KN_POWER[curKn]==="aku")newC=mg(newC,{kn:"am75"});p.onChange(mg(prod,{c:newC}));}}),
-          ce(Chip,{key:"aku", label:"\uD83D\uDD0B Akumulator \u2014 bez kabla",active:kPower==="aku", onClick:function(){var newC=mg(c,{kPower:"aku"});if(KN_POWER[curKn]==="siec")newC=mg(newC,{kn:"am50"});p.onChange(mg(prod,{c:newC}));}})
-        ]})
-      ),
-      ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){var dflt=nap[0]&&nap[0].v;return ce(Chip,{key:x.v,label:x.l,active:knMismatch?(x.v===dflt):((!c.kn&&x.v==="am75")||c.kn===x.v),onClick:function(){sc("kn",x.v);}});})})),
+      ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})})),
       ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})})),
       ce("div",{style:{marginTop:20}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA SILNIKA"),
