@@ -640,6 +640,8 @@ export const REL ={80:346.42,100:391.83,120:419.84,140:476.13,160:504.14,180:549
 export const KSLIM ={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550:1148,600:1308,650:1354,700:1400};
 export const KUNIV ={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
 export const KN ={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
+// zasilanie każdego napędu: "siec" = 230V, "aku" = akumulator
+export const KN_POWER ={am75:"siec",am50:"aku",mdct:"siec",mrts:"siec",glydea:"siec",irismo:"aku"};
 export const KP ={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
 
 // ── KARNISZ PRESTIGE ROUND / SQUARE (Premium-Line) ───────────────────────────
