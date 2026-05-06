@@ -85,6 +85,13 @@ export function App(p){
     });
   },[]);
 
+  // Hydratuj lokalne pola Polecenie/Montaż z aktualnego klienta przy każdej zmianie klienta
+  React.useEffect(function(){
+    var cl=clients.find(function(c){return c.id===curClientId;});
+    setCommissionInput(cl&&cl.commission!=null?String(cl.commission):"");
+    setMontazInput(cl&&cl.install_fee!=null?String(cl.install_fee):"");
+  },[curClientId,clients.length]);
+
   // Zapisz zmiany w Supabase z debounce
   function saveClientToSb(id, data){
     if(offlineMode){
@@ -120,7 +127,7 @@ export function App(p){
     setClients(function(cs){
       var updated=cs.map(function(cl){return cl.id===id?fn(cl):cl;});
       var newCl=updated.find(function(cl){return cl.id===id;});
-      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms});
+      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||''});
       return updated;
     });
   }
@@ -642,15 +649,15 @@ export function App(p){
       sRooms.length===0?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak okien do podsumowania."):null,
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:12,display:"flex",alignItems:"center",gap:12}},
         ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83E\uDD1D Polecenie (%)"),
-        ce("input",{type:"number",min:0,max:100,step:1,value:commissionInput,onChange:function(ev){setCommissionInput(ev.target.value);},placeholder:"np. 7",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        ce("input",{type:"number",min:0,max:100,step:1,value:commissionInput,onChange:function(ev){var v=ev.target.value;setCommissionInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{commission:v});});},placeholder:"np. 7",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
         commissionInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+commissionInput+"%"):null,
-        commissionInput?ce("button",{onClick:function(){setCommissionInput("");},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
+        commissionInput?ce("button",{onClick:function(){setCommissionInput("");if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{commission:""});});},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:0,display:"flex",alignItems:"center",gap:12}},
         ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Monta\u017c (%)"),
-        ce("input",{type:"number",min:0,max:100,step:1,value:montazInput,onChange:function(ev){setMontazInput(ev.target.value);},placeholder:"np. 10",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        ce("input",{type:"number",min:0,max:100,step:1,value:montazInput,onChange:function(ev){var v=ev.target.value;setMontazInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:v});});},placeholder:"np. 10",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
         montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+"%"):null,
-        montazInput?ce("button",{onClick:function(){setMontazInput("");},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
+        montazInput?ce("button",{onClick:function(){setMontazInput("");if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:""});});},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
       ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:0}},
         ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.75)",letterSpacing:"0.04em"}},
