@@ -1278,7 +1278,7 @@ export function buildSewingRows(client){
           glide:"Odst\u0119p "+(pc.glideGap||8)+" cm",
           leadInSides:pc.leadInSides?"tak":"nie",
           podszewka:pc.podszewka==="tak"?"TAK":"nie",
-          note:prod.note||""
+          note:[prod.note||"",pc.kolizje?"Kolizje: "+pc.kolizje:"",pc.glebWneki?"\u0141G\u0142. wn\u0119ki: "+pc.glebWneki:""].filter(Boolean).join(" | ")
         });
       });
     });
