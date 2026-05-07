@@ -1638,7 +1638,7 @@ export function ScreenMail(p){
     ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Szablon"),
       ce("div",{style:{display:"flex",gap:5,flexWrap:"wrap"}},
-        MAIL_TEMPLATES.map(function(tpl){
+        activeTemplates.map(function(tpl){
           var active=selTemplate===tpl.id;
           return ce("button",{key:tpl.id,onClick:function(){setSelTemplate(tpl.id);},
             style:{padding:"6px 12px",borderRadius:20,fontSize:12,fontWeight:active?700:500,
