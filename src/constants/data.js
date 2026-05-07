@@ -1278,7 +1278,7 @@ export function buildSewingRows(client){
           glide:"Odst\u0119p "+(pc.glideGap||8)+" cm",
           leadInSides:pc.leadInSides?"tak":"nie",
           podszewka:pc.podszewka==="tak"?"TAK":"nie",
-          note:[prod.note||"",pc.kolizje?"Kolizje: "+pc.kolizje:"",pc.glebWneki?"\u0141G\u0142. wn\u0119ki: "+pc.glebWneki:""].filter(Boolean).join(" | ")
+          note:prod.note||""
         });
       });
     });
@@ -1336,12 +1336,12 @@ export function pdfStyles(){
   </style>`;
 }
 
-export function generateOfferPDF(client,comm,montaz){
+export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
   montaz=montaz||0;
   comm=comm||0;
+  offerNotes=offerNotes||"";
   var rows=buildOfferRows(client);
-  if(!rows.length){alert("Brak wycenionych produktów.");return;}
-  // Apply commission multiplier to each row
+  if(!rows.length)return null;
   if(comm>0){
     rows=rows.map(function(r){
       var newTotal=roundTo10(r.total*(1+comm));
@@ -1396,11 +1396,17 @@ export function generateOfferPDF(client,comm,montaz){
   <div class="footer"><span>${SELLER.name} | ${SELLER.city}</span><span>Strona 1</span></div>
   </body></html>`;
   var montazVal=montaz>0?roundTo10(total*montaz):0;
-  var offerNotes=window.prompt("Uwagi do oferty (opcjonalne):", "") || "";
-  if(offerNotes===null)return;
-  if(offerNotes) html=html.replace('<div class="notes">Niniejszy dokument nie jest fakturą','<div class="notes">'+ offerNotes +'<br><br>Niniejszy dokument nie jest fakturą');
+  if(offerNotes) html=html.replace('<div class="notes">Niniejszy dokument nie jest fakturą','<div class="notes">'+offerNotes+'<br><br>Niniejszy dokument nie jest fakturą');
   if(montazVal>0) html=html.replace('<div class="sum-box">','<div style="margin:4mm 0;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;"><span style="font-size:12px;color:#8B5E3C;">Monta\u017c dekoracji okiennych</span><span style="font-size:13px;font-weight:700;color:#8B5E3C;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div><div class="sum-box">');
-  openPDFWindow(html, offerNo);
+  return html;
+}
+
+export function generateOfferPDF(client,comm,montaz){
+  var offerNotes=window.prompt("Uwagi do oferty (opcjonalne):","") || "";
+  if(offerNotes===null)return;
+  var html=buildOfferPDFHtml(client,comm,montaz,offerNotes);
+  if(!html){alert("Brak wycenionych produktów.");return;}
+  openPDFWindow(html, getPDFOfferNumber(client));
 }
 
 // ── Suppliers for karnisze / szyny ─────────────────────────────────────────
