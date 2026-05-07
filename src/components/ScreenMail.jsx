@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { roundTo10 } from '../constants/data.js';
+import { roundTo10, buildOfferPDFHtml } from '../constants/data.js';
+import { buildSimplifiedPDFHtml } from '../pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { sbApi } from '../lib/supabase.js';
 const ce = React.createElement;
@@ -1556,6 +1557,21 @@ export function ScreenMail(p){
           return null; // best-effort — nie blokuj wysyłki
         });
       })).then(function(atts){return atts.filter(Boolean);}));
+    }
+    // App PDFs (type="app") — generowane z danych klienta jako HTML
+    var appItems=attachments.filter(function(a){return a.type==="app";});
+    if(appItems.length>0&&selClient){
+      promises.push(Promise.resolve(appItems.map(function(att){
+        var html=null;
+        if(att.id==="pdf_uproszczona")html=buildSimplifiedPDFHtml(selClient,0,0,null);
+        else if(att.id==="pdf_oferta")html=buildOfferPDFHtml(selClient,0,0,"");
+        if(!html)return null;
+        try{
+          var b64=btoa(unescape(encodeURIComponent(html)));
+          return {"@odata.type":"#microsoft.graph.fileAttachment",
+            name:att.name,contentType:"text/html",contentBytes:b64};
+        }catch(e){return null;}
+      }).filter(Boolean)));
     }
     // Inline signature image (CID)
     if(hasSigImg){
