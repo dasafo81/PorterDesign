@@ -459,7 +459,9 @@ function htmlToText(html){
   if(!html)return "";
   var tmp=document.createElement("div");
   tmp.innerHTML=html;
-  // <br> i </p> → newline; reszta tekstu po prostu
+  // Usuń bloki <style>/<script>/<head> — ich zawartość tekstowa (CSS/JS) nie powinna być widoczna
+  tmp.querySelectorAll("style,script,head").forEach(function(el){el.remove();});
+  // <br> i bloki → newline
   tmp.querySelectorAll("br").forEach(function(br){br.replaceWith("\n");});
   tmp.querySelectorAll("p,div").forEach(function(p){p.append("\n");});
   return (tmp.innerText||tmp.textContent||"").trim();
@@ -474,8 +476,50 @@ function MailPreview(p){
   var sl=us({}),loadingBody=sl[0],setLoadingBody=sl[1];
   // Zwinięte/rozwinięte wiadomości w wątku — domyślnie tylko najnowsza rozwinięta
   var se=us({}),expanded=se[0],setExpanded=se[1];
+  // Cache załączników per messageId — pobierane on-demand przy rozwinięciu
+  var sfa=us({}),fetchedAtts=sfa[0],setFetchedAtts=sfa[1];
+  var sla=us({}),loadingAtts=sla[0],setLoadingAtts=sla[1];
 
-  // Pomocnicza funkcja — pobiera body wiadomości on-demand
+  // Pobiera listę załączników dla wiadomości (metadane: id, name, size, contentType)
+  function fetchAttachments(mid){
+    if(!p.accessToken||!mid)return;
+    if(fetchedAtts[mid]!==undefined||loadingAtts[mid])return;
+    setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
+    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType",{
+      headers:{"Authorization":"Bearer "+p.accessToken}
+    })
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(data){
+      var list=(data&&data.value)||[];
+      setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=list;return n;});
+      setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+    })
+    .catch(function(){
+      setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
+      setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+    });
+  }
+
+  // Pobiera plik załącznika jako base64 i otwiera download w przeglądarce
+  function downloadAttachment(mid,attId,attName,contentType){
+    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
+      headers:{"Authorization":"Bearer "+p.accessToken}
+    })
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(data){
+      if(!data||!data.contentBytes)return;
+      var byteStr=atob(data.contentBytes);
+      var ab=new ArrayBuffer(byteStr.length);
+      var ia=new Uint8Array(ab);
+      for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
+      var blob=new Blob([ab],{type:contentType||"application/octet-stream"});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement("a");
+      a.href=url; a.download=attName||"za\u0142\u0105cznik"; a.click();
+      setTimeout(function(){URL.revokeObjectURL(url);},2000);
+    })
+    .catch(function(){alert("B\u0142\u0105d pobierania za\u0142\u0105cznika.");});
+  }
   function fetchBody(mid){
     if(!p.accessToken||!mid)return;
     if(bodies[mid]||loadingBody[mid])return;
@@ -510,6 +554,8 @@ function MailPreview(p){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
       // Body pobieramy tylko dla wiadomości z Inboxu (Sent ma już cały body=preview)
       if(head.folder==="inbox"&&!head.body)fetchBody(head.id);
+      // Załączniki dla najnowszej wiadomości
+      if(head.hasAttachments)fetchAttachments(head.id);
     }
   // eslint-disable-next-line
   },[thread?thread.key:null]);
@@ -538,6 +584,8 @@ function MailPreview(p){
       // Przy rozwijaniu pobierz body jeśli to inbox i jeszcze nie ma
       var msg=mails.find(function(x){return x.id===mid;});
       if(msg&&msg.folder==="inbox"&&!msg.body&&!bodies[mid])fetchBody(mid);
+      // Pobierz załączniki jeśli wiadomość je ma
+      if(msg&&msg.hasAttachments)fetchAttachments(mid);
     }
   }
 
@@ -597,14 +645,20 @@ function MailPreview(p){
             )
           ),
           isExp?ce("div",{style:{padding:"4px 20px 18px",fontSize:13,color:"var(--t1)",lineHeight:1.85,whiteSpace:"pre-wrap",fontFamily:"inherit"}},
-            (m.attachments&&m.attachments.length>0)?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
-              m.attachments.map(function(att,j){
-                return ce("div",{key:(att.id||att.name||"")+j,style:{display:"flex",alignItems:"center",gap:6,padding:"5px 12px 5px 8px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
-                  ce("span",null,att.type==="app"?"\uD83D\uDCC4":"\uD83D\uDCCE"),
-                  ce("span",{style:{color:"var(--t1)"}},att.name||"Za\u0142\u0105cznik"),
-                  att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:2}},fmtBytes(att.size)):null
-                );
-              })
+            m.hasAttachments?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+              loadingAtts[m.id]
+                ?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"\u23F3 \u0141adowanie za\u0142\u0105cznik\u00f3w\u2026")
+                :(fetchedAtts[m.id]||[]).map(function(att,j){
+                  return ce("div",{key:att.id||j,
+                    onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);},
+                    style:{display:"flex",alignItems:"center",gap:6,padding:"5px 12px 5px 8px",borderRadius:20,
+                      background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12,cursor:"pointer"}},
+                    ce("span",null,"\uD83D\uDCCE"),
+                    ce("span",{style:{color:"var(--t1)"}},att.name||"Za\u0142\u0105cznik"),
+                    att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:2}},fmtBytes(att.size)):null,
+                    ce("span",{style:{fontSize:10,color:"var(--accent)",marginLeft:4}},"\u2193")
+                  );
+                })
             ):null,
             loading
               ?ce("div",{style:{color:"var(--t3)",fontStyle:"italic"}},"\u23F3 Wczytywanie tre\u015bci\u2026")
@@ -1348,6 +1402,7 @@ export function ScreenMail(p){
           date:m.receivedDateTime||new Date().toISOString(),
           preview:m.bodyPreview||"",body:null, // body dociągamy on-demand
           attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
+          hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
           isRead:m.isRead!==false
         };
@@ -1362,6 +1417,7 @@ export function ScreenMail(p){
           date:m.sentDateTime||new Date().toISOString(),
           preview:m.bodyPreview||"",body:m.bodyPreview||"",
           attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
+          hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
           isRead:true
         };
