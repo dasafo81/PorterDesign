@@ -77,10 +77,9 @@ export function generateFabricOrderPDF(client){
 }
 
 // ── WYCENA UPROSZCZONA PDF ─────────────────────────────────────────────────
-export function generateSimplifiedPDF(client,comm,montaz){
-  comm=comm||0;
-  montaz=montaz||0;
-  if(!(client.rooms||[]).length){alert("Brak pomieszczeń.");return;}
+export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
+  comm=comm||0;montaz=montaz||0;
+  if(!(client.rooms||[]).length)return null;
   var now=new Date();
   var dateStr=now.toLocaleDateString("pl-PL");
   var validDate=new Date(now.getTime()+30*24*60*60*1000);
@@ -92,40 +91,31 @@ export function generateSimplifiedPDF(client,comm,montaz){
     var base=p.mp!=null?p.mp:(calc(pfc).total||0);
     return comm>0?base*(1+comm):base;
   }
-
-  // Pomocnik: liczba mnoga dla typów produktów
   function pluralProd(type,count){
     if(type==="zaslona")return "Zas\u0142ony";
     if(type==="firana")return "Firany";
     if(type==="roleta")return count===1?"Roleta":"Rolety";
-    if(type==="zaluzja")return count===1?"Żaluzje":count<5?"Żaluzje":"Żaluzji";
+    if(type==="zaluzja")return count===1?"\u017baluzje":count<5?"\u017baluzje":"\u017baluzji";
     if(type==="plisa")return count===1?"Plisa":"Plisy";
     if(type==="karnisz")return count===1?"Karnisz":"Karnisze";
     if(type==="szyna")return count===1?"Szyna":"Szyny";
     var lbl=(PROD_TYPES.find(function(t){return t.id===type;})||{label:type}).label;
     return lbl;
   }
-  // Pomocnik: szczegóły szycia dla zasłon/firan
   function sewingInfo(p){
     var c=p.c||{};
     var sz=(c.sz==="wave"||c.model==="wave")?"Wave":"Flex";
     var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";
     return sz+" "+mars;
   }
-
-  // Helper: build product rows table for a list of windows
   function buildWinRows(windows){
-    var typeData={};
-    var typeOrder=[];
-    var total=0;
+    var typeData={};var typeOrder=[];var total=0;
     (windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
-        var t=calcProd(p);
-        if(!t)return;
+        var t=calcProd(p);if(!t)return;
         var key=p.type==="inny"?(p.innyNazwa||"Inne"):p.type;
         if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,sewings:[]};typeOrder.push(key);}
-        typeData[key].count+=1;
-        typeData[key].total+=t;
+        typeData[key].count+=1;typeData[key].total+=t;
         if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
         total+=t;
       });
@@ -141,7 +131,58 @@ export function generateSimplifiedPDF(client,comm,montaz){
     return {rows:rows,total:total};
   }
 
-  // Zbierz wszystkie etykiety wariantow uzywane w tym kliencie
+  // variantLabel=undefined/null → plain PDF; variantLabel=string → filtruj wariant
+  var roomSections2="";var grandTotal2=0;
+  (client.rooms||[]).forEach(function(room){
+    if(!(room.windows||[]).length)return;
+    var wins=room.windows||[];
+    var selectedWins=wins.filter(function(w){
+      if(!w.variantGroup)return true;
+      return variantLabel?w.variantLabel===variantLabel:!w.variantGroup;
+    });
+    if(!selectedWins.length)return;
+    var roomSection2="";var roomTotal2=0;
+    selectedWins.forEach(function(w){
+      var wr=buildWinRows([w]);if(!wr.total)return;
+      var isVariantWin=!!w.variantGroup;
+      var headerColor=isVariantWin?"#3367d6":"#8B5E3C";
+      var totalRowBg=isVariantWin?"#dce8f7":"#f5ede0";
+      var winLabel=isVariantWin?(w.variantBaseName||w.name):w.name;
+      var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
+      roomSection2+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+totalRow2+"</tbody></table>";
+      roomTotal2+=wr.total;
+    });
+    if(!roomTotal2)return;
+    grandTotal2+=roomTotal2;
+    roomSections2+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:3mm;\">"+room.name+"</div>"+roomSection2+"</div>";
+  });
+  if(!grandTotal2)return null;
+
+  var variantSuffix=variantLabel?" \u2014 Wariant "+variantLabel:"";
+  var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u0144\u017cacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
+    +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
+    +"<div class=\"header\" style=\"padding-top:2mm;\">"
+    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
+    +"<div style=\"font-size:10px;color:#8B5E3C;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
+    +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
+    +roomSections2
+    +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+    +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">\u0141\u0105cznie ca\u0142a realizacja</span>"
+    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>"
+    +(montaz>0?"<div style=\"margin-top:4mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#8B5E3C;\">Monta\u017c dekoracji okiennych (p\u0142atny dodatkowo)</span><span style=\"font-size:14px;font-weight:700;color:#8B5E3C;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
+    +"<div class=\"sign-block\">"
+    +"<div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
+    +"<div class=\"sign\">Akceptacja klienta</div>"
+    +"</div>"
+    +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
+    +"</body></html>";
+  return h;
+}
+
+export function generateSimplifiedPDF(client,comm,montaz){
+  comm=comm||0;montaz=montaz||0;
+  if(!(client.rooms||[]).length){alert("Brak pomieszczeń.");return;}
   var allVariantLabels={};
   (client.rooms||[]).forEach(function(room){
     (room.windows||[]).forEach(function(w){
@@ -150,81 +191,18 @@ export function generateSimplifiedPDF(client,comm,montaz){
   });
   var variantLabelsSorted=Object.keys(allVariantLabels).sort();
   var hasAnyVariants=variantLabelsSorted.length>0;
-
-  // Pomocnik: buduje html jednego PDF dla danego zestawu okien (plain + wybrana etykieta wariantu)
-  function buildOnePDF(variantLabel){
-    var roomSections2="";
-    var grandTotal2=0;
-
-    (client.rooms||[]).forEach(function(room){
-      if(!(room.windows||[]).length)return;
-      var wins=room.windows||[];
-
-      // dla tego PDF bierzemy: okna bez wariantu + okna z wybraną etykietą wariantu
-      var selectedWins=wins.filter(function(w){
-        if(!w.variantGroup)return true;
-        return w.variantLabel===variantLabel;
-      });
-      if(!selectedWins.length)return;
-
-      var roomSection2="";
-      var roomTotal2=0;
-
-      selectedWins.forEach(function(w){
-        var wr=buildWinRows([w]);
-        if(!wr.total)return;
-        var isVariantWin=!!w.variantGroup;
-        var headerColor=isVariantWin?"#3367d6":"#8B5E3C";
-        var totalRowBg=isVariantWin?"#dce8f7":"#f5ede0";
-        var winLabel=isVariantWin?(w.variantBaseName||w.name):w.name;
-        var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
-        roomSection2+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+totalRow2+"</tbody></table>";
-        roomTotal2+=wr.total;
-      });
-
-      if(!roomTotal2)return;
-      grandTotal2+=roomTotal2;
-      roomSections2+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:3mm;\">"+room.name+"</div>"+roomSection2+"</div>";
-    });
-
-    if(!grandTotal2)return null;
-
-    var variantSuffix=variantLabel?" \u2014 Wariant "+variantLabel:"";
-    var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u0144\u017cacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
-      +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
-      +"<div class=\"header\" style=\"padding-top:2mm;\">"
-      +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
-      +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
-      +"<div style=\"font-size:10px;color:#8B5E3C;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
-      +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
-
-      +roomSections2
-      +"<div style=\"margin-top:6mm;padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
-      +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">\u0141\u0105cznie ca\u0142a realizacja</span>"
-      +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>"
-      +(montaz>0?"<div style=\"margin-top:4mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#8B5E3C;\">Monta\u017c dekoracji okiennych (p\u0142atny dodatkowo)</span><span style=\"font-size:14px;font-weight:700;color:#8B5E3C;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
-      +"<div class=\"sign-block\">"
-      +"<div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
-      +"<div class=\"sign\">Akceptacja klienta</div>"
-      +"</div>"
-      +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
-      +"</body></html>";
-    return h;
-  }
-
   if(hasAnyVariants){
     var opened=0;
     variantLabelsSorted.forEach(function(lbl){
-      var h=buildOnePDF(lbl);
+      var h=buildSimplifiedPDFHtml(client,comm,montaz,lbl);
       if(h){var clientSlug2=(client.name||"");openPDFWindow(h,clientSlug2+" - Oferta Aranżacji Okiennych (wariant "+lbl+")");opened++;}
     });
     if(!opened){alert("Brak pozycji do wyceny.");}
   } else {
-    var h=buildOnePDF(null);
+    var h=buildSimplifiedPDFHtml(client,comm,montaz,null);
     if(!h){alert("Brak pozycji do wyceny.");return;}
     var clientSlug3=(client.name||"");openPDFWindow(h,clientSlug3+" - Oferta Aranżacji Okiennych");
   }
-
 }
 
 // ── GENEROWANIE MAILA DO KLIENTA ──────────────────────────────────────────
