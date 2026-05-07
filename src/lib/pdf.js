@@ -115,7 +115,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
         var t=calcProd(p);if(!t)return;
         var key=p.type==="inny"?(p.innyNazwa||"Inne"):p.type;
         if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,sewings:[]};typeOrder.push(key);}
-        typeData[key].count+=1;typeData[key].total+=t;
+        typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
         if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
         total+=t;
       });
@@ -126,7 +126,9 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):pluralProd(d.type,d.count);
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=(d.type==="zaslona"||d.type==="firana");
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
+      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square");
+      var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
+      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
     return {rows:rows,total:total};
   }
