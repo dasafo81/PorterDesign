@@ -1181,24 +1181,13 @@ export function buildOfferRows(client){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
-        var rawTotal=p.mp!=null?p.mp:(calc(pfc).total||0);
-        if(!rawTotal)return;
+        var total=p.mp!=null?p.mp:(calc(pfc).total||0);
+        if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
-        // qty for products that support multiple units
+        var desc=prodLabel+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
-        var hasQty=(p.type==="szyna"||p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"||p.type==="shadow"||p.type==="roleta"||p.type==="zaluzja");
-        var qty=hasQty?((p.par&&p.par.qty)||1):1;
-        var unitTotal=hasQty?roundTo10(rawTotal/qty):roundTo10(rawTotal);
-        var lineTotal=roundTo10(unitTotal*qty);
-        // fabric color for textiles
-        var colorSuffix="";
-        if(p.type==="zaslona"||p.type==="firana"){
-          var kolor=(p.c&&p.c.kolor)||"";
-          if(kolor) colorSuffix=" / "+kolor;
-        }
-        var desc=prodLabel+(p.fabName?" \u00b7 "+p.fabName+colorSuffix:"")+" — "+r.name+" / "+w.name;
-        rows.push({lp:lp++,name:desc,qty:qty,unit:isKurtain?"kpl.":"szt.",cenaJedn:unitTotal,total:lineTotal});
+        rows.push({lp:lp++,name:desc,qty:1,unit:isKurtain?"kpl.":"szt.",cenaJedn:total,total:total});
       });
     });
   });
@@ -1277,7 +1266,7 @@ export function buildSewingRows(client){
           room:r.name,win:w.name,
           type:lblDisp,
           fabric:prod.fabName||(prod.fabMan?"r\u0119czna "+prod.fabMan+" z\u0142":"(brak)"),
-          prod:fabObj?fabObj.prod:"",
+          prod:fabObj?fabObj.prod:"-",
           fabW:prod.fabW||prod.fabManW||"-",
           kolor:pc.kolor||"-",
           metry:metry,
@@ -1286,7 +1275,7 @@ export function buildSewingRows(client){
           szStyle:sz+" "+mars,
           split:splitDesc,
           bottom:bottomDesc,
-          glide:"Odst\u0119p "+(pc.glideGap||8)+" cm",
+          glide:sz==="Wave"?"Odst\u0119p "+(pc.glideGap||8)+" cm":"-",
           leadInSides:pc.leadInSides?"tak":"nie",
           podszewka:pc.podszewka==="tak"?"TAK":"nie",
           note:prod.note||""
@@ -1355,9 +1344,8 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
   if(!rows.length)return null;
   if(comm>0){
     rows=rows.map(function(r){
-      var newUnit=roundTo10(r.cenaJedn*(1+comm));
-      var newTotal=roundTo10(newUnit*r.qty);
-      return Object.assign({},r,{total:newTotal,cenaJedn:newUnit});
+      var newTotal=roundTo10(r.total*(1+comm));
+      return Object.assign({},r,{total:newTotal,cenaJedn:newTotal});
     });
   }
   var total=rows.reduce(function(a,r){return a+r.total;},0);
