@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml } from '../constants/data.js';
-import { buildSimplifiedPDFHtml } from '../pdf.js';
+import { buildSimplifiedPDFHtml } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { sbApi } from '../lib/supabase.js';
 const ce = React.createElement;
