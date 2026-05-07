@@ -1181,13 +1181,24 @@ export function buildOfferRows(client){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
-        var total=p.mp!=null?p.mp:(calc(pfc).total||0);
-        if(!total)return;
+        var rawTotal=p.mp!=null?p.mp:(calc(pfc).total||0);
+        if(!rawTotal)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
-        var desc=prodLabel+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
+        // qty for products that support multiple units
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
-        rows.push({lp:lp++,name:desc,qty:1,unit:isKurtain?"kpl.":"szt.",cenaJedn:total,total:total});
+        var hasQty=(p.type==="szyna"||p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"||p.type==="shadow"||p.type==="roleta"||p.type==="zaluzja");
+        var qty=hasQty?((p.par&&p.par.qty)||1):1;
+        var unitTotal=hasQty?roundTo10(rawTotal/qty):roundTo10(rawTotal);
+        var lineTotal=roundTo10(unitTotal*qty);
+        // fabric color for textiles
+        var colorSuffix="";
+        if(p.type==="zaslona"||p.type==="firana"){
+          var kolor=(p.c&&p.c.kolor)||"";
+          if(kolor) colorSuffix=" / "+kolor;
+        }
+        var desc=prodLabel+(p.fabName?" \u00b7 "+p.fabName+colorSuffix:"")+" — "+r.name+" / "+w.name;
+        rows.push({lp:lp++,name:desc,qty:qty,unit:isKurtain?"kpl.":"szt.",cenaJedn:unitTotal,total:lineTotal});
       });
     });
   });
@@ -1344,8 +1355,9 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
   if(!rows.length)return null;
   if(comm>0){
     rows=rows.map(function(r){
-      var newTotal=roundTo10(r.total*(1+comm));
-      return Object.assign({},r,{total:newTotal,cenaJedn:newTotal});
+      var newUnit=roundTo10(r.cenaJedn*(1+comm));
+      var newTotal=roundTo10(newUnit*r.qty);
+      return Object.assign({},r,{total:newTotal,cenaJedn:newUnit});
     });
   }
   var total=rows.reduce(function(a,r){return a+r.total;},0);
