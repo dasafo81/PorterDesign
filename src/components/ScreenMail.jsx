@@ -1518,7 +1518,6 @@ export function ScreenMail(p){
         setAllMails(function(prev){return [nm].concat(prev);});
         setSending(false); setJustSent(true);
         setTimeout(function(){setJustSent(false);},3000);
-        setCalMail(nm);
         setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
       })
       .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
