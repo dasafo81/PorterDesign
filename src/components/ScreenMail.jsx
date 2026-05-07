@@ -313,9 +313,9 @@ function AttachmentsSection(p){
             "\u00a0PDF z wyceny",
             ce("span",{style:{fontSize:10,marginLeft:4}},"\u25be")
           ),
-          showPicker?ce("div",{style:{position:"absolute",bottom:"calc(100% + 6px)",left:0,
-            background:"var(--bg1)",border:"1px solid var(--bd2)",borderRadius:12,
-            boxShadow:"0 8px 30px rgba(0,0,0,0.18)",zIndex:300,minWidth:240,overflow:"hidden"}},
+          showPicker?ce("div",{style:{position:"absolute",top:"calc(100% + 4px)",left:0,
+            background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:12,
+            boxShadow:"0 8px 30px rgba(0,0,0,0.18)",zIndex:400,minWidth:240,overflow:"hidden"}},
             ce("div",{style:{padding:"8px 0"}},
               APP_PDF_OPTIONS.map(function(opt){
                 var already=!!p.attachments.find(function(a){return a.id===opt.id;});
