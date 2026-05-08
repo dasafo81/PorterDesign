@@ -1305,7 +1305,7 @@ export function ScreenMail(p){
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
   var sloadingMails=us(false),loadingMails=sloadingMails[0],setLoadingMails=sloadingMails[1];
   var ssel=us(null),selThread=ssel[0],setSelThread=ssel[1];
-  var sdr=us([]),drafts=sdr[0],setDrafts=sdr[1];
+  var sdr=us(function(){try{return JSON.parse(localStorage.getItem("pd_mail_drafts")||"[]");}catch(e){return[];}}),drafts=sdr[0],setDrafts=sdr[1];
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
   var st=us("oferta"),selTemplate=st[0],setSelTemplate=st[1];
   var sto=us(""),toEmail=sto[0],setToEmail=sto[1];
@@ -1470,7 +1470,11 @@ export function ScreenMail(p){
   function handleSaveDraft(){
     if(!toEmail&&!subject&&bodyEmpty)return;
     var d={id:"d_"+Date.now(),to:toEmail,subject:subject,body:body,attachments:attachments.slice(),savedAt:new Date().toISOString()};
-    setDrafts(function(prev){return [d].concat(prev);});
+    setDrafts(function(prev){
+      var next=[d].concat(prev);
+      try{localStorage.setItem("pd_mail_drafts",JSON.stringify(next));}catch(e){}
+      return next;
+    });
     setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
   }
 
@@ -1775,7 +1779,11 @@ export function ScreenMail(p){
     rightContent=composerPanel;
   } else if(activeFolder==="drafts"){
     rightContent=ce("div",{style:{height:"100%",overflowY:"auto"}},
-      ce(DraftsView,{drafts:drafts,onOpen:openDraft,onDelete:function(id){setDrafts(function(prev){return prev.filter(function(x){return x.id!==id;});});}})
+      ce(DraftsView,{drafts:drafts,onOpen:openDraft,onDelete:function(id){setDrafts(function(prev){
+  var next=prev.filter(function(x){return x.id!==id;});
+  try{localStorage.setItem("pd_mail_drafts",JSON.stringify(next));}catch(e){}
+  return next;
+});}})
     );
   } else if(activeFolder==="templates"){
     rightContent=ce(TemplatesView,{
