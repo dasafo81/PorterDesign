@@ -162,7 +162,6 @@ export function App(p){
       addr:cl.addr||"",
       phone:cl.phone||"",
       email:cl.email||"",
-      gender:cl.gender||null,
       rooms:copiedRooms,
       status:"nowe",
       commission:cl.commission||null,
