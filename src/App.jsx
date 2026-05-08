@@ -92,6 +92,11 @@ export function App(p){
     setMontazInput(cl&&cl.install_fee!=null?String(cl.install_fee):"");
   },[curClientId,clients.length]);
 
+  // Przewiń na górę przy każdym otwarciu widoku okna
+  React.useEffect(function(){
+    if(screen==="detail")window.scrollTo({top:0,behavior:"instant"});
+  },[screen,curWin&&curWin.id]);
+
   // Zapisz zmiany w Supabase z debounce
   function saveClientToSb(id, data){
     if(offlineMode){
@@ -579,7 +584,24 @@ export function App(p){
         ),
         (curWin.products||[]).length?ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--gr)",background:"var(--grl)",padding:"6px 14px",borderRadius:8}},roundTo10(wtv)+" z\u0142"):null
       ),
-      (curWin.products||[]).map(function(p,i){return ce(ProdCard,{key:p.id,prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);},onDuplicate:function(){dupProd(i);}});}),
+      (curWin.products||[]).length>=2?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14,padding:"10px 14px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd3)"}},
+        (curWin.products||[]).map(function(p,i){
+          var label=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;
+          // count duplicates before this index for numbering
+          var sameTypeBefore=(curWin.products||[]).slice(0,i).filter(function(x){return x.type===p.type;}).length;
+          var totalOfType=(curWin.products||[]).filter(function(x){return x.type===p.type;}).length;
+          var chipLabel=totalOfType>1?label+" "+(sameTypeBefore+1):label;
+          return ce("button",{
+            key:p.id,
+            onClick:function(){
+              var el=document.getElementById("prod-anchor-"+p.id);
+              if(el)el.scrollIntoView({behavior:"smooth",block:"start"});
+            },
+            style:{padding:"5px 12px",borderRadius:20,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",fontSize:12,fontWeight:500,cursor:"pointer",transition:"all .15s",whiteSpace:"nowrap"}
+          },chipLabel);
+        })
+      ):null,
+      (curWin.products||[]).map(function(p,i){return ce("div",{key:p.id,id:"prod-anchor-"+p.id},ce(ProdCard,{prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);},onDuplicate:function(){dupProd(i);}}));}),
       ce("button",{onClick:addProd,style:{padding:"20px 18px",borderRadius:12,border:"2px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:16,cursor:"pointer",marginBottom:16,width:"100%",minHeight:62,transition:"all .15s"}},"+ Dodaj produkt"),
       (curWin.products||[]).length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},
         ce("span",{style:{fontSize:14,color:"var(--grd)"}},"Łącznie okno"),
