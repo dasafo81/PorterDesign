@@ -639,9 +639,37 @@ export const REL ={80:346.42,100:391.83,120:419.84,140:476.13,160:504.14,180:549
 
 export const KSLIM ={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550:1148,600:1308,650:1354,700:1400};
 export const KUNIV ={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
+// Napędy karnisza elektrycznego
+// Wariant STANDARD (A-OK): am75 = sieciowy 230V, am50 = akumulatorowy
+// Wariant PREMIUM (Somfy): mdct = Movelite 35 DCT (siec), mrts = Movelite 35 RTS (siec),
+//   glydea = Glydea Ultra 35 RTS (siec), irismo = Irismo WireFree (aku)
 export const KN ={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
 // zasilanie każdego napędu: "siec" = 230V, "aku" = akumulator
 export const KN_POWER ={am75:"siec",am50:"aku",mdct:"siec",mrts:"siec",glydea:"siec",irismo:"aku"};
+// Karnisz elektryczny — lista napędów z metadanymi (filtrowanie po zasilaniu)
+export const KN_LIST =[
+  {v:"am75",  l:"A-OK AM75 \u2014 sieciowy 230V",       cena:644,    power:"siec", brand:"aok"},
+  {v:"am50",  l:"A-OK AM50 \u2014 akumulatorowy",        cena:1000,   power:"aku",  brand:"aok"},
+  {v:"mdct",  l:"Movelite 35 DCT \u2014 sieciowy 230V",  cena:902,    power:"siec", brand:"somfy"},
+  {v:"mrts",  l:"Movelite 35 RTS \u2014 radiowy 230V",   cena:1056,   power:"siec", brand:"somfy"},
+  {v:"glydea",l:"Glydea Ultra 35 RTS \u2014 sieciowy",   cena:2268,   power:"siec", brand:"somfy"},
+  {v:"irismo",l:"Irismo WireFree \u2014 akumulatorowy",  cena:2181.9, power:"aku",  brand:"somfy"}
+];
+// Piloty do karnisza elektrycznego (sterowanie ręczne — do silnika)
+export const KN_PILOTY =[
+  {v:"brak",   l:"Brak pilota",          cena:0},
+  {v:"aok1b",  l:"Pilot A-OK bia\u0142y", cena:130},
+  {v:"aok1c",  l:"Pilot A-OK czarny",    cena:148},
+  {v:"situo",  l:"Situo",                cena:284},
+];
+// Centralki do karnisza elektrycznego (systemy smart home)
+export const KN_CENTRALKI =[
+  {v:"brak",   l:"Brak centralki",       cena:0},
+  {v:"tuya",   l:"Tuya",                 cena:340},
+  {v:"situo_c",l:"Situo",               cena:284},
+  {v:"tahoma", l:"TaHoma",              cena:1390}
+];
+// Zachowane dla wstecznej kompatybilności (używane w calc)
 export const KP ={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
 
 // ── KARNISZ PRESTIGE ROUND / SQUARE (Premium-Line) ───────────────────────────
@@ -1053,7 +1081,10 @@ export function calc(p){
     if(!lenK)return{total:0,lines:[],warn:null};
     var st=c.km==="universal"?KUNIV:KSLIM;
     var rk=lookup(lenK,st);
-    total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+pt*210+arc*318)*qty;
+    var kPilot=KP[c.kp||"brak"]||0;
+    var kCentItem=KN_CENTRALKI.find(function(x){return x.v===(c.kc||"brak");});
+    var kCent=kCentItem?kCentItem.cena:0;
+    total=(rk.p+(KN[c.kn||"am75"]||0)+kPilot+kCent+pt*210+arc*318)*qty;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
   }else if(p.type==="prestige_round"||p.type==="prestige_square"){
     var lenP=parseInt(par.len)||0,qty=par.qty||1;
