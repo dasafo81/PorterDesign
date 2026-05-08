@@ -113,8 +113,24 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
     (windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         var t=calcProd(p);if(!t)return;
-        var key=p.type==="inny"?(p.innyNazwa||"Inne"):p.type;
-        if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,sewings:[]};typeOrder.push(key);}
+        // Build a specific subtype label and grouping key for rail/rod types
+        var subtypeLabel=null;
+        if(p.type==="szyna"){
+          var ksMode=(p.c||{}).ks||"flex";
+          var ksLbl=ksMode==="manual"?"KS Manualna":ksMode==="flex"?"KS Flex":ksMode==="wave"?"KS Wave":("KS "+ksMode);
+          subtypeLabel=ksLbl;
+        }else if(p.type==="karnisz"){
+          var kmMode=(p.c||{}).km||"slim";
+          subtypeLabel="Karnisz elektryczny "+(kmMode==="slim"?"Slim":kmMode==="univ"?"Universal":kmMode.toUpperCase());
+        }else if(p.type==="prestige_round"){
+          subtypeLabel="Karnisz Prestige ROUND";
+        }else if(p.type==="prestige_square"){
+          subtypeLabel="Karnisz Prestige SQUARE";
+        }else if(p.type==="karnisz_dek"){
+          subtypeLabel="Karnisz dekoracyjny";
+        }
+        var key=p.type==="inny"?(p.innyNazwa||"Inne"):(subtypeLabel||p.type);
+        if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
         typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
         if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
         total+=t;
@@ -123,10 +139,10 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
     var rows="";
     typeOrder.forEach(function(key){
       var d=typeData[key];
-      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):pluralProd(d.type,d.count);
+      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||pluralProd(d.type,d.count));
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=(d.type==="zaslona"||d.type==="firana");
-      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="inny");
+      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek");
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
       rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
