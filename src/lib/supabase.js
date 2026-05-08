@@ -28,6 +28,9 @@ export const sbApi = {
   addClient: function(name, addr, phone, email){
     return sbFetch("POST","clients",{name:name,addr:addr,phone:phone||"",email:email||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
   },
+  addClientFull: function(data){
+    return sbFetch("POST","clients",data);
+  },
   // Zaktualizuj rooms klienta (zapisuje ca\u0142y JSON)
   updateClient: function(id, data){
     return sbFetch("PATCH","clients?id=eq."+id, data);
