@@ -26,6 +26,7 @@ import { generateFabricOrderPDF, generateClientEmail,
 
   generateSewingOrderPDF, generateSewingOrderPDFFromRows
 } from '../lib/pdf.js';
+import { ModalConfirmTypeChange } from './ModalRoom.jsx';
 const ce = React.createElement;
 
 export function Chip(p){
@@ -663,15 +664,7 @@ export function ProdCard(p){
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, Ivory White...",style:{padding:"16px 18px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box"}})
           )
         ),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
-        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:12}},
-          ce(Fld,{label:"KOLIZJE (opcjonalnie)"},
-            ce("input",{type:"text",value:c.kolizje||"",onChange:function(ev){sc("kolizje",ev.target.value||undefined);},placeholder:"np. kaloryfer 12,5 cm",style:{padding:"12px 14px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box"}})
-          ),
-          ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 WN\u0118KI (opcjonalnie)"},
-            ce("input",{type:"text",value:c.glebWneki||"",onChange:function(ev){sc("glebWneki",ev.target.value||undefined);},placeholder:"np. 18 cm",style:{padding:"12px 14px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box"}})
-          )
-        )
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW})
       ),
 
       // SEKCJA 2: Model zasłony
