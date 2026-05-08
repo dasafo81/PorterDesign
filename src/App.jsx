@@ -143,6 +143,39 @@ export function App(p){
     });
   }
 
+  function duplicateClient(cl){
+    var copiedRooms=JSON.parse(JSON.stringify(cl.rooms||[]));
+    copiedRooms=copiedRooms.map(function(r){
+      return mg(r,{
+        windows:(r.windows||[]).map(function(w){
+          return mg(w,{
+            id:"w_"+Date.now()+"_"+Math.floor(Math.random()*1e6),
+            products:(w.products||[]).map(function(pr){
+              return mg(pr,{id:"p_"+Date.now()+"_"+Math.floor(Math.random()*1e6)});
+            })
+          });
+        })
+      });
+    });
+    var payload={
+      name:(cl.name||"")+" (kopia)",
+      addr:cl.addr||"",
+      phone:cl.phone||"",
+      email:cl.email||"",
+      gender:cl.gender||null,
+      rooms:copiedRooms,
+      status:"nowe",
+      commission:cl.commission||null,
+      install_fee:cl.install_fee||null
+    };
+    sbApi.addClientFull(payload).then(function(data){
+      var newCl=data&&data[0]?data[0]:mg(payload,{id:Date.now()});
+      setClients(function(cs){return [newCl].concat(cs);});
+      setCurClientId(newCl.id);
+      setScreen("rooms");
+    }).catch(function(e){alert("B\u0142\u0105d kopiowania: "+e.message);});
+  }
+
   function openClient(id){setCurClientId(id);setScreen("rooms");}
   function openRoom(id){setCurRoomId(id);setScreen("windows");}
   function openWin(w){setCurWin(JSON.parse(JSON.stringify(w)));setScreen("detail");}
@@ -312,6 +345,14 @@ export function App(p){
           ),
           total?ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t2)",marginTop:4}},roundTo10(total)+" z\u0142"):null
         ),
+        ce("button",{
+          onClick:function(ev){
+            ev.stopPropagation();
+            duplicateClient(cl);
+          },
+          title:"Kopiuj klienta",
+          style:{position:"absolute",top:8,right:28,border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)",padding:"2px 5px",lineHeight:1,opacity:0.45}
+        },"\uD83D\uDCCB"),
         ce("button",{
           onClick:function(ev){
             ev.stopPropagation();
