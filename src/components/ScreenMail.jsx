@@ -1553,7 +1553,7 @@ export function ScreenMail(p){
     setSending(true);
     setSendError(null);
     var toName=selClient?selClient.name:toEmail;
-    var uploadFiles=attachments.filter(function(a){return a.type==="upload"&&a.file;}).map(function(a){return a.file;});
+    var uploadFiles=attachments.filter(function(a){return a.type==="upload"&&a.file instanceof File;}).map(function(a){return a.file;});
     var sigImgUrl=(userSettings&&userSettings.signature_image_url)||"";
     var hasSigImg=!!sigImgUrl;
     // useCid=true tylko gdy faktycznie mamy obrazek do osadzenia
