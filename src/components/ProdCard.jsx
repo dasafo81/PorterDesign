@@ -10,6 +10,7 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
   JZ_LABELS, JZ_ZONES, KARNISZ_SUPPLIERS, KN,
+  KN_LIST, KN_PILOTY, KN_CENTRALKI, KN_POWER,
   KP, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -26,7 +27,6 @@ import { generateFabricOrderPDF, generateClientEmail,
 
   generateSewingOrderPDF, generateSewingOrderPDFFromRows
 } from '../lib/pdf.js';
-import { ModalConfirmTypeChange } from './ModalRoom.jsx';
 const ce = React.createElement;
 
 export function Chip(p){
@@ -1267,23 +1267,68 @@ export function ProdCard(p){
       ]})
     );
   }else if(prod.type==="karnisz"){
-    var nap=[{v:"am75",l:"A-OK AM75 644z\u0142"},{v:"am50",l:"A-OK AM50 1000z\u0142"},{v:"mdct",l:"Movelite DCT 902z\u0142"},{v:"mrts",l:"Movelite RTS 1056z\u0142"},{v:"glydea",l:"Glydea 2268z\u0142"},{v:"irismo",l:"Irismo 2182z\u0142"}];
-    var pil=[{v:"brak",l:"Brak st."},{v:"aok1b",l:"Pilot bia\u0142y 130z\u0142"},{v:"aok1c",l:"Pilot czarny 148z\u0142"},{v:"tuya",l:"Tuya 340z\u0142"},{v:"situo",l:"Situo 284z\u0142"},{v:"tahoma",l:"TaHoma 1390z\u0142"}];
+    // Zasilanie: "siec" lub "aku" — filtruje dostępne napędy
+    var kZasilanie=c.kzas||"siec";
+    var napFiltered=KN_LIST.filter(function(x){return x.power===kZasilanie;});
+    // Upewnij się, że wybrany napęd jest zgodny z zasilaniem; jeśli nie — wyczyść
+    var curKn=c.kn||"am75";
+    var curKnValid=napFiltered.find(function(x){return x.v===curKn;});
+    if(!curKnValid && napFiltered.length>0) curKn=napFiltered[0].v;
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"number",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"number",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"number",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"number",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"\u2013",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"number",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"\u2013",style:IST}))
       ),
+      // Typ szyny
       ce(Chips,{items:[
         ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
         ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
       ]}),
-      ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})})),
-      ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})})),
+      // Zasilanie
+      ce("div",{style:{marginTop:12}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"ZASILANIE SILNIKA"),
+        ce(Chips,{items:[
+          ce(Chip,{key:"siec",label:"\u26a1 Sieciowe 230V",active:kZasilanie==="siec",onClick:function(){
+            var first=KN_LIST.find(function(x){return x.power==="siec";});
+            p.onChange(mg(prod,{c:mg(c,{kzas:"siec",kn:first?first.v:"am75"})}));
+          }}),
+          ce(Chip,{key:"aku",label:"\uD83D\uDD0B Akumulatorowe",active:kZasilanie==="aku",onClick:function(){
+            var first=KN_LIST.find(function(x){return x.power==="aku";});
+            p.onChange(mg(prod,{c:mg(c,{kzas:"aku",kn:first?first.v:"am50"})}));
+          }})
+        ]})
+      ),
+      // Info o akumulatorze
+      kZasilanie==="aku"?ce("div",{style:{fontSize:12,color:"var(--t2)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginTop:6}},"Brak kabla zasilającego \u2014 idealne do gotowych wn\u0119trz."):null,
+      // Napęd — filtrowany po zasilaniu
+      ce("div",{style:{marginTop:12}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"NAP\u0118D"),
+        ce(Chips,{items:napFiltered.map(function(x){
+          var isA=curKn===x.v;
+          return ce(Chip,{key:x.v,label:x.l.split(" \u2014 ")[0]+" "+x.cena+"z\u0142",active:isA,onClick:function(){sc("kn",x.v);}});
+        })})
+      ),
+      // Pilot
+      ce("div",{style:{marginTop:12}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"PILOT (opcjonalnie)"),
+        ce(Chips,{items:KN_PILOTY.map(function(x){
+          var isA=(!c.kp&&x.v==="brak")||c.kp===x.v;
+          return ce(Chip,{key:x.v,label:x.v==="brak"?x.l:x.l+" "+x.cena+"z\u0142",active:isA,onClick:function(){sc("kp",x.v);}});
+        })})
+      ),
+      // Centralka
+      ce("div",{style:{marginTop:8}},
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"CENTRALKA / SMART HOME (opcjonalnie)"),
+        ce(Chips,{items:KN_CENTRALKI.map(function(x){
+          var isA=(!c.kc&&x.v==="brak")||c.kc===x.v;
+          return ce(Chip,{key:x.v,label:x.v==="brak"?x.l:x.l+" "+x.cena+"z\u0142",active:isA,onClick:function(){sc("kc",x.v);}});
+        })})
+      ),
+      // Strona silnika
       ce("div",{style:{marginTop:20}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA SILNIKA"),
         ce("div",{style:{display:"flex",gap:10}},
@@ -1295,6 +1340,7 @@ export function ProdCard(p){
           })
         )
       ),
+      // Typ
       ce("div",{style:{marginTop:16}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP"),
         ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
