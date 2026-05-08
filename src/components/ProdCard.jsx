@@ -21,7 +21,7 @@ import {
   calc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup
 } from '../constants/data.js';
-import { ModalConfirmTypeChange } from './ModalRoom.jsx';
+import { ModalConfirmTypeChange, ModalConfirmRemove, ModalRoom } from './ModalRoom.jsx';
 import { generateFabricOrderPDF, generateClientEmail,
 
 
