@@ -1344,6 +1344,7 @@ export function buildSewingRows(client){
           glide:sz==="Wave"?"Odst\u0119p "+(pc.glideGap||8)+" cm":"-",
           leadInSides:pc.leadInSides?"tak":"nie",
           podszewka:pc.podszewka==="tak"?"TAK":"nie",
+          tasmaNaStojaco:pc.tasmaNaStojaco?"tak":"nie",
           note:prod.note||""
         });
       });
