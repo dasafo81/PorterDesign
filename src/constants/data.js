@@ -1004,26 +1004,33 @@ export function calc(p){
     // Nowy system: c.rModel (relax/print/back/podszewka/front/cascade/duo)
     var rModel=c.rModel||null;
     if(!rModel)return{total:0,lines:[],warn:"Wybierz model rolety"};
-    var rb=c.rb==="tak"?11:0;
     var tkan=fabP!=null?fabP:160;
-    var pow=parseFloat(((wCm/100)*(hCm/100)).toFixed(3));
+    // ── Zużycie tkaniny ──────────────────────────────────────────────
+    // Szerokość: szerokość rolety + 2×10 cm na boki
+    var tkanWcm=wCm+20;
+    // Wysokość: h + 5cm rzep góra + 10cm podwinięcie dół + tunele×2cm
+    var iloscTuneli=Math.floor(hCm/23);
+    var tkanHcm=hCm+5+10+iloscTuneli*2;
+    var pow=parseFloat(((tkanWcm/100)*(tkanHcm/100)).toFixed(3));
+    var powInfo="tkanina "+tkanWcm+"\xd7"+tkanHcm+"cm ("+iloscTuneli+" tuneli)";
     var rr;
     if(rModel==="duo"){
       // Duo: dwie tkaniny, mnożone x2
       rr=lookup(wCm,RDUO);
-      total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*(200+tkan)*2).toFixed(2));
-      lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 (x2 tkaniny)");
+      total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)*2).toFixed(2));
+      lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo+" (x2 tkaniny)");
     }else{
       // Wszystkie inne: jednolita logika 200zł/m² szycie + tkanina
       rr=lookup(wCm,RCITY);
-      total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
+      total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
       if(c.rSystem==="elektryk"){
         rr=lookup(wCm,REL);
-        total=parseFloat((rr.p*2+rb).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
+        total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
       }
-      lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2");
+      lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo);
     }
-    if(rb)lines.push("+ B\u0119benek 11 z\u0142");
+    // Maskownice/boczki
+    if(c.rMask==="tak"){total+=50;lines.push("+ Boczki/maskownice +50 z\u0142");}
   }else if(p.type==="shadow"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
     if(!wCm||!hCm)return{total:0,lines:[],warn:null};
