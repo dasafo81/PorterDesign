@@ -21,7 +21,6 @@ import {
   calc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup
 } from '../constants/data.js';
-import { ModalConfirmTypeChange } from '../components/ModalRoom.jsx';
 import { generateFabricOrderPDF, generateClientEmail,
 
 
@@ -883,11 +882,11 @@ export function ProdCard(p){
       )
     ):null;
 
-    // ── BĘBENEK ──────────────────────────────────────────────────────
-    var bebenekChip = rSystem?ce("div",{style:{marginTop:16}},
+    // ── MASKOWNICE/BOCZKI ────────────────────────────────────────────
+    var maskowniceChip = rSystem?ce("div",{style:{marginTop:16}},
       ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
-        ce("input",{type:"checkbox",checked:c.rb==="tak",onChange:function(ev){sc("rb",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
-        ce("span",{},"+ B\u0119benek (11 z\u0142)")
+        ce("input",{type:"checkbox",checked:c.rMask==="tak",onChange:function(ev){sc("rMask",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
+        ce("span",{},"+ Boczki/maskownice (+50 z\u0142)")
       )
     ):null;
 
@@ -1036,6 +1035,9 @@ export function ProdCard(p){
           ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
           ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
         ),
+        ce("div",{style:{marginBottom:16}},
+          ce(Fld,{label:"WYSOKO\u015a\u0106 NADPRO\u017bA (cm)"},ce("input",{type:"number",value:par.nadprozeCm||"",onChange:function(ev){sp("nadprozeCm",ev.target.value);},placeholder:"np. 15",style:IST}))
+        ),
         ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
         ce("div",{style:{marginTop:12}},
           ce(Fld,{label:"KOLOR"},
@@ -1051,7 +1053,7 @@ export function ProdCard(p){
       // SEKCJA 3: System (tylko po wyborze modelu)
       rModel?ce(Section,{num:"3",title:"System"},
         roletaSystemSelector,
-        bebenekChip,
+        maskowniceChip,
         lancuszekSection,
         elektrykSection
       ):null
