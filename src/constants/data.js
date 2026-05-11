@@ -1268,7 +1268,37 @@ export function buildSewingRows(client){
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(prod){
-        if(prod.type!=="zaslona"&&prod.type!=="firana")return;
+        if(prod.type!=="zaslona"&&prod.type!=="firana"&&prod.type!=="roleta")return;
+        var pc=prod.c||{},par=prod.par||{};
+        var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
+        var lblDisp=prod.type==="inny"?(prod.innyNazwa||lbl):lbl;
+        var fabObj=prod.fabName?FABRICS.find(function(f){return f.name===prod.fabName;}):null;
+
+        if(prod.type==="roleta"){
+          var rWcm=(par.wCm||0)+20;
+          var rTunele=Math.floor((par.hCm||0)/23);
+          var rHcm=(par.hCm||0)+5+10+rTunele*2;
+          var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
+          var rModelMap={relax:"Relax",print:"Print",back:"Back",podszewka:"Podszewka",front:"Front",cascade:"Cascade",duo:"Duo"};
+          var rModelLbl=rModelMap[pc.rModel]||pc.rModel||"-";
+          rows.push({
+            room:r.name,win:w.name,
+            type:lblDisp+" ("+rModelLbl+")",
+            fabric:prod.fabName||(prod.fabMan?"r\u0119czna "+prod.fabMan+" z\u0142":"(brak)"),
+            prod:fabObj?fabObj.prod:"-",
+            fabW:prod.fabW||prod.fabManW||"-",
+            kolor:pc.kolor||"-",
+            metry:rMetry,
+            hCm:par.hCm||"-",
+            wCm:par.wCm||"-",
+            szStyle:"-",marszczenie:"-",tasma:"-",haczyk:"-",
+            split:"-",bottom:"-",glide:"-",leadInSides:"-",
+            podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
+            note:prod.note||""
+          });
+          return;
+        }
+
         var panels=getPanelsForProd(prod);
         var prodForCalc=Object.assign({},prod,{panels:panels});
         var res=calc(prodForCalc);
@@ -1276,9 +1306,6 @@ export function buildSewingRows(client){
         (res.lines||[]).forEach(function(l){
           var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
         });
-        var pc=prod.c||{},par=prod.par||{};
-        var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
-        var lblDisp=prod.type==="inny"?(prod.innyNazwa||lbl):lbl;
         var sz=(pc.sz==="wave"||pc.model==="wave")?"Wave":"Flex";
         var mars=pc.mars?(Math.round(+pc.mars*100))+"%":"150%";
         var split=pc.split||"unequal";
@@ -1289,7 +1316,6 @@ export function buildSewingRows(client){
         else splitDesc="Komplet nier\xf3wny: L="+(pc.leftW||0)+"cm / P="+(pc.rightW||0)+"cm";
         var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"O\u0142owianka"};
         var bottomDesc=(bottomMap[pc.bottomType||"single"]||"Pojedynczy")+(pc.bottomSize?" "+pc.bottomSize+"cm":"");
-        var fabObj=prod.fabName?FABRICS.find(function(f){return f.name===prod.fabName;}):null;
         rows.push({
           room:r.name,win:w.name,
           type:lblDisp,
@@ -1300,12 +1326,10 @@ export function buildSewingRows(client){
           metry:metry,
           hCm:par.hCm||"-",
           wCm:par.wCm||"-",
-          szStyle:sz,
-          marszczenie:mars,
+          szStyle:sz,marszczenie:mars,
           tasma:(pc.model==="tasma"||pc.model==="falda")?(pc.szerokosc_tasmy||8)+" cm":"-",
           haczyk:(pc.model==="tasma"||pc.model==="falda")?(pc.wysokosc_haczyka!=null?pc.wysokosc_haczyka:2.5)+" cm":"-",
-          split:splitDesc,
-          bottom:bottomDesc,
+          split:splitDesc,bottom:bottomDesc,
           glide:sz==="Wave"?"Odst\u0119p "+(pc.glideGap||8)+" cm":"-",
           leadInSides:pc.leadInSides?"tak":"nie",
           podszewka:pc.podszewka==="tak"?"TAK":"nie",
