@@ -13,7 +13,8 @@ export const CRM_STAGES =[
   {id:"wycena",     label:"Wycena",     color:"#3b82f6", clientStatus:"nowe"},
   {id:"zamowienie", label:"Zamówienie", color:"#8b5cf6", clientStatus:"nowe"},
   {id:"realizacja", label:"Realizacja", color:"#10b981", clientStatus:"nowe"},
-  {id:"zakonczone", label:"Zakończone", color:"#6b7280", clientStatus:"zrealizowane"}
+  {id:"montaz",     label:"Monta\u017c",     color:"#f97316", clientStatus:"nowe"},
+  {id:"zakonczone", label:"Zako\u0144czone", color:"#6b7280", clientStatus:"zrealizowane"}
 ];
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
 
@@ -132,9 +133,6 @@ export function ModalDeal(p){
       start:{dateTime:date.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(date.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
-    if(cl && cl.addr && cl.addr.trim()){
-      body.location = cl.addr.trim();
-    }
     
     function doPost(t){
       return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(targetCalId)+"/events",{
@@ -466,7 +464,7 @@ export function CRMKalendarz(p){
     var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
     var name=cl?cl.name:"Klient";
     if(deal.visit_date){dealEvents.push({date:new Date(deal.visit_date),label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});}
-    if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDD27 Monta\u017c",client:name,deal:deal,color:"#10b981",type:"delivery"});}
+    if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});}
     if(deal.followup_date){dealEvents.push({date:new Date(deal.followup_date),label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});}
   });
   dealEvents.sort(function(a,b){return a.date-b.date;});
@@ -538,7 +536,7 @@ export function CRMKalendarz(p){
     var primary=calList.find(function(c){return c.primary;});
     if(primary) defaultCals=[primary.id];
     else if(calList.length>0) defaultCals=[calList[0].id];
-    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',location:'',saving:false,selectedCals:defaultCals});
+    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false,selectedCals:defaultCals});
   }
 
   function toggleCalInDraft(calId){
@@ -566,9 +564,6 @@ export function CRMKalendarz(p){
       start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
       end:{dateTime:end.toISOString(),timeZone:'Europe/Warsaw'}
     };
-    if(ev.location && ev.location.trim()){
-      body.location = ev.location.trim();
-    }
     function postToCal(calId,t){
       return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events',{
         method:'POST',
@@ -786,7 +781,7 @@ export function CRMKalendarz(p){
         calList.length>0?ce("span",{style:{fontSize:10,color:"var(--t3)",opacity:0.4}},"|"):null,
         // Typy zdarzeń z dealów
         ce("span",{style:{fontSize:10,color:"#3b82f6",fontWeight:600}},"● Pomiar"),
-        ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Monta\u017c"),
+        ce("span",{style:{fontSize:10,color:"#10b981",fontWeight:600}},"● Realizacja"),
         loadingEv?ce("span",{style:{fontSize:10,color:"var(--t3)",marginLeft:"auto"}},"\u23F3 Ładuję zdarzenia..."):null
       ),
 
@@ -841,22 +836,13 @@ export function CRMKalendarz(p){
             })
           )
         ),
-        ce('div',{style:{marginBottom:12}},
+        ce('div',{style:{marginBottom:16}},
           ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'OPIS (opcjonalnie)'),
           ce('textarea',{
             value:newEvDraft.description,rows:3,
             onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{description:e.target.value});});},
             placeholder:'Dodatkowe informacje...',
             style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',resize:'none',fontFamily:'inherit'}
-          })
-        ),
-        ce('div',{style:{marginBottom:16}},
-          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'LOKALIZACJA (opcjonalnie)'),
-          ce('input',{
-            type:'text',value:newEvDraft.location,
-            onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{location:e.target.value});});},
-            placeholder:'np. ul. Kwiatowa 15, Warszawa',
-            style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
           })
         ),
         ce('div',{style:{marginBottom:16}},
@@ -939,7 +925,7 @@ function DealCard(cp){
           ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
         ):null,
         hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
-          ce("span",null,"\uD83D\uDD27"),ce("span",null,"Monta\u017c: "+fmtDate(deal.delivery_date))
+          ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
         ):null
       ):null,
       deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
