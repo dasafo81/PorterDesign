@@ -644,6 +644,27 @@ export const KN ={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.
 export const KN_POWER ={am75:"siec",am50:"aku",mdct:"siec",mrts:"siec",glydea:"siec",irismo:"aku"};
 export const KP ={brak:0,aok1b:130,aok1c:148,tuya:340,situo:284,tahoma:1390};
 
+// ── KARNISZ ELEKTRYCZNY — listy napędów, pilotów, centralk ───────────────────
+export const KN_LIST=[
+  {v:"am75", l:"A-OK AM75 — Sieciowy",          power:"siec", cena:Math.round(644*1.23*2)},
+  {v:"mdct", l:"A-OK MDCT — Sieciowy",          power:"siec", cena:Math.round(902*1.23*2)},
+  {v:"mrts", l:"A-OK MRTS — Sieciowy RTS",      power:"siec", cena:Math.round(1056*1.23*2)},
+  {v:"glydea",l:"Somfy Glydea — Sieciowy io",   power:"siec", cena:Math.round(2268*1.23*2)},
+  {v:"am50", l:"A-OK AM50 — Akumulatorowy",     power:"aku",  cena:Math.round(1000*1.23*2)},
+  {v:"irismo",l:"Somfy Irismo — Akumulatorowy", power:"aku",  cena:Math.round(2181.9*1.23*2)}
+];
+export const KN_PILOTY=[
+  {v:"brak",  l:"Bez pilota"},
+  {v:"aok1b", l:"Pilot A-OK 1-kan. basic",  cena:Math.round(130*1.23*2)},
+  {v:"aok1c", l:"Pilot A-OK 1-kan. LCD",    cena:Math.round(148*1.23*2)},
+  {v:"tuya",  l:"Pilot Tuya RF 433",        cena:Math.round(340*1.23*2)},
+  {v:"situo", l:"Pilot Somfy Situo",        cena:Math.round(284*1.23*2)}
+];
+export const KN_CENTRALKI=[
+  {v:"brak",   l:"Bez centralki"},
+  {v:"tahoma", l:"Somfy TaHoma Switch",     cena:Math.round(1390*1.23*2)}
+];
+
 // ── KARNISZ PRESTIGE ROUND / SQUARE (Premium-Line) ───────────────────────────
 // Cennik hurtowy netto × VAT 1.23 × marża 2 = mnożnik 2.46
 export const PRESTIGE_WIDTHS =[100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000,1050,1100,1150,1200];
