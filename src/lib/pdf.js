@@ -245,30 +245,29 @@ export function generateSewingOrderPDF(client, modalData){
   var romanRows=rows.filter(function(r){return r._type==="roleta";});
 
   // Tabela zasłon/firan
-  var tableHeader=["Pom. / Okno","Rodzaj","Tkanina","Producent","Szer. belki","Kolor","Wys. (cm)","Szer. (cm)","Podzia\u0142","Styl szycia","Ta\u015bma","Haczyk","Typ do\u0142u","Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Podszewka","Uwaga"];
+  var tableHeader=["Pomieszczenie","Rodzaj","Styl szycia","Tkanina","Producent","Kolor","Szer. (cm)","Wys. (cm)","Podzia\u0142","Typ do\u0142u","Wys. ta\u015bmy / Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Podszewka","Ta\u015bma na stoj\u0105co","Uwagi"];
   var tableRows=curtainRows.map(function(r){
+    var tasmyGlide=r.szStyle==="Wave"?r.glide:(r.tasma&&r.tasma!=="-"?r.tasma:"-");
     return [
-      r.room+" / "+r.win,
+      r.room,
       r.type,
+      r.szStyle+" "+r.marszczenie,
       "<strong>"+r.fabric+"</strong>",
       r.prod||"-",
-      r.fabW+"cm",
       r.kolor,
-      r.hCm?(r.hCm+"cm"):"-",
       r.wCm?(r.wCm+"cm"):"-",
+      r.hCm?(r.hCm+"cm"):"-",
       r.split,
-      r.szStyle,
-      r.tasma||"-",
-      r.haczyk||"-",
       r.bottom,
-      r.glide,
+      tasmyGlide,
       r.leadInSides,
       r.podszewka||"nie",
+      r.tasmaNaStojaco||"-",
       r.note||""
     ];
   });
   var curtainMetry=curtainRows.reduce(function(a,r){return a+r.metry;},0);
-  if(curtainRows.length) tableRows.push(["<strong>RAZEM</strong>","","","","","","<strong>"+curtainMetry.toFixed(2).replace(".",",")+"\u00a0mb</strong>","","","","","","","","","","",""]);
+  if(curtainRows.length) tableRows.push(["<strong>RAZEM</strong>","","","","","","","","","","","","","",""]);
 
   // Tabela rolet rzymskich
   var romanHeader=["Pomieszczenie","Rodzaj","Tkanina","Producent","Kolor",
@@ -355,14 +354,15 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   var now=new Date();var dateStr=now.toLocaleDateString('pl-PL');
   var curtainRows2=rows.filter(function(r){return r._type!=='roleta';});
   var romanRows2=rows.filter(function(r){return r._type==='roleta';});
-  var tableHeader=['Pom. / Okno','Rodzaj','Tkanina','Producent','Szer. belki','Kolor','Wys. (cm)','Szer. (cm)','Podzia\u0142','Styl szycia','Ta\u015bma','Haczyk','Typ do\u0142u','Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Uwaga'];
+  var tableHeader=['Pomieszczenie','Rodzaj','Styl szycia','Tkanina','Producent','Kolor','Szer. (cm)','Wys. (cm)','Podzia\u0142','Typ do\u0142u','Wys. ta\u015bmy / Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Ta\u015bma na stoj\u0105co','Uwagi'];
   var tableRows=curtainRows2.map(function(r){
-    return [r.room+' / '+r.win,r.type,'<strong>'+r.fabric+'</strong>',r.prod||'-',r.fabW+'cm',r.kolor,
-      r.hCm?(r.hCm+'cm'):'-',r.wCm?(r.wCm+'cm'):'-',
-      r.split,r.szStyle,r.tasma||'-',r.haczyk||'-',r.bottom,r.glide,r.leadInSides,r.podszewka||"nie",r.note||''];
+    var tasmyGlide=r.szStyle==='Wave'?r.glide:(r.tasma&&r.tasma!=='-'?r.tasma:'-');
+    return [r.room,r.type,r.szStyle+' '+r.marszczenie,'<strong>'+r.fabric+'</strong>',r.prod||'-',r.kolor,
+      r.wCm?(r.wCm+'cm'):'-',r.hCm?(r.hCm+'cm'):'-',
+      r.split,r.bottom,tasmyGlide,r.leadInSides,r.podszewka||'nie',r.tasmaNaStojaco||'-',r.note||''];
   });
   var curtainMetry2=curtainRows2.reduce(function(a,r){return a+r.metry;},0);
-  if(curtainRows2.length) tableRows.push(['<strong>RAZEM</strong>','','','','','','<strong>'+curtainMetry2.toFixed(2).replace('.',',')+' mb</strong>','','','','','','','','','']);
+  if(curtainRows2.length) tableRows.push(['<strong>RAZEM</strong>','','','','','','','','','','','','','','']);
   var romanHeader2=['Pomieszczenie','Rodzaj','Tkanina','Producent','Kolor',
     'Szeroko\u015b\u0107 (cm)','Wysoko\u015b\u0107 (cm)','Wys. nadpro\u017ca (cm)',
     'Boczki/maskownice','Podszewka','System','Strona obs\u0142ugi',
