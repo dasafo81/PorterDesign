@@ -373,7 +373,7 @@ export const FABRICS =[
   {name:"Leda",brutto:90,prod:"DEKOMA",width:null},
   {name:"Lia",brutto:192,prod:"FIBERO G.ROJEK",width:310},
   {name:"Linda",brutto:100,prod:"SAMA TEKSTIL",width:300},
-  {name:"Linea",brutto:160,prod:"DEKOMA",width:null,height:295},
+  {name:"Linea",brutto:160,prod:"DEKOMA",width:295},
   {name:"Linen Dimout",brutto:180,prod:"SAMA TEKSTIL",width:310},
   {name:"Lino",brutto:120,prod:"VV design",width:300},
   {name:"Liso Dimout",brutto:150,prod:"VV design",width:300},
