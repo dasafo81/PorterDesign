@@ -1281,6 +1281,10 @@ export function buildSewingRows(client){
           var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
           var rModelMap={relax:"Relax",print:"Print",back:"Back",podszewka:"Podszewka",front:"Front",cascade:"Cascade",duo:"Duo"};
           var rModelLbl=rModelMap[pc.rModel]||pc.rModel||"-";
+          var rLancuszek=pc.lancuszek==="metalowy"
+            ?"Metalowy"+(pc.kolorLancuszka?" ("+pc.kolorLancuszka+")":"")
+            :"Biały";
+          var rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.stronaObslugi||"Lewo");
           rows.push({
             room:r.name,win:w.name,
             type:lblDisp+" ("+rModelLbl+")",
@@ -1291,9 +1295,16 @@ export function buildSewingRows(client){
             metry:rMetry,
             hCm:par.hCm||"-",
             wCm:par.wCm||"-",
+            nadprozeCm:par.nadprozeCm||"-",
+            boczki:pc.rMask==="tak"?"TAK":"nie",
+            podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
+            rSystem:pc.rSystem==="elektryk"?"elektryczny":"manualny",
+            stronaObslugi:rStrona,
+            lancuszek:pc.rSystem==="elektryk"?"-":rLancuszek,
+            tasmaNaStojaco:"-",
             szStyle:"-",marszczenie:"-",tasma:"-",haczyk:"-",
             split:"-",bottom:"-",glide:"-",leadInSides:"-",
-            podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
+            _type:"roleta",
             note:prod.note||""
           });
           return;
