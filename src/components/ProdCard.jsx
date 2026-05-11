@@ -22,10 +22,9 @@ import {
   lookup, mg, roundTo10, rrzLookup
 } from '../constants/data.js';
 import { generateFabricOrderPDF, generateClientEmail,
-
-
   generateSewingOrderPDF, generateSewingOrderPDFFromRows
 } from '../lib/pdf.js';
+import { ModalConfirmTypeChange } from './ModalRoom.jsx';
 const ce = React.createElement;
 
 export function Chip(p){
