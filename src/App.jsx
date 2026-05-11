@@ -1303,7 +1303,7 @@ export function ModalAIValuation(p){
         })
       };
     });
-    sbFetch("POST","clients",{name:name,addr:lastParsed.addr||"",phone:"",email:"",rooms:rooms})
+    sbApi.addClientFull({name:name,addr:lastParsed.addr||"",phone:"",email:"",rooms:rooms})
     .then(function(res){
       var cl=res&&res[0]?res[0]:null;
       if(cl){
