@@ -1,4 +1,3 @@
-import { getAccessToken } from './auth.js';
 export const SB_URL="https://rkcidwusjzvfwxszotnb.supabase.co";
 export const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3Vzanp2Znd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDU4NzIsImV4cCI6MjA5MDE4MTg3Mn0.N-frD06x0MzSg8dHmz-xneA16QvVrBmAYUg3ileNpXw";
 
@@ -7,7 +6,7 @@ function sbFetch(method, path, body){
     method: method,
     headers: {
       "apikey": SB_KEY,
-      "Authorization": "Bearer "+(getAccessToken()||SB_KEY),
+      "Authorization": "Bearer "+SB_KEY,
       "Content-Type": "application/json",
       "Prefer": method==="POST"?"return=representation":"return=representation"
     },
