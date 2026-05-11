@@ -63,6 +63,7 @@ export function App(p){
   var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
   var sOffline=useState(false),offlineMode=sOffline[0],setOfflineMode=sOffline[1];
   var sShowOfflineModal=useState(false),showOfflineModal=sShowOfflineModal[0],setShowOfflineModal=sShowOfflineModal[1];
+  var saveTimerRef=useRef({});
 
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
@@ -118,24 +119,49 @@ export function App(p){
       }
       return;
     }
+    if(saveTimerRef.current[id]) clearTimeout(saveTimerRef.current[id]);
     setSaveStatus("saving");
-    sbApi.updateClient(id, data).then(function(){
-      setSaveStatus("ok");
-      setTimeout(function(){setSaveStatus(null);},1500);
-    }).catch(function(e){
-      console.error("Błąd zapisu:",e);
-      setSaveStatus("error");
-    });
+    saveTimerRef.current[id]=setTimeout(function(){
+      sbApi.updateClient(id, data).then(function(){
+        setSaveStatus("ok");
+        setTimeout(function(){setSaveStatus(null);},1500);
+      }).catch(function(e){
+        console.error("Błąd zapisu:",e);
+        setSaveStatus("error");
+      });
+    },600);
   }
 
   function updateClient(id,fn){
+    var newCl=null;
     setClients(function(cs){
-      var updated=cs.map(function(cl){return cl.id===id?fn(cl):cl;});
-      var newCl=updated.find(function(cl){return cl.id===id;});
-      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||''});
+      var updated=cs.map(function(cl){
+        if(cl.id!==id)return cl;
+        newCl=fn(cl);
+        return newCl;
+      });
       return updated;
     });
+    // Użyj setTimeout żeby poczekać aż React skończy batch i newCl jest ustawiony
+    setTimeout(function(){
+      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||''});
+    },0);
   }
+
+  // Flush pending saves przed odświeżeniem/zamknięciem strony
+  React.useEffect(function(){
+    function flushPending(e){
+      var timers=saveTimerRef.current||{};
+      var hasPending=Object.keys(timers).some(function(k){return !!timers[k];});
+      if(hasPending){
+        e.preventDefault();
+        e.returnValue="Zapisywanie w toku - poczekaj chwilę przed odświeżeniem.";
+        return e.returnValue;
+      }
+    }
+    window.addEventListener("beforeunload",flushPending);
+    return function(){window.removeEventListener("beforeunload",flushPending);};
+  },[]);
 
   function addClient(name,addr,phone,email){
     sbApi.addClient(name,addr,phone,email).then(function(data){
