@@ -38,12 +38,11 @@ export function generateFabricOrderPDF(client){
       return [
         "<strong>"+r.fabName+"</strong>",
         r.width?r.width+"cm":"-",
-        r.metry.toFixed(2).replace(".",",")+" mb",
         r.rooms.join("; ")
       ];
     });
     var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
-    tableRows.push(["<strong>RAZEM</strong>","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
+    tableRows.push(["<strong>RAZEM</strong>","","",""]);
 
     var tableHTML=makeTableHTML(
       ["Tkanina","Szer. belki","Ilość (mb)","Przeznaczenie"],
@@ -251,7 +250,6 @@ export function generateSewingOrderPDF(client, modalData){
       r.prod||"-",
       r.fabW+"cm",
       r.kolor,
-      r.metry.toFixed(2).replace(".",",")+"\u00a0mb",
       r.hCm?(r.hCm+"cm"):"-",
       r.wCm?(r.wCm+"cm"):"-",
       r.split,
@@ -335,7 +333,6 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   var tableHeader=['Pom. / Okno','Rodzaj','Tkanina','Producent','Szer. belki','Kolor','Wys. (cm)','Szer. (cm)','Podzia\u0142','Styl szycia','Ta\u015bma','Haczyk','Typ do\u0142u','Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Uwaga'];
   var tableRows=rows.map(function(r){
     return [r.room+' / '+r.win,r.type,'<strong>'+r.fabric+'</strong>',r.prod||'-',r.fabW+'cm',r.kolor,
-      r.metry.toFixed(2).replace('.',',')+' mb',
       r.hCm?(r.hCm+'cm'):'-',r.wCm?(r.wCm+'cm'):'-',
       r.split,r.szStyle,r.tasma||'-',r.haczyk||'-',r.bottom,r.glide,r.leadInSides,r.podszewka||"nie",r.note||''];
   });
