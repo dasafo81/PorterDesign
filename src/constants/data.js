@@ -948,7 +948,7 @@ export function calc(p){
     var dekro=c.dekro==="tak",hM=hCm/100;
     var podszewka=c.podszewka==="tak";
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
-    var useA2=belka>0&&hCm+20>belka;
+    var useA2=belka>0&&hCm+20>belka&&c.tasiemkaStojaco!=="tak";
     (p.panels||[]).forEach(function(pn){
       var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pw/100,z,kt,ks,kp,koszt;
       if(useA2){
