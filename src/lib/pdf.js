@@ -242,7 +242,7 @@ export function generateSewingOrderPDF(client, modalData){
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
   var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
 
-  var tableHeader=["Pom. / Okno","Rodzaj","Tkanina","Producent","Szer. belki","Kolor","Wys. (cm)","Szer. (cm)","Podzia\u0142","Styl szycia","Typ do\u0142u","Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Podszewka","Uwaga"];
+  var tableHeader=["Pom. / Okno","Rodzaj","Tkanina","Producent","Szer. belki","Kolor","Mb","Wys. (cm)","Szer. (cm)","Podzia\u0142","Styl szycia","Ta\u015bma","Haczyk","Typ do\u0142u","Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Podszewka","Uwaga"];
   var tableRows=rows.map(function(r){
     return [
       r.room+" / "+r.win,
@@ -251,10 +251,13 @@ export function generateSewingOrderPDF(client, modalData){
       r.prod||"-",
       r.fabW+"cm",
       r.kolor,
+      r.metry.toFixed(2).replace(".",",")+"\u00a0mb",
       r.hCm?(r.hCm+"cm"):"-",
       r.wCm?(r.wCm+"cm"):"-",
       r.split,
       r.szStyle,
+      r.tasma||"-",
+      r.haczyk||"-",
       r.bottom,
       r.glide,
       r.leadInSides,
@@ -262,7 +265,7 @@ export function generateSewingOrderPDF(client, modalData){
       r.note||""
     ];
   });
-  tableRows.push(["<strong>RAZEM</strong>","","","","","","","","","","","","","",""]);
+  tableRows.push(["<strong>RAZEM</strong>","","","","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+"\u00a0mb</strong>","","","","","","","","","","",""]);
 
   var sewHouseBlock=sewingHouse
     ?'<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>'
@@ -329,13 +332,14 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   var attachB64=modalData.attachB64||null;
   var now=new Date();var dateStr=now.toLocaleDateString('pl-PL');
   var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
-  var tableHeader=['Pom. / Okno','Rodzaj','Tkanina','Producent','Szer. belki','Kolor','Wys. (cm)','Szer. (cm)','Podzia\u0142','Styl szycia','Typ do\u0142u','Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Uwaga'];
+  var tableHeader=['Pom. / Okno','Rodzaj','Tkanina','Producent','Szer. belki','Kolor','Mb','Wys. (cm)','Szer. (cm)','Podzia\u0142','Styl szycia','Ta\u015bma','Haczyk','Typ do\u0142u','Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Uwaga'];
   var tableRows=rows.map(function(r){
     return [r.room+' / '+r.win,r.type,'<strong>'+r.fabric+'</strong>',r.prod||'-',r.fabW+'cm',r.kolor,
+      r.metry.toFixed(2).replace('.',',')+' mb',
       r.hCm?(r.hCm+'cm'):'-',r.wCm?(r.wCm+'cm'):'-',
-      r.split,r.szStyle,r.bottom,r.glide,r.leadInSides,r.podszewka||"nie",r.note||''];
+      r.split,r.szStyle,r.tasma||'-',r.haczyk||'-',r.bottom,r.glide,r.leadInSides,r.podszewka||"nie",r.note||''];
   });
-  tableRows.push(['<strong>RAZEM</strong>','','','','','','','','','','','','','','']);
+  tableRows.push(['<strong>RAZEM</strong>','','','','','','<strong>'+totalMetry.toFixed(2).replace('.',',')+' mb</strong>','','','','','','','','','']);
   var sewHouseBlock=sewingHouse
     ?('<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>')
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
