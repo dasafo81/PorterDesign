@@ -49,6 +49,9 @@ export function FabPicker(p){
   var list=q?FABRICS.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):FABRICS;
   var sf=FABRICS.find(function(f){return f.name===p.fabName;});
   var hasSelection=p.fabName||p.fabMan!=null;
+  // Effective display price: custom override or catalog brutto
+  var dispPrice=p.fabP!=null?p.fabP:(sf?sf.brutto:null);
+  var priceModified=sf&&p.fabP!=null&&p.fabP!==sf.brutto;
   return ce("div",{style:{border:"1.5px solid "+(open?"var(--t1)":"var(--bd2)"),borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4,transition:"border-color .15s"}},
     ce("div",{
       onClick:function(){setOpen(!open);},
@@ -56,7 +59,7 @@ export function FabPicker(p){
     },
       ce("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:open?"var(--grd)":"var(--t2)",textTransform:"uppercase",flexShrink:0}},"Tkanina"),
       hasSelection?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-        sf?(p.fabName+" · "+sf.brutto+" zł/mb"):("ręczna: "+p.fabMan+" zł/mb")
+        sf?(p.fabName+" · "+dispPrice+" zł/mb"+(priceModified?" \u2713":"")):(("ręczna: "+p.fabMan+" zł/mb"))
       ):ce("span",{style:{color:"var(--t3)",fontSize:13,flex:1}},
         "nie wybrano — kliknij aby wybrać"
       ),
@@ -79,12 +82,35 @@ export function FabPicker(p){
           );
         })
       ),
-      ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
+      // ── Cena katalogowa (edytowalna) gdy wybrano tkaninę z katalogu ──
+      sf?ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},
+          "Cena tkaniny (zł/mb):",
+          priceModified?ce("span",{style:{marginLeft:6,color:"var(--gr)",fontSize:11}},"(zmodyfikowana — katalog: "+sf.brutto+" zł)"):null
+        ),
+        ce("input",{
+          type:"number",
+          value:dispPrice!=null?dispPrice:"",
+          onChange:function(ev){
+            var v=ev.target.value===""?null:+ev.target.value;
+            p.onFabP(v==null?sf.brutto:v);
+          },
+          style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid "+(priceModified?"var(--gr)":"var(--bd2)"),borderRadius:8,background:"var(--bg)",color:priceModified?"var(--grd)":"var(--t1)",textAlign:"right",minHeight:52,fontWeight:priceModified?600:400}
+        }),
+        priceModified?ce("div",{
+          onClick:function(){p.onFabP(sf.brutto);},
+          style:{fontSize:11,color:"var(--t3)",cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}
+        },"przywróć"):null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
+        ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
+      ):null,
+      // ── Cena ręczna (gdy brak wyboru z katalogu) ──
+      !sf?ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
         ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}}),
         ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
         ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
-      )
+      ):null
     ):null
   );
 }
@@ -663,7 +689,7 @@ export function ProdCard(p){
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, Ivory White...",style:{padding:"16px 18px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box"}})
           )
         ),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW})
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabP:prod.fabP,onSelect:sf,onManual:sfm,onManualW:sfmW,onFabP:function(v){p.onChange(mg(prod,{fabP:v}));}})
       ),
 
       // SEKCJA 2: Model zasłony
@@ -1046,7 +1072,7 @@ export function ProdCard(p){
           ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
         ),
         ce(Fld,{label:"WYSOKO\u015a\u0106 NADPRO\u017bA (cm)"},ce("input",{type:"number",value:par.nadprozeCm||"",onChange:function(ev){sp("nadprozeCm",ev.target.value);},placeholder:"np. 15",style:IST})),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabP:prod.fabP,onSelect:sf,onManual:sfm,onManualW:sfmW,onFabP:function(v){p.onChange(mg(prod,{fabP:v}));}}),
         ce("div",{style:{marginTop:12}},
           ce(Fld,{label:"KOLOR"},
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. Ivory White, Ecru, Stone...",style:IST})
