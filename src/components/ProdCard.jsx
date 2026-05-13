@@ -82,28 +82,6 @@ export function FabPicker(p){
           );
         })
       ),
-      // ── Cena katalogowa (edytowalna) gdy wybrano tkaninę z katalogu ──
-      sf?ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},
-          "Cena tkaniny (zł/mb):",
-          priceModified?ce("span",{style:{marginLeft:6,color:"var(--gr)",fontSize:11}},"(zmodyfikowana — katalog: "+sf.brutto+" zł)"):null
-        ),
-        ce("input",{
-          type:"number",
-          value:dispPrice!=null?dispPrice:"",
-          onChange:function(ev){
-            var v=ev.target.value===""?null:+ev.target.value;
-            p.onFabP(v==null?sf.brutto:v);
-          },
-          style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid "+(priceModified?"var(--gr)":"var(--bd2)"),borderRadius:8,background:"var(--bg)",color:priceModified?"var(--grd)":"var(--t1)",textAlign:"right",minHeight:52,fontWeight:priceModified?600:400}
-        }),
-        priceModified?ce("div",{
-          onClick:function(){p.onFabP(sf.brutto);},
-          style:{fontSize:11,color:"var(--t3)",cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}
-        },"przywróć"):null,
-        ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
-        ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
-      ):null,
       // ── Cena ręczna (gdy brak wyboru z katalogu) ──
       !sf?ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
@@ -111,6 +89,28 @@ export function FabPicker(p){
         ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
         ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
       ):null
+    ):null,
+    // ── Cena katalogowa (edytowalna) — zawsze widoczna gdy wybrano tkaninę ──
+    sf?ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
+      ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},
+        "Cena tkaniny (zł/mb):",
+        priceModified?ce("span",{style:{marginLeft:6,color:"var(--gr)",fontSize:11}},"(zmodyfikowana — katalog: "+sf.brutto+" zł)"):null
+      ),
+      ce("input",{
+        type:"number",
+        value:dispPrice!=null?dispPrice:"",
+        onChange:function(ev){
+          var v=ev.target.value===""?null:+ev.target.value;
+          p.onFabP(v==null?sf.brutto:v);
+        },
+        style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid "+(priceModified?"var(--gr)":"var(--bd2)"),borderRadius:8,background:"var(--bg)",color:priceModified?"var(--grd)":"var(--t1)",textAlign:"right",minHeight:52,fontWeight:priceModified?600:400}
+      }),
+      priceModified?ce("div",{
+        onClick:function(){p.onFabP(sf.brutto);},
+        style:{fontSize:11,color:"var(--t3)",cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}
+      },"przywróć"):null,
+      ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
+      ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
     ):null
   );
 }
