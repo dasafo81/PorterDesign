@@ -49,9 +49,6 @@ export function FabPicker(p){
   var list=q?FABRICS.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):FABRICS;
   var sf=FABRICS.find(function(f){return f.name===p.fabName;});
   var hasSelection=p.fabName||p.fabMan!=null;
-  // Effective display price: custom override or catalog brutto
-  var dispPrice=p.fabP!=null?p.fabP:(sf?sf.brutto:null);
-  var priceModified=sf&&p.fabP!=null&&p.fabP!==sf.brutto;
   return ce("div",{style:{border:"1.5px solid "+(open?"var(--t1)":"var(--bd2)"),borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4,transition:"border-color .15s"}},
     ce("div",{
       onClick:function(){setOpen(!open);},
@@ -59,7 +56,7 @@ export function FabPicker(p){
     },
       ce("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:open?"var(--grd)":"var(--t2)",textTransform:"uppercase",flexShrink:0}},"Tkanina"),
       hasSelection?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-        sf?(p.fabName+" · "+dispPrice+" zł/mb"+(priceModified?" \u2713":"")):(("ręczna: "+p.fabMan+" zł/mb"))
+        sf?(p.fabName+" · "+sf.brutto+" zł/mb"):("ręczna: "+p.fabMan+" zł/mb")
       ):ce("span",{style:{color:"var(--t3)",fontSize:13,flex:1}},
         "nie wybrano — kliknij aby wybrać"
       ),
@@ -82,35 +79,12 @@ export function FabPicker(p){
           );
         })
       ),
-      // ── Cena ręczna (gdy brak wyboru z katalogu) ──
-      !sf?ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
+      ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
-        ce("input",{type:"number",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}}),
+        ce("input",{type:"text",inputMode:"numeric",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}}),
         ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
-        ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
-      ):null
-    ):null,
-    // ── Cena katalogowa (edytowalna) — zawsze widoczna gdy wybrano tkaninę ──
-    sf?ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
-      ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},
-        "Cena tkaniny (zł/mb):",
-        priceModified?ce("span",{style:{marginLeft:6,color:"var(--gr)",fontSize:11}},"(zmodyfikowana — katalog: "+sf.brutto+" zł)"):null
-      ),
-      ce("input",{
-        type:"number",
-        value:dispPrice!=null?dispPrice:"",
-        onChange:function(ev){
-          var v=ev.target.value===""?null:+ev.target.value;
-          p.onFabP(v==null?sf.brutto:v);
-        },
-        style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid "+(priceModified?"var(--gr)":"var(--bd2)"),borderRadius:8,background:"var(--bg)",color:priceModified?"var(--grd)":"var(--t1)",textAlign:"right",minHeight:52,fontWeight:priceModified?600:400}
-      }),
-      priceModified?ce("div",{
-        onClick:function(){p.onFabP(sf.brutto);},
-        style:{fontSize:11,color:"var(--t3)",cursor:"pointer",textDecoration:"underline",whiteSpace:"nowrap"}
-      },"przywróć"):null,
-      ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
-      ce("input",{type:"number",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
+        ce("input",{type:"text",inputMode:"numeric",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
+      )
     ):null
   );
 }
@@ -531,7 +505,7 @@ export function ProdCard(p){
           ce("div",{style:{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
             ce("button",{onClick:function(){if((+lVal||0)>0)setLeftW((+lVal||0)-1);},style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t2)",flexShrink:0}},"\u2212"),
             ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:17,color:"var(--t1)",fontWeight:500}},
-              ce("input",{type:"number",value:lVal,onChange:function(ev){setLeftW(ev.target.value);},style:{width:60,border:"none",background:"transparent",textAlign:"center",fontSize:17,color:"var(--t1)",fontWeight:500,outline:"none"}}),
+              ce("input",{type:"text",inputMode:"numeric",value:lVal,onChange:function(ev){setLeftW(ev.target.value);},style:{width:60,border:"none",background:"transparent",textAlign:"center",fontSize:17,color:"var(--t1)",fontWeight:500,outline:"none"}}),
               ce("span",{style:{color:"var(--t3)",fontSize:14}},"cm")
             ),
             ce("button",{onClick:function(){setLeftW((+lVal||0)+1);},style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t2)",flexShrink:0}},"+")
@@ -541,7 +515,7 @@ export function ProdCard(p){
           ce("div",{style:{display:"flex",alignItems:"center",gap:8,background:totalW>0?"var(--bg3)":"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
             ce("button",{onClick:function(){if(totalW>0&&(+rVal||0)>0)setRightW((+rVal||0)-1);},disabled:totalW>0,style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:totalW>0?"default":"pointer",color:"var(--t3)",flexShrink:0}},"\u2212"),
             ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:17}},
-              ce("input",{type:"number",value:rVal,readOnly:totalW>0,onChange:function(ev){if(!totalW)setRightW(ev.target.value);},style:{width:60,border:"none",background:"transparent",textAlign:"center",fontSize:17,color:totalW>0?"var(--t2)":"var(--t1)",fontWeight:500,outline:"none"}}),
+              ce("input",{type:"text",inputMode:"numeric",value:rVal,readOnly:totalW>0,onChange:function(ev){if(!totalW)setRightW(ev.target.value);},style:{width:60,border:"none",background:"transparent",textAlign:"center",fontSize:17,color:totalW>0?"var(--t2)":"var(--t1)",fontWeight:500,outline:"none"}}),
               ce("span",{style:{color:"var(--t3)",fontSize:14}},"cm")
             ),
             ce("button",{onClick:function(){if(!totalW)setRightW((+rVal||0)+1);},disabled:totalW>0,style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:totalW>0?"default":"pointer",color:"var(--t3)",flexShrink:0}},"+")
@@ -558,7 +532,7 @@ export function ProdCard(p){
         ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:52,background:"var(--bg)",maxWidth:200}},
           ce("button",{onClick:function(){if(marsPct>100)sc("mars",((marsPct-25)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
           ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:2,fontSize:17,color:"var(--t1)",fontWeight:500}},
-            ce("input",{type:"number",value:marsPct,onChange:function(ev){sc("mars",(+(ev.target.value||100)/100).toFixed(2));},style:{width:52,border:"none",background:"transparent",textAlign:"center",fontSize:17,outline:"none",fontWeight:500}}),
+            ce("input",{type:"text",inputMode:"numeric",value:marsPct,onChange:function(ev){sc("mars",(+(ev.target.value||100)/100).toFixed(2));},style:{width:52,border:"none",background:"transparent",textAlign:"center",fontSize:17,outline:"none",fontWeight:500}}),
             ce("span",{style:{color:"var(--t3)",fontSize:14}},"%")
           ),
           ce("button",{onClick:function(){sc("mars",((marsPct+25)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
@@ -602,7 +576,7 @@ export function ProdCard(p){
           ce("button",{onClick:function(){if(haczVal>=0.5)sc("wysokosc_haczyka",Math.round((haczVal-0.5)*10)/10);},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
           ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:17,color:"var(--t1)",fontWeight:500}},
             ce("span",{style:{fontSize:13,color:"var(--t2)",marginRight:2}},"\u270f\ufe0f"),
-            ce("input",{type:"number",step:"0.5",value:haczVal,onChange:function(ev){sc("wysokosc_haczyka",+ev.target.value||0);},style:{width:44,border:"none",background:"transparent",textAlign:"center",fontSize:17,outline:"none",fontWeight:500}}),
+            ce("input",{type:"text",inputMode:"numeric",step:"0.5",value:haczVal,onChange:function(ev){sc("wysokosc_haczyka",+ev.target.value||0);},style:{width:44,border:"none",background:"transparent",textAlign:"center",fontSize:17,outline:"none",fontWeight:500}}),
             ce("span",{style:{color:"var(--t3)",fontSize:14}},"cm")
           ),
           ce("button",{onClick:function(){sc("wysokosc_haczyka",Math.round((haczVal+0.5)*10)/10);},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
@@ -641,7 +615,7 @@ export function ProdCard(p){
           ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:52,background:"var(--bg)"}},
             ce("button",{onClick:function(){var v=c.bottomSize||8;sc("bottomSize",Math.max(0,v-1));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
             ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:16,color:"var(--t1)",fontWeight:500}},
-              ce("input",{type:"number",value:c.bottomSize!=null?c.bottomSize:8,onChange:function(ev){sc("bottomSize",+ev.target.value||0);},style:{width:50,border:"none",background:"transparent",textAlign:"center",fontSize:16,outline:"none",fontWeight:500}}),
+              ce("input",{type:"text",inputMode:"numeric",value:c.bottomSize!=null?c.bottomSize:8,onChange:function(ev){sc("bottomSize",+ev.target.value||0);},style:{width:50,border:"none",background:"transparent",textAlign:"center",fontSize:16,outline:"none",fontWeight:500}}),
               ce("span",{style:{color:"var(--t3)",fontSize:13}},"cm")
             ),
             ce("button",{onClick:function(){sc("bottomSize",(c.bottomSize||8)+1);},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
@@ -674,13 +648,13 @@ export function ProdCard(p){
           ce(Fld,{label:"SZEROKO\u015a\u0106"},
             ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
               ce("span",{style:{padding:"0 14px",color:"var(--t3)",fontSize:14,flexShrink:0}},"cm"),
-              ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){onTotalWChange(ev.target.value);},placeholder:"200",style:{flex:1,padding:"16px 14px 16px 0",fontSize:17,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:56}})
+              ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){onTotalWChange(ev.target.value);},placeholder:"200",style:{flex:1,padding:"16px 14px 16px 0",fontSize:17,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:56}})
             )
           ),
           ce(Fld,{label:"WYSOKO\u015a\u0106"},
             ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
               ce("span",{style:{padding:"0 14px",color:"var(--t3)",fontSize:14,flexShrink:0}},"cm"),
-              ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"270",style:{flex:1,padding:"16px 14px 16px 0",fontSize:17,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:56}})
+              ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"270",style:{flex:1,padding:"16px 14px 16px 0",fontSize:17,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:56}})
             )
           )
         ),
@@ -689,7 +663,7 @@ export function ProdCard(p){
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, Ivory White...",style:{padding:"16px 18px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box"}})
           )
         ),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabP:prod.fabP,onSelect:sf,onManual:sfm,onManualW:sfmW,onFabP:function(v){p.onChange(mg(prod,{fabP:v}));}})
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW})
       ),
 
       // SEKCJA 2: Model zasłony
@@ -713,16 +687,6 @@ export function ProdCard(p){
         marsSection,
         // Fałda zwrotna - tylko Fałda
         model==="falda"?faldaZwrotna:null,
-        // Taśma na stojąco - gdy useA2 byłoby aktywne (belka > 0 i hCm+20 > belka)
-        (prod.fabW>0&&(par.hCm||0)+20>(prod.fabW||0))?ce("div",{style:{marginTop:12}},
-          ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.tasiemkaStojaco==="tak"?"var(--t1)":"var(--bd2)"),background:c.tasiemkaStojaco==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
-            ce("input",{type:"checkbox",checked:c.tasiemkaStojaco==="tak",onChange:function(ev){sc("tasiemkaStojaco",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
-            ce("div",{},
-              ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Ta\u015bma na stoj\u0105co"),
-              ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"szwalnia wstawi ta\u015bm\u0119 \u2014 szycie liczone normalnie")
-            )
-          )
-        ):null,
         // Szerokość taśmy - Fałda i Taśma
         (model==="falda"||model==="tasma")?tasmaSection:null,
         // Typ marszczenia - tylko Taśma Marszcząca
@@ -759,8 +723,8 @@ export function ProdCard(p){
     var curMat=curJt.startsWith("al")?"al":curJt.startsWith("ba")?"ba":"bs";
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
-        ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
-        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.lCm||"",onChange:function(ev){sp("lCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+        ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.lCm||"",onChange:function(ev){sp("lCm",ev.target.value);},placeholder:"np. 160",style:IST}))
       ),
       ce("div",{style:{marginBottom:10}},
         ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"MATERIA\u0141"),
@@ -918,11 +882,11 @@ export function ProdCard(p){
       )
     ):null;
 
-    // ── MASKOWNICE/BOCZKI ─────────────────────────────────────────────
+    // ── BĘBENEK ──────────────────────────────────────────────────────
     var bebenekChip = rSystem?ce("div",{style:{marginTop:16}},
       ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
-        ce("input",{type:"checkbox",checked:c.rMask==="tak",onChange:function(ev){sc("rMask",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
-        ce("span",{},"+ Boczki/maskownice (+50 z\u0142)")
+        ce("input",{type:"checkbox",checked:c.rb==="tak",onChange:function(ev){sc("rb",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
+        ce("span",{},"+ B\u0119benek (11 z\u0142)")
       )
     ):null;
 
@@ -1068,11 +1032,10 @@ export function ProdCard(p){
       // SEKCJA 1: Wymiary + tkanina
       ce(Section,{num:"1",title:"Wymiary"},
         ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
-          ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
-          ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+          ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
+          ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
         ),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 NADPRO\u017bA (cm)"},ce("input",{type:"number",value:par.nadprozeCm||"",onChange:function(ev){sp("nadprozeCm",ev.target.value);},placeholder:"np. 15",style:IST})),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabP:prod.fabP,onSelect:sf,onManual:sfm,onManualW:sfmW,onFabP:function(v){p.onChange(mg(prod,{fabP:v}));}}),
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
         ce("div",{style:{marginTop:12}},
           ce(Fld,{label:"KOLOR"},
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. Ivory White, Ecru, Stone...",style:IST})
@@ -1098,8 +1061,8 @@ export function ProdCard(p){
     form=ce(Fragment,null,
       // Wymiary
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
-        ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+        ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
       ),
       // Grupa cenowa
       ce(Fld,{label:"GRUPA CENOWA"},
@@ -1287,12 +1250,12 @@ export function ProdCard(p){
     }else if(prod.type==="szyna"){
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
-        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
-        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"number",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"number",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"number",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
       ),
       ce(Chips,{items:[
         ce(Chip,{key:"fl",label:"Flex 80 z\u0142/mb",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
@@ -1307,12 +1270,12 @@ export function ProdCard(p){
     var pil=[{v:"brak",l:"Brak st."},{v:"aok1b",l:"Pilot bia\u0142y 130z\u0142"},{v:"aok1c",l:"Pilot czarny 148z\u0142"},{v:"tuya",l:"Tuya 340z\u0142"},{v:"situo",l:"Situo 284z\u0142"},{v:"tahoma",l:"TaHoma 1390z\u0142"}];
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
-        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"number",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
-        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"number",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"number",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"number",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"number",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"number",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
+        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
       ),
       ce(Chips,{items:[
         ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
@@ -1385,7 +1348,7 @@ export function ProdCard(p){
       ):null,
       ce("div",{style:{display:"flex",alignItems:"center",gap:10,paddingTop:16,marginTop:16,borderTop:"1px solid var(--bd3)"}},
         ce("label",{style:{fontSize:13,color:"var(--t2)",flex:1}},"W\u0142asna cena ko\u0144cowa:"),
-        ce("input",{type:"number",value:prod.mp!=null?prod.mp:"",onChange:function(ev){p.onChange(mg(prod,{mp:ev.target.value===""?null:+ev.target.value}));},placeholder:"z\u0142",style:{width:100,padding:"10px 14px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        ce("input",{type:"text",inputMode:"numeric",value:prod.mp!=null?prod.mp:"",onChange:function(ev){p.onChange(mg(prod,{mp:ev.target.value===""?null:+ev.target.value}));},placeholder:"z\u0142",style:{width:100,padding:"10px 14px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
         prod.mp!=null?ce("button",{onClick:function(){p.onChange(mg(prod,{mp:null}));},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"}},
           "wyczy\u015b\u0107"):null
       ),
