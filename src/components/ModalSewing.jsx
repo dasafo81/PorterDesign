@@ -186,8 +186,8 @@ export function ModalSewing(p){
                 onChange:function(){if(!isUsed)toggleSel(i);},
                 style:{width:16,height:16,cursor:isUsed?'not-allowed':'pointer',accentColor:'var(--t1)',flexShrink:0}}),
               ce('div',{style:{fontSize:13,color:isUsed?'var(--t3)':'var(--t1)',lineHeight:1.4}},
-                ce('span',{style:{fontWeight:600}},r.room+' / '+r.win),
-                ce('span',{style:{color:'var(--t2)'}},' \u2014 '+r.type+(r.fabric?' \xb7 '+r.fabric:'')),
+                ce('span',{style:{fontWeight:600}},r.room+' / '+r.win+' — '+r.type),
+                ce('span',{style:{color:'var(--t2)'}},' '+(r.fabric&&r.fabric!=='(brak)'?'\xb7 '+r.fabric:''+(r.fabric==='(brak)'?'\xb7 brak tkaniny':''))),
                 isUsed?ce('span',{style:{fontSize:11,color:'var(--t3)'}},' (ju\u017c przypisane)'):null
               )
             );
