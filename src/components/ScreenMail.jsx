@@ -550,8 +550,8 @@ function MailPreview(p){
     var head=thread.head;
     if(head){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
-      // Body pobieramy tylko dla wiadomości z Inboxu (Sent ma już cały body=preview)
-      if(head.folder==="inbox"&&!head.body)fetchBody(head.id);
+      // Body pobieramy on-demand dla każdego folderu
+      if(!head.body&&!bodies[head.id])fetchBody(head.id);
       // Załączniki dla najnowszej wiadomości
       if(head.hasAttachments)fetchAttachments(head.id);
     }
@@ -579,9 +579,9 @@ function MailPreview(p){
       return n;
     });
     if(!expanded[mid]){
-      // Przy rozwijaniu pobierz body jeśli to inbox i jeszcze nie ma
+      // Przy rozwijaniu pobierz body jeśli jeszcze nie ma
       var msg=mails.find(function(x){return x.id===mid;});
-      if(msg&&msg.folder==="inbox"&&!msg.body&&!bodies[mid])fetchBody(mid);
+      if(msg&&!msg.body&&!bodies[mid])fetchBody(mid);
       // Pobierz załączniki jeśli wiadomość je ma
       if(msg&&msg.hasAttachments)fetchAttachments(mid);
     }
@@ -1428,7 +1428,7 @@ export function ScreenMail(p){
           to:rec.address||"",toName:rec.name||rec.address||"",
           subject:m.subject||"",
           date:m.sentDateTime||new Date().toISOString(),
-          preview:m.bodyPreview||"",body:m.bodyPreview||"",
+          preview:m.bodyPreview||"",body:null,
           attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
           hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
