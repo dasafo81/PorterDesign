@@ -529,15 +529,13 @@ function MailPreview(p){
     })
     .then(function(r){return r.ok?r.json():null;})
     .then(function(data){
-      var content="";
+      var rawContent="";
+      var isHtml=false;
       if(data&&data.body){
-        if(data.body.contentType&&data.body.contentType.toLowerCase()==="html"){
-          content=htmlToText(data.body.content||"");
-        } else {
-          content=data.body.content||"";
-        }
+        isHtml=!!(data.body.contentType&&data.body.contentType.toLowerCase()==="html");
+        rawContent=data.body.content||"";
       }
-      setBodies(function(prev){var n=Object.assign({},prev);n[mid]=content||"(pusta tre\u015b\u0107)";return n;});
+      setBodies(function(prev){var n=Object.assign({},prev);n[mid]={isHtml:isHtml,content:rawContent||"(pusta tre\u015b\u0107)"};return n;});
       setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
     })
     .catch(function(){
@@ -552,8 +550,8 @@ function MailPreview(p){
     var head=thread.head;
     if(head){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
-      // Body pobieramy on-demand dla każdego folderu
-      if(!head.body)fetchBody(head.id);
+      // Body pobieramy tylko dla wiadomości z Inboxu (Sent ma już cały body=preview)
+      if(head.folder==="inbox"&&!head.body)fetchBody(head.id);
       // Załączniki dla najnowszej wiadomości
       if(head.hasAttachments)fetchAttachments(head.id);
     }
@@ -618,8 +616,10 @@ function MailPreview(p){
       mails.map(function(m,idx){
         var per=displayPerson(m);
         var isExp=!!expanded[m.id];
-        var hasBody=!!(m.body||bodies[m.id]);
-        var bodyText=m.body||bodies[m.id]||"";
+        var bodyObj=bodies[m.id];
+        var bodyIsHtml=bodyObj&&bodyObj.isHtml;
+        var bodyContent=m.body||(bodyObj&&bodyObj.content)||"";
+        var hasBody=!!(m.body||bodyObj);
         var loading=!!loadingBody[m.id];
         var sentByMe=m.folder==="sent";
         return ce("div",{key:m.id,style:{borderBottom:"1px solid var(--bd2)"}},
@@ -644,7 +644,7 @@ function MailPreview(p){
               !isExp?ce("div",{style:{fontSize:12,color:"var(--t2)",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview):null
             )
           ),
-          isExp?ce("div",{style:{padding:"4px 20px 18px",fontSize:13,color:"var(--t1)",lineHeight:1.85,whiteSpace:"pre-wrap",fontFamily:"inherit"}},
+          isExp?ce("div",{style:{padding:"4px 20px 18px",fontSize:13,color:"var(--t1)",lineHeight:1.85,fontFamily:"inherit"}},
             m.hasAttachments?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
               loadingAtts[m.id]
                 ?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"\u23F3 \u0141adowanie za\u0142\u0105cznik\u00f3w\u2026")
@@ -662,7 +662,20 @@ function MailPreview(p){
             ):null,
             loading
               ?ce("div",{style:{color:"var(--t3)",fontStyle:"italic"}},"\u23F3 Wczytywanie tre\u015bci\u2026")
-              :hasBody?bodyText:ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},m.preview||"(brak tre\u015bci)")
+              :hasBody
+                ?(bodyIsHtml
+                  ?ce("iframe",{
+                    srcDoc:bodyContent,
+                    sandbox:"allow-same-origin",
+                    style:{width:"100%",border:"none",minHeight:200,display:"block"},
+                    onLoad:function(e){
+                      var fr=e.target;
+                      try{fr.style.height=(fr.contentDocument.documentElement.scrollHeight+20)+"px";}catch(ex){}
+                    }
+                  })
+                  :ce("div",{style:{whiteSpace:"pre-wrap"}},bodyContent)
+                )
+                :ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},m.preview||"(brak tre\u015bci)")
           ):null
         );
       })
@@ -1415,7 +1428,7 @@ export function ScreenMail(p){
           to:rec.address||"",toName:rec.name||rec.address||"",
           subject:m.subject||"",
           date:m.sentDateTime||new Date().toISOString(),
-          preview:m.bodyPreview||"",body:null,
+          preview:m.bodyPreview||"",body:m.bodyPreview||"",
           attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
           hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
