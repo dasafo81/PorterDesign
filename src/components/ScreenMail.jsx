@@ -552,8 +552,8 @@ function MailPreview(p){
     var head=thread.head;
     if(head){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
-      // Body pobieramy tylko dla wiadomości z Inboxu (Sent ma już cały body=preview)
-      if(head.folder==="inbox"&&!head.body)fetchBody(head.id);
+      // Body pobieramy on-demand dla każdego folderu
+      if(!head.body)fetchBody(head.id);
       // Załączniki dla najnowszej wiadomości
       if(head.hasAttachments)fetchAttachments(head.id);
     }
@@ -1415,7 +1415,7 @@ export function ScreenMail(p){
           to:rec.address||"",toName:rec.name||rec.address||"",
           subject:m.subject||"",
           date:m.sentDateTime||new Date().toISOString(),
-          preview:m.bodyPreview||"",body:m.bodyPreview||"",
+          preview:m.bodyPreview||"",body:null,
           attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
           hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
