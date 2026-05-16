@@ -352,6 +352,7 @@ export function CRMKalendarz(p){
   var sRefDate=useState(function(){return new Date();}),refDate=sRefDate[0],setRefDate=sRefDate[1];
   var sNewEv=useState(null),newEvDraft=sNewEv[0],setNewEvDraft=sNewEv[1];
   var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
+  var sSelGcalEv=useState(null),selectedGcalEv=sSelGcalEv[0],setSelectedGcalEv=sSelGcalEv[1];
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
   React.useEffect(function(){
@@ -603,7 +604,7 @@ export function CRMKalendarz(p){
       var start=ev.start&&(ev.start.dateTime||ev.start.date);
       if(!start) return;
       var d=new Date(start);
-      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:ev._calColor||"#4285f4",time:ev.start.dateTime?d:null,calName:ev._calName||""});
+      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:ev._calColor||"#4285f4",time:ev.start.dateTime?d:null,calName:ev._calName||"",gcalRaw:ev});
     });
     // Deal events
     dealEvents.forEach(function(ev){
@@ -657,7 +658,7 @@ export function CRMKalendarz(p){
           var isCurrentMonth=d.getMonth()===month;
           return ce("div",{key:i,style:{background:"var(--bg)",minHeight:80,padding:"4px 5px",border:"1px solid var(--bd2)",borderTop:isToday?"2px solid var(--t1)":"1px solid var(--bd2)",position:"relative"}},
             ce("div",{style:{fontSize:11,fontWeight:isToday?700:400,background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?20:null,height:isToday?20:null,borderRadius:isToday?10:null,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:2}},d.getDate()),
-            evs.slice(0,3).map(function(ev,ei){return ce("div",{key:ei,title:ev.title,style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:ev.dealEv?"pointer":"default",fontWeight:600},onClick:ev.dealEv?function(){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}:null},
+            evs.slice(0,3).map(function(ev,ei){return ce("div",{key:ei,title:ev.title,style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",fontWeight:600},onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}}},
               (ev.time?(new Date(ev.time).getHours()+":"+String(new Date(ev.time).getMinutes()).padStart(2,"0")+" "):"")+ ev.title
             );}),
             evs.length>3?ce("div",{style:{fontSize:9,color:"var(--t3)",marginTop:1}},"+"+( evs.length-3)+" więcej"):null
@@ -695,7 +696,7 @@ export function CRMKalendarz(p){
             weekDays.map(function(d,di){
               var evs=getEventsForDay(d).filter(function(ev){return ev.time&&new Date(ev.time).getHours()===h;});
               return ce("div",{key:"d"+di,style:{borderLeft:"1px solid var(--bd2)",borderTop:"1px solid var(--bd2)",minHeight:36,padding:2,position:"relative"}},
-                evs.map(function(ev,ei){return ce("div",{key:ei,title:ev.title,onClick:ev.dealEv?function(){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}:null,style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:ev.dealEv?"pointer":"default",fontWeight:600}},ev.title);})
+                evs.map(function(ev,ei){return ce("div",{key:ei,title:ev.title,onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",fontWeight:600}},ev.title);})
               );
             })
           ];
@@ -882,6 +883,37 @@ export function CRMKalendarz(p){
               fontSize:13,fontWeight:700,cursor:newEvDraft.saving?'wait':'pointer',fontFamily:'inherit'}
           },newEvDraft.saving?'\u23F3 Zapisuj\u0119...':((newEvDraft.selectedCals||[]).length>1?'\uD83D\uDCC5 Dodaj do '+(newEvDraft.selectedCals||[]).length+' kalendarzy':'\uD83D\uDCC5 Dodaj do Google Calendar'))
         )
+      )
+    ):null
+
+    ,selectedGcalEv?ce('div',{
+      style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:2100,display:'flex',alignItems:'center',justifyContent:'center'},
+      onClick:function(e){if(e.target===e.currentTarget)setSelectedGcalEv(null);}
+    },
+      ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:24,width:'100%',maxWidth:420,boxShadow:'0 8px 40px rgba(0,0,0,0.2)',margin:'0 16px',position:'relative'}},
+        ce('button',{onClick:function(){setSelectedGcalEv(null);},style:{position:'absolute',top:12,right:14,border:'none',background:'none',fontSize:22,cursor:'pointer',color:'var(--t3)',padding:'4px 6px'}},'\u00D7'),
+        ce('div',{style:{fontSize:15,fontWeight:700,color:'var(--t1)',marginBottom:14,paddingRight:28}},
+          selectedGcalEv.summary||'(bez tytułu)'
+        ),
+        (function(){
+          var raw=selectedGcalEv;
+          var startDT=raw.start&&(raw.start.dateTime||raw.start.date);
+          var endDT=raw.end&&(raw.end.dateTime||raw.end.date);
+          var isAllDay=!!(raw.start&&raw.start.date&&!raw.start.dateTime);
+          var fmtDT=function(s){if(!s)return null;var d=new Date(s);return d.toLocaleString('pl-PL',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:isAllDay?undefined:'2-digit',minute:isAllDay?undefined:'2-digit'});};
+          var rows=[];
+          if(raw._calName) rows.push(['Kalendarz',raw._calName]);
+          if(startDT) rows.push([isAllDay?'Dzień':'Początek',fmtDT(startDT)]);
+          if(endDT&&!isAllDay) rows.push(['Koniec',fmtDT(endDT)]);
+          if(raw.location) rows.push(['Lokalizacja',raw.location]);
+          if(raw.description) rows.push(['Opis',raw.description]);
+          if(raw.organizer&&raw.organizer.displayName) rows.push(['Organizator',raw.organizer.displayName]);
+          return rows.map(function(r,i){return ce('div',{key:i,style:{display:'flex',gap:10,marginBottom:8,alignItems:'flex-start'}},
+            ce('div',{style:{fontSize:10,fontWeight:700,color:'var(--t3)',minWidth:80,paddingTop:1,textTransform:'uppercase',letterSpacing:'0.06em'}},r[0]),
+            ce('div',{style:{fontSize:13,color:'var(--t1)',lineHeight:1.5,wordBreak:'break-word',whiteSpace:'pre-wrap'}},r[1])
+          );});
+        })(),
+        selectedGcalEv.htmlLink?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null
       )
     ):null
   );
