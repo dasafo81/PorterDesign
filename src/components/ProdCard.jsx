@@ -95,7 +95,7 @@ export function ProdCard(p){
   var prod=p.prod,c=prod.c||{},par=prod.par||{};
   function sc(k,v){p.onChange(mg(prod,{c:mg(c,{[k]:v})}));}
   function tc(k,a,b){a=a||"nie";b=b||"tak";sc(k,c[k]===b?a:b);}
-  function sp(k,v){p.onChange(mg(prod,{par:mg(par,{[k]:+v||0})}));}
+  function sp(k,v){var n=String(v).replace(",",".");p.onChange(mg(prod,{par:mg(par,{[k]:/[.,]$/.test(v)?v:+n||0})}));}
   function sf(f){p.onChange(mg(prod,{fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null}));}
   function sfm(v){p.onChange(mg(prod,{fabName:null,fabP:null,fabW:prod.fabManW||null,fabMan:v}));}
   function sfmW(v){p.onChange(mg(prod,{fabManW:v,fabW:v}));}
