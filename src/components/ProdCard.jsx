@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
+import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 import { sbApi } from '../lib/supabase.js';
 import {
   FABRICS, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
