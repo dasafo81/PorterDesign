@@ -20,14 +20,29 @@ export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",
 
 export function clientTotal2(cl){
   if(!cl||!cl.rooms)return 0;
-  return (cl.rooms||[]).reduce(function(a,r){
-    return a+(r.windows||[]).reduce(function(b,w){
-      return b+(w.products||[]).reduce(function(c,p){
+  var comm=parseFloat(cl.commission)||0;
+  var sum=0;
+  (cl.rooms||[]).forEach(function(r){
+    var wins=r.windows||[];
+    var groups={};
+    wins.forEach(function(w){
+      var wVal=(w.products||[]).reduce(function(c,p){
         var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
         return c+(p.mp!=null?p.mp:(calc(pfc).total||0));
       },0);
-    },0);
-  },0);
+      if(w.variantGroup){
+        if(!groups[w.variantGroup])groups[w.variantGroup]=[];
+        groups[w.variantGroup].push({w:w,val:wVal});
+      } else {
+        sum+=wVal;
+      }
+    });
+    Object.keys(groups).forEach(function(gid){
+      var sorted=groups[gid].slice().sort(function(a,b){return(a.w.variantLabel||"").localeCompare(b.w.variantLabel||"");});
+      sum+=sorted[0].val;
+    });
+  });
+  return comm>0?roundTo10(sum*(1+comm/100)):roundTo10(sum);
 }
 
 export function fmtDate(iso){
