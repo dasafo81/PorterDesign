@@ -10,10 +10,10 @@ import {
   getPanelsForProd, mg, roundTo10
 } from './constants/data.js';
 import {
-  generateClientEmail, generateFabricOrderPDF, generateSewingOrderPDF, generateSimplifiedPDF
+  generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF
 } from './lib/pdf.js';
 import { ModalClient } from './components/ModalClient.jsx';
-import { ModalSewing } from './components/ModalSewing.jsx';
+import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker } from './components/ProdCard.jsx';
 import { ScreenMail } from './components/ScreenMail.jsx';
@@ -51,6 +51,7 @@ export function App(p){
   var s7=useState(false),showRoomModal=s7[0],setShowRoomModal=s7[1];
   var s8=useState(false),showWinModal=s8[0],setShowWinModal=s8[1];
   var s11=useState(false),showSewingModal=s11[0],setShowSewingModal=s11[1];
+  var s11b=useState(false),showFabricModal=s11b[0],setShowFabricModal=s11b[1];
   var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
   var s14b=useState(false),showEmailModal=s14b[0],setShowEmailModal=s14b[1];
@@ -69,13 +70,7 @@ export function App(p){
 
   function wt(w){return(w.products||[]).reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);}
   function rt(r){return(r.windows||[]).reduce(function(a,w){return a+wt(w);},0);}
-  function clientTotal(cl){
-    var base=(cl.rooms||[]).reduce(function(a,r){return a+rt(r);},0);
-    var comm=parseFloat(cl.commission)||0;
-    var inst=parseFloat(cl.install_fee)||0;
-    var withC=comm>0?roundTo10(base*(1+comm/100)):base;
-    return inst>0?roundTo10(withC*(1+inst/100)):withC;
-  }
+  function clientTotal(cl){return(cl.rooms||[]).reduce(function(a,r){return a+rt(r);},0);}
   function hasWinData(w){return !!(w.products&&w.products.length>0);}
   function hasRoomData(r){return !!(r.windows&&r.windows.some(function(w){return hasWinData(w);}));}
   function hasClientData(cl){return !!(cl.rooms&&cl.rooms.some(function(r){return hasRoomData(r)||r.windows&&r.windows.length>0;}));}
@@ -843,38 +838,32 @@ export function App(p){
         montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+"%"):null,
         montazInput?ce("button",{onClick:function(){setMontazInput("");if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:""});});},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
       ),
-      ce("div",{style:{marginBottom:0}},
-        (+montazInput)>0?ce("div",{style:{background:"#f5ede0",borderRadius:10,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
-          ce("span",{style:{fontSize:13,color:"#8B5E3C",fontWeight:500}},("\uD83D\uDD28 Monta\u017c dekoracji okiennych (")+montazInput+"%)"),
-          ce("span",{style:{fontSize:14,fontWeight:700,color:"#8B5E3C"}},roundTo10(withComm(clientTotalWithVariants(curClient))*(+montazInput)/100)+" z\u0142")
-        ):null,
-        ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:0}},
-          ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.75)",letterSpacing:"0.04em"}},
-            hasAnyVariants
-              ?(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie od (Wariant A) + "+commissionInput+"% polecenie"+(montazInput&&(+montazInput)>0?" + "+montazInput+"% monta\u017c":""):"\u0141\u0105cznie od (Wariant A)"+(montazInput&&(+montazInput)>0?" + "+montazInput+"% monta\u017c":""))
-              :(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie + "+commissionInput+"% polecenie"+(montazInput&&(+montazInput)>0?" + "+montazInput+"% monta\u017c":""):"\u0141\u0105cznie ca\u0142a wizyta"+(montazInput&&(+montazInput)>0?" + "+montazInput+"% monta\u017c":""))
-          ),
-          ce("span",{style:{fontSize:20,fontWeight:700,color:"#fff"}},(function(){var base=withComm(clientTotalWithVariants(curClient));var inst=+montazInput||0;return inst>0?roundTo10(base*(1+inst/100)):base;})()+" z\u0142")
-        )
+      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:0}},
+        ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.75)",letterSpacing:"0.04em"}},
+          hasAnyVariants
+            ?(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie od (Wariant A) + "+commissionInput+"% polecenie":"\u0141\u0105cznie od (Wariant A)")
+            :(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie + "+commissionInput+"% polecenie":"\u0141\u0105cznie ca\u0142a wizyta")
+        ),
+        ce("span",{style:{fontSize:20,fontWeight:700,color:"#fff"}},withComm(clientTotalWithVariants(curClient))+" z\u0142")
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
         ce("button",{onClick:function(){generateOfferPDF(curClient,comm,(+montazInput||0)/100);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena PDF"),
         ce("button",{onClick:function(){generateSimplifiedPDF(curClient,comm,(+montazInput||0)/100);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
         ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
-        ce("button",{onClick:function(){generateFabricOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
+        ce("button",{onClick:function(){setShowFabricModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){generateKarniszOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
         ce("button",{onClick:function(){setShowSewingModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
       )
     );
   }
 
-  return ce("div",{style:{padding:"1.2rem",maxWidth:"100%",margin:"0 auto",background:offlineMode?"#fef9f0":"var(--bg)",minHeight:"100vh",position:"relative",transition:"background 0.3s"}},
+  return ce("div",{style:{padding:"1.2rem",maxWidth:"100%",margin:"0 auto",background:"transparent",minHeight:"100vh",position:"relative",transition:"background 0.3s"}},
     offlineMode?ce("div",{style:{position:"fixed",bottom:20,right:20,fontSize:10,fontWeight:700,letterSpacing:"0.10em",color:"rgba(245,158,11,0.28)",pointerEvents:"none",zIndex:1,textTransform:"uppercase"}},"Tryb offline"):null,
     // Save status
     saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"#dc2626":"var(--t2)",color:"#fff",fontSize:12,padding:"6px 20px",borderRadius:"0 0 12px 12px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 4px 16px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuj\u0119...":saveStatus==="ok"?"\u2713 Zapisano":"\u26a0 B\u0142\u0105d zapisu"):null,
     // Topbar (always visible)
-    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",paddingBottom:"1rem",borderBottom:"1.5px solid var(--bd3)"}},
+    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",padding:"10px 14px",borderRadius:18,background:"rgba(255,255,255,0.52)",border:"1.5px solid rgba(255,255,255,0.78)",boxShadow:"0 4px 20px rgba(99,102,241,0.10), 0 1px 0 rgba(255,255,255,0.80) inset",backdropFilter:"blur(22px)",WebkitBackdropFilter:"blur(22px)"}},
       appMode==="wyceniarka"&&screen!=="home"
         ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"rgba(124,58,237,0.08)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
         :ce("div",{style:{width:20}}),
@@ -910,7 +899,7 @@ export function App(p){
       )
     ),
     // ── Main nav tabs ──
-    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:4,marginBottom:"1.2rem",background:"rgba(255,255,255,0.62)",backdropFilter:"blur(14px)",borderRadius:16,padding:"5px",border:"1.5px solid rgba(139,92,246,0.12)",boxShadow:"0 2px 12px rgba(99,102,241,0.07)"}},
+    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:4,marginBottom:"1.2rem",background:"rgba(255,255,255,0.48)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid rgba(255,255,255,0.72)",boxShadow:"0 4px 20px rgba(99,102,241,0.10), 0 1px 0 rgba(255,255,255,0.80) inset"}},
       [
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
@@ -952,7 +941,7 @@ export function App(p){
       : appMode==="kalendarz"
         ? ce(CRMKalendarz,{deals:[],clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
       : appMode==="zadania"
-        ? ce(ScreenTasks,{gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
+        ? ce(ScreenTasks,{})
         : ce(Fragment,null,
             screen!=="home"?ce(BC,{}):null,
             content
@@ -961,6 +950,7 @@ export function App(p){
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showSewingModal?ce(ModalSewing,{client:curClient,onClose:function(){setShowSewingModal(false);}}):null,
+    showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
     showEmailModal?ce(ModalClientEmail,{client:curClient,onClose:function(){setShowEmailModal(false);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
