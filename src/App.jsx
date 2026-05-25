@@ -952,7 +952,7 @@ export function App(p){
       : appMode==="kalendarz"
         ? ce(CRMKalendarz,{deals:[],clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
       : appMode==="zadania"
-        ? ce(ScreenTasks,{})
+        ? ce(ScreenTasks,{gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
         : ce(Fragment,null,
             screen!=="home"?ce(BC,{}):null,
             content
