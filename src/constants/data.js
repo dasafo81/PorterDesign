@@ -1223,20 +1223,13 @@ export function buildOfferRows(client){
 }
 
 export function buildFabricRows(client){
-  // Group by fabric: {fabName, prod, brutto, width, metry}
-  var map={};
+  // One row per window: {prod, fabName, kolor, width, metry, room, win, note}
+  var rows=[];
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         if(p.type!=="zaslona"&&p.type!=="firana")return;
-        var key=p.fabName||("reczna_"+p.fabMan);
-        if(!map[key])map[key]={
-          fabName:p.fabName||"Tkanina ręczna",
-          prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
-          brutto:p.fabMan||p.fabP||0,
-          width:p.fabW||null,
-          metry:0,rooms:[]
-        };
+        var pc=p.c||{};
         var panels=getPanelsForProd(p);
         var pForCalc=Object.assign({},p,{panels:panels});
         var res=calc(pForCalc);
@@ -1244,12 +1237,21 @@ export function buildFabricRows(client){
         (res.lines||[]).forEach(function(l){
           var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
         });
-        map[key].metry+=metry;
-        map[key].rooms.push(r.name+" / "+w.name+(p.note?(" ["+p.note+"]"):""));
+        rows.push({
+          fabName:p.fabName||"Tkanina ręczna",
+          prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
+          kolor:pc.kolor||"-",
+          brutto:p.fabMan||p.fabP||0,
+          width:p.fabW||null,
+          metry:metry,
+          room:r.name,
+          win:w.name,
+          note:p.note||""
+        });
       });
     });
   });
-  return Object.values(map);
+  return rows;
 }
 
 export function getPanelsForProd(prod){
