@@ -9,7 +9,10 @@ import {
   openPDFWindow, pdfStyles, roundTo10
 } from '../constants/data.js';
 
-export function generateFabricOrderPDF(client){
+export function generateFabricOrderPDF(client,opts){
+  opts=opts||{};
+  var sewingHouse=opts.sewingHouse||"";
+  var notes=opts.notes||"";
   var rows=buildFabricRows(client);
   if(!rows.length){alert("Brak tkanin do zamówienia.");return;}
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
@@ -30,33 +33,50 @@ export function generateFabricOrderPDF(client){
     .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
     .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
     .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
+    .ship-block{background:#f7f7f5;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-top:5mm;}
+    .ship-block h4{font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:#6b6b66;margin:0 0 4px;}
+    .ship-block .ship-val{font-size:11px;color:#1a1a18;font-weight:600;white-space:pre-line;}
+    .notes-block{margin-top:4mm;font-size:10px;color:#3a3a38;}
+    .notes-block .lbl{font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-size:9px;color:#6b6b66;margin-bottom:3px;}
+    .notes-block .val{white-space:pre-line;line-height:1.5;}
   `;
 
   suppliers.forEach(function(sup){
     var supRows=bySupplier[sup];
     var tableRows=supRows.map(function(r){
       return [
-        "<strong>"+r.fabName+"</strong>",
-        r.width?r.width+"cm":"-",
-        r.rooms.join("; ")
+        "<strong>"+sup+"</strong>",
+        r.fabName,
+        r.kolor||"-",
+        (r.metry||0).toFixed(2).replace(".",",")+" mb",
+        r.room+" / "+r.win+(r.note?(" ["+r.note+"]"):"")
       ];
     });
     var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
-    tableRows.push(["<strong>RAZEM</strong>","","",""]);
+    tableRows.push(["<strong>RAZEM</strong>","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
 
     var tableHTML=makeTableHTML(
-      ["Tkanina","Szer. belki","Ilość (mb)","Przeznaczenie"],
+      ["Producent","Tkanina","Kolor","Ilość (mb)","Przeznaczenie"],
       tableRows,
       "Pozycje do zamówienia"
     );
+
+    var shipHTML=sewingHouse
+      ? `<div class="ship-block"><h4>Wysyłka tkaniny — szwalnia</h4><div class="ship-val">${sewingHouse}</div></div>`
+      : "";
+    var notesHTML=notes
+      ? `<div class="notes-block"><div class="lbl">Uwagi do zlecenia</div><div class="val">${notes}</div></div>`
+      : "";
 
     var bodySection=`
     <div class="supplier-header">
       <div class="supplier-name">${sup}</div>
       <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
-      <div class="supplier-meta">Klient końcowy: <strong>${client.name}</strong>${client.addr?" — "+client.addr:""}  |  Data: ${dateStr}</div>
+      <div class="supplier-meta">Klient: <strong>${client.name}</strong>  |  Data: ${dateStr}</div>
     </div>
     ${tableHTML}
+    ${shipHTML}
+    ${notesHTML}
     <div class="notes" style="margin-top:4mm">Termin dostawy: _________________&nbsp;&nbsp;&nbsp; Forma płatności: _________________&nbsp;&nbsp;&nbsp; Podpis: _________________</div>
     <div class="sign-block" style="margin-top:8mm">
       <div class="sign">Zamawiający<br><strong>Paulina Porter</strong></div>
