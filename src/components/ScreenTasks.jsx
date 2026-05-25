@@ -401,7 +401,7 @@ export function ScreenTasks(p) {
   var s1 = useState([]); var tasks = s1[0]; var setTasks = s1[1];
   var s2 = useState(true); var loading = s2[0]; var setLoading = s2[1];
   var s3 = useState(null); var error = s3[0]; var setError = s3[1];
-  var s4 = useState("montaz"); var activeCat = s4[0]; var setActiveCat = s4[1];
+  var s4 = useState("__overview__"); var activeCat = s4[0]; var setActiveCat = s4[1];
   var s5 = useState(null); var adding = s5[0]; var setAdding = s5[1]; // {cat, owner}
   var s6 = useState(""); var newTitle = s6[0]; var setNewTitle = s6[1];
   var s7 = useState(false); var showDone = s7[0]; var setShowDone = s7[1];
@@ -595,8 +595,79 @@ export function ScreenTasks(p) {
     });
   }
 
-  var SIDEBAR = CAT_ORDER.slice();
+  var SIDEBAR = ["__overview__"].concat(CAT_ORDER);
   if (hasNone) SIDEBAR.push("__none__");
+
+  // overview metrics
+  var damianActive  = tasks.filter(function(t) { return !t.done && t.owner === "damian"; }).length;
+  var paulinaActive = tasks.filter(function(t) { return !t.done && t.owner === "paulina"; }).length;
+  var urgentActive  = tasks.filter(function(t) { return !t.done && (t.priority === "high" || isOverdue(t)); }).length;
+
+  function ownerDot(t) {
+    var ow = OWNERS[t.owner];
+    return ce("span", { style: { width: 17, height: 17, borderRadius: "50%", flexShrink: 0,
+      background: ow ? ow.color : "transparent", border: ow ? "none" : "1.5px dashed var(--bd2)",
+      color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" } },
+      ow ? ow.initials : "");
+  }
+
+  function renderOverview() {
+    var tiles = CAT_ORDER.slice();
+    if (hasNone) tiles.push("__none__");
+    return ce("div", null,
+      // metric cards
+      ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 } },
+        ce("div", { style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 12, padding: "11px 13px" } },
+          ce("div", { style: { fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 6 } },
+            ce("span", { style: { width: 17, height: 17, borderRadius: "50%", background: OWNERS.damian.color, color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" } }, "D"), "Damian"),
+          ce("div", { style: { fontSize: 22, fontWeight: 700, color: "var(--t1)", marginTop: 3 } }, damianActive, ce("span", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 400 } }, " aktywnych"))
+        ),
+        ce("div", { style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 12, padding: "11px 13px" } },
+          ce("div", { style: { fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 6 } },
+            ce("span", { style: { width: 17, height: 17, borderRadius: "50%", background: OWNERS.paulina.color, color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" } }, "P"), "Paulina"),
+          ce("div", { style: { fontSize: 22, fontWeight: 700, color: "var(--t1)", marginTop: 3 } }, paulinaActive, ce("span", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 400 } }, " aktywnych"))
+        ),
+        ce("div", { style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 12, padding: "11px 13px" } },
+          ce("div", { style: { fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 6 } }, "⏰ Pilne"),
+          ce("div", { style: { fontSize: 22, fontWeight: 700, color: urgentActive > 0 ? "#ef4444" : "var(--t1)", marginTop: 3 } }, urgentActive)
+        )
+      ),
+      // category tiles
+      ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 10 } },
+        tiles.map(function(cid) {
+          var meta = catMeta(cid);
+          var items = tasks.filter(function(t) { return !t.done && catIdOf(t) === cid; });
+          return ce("div", { key: cid, style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 14, overflow: "hidden" } },
+            ce("div", { onClick: function() { setActiveCat(cid); setAdding(null); },
+              style: { display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: meta.color + "0f", borderBottom: "1px solid var(--bd3)", cursor: "pointer" } },
+              ce("span", { style: { color: meta.color, fontSize: 15 } }, meta.icon),
+              ce("span", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)", flex: 1 } }, meta.label),
+              ce("span", { style: { fontSize: 10, fontWeight: 600, color: meta.color, background: meta.color + "1a", borderRadius: 7, padding: "2px 7px" } }, items.length)
+            ),
+            ce("div", { style: { padding: "8px 10px" } },
+              items.length === 0
+                ? ce("div", { style: { fontSize: 11, color: "var(--t3)", padding: "6px 0", opacity: 0.7 } }, "Brak aktywnych zadań")
+                : ce("div", { style: { display: "flex", flexDirection: "column", gap: 6 } },
+                    items.slice(0, 3).map(function(t) {
+                      var pr = PRIORITY[t.priority] || PRIORITY.medium;
+                      return ce("div", { key: t.id, style: { display: "flex", alignItems: "center", gap: 8 } },
+                        ce("span", { style: { width: 7, height: 7, borderRadius: "50%", background: pr.dot, flexShrink: 0 } }),
+                        ce("span", { style: { fontSize: 12, color: "var(--t1)", flex: 1, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, t.title),
+                        t.due_date ? ce("span", { style: { fontSize: 9.5, color: isOverdue(t) ? "#ef4444" : "var(--t3)", flexShrink: 0 } }, formatDate(t.due_date)) : null,
+                        ownerDot(t)
+                      );
+                    })
+                  ),
+              items.length > 3
+                ? ce("div", { onClick: function() { setActiveCat(cid); setAdding(null); },
+                    style: { marginTop: 7, fontSize: 10.5, color: meta.color, cursor: "pointer", fontWeight: 600 } }, "+" + (items.length - 3) + " więcej →")
+                : null
+            )
+          );
+        })
+      )
+    );
+  }
 
   return ce("div", { style: { paddingBottom: 40 } },
 
@@ -628,13 +699,15 @@ export function ScreenTasks(p) {
       // ── SIDEBAR ──
       ce("div", { style: { display: "flex", flexDirection: "column", gap: 5 } },
         SIDEBAR.map(function(cid) {
-          var meta = catMeta(cid);
+          var isOv = cid === "__overview__";
+          var meta = isOv ? { label: "Przegląd", icon: "🏠", color: "#7c3aed" } : catMeta(cid);
           var act = activeCat === cid;
-          var count = catCounts[cid] || 0;
+          var count = isOv ? (tasks.length - totalDone) : (catCounts[cid] || 0);
           return ce("div", { key: cid, onClick: function() { setActiveCat(cid); setAdding(null); },
             style: { display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", borderRadius: 11, cursor: "pointer",
               background: act ? meta.color + "1a" : "var(--bg2)",
               border: act ? "1.5px solid " + meta.color : "1px solid var(--bd2)",
+              marginBottom: isOv ? 6 : 0,
               transition: "all .12s" } },
             ce("span", { style: { fontSize: 15, lineHeight: 1 } }, meta.icon),
             ce("span", { style: { fontSize: 12.5, fontWeight: act ? 700 : 500, color: act ? "var(--t1)" : "var(--t2)", flex: 1 } }, meta.label),
@@ -643,8 +716,10 @@ export function ScreenTasks(p) {
         })
       ),
 
-      // ── CATEGORY PANEL ──
-      ce("div", { style: { background: "var(--bg2)", border: "1px solid var(--bd2)", borderRadius: 14, padding: 12 } },
+      // ── RIGHT PANEL: overview or category ──
+      activeCat === "__overview__"
+        ? renderOverview()
+        : ce("div", { style: { background: "var(--bg2)", border: "1px solid var(--bd2)", borderRadius: 14, padding: 12 } },
 
         // panel header
         ce("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 6 } },
