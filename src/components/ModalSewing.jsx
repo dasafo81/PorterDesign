@@ -29,7 +29,7 @@ export function ModalSewing(p){
   var SEWING_HOUSES=[
     'TRINITAS — ul. Składowa 9, 86-300 Grudziądz',
     'LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock',
-    'Marcin Dekor — ul. Terespolska 75, 05-074 Halinów, Konik Nowy'
+    'Marcin Dekor — ul. Terespolska 75, 05-074 Halinów, Konik Nowy',
     'Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B, 09-530 Troszyn, Tel: 511 418 561'
   ];
   var ms=useState('choose'),mode=ms[0],setMode=ms[1];
@@ -229,7 +229,8 @@ export function ModalFabricOrder(p){
   var SEWING_HOUSES=[
     'TRINITAS — ul. Składowa 9, 86-300 Grudziądz',
     'LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock',
-    'Marcin Dekor — ul. Terespolska 75, 05-074 Halinów, Konik Nowy'
+    'Marcin Dekor — ul. Terespolska 75, 05-074 Halinów, Konik Nowy',
+    'Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B, 09-530 Troszyn, Tel: 511 418 561'
   ];
   var ss=useState(SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
   var cs=useState(''),customHouse=cs[0],setCustomHouse=cs[1];
