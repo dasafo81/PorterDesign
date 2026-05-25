@@ -30,7 +30,6 @@ export function ModalSewing(p){
     'TRINITAS — ul. Składowa 9, 86-300 Grudziądz',
     'LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock',
     'Marcin Dekor — ul. Terespolska 75, 05-074 Halinów, Konik Nowy'
-    'Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B, 09-530 Troszyn, Tel: 511 418 561'
   ];
   var ms=useState('choose'),mode=ms[0],setMode=ms[1];
   var ss=useState(SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
@@ -219,6 +218,53 @@ export function ModalSewing(p){
         ce('button',{onClick:p.onClose,style:{border:'none',background:'none',cursor:'pointer',fontSize:22,color:'var(--t3)',padding:'0 4px'}},'\xd7')
       ),
       content
+    )
+  );
+}
+
+
+// ── MODAL ZAMÓWIENIA TKANINY (wybór szwalni + uwagi) ──────────────────
+export function ModalFabricOrder(p){
+  var SEWING_HOUSES=[
+    'TRINITAS — ul. Składowa 9, 86-300 Grudziądz',
+    'LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock',
+    'Marcin Dekor — ul. Terespolska 75, 05-074 Halinów, Konik Nowy'
+  ];
+  var ss=useState(SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
+  var cs=useState(''),customHouse=cs[0],setCustomHouse=cs[1];
+  var ns=useState(''),notes=ns[0],setNotes=ns[1];
+
+  var INP={padding:'12px 14px',fontSize:15,border:'1.5px solid var(--bd2)',borderRadius:10,background:'var(--bg)',color:'var(--t1)',width:'100%',boxSizing:'border-box',outline:'none'};
+
+  function generate(){
+    var house=selHouse==='__custom__'?customHouse:selHouse;
+    generateFabricOrderPDF(p.client,{sewingHouse:house,notes:notes});
+    p.onClose();
+  }
+
+  return ce('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:'1rem'}},
+    ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:'1.8rem',width:'min(560px,96vw)',border:'1px solid var(--bd2)',boxShadow:'0 16px 48px rgba(0,0,0,0.2)',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16}},
+      ce('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}},
+        ce('div',{style:{fontSize:17,fontWeight:700,color:'var(--t1)'}},'\uD83E\uDDF5 Zamówienie tkaniny'),
+        ce('button',{onClick:p.onClose,style:{border:'none',background:'none',cursor:'pointer',fontSize:22,color:'var(--t3)',padding:'0 4px'}},'\xd7')
+      ),
+      ce('div',{style:{fontSize:13,color:'var(--t2)'}},'Gdzie wysłać tkaninę?'),
+      ce('div',null,
+        ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:8}},'SZWALNIA'),
+        ce('select',{value:selHouse,onChange:function(ev){setSelHouse(ev.target.value);},style:Object.assign({},INP,{minHeight:48})},
+          SEWING_HOUSES.map(function(h,i){return ce('option',{key:i,value:h},h);}),
+          ce('option',{value:'__custom__'},'— Wpisz własne dane —')
+        ),
+        selHouse==='__custom__'?ce('textarea',{value:customHouse,onChange:function(ev){setCustomHouse(ev.target.value);},placeholder:'Nazwa szwalni, osoba kontaktowa, telefon...',rows:3,style:Object.assign({},INP,{marginTop:8,resize:'vertical',lineHeight:1.5})}):null
+      ),
+      ce('div',null,
+        ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:8}},'UWAGI DO ZLECENIA'),
+        ce('textarea',{value:notes,onChange:function(ev){setNotes(ev.target.value);},placeholder:'Wpisz uwagi do zamówienia tkaniny...',rows:4,style:Object.assign({},INP,{resize:'vertical',lineHeight:1.6,minHeight:100})})
+      ),
+      ce('div',{style:{display:'flex',gap:10,marginTop:4}},
+        ce('button',{onClick:generate,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t2)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83E\uDDF5 Generuj PDF'),
+        ce('button',{onClick:p.onClose,style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')
+      )
     )
   );
 }
