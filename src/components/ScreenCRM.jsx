@@ -134,6 +134,8 @@ export function ModalDeal(p){
     // Jeśli to montaż i wybrano kalendarz montażysty -> dodaj do tego kalendarza
     var targetCalId = "primary";
     var descParts=["Klient: "+(cl?cl.name:"(brak klienta)")];
+    if(cl&&cl.address)descParts.push("Adres: "+cl.address);
+    if(cl&&cl.phone)descParts.push("Tel: "+cl.phone);
     
     if(title.indexOf("Monta\u017c")!==-1 && installerCalId){
       targetCalId = installerCalId;
@@ -399,6 +401,7 @@ export function CRMKalendarz(p){
           return (a.summary||"").localeCompare(b.summary||"","pl");
         });
         setCalList(items);
+        fetchEvents(token);
       })
       .catch(function(){});
   }
@@ -494,8 +497,11 @@ export function CRMKalendarz(p){
     var d=ev.date;
     
     // Jeśli to montaż i deal ma przypisany kalendarz montażysty -> użyj go
+    var clData=(p.clients||[]).find(function(c){return ev.deal&&String(c.id)===String(ev.deal.client_id);})||null;
     var targetCalId = "primary";
     var descParts=["Klient: "+ev.client];
+    if(clData&&clData.address)descParts.push("Adres: "+clData.address);
+    if(clData&&clData.phone)descParts.push("Tel: "+clData.phone);
     if(ev.deal&&ev.deal.title)descParts.push("Deal: "+ev.deal.title);
     
     if(ev.type==="delivery"&&ev.deal&&ev.deal.installer_calendar_id){
@@ -989,7 +995,32 @@ export function CRMKalendarz(p){
             ce('div',{style:{fontSize:13,color:'var(--t1)',lineHeight:1.5,wordBreak:'break-word',whiteSpace:'pre-wrap'}},r[1])
           );});
         })(),
-        selectedGcalEv.htmlLink?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null
+        selectedGcalEv.htmlLink?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null,
+        ce('div',{
+          style:{marginTop:10,padding:'9px',borderRadius:10,border:'1px solid #ef4444',color:'#ef4444',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
+          onClick:function(){
+            if(!window.confirm('Usunąć to wydarzenie z Google Calendar?'))return;
+            var ev=selectedGcalEv;
+            var calId=ev._calId||'primary';
+            function doDel(t){
+              return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events/'+encodeURIComponent(ev.id),{
+                method:'DELETE',headers:{Authorization:'Bearer '+t}
+              });
+            }
+            doDel(gcalToken)
+              .then(function(r){
+                if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doDel(fresh);});}
+                return r;
+              })
+              .then(function(r){
+                if(r.status===204||r.ok){
+                  setSelectedGcalEv(null);
+                  setGcalEvents(function(evs){return evs.filter(function(e){return e.id!==ev.id;});});
+                } else { alert('Błąd usuwania (HTTP '+r.status+').'); }
+              })
+              .catch(function(){alert('Błąd usuwania wydarzenia.');});
+          }
+        },'\uD83D\uDDD1 Usuń wydarzenie')
       )
     ):null
   );
