@@ -1648,30 +1648,51 @@ export function ScreenMail(p){
         });
       })).then(function(atts){return atts.filter(Boolean);}));
     }
-    // App PDFs (type="app") — generowane przez /api/pdf jako prawdziwy PDF
+    // App PDFs (type="app") — generowane przez html2pdf.js jako prawdziwy PDF
     var appItems=attachments.filter(function(a){return a.type==="app";});
     if(appItems.length>0&&selClient){
+      // Ładuje html2pdf.js z CDN (tylko raz)
+      function loadH2P(){
+        if(window._html2pdfLoaded)return Promise.resolve(window.html2pdf);
+        return new Promise(function(resolve,reject){
+          var s=document.createElement("script");
+          s.src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+          s.onload=function(){window._html2pdfLoaded=true;resolve(window.html2pdf);};
+          s.onerror=reject;
+          document.head.appendChild(s);
+        });
+      }
       var appPdfPromises=appItems.map(function(att){
         var html=null;
         if(att.id==="pdf_uproszczona")html=buildSimplifiedPDFHtml(selClient,0,0,null);
         else if(att.id==="pdf_oferta")html=buildOfferPDFHtml(selClient,0,0,"");
         if(!html)return Promise.resolve(null);
-        return fetch("/api/pdf",{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({html:html})
-        }).then(function(r){
-          if(!r.ok)throw new Error("PDF API error "+r.status);
-          return r.arrayBuffer();
-        }).then(function(ab){
-          var bytes=new Uint8Array(ab);
-          var binary="";
-          for(var i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
-          var b64=btoa(binary);
-          return {"@odata.type":"#microsoft.graph.fileAttachment",
-            name:att.name,contentType:"application/pdf",contentBytes:b64};
+        return loadH2P().then(function(html2pdf){
+          var container=document.createElement("div");
+          container.innerHTML=html;
+          container.style.cssText="position:absolute;left:-9999px;top:0;width:210mm;font-family:Arial,sans-serif;";
+          document.body.appendChild(container);
+          var opt={
+            margin:[10,10,10,10],
+            image:{type:"jpeg",quality:0.95},
+            html2canvas:{scale:2,useCORS:true,logging:false},
+            jsPDF:{unit:"mm",format:"a4",orientation:"portrait"}
+          };
+          return html2pdf().set(opt).from(container).outputPdf("arraybuffer").then(function(ab){
+            document.body.removeChild(container);
+            var bytes=new Uint8Array(ab);
+            var binary="";
+            for(var i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
+            var b64=btoa(binary);
+            return {"@odata.type":"#microsoft.graph.fileAttachment",
+              name:att.name,contentType:"application/pdf",contentBytes:b64};
+          }).catch(function(e){
+            if(document.body.contains(container))document.body.removeChild(container);
+            console.error("html2pdf failed for",att.id,e);
+            return null;
+          });
         }).catch(function(e){
-          console.error("PDF generation failed for",att.id,e);
+          console.error("html2pdf load failed",e);
           return null;
         });
       });
