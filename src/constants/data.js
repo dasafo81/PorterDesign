@@ -1014,7 +1014,13 @@ export function calc(p){
     var pow=parseFloat(((tkanWcm/100)*(tkanHcm/100)).toFixed(3));
     var powInfo="tkanina "+tkanWcm+"\xd7"+tkanHcm+"cm ("+iloscTuneli+" tuneli)";
     var rr;
-    if(rModel==="duo"){
+    if(c.rSystem==="bez_mechanizmu"){
+      // Bez mechanizmu: tylko tkanina + szycie, szer. tkaniny = wCm+30
+      var tkanWcmMat=wCm+30;
+      var powMat=parseFloat(((tkanWcmMat/100)*(hCm/100)).toFixed(3));
+      total=parseFloat((powMat*(200+tkan)*2).toFixed(2));
+      lines.push("Roleta bez mech. "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 tkanina "+(tkanWcmMat)+"\xd7"+hCm+"cm \xb7 "+powMat+"m\xb2");
+    }else if(rModel==="duo"){
       // Duo: dwie tkaniny, mnożone x2
       rr=lookup(wCm,RDUO);
       total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)*2).toFixed(2));
@@ -1277,9 +1283,10 @@ export function buildSewingRows(client){
         var fabObj=prod.fabName?FABRICS.find(function(f){return f.name===prod.fabName;}):null;
 
         if(prod.type==="roleta"){
-          var rWcm=(par.wCm||0)+20;
-          var rTunele=Math.floor((par.hCm||0)/23);
-          var rHcm=(par.hCm||0)+5+10+rTunele*2;
+          var isBezMech=pc.rSystem==="bez_mechanizmu";
+          var rWcm=isBezMech?(par.wCm||0)+30:(par.wCm||0)+20;
+          var rTunele=isBezMech?0:Math.floor((par.hCm||0)/23);
+          var rHcm=isBezMech?(par.hCm||0):(par.hCm||0)+5+10+rTunele*2;
           var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
           var rModelMap={relax:"Relax",print:"Print",back:"Back",podszewka:"Podszewka",front:"Front",cascade:"Cascade",duo:"Duo"};
           var rModelLbl=rModelMap[pc.rModel]||pc.rModel||"-";
@@ -1311,6 +1318,7 @@ export function buildSewingRows(client){
           });
           return;
         }
+
 
         var panels=getPanelsForProd(prod);
         var prodForCalc=Object.assign({},prod,{panels:panels});
