@@ -147,6 +147,7 @@ export function ModalDeal(p){
     var body={
       summary:title,
       description:descParts.join(" | "),
+      location:cl&&cl.address?cl.address:undefined,
       start:{dateTime:date.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(date.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
