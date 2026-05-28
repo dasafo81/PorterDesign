@@ -868,6 +868,7 @@ export function ProdCard(p){
     var systemOpts = [
       {key:"manual",         label:"Manual"},
       {key:"elektryk",       label:"Elektryk"},
+      {key:"bez_mechanizmu", label:"Bez mechanizmu"},
     ];
     if(isDuo) systemOpts.splice(1,0,{key:"polautomatyczny",label:"P\xf3\u0142automatyczny"});
 
@@ -884,7 +885,7 @@ export function ProdCard(p){
     ):null;
 
     // ── BĘBENEK ──────────────────────────────────────────────────────
-    var bebenekChip = rSystem?ce("div",{style:{marginTop:16}},
+    var bebenekChip = (rSystem&&rSystem!=="bez_mechanizmu")?ce("div",{style:{marginTop:16}},
       ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
         ce("input",{type:"checkbox",checked:c.rb==="tak",onChange:function(ev){sc("rb",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
         ce("span",{},"+ B\u0119benek (11 z\u0142)")
@@ -1051,11 +1052,15 @@ export function ProdCard(p){
       // SEKCJA 3: System (tylko po wyborze modelu)
       rModel?ce(Section,{num:"3",title:"System"},
         roletaSystemSelector,
+        rSystem==="bez_mechanizmu"?ce("div",{style:{marginTop:12,fontSize:12,color:"var(--t3)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)"}},
+          "\u2139\ufe0f Szeroko\u015b\u0107 tkaniny: "+(+(par.wCm||0)+30)+" cm (wymiar + 30 cm) \xb7 Szycie: 200 z\u0142/m\xb2"
+        ):null,
         bebenekChip,
         lancuszekSection,
         elektrykSection
       ):null
     );
+
 
     }else if(prod.type==="shadow"){
     // ── ROLETA SHADOW FORM ───────────────────────────────────────────
