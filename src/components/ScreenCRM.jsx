@@ -513,6 +513,7 @@ export function CRMKalendarz(p){
     var body={
       summary:ev.label+" \u2014 "+ev.client,
       description:descParts.join(" | "),
+      location:clData&&clData.address?clData.address:undefined,
       start:{dateTime:d.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(d.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
