@@ -1336,9 +1336,13 @@ export function ModalAIValuation(p){
     if(attachments.length){
       var parts=[];
       attachments.forEach(function(att){
-        parts.push({type:"image",source:{type:"base64",media_type:att.mediaType,data:att.data}});
+        if(att.fileType==="pdf"){
+          parts.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:att.data}});
+        }else{
+          parts.push({type:"image",source:{type:"base64",media_type:att.mediaType,data:att.data}});
+        }
       });
-      parts.push({type:"text",text:text||"Przeanalizuj za\u0142\u0105czone zdj\u0119cie i wycen."});
+      parts.push({type:"text",text:text||"Przeanalizuj za\u0142\u0105czone pliki i wycen."});
       userContent=parts;
     }else{
       userContent=text;
@@ -1358,9 +1362,13 @@ export function ModalAIValuation(p){
         if(m.attachments&&m.attachments.length){
           var pts=[];
           m.attachments.forEach(function(att){
-            pts.push({type:"image",source:{type:"base64",media_type:att.mediaType,data:att.data}});
+            if(att.fileType==="pdf"){
+              pts.push({type:"document",source:{type:"base64",media_type:"application/pdf",data:att.data}});
+            }else{
+              pts.push({type:"image",source:{type:"base64",media_type:att.mediaType,data:att.data}});
+            }
           });
-          pts.push({type:"text",text:m.text||"Przeanalizuj zdj\u0119cie."});
+          pts.push({type:"text",text:m.text||"Przeanalizuj za\u0142\u0105czone pliki."});
           return{role:"user",content:pts};
         }
         return{role:"user",content:m.text};
@@ -1392,11 +1400,17 @@ export function ModalAIValuation(p){
   function handleFiles(files){
     var arr=Array.prototype.slice.call(files);
     arr.slice(0,3-attachments.length).forEach(function(file){
+      var isPdf=file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf");
       var reader=new FileReader();
       reader.onload=function(ev){
         setAttachments(function(prev){
           if(prev.length>=3)return prev;
-          return prev.concat([{name:file.name,mediaType:file.type||"image/jpeg",data:ev.target.result.split(",")[1]}]);
+          return prev.concat([{
+            name:file.name,
+            mediaType:isPdf?"application/pdf":(file.type||"image/jpeg"),
+            fileType:isPdf?"pdf":"image",
+            data:ev.target.result.split(",")[1]
+          }]);
         });
       };
       reader.readAsDataURL(file);
@@ -1569,6 +1583,12 @@ export function ModalAIValuation(p){
       msg.attachments&&msg.attachments.length>0
         ?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end",marginBottom:4}},
             msg.attachments.map(function(att,ai){
+              if(att.fileType==="pdf"){
+                return ce("div",{key:ai,style:{width:60,height:60,borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg2)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}},
+                  ce("span",{style:{fontSize:22}},"\uD83D\uDCC4"),
+                  ce("span",{style:{fontSize:9,color:"var(--t3)",textAlign:"center",overflow:"hidden",maxWidth:52,textOverflow:"ellipsis",whiteSpace:"nowrap"}},"PDF")
+                );
+              }
               return ce("img",{key:ai,src:"data:"+att.mediaType+";base64,"+att.data,style:{width:60,height:60,objectFit:"cover",borderRadius:8,border:"1px solid var(--bd2)"}});
             })
           )
@@ -1638,7 +1658,12 @@ export function ModalAIValuation(p){
         ?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
             attachments.map(function(att,i){
               return ce("div",{key:i,style:{position:"relative"}},
-                ce("img",{src:"data:"+att.mediaType+";base64,"+att.data,style:{width:48,height:48,objectFit:"cover",borderRadius:8,border:"1px solid var(--bd2)"}}),
+                att.fileType==="pdf"
+                  ?ce("div",{style:{width:48,height:48,borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg2)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2}},
+                      ce("span",{style:{fontSize:20}},"\uD83D\uDCC4"),
+                      ce("span",{style:{fontSize:8,color:"var(--t3)",maxWidth:44,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textAlign:"center"}},att.name)
+                    )
+                  :ce("img",{src:"data:"+att.mediaType+";base64,"+att.data,style:{width:48,height:48,objectFit:"cover",borderRadius:8,border:"1px solid var(--bd2)"}}),
                 ce("button",{onClick:function(){removeAtt(i);},
                   style:{position:"absolute",top:-6,right:-6,width:18,height:18,borderRadius:"50%",border:"none",background:"var(--t1)",color:"#fff",cursor:"pointer",fontSize:11,lineHeight:"18px",textAlign:"center",padding:0}
                 },"\u00D7")
@@ -1650,10 +1675,10 @@ export function ModalAIValuation(p){
         ce("button",{
           onClick:function(){fileRef.current&&fileRef.current.click();},
           disabled:attachments.length>=3,
-          title:"Do\u0142\u0105cz zdj\u0119cie",
+          title:"Do\u0142\u0105cz zdj\u0119cie lub PDF",
           style:{padding:"9px 10px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"var(--bg)",color:attachments.length>=3?"var(--t3)":"var(--t2)",cursor:attachments.length>=3?"not-allowed":"pointer",fontSize:16,flexShrink:0,alignSelf:"flex-end"}
         },"\uD83D\uDDBC\uFE0F"),
-        ce("input",{ref:fileRef,type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:function(ev){handleFiles(ev.target.files);ev.target.value="";}}),
+        ce("input",{ref:fileRef,type:"file",accept:"image/*,application/pdf,.pdf",multiple:true,style:{display:"none"},onChange:function(ev){handleFiles(ev.target.files);ev.target.value="";}}),
         ce("textarea",{
           value:inputText,
           onChange:function(ev){setInputText(ev.target.value);},
