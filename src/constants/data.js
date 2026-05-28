@@ -1126,10 +1126,10 @@ export function calc(p){
     var kdSzL=p.kdSzyny||[];
     var kdT=0;
     kdSzL.forEach(function(s){
-      var cena=kdSzT[s.dlugosc]||0;
+      var cena=kdSzT[s.len]||0;
       var q=s.qty||1;
       kdT+=cena*q;
-      if(cena>0) lines.push("Szyna "+kdR+"mm / "+s.dlugosc+"cm"+(q>1?" x"+q:"")+" = "+formatPLN(cena*q));
+      if(cena>0) lines.push("Szyna "+kdR+"mm / "+s.len+"cm"+(q>1?" x"+q:"")+" = "+formatPLN(cena*q));
     });
     if(kdSzL.length>0){
       var kdZ=KD_ZASLEPKI[kdR]||0;
