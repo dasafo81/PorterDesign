@@ -1449,18 +1449,20 @@ export function ProdCard(p){
       ),
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ODCINKI SZYNY"),
-        kdSzyny.map(function(seg,idx){
-          return ce("div",{key:idx,style:{display:"grid",gridTemplateColumns:"1fr 80px 40px",gap:8,marginBottom:8,alignItems:"center"}},
-            ce("select",{value:seg.len||"",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{len:Number(ev.target.value)}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{cursor:"pointer"})},
-              ce("option",{value:""},"\u2014 d\u0142ugo\u015b\u0107 \u2014"),
-              kdLengths.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzT[l])+" z\u0142");})
-            ),
-            ce("input",{type:"text",inputMode:"numeric",value:seg.qty||"",placeholder:"szt.",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{qty:Number(ev.target.value)||1}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{textAlign:"center"})}),
-            ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.filter(function(_,i){return i!==idx;})}));},style:{cursor:"pointer",color:"var(--t2)",fontSize:18,textAlign:"center",padding:4,borderRadius:6,border:"1px solid var(--bd2)",userSelect:"none",lineHeight:1.2}},"\xd7")
-          );
-        }),
-        ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.concat([{len:null,qty:1}])}));},style:{display:"inline-flex",alignItems:"center",gap:8,cursor:"pointer",padding:"10px 18px",borderRadius:8,border:"1.5px dashed var(--bd2)",color:"var(--t2)",fontSize:13,marginTop:4,userSelect:"none",transition:"border-color .15s"}},
-          "+ Dodaj odcinek"
+        ce(Fragment,null,
+          kdSzyny.map(function(seg,idx){
+            return ce("div",{key:idx,style:{display:"grid",gridTemplateColumns:"1fr 80px 40px",gap:8,marginBottom:8,alignItems:"center"}},
+              ce("select",{value:seg.len||"",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{len:Number(ev.target.value)}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{cursor:"pointer"})},
+                ce("option",{value:""},"\u2014 d\u0142ugo\u015b\u0107 \u2014"),
+                kdLengths.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzT[l])+" z\u0142");})
+              ),
+              ce("input",{type:"text",inputMode:"numeric",value:seg.qty||"",placeholder:"szt.",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{qty:Number(ev.target.value)||1}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{textAlign:"center"})}),
+              ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.filter(function(_,i){return i!==idx;})}));},style:{cursor:"pointer",color:"var(--t2)",fontSize:18,textAlign:"center",padding:4,borderRadius:6,border:"1px solid var(--bd2)",userSelect:"none",lineHeight:1.2}},"\xd7")
+            );
+          }),
+          ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.concat([{len:null,qty:1}])}));},style:{display:"inline-flex",alignItems:"center",gap:8,cursor:"pointer",padding:"10px 18px",borderRadius:8,border:"1.5px dashed var(--bd2)",color:"var(--t2)",fontSize:13,marginTop:4,userSelect:"none",transition:"border-color .15s"}},
+            "+ Dodaj odcinek"
+          )
         )
       ),
       ce("div",{style:{marginBottom:14}},
