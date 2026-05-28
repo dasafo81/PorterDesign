@@ -1658,8 +1658,10 @@ export function ScreenMail(p){
         if(!html)return null;
         try{
           var b64=btoa(unescape(encodeURIComponent(html)));
+          // Wysyłamy jako .html — plik zawiera HTML, nie prawdziwy PDF
+          var htmlName=att.name.replace(/\.pdf$/i,".html");
           return {"@odata.type":"#microsoft.graph.fileAttachment",
-            name:att.name,contentType:"text/html",contentBytes:b64};
+            name:htmlName,contentType:"text/html",contentBytes:b64};
         }catch(e){return null;}
       }).filter(Boolean)));
     }
