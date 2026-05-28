@@ -1018,7 +1018,7 @@ export function calc(p){
       // Bez mechanizmu: tylko tkanina + szycie, szer. tkaniny = wCm+30
       var tkanWcmMat=wCm+30;
       var powMat=parseFloat(((tkanWcmMat/100)*(hCm/100)).toFixed(3));
-      total=parseFloat((powMat*(200+tkan)*2).toFixed(2));
+      total=parseFloat((powMat*(200+tkan)).toFixed(2));
       lines.push("Roleta bez mech. "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 tkanina "+(tkanWcmMat)+"\xd7"+hCm+"cm \xb7 "+powMat+"m\xb2");
     }else if(rModel==="duo"){
       // Duo: dwie tkaniny, mnożone x2
