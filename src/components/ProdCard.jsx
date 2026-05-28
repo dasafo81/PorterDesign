@@ -19,6 +19,11 @@ import {
   RS_IMG, RS_MASK_COLORS, RS_MOTORS, RS_OB_B,
   RS_OB_C, RS_OB_D, RS_PROFIL, RS_SUPP_WIDTHS,
   RS_WIDTHS, SB_STORAGE, SELLER, WIN_PRESETS,
+  KD_AKCESORIA, KD_KOLORY, KD_SZYNY, KD_ZASLEPKI,
+  PRESTIGE_CENTRALKI, PRESTIGE_LADOWARKA, PRESTIGE_NAPEDY, PRESTIGE_PILOTY,
+  PRESTIGE_ROUND, PRESTIGE_ROUND_TANDEM, PRESTIGE_ROUND_W60, PRESTIGE_ROUND_W80,
+  PRESTIGE_SQUARE, PRESTIGE_SQUARE_TANDEM, PRESTIGE_SQUARE_W60, PRESTIGE_SQUARE_W80,
+  PRESTIGE_WIDTHS,
   calc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup
 } from '../constants/data.js';
@@ -135,7 +140,7 @@ export function ProdCard(p){
 
   var res=calc(prodForCalc),total=res.total,lines=res.lines,warn=res.warn;
   var eff=prod.mp!=null?prod.mp:total;
-  var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
+  var lbl=(prod.type==="prestige_square"?"Karnisz Prestige SQUARE":prod.type==="prestige_round"?"Karnisz Prestige ROUND":(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label);
 
   function hasProdData(pr){
     return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||
@@ -1307,6 +1312,167 @@ export function ProdCard(p){
             var isA=(c.motorType||"kurtyna")===t.key;
             return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
               isA?"\u2713 "+t.label:t.label
+            );
+          })
+        )
+      )
+    );
+  }else if(prod.type==="prestige_round"||prod.type==="prestige_square"){
+    var isPrestigeRound=prod.type==="prestige_round";
+    var presNapedy=PRESTIGE_NAPEDY;
+    var presWidths=PRESTIGE_WIDTHS;
+    var napAktywny=c.pn||"am75_3w";
+    var isAku=napAktywny==="am75_aku";
+    form=ce(Fragment,null,
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"SERIA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"prestige_round",label:"ROUND"},{key:"prestige_square",label:"SQUARE"}].map(function(s){
+            var isA=prod.type===s.key;
+            return ce("div",{key:s.key,onClick:function(){p.onChange(mg(prod,{type:s.key}));},style:{padding:"12px 24px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
+              isA?"\u2713 "+s.label:s.label
+            );
+          })
+        )
+      ),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},
+          ce("select",{value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},style:Object.assign({},IST,{cursor:"pointer"})},
+            ce("option",{value:""},"\u2014 wybierz \u2014"),
+            presWidths.map(function(w){return ce("option",{key:w,value:w},w+" cm");})
+          )
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"NAP\u0118D"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          presNapedy.map(function(n){
+            var isA=napAktywny===n.v;
+            return ce(Chip,{key:n.v,label:n.l,active:isA,onClick:function(){sc("pn",n.v);}});
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"STRONA SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
+            var isA=(c.motorSide||"lewo")===s.key;
+            return ce("div",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
+              isA?"\u2713 "+s.label:s.label
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"TYP RUCHU"),
+        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
+            var isA=(c.motorType||"kurtyna")===t.key;
+            return ce("div",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
+              isA?"\u2713 "+t.label:t.label
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"TA\u015aMA WAVE"),
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          [{v:"brak",l:"Bez WAVE"},{v:"w60",l:"WAVE 60 mm"},{v:"w80",l:"WAVE 80 mm"}].map(function(w){
+            var isA=(c.wave||"brak")===w.v;
+            return ce(Chip,{key:w.v,label:w.l,active:isA,onClick:function(){sc("wave",w.v);}});
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"TANDEM"),
+        ce("div",{style:{display:"flex",alignItems:"center",gap:12}},
+          ce("input",{type:"checkbox",id:"prestige-tandem",checked:!!c.tandem,onChange:function(ev){sc("tandem",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+          ce("label",{htmlFor:"prestige-tandem",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"Rozsuwanie dwustronne synchroniczne (Tandem)")
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"PILOT"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          PRESTIGE_PILOTY.map(function(pl){
+            var isA=(c.pp||"brak")===pl.v;
+            return ce(Chip,{key:pl.v,label:pl.l+(pl.c>0?" "+Math.round(pl.c)+" z\u0142":""),active:isA,onClick:function(){sc("pp",pl.v);}});
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"CENTRALKA"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          PRESTIGE_CENTRALKI.map(function(cn){
+            var isA=(c.pcn||"brak")===cn.v;
+            return ce(Chip,{key:cn.v,label:cn.l+(cn.c>0?" "+Math.round(cn.c)+" z\u0142":""),active:isA,onClick:function(){sc("pcn",cn.v);}});
+          })
+        )
+      ),
+      isAku?ce("div",{style:{marginBottom:14}},
+        ce("div",{style:{display:"flex",alignItems:"center",gap:12}},
+          ce("input",{type:"checkbox",id:"prestige-lad",checked:!!c.lad,onChange:function(ev){sc("lad",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+          ce("label",{htmlFor:"prestige-lad",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"\u0141adowarka do silnika akumulatorowego (+"+Math.round(PRESTIGE_LADOWARKA)+" z\u0142)")
+        )
+      ):null
+    );
+  }else if(prod.type==="karnisz_dek"){
+    var kdR=prod.kdRozmiar||20;
+    var kdSzT=KD_SZYNY[kdR]||KD_SZYNY[20];
+    var kdLengths=Object.keys(kdSzT).map(Number).sort(function(a,b){return a-b;});
+    var kdSzyny=prod.kdSzyny||[];
+    var kdAkc=prod.kdAkc||{};
+    var kdKolor=prod.kdKolor||"bialy_mat";
+    form=ce(Fragment,null,
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ROZMIAR PROFILU"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{v:20,l:"20 mm"},{v:30,l:"30 mm"}].map(function(r){
+            var isA=kdR===r.v;
+            return ce("div",{key:r.v,onClick:function(){p.onChange(mg(prod,{kdRozmiar:r.v,kdSzyny:[]}));},style:{padding:"12px 24px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
+              isA?"\u2713 "+r.l:r.l
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"KOLOR"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:10,marginTop:4}},
+          KD_KOLORY.map(function(k){
+            var isA=kdKolor===k.id;
+            return ce("div",{key:k.id,onClick:function(){p.onChange(mg(prod,{kdKolor:k.id}));},title:k.label,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"}},
+              ce("div",{style:{width:36,height:36,borderRadius:"50%",background:k.bg,border:isA?"3px solid var(--t1)":"3px solid transparent",boxShadow:isA?"0 0 0 2px var(--t1)":"0 1px 3px rgba(0,0,0,0.2)",transition:"all .15s"}}),
+              ce("span",{style:{fontSize:10,color:isA?"var(--t1)":"var(--t2)",fontWeight:isA?700:400,textAlign:"center",maxWidth:56,lineHeight:1.2}},k.label)
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ODCINKI SZYNY"),
+        kdSzyny.map(function(seg,idx){
+          return ce("div",{key:idx,style:{display:"grid",gridTemplateColumns:"1fr 80px 40px",gap:8,marginBottom:8,alignItems:"center"}},
+            ce("select",{value:seg.len||"",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{len:Number(ev.target.value)}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{cursor:"pointer"})},
+              ce("option",{value:""},"\u2014 d\u0142ugo\u015b\u0107 \u2014"),
+              kdLengths.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzT[l])+" z\u0142");})
+            ),
+            ce("input",{type:"text",inputMode:"numeric",value:seg.qty||"",placeholder:"szt.",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{qty:Number(ev.target.value)||1}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{textAlign:"center"})}),
+            ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.filter(function(_,i){return i!==idx;})}));},style:{cursor:"pointer",color:"var(--t2)",fontSize:18,textAlign:"center",padding:4,borderRadius:6,border:"1px solid var(--bd2)",userSelect:"none",lineHeight:1.2}},"\xd7")
+          );
+        }),
+        ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.concat([{len:null,qty:1}])}));},style:{display:"inline-flex",alignItems:"center",gap:8,cursor:"pointer",padding:"10px 18px",borderRadius:8,border:"1.5px dashed var(--bd2)",color:"var(--t2)",fontSize:13,marginTop:4,userSelect:"none",transition:"border-color .15s"}},
+          "+ Dodaj odcinek"
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"AKCESORIA"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          KD_AKCESORIA.map(function(a){
+            var qty=kdAkc[a.id]||0;
+            var checked=qty>0;
+            return ce("div",{key:a.id,style:{display:"grid",gridTemplateColumns:"24px 1fr 70px",gap:10,alignItems:"center",padding:"8px 10px",borderRadius:8,background:checked?"var(--bg2)":"transparent",border:"1px solid "+(checked?"var(--bd2)":"transparent"),transition:"all .15s"}},
+              ce("input",{type:"checkbox",checked:checked,onChange:function(ev){var na=mg(kdAkc,{});if(ev.target.checked){na[a.id]=1;}else{delete na[a.id];}p.onChange(mg(prod,{kdAkc:na}));},style:{width:16,height:16,cursor:"pointer"}}),
+              ce("span",{style:{fontSize:13,color:checked?"var(--t1)":"var(--t2)"}},a.label+" ("+Math.round(a.cena)+" z\u0142/szt.)"),
+              checked?ce("input",{type:"text",inputMode:"numeric",value:qty,onChange:function(ev){var na=mg(kdAkc,{});na[a.id]=Number(ev.target.value)||1;p.onChange(mg(prod,{kdAkc:na}));},style:Object.assign({},IST,{textAlign:"center",padding:"4px 8px"})}):null
             );
           })
         )
