@@ -1648,22 +1648,34 @@ export function ScreenMail(p){
         });
       })).then(function(atts){return atts.filter(Boolean);}));
     }
-    // App PDFs (type="app") — generowane z danych klienta jako HTML
+    // App PDFs (type="app") — generowane przez /api/pdf jako prawdziwy PDF
     var appItems=attachments.filter(function(a){return a.type==="app";});
     if(appItems.length>0&&selClient){
-      promises.push(Promise.resolve(appItems.map(function(att){
+      var appPdfPromises=appItems.map(function(att){
         var html=null;
         if(att.id==="pdf_uproszczona")html=buildSimplifiedPDFHtml(selClient,0,0,null);
         else if(att.id==="pdf_oferta")html=buildOfferPDFHtml(selClient,0,0,"");
-        if(!html)return null;
-        try{
-          var b64=btoa(unescape(encodeURIComponent(html)));
-          // Wysyłamy jako .html — plik zawiera HTML, nie prawdziwy PDF
-          var htmlName=att.name.replace(/\.pdf$/i,".html");
+        if(!html)return Promise.resolve(null);
+        return fetch("/api/pdf",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({html:html})
+        }).then(function(r){
+          if(!r.ok)throw new Error("PDF API error "+r.status);
+          return r.arrayBuffer();
+        }).then(function(ab){
+          var bytes=new Uint8Array(ab);
+          var binary="";
+          for(var i=0;i<bytes.length;i++)binary+=String.fromCharCode(bytes[i]);
+          var b64=btoa(binary);
           return {"@odata.type":"#microsoft.graph.fileAttachment",
-            name:htmlName,contentType:"text/html",contentBytes:b64};
-        }catch(e){return null;}
-      }).filter(Boolean)));
+            name:att.name,contentType:"application/pdf",contentBytes:b64};
+        }).catch(function(e){
+          console.error("PDF generation failed for",att.id,e);
+          return null;
+        });
+      });
+      promises.push(Promise.all(appPdfPromises).then(function(atts){return atts.filter(Boolean);}));
     }
     // Inline signature image (CID)
     if(hasSigImg){
