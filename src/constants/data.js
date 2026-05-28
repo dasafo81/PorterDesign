@@ -1015,11 +1015,13 @@ export function calc(p){
     var powInfo="tkanina "+tkanWcm+"\xd7"+tkanHcm+"cm ("+iloscTuneli+" tuneli)";
     var rr;
     if(c.rSystem==="bez_mechanizmu"){
-      // Bez mechanizmu: tylko tkanina + szycie, szer. tkaniny = wCm+30
+      // Bez mechanizmu: szycie = w*h m2 * 200zl, tkanina = (w+30)/100 mb * fabP
       var tkanWcmMat=wCm+30;
-      var powMat=parseFloat(((tkanWcmMat/100)*(hCm/100)).toFixed(3));
-      total=parseFloat((powMat*(200+tkan)).toFixed(2));
-      lines.push("Roleta bez mech. "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 tkanina "+(tkanWcmMat)+"\xd7"+hCm+"cm \xb7 "+powMat+"m\xb2");
+      var powSzycie=parseFloat(((wCm/100)*(hCm/100)).toFixed(3));
+      var kosztSzycia=parseFloat((powSzycie*200).toFixed(2));
+      var kosztTkaniny=parseFloat(((tkanWcmMat/100)*tkan).toFixed(2));
+      total=parseFloat((kosztSzycia+kosztTkaniny).toFixed(2));
+      lines.push("Roleta bez mech. "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+powSzycie+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcmMat/100).toFixed(2)+"mb\xd7"+tkan+"z\u0142");
     }else if(rModel==="duo"){
       // Duo: dwie tkaniny, mnożone x2
       rr=lookup(wCm,RDUO);
