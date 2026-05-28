@@ -145,7 +145,10 @@ export function ProdCard(p){
   function hasProdData(pr){
     return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||
       (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len))||
-      (pr.c&&Object.keys(pr.c).length>1));
+      (pr.c&&Object.keys(pr.c).length>1)||
+      (pr.kdSzyny&&pr.kdSzyny.length>0)||
+      (pr.kdAkc&&Object.keys(pr.kdAkc).length>0)||
+      (pr.par&&pr.par.len));
   }
   var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
