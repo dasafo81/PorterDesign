@@ -10,11 +10,6 @@ import puppeteer from "puppeteer-core";
 const CHROMIUM_REMOTE_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
 
-export const config = {
-  runtime: "nodejs",
-  maxDuration: 30,
-};
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
