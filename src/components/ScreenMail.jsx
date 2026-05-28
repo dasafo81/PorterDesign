@@ -599,6 +599,9 @@ function MailPreview(p){
         mails.length>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,padding:"2px 8px",borderRadius:10,background:"var(--bg3)"}},mails.length+" wiadomo\u015bci"):null
       ),
       ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+        p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
+          ?ce("button",{onClick:function(){p.onReply&&p.onReply(head);},style:Object.assign({},BGHOST,{color:"var(--violet)",borderColor:"var(--violet)",fontWeight:600})},"\u21a9 Odpowiedz")
+          :null,
         ce("button",{onClick:p.onCalendar,style:BGHOST},"\uD83D\uDCC5 Dodaj do kalendarza"),
         p.activeFolder==="trash"||p.activeFolder==="spam"
           ?ce("button",{onClick:function(){p.onRestore&&p.onRestore(head);},style:Object.assign({},BGHOST,{color:"#059669",borderColor:"#059669"})},"↩ Przywróć do skrzynki")
@@ -1878,7 +1881,17 @@ export function ScreenMail(p){
           :ce(MailList,{mails:folderMails,folder:activeFolder,onSelect:setSelThread,selectedId:selThread&&selThread.head?selThread.head.id:null})
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
-        ce(MailPreview,{thread:selThread,accessToken:accessToken,onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMail(m);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:activeFolder})
+        ce(MailPreview,{thread:selThread,accessToken:accessToken,onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
+          onReply:function(head){
+            setToEmail(head.from||"");
+            var subj=head.subject||"";
+            setSubject(subj.startsWith("Re:")?subj:"Re: "+subj);
+            var quoted="<br><br><blockquote style=\"border-left:3px solid #ccc;padding-left:12px;color:#666;margin:0\"><div style=\"font-size:11px;color:#999;margin-bottom:6px\">W dniu "+new Date(head.date||"").toLocaleDateString("pl-PL")+" "+( head.fromName||head.from)+" napisa\u0142(a):</div>"+(head.body||head.preview||"")+"</blockquote>";
+            setBody(quoted);
+            setAttachments([]);
+            setActiveFolder("compose");
+          },
+          customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMail(m);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:activeFolder})
       )
     );
   }
