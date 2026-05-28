@@ -374,7 +374,7 @@ export function CRMKalendarz(p){
     if(!gcalToken) return;
     fetchCalendarList(gcalToken);
     fetchEvents(gcalToken);
-  },[gcalToken, refDate.getFullYear(), refDate.getMonth(), calView]);
+  },[gcalToken, refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), calView]);
 
   function fetchCalendarList(token){
     function doFetch(t){
@@ -429,6 +429,9 @@ export function CRMKalendarz(p){
       var mon=new Date(refDate);mon.setDate(refDate.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
       var sun=new Date(mon);sun.setDate(mon.getDate()+6);sun.setHours(23,59,59,999);
       from=mon;to=sun;
+    } else if(calView==="day"){
+      from=new Date(refDate);from.setHours(0,0,0,0);
+      to=new Date(refDate);to.setHours(23,59,59,999);
     } else {
       from=new Date(refDate.getFullYear(),refDate.getMonth(),1);
       to=new Date(refDate.getFullYear(),refDate.getMonth()+1,0,23,59,59,999);
@@ -632,12 +635,14 @@ export function CRMKalendarz(p){
   function prevPeriod(){
     var d=new Date(refDate);
     if(calView==="week") d.setDate(d.getDate()-7);
+    else if(calView==="day") d.setDate(d.getDate()-1);
     else d.setMonth(d.getMonth()-1);
     setRefDate(d);
   }
   function nextPeriod(){
     var d=new Date(refDate);
     if(calView==="week") d.setDate(d.getDate()+7);
+    else if(calView==="day") d.setDate(d.getDate()+1);
     else d.setMonth(d.getMonth()+1);
     setRefDate(d);
   }
@@ -676,7 +681,9 @@ export function CRMKalendarz(p){
             evs.slice(0,3).map(function(ev,ei){return ce("div",{key:ei,title:ev.title,style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",fontWeight:600},onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}}},
               (ev.time?(new Date(ev.time).getHours()+":"+String(new Date(ev.time).getMinutes()).padStart(2,"0")+" "):"")+ ev.title
             );}),
-            evs.length>3?ce("div",{style:{fontSize:9,color:"var(--t3)",marginTop:1}},"+"+( evs.length-3)+" więcej"):null
+            evs.length>3?ce("div",{onClick:function(e){e.stopPropagation();setRefDate(new Date(d));setCalView("day");},
+              style:{fontSize:9,color:"var(--t3)",marginTop:1,cursor:"pointer",fontWeight:600}},
+              "+"+( evs.length-3)+" więcej →"):null
           );
         })
       )
@@ -699,9 +706,12 @@ export function CRMKalendarz(p){
         ce("div",{style:{background:"var(--bg2)"}}),
         weekDays.map(function(d,i){
           var isToday=isSameDay(d,today);
-          return ce("div",{key:i,style:{textAlign:"center",padding:"6px 2px",background:"var(--bg2)",borderLeft:"1px solid var(--bd2)"}},
+          return ce("div",{key:i,
+            onClick:function(){setRefDate(new Date(d));setCalView("day");},
+            style:{textAlign:"center",padding:"6px 2px",background:"var(--bg2)",borderLeft:"1px solid var(--bd2)",cursor:"pointer"},
+            title:"Pokaż dzień"},
             ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em"}},DOW_PL[i]),
-            ce("div",{style:{fontSize:16,fontWeight:700,background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?28:null,height:isToday?28:null,borderRadius:isToday?14:null,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto"}},d.getDate())
+            ce("div",{style:{fontSize:16,fontWeight:700,background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?28:null,height:isToday?28:null,borderRadius:isToday?14:null,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",textDecoration:"underline dotted",textUnderlineOffset:2}},d.getDate())
           );
         }),
         // Godziny
@@ -720,11 +730,61 @@ export function CRMKalendarz(p){
     );
   }
 
+  // ── Render widoku dziennego ──
+  function renderDayView(){
+    var evs=getEventsForDay(refDate);
+    var today=new Date();
+    var isToday=isSameDay(refDate,today);
+    var hours=[];for(var h=7;h<23;h++) hours.push(h);
+    return ce("div",{style:{overflowY:"auto",maxHeight:600}},
+      evs.length===0?ce("div",{style:{padding:"40px 24px",textAlign:"center",color:"var(--t3)",fontSize:13}},
+        ce("div",{style:{fontSize:40,marginBottom:8,opacity:0.25}},"📅"),
+        "Brak wydarzeń w tym dniu"
+      ):null,
+      hours.map(function(h){
+        var hEvs=evs.filter(function(ev){return ev.time&&new Date(ev.time).getHours()===h;});
+        var allDayEvs=h===7?evs.filter(function(ev){return !ev.time;}):[];
+        var hasContent=hEvs.length>0||allDayEvs.length>0;
+        return ce("div",{key:h,style:{display:"flex",gap:0,borderTop:"1px solid "+(hasContent?"var(--bd2)":"var(--bd3)"),minHeight:hasContent?52:32}},
+          ce("div",{style:{width:52,flexShrink:0,padding:"5px 8px 0",fontSize:10,color:hasContent?"var(--t3)":"var(--bd2)",fontWeight:hasContent?700:400,textAlign:"right",userSelect:"none"}},h+":00"),
+          ce("div",{style:{flex:1,padding:"4px 8px",display:"flex",flexDirection:"column",gap:4}},
+            allDayEvs.map(function(ev,ei){
+              return ce("div",{key:"ad"+ei,
+                onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+                style:{padding:"5px 10px",borderRadius:6,background:ev.color+"22",borderLeft:"3px solid "+ev.color,
+                  color:ev.color,fontSize:12,fontWeight:700,cursor:"pointer"}},
+                "ϕ Cały dzień — ",ev.title
+              );
+            }),
+            hEvs.map(function(ev,ei){
+              var t=ev.time?new Date(ev.time):null;
+              return ce("div",{key:ei,
+                onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+                style:{padding:"7px 10px",borderRadius:8,background:ev.color+"18",borderLeft:"3px solid "+ev.color,
+                  cursor:"pointer",display:"flex",alignItems:"flex-start",gap:8}},
+                ce("div",{style:{fontSize:11,color:ev.color,fontWeight:700,flexShrink:0,minWidth:38}},
+                  t?(t.getHours()+":"+String(t.getMinutes()).padStart(2,"0")):null
+                ),
+                ce("div",{style:{fontSize:13,color:"var(--t1)",fontWeight:600,flex:1,lineHeight:1.4}},
+                  ev.title,
+                  ev.gcalRaw&&ev.gcalRaw._calName
+                    ?ce("div",{style:{fontSize:10,color:"var(--t3)",fontWeight:400,marginTop:2}},ev.gcalRaw._calName)
+                    :null
+                )
+              );
+            })
+          )
+        );
+      })
+    );
+  }
+
   // ── Nagłówek okresu ──
   var MONTHS_PL=["\u0161ycze\u0144","luty","marzec","kwiecień","maj","czerwiec","lipiec","sierpień","wrzesień","październik","listopad","grudzień"];
   var MONTHS_PL2=["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
   function periodLabel(){
     if(calView==="month") return MONTHS_PL2[refDate.getMonth()]+" "+refDate.getFullYear();
+    if(calView==="day") return refDate.toLocaleDateString("pl-PL",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
     var dow=refDate.getDay();
     var mon=new Date(refDate);mon.setDate(refDate.getDate()-(dow===0?6:dow-1));
     var sun=new Date(mon);sun.setDate(mon.getDate()+6);
@@ -780,6 +840,7 @@ export function CRMKalendarz(p){
         ce("div",{style:{display:"flex",gap:4}},
           ce("button",{onClick:function(){setCalView("month");},style:calView==="month"?BTN_ACT:BTN},"Miesi\u0105c"),
           ce("button",{onClick:function(){setCalView("week");},style:calView==="week"?BTN_ACT:BTN},"Tydzie\u0144"),
+          ce("button",{onClick:function(){setCalView("day");},style:calView==="day"?BTN_ACT:BTN},"Dzie\u0144"),
           gcalToken?ce("button",{onClick:function(){if(gcalToken)fetchCalendarList(gcalToken);openNewEventModal(null);},style:Object.assign({},BTN_ACT,{background:"#4285f4",marginLeft:4})},"＋ Wydarzenie"):null
         )
       ),
@@ -806,7 +867,7 @@ export function CRMKalendarz(p){
         !gcalToken?ce("div",{style:{padding:"32px",textAlign:"center",color:"var(--t3)",fontSize:13}},
           "Zaloguj si\u0119 przez Google, aby zobaczy\u0107 pe\u0142ny kalendarz ze zdarzeniami.\nTerminy z deal\u00f3w widoczne powy\u017cej."
         ):
-        calView==="month"?renderMonthView():renderWeekView()
+        calView==="day"?renderDayView():calView==="month"?renderMonthView():renderWeekView()
       )
     )
 
