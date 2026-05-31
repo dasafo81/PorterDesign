@@ -1481,7 +1481,7 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
   var totalWithMontaz=montazVal>0?roundTo10(total+montazVal):total;
   if(offerNotes) html=html.replace('<div class="notes">Niniejszy dokument nie jest fakturą','<div class="notes">'+offerNotes+'<br><br>Niniejszy dokument nie jest fakturą');
   if(montazVal>0){
-    html=html.replace('<div class="sum-box">','<div style="margin:4mm 0;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#8B5E3C;">Monta\u017c dekoracji okiennych ('+Math.round(montaz*100)+'%):</span><span style="font-size:13px;font-weight:700;color:#8B5E3C;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div><div class="sum-box">');
+    html=html.replace('<div class="sum-box">','<div style="margin:4mm 0;padding:10px 14px;background:#eeece9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Monta\u017c dekoracji okiennych ('+Math.round(montaz*100)+'%):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div><div class="sum-box">');
     html=html.replace('<span class="amount">'+total.toFixed(2).replace(".",",")+' PLN</span>','<span class="amount">'+totalWithMontaz.toFixed(2).replace(".",",")+' PLN</span>');
   }
   return html;
