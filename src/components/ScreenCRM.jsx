@@ -259,7 +259,7 @@ export function ModalDeal(p){
             },"📅"):null
           ),
           ce("div",null,
-            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"POZYSKAŃ PRZEZ"),
+            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SKĄD KLIENT"),
             ce("select",{value:acquisition,onChange:function(ev){setAcquisition(ev.target.value);},style:INP},
               ACQUISITION_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
             )
@@ -301,7 +301,7 @@ export function ModalDeal(p){
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SZWALNIA"),
             ce("select",{value:sewingHouse,onChange:function(ev){setSewingHouse(ev.target.value);},style:INP},
-              ce("option",{value:""},"— wybierz szwalnié —"),
+              ce("option",{value:""},"— wybierz szwalnię —"),
               SEWING_HOUSES_OPT.map(function(o,i){return ce("option",{key:i,value:o},o);}),
               ce("option",{value:"__custom__"},"— inna (wpisz) —")
             )
@@ -311,7 +311,7 @@ export function ModalDeal(p){
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA WYSŁANIA ZLECENIA"),
             ce("input",{type:"date",value:sewingSentDate,onChange:function(ev){setSewingSentDate(ev.target.value);},style:INP})
           ),
-          ce(CheckRow,{checked:sewingConfirmed,onChange:setSewingConfirmed,label:"Zlecenie szycia potwierdzone przez szwalnié",sublabel:sewingHouse&&sewingHouse!=="__custom__"?sewingHouse:null})
+          ce(CheckRow,{checked:sewingConfirmed,onChange:setSewingConfirmed,label:"Zlecenie szycia potwierdzone przez szwalnię",sublabel:sewingHouse&&sewingHouse!=="__custom__"?sewingHouse:null})
         ),
 
         ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent},
