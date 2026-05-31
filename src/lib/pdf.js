@@ -197,11 +197,10 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
 
   var variantSuffix=variantLabel?" \u2014 Wariant "+variantLabel:"";
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Aranżacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
-    +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
-    +"<div class=\"header\" style=\"padding-top:2mm;\">"
-    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
+    +"<div style=\"margin-bottom:6mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:100%;height:auto;display:block;\" alt=\"\"/></div>"
+    +"<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm;padding-bottom:5mm;border-bottom:0.5px solid #c8c8c4;\">"
+    +"<div style=\"font-size:12px;font-weight:700;color:#8B5E3C;\">"+client.name+"</div>"
     +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
-    +"<div style=\"font-size:10px;color:#8B5E3C;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections2
     +(montaz>0?"<div style=\"margin-top:6mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#8B5E3C;\">Monta\u017c dekoracji okiennych ("+Math.round(montaz*100)+"%):</span><span style=\"font-size:14px;font-weight:700;color:#8B5E3C;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
