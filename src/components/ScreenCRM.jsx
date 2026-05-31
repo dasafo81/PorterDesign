@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { sbApi } from '../lib/supabase.js';
+import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10 } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 const ce = React.createElement;
@@ -63,23 +63,41 @@ export function gcalLink(title,date,desc){
 
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
 export function ModalDeal(p){
-  // p: deal, client, gcalToken, setGcalToken, gsiReady, calList, onSave(data), onDelete, onClose, onGoToClient
   var d=p.deal;
   var gcalToken=p.gcalToken||null;
   var setGcalToken=p.setGcalToken||function(){};
   var gsiReady=!!p.gsiReady;
   var calList=p.calList||[];
-  
+  var cl=p.client;
+
   var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
   var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
+  var svd=useState(!!d.visit_done),visitDone=svd[0],setVisitDone=svd[1];
   var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
-  var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
+  var sid=useState(!!d.install_done),installDone=sid[0],setInstallDone=sid[1];
+  var sinst=useState(d.installer_name||""),installerName=sinst[0],setInstallerName=sinst[1];
   var sinstcal=useState(d.installer_calendar_id||""),installerCalId=sinstcal[0],setInstallerCalId=sinstcal[1];
+  var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
+  var ssh=useState(d.sewing_house||""),sewingHouse=ssh[0],setSewingHouse=ssh[1];
+  var ssd=useState(d.sewing_sent_date?d.sewing_sent_date.slice(0,10):""),sewingSentDate=ssd[0],setSewingSentDate=ssd[1];
+  var ssc=useState(!!d.sewing_confirmed),sewingConfirmed=ssc[0],setSewingConfirmed=ssc[1];
+  var srev=useState(!!d.review_sent),reviewSent=srev[0],setReviewSent=srev[1];
+  var sinv=useState(!!d.invoice_sent),invoiceSent=sinv[0],setInvoiceSent=sinv[1];
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
-  var sqv=useState(false),showQuote=sqv[0],setShowQuote=sqv[1];
-  var cl=p.client;
+
+  var SEWING_HOUSES_OPT=[
+    "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
+    "LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock",
+    "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów",
+    "Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"
+  ];
+  var INSTALLER_OPTIONS=["","Paweł Kowalski","Jan Nowak","Marek Wiśniewski","Andrzej Kamiński"];
+  var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant"];
+
+  var clientName=cl?cl.name:"(brak klienta)";
+  var clientTotal=cl&&cl.rooms?(cl.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c2,pr){var pfc=(pr.type==="zaslona"||pr.type==="firana")?mg(pr,{panels:getPanelsForProd(pr)}):pr;return c2+(pr.mp!=null?pr.mp:calc(pfc).total||0);},0);},0);},0):0;
 
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
@@ -87,18 +105,27 @@ export function ModalDeal(p){
 
   function save(){
     setBusy(true);
-    sbApi.updateDeal(d.id,{
+    var patch={
       notes:notes,
       visit_date:visitDate||null,
+      visit_done:visitDone,
       delivery_date:delivDate||null,
+      install_done:installDone,
+      installer_name:installerName||null,
       installer_calendar_id:installerCalId||null,
       acquisition:acquisition||null,
+      sewing_house:sewingHouse||null,
+      sewing_sent_date:sewingSentDate||null,
+      sewing_confirmed:sewingConfirmed,
+      review_sent:reviewSent,
+      invoice_sent:invoiceSent,
       updated_at:new Date().toISOString()
-    }).then(function(){
-      p.onSave({notes:notes,visit_date:visitDate||null,delivery_date:delivDate||null,installer_calendar_id:installerCalId||null,acquisition:acquisition||null});
+    };
+    sbApi.updateDeal(d.id,patch).then(function(){
+      p.onSave(patch);
       setBusy(false);
       p.onClose();
-    }).catch(function(e){alert("B\u0142\u0105d: "+e.message);setBusy(false);});
+    }).catch(function(e){alert("Błąd: "+e.message);setBusy(false);});
   }
 
   function deleteAttach(id){
@@ -123,233 +150,205 @@ export function ModalDeal(p){
       var att=res&&res[0]?res[0]:{id:Date.now(),url:"",name:file.name};
       setAttachments(function(a){return a.concat([att]);});
       setUploading(false);
-    }).catch(function(e){alert("B\u0142\u0105d uploadu: "+e.message);setUploading(false);});
+    }).catch(function(e){alert("Błąd uploadu: "+e.message);setUploading(false);});
   }
 
-  // ── Dodaj wydarzenie do Google Calendar przez API ──
   function addToGcal(title,dateStr){
     if(!dateStr){alert("Nie wybrano daty.");return;}
-    if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
-    
-    // Jeśli to montaż i wybrano kalendarz montażysty -> dodaj do tego kalendarza
-    var targetCalId = "primary";
-    var descParts=["Klient: "+(cl?cl.name:"(brak klienta)")];
-    if(cl&&cl.address)descParts.push("Adres: "+cl.address);
-    if(cl&&cl.phone)descParts.push("Tel: "+cl.phone);
-    
-    if(title.indexOf("Monta\u017c")!==-1 && installerCalId){
-      targetCalId = installerCalId;
-      var installerCal = calList.find(function(c){return c.id===installerCalId;});
-      if(installerCal) descParts.push("Monta\u017cysta: "+installerCal.summary);
-    }
-    
-    var date=new Date(dateStr);
-    var body={
-      summary:title,
-      description:descParts.join(" | "),
-      location:cl&&cl.address?cl.address:undefined,
-      start:{dateTime:date.toISOString(),timeZone:"Europe/Warsaw"},
-      end:{dateTime:new Date(date.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
-    };
-    
-    function doPost(t){
-      return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(targetCalId)+"/events",{
-        method:"POST",
-        headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},
-        body:JSON.stringify(body)
-      });
-    }
-    doPost(gcalToken)
-      .then(function(r){
-        if(r.status===401){
-          return gcalGetToken().then(function(fresh){
-            setGcalToken(fresh);
-            return doPost(fresh);
-          });
-        }
-        return r;
-      })
-      .then(function(r){
-        if(!r.ok)throw new Error("HTTP "+r.status);
-        return r.json();
-      })
-      .then(function(){
-        alert("\u2705 Dodano wydarzenie do kalendarza Google.");
-      })
-      .catch(function(e){
-        alert("\u26A0\uFE0F B\u0142\u0105d: "+e.message);
-      });
+    if(!gcalToken){alert("Zaloguj się najpierw do Google Calendar.");return;}
+    if(!calList.length){alert("Brak dostępnych kalendarzy.");return;}
+    var calId=installerCalId||(calList.find(function(c){return c.primary;})||calList[0]).id;
+    var startDt=new Date(dateStr);
+    var endDt=new Date(startDt.getTime()+60*60*1000);
+    function pad(n){return String(n).padStart(2,"0");}
+    function fmtLocal(dt){return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate())+"T"+pad(dt.getHours())+":"+pad(dt.getMinutes())+":00";}
+    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
+    var event={summary:title+(cl?" — "+cl.name:""),description:notes||"",start:{dateTime:fmtLocal(startDt),timeZone:tz},end:{dateTime:fmtLocal(endDt),timeZone:tz}};
+    fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events",{
+      method:"POST",headers:{"Authorization":"Bearer "+gcalToken,"Content-Type":"application/json"},body:JSON.stringify(event)
+    }).then(function(r){
+      if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);alert("Token odświeżony — spróbuj ponownie.");});}
+      if(!r.ok)return r.text().then(function(t){throw new Error(t);});
+      return r.json();
+    }).then(function(ev){
+      if(ev&&ev.id)alert("Dodano do kalendarza: "+calId);
+    }).catch(function(e){alert("Błąd GCal: "+e.message);});
   }
 
-  var IST={width:"100%",padding:"9px 11px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",fontSize:13,color:"var(--t1)",fontFamily:"inherit",boxSizing:"border-box"};
-  var LBL={fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6,display:"block"};
-  var SEC={marginBottom:20};
+  var INP={padding:"10px 12px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:9,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box",outline:"none"};
 
-  var clientName=cl?cl.name:"(brak klienta)";
-  var total=cl?clientTotal2(cl):0;
-
-  function CalBtn(props){
-    // props: title, date
-    if(!props.date)return null;
-    if(!gcalToken)return null; // pokaż przycisk tylko gdy zalogowany
-    return ce("button",{
-      onClick:function(){addToGcal(props.title,props.date);},
-      style:{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#4285f4",background:"none",textDecoration:"none",border:"1px solid #4285f4",borderRadius:6,padding:"2px 7px",marginLeft:8,verticalAlign:"middle",flexShrink:0,cursor:"pointer"}
-    },"\uD83D\uDCC5 Dodaj do GCal");
-  }
-
-  // ── Wycena uproszczona inline ──
-  function QuoteSection(){
-    if(!cl||!(cl.rooms&&cl.rooms.length))return ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"10px 0"}},"Brak wyceny");
-    var rows=[];
-    var grand=0;
-    (cl.rooms||[]).forEach(function(r){
-      var roomTot=0;
-      (r.windows||[]).forEach(function(w){
-        var winTot=(w.products||[]).reduce(function(a,pr){return a+(pr.mp!=null?pr.mp:0);},0);
-        roomTot+=winTot;
-      });
-      if(!roomTot)return;
-      grand+=roomTot;
-      rows.push({room:r.name||"Pom\u00f3j",windows:r.windows,roomTot:roomTot});
-    });
-    if(!rows.length)return ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"10px 0"}},"Brak wyceny");
-    return ce("div",null,
-      rows.map(function(row,ri){
-        return ce("div",{key:ri,style:{marginBottom:12}},
-          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4}},row.room),
-          (row.windows||[]).filter(function(w){
-            return (w.products||[]).some(function(pr){return pr.mp!=null&&pr.mp>0;});
-          }).map(function(w,wi){
-            var winTot=(w.products||[]).reduce(function(a,pr){return a+(pr.mp!=null?pr.mp:0);},0);
-            return ce("div",{key:wi,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 10px",background:"var(--bg)",borderRadius:7,marginBottom:3}},
-              ce("span",{style:{fontSize:12,color:"var(--t1)"}},(w.name||"Okno "+(wi+1))),
-              ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t1)"}},Math.round(winTot/10)*10+" z\u0142")
-            );
-          })
-        );
-      }),
-      ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 10px",borderTop:"2px solid var(--bd2)",marginTop:6}},
-        ce("span",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"RAZEM"),
-        ce("span",{style:{fontSize:16,fontWeight:800,color:"var(--t1)"}},Math.round(grand/10)*10+" z\u0142")
+  function CheckRow(rp){
+    return ce("div",{
+      onClick:function(){rp.onChange(!rp.checked);},
+      style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 12px",borderRadius:9,
+        background:rp.checked?"rgba(124,58,237,0.08)":"transparent",
+        border:"1px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
+        transition:"all .15s",userSelect:"none"}
+    },
+      ce("div",{style:{
+        width:20,height:20,borderRadius:5,flexShrink:0,
+        background:rp.checked?"var(--t1)":"transparent",
+        border:"1.5px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
+        display:"flex",alignItems:"center",justifyContent:"center",
+        transition:"all .15s"
+      }},rp.checked?ce("span",{style:{color:"#fff",fontSize:13,lineHeight:1}},"✓"):null),
+      ce("div",null,
+        ce("div",{style:{fontSize:13,fontWeight:rp.checked?600:400,color:"var(--t1)"}},(rp.checked?"✅ ":"")+rp.label),
+        rp.sublabel?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},rp.sublabel):null
       )
     );
   }
 
-  var INSTALLER_OPTIONS=["","Pawe\u0142 Kowalski","Jan Nowak","Marek Wi\u015bniewski","Andrzej Kami\u0144ski"];
-  var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowro\u0144","Projektant"];
-
-  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:"0"}},
-    ce("div",{style:{background:"var(--bg2)",width:"100%",maxWidth:540,borderRadius:"20px 20px 0 0",maxHeight:"92vh",overflowY:"auto",padding:"24px 20px 32px"}},
-
-      // ── Header ──
-      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}},
-        ce("div",null,
-          ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},"Karta Deala"),
-          ce("div",{style:{fontSize:13,color:"var(--t3)",marginTop:2}},clientName)
-        ),
-        ce("button",{onClick:p.onClose,style:{border:"none",background:"none",fontSize:22,cursor:"pointer",color:"var(--t3)",padding:"4px 6px"}},"\u00D7")
+  function SectionCard(rp){
+    return ce("div",{style:{
+      border:"1.5px solid "+(rp.done?"var(--t1)":"var(--bd2)"),
+      borderRadius:14,overflow:"hidden",marginBottom:12,
+      background:rp.done?"rgba(124,58,237,0.04)":"var(--bg2,#f8f8f6)",
+      transition:"all .2s"
+    }},
+      ce("div",{style:{
+        display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
+        borderBottom:"1px solid "+(rp.done?"rgba(124,58,237,0.2)":"var(--bd2)"),
+        background:rp.done?"rgba(124,58,237,0.07)":"transparent"
+      }},
+        ce("span",{style:{fontSize:16}},rp.icon),
+        ce("span",{style:{fontSize:12,fontWeight:700,letterSpacing:"0.08em",color:rp.done?"var(--t1)":"var(--t2)",textTransform:"uppercase"}},(rp.done?"✓ ":"")+rp.title),
+        rp.done?ce("span",{style:{marginLeft:"auto",fontSize:10,background:"var(--t1)",color:"#fff",borderRadius:20,padding:"2px 8px",fontWeight:600}},"ZROBIONE"):null
       ),
+      ce("div",{style:{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}},
+        rp.children
+      )
+    );
+  }
 
-      // ── Dane klienta ──
-      cl?ce("div",{style:{...SEC,background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"12px 14px"}},
-        ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:8}},"DANE KLIENTA"),
-        cl.phone?ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
-          ce("span",{style:{fontSize:12,color:"var(--t3)",width:56}},"Telefon"),
-          ce("a",{href:"tel:"+cl.phone,style:{fontSize:13,color:"var(--t1)",textDecoration:"none",fontWeight:500}},cl.phone)
-        ):null,
-        cl.email?ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
-          ce("span",{style:{fontSize:12,color:"var(--t3)",width:56}},"E-mail"),
-          ce("a",{href:"mailto:"+cl.email,style:{fontSize:13,color:"var(--t1)",textDecoration:"none",fontWeight:500}},cl.email)
-        ):null,
-        cl.addr?ce("div",{style:{display:"flex",alignItems:"flex-start",gap:8}},
-          ce("span",{style:{fontSize:12,color:"var(--t3)",width:56,paddingTop:1}},"Adres"),
-          ce("span",{style:{fontSize:13,color:"var(--t1)"}},cl.addr)
-        ):null,
-        ce("button",{onClick:p.onGoToClient,style:{marginTop:10,width:"100%",border:"1.5px solid var(--bd2)",background:"transparent",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:600,cursor:"pointer",color:"var(--t1)"}},"\u2192 Przej\u015b\u0107 do wyceny")
-      ):null,
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"}},
+    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:660,borderRadius:18,maxHeight:"94vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}},
 
-      // ── Sposób pozyskania ──
-      ce("div",{style:SEC},
-        ce("label",{style:LBL},"SPOS\u00d3B POZYSKANIA"),
-        ce("select",{value:acquisition,onChange:function(e){setAcquisition(e.target.value);},style:{...IST,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}},
-          ACQUISITION_OPTIONS.map(function(o){
-            return ce("option",{key:o,value:o},o||"— wybierz \u017ar\u00f3d\u0142o —");
-          })
+      ce("div",{style:{
+        background:"linear-gradient(135deg,var(--t1) 0%,#0d9488 100%)",
+        padding:"20px 22px 18px",borderRadius:"18px 18px 0 0",position:"relative"
+      }},
+        ce("button",{onClick:p.onClose,style:{position:"absolute",top:14,right:16,border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,width:30,height:30,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}},"×"),
+        ce("div",{style:{fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",color:"rgba(255,255,255,0.7)",marginBottom:4}},"KARTA DEALA"),
+        ce("div",{style:{fontSize:22,fontWeight:700,color:"#fff",marginBottom:2}},clientName),
+        ce("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:6,flexWrap:"wrap"}},
+          ce("span",{style:{background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"3px 12px",fontSize:12,color:"#fff",fontWeight:600}},
+            (CRM_STAGES.find(function(s){return s.id===d.stage;})||{label:d.stage}).label
+          ),
+          clientTotal>0?ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.9)",fontWeight:700}},
+            clientTotal.toLocaleString("pl-PL")+" zł"
+          ):null,
+          ce("button",{onClick:p.onGoToClient,style:{marginLeft:"auto",background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600}},
+            "→ Karta klienta"
+          )
         )
       ),
 
-      // ── Terminarz ──
-      ce("div",{style:{...SEC,background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"14px 14px 10px"}},
-        ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:12}},"TERMINARZ"),
+      ce("div",{style:{padding:"18px 20px 24px"}},
+
+        ce(SectionCard,{icon:"📅",title:"Spotkanie",done:visitDone},
+          ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
+            ce("div",{style:{flex:1}},
+              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA I GODZINA"),
+              ce("input",{type:"datetime-local",value:visitDate,onChange:function(ev){setVisitDate(ev.target.value);},style:INP})
+            ),
+            visitDate&&gcalToken?ce("button",{
+              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate);},
+              title:"Dodaj do Google Calendar",
+              style:{padding:"10px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:16,flexShrink:0}
+            },"📅"):null
+          ),
+          ce("div",null,
+            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"POZYSKAŃ PRZEZ"),
+            ce("select",{value:acquisition,onChange:function(ev){setAcquisition(ev.target.value);},style:INP},
+              ACQUISITION_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
+            )
+          ),
+          ce(CheckRow,{checked:visitDone,onChange:setVisitDone,label:"Spotkanie odbyło się",sublabel:visitDate?("Zaplanowane: "+fmtDate(visitDate)):null})
+        ),
+
+        ce(SectionCard,{icon:"🔧",title:"Montaż",done:installDone},
+          ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
+            ce("div",{style:{flex:1}},
+              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA I GODZINA"),
+              ce("input",{type:"datetime-local",value:delivDate,onChange:function(ev){setDelivDate(ev.target.value);},style:INP})
+            ),
+            delivDate&&gcalToken?ce("button",{
+              onClick:function(){addToGcal("Montaż",delivDate);},
+              title:"Dodaj montaż do Google Calendar",
+              style:{padding:"10px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:16,flexShrink:0}
+            },"📅"):null
+          ),
+          ce("div",{style:{display:"flex",gap:8}},
+            ce("div",{style:{flex:1}},
+              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"MONTAŻYSTA"),
+              ce("select",{value:installerName,onChange:function(ev){setInstallerName(ev.target.value);},style:INP},
+                INSTALLER_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
+              )
+            ),
+            calList.length>0?ce("div",{style:{flex:1}},
+              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"KALENDARZ"),
+              ce("select",{value:installerCalId,onChange:function(ev){setInstallerCalId(ev.target.value);},style:INP},
+                ce("option",{value:""},"— główny —"),
+                calList.map(function(c){return ce("option",{key:c.id,value:c.id},c.summary);})
+              )
+            ):null
+          ),
+          ce(CheckRow,{checked:installDone,onChange:setInstallDone,label:"Montaż zrealizowany",sublabel:delivDate?("Zaplanowany: "+fmtDate(delivDate)+(installerName?" — "+installerName:"")):null})
+        ),
+
+        ce(SectionCard,{icon:"✂️",title:"Zamówienie szycia",done:sewingConfirmed},
+          ce("div",null,
+            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SZWALNIA"),
+            ce("select",{value:sewingHouse,onChange:function(ev){setSewingHouse(ev.target.value);},style:INP},
+              ce("option",{value:""},"— wybierz szwalnié —"),
+              SEWING_HOUSES_OPT.map(function(o,i){return ce("option",{key:i,value:o},o);}),
+              ce("option",{value:"__custom__"},"— inna (wpisz) —")
+            )
+          ),
+          sewingHouse==="__custom__"?ce("input",{type:"text",placeholder:"Nazwa szwalni...",onChange:function(ev){setSewingHouse(ev.target.value);},style:INP}):null,
+          ce("div",null,
+            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA WYSŁANIA ZLECENIA"),
+            ce("input",{type:"date",value:sewingSentDate,onChange:function(ev){setSewingSentDate(ev.target.value);},style:INP})
+          ),
+          ce(CheckRow,{checked:sewingConfirmed,onChange:setSewingConfirmed,label:"Zlecenie szycia potwierdzone przez szwalnié",sublabel:sewingHouse&&sewingHouse!=="__custom__"?sewingHouse:null})
+        ),
+
+        ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent},
+          ce(CheckRow,{checked:reviewSent,onChange:setReviewSent,label:"Wysłano prośbę o opinię",sublabel:"Google / Facebook / referencja"}),
+          ce(CheckRow,{checked:invoiceSent,onChange:setInvoiceSent,label:"Wysłano fakturę (FV)",sublabel:"Dokument księgowy do klienta"})
+        ),
+
         ce("div",{style:{marginBottom:12}},
-          ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}},
-            ce("label",{style:{...LBL,marginBottom:0}},"Spotkanie / Pomiar"),
-            ce(CalBtn,{title:"Spotkanie \u2014 "+clientName,date:visitDate})
-          ),
-          ce("input",{type:"datetime-local",value:visitDate,onChange:function(e){setVisitDate(e.target.value);},style:IST})
+          ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"NOTATKI"),
+          ce("textarea",{value:notes,onChange:function(ev){setNotes(ev.target.value);},rows:3,placeholder:"Uwagi, szczegóły rozmowy...",style:Object.assign({},INP,{resize:"vertical",lineHeight:1.6})})
         ),
-        ce("div",null,
-          ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5}},
-            ce("label",{style:{...LBL,marginBottom:0}},"Monta\u017c"),
-            ce(CalBtn,{title:"Monta\u017c \u2014 "+clientName,date:delivDate})
-          ),
-          ce("input",{type:"datetime-local",value:delivDate,onChange:function(e){setDelivDate(e.target.value);},style:IST}),
-          gcalToken&&calList.length>0?ce("select",{value:installerCalId,onChange:function(e){setInstallerCalId(e.target.value);},style:{...IST,marginTop:6,appearance:"none",WebkitAppearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}},
-            ce("option",{value:""},"\u2014 wybierz kalendarz monta\u017cysty \u2014"),
-            calList.filter(function(c){return !c.primary;}).map(function(c){
-              return ce("option",{key:c.id,value:c.id},c.summary);
-            })
-          ):null
-        )
-      ),
 
-      // ── Wycena ──
-      total>0?ce("div",{style:SEC},
-        ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
-          ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase"}},"WYCENA"),
-          ce("button",{onClick:function(){setShowQuote(function(v){return !v;});},
-            style:{fontSize:11,color:"var(--t3)",background:"none",border:"1px solid var(--bd2)",borderRadius:6,padding:"2px 9px",cursor:"pointer"}
-          },showQuote?"zwiń \u25b2":"rozwiń \u25bc")
-        ),
-        ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:11,padding:"12px 14px"}},
-          ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showQuote?12:0}},
-            ce("span",{style:{fontSize:13,color:"var(--t3)"}},"Warto\u015b\u0107 zamówienia"),
-            ce("span",{style:{fontSize:20,fontWeight:800,color:"var(--t1)"}},Math.round(total/10)*10+" z\u0142")
-          ),
-          showQuote?ce(QuoteSection,null):null
-        )
-      ):null,
-
-      // ── Notatki ──
-      ce("div",{style:SEC},
-        ce("label",{style:LBL},"NOTATKI"),
-        ce("textarea",{value:notes,onChange:function(e){setNotes(e.target.value);},rows:4,placeholder:"Historia kontaktu, uwagi...",style:{...IST,resize:"vertical",lineHeight:1.5}})
-      ),
-
-      // ── Załączniki ──
-      ce("div",{style:{marginBottom:20}},
-        ce("label",{style:LBL},"ZA\u0141\u0104CZNIKI"),
-        attachments.length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:8}},
+        ce("div",{style:{marginBottom:16}},
+          ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",marginBottom:8}},"ZAŁĄCZNIKI"),
           attachments.map(function(a){
-            var isImg=/\.(jpg|jpeg|png|gif|webp)$/i.test(a.name||a.url);
-            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:8,padding:"6px 10px",border:"1px solid var(--bd2)"}},
-              isImg?ce("img",{src:a.url,alt:a.name,style:{width:36,height:36,borderRadius:6,objectFit:"cover",flexShrink:0}}):ce("span",{style:{fontSize:18}},"\uD83D\uDCCE"),
-              ce("a",{href:a.url,target:"_blank",rel:"noopener noreferrer",style:{flex:1,fontSize:12,color:"var(--t1)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.name||"Plik"),
-              ce("button",{onClick:function(){deleteAttach(a.id);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:16,padding:"0 2px",opacity:0.5}},"\u00D7")
+            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
+              ce("a",{href:a.url,target:"_blank",rel:"noopener noreferrer",style:{flex:1,fontSize:12,color:"var(--t1)",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.name||a.url),
+              ce("button",{onClick:function(){deleteAttach(a.id);},style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px"}},"×")
             );
-          })
-        ):null,
-        ce("label",{style:{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",border:"1.5px dashed var(--bd2)",borderRadius:9,cursor:"pointer",fontSize:13,color:"var(--t3)"}},
-          uploading?"\u23F3 Wysyłanie...":"\uFF0B Dodaj zdjęcie / plik",
-          ce("input",{type:"file",accept:"image/*,.pdf",style:{display:"none"},onChange:function(e){var f=e.target.files&&e.target.files[0];if(f)uploadFile(f);e.target.value="";},disabled:uploading})
-        )
-      ),
+          }),
+          ce("label",{style:{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:8,border:"1px dashed var(--bd2)",cursor:"pointer",fontSize:12,color:"var(--t2)"}},
+            ce("input",{type:"file",style:{display:"none"},onChange:function(ev){var f=ev.target.files&&ev.target.files[0];if(f)uploadFile(f);ev.target.value="";}}),
+            uploading?"⏳ Wgrywam...":"⬆ Dodaj plik PDF / zdjęcie"
+          )
+        ),
 
-      // ── Przyciski ──
-      ce("div",{style:{display:"flex",gap:10}},
-        ce("button",{onClick:save,disabled:busy,style:{flex:1,padding:"13px",borderRadius:11,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:700,cursor:busy?"wait":"pointer"}},busy?"Zapisuję...":"Zapisz"),
-        ce("button",{onClick:function(){if(window.confirm("Usun\u0105\u0107 ten deal?"))p.onDelete();},style:{padding:"13px 16px",borderRadius:11,border:"1px solid var(--bd2)",background:"none",color:"var(--t3)",fontSize:13,cursor:"pointer"}},"Usu\u0144")
+        ce("div",{style:{display:"flex",gap:8}},
+          ce("button",{
+            onClick:save,disabled:busy,
+            style:{flex:1,padding:"13px",borderRadius:11,border:"none",background:"var(--t1)",color:"#fff",fontSize:14,fontWeight:700,cursor:busy?"not-allowed":"pointer",opacity:busy?0.6:1}
+          },busy?"⏳ Zapisuję...":"Zapisz zmiany"),
+          ce("button",{
+            onClick:function(){if(confirm("Usunąć tego deala?"))p.onDelete();},
+            style:{padding:"13px 16px",borderRadius:11,border:"1px solid #fca5a5",background:"transparent",color:"#ef4444",fontSize:13,cursor:"pointer",fontWeight:600}
+          },"🗑")
+        )
+
       )
     )
   );
