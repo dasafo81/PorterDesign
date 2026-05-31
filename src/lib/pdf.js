@@ -182,8 +182,8 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
     selectedWins.forEach(function(w){
       var wr=buildWinRows([w]);if(!wr.total)return;
       var isVariantWin=!!w.variantGroup;
-      var headerColor=isVariantWin?"#3367d6":"#8B5E3C";
-      var totalRowBg=isVariantWin?"#dce8f7":"#f5ede0";
+      var headerColor=isVariantWin?"#1a1a18":"#1a1a18";
+      var totalRowBg=isVariantWin?"#eeece9":"#eeece9";
       var winLabel=isVariantWin?(w.variantBaseName||w.name):w.name;
       var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
       roomSection2+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+totalRow2+"</tbody></table>";
@@ -191,7 +191,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
     });
     if(!roomTotal2)return;
     grandTotal2+=roomTotal2;
-    roomSections2+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#8B5E3C;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#fdf6ef;border-left:3px solid #8B5E3C;margin-bottom:3mm;\">"+room.name+"</div>"+roomSection2+"</div>";
+    roomSections2+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#1a1a18;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#f4f4f2;border-left:3px solid #1a1a18;margin-bottom:3mm;\">"+room.name+"</div>"+roomSection2+"</div>";
   });
   if(!grandTotal2)return null;
 
@@ -199,13 +199,13 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Aranżacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
     +"<div style=\"margin-bottom:6mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:100%;height:auto;display:block;\" alt=\"\"/></div>"
     +"<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm;padding-bottom:5mm;border-bottom:0.5px solid #c8c8c4;\">"
-    +"<div style=\"font-size:12px;font-weight:700;color:#8B5E3C;\">"+client.name+"</div>"
+    +"<div style=\"font-size:12px;font-weight:700;color:#1a1a18;\">"+client.name+"</div>"
     +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections2
-    +(montaz>0?"<div style=\"margin-top:6mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#8B5E3C;\">Monta\u017c dekoracji okiennych ("+Math.round(montaz*100)+"%):</span><span style=\"font-size:14px;font-weight:700;color:#8B5E3C;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
-    +(montaz>0?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#ede8e0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#5a4a3a;\">\u0141\u0105cznie bez monta\u017cu</span><span style=\"font-size:14px;font-weight:700;color:#5a4a3a;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>":"")
-    +"<div style=\"margin-top:"+(montaz>0?"0":"6mm")+";padding:12px 16px;background:#8B5E3C;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+    +(montaz>0?"<div style=\"margin-top:6mm;padding:10px 14px;background:#eeece9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#1a1a18;\">Monta\u017c dekoracji okiennych ("+Math.round(montaz*100)+"%):</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
+    +(montaz>0?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#e4e2de;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#7a7068;\">\u0141\u0105cznie bez monta\u017cu</span><span style=\"font-size:14px;font-weight:700;color:#7a7068;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>":"")
+    +"<div style=\"margin-top:"+(montaz>0?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
     +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(montaz>0?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
     +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(montaz>0?roundTo10(grandTotal2*(1+montaz)):roundTo10(grandTotal2))+" z\u0142</span></div>"
     +"<div class=\"sign-block\">"
