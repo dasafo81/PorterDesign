@@ -1667,8 +1667,8 @@ export function ScreenMail(p){
           reader.onloadend=function(){
             var b64=String(reader.result).split(",")[1]||"";
             resolve({"@odata.type":"#microsoft.graph.fileAttachment",
-              name:att.name.replace(/\.pdf$/i,".html"),
-              contentType:"text/html",
+              name:att.name,
+              contentType:"application/pdf",
               contentBytes:b64});
           };
           reader.onerror=function(){resolve(null);};
