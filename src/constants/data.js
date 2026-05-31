@@ -1454,9 +1454,8 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
   ]);
 
   var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${offerNo}</title>${pdfStyles()}</head><body>
-  <div style="text-align:center;margin-bottom:8mm;line-height:0;"><img src="${BANNER_PDF_G}" style="width:100%;height:auto;display:block;" alt=""/></div>
-  <div class="header" style="padding-top:2mm;">
-    <div><img src="${LOGO_PDF_G}" style="height:54px;width:auto;" alt="Porter Design"/></div>
+  <div style="margin-bottom:6mm;line-height:0;"><img src="${BANNER_PDF_G}" style="width:100%;height:auto;display:block;" alt=""/></div>
+  <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:6mm;padding-bottom:5mm;border-bottom:0.5px solid #c8c8c4;">
     <div style="text-align:right"><div style="font-size:18px;font-weight:700">Oferta nr ${offerNo}</div>
       <div style="font-size:9px;color:#6b6b66;margin-top:4px">Data wystawienia: ${dateStr} &nbsp;|&nbsp; Ważne do: ${validStr}</div>
     </div>
