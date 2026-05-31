@@ -93,7 +93,7 @@ export function ModalDeal(p){
     "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów",
     "Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"
   ];
-  var INSTALLER_OPTIONS=["","Paweł Kowalski","Jan Nowak","Marek Wiśniewski","Andrzej Kamiński"];
+  var INSTALLER_OPTIONS=["","Darek","Rafał","Grzesiek","Damian"];
   var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant"];
 
   var clientName=cl?cl.name:"(brak klienta)";
