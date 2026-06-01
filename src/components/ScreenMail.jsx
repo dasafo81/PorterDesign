@@ -522,6 +522,27 @@ function MailPreview(p){
     })
     .catch(function(){alert("B\u0142\u0105d pobierania za\u0142\u0105cznika.");});
   }
+
+  // Pobiera obraz-załącznik jako base64 data URL do podglądu inline (cache na window)
+  function previewAttachment(mid,attId,contentType){
+    var cacheKey=mid+"__"+attId;
+    if(!window._porterAttImgCache)window._porterAttImgCache={};
+    if(window._porterAttImgCache[cacheKey])return; // już w cache — React re-render nastąpi przy setState
+    window._porterAttImgCache[cacheKey]="loading"; // blokada ponownego wywołania
+    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
+      headers:{"Authorization":"Bearer "+p.accessToken}
+    })
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(data){
+      if(!data||!data.contentBytes){window._porterAttImgCache[cacheKey]=null;return;}
+      var mime=contentType||"image/jpeg";
+      window._porterAttImgCache[cacheKey]="data:"+mime+";base64,"+data.contentBytes;
+      // wymuś re-render przez dummy setState
+      setFetchedAtts(function(prev){return Object.assign({},prev);});
+    })
+    .catch(function(){window._porterAttImgCache[cacheKey]=null;});
+  }
+
   function fetchBody(mid){
     if(!p.accessToken||!mid)return;
     if(bodies[mid]||loadingBody[mid])return;
@@ -600,7 +621,7 @@ function MailPreview(p){
       ),
       ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
         p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
-          ?ce("button",{onClick:function(){p.onReply&&p.onReply(head);},style:Object.assign({},BGHOST,{color:"var(--violet)",borderColor:"var(--violet)",fontWeight:600})},"\u21a9 Odpowiedz")
+          ?ce("button",{onClick:function(){p.onReply&&p.onReply(head,bodies);},style:Object.assign({},BGHOST,{color:"var(--violet)",borderColor:"var(--violet)",fontWeight:600})},"\u21a9 Odpowiedz")
           :null,
         ce("button",{onClick:p.onCalendar,style:BGHOST},"\uD83D\uDCC5 Dodaj do kalendarza"),
         p.activeFolder==="trash"||p.activeFolder==="spam"
@@ -658,38 +679,60 @@ function MailPreview(p){
               !isExp?ce("div",{style:{fontSize:12,color:"var(--t2)",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview):null
             )
           ),
-          isExp?ce("div",{style:{padding:"4px 20px 18px",fontSize:13,color:"var(--t1)",lineHeight:1.85,fontFamily:"inherit"}},
-            m.hasAttachments?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}},
+          isExp?ce("div",{style:{padding:"8px 12px 16px",background:"transparent"}},
+            m.hasAttachments?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,padding:"0 4px"}},
               loadingAtts[m.id]
                 ?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"\u23F3 \u0141adowanie za\u0142\u0105cznik\u00f3w\u2026")
                 :(fetchedAtts[m.id]||[]).map(function(att,j){
+                  var isImg=att.contentType&&att.contentType.startsWith("image/");
+                  var isPdf=att.contentType&&att.contentType.includes("pdf");
+                  var cacheKey=m.id+"__"+att.id;
+                  var imgSrc=window._porterAttImgCache&&window._porterAttImgCache[cacheKey];
+                  if(isImg&&!imgSrc){previewAttachment(m.id,att.id,att.contentType);}
+                  if(isImg&&imgSrc&&imgSrc!=="loading"){
+                    return ce("div",{key:att.id||j,
+                      style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"},
+                      onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);}},
+                      ce("img",{src:imgSrc,alt:att.name||"",
+                        style:{maxWidth:200,maxHeight:160,borderRadius:8,border:"1px solid var(--bd2)",
+                          objectFit:"cover",boxShadow:"0 2px 8px rgba(0,0,0,0.13)",display:"block"}}),
+                      ce("div",{style:{display:"flex",alignItems:"center",gap:4}},
+                        ce("span",{style:{fontSize:10,color:"var(--t3)",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(att.name||"obraz")),
+                        ce("span",{style:{fontSize:10,color:"var(--accent)",fontWeight:600}},"\u2193")
+                      )
+                    );
+                  }
                   return ce("div",{key:att.id||j,
                     onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);},
-                    style:{display:"flex",alignItems:"center",gap:6,padding:"5px 12px 5px 8px",borderRadius:20,
-                      background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12,cursor:"pointer"}},
-                    ce("span",null,"\uD83D\uDCCE"),
-                    ce("span",{style:{color:"var(--t1)"}},att.name||"Za\u0142\u0105cznik"),
-                    att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:2}},fmtBytes(att.size)):null,
-                    ce("span",{style:{fontSize:10,color:"var(--accent)",marginLeft:4}},"\u2193")
+                    style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px 7px 10px",borderRadius:10,
+                      background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12,cursor:"pointer",
+                      boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}},
+                    ce("span",{style:{fontSize:16}},isPdf?"\uD83D\uDCC4":isImg?"\uD83D\uDDBC\uFE0F":"\uD83D\uDCCE"),
+                    ce("span",{style:{color:"var(--t1)",fontWeight:500}},att.name||"Za\u0142\u0105cznik"),
+                    att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:4}},fmtBytes(att.size)):null,
+                    ce("span",{style:{fontSize:11,color:"var(--accent)",marginLeft:6,fontWeight:700}},"\u2193")
                   );
                 })
             ):null,
-            loading
-              ?ce("div",{style:{color:"var(--t3)",fontStyle:"italic"}},"\u23F3 Wczytywanie tre\u015bci\u2026")
-              :hasBody
-                ?(bodyIsHtml
-                  ?ce("iframe",{
-                    srcDoc:bodyContent,
-                    sandbox:"allow-same-origin",
-                    style:{width:"100%",border:"none",minHeight:200,display:"block"},
-                    onLoad:function(e){
-                      var fr=e.target;
-                      try{fr.style.height=(fr.contentDocument.documentElement.scrollHeight+20)+"px";}catch(ex){}
-                    }
-                  })
-                  :ce("div",{style:{whiteSpace:"pre-wrap"}},bodyContent)
-                )
-                :ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},m.preview||"(brak tre\u015bci)")
+            ce("div",{style:{background:"#ffffff",borderRadius:10,border:"1px solid #e5e7eb",
+              boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden",minHeight:60}},
+              loading
+                ?ce("div",{style:{padding:"18px 20px",color:"#888",fontStyle:"italic",fontSize:13}},"\u23F3 Wczytywanie tre\u015bci\u2026")
+                :hasBody
+                  ?(bodyIsHtml
+                    ?ce("iframe",{
+                      srcDoc:"<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}</style></head><body>"+bodyContent+"</body></html>",
+                      sandbox:"allow-same-origin",
+                      style:{width:"100%",border:"none",minHeight:200,display:"block",background:"#fff"},
+                      onLoad:function(e){
+                        var fr=e.target;
+                        try{fr.style.height=(fr.contentDocument.documentElement.scrollHeight+24)+"px";}catch(ex){}
+                      }
+                    })
+                    :ce("div",{style:{padding:"16px 20px",whiteSpace:"pre-wrap",fontSize:13,color:"#1a1a1a",lineHeight:1.75}},bodyContent)
+                  )
+                  :ce("div",{style:{padding:"16px 20px",color:"#999",fontStyle:"italic",fontSize:13}},m.preview||"(brak tre\u015bci)")
+            )
           ):null
         );
       })
@@ -1896,11 +1939,20 @@ export function ScreenMail(p){
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
         ce(MailPreview,{thread:selThread,accessToken:accessToken,onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
-          onReply:function(head){
+          onReply:function(head,bodyCache){
             setToEmail(head.from||"");
             var subj=head.subject||"";
             setSubject(subj.startsWith("Re:")?subj:"Re: "+subj);
-            var quoted="<br><br><blockquote style=\"border-left:3px solid #ccc;padding-left:12px;color:#666;margin:0\"><div style=\"font-size:11px;color:#999;margin-bottom:6px\">W dniu "+new Date(head.date||"").toLocaleDateString("pl-PL")+" "+( head.fromName||head.from)+" napisa\u0142(a):</div>"+(head.body||head.preview||"")+"</blockquote>";
+            var cachedBody=bodyCache&&bodyCache[head.id];
+            var quoteHtml=cachedBody&&cachedBody.isHtml
+              ?cachedBody.content
+              :cachedBody&&cachedBody.content
+                ?"<pre style=\"font-family:inherit;white-space:pre-wrap;margin:0\">"+String(cachedBody.content).replace(/</g,"&lt;")+"</pre>"
+                :"<em style=\"color:#999\">"+(head.preview||"")+"</em>";
+            var quoted="<br><br><blockquote style=\"border-left:3px solid #ccc;padding-left:14px;color:#555;margin:8px 0;font-size:13px\">"
+              +"<div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">W dniu "
+              +new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from)+" napisa\u0142(a):</div>"
+              +quoteHtml+"</blockquote>";
             setBody(quoted);
             setAttachments([]);
             setActiveFolder("compose");
