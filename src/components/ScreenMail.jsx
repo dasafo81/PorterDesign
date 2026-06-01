@@ -629,6 +629,13 @@ function MailPreview(p){
         p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
           ?ce("button",{onClick:function(){p.onReply&&p.onReply(head,bodies);},style:Object.assign({},BGHOST,{color:"var(--violet)",borderColor:"var(--violet)",fontWeight:600})},"\u21a9 Odpowiedz")
           :null,
+        p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
+          ?ce("button",{onClick:function(){p.onReplyAll&&p.onReplyAll(head,bodies,(head._allRecipients||[]));},style:Object.assign({},BGHOST,{color:"var(--violet)",opacity:0.75})},"\u21a9 Odpowiedz wszystkim")
+          :null,
+        ce("button",{onClick:function(){p.onForward&&p.onForward(head,bodies);},style:BGHOST},"\u27A1 Przeka\u017c"),
+        p.activeFolder==="inbox"
+          ?ce("button",{onClick:function(){p.onMarkRead&&p.onMarkRead(head,!head.isRead);},style:BGHOST},head.isRead?"\uD83D\uDCEC Oznacz jako nieprzeczytane":"\uD83D\uDCEC Oznacz jako przeczytane")
+          :null,
         ce("button",{onClick:p.onCalendar,style:BGHOST},"\uD83D\uDCC5 Dodaj do kalendarza"),
         p.activeFolder==="trash"||p.activeFolder==="spam"
           ?ce("button",{onClick:function(){p.onRestore&&p.onRestore(head);},style:Object.assign({},BGHOST,{color:"#059669",borderColor:"#059669"})},"↩ Przywróć do skrzynki")
@@ -1379,6 +1386,7 @@ export function ScreenMail(p){
   var snf=us(false),showNF=snf[0],setShowNF=snf[1];
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
   var sloadingMails=us(false),loadingMails=sloadingMails[0],setLoadingMails=sloadingMails[1];
+  var srk=us(0),refreshKey=srk[0],setRefreshKey=srk[1];
   var ssel=us(null),selThread=ssel[0],setSelThread=ssel[1];
   var sdr=us(function(){try{return JSON.parse(localStorage.getItem("pd_mail_drafts")||"[]");}catch(e){return[];}}),drafts=sdr[0],setDrafts=sdr[1];
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
@@ -1452,6 +1460,11 @@ export function ScreenMail(p){
     });
   },[userEmail]);
 
+  function doLoadMails(){
+    if(!accessToken)return;
+    setLoadingMails(true);
+  }
+
   ue(function(){
     if(!accessToken)return;
     setLoadingMails(true);
@@ -1503,7 +1516,7 @@ export function ScreenMail(p){
       setAllMails(inboxMails.concat(sentMails).concat(trashMails).concat(spamMails));
       setLoadingMails(false);
     });
-  },[accessToken]);
+  },[accessToken,refreshKey]);
 
   ue(function(){
     if(!activeTemplates.length)return;
@@ -1803,6 +1816,16 @@ export function ScreenMail(p){
     setSelThread(null);
     if(accessToken&&mail.id&&mail.id.indexOf("m_")!==0) moveMailToFolder(mail.id,accessToken,"inbox");
   }
+  function markAsRead(mail,readVal){
+    if(!mail||mail.id.indexOf("m_")===0)return;
+    setAllMails(function(prev){return prev.map(function(m){return m.id===mail.id?Object.assign({},m,{isRead:readVal}):m;});});
+    if(accessToken){
+      fetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
+        method:"PATCH",headers:{"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"},
+        body:JSON.stringify({isRead:readVal})
+      }).catch(function(e){console.warn("markAsRead PATCH failed",e);});
+    }
+  }
 
   if(!logged){
     return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px",minHeight:300,gap:16,textAlign:"center"}},
@@ -1948,7 +1971,10 @@ export function ScreenMail(p){
       ce("div",{style:{width:280,flexShrink:0,borderRight:"1px solid var(--bd2)",paddingRight:12,display:"flex",flexDirection:"column"}},
         loaderActive
           ?ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:8,color:"var(--t3)",fontSize:13}},"\u23F3 Wczytywanie\u2026")
-          :ce(MailList,{mails:folderMails,folder:activeFolder,onSelect:setSelThread,selectedId:selThread&&selThread.head?selThread.head.id:null})
+          :ce(MailList,{mails:folderMails,folder:activeFolder,onSelect:function(t){
+              setSelThread(t);
+              if(t&&t.head&&t.head.isRead===false)markAsRead(t.head,true);
+            },selectedId:selThread&&selThread.head?selThread.head.id:null})
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
         ce(MailPreview,{thread:selThread,accessToken:accessToken,onTokenRefresh:function(tok){setAccessToken(tok);},onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
@@ -1970,6 +1996,39 @@ export function ScreenMail(p){
             setAttachments([]);
             setActiveFolder("compose");
           },
+          onReplyAll:function(head,bodyCache,allRecipients){
+            // allRecipients = [{email,name},...] — from + all to (excl. own email)
+            var own=msAccount&&(msAccount.username||msAccount.email)||"";
+            var recs=(allRecipients||[]).filter(function(r){return r.email&&r.email.toLowerCase()!==own.toLowerCase();});
+            var toVal=recs.length>0?recs[0].email:(head.from||"");
+            setToEmail(toVal);
+            var subj=head.subject||"";
+            setSubject(subj.startsWith("Re:")?subj:"Re: "+subj);
+            var cachedBody=bodyCache&&bodyCache[head.id];
+            var quoteHtml=cachedBody&&cachedBody.isHtml?cachedBody.content:cachedBody&&cachedBody.content?"<pre style=\"font-family:inherit;white-space:pre-wrap;margin:0\">"+String(cachedBody.content).replace(/</g,"&lt;")+"</pre>":"<em style=\"color:#999\">"+(head.preview||"")+"</em>";
+            var quoted="<br><br><blockquote style=\"border-left:3px solid #ccc;padding-left:14px;color:#555;margin:8px 0;font-size:13px\">"
+              +"<div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">W dniu "+new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from)+" napisa\u0142(a):</div>"
+              +quoteHtml+"</blockquote>";
+            setBody(quoted);
+            setAttachments([]);
+            setActiveFolder("compose");
+          },
+          onForward:function(head,bodyCache){
+            setToEmail("");
+            var subj=head.subject||"";
+            setSubject(subj.startsWith("Fwd:")?subj:"Fwd: "+subj);
+            var cachedBody=bodyCache&&bodyCache[head.id];
+            var quoteHtml=cachedBody&&cachedBody.isHtml?cachedBody.content:cachedBody&&cachedBody.content?"<pre style=\"font-family:inherit;white-space:pre-wrap;margin:0\">"+String(cachedBody.content).replace(/</g,"&lt;")+"</pre>":"<em style=\"color:#999\">"+(head.preview||"")+"</em>";
+            var fwdBlock="<br><br><hr style=\"border:none;border-top:1px solid #ddd;margin:8px 0\"><div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">"
+              +"Od: "+(head.fromName||head.from)+" &lt;"+(head.from||"")+"&gt;<br>"
+              +"Data: "+new Date(head.date||"").toLocaleString("pl-PL")+"<br>"
+              +"Temat: "+subj+"</div>"
+              +quoteHtml;
+            setBody(fwdBlock);
+            setAttachments([]);
+            setActiveFolder("compose");
+          },
+          onMarkRead:function(mail,val){markAsRead(mail,val);},
           customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMail(m);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:activeFolder})
       )
     );
@@ -1981,6 +2040,7 @@ export function ScreenMail(p){
         ce("div",{style:{width:8,height:8,borderRadius:"50%",background:"#10b981",flexShrink:0,boxShadow:"0 0 0 2px rgba(16,185,129,0.2)"}}),
         ce("span",{style:{fontSize:12,color:"var(--t2)"}},"Zalogowano jako\u00a0",ce("strong",{style:{color:"var(--t1)"}},accountEmail))
       ),
+      ce("button",{onClick:function(){setRefreshKey(function(k){return k+1;});},disabled:loadingMails,style:{fontSize:11,color:"var(--t3)",border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:loadingMails?"default":"pointer",padding:"4px 10px",borderRadius:6,opacity:loadingMails?0.5:1}},loadingMails?"⏳":"🔄 Odśwież"),
       ce("button",{onClick:function(){msalLogout().catch(function(){}).finally(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
     ),
 
@@ -1995,14 +2055,16 @@ export function ScreenMail(p){
         SYSTEM_FOLDERS.map(function(f){
           var active=activeFolder===f.id;
           var badge=f.id==="drafts"&&drafts.length>0?drafts.length:null;
+          var unreadCnt=f.id==="inbox"?allMails.filter(function(m){return m.folder==="inbox"&&m.isRead===false;}).length:0;
           return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelThread(null);},
             style:{width:"100%",textAlign:"left",padding:"8px 10px",borderRadius:9,border:"none",
               background:active?"var(--wb)":"transparent",color:active?"var(--wt)":"var(--t2)",
-              fontSize:13,fontWeight:active?700:500,cursor:"pointer",
+              fontSize:13,fontWeight:(active||unreadCnt>0)?700:500,cursor:"pointer",
               display:"flex",alignItems:"center",gap:8,marginBottom:1,
               borderLeft:"3px solid "+(active?"var(--wbd)":"transparent")}},
             ce("span",{style:{fontSize:15,width:20,textAlign:"center",flexShrink:0}},f.icon),
             ce("span",{style:{flex:1}},f.label),
+            unreadCnt>0?ce("span",{style:{background:"#7c3aed",color:"#fff",borderRadius:10,fontSize:10,fontWeight:700,padding:"1px 6px",minWidth:16,textAlign:"center"}},unreadCnt):null,
             badge?ce("span",{style:{background:"var(--wbd)",color:"var(--wt)",borderRadius:10,fontSize:10,fontWeight:700,padding:"1px 6px"}},badge):null
           );
         }),
