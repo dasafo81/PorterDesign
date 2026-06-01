@@ -1027,19 +1027,25 @@ export function calc(p){
       var tkan2=p.fab2Man!=null?p.fab2Man:(p.fab2P!=null?p.fab2P:null);
       if(tkan2==null)return{total:0,lines:[],warn:"Wybierz drugą tkaninę (Duo)"};
       rr=lookup(wCm,RDUO);
-      total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2))+parseFloat((pow*(200+tkan2)).toFixed(2));
+      var kosztSzyciaDuo=parseFloat((pow*200*2).toFixed(2));
+      var kosztTkan1Duo=parseFloat(((tkanWcm/100)*tkan).toFixed(2));
+      var kosztTkan2Duo=parseFloat(((tkanWcm/100)*tkan2).toFixed(2));
+      total=parseFloat((rr.p*2).toFixed(2))+kosztSzyciaDuo+kosztTkan1Duo+kosztTkan2Duo;
       lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo);
-      lines.push("  Tkanina 1: "+pow+"m\xb2 \xd7 (200+"+tkan.toFixed(0)+") z\u0142/m\xb2");
-      lines.push("  Tkanina 2: "+pow+"m\xb2 \xd7 (200+"+tkan2.toFixed(0)+") z\u0142/m\xb2");
+      lines.push("  Szycie: "+pow+"m\xb2\xd7200z\u0142 \xd7 2 tkaniny");
+      lines.push("  Tkanina 1: "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
+      lines.push("  Tkanina 2: "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan2.toFixed(0)+"z\u0142");
     }else{
-      // Wszystkie inne: jednolita logika 200zł/m² szycie + tkanina
+      // Szycie = pow * 200, tkanina = tkanWcm/100 mb * tkan
+      var kosztSzycia=parseFloat((pow*200).toFixed(2));
+      var kosztTkaniny=parseFloat(((tkanWcm/100)*tkan).toFixed(2));
       rr=lookup(wCm,RCITY);
-      total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
+      total=parseFloat((rr.p*2).toFixed(2))+kosztSzycia+kosztTkaniny;
       if(c.rSystem==="elektryk"){
         rr=lookup(wCm,REL);
-        total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2));
+        total=parseFloat((rr.p*2).toFixed(2))+kosztSzycia+kosztTkaniny;
       }
-      lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo);
+      lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+pow+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
     }
     // Maskownice/boczki
     if(c.rMask==="tak"){total+=50;lines.push("+ Boczki/maskownice +50 z\u0142");}
