@@ -203,9 +203,10 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
     +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections2
-    +(montaz>0?"<div style=\"margin-top:6mm;padding:10px 14px;background:#eeece9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#1a1a18;\">Monta\u017c dekoracji okiennych ("+Math.round(montaz*100)+"%):</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
-    +(montaz>0?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#e4e2de;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#7a7068;\">\u0141\u0105cznie bez monta\u017cu</span><span style=\"font-size:14px;font-weight:700;color:#7a7068;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>":"")
-    +"<div style=\"margin-top:"+(montaz>0?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+    /* montaz-rows-v3 */
+    +(montaz>0?"<div style=\"margin-top:6mm;padding:11px 16px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#7a5230;font-weight:600;\">Monta\u017c dekoracji okiennych ("+Math.round(montaz*100)+"%):</span><span style=\"font-size:15px;font-weight:700;color:#7a5230;\">"+roundTo10(grandTotal2*montaz)+" z\u0142</span></div>":"")
+    +(montaz>0?"<div style=\"margin-bottom:3mm;padding:11px 16px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#555;font-weight:600;\">Łącznie bez montażu:</span><span style=\"font-size:15px;font-weight:700;color:#555;\">"+roundTo10(grandTotal2)+" z\u0142</span></div>":"")
+    +"<div style=\"margin-top:"+(montaz>0?"0":"6mm")+";padding:13px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
     +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(montaz>0?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
     +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(montaz>0?roundTo10(grandTotal2*(1+montaz)):roundTo10(grandTotal2))+" z\u0142</span></div>"
     +"<div class=\"sign-block\">"
