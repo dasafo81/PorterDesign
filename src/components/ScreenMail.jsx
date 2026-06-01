@@ -1619,28 +1619,36 @@ export function ScreenMail(p){
     var htmlBody=buildMailHtml(body, userSettings, hasSigImg);
 
     function doSend(atts){
-      var msgPayload={
-        subject:subject,
-        body:{contentType:"HTML",content:htmlBody},
-        toRecipients:[{emailAddress:{address:toEmail,name:toName}}]
-      };
-      if(atts&&atts.length>0)msgPayload.attachments=atts;
-      fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
-        method:"POST",
-        headers:{"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"},
-        body:JSON.stringify({message:msgPayload,saveToSentItems:true})
-      })
-      .then(function(r){
-        if(!r.ok)return r.json().then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+r.status+")");});
-        var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:toName,
-          subject:subject,date:new Date().toISOString(),preview:htmlToPreview(body).slice(0,80)+"...",
-          body:body,attachments:attachments.slice()};
-        setAllMails(function(prev){return [nm].concat(prev);});
-        setSending(false); setJustSent(true);
-        setTimeout(function(){setJustSent(false);},3000);
-        setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
-      })
-      .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
+      // Odśwież token tuż przed wysyłką — może wygasnąć podczas pracy w app
+      msalGetToken().then(function(freshToken){
+        if(freshToken)setAccessToken(freshToken);
+        var tok=freshToken||accessToken;
+        var msgPayload={
+          subject:subject,
+          body:{contentType:"HTML",content:htmlBody},
+          toRecipients:[{emailAddress:{address:toEmail,name:toName}}]
+        };
+        if(atts&&atts.length>0)msgPayload.attachments=atts;
+        fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+          method:"POST",
+          headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
+          body:JSON.stringify({message:msgPayload,saveToSentItems:true})
+        })
+        .then(function(r){
+          if(!r.ok)return r.json().then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+r.status+")");});
+          var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:toName,
+            subject:subject,date:new Date().toISOString(),preview:htmlToPreview(body).slice(0,80)+"...",
+            body:body,attachments:attachments.slice()};
+          setAllMails(function(prev){return [nm].concat(prev);});
+          setSending(false); setJustSent(true);
+          setTimeout(function(){setJustSent(false);},3000);
+          setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
+        })
+        .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
+      }).catch(function(e){
+        setSending(false);
+        setSendError("Sesja wygas\u0142a — zaloguj si\u0119 ponownie ("+(e.message||"token expired")+")");
+      });
     }
 
     // Buduj attachments równolegle: (1) pliki uploadowane przez użytkownika, (2) pliki szablonu, (3) obrazek podpisu CID
