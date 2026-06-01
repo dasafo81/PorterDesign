@@ -95,7 +95,7 @@ export function generateFabricOrderPDF(client,opts){
   });
 }
 
-// ── WYCENA UPROSZCZONA PDF ─────────────────────────────────────────────────
+// ── WYCENA UPROSZCZONA PDF ──────────────────────────────────────────────────
 export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
   comm=comm||0;montaz=montaz||0;
   if(!(client.rooms||[]).length)return null;
