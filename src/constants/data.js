@@ -1023,10 +1023,14 @@ export function calc(p){
       total=parseFloat((kosztSzycia+kosztTkaniny).toFixed(2));
       lines.push("Roleta bez mech. "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+powSzycie+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcmMat/100).toFixed(2)+"mb\xd7"+tkan+"z\u0142");
     }else if(rModel==="duo"){
-      // Duo: dwie tkaniny, mnożone x2
+      // Duo: dwie różne tkaniny (np. firankowa + zaciemniająca)
+      var tkan2=p.fab2Man!=null?p.fab2Man:(p.fab2P!=null?p.fab2P:null);
+      if(tkan2==null)return{total:0,lines:[],warn:"Wybierz drugą tkaninę (Duo)"};
       rr=lookup(wCm,RDUO);
-      total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)*2).toFixed(2));
-      lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo+" (x2 tkaniny)");
+      total=parseFloat((rr.p*2).toFixed(2))+parseFloat((pow*(200+tkan)).toFixed(2))+parseFloat((pow*(200+tkan2)).toFixed(2));
+      lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo);
+      lines.push("  Tkanina 1: "+pow+"m\xb2 \xd7 (200+"+tkan.toFixed(0)+") z\u0142/m\xb2");
+      lines.push("  Tkanina 2: "+pow+"m\xb2 \xd7 (200+"+tkan2.toFixed(0)+") z\u0142/m\xb2");
     }else{
       // Wszystkie inne: jednolita logika 200zł/m² szycie + tkanina
       rr=lookup(wCm,RCITY);
@@ -1296,10 +1300,16 @@ export function buildSewingRows(client){
             ?"Metalowy"+(pc.kolorLancuszka?" ("+pc.kolorLancuszka+")":"")
             :"Biały";
           var rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.stronaObslugi||"Lewo");
+          var fab2Obj=prod.fab2Name?FABRICS.find(function(f){return f.name===prod.fab2Name;}):null;
+          var fabricDesc=prod.fabName||(prod.fabMan?"r\u0119czna "+prod.fabMan+" z\u0142":"(brak)");
+          if(pc.rModel==="duo"){
+            var fab2Desc=prod.fab2Name||(prod.fab2Man?"r\u0119czna "+prod.fab2Man+" z\u0142":"(brak)");
+            fabricDesc="\u2460 "+fabricDesc+" / \u2461 "+fab2Desc;
+          }
           rows.push({
             room:r.name,win:w.name,
             type:lblDisp+" ("+rModelLbl+")",
-            fabric:prod.fabName||(prod.fabMan?"r\u0119czna "+prod.fabMan+" z\u0142":"(brak)"),
+            fabric:fabricDesc,
             prod:fabObj?fabObj.prod:"-",
             fabW:prod.fabW||prod.fabManW||"-",
             kolor:pc.kolor||"-",
