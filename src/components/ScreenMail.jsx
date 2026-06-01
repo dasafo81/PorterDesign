@@ -482,18 +482,25 @@ function MailPreview(p){
   var sfa=us({}),fetchedAtts=sfa[0],setFetchedAtts=sfa[1];
   var sla=us({}),loadingAtts=sla[0],setLoadingAtts=sla[1];
 
-  // Pobiera listę załączników dla wiadomości (metadane: id, name, size, contentType)
+  // Pobiera listę załączników + od razu contentBytes dla obrazków (podgląd inline)
   function fetchAttachments(mid){
     if(!p.accessToken||!mid)return;
     if(fetchedAtts[mid]!==undefined||loadingAtts[mid])return;
     setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
-    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType",{
+    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType,contentBytes",{
       headers:{"Authorization":"Bearer "+p.accessToken}
     })
     .then(function(r){return r.ok?r.json():null;})
     .then(function(data){
       var list=(data&&data.value)||[];
-      setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=list;return n;});
+      if(!window._porterAttImgCache)window._porterAttImgCache={};
+      list.forEach(function(att){
+        if(att.contentType&&att.contentType.startsWith("image/")&&att.contentBytes){
+          window._porterAttImgCache[mid+"__"+att.id]="data:"+att.contentType+";base64,"+att.contentBytes;
+        }
+      });
+      var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType};});
+      setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=metaList;return n;});
       setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
     })
     .catch(function(){
@@ -521,26 +528,6 @@ function MailPreview(p){
       setTimeout(function(){URL.revokeObjectURL(url);},2000);
     })
     .catch(function(){alert("B\u0142\u0105d pobierania za\u0142\u0105cznika.");});
-  }
-
-  // Pobiera obraz-załącznik jako base64 data URL do podglądu inline (cache na window)
-  function previewAttachment(mid,attId,contentType){
-    var cacheKey=mid+"__"+attId;
-    if(!window._porterAttImgCache)window._porterAttImgCache={};
-    if(window._porterAttImgCache[cacheKey])return; // już w cache — React re-render nastąpi przy setState
-    window._porterAttImgCache[cacheKey]="loading"; // blokada ponownego wywołania
-    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
-      headers:{"Authorization":"Bearer "+p.accessToken}
-    })
-    .then(function(r){return r.ok?r.json():null;})
-    .then(function(data){
-      if(!data||!data.contentBytes){window._porterAttImgCache[cacheKey]=null;return;}
-      var mime=contentType||"image/jpeg";
-      window._porterAttImgCache[cacheKey]="data:"+mime+";base64,"+data.contentBytes;
-      // wymuś re-render przez dummy setState
-      setFetchedAtts(function(prev){return Object.assign({},prev);});
-    })
-    .catch(function(){window._porterAttImgCache[cacheKey]=null;});
   }
 
   function fetchBody(mid){
@@ -687,9 +674,8 @@ function MailPreview(p){
                   var isImg=att.contentType&&att.contentType.startsWith("image/");
                   var isPdf=att.contentType&&att.contentType.includes("pdf");
                   var cacheKey=m.id+"__"+att.id;
-                  var imgSrc=window._porterAttImgCache&&window._porterAttImgCache[cacheKey];
-                  if(isImg&&!imgSrc){previewAttachment(m.id,att.id,att.contentType);}
-                  if(isImg&&imgSrc&&imgSrc!=="loading"){
+                  var imgSrc=window._porterAttImgCache&&window._porterAttImgCache[cacheKey]||null;
+                  if(isImg&&imgSrc){
                     return ce("div",{key:att.id||j,
                       style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"},
                       onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);}},
