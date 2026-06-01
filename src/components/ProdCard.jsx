@@ -895,8 +895,8 @@ export function ProdCard(p){
     // ── BĘBENEK ──────────────────────────────────────────────────────
     var bebenekChip = (rSystem&&rSystem!=="bez_mechanizmu")?ce("div",{style:{marginTop:16}},
       ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
-        ce("input",{type:"checkbox",checked:c.rb==="tak",onChange:function(ev){sc("rb",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
-        ce("span",{},"+ B\u0119benek (11 z\u0142)")
+        ce("input",{type:"checkbox",checked:c.rMask==="tak",onChange:function(ev){sc("rMask",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
+        ce("span",{},"+ Boczki / maskownice (+50 z\u0142)")
       )
     ):null;
 
@@ -1044,6 +1044,11 @@ export function ProdCard(p){
         ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
           ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
           ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+        ),
+        ce("div",{style:{marginTop:16}},
+          ce(Fld,{label:"WYSOKO\u015a\u0106 NADRPO\u017bA (cm) — opcjonalnie"},
+            ce("input",{type:"text",inputMode:"numeric",value:par.hNadproza||"",onChange:function(ev){sp("hNadproza",ev.target.value);},placeholder:"np. 20",style:IST})
+          )
         ),
         isDuo?ce("div",{style:{fontSize:11,color:"var(--t3)",padding:"6px 10px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginBottom:8}},
           "\u2139\ufe0f Roleta Duo wymaga dw\xf3ch r\xf3\u017cnych tkanin \u2014 np. firankowa + zaciemniaj\u0105ca"
