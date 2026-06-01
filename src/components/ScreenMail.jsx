@@ -484,15 +484,31 @@ function MailPreview(p){
 
   // Pobiera listę załączników + od razu contentBytes dla obrazków (podgląd inline)
   function fetchAttachments(mid){
-    if(!p.accessToken||!mid)return;
-    if(fetchedAtts[mid]!==undefined||loadingAtts[mid])return;
+    if(!mid)return;
+    // Jeśli już mamy dane i nie są puste — nie pobieraj ponownie
+    if(fetchedAtts[mid]&&fetchedAtts[mid].length>0)return;
+    if(loadingAtts[mid])return;
     setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
-    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType,contentBytes",{
-      headers:{"Authorization":"Bearer "+p.accessToken}
+    // Zawsze odśwież token przed fetch — może wygasnąć podczas sesji
+    msalGetToken().then(function(tok){
+      if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
+      var useToken=tok||p.accessToken;
+      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType,contentBytes",{
+        headers:{"Authorization":"Bearer "+useToken}
+      });
     })
-    .then(function(r){return r.ok?r.json():null;})
+    .then(function(r){
+      if(!r.ok){
+        // 401 lub inny błąd — wyczyść cache żeby można było spróbować ponownie
+        setFetchedAtts(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+        setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+        return null;
+      }
+      return r.json();
+    })
     .then(function(data){
-      var list=(data&&data.value)||[];
+      if(!data)return;
+      var list=(data.value)||[];
       if(!window._porterAttImgCache)window._porterAttImgCache={};
       list.forEach(function(att){
         if(att.contentType&&att.contentType.startsWith("image/")&&att.contentBytes){
@@ -511,8 +527,11 @@ function MailPreview(p){
 
   // Pobiera plik załącznika jako base64 i otwiera download w przeglądarce
   function downloadAttachment(mid,attId,attName,contentType){
-    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
-      headers:{"Authorization":"Bearer "+p.accessToken}
+    msalGetToken().then(function(tok){
+      if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
+      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
+        headers:{"Authorization":"Bearer "+(tok||p.accessToken)}
+      });
     })
     .then(function(r){return r.ok?r.json():null;})
     .then(function(data){
@@ -1932,7 +1951,7 @@ export function ScreenMail(p){
           :ce(MailList,{mails:folderMails,folder:activeFolder,onSelect:setSelThread,selectedId:selThread&&selThread.head?selThread.head.id:null})
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
-        ce(MailPreview,{thread:selThread,accessToken:accessToken,onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
+        ce(MailPreview,{thread:selThread,accessToken:accessToken,onTokenRefresh:function(tok){setAccessToken(tok);},onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
           onReply:function(head,bodyCache){
             setToEmail(head.from||"");
             var subj=head.subject||"";
