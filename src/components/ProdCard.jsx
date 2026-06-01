@@ -1045,7 +1045,24 @@ export function ProdCard(p){
           ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
           ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
         ),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW}),
+        isDuo?ce("div",{style:{fontSize:11,color:"var(--t3)",padding:"6px 10px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",marginBottom:8}},
+          "\u2139\ufe0f Roleta Duo wymaga dw\xf3ch r\xf3\u017cnych tkanin \u2014 np. firankowa + zaciemniaj\u0105ca"
+        ):null,
+        ce("div",{style:isDuo?{border:"2px solid var(--grm)",borderRadius:12,padding:"10px 12px",marginBottom:8}:{}},
+          isDuo?ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--grd)",letterSpacing:"0.07em",marginBottom:6}},"TKANINA \u2460 (pierwsza warstwa)"):null,
+          ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW})
+        ),
+        isDuo?ce("div",{style:{border:"2px solid var(--bd2)",borderRadius:12,padding:"10px 12px",marginBottom:8}},
+          ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t2)",letterSpacing:"0.07em",marginBottom:6}},"TKANINA \u2461 (druga warstwa)"),
+          ce(FabPicker,{
+            fabName:prod.fab2Name,
+            fabMan:prod.fab2Man,
+            fabManW:prod.fab2ManW,
+            onSelect:function(f){p.onChange(mg(prod,{fab2Name:f.name,fab2P:f.brutto,fab2W:f.width,fab2Man:null,fab2ManW:null}));},
+            onManual:function(v){p.onChange(mg(prod,{fab2Man:v,fab2Name:null,fab2P:null}));},
+            onManualW:function(v){p.onChange(mg(prod,{fab2ManW:v}));}
+          })
+        ):null,
         ce("div",{style:{marginTop:12}},
           ce(Fld,{label:"KOLOR"},
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. Ivory White, Ecru, Stone...",style:IST})
