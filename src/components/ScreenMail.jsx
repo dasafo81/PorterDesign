@@ -245,8 +245,9 @@ function AttachmentsSection(p){
   var fileRef=React.useRef();
   var us=React.useState;
   var sp=us(false),showPicker=sp[0],setShowPicker=sp[1];
-  var tpl=MAIL_TEMPLATES.find(function(t){return t.id===p.selTemplate;})||MAIL_TEMPLATES[0];
-  var suggested=tpl.suggestAttachments||[];
+  var allTpls=p.templates&&p.templates.length?p.templates:MAIL_TEMPLATES;
+  var tpl=allTpls.find(function(t){return t.id===p.selTemplate;})||allTpls[0];
+  var suggested=tpl?tpl.suggestAttachments||[]:[];
 
   function addFiles(e){
     var files=Array.from(e.target.files||[]);
@@ -1922,7 +1923,7 @@ export function ScreenMail(p){
             style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
         )
     ),
-    ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate}),
+    ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate,templates:activeTemplates}),
     ce("div",{style:{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid var(--bd2)"}},
       ce("button",{onClick:handleSaveDraft,disabled:!toEmail&&!subject&&bodyEmpty,style:Object.assign({},BGHOST,{opacity:(!toEmail&&!subject&&bodyEmpty)?0.4:1})},"\uD83D\uDCDD Zapisz roboczy"),
       ce("button",{onClick:handleSend,disabled:!toEmail||!subject||bodyEmpty||sending,
