@@ -123,7 +123,17 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
   }
   function sewingInfo(p){
     var c=p.c||{};
-    var sz=(c.sz==="wave"||c.model==="wave")?"Wave":"Flex";
+    var sz;
+    if(c.sz==="wave"||c.model==="wave"){
+      sz="Wave";
+    }else if(c.model==="falda"){
+      var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podw\xf3jny",potrojna:"Flex Potr\xf3jny",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
+      sz=c.foldType?foldMap[c.foldType]||("Fa\u0142da "+c.foldType):"Fa\u0142da";
+    }else if(c.model==="tasma"){
+      sz=c.typMarszczenia||"Smok";
+    }else{
+      sz="Flex";
+    }
     var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";
     return sz+" "+mars;
   }
