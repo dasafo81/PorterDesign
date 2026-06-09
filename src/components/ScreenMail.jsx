@@ -647,7 +647,8 @@ function MailPreview(p){
     if(head){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
       if(!head.body&&!bodies[head.id])fetchBody(head.id);
-      if(head.hasAttachments)fetchAttachments(head.id);
+      // Zawsze próbuj — inline images (cid:) dają hasAttachments=false w Graph
+      fetchAttachments(head.id);
     }
   // eslint-disable-next-line
   },[thread?thread.key:null]);
@@ -689,8 +690,8 @@ function MailPreview(p){
       // Przy rozwijaniu pobierz body jeśli jeszcze nie ma
       var msg=mails.find(function(x){return x.id===mid;});
       if(msg&&!msg.body&&!bodies[mid])fetchBody(mid);
-      // Pobierz załączniki jeśli wiadomość je ma
-      if(msg&&msg.hasAttachments)fetchAttachments(mid);
+      // Zawsze próbuj — inline images dają hasAttachments=false
+      fetchAttachments(mid);
     }
   }
 
@@ -771,7 +772,7 @@ function MailPreview(p){
             )
           ),
           isExp?ce("div",{style:{padding:"8px 12px 16px",background:"transparent"}},
-            m.hasAttachments?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,padding:"0 4px"}},
+            (loadingAtts[m.id]||(fetchedAtts[m.id]&&fetchedAtts[m.id].length>0))?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,padding:"0 4px"}},
               loadingAtts[m.id]
                 ?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"\u23F3 \u0141adowanie za\u0142\u0105cznik\u00f3w\u2026")
                 :(fetchedAtts[m.id]||[]).map(function(att,j){
