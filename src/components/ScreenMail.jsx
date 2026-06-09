@@ -1467,6 +1467,7 @@ export function ScreenMail(p){
   var scal=us(null),calMail=scal[0],setCalMail=scal[1];
   var scalok=us(null),calSaved=scalok[0],setCalSaved=scalok[1];
   var serr=us(null),sendError=serr[0],setSendError=serr[1];
+  var stplpick=us(false),showTplPicker=stplpick[0],setShowTplPicker=stplpick[1];
   // Per-user ustawienia z Supabase (podpis, obrazek). null = nie załadowane jeszcze
   var sset=us(null),userSettings=sset[0],setUserSettings=sset[1];
   // Szablony z bazy — null = ładowanie, [] = puste, [...] = załadowane
@@ -1602,9 +1603,8 @@ export function ScreenMail(p){
     var tplAtts=(tpl.templateFiles||[]).map(function(f){
       return {id:"tplf_"+f.url,name:f.name,size:f.size||null,type:"template",url:f.url};
     });
-    if(selClient&&(appAtts.length||tplAtts.length)){
-      setAttachments(appAtts.concat(tplAtts));
-    } else {setAttachments([]);}
+    // Załączniki szablonu — niezależnie od wybranego klienta
+    setAttachments(appAtts.concat(tplAtts));
   },[selClientId,selTemplate,dbTemplates]);
 
   function onToChange(val){
@@ -1640,6 +1640,37 @@ export function ScreenMail(p){
     setAttachments(d.attachments||[]);
     setDrafts(function(prev){return prev.filter(function(x){return x.id!==d.id;});});
     setActiveFolder("compose");
+  }
+
+  // Wkleja treść i załączniki szablonu do bieżącego compose
+  // Treść szablonu jest wstawiana PRZED istniejącym body (cytatem z odpowiedzi)
+  function applyTemplateToCompose(tpl){
+    if(!tpl)return;
+    var filled=fillTemplate(tpl,selClient);
+    var isHtml=/<[a-z][\s\S]*>/i.test(filled.body);
+    var tplHtml=isHtml?filled.body:plainToHtml(filled.body);
+    setBody(tplHtml+(body?"<br><br>"+body:""));
+    // Suffix Re:/Fwd: zachowaj, nie nadpisuj tematu
+    if(filled.subject&&(!subject||(!subject.startsWith("Re:")&&!subject.startsWith("Fwd:")))){
+      setSubject(filled.subject);
+    }
+    // Załączniki szablonu — dołącz bez duplikatów
+    var appAtts2=(tpl.suggestAttachments||[]).map(function(sid){
+      var opt=APP_PDF_OPTIONS.find(function(o){return o.id===sid;});
+      return opt?{id:opt.id,name:opt.label+".pdf",size:null,type:"app"}:null;
+    }).filter(Boolean);
+    var tplAtts2=(tpl.templateFiles||[]).map(function(f){
+      return {id:"tplf_"+f.url,name:f.name,size:f.size||null,type:"template",url:f.url};
+    });
+    var toAdd=appAtts2.concat(tplAtts2);
+    setAttachments(function(prev){
+      var merged=prev.slice();
+      toAdd.forEach(function(a){
+        if(!merged.find(function(x){return x.id===a.id;}))merged.push(a);
+      });
+      return merged;
+    });
+    setShowTplPicker(false);
   }
 
   // Składa pełny HTML body wiadomości — treść użytkownika (HTML z RichTextEditora)
@@ -1975,7 +2006,39 @@ export function ScreenMail(p){
       ce("input",{type:"text",value:subject,onChange:function(e){setSubject(e.target.value);},placeholder:"Temat wiadomo\u015bci",style:INP})
     ),
     ce("div",{style:{flex:1,display:"flex",flexDirection:"column",marginBottom:10}},
-      ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Tre\u015b\u0107"),
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
+        ce("label",{style:LSML},"Tre\u015b\u0107"),
+        ce("div",{style:{position:"relative"}},
+          ce("button",{
+            onClick:function(){setShowTplPicker(function(v){return !v;});},
+            style:{padding:"3px 10px",fontSize:11,fontWeight:600,borderRadius:8,cursor:"pointer",
+              border:"1px solid "+(showTplPicker?"var(--wbd)":"var(--bd2)"),
+              background:showTplPicker?"var(--wb)":"var(--bg2)",
+              color:showTplPicker?"var(--wt)":"var(--t2)",display:"flex",alignItems:"center",gap:4}
+          },"\uD83D\uDCCB Wstaw szablon \u25BE"),
+          showTplPicker?ce("div",{style:{
+            position:"absolute",right:0,top:"100%",marginTop:4,zIndex:300,
+            background:"var(--bg1)",border:"1px solid var(--bd2)",borderRadius:10,
+            boxShadow:"0 8px 24px rgba(0,0,0,0.13)",minWidth:190,overflow:"hidden"
+          }},
+            activeTemplates.map(function(tpl){
+              return ce("div",{key:tpl.id,
+                onClick:function(){applyTemplateToCompose(tpl);},
+                style:{padding:"10px 14px",cursor:"pointer",fontSize:13,
+                  borderBottom:"1px solid var(--bd3)",display:"flex",alignItems:"center",gap:8,
+                  color:"var(--t1)"}},
+                ce("span",null,tpl.icon),
+                ce("span",{style:{fontWeight:500}},tpl.label)
+              );
+            }),
+            ce("div",{
+              onClick:function(){setShowTplPicker(false);},
+              style:{padding:"8px 14px",fontSize:12,color:"var(--t3)",cursor:"pointer",
+                textAlign:"center"}
+            },"Anuluj")
+          ):null
+        )
+      ),
       ce(RichTextEditor,{value:body,onChange:setBody,minHeight:200,placeholder:"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026"}),
       // Informacja o automatycznie doklejanym podpisie
       (userSettings&&(userSettings.signature_html||userSettings.signature_image_url))
