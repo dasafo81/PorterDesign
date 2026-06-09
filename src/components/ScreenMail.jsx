@@ -519,7 +519,20 @@ function MailPreview(p){
         headers:{"Authorization":"Bearer "+useToken}
       });
     })
-    .then(function(r){return r.ok?r.json():null;})
+    .then(function(r){
+      if(r.status===429){
+        var wait=parseInt(r.headers.get("Retry-After")||"2",10)*1000;
+        setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
+        setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+        // retry raz po throttle
+        setTimeout(function(){
+          setFetchedAtts(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+          fetchAttachments(mid);
+        },wait);
+        return null;
+      }
+      return r.ok?r.json():null;
+    })
     .then(function(data){
       if(!data){
         setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
@@ -602,15 +615,29 @@ function MailPreview(p){
     .catch(function(){if(win)win.close();alert("B\u0142\u0105d pobierania za\u0142\u0105cznika.");});
   }
 
-  function fetchBody(mid){
-    if(!p.accessToken||!mid)return;
+  function fetchBody(mid,_retry){
+    if(!mid)return;
     if(bodies[mid]||loadingBody[mid])return;
     setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
-    fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"?$select=body",{
-      headers:{"Authorization":"Bearer "+p.accessToken}
+    msalGetToken().then(function(tok){
+      if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
+      var useToken=tok||p.accessToken;
+      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"?$select=body",{
+        headers:{"Authorization":"Bearer "+useToken}
+      });
     })
-    .then(function(r){return r.ok?r.json():null;})
+    .then(function(r){
+      if(r.status===429){
+        // Graph throttling — retry po Retry-After lub 2s
+        var wait=parseInt(r.headers.get("Retry-After")||"2",10)*1000;
+        setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+        if(!_retry){setTimeout(function(){fetchBody(mid,true);},wait);}
+        return null;
+      }
+      return r.ok?r.json():null;
+    })
     .then(function(data){
+      if(!data)return;
       var rawContent="";
       var isHtml=false;
       if(data&&data.body){
@@ -633,8 +660,9 @@ function MailPreview(p){
     if(head){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
       if(!head.body&&!bodies[head.id])fetchBody(head.id);
-      // Zawsze próbuj — inline images (cid:) dają hasAttachments=false w Graph
-      fetchAttachments(head.id);
+      // Opóźnienie 350ms — Graph throttling: body i attachments nie mogą lecieć jednocześnie
+      var t=setTimeout(function(){fetchAttachments(head.id);},350);
+      return function(){clearTimeout(t);};
     }
   // eslint-disable-next-line
   },[thread?thread.key:null]);
