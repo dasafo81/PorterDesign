@@ -6,7 +6,7 @@ var TENANT_ID = "d2f92663-b7a9-47ff-87f1-8746f1f9b3ad";
 
 export var MSAL_SCOPES = [
   "Mail.Send",
-  "Mail.Read",
+  "Mail.ReadWrite",
   "Calendars.ReadWrite"
 ];
 
