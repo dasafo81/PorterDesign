@@ -483,42 +483,62 @@ function MailPreview(p){
   var sfa=us({}),fetchedAtts=sfa[0],setFetchedAtts=sfa[1];
   var sla=us({}),loadingAtts=sla[0],setLoadingAtts=sla[1];
 
-  // Pobiera listę załączników + od razu contentBytes dla obrazków (podgląd inline)
+  // Pobiera listę załączników; dla obrazków pobiera /$value i cache'uje jako data: URI
+  // (contentBytes w $select powoduje 400/403 dla plików >3MB i przy braku scope)
   function fetchAttachments(mid){
     if(!mid)return;
-    // Jeśli już mamy dane i nie są puste — nie pobieraj ponownie
     if(fetchedAtts[mid]&&fetchedAtts[mid].length>0)return;
     if(loadingAtts[mid])return;
     setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
-    // Zawsze odśwież token przed fetch — może wygasnąć podczas sesji
     msalGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
       var useToken=tok||p.accessToken;
-      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType,contentBytes",{
+      // Krok 1: lista metadanych bez contentBytes (unika 400 Bad Request)
+      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType,contentId,isInline",{
         headers:{"Authorization":"Bearer "+useToken}
+      }).then(function(r){
+        if(!r.ok){return {error:true,tok:useToken};}
+        return r.json().then(function(data){return {data:data,tok:useToken};});
       });
     })
-    .then(function(r){
-      if(!r.ok){
-        // 401 lub inny błąd — wyczyść cache żeby można było spróbować ponownie
+    .then(function(res){
+      if(!res||res.error){
         setFetchedAtts(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
         setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-        return null;
+        return;
       }
-      return r.json();
-    })
-    .then(function(data){
-      if(!data)return;
-      var list=(data.value)||[];
-      if(!window._porterAttImgCache)window._porterAttImgCache={};
-      list.forEach(function(att){
-        if(att.contentType&&att.contentType.startsWith("image/")&&att.contentBytes){
-          window._porterAttImgCache[mid+"__"+att.id]="data:"+att.contentType+";base64,"+att.contentBytes;
-        }
-      });
-      var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType};});
+      var list=(res.data.value)||[];
+      var useToken=res.tok;
+      var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType,contentId:a.contentId||null,isInline:!!a.isInline};});
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=metaList;return n;});
       setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+      // Krok 2: dla każdego obrazka (inline lub zwykłego) pobierz /$value i cache'uj
+      if(!window._porterAttImgCache)window._porterAttImgCache={};
+      list.forEach(function(att){
+        if(!att.contentType||!att.contentType.startsWith("image/"))return;
+        var cacheKey=mid+"__"+att.id;
+        if(window._porterAttImgCache[cacheKey])return;
+        fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id+"/$value",{
+          headers:{"Authorization":"Bearer "+useToken}
+        })
+        .then(function(r){return r.ok?r.blob():null;})
+        .then(function(blob){
+          if(!blob)return;
+          var reader=new FileReader();
+          reader.onloadend=function(){
+            window._porterAttImgCache[cacheKey]=reader.result;
+            // Dodaj też mapowanie po contentId (dla cid: w HTML body)
+            if(att.contentId){
+              var cleanCid=att.contentId.replace(/^<|>$/g,"");
+              window._porterAttImgCache[mid+"__cid__"+cleanCid]=reader.result;
+            }
+            // Wymuś re-render przez aktualizację fetchedAtts
+            setFetchedAtts(function(prev){return Object.assign({},prev);});
+          };
+          reader.readAsDataURL(blob);
+        })
+        .catch(function(){});
+      });
     })
     .catch(function(){
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
@@ -734,7 +754,24 @@ function MailPreview(p){
                 :hasBody
                   ?(bodyIsHtml
                     ?ce("iframe",{
-                      srcDoc:"<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}</style></head><body>"+bodyContent+"</body></html>",
+                      srcDoc:(function(){
+                        // Podmień cid: referencje na data: URI z cache (inline obrazki z Outlooka)
+                        var resolved=bodyContent.replace(/src=["']cid:([^"']+)["']/gi,function(_,cid){
+                          if(!window._porterAttImgCache)return 'src="data:,"';
+                          // Szukaj w cache po contentId (może być z <>)
+                          var cleanCid=cid.replace(/^<|>$/g,"");
+                          var keys=Object.keys(window._porterAttImgCache);
+                          for(var ki=0;ki<keys.length;ki++){
+                            var k=keys[ki];
+                            // klucz: mid__attId — szukamy po fragmencie contentId
+                            var cached=window._porterAttImgCache[k];
+                            // Próbuj też przez globalny index cid→data
+                            if(k.endsWith("__cid__"+cleanCid))return "src=""+cached+""";
+                          }
+                          return 'src="data:,"';
+                        });
+                        return "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}</style></head><body>"+resolved+"</body></html>";
+                      })(),
                       sandbox:"allow-same-origin",
                       style:{width:"100%",border:"none",minHeight:200,display:"block",background:"#fff"},
                       onLoad:function(e){
