@@ -397,7 +397,7 @@ export function ProdCard(p){
     var modelSelector = ce("div",{style:{marginBottom:0}},
       ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:580}},
         [
-          {key:"falda",label:"Zas\u0142ona z fa\u0142d\u0105",imgSrc:IMG_MODEL_FALDA},
+          {key:"falda",label:"Fa\u0142da",imgSrc:IMG_MODEL_FALDA},
           {key:"wave",label:"Zas\u0142ona Wave",imgSrc:IMG_MODEL_WAVE},
           {key:"tasma",label:"Ta\u015bma marszcz\u0105ca",imgSrc:IMG_MODEL_TASMA}
         ].map(function(m){
@@ -434,9 +434,9 @@ export function ProdCard(p){
     var foldTypeSelector = null;
     if(model==="falda"){
       var foldTypes=[
-        {key:"pojedyncza",label:"Pojedyncza",imgSrc:IMG_FALDA_POJEDYNCZA},
-        {key:"podwojna",label:"Podw\xf3jna",imgSrc:IMG_FALDA_PODWOJNA},
-        {key:"potrojna",label:"Potr\xf3jna",imgSrc:IMG_FALDA_POTROJNA},
+        {key:"pojedyncza",label:"Flex Pojedynczy",imgSrc:IMG_FALDA_POJEDYNCZA},
+        {key:"podwojna",label:"Flex Podw\xf3jny",imgSrc:IMG_FALDA_PODWOJNA},
+        {key:"potrojna",label:"Flex Potr\xf3jny",imgSrc:IMG_FALDA_POTROJNA},
         {key:"plaska",label:"P\u0142aska",imgSrc:IMG_FALDA_PLASKA},
         {key:"studio",label:"Studio",imgSrc:IMG_FALDA_STUDIO}
       ];
@@ -701,8 +701,8 @@ export function ProdCard(p){
         // Typ marszczenia - tylko Taśma Marszcząca
         model==="tasma"?ce("div",{style:{marginTop:20}},
           ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP MARSZCZENIA"),
-          ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:400}},
-            ["Smok","O\u0142\xf3wek","Plisa"].map(function(typ){
+          ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,maxWidth:400}},
+            ["Smok","O\u0142\xf3wek","Plisa","Ta\u015bma Wave"].map(function(typ){
               var isA=c.typMarszczenia===typ||(typ==="Smok"&&!c.typMarszczenia);
               return ce("button",{key:typ,onClick:function(){sc("typMarszczenia",typ);},style:{padding:"14px 8px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
                 isA?"\u2713 "+typ:typ
