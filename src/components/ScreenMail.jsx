@@ -539,35 +539,40 @@ function MailPreview(p){
       var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType,contentId:a.contentId||null,isInline:!!a.isInline};});
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=metaList;return n;});
       setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-      // Krok 2: dla każdego obrazka pobierz JSON attachment (contentBytes base64)
-      // GET /attachments/{id} bez $select zwraca contentBytes — działa dla plików <10MB
+      // Krok 2: pobierz pełne attachmenty z contentBytes (jeden GET, bez $select)
+      // GET /attachments bez $select zwraca contentBytes dla wszystkich plików <3MB
       if(!window._porterAttImgCache)window._porterAttImgCache={};
-      list.forEach(function(att){
-        if(!att.contentType||!att.contentType.startsWith("image/"))return;
-        var cacheKey=mid+"__"+att.id;
-        if(window._porterAttImgCache[cacheKey])return;
-        fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id,{
-          headers:{"Authorization":"Bearer "+useToken}
-        })
-        .then(function(r){return r.ok?r.json():null;})
-        .then(function(data){
-          if(!data||!data.contentBytes)return;
-          var dataUri="data:"+(att.contentType||"image/jpeg")+";base64,"+data.contentBytes;
-          window._porterAttImgCache[cacheKey]=dataUri;
-          // Mapowanie po contentId (dla cid: w HTML body Outlooka)
-          var cidRaw=data.contentId||att.contentId||"";
+      console.log("[PD-ATT] mid="+mid+" lista zalacznikow:",list.map(function(a){return {name:a.name,type:a.contentType,inline:a.isInline,cid:a.contentId,size:a.size};}));
+      // Pobierz wszystkie naraz przez pełny GET (z contentBytes)
+      fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
+        headers:{"Authorization":"Bearer "+useToken}
+      })
+      .then(function(r){
+        console.log("[PD-ATT] full GET status:",r.status);
+        return r.ok?r.json():null;
+      })
+      .then(function(full){
+        if(!full){console.warn("[PD-ATT] full GET zwrocil null");return;}
+        var fullList=full.value||[];
+        console.log("[PD-ATT] pelne attachmenty:",fullList.length,"z contentBytes:",fullList.filter(function(a){return !!a.contentBytes;}).length);
+        fullList.forEach(function(att){
+          if(!att.contentBytes)return;
+          if(!att.contentType||att.contentType.indexOf("image/")!==0)return;
+          var dataUri="data:"+att.contentType+";base64,"+att.contentBytes;
+          window._porterAttImgCache[mid+"__"+att.id]=dataUri;
+          var cidRaw=att.contentId||"";
           if(cidRaw){
             var cleanCid=cidRaw.replace(/^<|>$/g,"");
             window._porterAttImgCache[mid+"__cid__"+cleanCid]=dataUri;
+            console.log("[PD-ATT] cache cid:",cleanCid);
           }
-          // Przebuduj srcDoc z podmienionymi cid: — obrazki już są w cache
-          var bodyObj=bodies[mid];
-          if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
-            buildSrcDoc(mid,bodyObj.content);
-          }
-        })
-        .catch(function(){});
-      });
+        });
+        var bodyObj=bodies[mid];
+        if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
+          buildSrcDoc(mid,bodyObj.content);
+        }
+      })
+      .catch(function(e){console.error("[PD-ATT] full GET error:",e);});
     })
     .catch(function(){
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
