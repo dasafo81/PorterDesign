@@ -1345,7 +1345,17 @@ export function buildSewingRows(client){
         (res.lines||[]).forEach(function(l){
           var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
         });
-        var sz=(pc.sz==="wave"||pc.model==="wave")?"Wave":"Flex";
+        var sz;
+        if(pc.model==="wave"||pc.sz==="wave"){
+          sz="Wave";
+        }else if(pc.model==="falda"){
+          var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podw\xf3jny",potrojna:"Flex Potr\xf3jny",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
+          sz=pc.foldType?foldMap[pc.foldType]||("Fa\u0142da "+pc.foldType):"Fa\u0142da";
+        }else if(pc.model==="tasma"){
+          sz=pc.typMarszczenia||"Smok";
+        }else{
+          sz="Flex";
+        }
         var mars=pc.mars?(Math.round(+pc.mars*100))+"%":"150%";
         var split=pc.split||"unequal";
         var splitDesc="-";
