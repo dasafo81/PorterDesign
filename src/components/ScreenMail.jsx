@@ -482,6 +482,21 @@ function MailPreview(p){
   // Cache załączników per messageId — pobierane on-demand przy rozwinięciu
   var sfa=us({}),fetchedAtts=sfa[0],setFetchedAtts=sfa[1];
   var sla=us({}),loadingAtts=sla[0],setLoadingAtts=sla[1];
+  // Resolved srcDoc per messageId — aktualizowany po załadowaniu obrazków cid:
+  var ssd=us({}),resolvedSrcDocs=ssd[0],setResolvedSrcDocs=ssd[1];
+
+  // Buduje pełny srcDoc z podmienionym cid:→data: i zapisuje w stanie
+  // Wywoływany po każdym załadowaniu obrazka, żeby iframe się odświeżył
+  function buildSrcDoc(mid,htmlContent){
+    var IFRAME_STYLES="body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
+    var resolved=(htmlContent||"").replace(/src=["']cid:([^"'>\s]+)["']/gi,function(_,cid){
+      var cleanCid=cid.replace(/^<|>$/g,"");
+      var dataUri=window._porterAttImgCache&&window._porterAttImgCache[mid+"__cid__"+cleanCid];
+      return dataUri?('src="'+dataUri+'"'):'src=""';
+    });
+    var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+IFRAME_STYLES+"</style></head><body>"+resolved+"</body></html>";
+    setResolvedSrcDocs(function(prev){var n=Object.assign({},prev);n[mid]=doc;return n;});
+  }
 
   // Pobiera listę załączników; dla obrazków pobiera /$value i cache'uje jako data: URI
   // (contentBytes w $select powoduje 400/403 dla plików >3MB i przy braku scope)
@@ -532,8 +547,11 @@ function MailPreview(p){
               var cleanCid=att.contentId.replace(/^<|>$/g,"");
               window._porterAttImgCache[mid+"__cid__"+cleanCid]=reader.result;
             }
-            // Wymuś re-render przez aktualizację fetchedAtts
-            setFetchedAtts(function(prev){return Object.assign({},prev);});
+            // Przebuduj srcDoc z podmienionymi cid: — obrazki już są w cache
+            var bodyObj=bodies[mid];
+            if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
+              buildSrcDoc(mid,bodyObj.content);
+            }
           };
           reader.readAsDataURL(blob);
         })
@@ -600,13 +618,24 @@ function MailPreview(p){
     var head=thread.head;
     if(head){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
-      // Body pobieramy on-demand dla każdego folderu
       if(!head.body&&!bodies[head.id])fetchBody(head.id);
-      // Załączniki dla najnowszej wiadomości
       if(head.hasAttachments)fetchAttachments(head.id);
     }
   // eslint-disable-next-line
   },[thread?thread.key:null]);
+
+  // Gdy body załadowane — zbuduj srcDoc (pierwsze przybliżenie bez obrazków cid:)
+  // Po załadowaniu każdego obrazka buildSrcDoc jest wywoływane ponownie
+  ue(function(){
+    var mids=Object.keys(bodies);
+    mids.forEach(function(mid){
+      var bodyObj=bodies[mid];
+      if(bodyObj&&bodyObj.isHtml&&bodyObj.content&&!resolvedSrcDocs[mid]){
+        buildSrcDoc(mid,bodyObj.content);
+      }
+    });
+  // eslint-disable-next-line
+  },[bodies]);
 
   if(!thread)return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:12,color:"var(--t3)"}},
     ce("div",{style:{fontSize:48,opacity:0.2}},"\uD83D\uDCE9"),
@@ -754,24 +783,7 @@ function MailPreview(p){
                 :hasBody
                   ?(bodyIsHtml
                     ?ce("iframe",{
-                      srcDoc:(function(){
-                        // Podmień cid: referencje na data: URI z cache (inline obrazki z Outlooka)
-                        var resolved=bodyContent.replace(/src=["']cid:([^"']+)["']/gi,function(_,cid){
-                          if(!window._porterAttImgCache)return 'src="data:,"';
-                          // Szukaj w cache po contentId (może być z <>)
-                          var cleanCid=cid.replace(/^<|>$/g,"");
-                          var keys=Object.keys(window._porterAttImgCache);
-                          for(var ki=0;ki<keys.length;ki++){
-                            var k=keys[ki];
-                            // klucz: mid__attId — szukamy po fragmencie contentId
-                            var cached=window._porterAttImgCache[k];
-                            // Próbuj też przez globalny index cid→data
-                            if(k.endsWith("__cid__"+cleanCid))return "src=""+cached+""";
-                          }
-                          return 'src="data:,"';
-                        });
-                        return "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}</style></head><body>"+resolved+"</body></html>";
-                      })(),
+                      srcDoc:resolvedSrcDocs[m.id]||"",
                       sandbox:"allow-same-origin",
                       style:{width:"100%",border:"none",minHeight:200,display:"block",background:"#fff"},
                       onLoad:function(e){
