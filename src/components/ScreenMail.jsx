@@ -490,24 +490,17 @@ function MailPreview(p){
   function buildSrcDoc(mid,htmlContent){
     var IFRAME_STYLES="body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
     var cache=window._porterAttImgCache||{};
-    // Lista wszystkich data: URI obrazków dla tego maila (fallback po kolejności)
-    var imgList=[];
-    Object.keys(cache).forEach(function(k){
-      if(k.indexOf(mid+"__")===0&&k.indexOf("__cid__")<0)imgList.push(cache[k]);
-    });
-    var imgIdx=0;
-    var resolved=(htmlContent||"").replace(/src=["']cid:([^"'>]+)["']/gi,function(whole,cid){
+    var resolved=(htmlContent||"").replace(/<img\b[^>]*\bsrc=["']cid:([^"'>]+)["'][^>]*>/gi,function(whole,cid){
       var cleanCid=cid.replace(/^<|>$/g,"").trim();
-      // 1) Dokładny match po contentId
       var dataUri=cache[mid+"__cid__"+cleanCid];
-      // 2) Fallback: kolejny niewykorzystany obrazek z cache
-      if(!dataUri&&imgList.length>0){dataUri=imgList[imgIdx]||imgList[imgList.length-1];imgIdx++;}
-      // 3) Jeśli wciąż nic — zostaw oryginał (broken, ale nie kasujemy)
-      return dataUri?('src="'+dataUri+'"'):whole;
+      // Jeśli mamy obrazek w cache — osadź inline, inaczej usuń <img> (obrazki dostępne jako kafelki nad mailem)
+      if(dataUri)return whole.replace(/src=["']cid:[^"'>]+["']/i,'src="'+dataUri+'"');
+      return "";
     });
     var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+IFRAME_STYLES+"</style></head><body>"+resolved+"</body></html>";
     setResolvedSrcDocs(function(prev){var n=Object.assign({},prev);n[mid]=doc;return n;});
   }
+
 
 
   // Pobiera listę załączników; dla obrazków pobiera /$value i cache'uje jako data: URI
@@ -539,40 +532,35 @@ function MailPreview(p){
       var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType,contentId:a.contentId||null,isInline:!!a.isInline};});
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=metaList;return n;});
       setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-      // Krok 2: pobierz pełne attachmenty z contentBytes (jeden GET, bez $select)
-      // GET /attachments bez $select zwraca contentBytes dla wszystkich plików <3MB
+      // Krok 2: dla każdego obrazka pobierz JSON attachment (contentBytes base64)
+      // GET /attachments/{id} bez $select zwraca contentBytes — działa dla plików <10MB
       if(!window._porterAttImgCache)window._porterAttImgCache={};
-      console.log("[PD-ATT] mid="+mid+" lista zalacznikow:",list.map(function(a){return {name:a.name,type:a.contentType,inline:a.isInline,cid:a.contentId,size:a.size};}));
-      // Pobierz wszystkie naraz przez pełny GET (z contentBytes)
-      fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
-        headers:{"Authorization":"Bearer "+useToken}
-      })
-      .then(function(r){
-        console.log("[PD-ATT] full GET status:",r.status);
-        return r.ok?r.json():null;
-      })
-      .then(function(full){
-        if(!full){console.warn("[PD-ATT] full GET zwrocil null");return;}
-        var fullList=full.value||[];
-        console.log("[PD-ATT] pelne attachmenty:",fullList.length,"z contentBytes:",fullList.filter(function(a){return !!a.contentBytes;}).length);
-        fullList.forEach(function(att){
-          if(!att.contentBytes)return;
-          if(!att.contentType||att.contentType.indexOf("image/")!==0)return;
-          var dataUri="data:"+att.contentType+";base64,"+att.contentBytes;
-          window._porterAttImgCache[mid+"__"+att.id]=dataUri;
-          var cidRaw=att.contentId||"";
+      list.forEach(function(att){
+        if(!att.contentType||!att.contentType.startsWith("image/"))return;
+        var cacheKey=mid+"__"+att.id;
+        if(window._porterAttImgCache[cacheKey])return;
+        fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id,{
+          headers:{"Authorization":"Bearer "+useToken}
+        })
+        .then(function(r){return r.ok?r.json():null;})
+        .then(function(data){
+          if(!data||!data.contentBytes)return;
+          var dataUri="data:"+(att.contentType||"image/jpeg")+";base64,"+data.contentBytes;
+          window._porterAttImgCache[cacheKey]=dataUri;
+          // Mapowanie po contentId (dla cid: w HTML body Outlooka)
+          var cidRaw=data.contentId||att.contentId||"";
           if(cidRaw){
             var cleanCid=cidRaw.replace(/^<|>$/g,"");
             window._porterAttImgCache[mid+"__cid__"+cleanCid]=dataUri;
-            console.log("[PD-ATT] cache cid:",cleanCid);
           }
-        });
-        var bodyObj=bodies[mid];
-        if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
-          buildSrcDoc(mid,bodyObj.content);
-        }
-      })
-      .catch(function(e){console.error("[PD-ATT] full GET error:",e);});
+          // Przebuduj srcDoc z podmienionymi cid: — obrazki już są w cache
+          var bodyObj=bodies[mid];
+          if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
+            buildSrcDoc(mid,bodyObj.content);
+          }
+        })
+        .catch(function(){});
+      });
     })
     .catch(function(){
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
@@ -580,8 +568,11 @@ function MailPreview(p){
     });
   }
 
-  // Pobiera plik załącznika jako base64 i otwiera download w przeglądarce
+  // Otwiera plik załącznika w nowym oknie (obrazki/PDF wyświetlają się, reszta pobiera)
   function downloadAttachment(mid,attId,attName,contentType){
+    // Otwórz okno OD RAZU (synchronicznie) — inaczej przeglądarka zablokuje popup po async fetch
+    var win=window.open("","_blank");
+    if(win){win.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>"+(attName||"Za\u0142\u0105cznik")+"</title></head><body style='margin:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:Arial,sans-serif;color:#aaa;'>\u23F3 \u0141adowanie\u2026</body></html>");}
     msalGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
       return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
@@ -590,18 +581,37 @@ function MailPreview(p){
     })
     .then(function(r){return r.ok?r.json():null;})
     .then(function(data){
-      if(!data||!data.contentBytes)return;
+      if(!data||!data.contentBytes){if(win)win.close();alert("Nie uda\u0142o si\u0119 pobra\u0107 za\u0142\u0105cznika.");return;}
+      var ct=contentType||data.contentType||"application/octet-stream";
       var byteStr=atob(data.contentBytes);
       var ab=new ArrayBuffer(byteStr.length);
       var ia=new Uint8Array(ab);
       for(var i=0;i<byteStr.length;i++)ia[i]=byteStr.charCodeAt(i);
-      var blob=new Blob([ab],{type:contentType||"application/octet-stream"});
+      var blob=new Blob([ab],{type:ct});
       var url=URL.createObjectURL(blob);
-      var a=document.createElement("a");
-      a.href=url; a.download=attName||"za\u0142\u0105cznik"; a.click();
-      setTimeout(function(){URL.revokeObjectURL(url);},2000);
+      var isViewable=ct.indexOf("image/")===0||ct.indexOf("pdf")>=0;
+      if(win&&isViewable){
+        // Obrazek/PDF — pokaż bezpośrednio w nowym oknie
+        if(ct.indexOf("image/")===0){
+          win.document.open();
+          win.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>"+(attName||"obraz")+"</title></head><body style='margin:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh;'><img src='"+url+"' style='max-width:100%;max-height:100vh;object-fit:contain;'/></body></html>");
+          win.document.close();
+        } else {
+          win.location.href=url;
+        }
+      } else if(win){
+        // Inny typ — wymuś pobranie
+        var a=win.document.createElement("a");
+        a.href=url; a.download=attName||"za\u0142\u0105cznik"; win.document.body.appendChild(a); a.click();
+        setTimeout(function(){win.close();},500);
+      } else {
+        // Popup zablokowany — fallback do pobierania w bieżącej karcie
+        var a2=document.createElement("a");
+        a2.href=url; a2.download=attName||"za\u0142\u0105cznik"; a2.click();
+      }
+      setTimeout(function(){URL.revokeObjectURL(url);},60000);
     })
-    .catch(function(){alert("B\u0142\u0105d pobierania za\u0142\u0105cznika.");});
+    .catch(function(){if(win)win.close();alert("B\u0142\u0105d pobierania za\u0142\u0105cznika.");});
   }
 
   function fetchBody(mid){
@@ -767,20 +777,21 @@ function MailPreview(p){
                   var isPdf=att.contentType&&att.contentType.includes("pdf");
                   var cacheKey=m.id+"__"+att.id;
                   var imgSrc=window._porterAttImgCache&&window._porterAttImgCache[cacheKey]||null;
+                  // Obrazek z miniaturą w cache — pokaż podgląd, klik otwiera w nowym oknie
                   if(isImg&&imgSrc){
                     return ce("div",{key:att.id||j,
+                      title:"Kliknij, aby otworzy\u0107 w nowym oknie",
                       style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"},
                       onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);}},
                       ce("img",{src:imgSrc,alt:att.name||"",
-                        style:{maxWidth:200,maxHeight:160,borderRadius:8,border:"1px solid var(--bd2)",
+                        style:{maxWidth:140,maxHeight:140,borderRadius:8,border:"1px solid var(--bd2)",
                           objectFit:"cover",boxShadow:"0 2px 8px rgba(0,0,0,0.13)",display:"block"}}),
-                      ce("div",{style:{display:"flex",alignItems:"center",gap:4}},
-                        ce("span",{style:{fontSize:10,color:"var(--t3)",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(att.name||"obraz")),
-                        ce("span",{style:{fontSize:10,color:"var(--accent)",fontWeight:600}},"\u2193")
-                      )
+                      ce("div",{style:{fontSize:10,color:"var(--t3)",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},(att.name||"obraz"))
                     );
                   }
+                  // Obrazek bez miniatury (jeszcze nie pobrany) lub inny plik — kafelek klikalny
                   return ce("div",{key:att.id||j,
+                    title:"Kliknij, aby otworzy\u0107 w nowym oknie",
                     onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);},
                     style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px 7px 10px",borderRadius:10,
                       background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12,cursor:"pointer",
@@ -788,7 +799,7 @@ function MailPreview(p){
                     ce("span",{style:{fontSize:16}},isPdf?"\uD83D\uDCC4":isImg?"\uD83D\uDDBC\uFE0F":"\uD83D\uDCCE"),
                     ce("span",{style:{color:"var(--t1)",fontWeight:500}},att.name||"Za\u0142\u0105cznik"),
                     att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:4}},fmtBytes(att.size)):null,
-                    ce("span",{style:{fontSize:11,color:"var(--accent)",marginLeft:6,fontWeight:700}},"\u2193")
+                    ce("span",{style:{fontSize:11,color:"var(--accent)",marginLeft:6,fontWeight:700}},"\u2197")
                   );
                 })
             ):null,
