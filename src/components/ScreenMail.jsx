@@ -489,14 +489,26 @@ function MailPreview(p){
   // Wywoływany po każdym załadowaniu obrazka, żeby iframe się odświeżył
   function buildSrcDoc(mid,htmlContent){
     var IFRAME_STYLES="body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
-    var resolved=(htmlContent||"").replace(/src=["']cid:([^"'>\s]+)["']/gi,function(_,cid){
-      var cleanCid=cid.replace(/^<|>$/g,"");
-      var dataUri=window._porterAttImgCache&&window._porterAttImgCache[mid+"__cid__"+cleanCid];
-      return dataUri?('src="'+dataUri+'"'):'src=""';
+    var cache=window._porterAttImgCache||{};
+    // Lista wszystkich data: URI obrazków dla tego maila (fallback po kolejności)
+    var imgList=[];
+    Object.keys(cache).forEach(function(k){
+      if(k.indexOf(mid+"__")===0&&k.indexOf("__cid__")<0)imgList.push(cache[k]);
+    });
+    var imgIdx=0;
+    var resolved=(htmlContent||"").replace(/src=["']cid:([^"'>]+)["']/gi,function(whole,cid){
+      var cleanCid=cid.replace(/^<|>$/g,"").trim();
+      // 1) Dokładny match po contentId
+      var dataUri=cache[mid+"__cid__"+cleanCid];
+      // 2) Fallback: kolejny niewykorzystany obrazek z cache
+      if(!dataUri&&imgList.length>0){dataUri=imgList[imgIdx]||imgList[imgList.length-1];imgIdx++;}
+      // 3) Jeśli wciąż nic — zostaw oryginał (broken, ale nie kasujemy)
+      return dataUri?('src="'+dataUri+'"'):whole;
     });
     var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+IFRAME_STYLES+"</style></head><body>"+resolved+"</body></html>";
     setResolvedSrcDocs(function(prev){var n=Object.assign({},prev);n[mid]=doc;return n;});
   }
+
 
   // Pobiera listę załączników; dla obrazków pobiera /$value i cache'uje jako data: URI
   // (contentBytes w $select powoduje 400/403 dla plików >3MB i przy braku scope)
