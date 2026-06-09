@@ -527,33 +527,32 @@ function MailPreview(p){
       var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType,contentId:a.contentId||null,isInline:!!a.isInline};});
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=metaList;return n;});
       setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-      // Krok 2: dla każdego obrazka (inline lub zwykłego) pobierz /$value i cache'uj
+      // Krok 2: dla każdego obrazka pobierz JSON attachment (contentBytes base64)
+      // GET /attachments/{id} bez $select zwraca contentBytes — działa dla plików <10MB
       if(!window._porterAttImgCache)window._porterAttImgCache={};
       list.forEach(function(att){
         if(!att.contentType||!att.contentType.startsWith("image/"))return;
         var cacheKey=mid+"__"+att.id;
         if(window._porterAttImgCache[cacheKey])return;
-        fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id+"/$value",{
+        fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id,{
           headers:{"Authorization":"Bearer "+useToken}
         })
-        .then(function(r){return r.ok?r.blob():null;})
-        .then(function(blob){
-          if(!blob)return;
-          var reader=new FileReader();
-          reader.onloadend=function(){
-            window._porterAttImgCache[cacheKey]=reader.result;
-            // Dodaj też mapowanie po contentId (dla cid: w HTML body)
-            if(att.contentId){
-              var cleanCid=att.contentId.replace(/^<|>$/g,"");
-              window._porterAttImgCache[mid+"__cid__"+cleanCid]=reader.result;
-            }
-            // Przebuduj srcDoc z podmienionymi cid: — obrazki już są w cache
-            var bodyObj=bodies[mid];
-            if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
-              buildSrcDoc(mid,bodyObj.content);
-            }
-          };
-          reader.readAsDataURL(blob);
+        .then(function(r){return r.ok?r.json():null;})
+        .then(function(data){
+          if(!data||!data.contentBytes)return;
+          var dataUri="data:"+(att.contentType||"image/jpeg")+";base64,"+data.contentBytes;
+          window._porterAttImgCache[cacheKey]=dataUri;
+          // Mapowanie po contentId (dla cid: w HTML body Outlooka)
+          var cidRaw=data.contentId||att.contentId||"";
+          if(cidRaw){
+            var cleanCid=cidRaw.replace(/^<|>$/g,"");
+            window._porterAttImgCache[mid+"__cid__"+cleanCid]=dataUri;
+          }
+          // Przebuduj srcDoc z podmienionymi cid: — obrazki już są w cache
+          var bodyObj=bodies[mid];
+          if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
+            buildSrcDoc(mid,bodyObj.content);
+          }
         })
         .catch(function(){});
       });
@@ -1869,12 +1868,14 @@ export function ScreenMail(p){
   function markAsRead(mail,readVal){
     if(!mail||mail.id.indexOf("m_")===0)return;
     setAllMails(function(prev){return prev.map(function(m){return m.id===mail.id?Object.assign({},m,{isRead:readVal}):m;});});
-    if(accessToken){
+    msalGetToken().then(function(tok){
+      var token=tok||accessToken;
+      if(!token)return;
       fetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
-        method:"PATCH",headers:{"Authorization":"Bearer "+accessToken,"Content-Type":"application/json"},
+        method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
         body:JSON.stringify({isRead:readVal})
       }).catch(function(e){console.warn("markAsRead PATCH failed",e);});
-    }
+    }).catch(function(){});
   }
 
   if(!logged){
