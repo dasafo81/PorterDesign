@@ -505,8 +505,8 @@ function MailPreview(p){
 
 
 
-  // Pobiera listę załączników; dla obrazków pobiera /$value i cache'uje jako data: URI
-  // (contentBytes w $select powoduje 400/403 dla plików >3MB i przy braku scope)
+  // Pobiera załączniki jednym GET BEZ $select — zwraca metadane + contentBytes (<3MB) + contentId.
+  // $select=contentId daje 400, bo contentId nie jest polem bazowego attachment (tylko fileAttachment).
   function fetchAttachments(mid){
     if(!mid)return;
     if(fetchedAtts[mid]&&fetchedAtts[mid].length>0)return;
@@ -515,54 +515,40 @@ function MailPreview(p){
     msalGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
       var useToken=tok||p.accessToken;
-      // Krok 1: lista metadanych bez contentBytes (unika 400 Bad Request)
-      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments?$select=id,name,size,contentType,contentId,isInline",{
+      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
         headers:{"Authorization":"Bearer "+useToken}
-      }).then(function(r){
-        if(!r.ok){return {error:true,tok:useToken};}
-        return r.json().then(function(data){return {data:data,tok:useToken};});
       });
     })
-    .then(function(res){
-      if(!res||res.error){
-        setFetchedAtts(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(data){
+      if(!data){
+        setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
         setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
         return;
       }
-      var list=(res.data.value)||[];
-      var useToken=res.tok;
+      var list=(data.value)||[];
       var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType,contentId:a.contentId||null,isInline:!!a.isInline};});
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=metaList;return n;});
       setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-      // Krok 2: dla każdego obrazka pobierz JSON attachment (contentBytes base64)
-      // GET /attachments/{id} bez $select zwraca contentBytes — działa dla plików <10MB
+      // Cache miniatur obrazków — contentBytes już mamy z tego samego requestu (pliki <3MB)
       if(!window._porterAttImgCache)window._porterAttImgCache={};
+      var gotImg=false;
       list.forEach(function(att){
-        if(!att.contentType||!att.contentType.startsWith("image/"))return;
-        var cacheKey=mid+"__"+att.id;
-        if(window._porterAttImgCache[cacheKey])return;
-        fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id,{
-          headers:{"Authorization":"Bearer "+useToken}
-        })
-        .then(function(r){return r.ok?r.json():null;})
-        .then(function(data){
-          if(!data||!data.contentBytes)return;
-          var dataUri="data:"+(att.contentType||"image/jpeg")+";base64,"+data.contentBytes;
-          window._porterAttImgCache[cacheKey]=dataUri;
-          // Mapowanie po contentId (dla cid: w HTML body Outlooka)
-          var cidRaw=data.contentId||att.contentId||"";
-          if(cidRaw){
-            var cleanCid=cidRaw.replace(/^<|>$/g,"");
-            window._porterAttImgCache[mid+"__cid__"+cleanCid]=dataUri;
-          }
-          // Przebuduj srcDoc z podmienionymi cid: — obrazki już są w cache
-          var bodyObj=bodies[mid];
-          if(bodyObj&&bodyObj.isHtml&&bodyObj.content){
-            buildSrcDoc(mid,bodyObj.content);
-          }
-        })
-        .catch(function(){});
+        if(!att.contentType||att.contentType.indexOf("image/")!==0)return;
+        if(!att.contentBytes)return; // plik >3MB — brak miniatury, ale klik pobierze osobno
+        var dataUri="data:"+att.contentType+";base64,"+att.contentBytes;
+        window._porterAttImgCache[mid+"__"+att.id]=dataUri;
+        if(att.contentId){
+          var cleanCid=att.contentId.replace(/^<|>$/g,"");
+          window._porterAttImgCache[mid+"__cid__"+cleanCid]=dataUri;
+        }
+        gotImg=true;
       });
+      if(gotImg){
+        setFetchedAtts(function(prev){return Object.assign({},prev);});
+        var bodyObj=bodies[mid];
+        if(bodyObj&&bodyObj.isHtml&&bodyObj.content)buildSrcDoc(mid,bodyObj.content);
+      }
     })
     .catch(function(){
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
