@@ -11,7 +11,7 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
   JZ_LABELS, JZ_ZONES, KARNISZ_SUPPLIERS, KN,
-  KP, KSLIM, KUNIV, LOGO_SRC,
+  KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
@@ -1321,8 +1321,8 @@ export function ProdCard(p){
       ]})
     );
   }else if(prod.type==="karnisz"){
-    var nap=[{v:"am75",l:"A-OK AM75 644z\u0142"},{v:"am50",l:"A-OK AM50 1000z\u0142"},{v:"mdct",l:"Movelite DCT 902z\u0142"},{v:"mrts",l:"Movelite RTS 1056z\u0142"},{v:"glydea",l:"Glydea 2268z\u0142"},{v:"irismo",l:"Irismo 2182z\u0142"}];
-    var pil=[{v:"brak",l:"Brak st."},{v:"aok1b",l:"Pilot bia\u0142y 130z\u0142"},{v:"aok1c",l:"Pilot czarny 148z\u0142"},{v:"tuya",l:"Tuya 340z\u0142"},{v:"situo",l:"Situo 284z\u0142"},{v:"tahoma",l:"TaHoma 1390z\u0142"}];
+    var kPow=c.kpow||"siec";
+    var knFiltered=KN_LIST.filter(function(x){return x.power===kPow;});
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
@@ -1336,8 +1336,49 @@ export function ProdCard(p){
         ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
         ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
       ]}),
-      ce("div",{style:{marginTop:8}},ce(Chips,{items:nap.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});})})),
-      ce("div",{style:{marginTop:8}},ce(Chips,{items:pil.map(function(x){return ce(Chip,{key:x.v,label:x.l,active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});})})),
+      // ZASILANIE SILNIKA
+      ce("div",{style:{marginTop:14,marginBottom:4}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ZASILANIE SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{v:"siec",l:"Sieciowe 230V"},{v:"aku",l:"Akumulatorowe"}].map(function(pw){
+            var isA=kPow===pw.v;
+            var defMotor=KN_LIST.find(function(x){return x.power===pw.v;});
+            return ce("button",{key:pw.v,
+              onClick:function(){
+                var def=defMotor?defMotor.v:(pw.v==="siec"?"am75":"am50");
+                p.onChange(mg(prod,{c:mg(c,{kpow:pw.v,kn:def})}));
+              },
+              style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+pw.l:pw.l
+            );
+          })
+        )
+      ),
+      kPow==="aku"?ce("div",{style:{marginTop:4,marginBottom:4,padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",fontSize:12,color:"var(--t2)"}},"Silnik akumulatorowy nie wymaga doprowadzenia kabla \u2014 idealne przy gotowych wn\u0119trzach."):null,
+      // SILNIK
+      ce("div",{style:{marginTop:8}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"SILNIK"),
+        ce(Chips,{items:knFiltered.map(function(x){
+          var prN=KN[x.v]||0;
+          return ce(Chip,{key:x.v,label:x.l+(prN?" "+prN+"z\u0142":""),active:(!c.kn&&x.v==="am75")||c.kn===x.v,onClick:function(){sc("kn",x.v);}});
+        })})
+      ),
+      // PILOT
+      ce("div",{style:{marginTop:8}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"PILOT"),
+        ce(Chips,{items:KN_PILOTY.map(function(x){
+          var prP=x.v!=="brak"?(KP[x.v]||0):0;
+          return ce(Chip,{key:x.v,label:x.l+(prP?" "+prP+"z\u0142":""),active:(!c.kp&&x.v==="brak")||c.kp===x.v,onClick:function(){sc("kp",x.v);}});
+        })})
+      ),
+      // CENTRALKA
+      ce("div",{style:{marginTop:8}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"CENTRALKA"),
+        ce(Chips,{items:KN_CENTRALKI.map(function(x){
+          var prC=x.v!=="brak"?(KP[x.v]||0):0;
+          return ce(Chip,{key:x.v,label:x.l+(prC?" "+prC+"z\u0142":""),active:(!c.kc&&x.v==="brak")||c.kc===x.v,onClick:function(){sc("kc",x.v);}});
+        })})
+      ),
       ce("div",{style:{marginTop:20}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA SILNIKA"),
         ce("div",{style:{display:"flex",gap:10}},
