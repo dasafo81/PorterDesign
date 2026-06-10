@@ -893,7 +893,7 @@ export function ProdCard(p){
     ):null;
 
     // ── BĘBENEK ──────────────────────────────────────────────────────
-    var bebenekChip = (rSystem&&rSystem!=="bez_mechanizmu")?ce("div",{style:{marginTop:16}},
+    var bebenekChip = rSystem?ce("div",{style:{marginTop:16}},
       ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
         ce("input",{type:"checkbox",checked:c.rMask==="tak",onChange:function(ev){sc("rMask",ev.target.checked?"tak":"nie");},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
         ce("span",{},"+ Boczki / maskownice (+50 z\u0142)")
@@ -909,7 +909,20 @@ export function ProdCard(p){
       {key:"miedz",     label:"Mied\u017a"}
     ];
     var isMetalowy=c.lancuszek==="metalowy";
-    var lancuszekSection = (rSystem==="manual"||rSystem==="polautomatyczny")?ce("div",{style:{marginTop:20}},
+    // ── BEZ MECHANIZMU options ────────────────────────────────────────
+    var bezMechSection = rSystem==="bez_mechanizmu"?ce("div",{style:{marginTop:20}},
+      ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA OBS\u0141UGI"),
+      ce("div",{style:{display:"flex",gap:10}},
+        ["Lewo","Prawo"].map(function(str){
+          var isA=c.stronaObslugi===str||(str==="Lewo"&&!c.stronaObslugi);
+          return ce("button",{key:str,onClick:function(){sc("stronaObslugi",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+            isA?"\u2713 "+str:str
+          );
+        })
+      )
+    ):null;
+
+        var lancuszekSection = (rSystem==="manual"||rSystem==="polautomatyczny")?ce("div",{style:{marginTop:20}},
       // Kolor łańcuszka
       ce("div",{style:{marginBottom:16}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"KOLOR \u0141A\u0143CUSZKA"),
@@ -1086,6 +1099,7 @@ export function ProdCard(p){
           "\u2139\ufe0f Szeroko\u015b\u0107 tkaniny: "+(+(par.wCm||0)+30)+" cm (wymiar + 30 cm) \xb7 Szycie: 200 z\u0142/m\xb2"
         ):null,
         bebenekChip,
+        bezMechSection,
         lancuszekSection,
         elektrykSection
       ):null
