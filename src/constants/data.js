@@ -1327,7 +1327,7 @@ export function buildSewingRows(client){
             podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
             rSystem:pc.rSystem==="elektryk"?"elektryczny":"manualny",
             stronaObslugi:rStrona,
-            lancuszek:pc.rSystem==="elektryk"?"-":rLancuszek,
+            lancuszek:pc.rSystem==="elektryk"?"-":pc.rSystem==="bez_mechanizmu"?"":rLancuszek,
             tasmaNaStojaco:"-",
             szStyle:"-",marszczenie:"-",tasma:"-",haczyk:"-",
             split:"-",bottom:"-",glide:"-",leadInSides:"-",
