@@ -1256,7 +1256,7 @@ export function buildFabricRows(client){
           var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
         });
         rows.push({
-          fabName:p.fabName||(p.fabManName||"Tkanina ręczna"),
+          fabName:p.fabName||(p.fabManName||"tkanina"),
           prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
           kolor:pc.kolor||"-",
           brutto:p.fabMan||p.fabP||0,
@@ -1307,7 +1307,7 @@ export function buildSewingRows(client){
             :"Biały";
           var rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.stronaObslugi||"Lewo");
           var fab2Obj=prod.fab2Name?FABRICS.find(function(f){return f.name===prod.fab2Name;}):null;
-          var fabricDesc=prod.fabName||(prod.fabManName||(prod.fabMan?"r\u0119czna "+prod.fabMan+" z\u0142":"(brak)"));
+          var fabricDesc=prod.fabName||(prod.fabManName||"tkanina"));
           if(pc.rModel==="duo"){
             var fab2Desc=prod.fab2Name||(prod.fab2ManName||(prod.fab2Man?"r\u0119czna "+prod.fab2Man+" z\u0142":"(brak)"));
             fabricDesc="\u2460 "+fabricDesc+" / \u2461 "+fab2Desc;
@@ -1368,7 +1368,7 @@ export function buildSewingRows(client){
         rows.push({
           room:r.name,win:w.name,
           type:lblDisp,
-          fabric:prod.fabName||(prod.fabManName||(prod.fabMan?"r\u0119czna "+prod.fabMan+" z\u0142":"(brak)")),
+          fabric:prod.fabName||(prod.fabManName||"tkanina")),
           prod:fabObj?fabObj.prod:"-",
           fabW:prod.fabW||prod.fabManW||"-",
           kolor:pc.kolor||"-",
