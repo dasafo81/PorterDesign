@@ -1322,7 +1322,7 @@ export function buildSewingRows(client){
             metry:rMetry,
             hCm:par.hCm||"-",
             wCm:par.wCm||"-",
-            nadprozeCm:par.nadprozeCm||"-",
+            nadprozeCm:par.hNadproza||"-",
             boczki:pc.rMask==="tak"?"TAK":"nie",
             podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
             rSystem:pc.rSystem==="elektryk"?"elektryczny":"manualny",
