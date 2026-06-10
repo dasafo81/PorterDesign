@@ -62,7 +62,7 @@ export function FabPicker(p){
     },
       ce("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:open?"var(--grd)":"var(--t2)",textTransform:"uppercase",flexShrink:0}},"Tkanina"),
       hasSelection?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-        sf?(p.fabName+" · "+sf.brutto+" zł/mb"):("ręczna: "+p.fabMan+" zł/mb")
+        sf?(p.fabName+" · "+sf.brutto+" zł/mb"):(p.fabManName?p.fabManName+" · ręczna "+p.fabMan+" zł/mb":"ręczna: "+p.fabMan+" zł/mb")
       ):ce("span",{style:{color:"var(--t3)",fontSize:13,flex:1}},
         "nie wybrano — kliknij aby wybrać"
       ),
@@ -90,7 +90,11 @@ export function FabPicker(p){
         ce("input",{type:"text",inputMode:"numeric",value:p.fabMan!=null?p.fabMan:"",onChange:function(ev){p.onManual(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 180",style:{width:100,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}}),
         ce("label",{style:{fontSize:12,color:"var(--t2)",whiteSpace:"nowrap"}},"Wys. belki (cm):"),
         ce("input",{type:"text",inputMode:"numeric",value:p.fabManW!=null?p.fabManW:"",onChange:function(ev){p.onManualW(ev.target.value===""?null:+ev.target.value);},placeholder:"np. 300",style:{width:90,padding:"12px 12px",fontSize:15,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right",minHeight:52}})
-      )
+      ),
+      p.fabMan!=null?ce("div",{style:{padding:"8px 14px 12px",display:"flex",alignItems:"center",gap:10,background:"var(--bg2)"}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",flexShrink:0}},"Nazwa tkaniny:"),
+        ce("input",{type:"text",value:p.fabManName||"",onChange:function(ev){p.onManualName(ev.target.value||null);},placeholder:"np. Velvet Ivory",style:{flex:1,padding:"10px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",minHeight:44}})
+      ):null
     ):null
   );
 }
@@ -102,9 +106,10 @@ export function ProdCard(p){
   function sc(k,v){p.onChange(mg(prod,{c:mg(c,{[k]:v})}));}
   function tc(k,a,b){a=a||"nie";b=b||"tak";sc(k,c[k]===b?a:b);}
   function sp(k,v){var n=String(v).replace(",",".");p.onChange(mg(prod,{par:mg(par,{[k]:/[.,]$/.test(v)?v:+n||0})}));}
-  function sf(f){p.onChange(mg(prod,{fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null}));}
+  function sf(f){p.onChange(mg(prod,{fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null,fabManName:null}));}
   function sfm(v){p.onChange(mg(prod,{fabName:null,fabP:null,fabW:prod.fabManW||null,fabMan:v}));}
   function sfmW(v){p.onChange(mg(prod,{fabManW:v,fabW:v}));}
+  function sfmN(v){p.onChange(mg(prod,{fabManName:v}));}
 
   // --- Curtain split logic ---
   // split: "left" | "right" | "equal" | "unequal"
@@ -156,7 +161,7 @@ export function ProdCard(p){
     return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
       if(prod.type===t.id)return;
       if(hasProdData(prod)){setPendingType(t);return;}
-      p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined}));
+      p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,innyNazwa:undefined}));
     }});
   });
 
@@ -672,7 +677,7 @@ export function ProdCard(p){
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, Ivory White...",style:{padding:"16px 18px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box"}})
           )
         ),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW})
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabManName:prod.fabManName,onSelect:sf,onManual:sfm,onManualW:sfmW,onManualName:sfmN})
       ),
 
       // SEKCJA 2: Model zasłony
@@ -1068,7 +1073,7 @@ export function ProdCard(p){
         ):null,
         ce("div",{style:isDuo?{border:"2px solid var(--grm)",borderRadius:12,padding:"10px 12px",marginBottom:8}:{}},
           isDuo?ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--grd)",letterSpacing:"0.07em",marginBottom:6}},"TKANINA \u2460 (pierwsza warstwa)"):null,
-          ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,onSelect:sf,onManual:sfm,onManualW:sfmW})
+          ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabManName:prod.fabManName,onSelect:sf,onManual:sfm,onManualW:sfmW,onManualName:sfmN})
         ),
         isDuo?ce("div",{style:{border:"2px solid var(--bd2)",borderRadius:12,padding:"10px 12px",marginBottom:8}},
           ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t2)",letterSpacing:"0.07em",marginBottom:6}},"TKANINA \u2461 (druga warstwa)"),
