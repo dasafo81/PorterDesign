@@ -1590,12 +1590,25 @@ export function ScreenMail(p){
     var trashUrl="https://graph.microsoft.com/v1.0/me/mailFolders/deletedItems/messages?$top=50&$select=subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
     var spamUrl="https://graph.microsoft.com/v1.0/me/mailFolders/junkEmail/messages?$top=50&$select=subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
 
-    function fetchJson(url){
-      return fetch(url,{headers:{"Authorization":"Bearer "+accessToken}})
-        .then(function(r){return r.ok?r.json():{value:[]};});
-    }
+    // Odśwież token przed każdym pobraniem — stary token wygasa po ~1h
+    msalGetToken().then(function(freshToken){
+      if(freshToken&&freshToken!==accessToken)setAccessToken(freshToken);
+      var tok=freshToken||accessToken;
 
-    Promise.all([fetchJson(inboxUrl),fetchJson(sentUrl),fetchJson(trashUrl),fetchJson(spamUrl)]).then(function(results){
+      function fetchJson(url){
+        return fetch(url,{headers:{"Authorization":"Bearer "+tok}})
+          .then(function(r){return r.ok?r.json():{value:[]};});
+      }
+
+      return Promise.all([fetchJson(inboxUrl),fetchJson(sentUrl),fetchJson(trashUrl),fetchJson(spamUrl)]);
+    }).catch(function(e){
+      if(e&&e.code==="MS_INTERACTION_REQUIRED"){
+        setLogged(false);setAccessToken(null);setMsAccount(null);
+      }
+      setLoadingMails(false);
+      return null;
+    }).then(function(results){
+      if(!results)return;
       var inboxData=results[0],sentData=results[1],trashData=results[2],spamData=results[3];
       var inboxMails=(inboxData.value||[]).map(function(m){
         var fromAddr=(m.from&&m.from.emailAddress)||{};
