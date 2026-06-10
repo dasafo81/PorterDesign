@@ -436,24 +436,32 @@ function MailList(p){
           var nm=displayName(m);
           var ci=Math.abs((nm||"").charCodeAt(0)||0)%colors.length;
           var unread=isInbox&&t.mails.some(function(x){return x.isRead===false;});
+          var threadImportant=t.mails.some(function(x){return x.isImportant;});
           return ce("div",{key:t.key,onClick:function(){p.onSelect(t);},
             style:{padding:"10px 12px",borderRadius:10,cursor:"pointer",
-              background:selectedInThread?"var(--wb)":"transparent",
-              border:"1px solid "+(selectedInThread?"var(--wbd)":"transparent"),
-              transition:"all .12s",display:"flex",gap:10,alignItems:"flex-start"}},
+              background:selectedInThread?"var(--wb)":(unread?"rgba(99,102,241,0.06)":"transparent"),
+              border:"1px solid "+(selectedInThread?"var(--wbd)":(unread?"rgba(99,102,241,0.18)":"transparent")),
+              borderLeft:!selectedInThread&&unread?"3px solid #6366f1":"1px solid "+(selectedInThread?"var(--wbd)":"transparent"),
+              transition:"all .12s",display:"flex",gap:8,alignItems:"flex-start"}},
+            ce("button",{onClick:function(ev){ev.stopPropagation();if(p.onToggleImportant)p.onToggleImportant(t.head);},
+              title:threadImportant?"Usu\u0144 oznaczenie wa\u017cne":"Oznacz jako wa\u017cne",
+              style:{border:"none",background:"transparent",cursor:"pointer",padding:"2px 4px",fontSize:16,lineHeight:1,color:threadImportant?"#ef4444":"var(--bd2)",alignSelf:"center",flexShrink:0,opacity:threadImportant?1:0.55,transition:"color .12s, opacity .12s"},
+              onMouseEnter:function(ev){if(!threadImportant){ev.currentTarget.style.color="#ef4444";ev.currentTarget.style.opacity="0.85";}},
+              onMouseLeave:function(ev){if(!threadImportant){ev.currentTarget.style.color="var(--bd2)";ev.currentTarget.style.opacity="0.55";}}
+            },"\u2691"),
             ce(Avatar,{size:34,bg:selectedInThread?colors[ci]:colors[ci]+"99",label:initials(nm)}),
             ce("div",{style:{flex:1,minWidth:0}},
               ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}},
-                ce("span",{style:{fontSize:13,fontWeight:(selectedInThread||unread)?700:600,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"68%"}},
-                  nm,
-                  t.count>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,marginLeft:6}},"("+t.count+")"):null
+                ce("span",{style:{display:"flex",alignItems:"center",gap:6,minWidth:0,maxWidth:"72%"}},
+                  unread?ce("span",{style:{width:8,height:8,borderRadius:"50%",background:"#6366f1",flexShrink:0,boxShadow:"0 0 0 2px rgba(99,102,241,0.18)"}}):null,
+                  ce("span",{style:{fontSize:13,fontWeight:unread?800:(selectedInThread?700:500),color:unread?"var(--t1)":"var(--t2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                    nm,
+                    t.count>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,marginLeft:6}},"("+t.count+")"):null
+                  )
                 ),
-                ce("span",{style:{display:"flex",alignItems:"center",gap:4,flexShrink:0}},
-                  m.isImportant?ce("span",{style:{color:"#ef4444",fontSize:13,lineHeight:1}},"\u2691"):null,
-                  ce("span",{style:{fontSize:10,color:"var(--t3)"}},fmtMailDate(m.date))
-                )
+                ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},fmtMailDate(m.date))
               ),
-              ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t2)",fontWeight:unread?700:600,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
+              ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":(unread?"var(--t1)":"var(--t3)"),fontWeight:unread?700:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
               ce("div",{style:{fontSize:11,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview),
               (m.attachments&&m.attachments.length>0)?ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:4}},
                 "\uD83D\uDCCE ",m.attachments.length," za\u0142."
@@ -2163,8 +2171,8 @@ export function ScreenMail(p){
           ?ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:8,color:"var(--t3)",fontSize:13}},"\u23F3 Wczytywanie\u2026")
           :ce(MailList,{mails:folderMails,folder:activeFolder,onSelect:function(t){
               setSelThread(t);
-              if(t&&t.head&&t.head.isRead===false)markAsRead(t.head,true);
-            },selectedId:selThread&&selThread.head?selThread.head.id:null})
+              if(t&&t.mails){t.mails.forEach(function(mm){if(mm.isRead===false)markAsRead(mm,true);});}
+            },onToggleImportant:function(m){toggleImportant(m);},selectedId:selThread&&selThread.head?selThread.head.id:null})
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
         ce(MailPreview,{thread:selThread,accessToken:accessToken,onTokenRefresh:function(tok){setAccessToken(tok);},onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
@@ -2246,7 +2254,8 @@ export function ScreenMail(p){
         SYSTEM_FOLDERS.map(function(f){
           var active=activeFolder===f.id;
           var badge=f.id==="drafts"&&drafts.length>0?drafts.length:null;
-          var unreadCnt=f.id==="inbox"?allMails.filter(function(m){return m.folder==="inbox"&&m.isRead===false;}).length:0;
+          var unreadCnt=0;
+          if(f.id==="inbox"){var _convs={};allMails.forEach(function(m){if(m.folder!=="inbox"||m.isRead!==false)return;var k=m.conversationId||("solo_"+m.id);_convs[k]=true;});unreadCnt=Object.keys(_convs).length;}
           return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelThread(null);},
             style:{width:"100%",textAlign:"left",padding:"8px 10px",borderRadius:9,border:"none",
               background:active?"var(--wb)":"transparent",color:active?"var(--wt)":"var(--t2)",
