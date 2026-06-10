@@ -565,6 +565,23 @@ export function CRMKalendarz(p){
     setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false,selectedCals:defaultCals});
   }
 
+  function openEditEventModal(ev){
+    var startDT=ev.start&&(ev.start.dateTime||ev.start.date);
+    var endDT=ev.end&&(ev.end.dateTime||ev.end.date);
+    var isAllDay=!!(ev.start&&ev.start.date&&!ev.start.dateTime);
+    var pad=function(n){return String(n).padStart(2,'0');};
+    var d=startDT?new Date(startDT):new Date();
+    var dateStr=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    var timeFrom=isAllDay?'09:00':pad(d.getHours())+':'+pad(d.getMinutes());
+    var dEnd=endDT?new Date(endDT):new Date(d.getTime()+60*60*1000);
+    var timeTo=isAllDay?'10:00':pad(dEnd.getHours())+':'+pad(dEnd.getMinutes());
+    var calId=ev._calId||'primary';
+    setNewEvDraft({title:ev.summary||'',date:dateStr,timeFrom:timeFrom,timeTo:timeTo,
+      description:ev.description||'',saving:false,selectedCals:[calId],
+      _editId:ev.id,_editCalId:calId});
+    setSelectedGcalEv(null);
+  }
+
   function toggleCalInDraft(calId){
     setNewEvDraft(function(d){
       if(!d) return d;
@@ -579,11 +596,37 @@ export function CRMKalendarz(p){
     var ev=newEvDraft;
     if(!ev.title.trim()){alert('Podaj tytu\u0142 zdarzenia.');return;}
     if(!ev.date){alert('Podaj dat\u0119.');return;}
-    var sel=ev.selectedCals||[];
-    if(sel.length===0){alert('Wybierz co najmniej jeden kalendarz.');return;}
     var start=new Date(ev.date+'T'+ev.timeFrom+':00');
     var end=new Date(ev.date+'T'+ev.timeTo+':00');
     if(end<=start){alert('Godzina zako\u0144czenia musi by\u0107 p\u00f3\u017aniejsza ni\u017c rozpocz\u0119cia.');return;}
+    // ── TRYB EDYCJI ──
+    if(ev._editId){
+      var patchCalId=ev._editCalId||'primary';
+      var patchBody={summary:ev.title.trim(),description:ev.description||'',
+        start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
+        end:{dateTime:end.toISOString(),timeZone:'Europe/Warsaw'}};
+      function doPatch(t){
+        return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(patchCalId)+'/events/'+encodeURIComponent(ev._editId),{
+          method:'PATCH',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},
+          body:JSON.stringify(patchBody)
+        });
+      }
+      setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
+      doPatch(gcalToken)
+        .then(function(r){
+          if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doPatch(fresh);});}
+          return r;
+        })
+        .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);})
+        .then(function(){setNewEvDraft(null);fetchEvents(gcalToken);})
+        .catch(function(){
+          setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
+          alert('B\u0142\u0105d edycji wydarzenia.');
+        });
+      return;
+    }
+    var sel=ev.selectedCals||[];
+    if(sel.length===0){alert('Wybierz co najmniej jeden kalendarz.');return;}
     var body={
       summary:ev.title.trim(),
       description:ev.description||'',
@@ -883,7 +926,9 @@ export function CRMKalendarz(p){
       onClick:function(e){if(e.target===e.currentTarget)setNewEvDraft(null);}
     },
       ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:24,width:'100%',maxWidth:420,boxShadow:'0 8px 40px rgba(0,0,0,0.2)',margin:'0 16px'}},
-        ce('div',{style:{fontSize:16,fontWeight:700,color:'var(--t1)',marginBottom:16}},'\uD83D\uDCC5 Nowe zdarzenie w Google Calendar'),
+        ce('div',{style:{fontSize:16,fontWeight:700,color:'var(--t1)',marginBottom:16}},
+          newEvDraft._editId?'\u270F\uFE0F Edytuj wydarzenie':'\uD83D\uDCC5 Nowe zdarzenie w Google Calendar'
+        ),
         ce('div',{style:{marginBottom:12}},
           ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'TYTU\u0141 *'),
           ce('input',{
@@ -929,7 +974,7 @@ export function CRMKalendarz(p){
             style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',resize:'none',fontFamily:'inherit'}
           })
         ),
-        ce('div',{style:{marginBottom:16}},
+        !newEvDraft._editId?ce('div',{style:{marginBottom:16}},
           ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:6}},'KALENDARZE *'),
           calList.length===0
             ?ce('div',{style:{fontSize:11,color:'var(--t3)',padding:'8px 10px',background:'var(--bg2)',borderRadius:8,border:'1.5px solid var(--bd2)'}},'\u23F3 \u0141aduj\u0119 list\u0119 kalendarzy...')
@@ -950,7 +995,7 @@ export function CRMKalendarz(p){
                   );
                 })
               )
-        ),
+        ):null,
         ce('div',{style:{display:'flex',gap:10}},
           ce('button',{
             onClick:function(){setNewEvDraft(null);},
@@ -959,12 +1004,12 @@ export function CRMKalendarz(p){
           },'Anuluj'),
           ce('button',{
             onClick:addCustomEvent,
-            disabled:newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(newEvDraft.selectedCals||[]).length===0,
+            disabled:newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(!newEvDraft._editId&&(newEvDraft.selectedCals||[]).length===0),
             style:{flex:2,padding:'10px',borderRadius:10,border:'none',
-              background:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(newEvDraft.selectedCals||[]).length===0)?'var(--bd2)':'#4285f4',
-              color:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(newEvDraft.selectedCals||[]).length===0)?'var(--t3)':'#fff',
+              background:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(!newEvDraft._editId&&(newEvDraft.selectedCals||[]).length===0))?'var(--bd2)':'#4285f4',
+              color:(newEvDraft.saving||!newEvDraft.title.trim()||!newEvDraft.date||(!newEvDraft._editId&&(newEvDraft.selectedCals||[]).length===0))?'var(--t3)':'#fff',
               fontSize:13,fontWeight:700,cursor:newEvDraft.saving?'wait':'pointer',fontFamily:'inherit'}
-          },newEvDraft.saving?'\u23F3 Zapisuj\u0119...':((newEvDraft.selectedCals||[]).length>1?'\uD83D\uDCC5 Dodaj do '+(newEvDraft.selectedCals||[]).length+' kalendarzy':'\uD83D\uDCC5 Dodaj do Google Calendar'))
+          },newEvDraft.saving?'\u23F3 Zapisuj\u0119...':(newEvDraft._editId?'\uD83D\uDCBE Zapisz zmiany':((newEvDraft.selectedCals||[]).length>1?'\uD83D\uDCC5 Dodaj do '+(newEvDraft.selectedCals||[]).length+' kalendarzy':'\uD83D\uDCC5 Dodaj do Google Calendar')))
         )
       )
     ):null
@@ -997,6 +1042,10 @@ export function CRMKalendarz(p){
           );});
         })(),
         selectedGcalEv.htmlLink?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null,
+        ce('div',{
+          style:{marginTop:10,padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
+          onClick:function(){openEditEventModal(selectedGcalEv);}
+        },'\u270F\uFE0F Edytuj wydarzenie'),
         ce('div',{
           style:{marginTop:10,padding:'9px',borderRadius:10,border:'1px solid #ef4444',color:'#ef4444',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
           onClick:function(){
