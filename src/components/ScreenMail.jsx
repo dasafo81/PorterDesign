@@ -368,6 +368,7 @@ function AttachmentsSection(p){
 function MailList(p){
   var us=React.useState;
   var sf=us(""),filter=sf[0],setFilter=sf[1];
+  var sfi=us(false),onlyImportant=sfi[0],setOnlyImportant=sfi[1];
   var isInbox=p.folder==="inbox";
 
   // Pole do wyszukiwania zależne od folderu (Inbox: from, Sent: to)
@@ -402,6 +403,7 @@ function MailList(p){
   }
 
   var filtered=threads.filter(function(t){
+    if(onlyImportant&&!t.mails.some(function(m){return m.isImportant;}))return false;
     if(!filter)return true;
     var q=filter.toLowerCase();
     // Pasuje jeśli którakolwiek wiadomość w wątku pasuje
@@ -410,10 +412,15 @@ function MailList(p){
 
   return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
     ce("div",{style:{paddingBottom:10,flexShrink:0}},
-      ce("div",{style:{position:"relative"}},
+      ce("div",{style:{position:"relative",marginBottom:6}},
         ce("span",{style:{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:"var(--t3)",pointerEvents:"none"}},"\uD83D\uDD0D"),
         ce("input",{type:"text",value:filter,onChange:function(e){setFilter(e.target.value);},
           placeholder:"Szukaj...",style:Object.assign({},INP,{paddingLeft:32,fontSize:12})})
+      ),
+      ce("button",{onClick:function(){setOnlyImportant(function(v){return !v;});},
+        style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(onlyImportant?"#ef4444":"var(--bd2)"),background:onlyImportant?"rgba(239,68,68,0.08)":"transparent",color:onlyImportant?"#ef4444":"var(--t3)",fontSize:11,fontWeight:onlyImportant?700:500,cursor:"pointer",width:"100%",justifyContent:"center"}},
+        ce("span",{style:{fontSize:13,color:"#ef4444"}},"\u2691"),
+        onlyImportant?"Wszystkie":"Tylko ważne"
       )
     ),
     ce("div",{style:{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}},
@@ -441,7 +448,10 @@ function MailList(p){
                   nm,
                   t.count>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,marginLeft:6}},"("+t.count+")"):null
                 ),
-                ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},fmtMailDate(m.date))
+                ce("span",{style:{display:"flex",alignItems:"center",gap:4,flexShrink:0}},
+                  m.isImportant?ce("span",{style:{color:"#ef4444",fontSize:13,lineHeight:1}},"\u2691"):null,
+                  ce("span",{style:{fontSize:10,color:"var(--t3)"}},fmtMailDate(m.date))
+                )
               ),
               ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t2)",fontWeight:unread?700:600,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
               ce("div",{style:{fontSize:11,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview),
@@ -728,6 +738,9 @@ function MailPreview(p){
         ce("button",{onClick:function(){p.onForward&&p.onForward(head,bodies);},style:BGHOST},"\u27A1 Przeka\u017c"),
         p.activeFolder==="inbox"
           ?ce("button",{onClick:function(){p.onMarkRead&&p.onMarkRead(head,!head.isRead);},style:BGHOST},head.isRead?"\uD83D\uDCEC Oznacz jako nieprzeczytane":"\uD83D\uDCEC Oznacz jako przeczytane")
+          :null,
+        p.activeFolder!=="trash"&&p.activeFolder!=="spam"
+          ?ce("button",{onClick:function(){p.onToggleImportant&&p.onToggleImportant(head);},style:Object.assign({},BGHOST,head.isImportant?{color:"#ef4444",borderColor:"#ef4444",fontWeight:700}:{})},head.isImportant?"\u2691 Wa\u017cne":"\u2691 Oznacz jako wa\u017cne")
           :null,
         ce("button",{onClick:p.onCalendar,style:BGHOST},"\uD83D\uDCC5 Dodaj do kalendarza"),
         p.activeFolder==="trash"||p.activeFolder==="spam"
@@ -1564,8 +1577,8 @@ export function ScreenMail(p){
     if(!accessToken)return;
     setLoadingMails(true);
 
-    var inboxUrl="https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$select=subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
-    var sentUrl="https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,sentDateTime,bodyPreview,hasAttachments,conversationId&$orderby=sentDateTime desc";
+    var inboxUrl="https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$select=subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead,importance&$orderby=receivedDateTime desc";
+    var sentUrl="https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,sentDateTime,bodyPreview,hasAttachments,conversationId,importance&$orderby=sentDateTime desc";
     var trashUrl="https://graph.microsoft.com/v1.0/me/mailFolders/deletedItems/messages?$top=50&$select=subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
     var spamUrl="https://graph.microsoft.com/v1.0/me/mailFolders/junkEmail/messages?$top=50&$select=subject,from,toRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
 
@@ -1588,7 +1601,8 @@ export function ScreenMail(p){
           attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
           hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
-          isRead:m.isRead!==false
+          isRead:m.isRead!==false,
+          isImportant:m.importance==="high"
         };
       });
       var sentMails=(sentData.value||[]).map(function(m){
@@ -1603,7 +1617,8 @@ export function ScreenMail(p){
           attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],
           hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
-          isRead:true
+          isRead:true,
+          isImportant:m.importance==="high"
         };
       });
       var trashMails=(trashData.value||[]).map(function(m){var fa=(m.from&&m.from.emailAddress)||{};return {id:m.id,folder:"trash",from:fa.address||"",fromName:fa.name||fa.address||"",to:"",toName:"",subject:m.subject||"",date:m.receivedDateTime||new Date().toISOString(),preview:m.bodyPreview||"",body:null,attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],hasAttachments:!!m.hasAttachments,conversationId:m.conversationId||null,isRead:m.isRead!==false};});
@@ -1953,6 +1968,22 @@ export function ScreenMail(p){
       }).catch(function(e){console.warn("markAsRead PATCH failed",e);});
     }).catch(function(){});
   }
+  function toggleImportant(mail){
+    if(!mail||mail.id.indexOf("m_")===0)return;
+    var newVal=!mail.isImportant;
+    setAllMails(function(prev){return prev.map(function(m){return m.id===mail.id?Object.assign({},m,{isImportant:newVal}):m;});});
+    if(selThread&&selThread.head&&selThread.head.id===mail.id){
+      setSelThread(function(prev){if(!prev)return prev;var newHead=Object.assign({},prev.head,{isImportant:newVal});return Object.assign({},prev,{head:newHead,mails:prev.mails.map(function(m){return m.id===mail.id?Object.assign({},m,{isImportant:newVal}):m;})});});
+    }
+    msalGetToken().then(function(tok){
+      var token=tok||accessToken;
+      if(!token)return;
+      fetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
+        method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        body:JSON.stringify({importance:newVal?"high":"normal"})
+      }).catch(function(e){console.warn("toggleImportant PATCH failed",e);});
+    }).catch(function(){});
+  }
 
   if(!logged){
     return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px",minHeight:300,gap:16,textAlign:"center"}},
@@ -2188,6 +2219,7 @@ export function ScreenMail(p){
             setActiveFolder("compose");
           },
           onMarkRead:function(mail,val){markAsRead(mail,val);},
+          onToggleImportant:function(mail){toggleImportant(mail);},
           customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMail(m);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:activeFolder})
       )
     );
