@@ -2054,7 +2054,7 @@ export function ScreenMail(p){
     ),
     ce("div",{style:{marginBottom:10,position:"relative"}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Do:"),
-      ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},placeholder:"adres@email.com",style:INP}),
+      ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},onBlur:function(){setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:INP}),
       contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--bg1)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:200,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",overflow:"hidden",marginTop:2}},
         contactSug.map(function(c){
           return ce("div",{key:c.email,onClick:function(){setToEmail(c.email);setContactSug([]);},
