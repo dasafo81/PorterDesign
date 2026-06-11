@@ -249,3 +249,50 @@ var IMG_FALDA_STUDIO     = imgUrl("zasony/falda-studio.jpg");
 var IMG_MODEL_TASMA      = imgUrl("zasony/model-tasma.jpg");
 var IMG_MODEL_WAVE       = imgUrl("zasony/model-wave.jpg");
 var IMG_MODEL_FALDA      = imgUrl("zasony/model-falda.jpg");
+
+// ── ADMIN API (super-admin only, calls /api/admin/* on backend) ──────────
+// Backend weryfikuje JWT + is_super_admin, dopiero potem uzywa service_role key
+// do operacji privileged (tworzenie tenantow, userow, ban/unban).
+function adminFetch(method, path, body){
+  var userTok=getUserToken();
+  return fetch(path, {
+    method: method,
+    headers: {
+      "Authorization": "Bearer "+(userTok||""),
+      "Content-Type": "application/json"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function(r){
+    return r.text().then(function(t){
+      if(!r.ok){
+        var msg=t;
+        try{var j=JSON.parse(t);msg=j.error||j.message||t;}catch(e){}
+        throw new Error(msg||("HTTP "+r.status));
+      }
+      return t ? JSON.parse(t) : null;
+    });
+  });
+}
+
+export const adminApi = {
+  // Lista wszystkich tenantow z agregowanymi countsami userow i klientow
+  getTenants: function(){
+    return adminFetch("GET","/api/admin/tenants");
+  },
+  // Tworzy nowego tenanta. Zwraca pelny rekord z wygenerowanym uuid
+  createTenant: function(name){
+    return adminFetch("POST","/api/admin/tenants",{name:name});
+  },
+  // Lista userow w danym tenancie (filtruje po app_metadata.tenant_id)
+  getUsers: function(tenantId){
+    return adminFetch("GET","/api/admin/users?tenant_id="+encodeURIComponent(tenantId));
+  },
+  // Tworzy nowego usera. data = {email, password, tenant_id, is_tenant_admin}
+  createUser: function(data){
+    return adminFetch("POST","/api/admin/users",data);
+  },
+  // Ban/unban: action = "suspend" | "reactivate"
+  setUserBan: function(userId, action){
+    return adminFetch("PATCH","/api/admin/users",{user_id:userId,action:action});
+  }
+};
