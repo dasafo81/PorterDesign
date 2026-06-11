@@ -1,12 +1,24 @@
 export const SB_URL="https://rkcidwusjzvfwxszotnb.supabase.co";
 export const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3Vzanp2Znd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDU4NzIsImV4cCI6MjA5MDE4MTg3Mn0.N-frD06x0MzSg8dHmz-xneA16QvVrBmAYUg3ileNpXw";
 
+// Czyta access_token zalogowanego użytkownika z localStorage (zapisywany przez lib/auth.js).
+// Zwraca null jeśli brak sesji → sbFetch używa wtedy anon key (zachowanie pre-tenant).
+function getUserToken(){
+  try{
+    var raw=localStorage.getItem("sb_session");
+    if(!raw)return null;
+    var s=JSON.parse(raw);
+    return s&&s.access_token?s.access_token:null;
+  }catch(e){return null;}
+}
+
 function sbFetch(method, path, body){
+  var userTok=getUserToken();
   return fetch(SB_URL+"/rest/v1/"+path, {
     method: method,
     headers: {
       "apikey": SB_KEY,
-      "Authorization": "Bearer "+SB_KEY,
+      "Authorization": "Bearer "+(userTok||SB_KEY),
       "Content-Type": "application/json",
       "Prefer": method==="POST"?"return=representation":"return=representation"
     },
