@@ -5,12 +5,23 @@ import { gcalLogin, gcalLogout, gcalGetToken } from '../lib/gcal.js';
 var ce = React.createElement;
 
 // ── SUPABASE HELPER ─────────────────────────────────────────────────────────
+// Czyta access_token zalogowanego użytkownika z localStorage (fallback do anon key).
+function getUserToken() {
+  try {
+    var raw = localStorage.getItem("sb_session");
+    if (!raw) return null;
+    var s = JSON.parse(raw);
+    return s && s.access_token ? s.access_token : null;
+  } catch (e) { return null; }
+}
+
 function sbFetch(method, path, body) {
+  var userTok = getUserToken();
   return fetch(SB_URL + "/rest/v1/" + path, {
     method: method,
     headers: {
       "apikey": SB_KEY,
-      "Authorization": "Bearer " + SB_KEY,
+      "Authorization": "Bearer " + (userTok || SB_KEY),
       "Content-Type": "application/json",
       "Prefer": "return=representation"
     },
