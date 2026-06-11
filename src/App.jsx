@@ -20,6 +20,7 @@ import { ScreenMail } from './components/ScreenMail.jsx';
 import { ScreenCRM, CRMKalendarz } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 import { ScreenTasks } from './components/ScreenTasks.jsx';
+import { ScreenAdmin } from './components/ScreenAdmin.jsx';
 const ce = React.createElement;
 
 
@@ -27,6 +28,18 @@ const ce = React.createElement;
 export function App(p){
   var onLogout=p&&p.onLogout?p.onLogout:function(){};
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
+  // Super-admin flaga z JWT — pokazuje zakladke Admin tylko gdy is_super_admin: true
+  var sIsSuper=useState(false),isSuperAdmin=sIsSuper[0],setIsSuperAdmin=sIsSuper[1];
+  React.useEffect(function(){
+    try{
+      var raw=localStorage.getItem("sb_session");
+      if(!raw)return;
+      var s=JSON.parse(raw);
+      if(!s||!s.access_token)return;
+      var payload=JSON.parse(atob(s.access_token.split(".")[1]));
+      setIsSuperAdmin(!!(payload&&payload.app_metadata&&payload.app_metadata.is_super_admin));
+    }catch(e){}
+  },[]);
   // GCal token – żyje na poziomie App żeby przeżywać przełączanie zakładek
   var sGcalTok=useState(function(){
     try{var t=localStorage.getItem("pd_gcal_token");var e=localStorage.getItem("pd_gcal_token_exp");if(t&&e&&Date.now()<Number(e))return t;}catch(x){}return null;
@@ -899,14 +912,14 @@ export function App(p){
       )
     ),
     // ── Main nav tabs ──
-    ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 1fr",gap:4,marginBottom:"1.2rem",background:"rgba(255,255,255,0.48)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid rgba(255,255,255,0.72)",boxShadow:"0 4px 20px rgba(99,102,241,0.10), 0 1px 0 rgba(255,255,255,0.80) inset"}},
+    ce("div",{style:{display:"grid",gridTemplateColumns:(isSuperAdmin?"1fr 1fr 1fr 1fr 1fr 1fr":"1fr 1fr 1fr 1fr 1fr"),gap:4,marginBottom:"1.2rem",background:"rgba(255,255,255,0.48)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid rgba(255,255,255,0.72)",boxShadow:"0 4px 20px rgba(99,102,241,0.10), 0 1px 0 rgba(255,255,255,0.80) inset"}},
       [
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
         {id:"kalendarz", label:"Kalen.",icon:"\uD83D\uDCC5"},
         {id:"mail",      label:"Mail",  icon:"\u2709"},
         {id:"zadania",   label:"Zadania",icon:"\u2713"}
-      ].map(function(tab){
+      ].concat(isSuperAdmin?[{id:"admin",label:"Admin",icon:"\u2699"}]:[]).map(function(tab){
         var active=appMode===tab.id;
         return ce("button",{key:tab.id,
           onClick:function(){if(!tab.soon)setAppMode(tab.id);},
@@ -942,6 +955,8 @@ export function App(p){
         ? ce(CRMKalendarz,{deals:[],clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
       : appMode==="zadania"
         ? ce(ScreenTasks,{})
+      : appMode==="admin"
+        ? ce(ScreenAdmin,null)
         : ce(Fragment,null,
             screen!=="home"?ce(BC,{}):null,
             content
