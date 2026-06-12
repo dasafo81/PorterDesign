@@ -203,6 +203,13 @@ export const sbApi = {
         "Authorization": "Bearer "+SB_KEY
       }
     }).then(function(){return true;}).catch(function(){return false;});
+  },
+  // Pobierz config (branding) wlasnego tenanta - RLS policy own_tenant pozwala
+  // userowi czytac tylko swoj rekord z tabeli tenants.
+  getMyTenant: function(){
+    return sbFetch("GET","tenants?select=id,name,config&limit=1").then(function(rows){
+      return rows&&rows[0]?rows[0]:null;
+    });
   }
 };
 
@@ -294,5 +301,9 @@ export const adminApi = {
   // Ban/unban: action = "suspend" | "reactivate"
   setUserBan: function(userId, action){
     return adminFetch("PATCH","/api/admin/users",{user_id:userId,action:action});
+  },
+  // Aktualizuje config (branding) tenanta. config = {brand_name, logo_url}
+  updateTenant: function(tenantId, config){
+    return adminFetch("PATCH","/api/admin/tenants",{id:tenantId,config:config});
   }
 };
