@@ -1482,6 +1482,7 @@ function RichTextEditor(p){
       "data-rte-empty":isEmpty(p.value)?"true":"false",
       style:{flex:1,padding:"12px 14px",fontSize:14,lineHeight:1.7,
         color:"var(--t1)",outline:"none",overflowY:"auto",
+        background:p.bg||"transparent",
         fontFamily:"Arial, Helvetica, sans-serif",
         minHeight:p.minHeight||220}
     })
@@ -1507,6 +1508,9 @@ export function ScreenMail(p){
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
   var st=us("oferta"),selTemplate=st[0],setSelTemplate=st[1];
   var sto=us(""),toEmail=sto[0],setToEmail=sto[1];
+  var scc=us(""),ccEmail=scc[0],setCcEmail=scc[1];
+  var sbcc=us(""),bccEmail=sbcc[0],setBccEmail=sbcc[1];
+  var sccvis=us(false),showCcBcc=sccvis[0],setShowCcBcc=sccvis[1];
   var ssub=us(""),subject=ssub[0],setSubject=ssub[1];
   var sbod=us(""),body=sbod[0],setBody=sbod[1];
   var satt=us([]),attachments=satt[0],setAttachments=satt[1];
@@ -1690,17 +1694,20 @@ export function ScreenMail(p){
 
   function handleSaveDraft(){
     if(!toEmail&&!subject&&bodyEmpty)return;
-    var d={id:"d_"+Date.now(),to:toEmail,subject:subject,body:body,attachments:attachments.slice(),savedAt:new Date().toISOString()};
+    var d={id:"d_"+Date.now(),to:toEmail,cc:ccEmail,bcc:bccEmail,subject:subject,body:body,attachments:attachments.slice(),savedAt:new Date().toISOString()};
     setDrafts(function(prev){
       var next=[d].concat(prev);
       try{localStorage.setItem("pd_mail_drafts",JSON.stringify(next));}catch(e){}
       return next;
     });
     setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
+    setCcEmail(""); setBccEmail("");
   }
 
   function openDraft(d){
     setToEmail(d.to||""); setSubject(d.subject||""); setBody(d.body||"");
+    setCcEmail(d.cc||""); setBccEmail(d.bcc||"");
+    if(d.cc||d.bcc)setShowCcBcc(true);
     setAttachments(d.attachments||[]);
     setDrafts(function(prev){return prev.filter(function(x){return x.id!==d.id;});});
     setActiveFolder("compose");
@@ -1821,6 +1828,13 @@ export function ScreenMail(p){
           body:{contentType:"HTML",content:htmlBody},
           toRecipients:[{emailAddress:{address:toEmail,name:toName}}]
         };
+        var parseRecips=function(str){
+          return String(str||"").split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean)
+            .map(function(addr){return {emailAddress:{address:addr}};});
+        };
+        var ccList=parseRecips(ccEmail),bccList=parseRecips(bccEmail);
+        if(ccList.length)msgPayload.ccRecipients=ccList;
+        if(bccList.length)msgPayload.bccRecipients=bccList;
         if(atts&&atts.length>0)msgPayload.attachments=atts;
         fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
           method:"POST",
@@ -1836,6 +1850,7 @@ export function ScreenMail(p){
           setSending(false); setJustSent(true);
           setTimeout(function(){setJustSent(false);},3000);
           setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
+          setCcEmail(""); setBccEmail("");
         })
         .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
       }).catch(function(e){
@@ -2066,8 +2081,13 @@ export function ScreenMail(p){
       )
     ),
     ce("div",{style:{marginBottom:10,position:"relative"}},
-      ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Do:"),
-      ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},onBlur:function(){setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:INP}),
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
+        ce("label",{style:LSML},"Do:"),
+        ce("button",{onClick:function(){setShowCcBcc(function(v){return !v;});},
+          style:{border:"none",background:"none",cursor:"pointer",fontSize:11,fontWeight:600,color:"var(--violet)",padding:"2px 4px"}},
+          showCcBcc?"\u2212 Ukryj CC/UDW":"+ CC / UDW")
+      ),
+      ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},onBlur:function(){setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:Object.assign({},INP,{background:"#fff"})}),
       contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--bg1)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:200,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",overflow:"hidden",marginTop:2}},
         contactSug.map(function(c){
           return ce("div",{key:c.email,onClick:function(){setToEmail(c.email);setContactSug([]);},
@@ -2081,9 +2101,17 @@ export function ScreenMail(p){
         })
       ):null
     ),
+    (showCcBcc||ccEmail)?ce("div",{style:{marginBottom:10}},
+      ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"CC (do wiadomo\u015bci):"),
+      ce("input",{type:"text",value:ccEmail,onChange:function(e){setCcEmail(e.target.value);},placeholder:"adresy oddzielone przecinkiem",style:Object.assign({},INP,{background:"#fff"})})
+    ):null,
+    (showCcBcc||bccEmail)?ce("div",{style:{marginBottom:10}},
+      ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"UDW (ukryte):"),
+      ce("input",{type:"text",value:bccEmail,onChange:function(e){setBccEmail(e.target.value);},placeholder:"adresy oddzielone przecinkiem",style:Object.assign({},INP,{background:"#fff"})})
+    ):null,
     ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Temat"),
-      ce("input",{type:"text",value:subject,onChange:function(e){setSubject(e.target.value);},placeholder:"Temat wiadomo\u015bci",style:INP})
+      ce("input",{type:"text",value:subject,onChange:function(e){setSubject(e.target.value);},placeholder:"Temat wiadomo\u015bci",style:Object.assign({},INP,{background:"#fff"})})
     ),
     ce("div",{style:{flex:1,display:"flex",flexDirection:"column",marginBottom:10}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
@@ -2119,7 +2147,7 @@ export function ScreenMail(p){
           ):null
         )
       ),
-      ce(RichTextEditor,{value:body,onChange:setBody,minHeight:200,placeholder:"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026"}),
+      ce(RichTextEditor,{value:body,onChange:setBody,minHeight:200,bg:"#fff",placeholder:"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026"}),
       // Informacja o automatycznie doklejanym podpisie
       (userSettings&&(userSettings.signature_html||userSettings.signature_image_url))
         ?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
