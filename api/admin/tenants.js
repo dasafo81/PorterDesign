@@ -5,7 +5,7 @@ const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabas
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 }
@@ -99,6 +99,25 @@ export default async function handler(req) {
     if (!ins.ok) return json({ error: 'failed to create tenant', detail: await ins.text() }, 500);
     const created = await ins.json();
     return json(Array.isArray(created) ? created[0] : created, 201);
+  }
+
+  if (req.method === 'PATCH') {
+    let body;
+    try { body = await req.json(); } catch (e) { return json({ error: 'invalid json' }, 400); }
+    const tenantId = body && body.id;
+    const config = body && body.config;
+    if (!tenantId) return json({ error: 'id required' }, 400);
+    if (!config || typeof config !== 'object') return json({ error: 'config object required' }, 400);
+
+    const upd = await fetch(`${SB_URL}/rest/v1/tenants?id=eq.${encodeURIComponent(tenantId)}`, {
+      method: 'PATCH',
+      headers: Object.assign({}, headers, { Prefer: 'return=representation' }),
+      body: JSON.stringify({ config: config }),
+    });
+    if (!upd.ok) return json({ error: 'failed to update tenant', detail: await upd.text() }, 500);
+    const updated = await upd.json();
+    if (!Array.isArray(updated) || updated.length === 0) return json({ error: 'tenant not found' }, 404);
+    return json(updated[0]);
   }
 
   return json({ error: 'method not allowed' }, 405);
