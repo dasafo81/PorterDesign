@@ -40,6 +40,15 @@ export function App(p){
       setIsSuperAdmin(!!(payload&&payload.app_metadata&&payload.app_metadata.is_super_admin));
     }catch(e){}
   },[]);
+  // Branding tenanta - wczytany raz po starcie, fallback Porter Design jesli config pusty
+  var sTenantCfg=useState(null),tenantConfig=sTenantCfg[0],setTenantConfig=sTenantCfg[1];
+  React.useEffect(function(){
+    sbApi.getMyTenant().then(function(t){
+      if(t&&t.config)setTenantConfig(t.config);
+    }).catch(function(){});
+  },[]);
+  var brandName=(tenantConfig&&tenantConfig.brand_name)||"Porter Design";
+  var brandLogo=(tenantConfig&&tenantConfig.logo_url)||LOGO_SRC;
   // GCal token – żyje na poziomie App żeby przeżywać przełączanie zakładek
   var sGcalTok=useState(function(){
     try{var t=localStorage.getItem("pd_gcal_token");var e=localStorage.getItem("pd_gcal_token_exp");if(t&&e&&Date.now()<Number(e))return t;}catch(x){}return null;
@@ -881,8 +890,8 @@ export function App(p){
         ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"rgba(124,58,237,0.08)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
         :ce("div",{style:{width:20}}),
       ce("div",{style:{display:"flex",alignItems:"center",gap:9}},
-        ce("img",{src:LOGO_SRC,alt:"PD",style:{height:22,opacity:0.9}}),
-        ce("span",{style:{fontSize:10,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--t3)",fontWeight:600}},"Porter Design")
+        ce("img",{src:brandLogo,alt:"logo",style:{height:22,opacity:0.9}}),
+        ce("span",{style:{fontSize:10,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--t3)",fontWeight:600}},brandName)
       ),
       ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
         // Offline toggle
