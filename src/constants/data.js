@@ -1016,11 +1016,11 @@ export function calc(p){
     var tkanHcm=hCm+5+10+iloscTuneli*2;
     var pow=parseFloat(((tkanWcm/100)*(tkanHcm/100)).toFixed(3));
     var powInfo="tkanina "+tkanWcm+"\xd7"+tkanHcm+"cm ("+iloscTuneli+" tuneli)";
+    var powSzycie=parseFloat(((wCm/100)*(hCm/100)).toFixed(3));
     var rr;
     if(c.rSystem==="bez_mechanizmu"){
       // Bez mechanizmu: szycie = w*h m2 * 200zl, tkanina = (w+30)/100 mb * fabP
       var tkanWcmMat=wCm+30;
-      var powSzycie=parseFloat(((wCm/100)*(hCm/100)).toFixed(3));
       var kosztSzycia=parseFloat((powSzycie*200).toFixed(2));
       var kosztTkaniny=parseFloat(((tkanWcmMat/100)*tkan).toFixed(2));
       total=parseFloat((kosztSzycia+kosztTkaniny).toFixed(2));
@@ -1030,18 +1030,18 @@ export function calc(p){
       var tkan2=p.fab2Man!=null?p.fab2Man:(p.fab2P!=null?p.fab2P:null);
       if(tkan2==null)return{total:0,lines:[],warn:"Wybierz drugą tkaninę (Duo)"};
       rr=c.rSystem==="polautomatyczny"?lookup(wCm,RPOLAUTO_DUO):lookup(wCm,RDUO);
-      var kosztSzyciaDuo=parseFloat((pow*200*2).toFixed(2));
+      var kosztSzyciaDuo=parseFloat((powSzycie*200*2).toFixed(2));
       var kosztTkan1Duo=parseFloat(((tkanWcm/100)*tkan).toFixed(2));
       var kosztTkan2Duo=parseFloat(((tkanWcm/100)*tkan2).toFixed(2));
       var mechCostDuo=c.rSystem==="polautomatyczny"?parseFloat(rr.p.toFixed(2)):parseFloat((rr.p*2).toFixed(2));
       total=mechCostDuo+kosztSzyciaDuo+kosztTkan1Duo+kosztTkan2Duo;
       lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo);
-      lines.push("  Szycie: "+pow+"m\xb2\xd7200z\u0142 \xd7 2 tkaniny");
+      lines.push("  Szycie: "+powSzycie+"m\xb2\xd7200z\u0142 \xd7 2 tkaniny");
       lines.push("  Tkanina 1: "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
       lines.push("  Tkanina 2: "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan2.toFixed(0)+"z\u0142");
     }else{
       // Szycie = pow * 200, tkanina = tkanWcm/100 mb * tkan
-      var kosztSzycia=parseFloat((pow*200).toFixed(2));
+      var kosztSzycia=parseFloat((powSzycie*200).toFixed(2));
       var kosztTkaniny=parseFloat(((tkanWcm/100)*tkan).toFixed(2));
       rr=lookup(wCm,RCITY);
       total=parseFloat((rr.p*2).toFixed(2))+kosztSzycia+kosztTkaniny;
@@ -1052,11 +1052,11 @@ export function calc(p){
         rr=lookup(wCm,RPOLAUTO);
         total=parseFloat(rr.p.toFixed(2))+kosztSzycia+kosztTkaniny;
       }
-      lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+pow+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
+      lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+powSzycie+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
     }
     // Podszewka (+80zł/mb tkaniny + 50% do kosztu szycia)
     if(c.rPodszewka==="tak"&&c.rSystem!=="bez_mechanizmu"){
-      var kosztPodszSzycia=rModel==="duo"?+(pow*200*2*0.5).toFixed(2):+(pow*200*0.5).toFixed(2);
+      var kosztPodszSzycia=rModel==="duo"?+(powSzycie*200*2*0.5).toFixed(2):+(powSzycie*200*0.5).toFixed(2);
       var kosztPodszTkan=+((tkanWcm/100)*80).toFixed(2);
       var podszTot=+(kosztPodszSzycia+kosztPodszTkan).toFixed(2);
       total+=podszTot;
