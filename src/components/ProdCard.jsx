@@ -1087,7 +1087,14 @@ export function ProdCard(p){
             onManualW:function(v){p.onChange(mg(prod,{fab2ManW:v}));}
           })
         ):null,
-        ce("div",{style:{marginTop:12}},
+        isDuo?ce("div",{style:{marginTop:12,display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          ce(Fld,{label:"KOLOR \u2460"},
+            ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. Ivory White, Ecru, Stone...",style:IST})
+          ),
+          ce(Fld,{label:"KOLOR \u2461"},
+            ce("input",{type:"text",value:c.kolor2||"",onChange:function(ev){sc("kolor2",ev.target.value);},placeholder:"np. Ivory White, Ecru, Stone...",style:IST})
+          )
+        ):ce("div",{style:{marginTop:12}},
           ce(Fld,{label:"KOLOR"},
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. Ivory White, Ecru, Stone...",style:IST})
           )
