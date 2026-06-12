@@ -86,7 +86,62 @@ function CreateTenantModal(p) {
   );
 }
 
-// ── Create-user modal ──────────────────────────────────────────────────────
+// ── Edit-tenant (branding) modal ──────────────────────────────
+function EditTenantModal(p) {
+  var cfg = p.tenant.config || {};
+  var sBrand = useState(cfg.brand_name || ''), brandName = sBrand[0], setBrandName = sBrand[1];
+  var sLogo = useState(cfg.logo_url || ''), logoUrl = sLogo[0], setLogoUrl = sLogo[1];
+  var sBusy = useState(false), busy = sBusy[0], setBusy = sBusy[1];
+  var sErr = useState(null), err = sErr[0], setErr = sErr[1];
+
+  function submit() {
+    setBusy(true); setErr(null);
+    adminApi.updateTenant(p.tenant.id, {
+      brand_name: brandName.trim(),
+      logo_url: logoUrl.trim()
+    }).then(function() {
+      p.onSaved();
+    }).catch(function(e) {
+      setErr(e.message || 'Blad zapisu');
+      setBusy(false);
+    });
+  }
+
+  return ce(ModalShell, { title: 'Branding — ' + p.tenant.name, onClose: p.onClose },
+    err ? ce('div', { style: { padding: 10, marginBottom: 12, background: 'rgba(239,68,68,0.08)',
+                                border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8,
+                                color: '#ef4444', fontSize: 13 } }, err) : null,
+    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
+                            letterSpacing: '0.08em', color: 'var(--t3)',
+                            textTransform: 'uppercase', marginBottom: 6 } }, 'Nazwa marki (topbar)'),
+    ce('input', {
+      autoFocus: true, value: brandName,
+      onChange: function(e) { setBrandName(e.target.value); },
+      placeholder: 'np. Window Studio Pro',
+      style: inputStyle
+    }),
+    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
+                            letterSpacing: '0.08em', color: 'var(--t3)',
+                            textTransform: 'uppercase', marginBottom: 6, marginTop: 14 } },
+      'URL logo (opcjonalne)'),
+    ce('input', {
+      type: 'url', value: logoUrl,
+      onChange: function(e) { setLogoUrl(e.target.value); },
+      onKeyDown: function(e) { if (e.key === 'Enter') submit(); },
+      placeholder: 'https://...',
+      style: inputStyle
+    }),
+    ce('div', { style: { fontSize: 12, color: 'var(--t3)', marginTop: 8 } },
+      'Puste pola — aplikacja uzywa domyslnego brandingu Porter Design.'),
+    ce('div', { style: { display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' } },
+      ce('button', { onClick: p.onClose, disabled: busy, style: secondaryButtonStyle }, 'Anuluj'),
+      ce('button', { onClick: submit, disabled: busy, style: primaryButtonStyle(busy) },
+        busy ? 'Zapisuje...' : 'Zapisz')
+    )
+  );
+}
+
+// ── Create-user modal ─────────────────────────────────────────
 function CreateUserModal(p) {
   var sEmail = useState(''), email = sEmail[0], setEmail = sEmail[1];
   var sPass = useState(''), pass = sPass[0], setPass = sPass[1];
@@ -163,6 +218,7 @@ export function ScreenAdmin() {
   var sErr = useState(null), err = sErr[0], setErr = sErr[1];
   var sShowCT = useState(false), showCT = sShowCT[0], setShowCT = sShowCT[1];
   var sShowCU = useState(false), showCU = sShowCU[0], setShowCU = sShowCU[1];
+  var sShowET = useState(false), showET = sShowET[0], setShowET = sShowET[1];
 
   function loadTenants() {
     setErr(null);
@@ -252,12 +308,20 @@ export function ScreenAdmin() {
                 ce('div', { style: { fontSize: 11, color: 'var(--t3)', marginTop: 4,
                                        fontFamily: 'monospace' } }, selectedTenant.id)
               ),
-              ce('button', {
-                onClick: function() { setShowCU(true); },
-                style: { border: 'none', background: 'var(--violet)', color: '#fff',
-                          borderRadius: 10, padding: '8px 14px', fontSize: 12,
-                          fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }
-              }, '+ Dodaj usera')
+              ce('div', { style: { display: 'flex', gap: 8 } },
+                ce('button', {
+                  onClick: function() { setShowET(true); },
+                  style: { border: '1px solid var(--bd2)', background: 'var(--bg)', color: 'var(--t2)',
+                            borderRadius: 10, padding: '8px 14px', fontSize: 12,
+                            fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }
+                }, '\\u270E Edytuj branding'),
+                ce('button', {
+                  onClick: function() { setShowCU(true); },
+                  style: { border: 'none', background: 'var(--violet)', color: '#fff',
+                            borderRadius: 10, padding: '8px 14px', fontSize: 12,
+                            fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }
+                }, '+ Dodaj usera')
+              )
             ),
             ce('div', { style: { flex: 1, overflowY: 'auto', padding: 14 } },
               err ? ce('div', { style: { padding: 12, marginBottom: 12,
@@ -342,6 +406,11 @@ export function ScreenAdmin() {
       tenant: selectedTenant,
       onClose: function() { setShowCU(false); },
       onCreated: function() { setShowCU(false); loadUsers(selectedId); loadTenants(); }
+    }) : null,
+    showET && selectedTenant ? ce(EditTenantModal, {
+      tenant: selectedTenant,
+      onClose: function() { setShowET(false); },
+      onSaved: function() { setShowET(false); loadTenants(); }
     }) : null
   );
 }
