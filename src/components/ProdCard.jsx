@@ -845,7 +845,6 @@ export function ProdCard(p){
       {key:"relax",   label:"Relax",      imgSrc:IMG_ROLETA_RELAX},
       {key:"print",   label:"Print",      imgSrc:IMG_ROLETA_PRINT},
       {key:"back",    label:"Back",       imgSrc:IMG_ROLETA_BACK},
-      {key:"podszewka",label:"Podszewka", imgSrc:IMG_ROLETA_PODSZEWKA},
       {key:"front",   label:"Front",      imgSrc:IMG_ROLETA_FRONT},
       {key:"cascade", label:"Cascade",    imgSrc:IMG_ROLETA_CASCADE},
       {key:"duo",     label:"Duo",        imgSrc:IMG_ROLETA_DUO}
@@ -966,7 +965,7 @@ export function ProdCard(p){
         ):null
       ),
       // Strona obsługi
-      ce("div",null,
+      !isDuo?ce("div",null,
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA OBS\u0141UGI"),
         ce("div",{style:{display:"flex",gap:10}},
           ["Lewo","Prawo"].map(function(str){
@@ -976,6 +975,8 @@ export function ProdCard(p){
             );
           })
         )
+      ):ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"10px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)"}},
+        "\u2139\ufe0f Roleta Duo (manual): obs\u0142uga \u0142a\u0144cuszkowa po obu stronach"
       )
     ):null;
 
@@ -1090,12 +1091,32 @@ export function ProdCard(p){
           ce(Fld,{label:"KOLOR"},
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. Ivory White, Ecru, Stone...",style:IST})
           )
+        ),
+        ce("div",{style:{marginTop:16}},
+          ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.rPodszewka==="tak"?"var(--t1)":"var(--bd2)"),background:c.rPodszewka==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
+            ce("input",{type:"checkbox",checked:c.rPodszewka==="tak",onChange:function(ev){sc("rPodszewka",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
+            ce("div",{},
+              ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Podszewka"),
+              ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"materia\u0142 80 z\u0142/mb + 50% do szycia")
+            )
+          )
         )
       ),
       // SEKCJA 2: Model rolety
       ce(Section,{num:"2",title:"Model"},
         ce("p",{style:{fontSize:13,color:"var(--t2)",marginBottom:16}},"Wybierz model rolety"),
-        roletaModelSelector
+        roletaModelSelector,
+        isDuo?ce("div",{style:{marginTop:20}},
+          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"MODEL 1 WARSTWY (Duo)"),
+          ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+            ROLETA_MODELS.filter(function(m){return m.key!=="duo";}).map(function(m){
+              var isA=c.rDuoModel===m.key;
+              return ce("button",{key:m.key,onClick:function(){sc("rDuoModel",m.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+                isA?"\u2713 "+m.label:m.label
+              );
+            })
+          )
+        ):null
       ),
       // SEKCJA 3: System (tylko po wyborze modelu)
       rModel?ce(Section,{num:"3",title:"System"},
