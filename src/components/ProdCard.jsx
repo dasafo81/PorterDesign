@@ -882,7 +882,7 @@ export function ProdCard(p){
       {key:"elektryk",       label:"Elektryk"},
       {key:"bez_mechanizmu", label:"Bez mechanizmu"},
     ];
-    if(isDuo) systemOpts.splice(1,0,{key:"polautomatyczny",label:"P\xf3\u0142automatyczny"});
+    systemOpts.splice(1,0,{key:"polautomatyczny",label:"Pó\u0142automatyczny"});
 
     var roletaSystemSelector = rModel?ce("div",{style:{marginTop:20}},
       ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"SYSTEM"),
