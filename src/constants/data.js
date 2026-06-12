@@ -1047,6 +1047,14 @@ export function calc(p){
       }
       lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+pow+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
     }
+    // Podszewka (+80zł/mb tkaniny + 50% do kosztu szycia)
+    if(c.rPodszewka==="tak"&&c.rSystem!=="bez_mechanizmu"){
+      var kosztPodszSzycia=rModel==="duo"?+(pow*200*2*0.5).toFixed(2):+(pow*200*0.5).toFixed(2);
+      var kosztPodszTkan=+((tkanWcm/100)*80).toFixed(2);
+      var podszTot=+(kosztPodszSzycia+kosztPodszTkan).toFixed(2);
+      total+=podszTot;
+      lines.push("+ Podszewka "+(tkanWcm/100).toFixed(2)+"mb\xd780z\u0142 + 50% szycia \u2192 +"+podszTot.toFixed(2)+" z\u0142");
+    }
     // Maskownice/boczki
     if(c.rMask==="tak"){total+=50;lines.push("+ Boczki/maskownice +50 z\u0142");}
   }else if(p.type==="shadow"){
@@ -1300,12 +1308,15 @@ export function buildSewingRows(client){
           var rTunele=isBezMech?0:Math.floor((par.hCm||0)/23);
           var rHcm=isBezMech?(par.hCm||0):(par.hCm||0)+5+10+rTunele*2;
           var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
-          var rModelMap={relax:"Relax",print:"Print",back:"Back",podszewka:"Podszewka",front:"Front",cascade:"Cascade",duo:"Duo"};
+          var rModelMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
           var rModelLbl=rModelMap[pc.rModel]||pc.rModel||"-";
+          if(pc.rModel==="duo"&&pc.rDuoModel){
+            rModelLbl+=" \u2013 "+(rModelMap[pc.rDuoModel]||pc.rDuoModel);
+          }
           var rLancuszek=pc.lancuszek==="metalowy"
             ?"Metalowy"+(pc.kolorLancuszka?" ("+pc.kolorLancuszka+")":"")
             :"Biały";
-          var rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.stronaObslugi||"Lewo");
+          var rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.rModel==="duo"&&pc.rSystem!=="bez_mechanizmu"?"Obie strony":(pc.stronaObslugi||"Lewo"));
           var fab2Obj=prod.fab2Name?FABRICS.find(function(f){return f.name===prod.fab2Name;}):null;
           var fabricDesc=prod.fabName||(prod.fabManName||"tkanina");
           if(pc.rModel==="duo"){
