@@ -2274,7 +2274,7 @@ export function ScreenMail(p){
     );
   }
 
-  return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
+  return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:"#fff",borderRadius:16,padding:16,border:"1px solid var(--bd2)",boxSizing:"border-box"}},
     ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:"var(--bg2)",borderRadius:10,marginBottom:12,border:"1px solid var(--bd2)",flexShrink:0,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
       ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
         ce("div",{style:{width:8,height:8,borderRadius:"50%",background:"#10b981",flexShrink:0,boxShadow:"0 0 0 2px rgba(16,185,129,0.2)"}}),
