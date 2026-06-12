@@ -636,6 +636,9 @@ export const KD_AKCESORIA = [
 export const RCITY ={80:83.8,100:90.78,120:107.57,140:114.57,160:121.55,180:135.87,200:149.79,220:159.64,240:173.57,260:180.55,280:198.17,300:216.67};
 export const RDUO ={80:288.16,100:296.34,120:318.61,140:329.84,160:352.12,180:360.3,200:382.57,220:390.76,240:416.08,250:424.26};
 export const REL ={80:346.42,100:391.83,120:419.84,140:476.13,160:504.14,180:549.55,200:577.56,220:622.96,240:661.86,260:707.27,280:735.28,300:780.68,320:819.58,340:864.99,360:893,380:938.4,400:977.3};
+// Mechanizm SEMI-AUTOMATIC (cennik hurtowy x2): SINGLE — roleta rzymska, DOUBLE — Duo
+export const RPOLAUTO ={80:486,100:506,120:564,140:594,160:646,180:680,200:720,220:754,240:806,260:838,280:860,300:916};
+export const RPOLAUTO_DUO ={80:904,100:1042,120:1114,140:1166,160:1274,180:1322,200:1426,220:1496,240:1590,250:1626};
 
 export const KSLIM ={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550:1148,600:1308,650:1354,700:1400};
 export const KUNIV ={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
@@ -1026,11 +1029,12 @@ export function calc(p){
       // Duo: dwie różne tkaniny (np. firankowa + zaciemniająca)
       var tkan2=p.fab2Man!=null?p.fab2Man:(p.fab2P!=null?p.fab2P:null);
       if(tkan2==null)return{total:0,lines:[],warn:"Wybierz drugą tkaninę (Duo)"};
-      rr=lookup(wCm,RDUO);
+      rr=c.rSystem==="polautomatyczny"?lookup(wCm,RPOLAUTO_DUO):lookup(wCm,RDUO);
       var kosztSzyciaDuo=parseFloat((pow*200*2).toFixed(2));
       var kosztTkan1Duo=parseFloat(((tkanWcm/100)*tkan).toFixed(2));
       var kosztTkan2Duo=parseFloat(((tkanWcm/100)*tkan2).toFixed(2));
-      total=parseFloat((rr.p*2).toFixed(2))+kosztSzyciaDuo+kosztTkan1Duo+kosztTkan2Duo;
+      var mechCostDuo=c.rSystem==="polautomatyczny"?parseFloat(rr.p.toFixed(2)):parseFloat((rr.p*2).toFixed(2));
+      total=mechCostDuo+kosztSzyciaDuo+kosztTkan1Duo+kosztTkan2Duo;
       lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo);
       lines.push("  Szycie: "+pow+"m\xb2\xd7200z\u0142 \xd7 2 tkaniny");
       lines.push("  Tkanina 1: "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
@@ -1044,6 +1048,9 @@ export function calc(p){
       if(c.rSystem==="elektryk"){
         rr=lookup(wCm,REL);
         total=parseFloat((rr.p*2).toFixed(2))+kosztSzycia+kosztTkaniny;
+      }else if(c.rSystem==="polautomatyczny"){
+        rr=lookup(wCm,RPOLAUTO);
+        total=parseFloat(rr.p.toFixed(2))+kosztSzycia+kosztTkaniny;
       }
       lines.push("Roleta rzymska "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+pow+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
     }
