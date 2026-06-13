@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
+import { refreshSession } from '../lib/auth.js';
 import { gcalLogin, gcalLogout, gcalGetToken } from '../lib/gcal.js';
 
 var ce = React.createElement;
@@ -15,8 +16,8 @@ function getUserToken() {
   } catch (e) { return null; }
 }
 
-function sbFetch(method, path, body) {
-  var userTok = getUserToken();
+function sbFetchRaw(method, path, body, tokenOverride) {
+  var userTok = tokenOverride !== undefined ? tokenOverride : getUserToken();
   return fetch(SB_URL + "/rest/v1/" + path, {
     method: method,
     headers: {
@@ -27,10 +28,24 @@ function sbFetch(method, path, body) {
     },
     body: body ? JSON.stringify(body) : undefined
   }).then(function(r) {
-    if (!r.ok) return r.text().then(function(t) { throw new Error(t); });
+    if (!r.ok) return r.text().then(function(t) { var err = new Error(t); err.status = r.status; throw err; });
     var ct = r.headers.get("content-type") || "";
     if (ct.includes("json")) return r.json();
     return null;
+  });
+}
+
+// Wrapper z auto-odswiezeniem JWT: jesli Supabase zwroci PGRST303 (JWT expired),
+// odswiez sesje przez refresh_token i powtorz zapytanie raz z nowym tokenem.
+function sbFetch(method, path, body) {
+  return sbFetchRaw(method, path, body).catch(function(e) {
+    if (e.message && e.message.indexOf("PGRST303") !== -1) {
+      return refreshSession().then(function(s) {
+        if (!s || !s.access_token) throw e;
+        return sbFetchRaw(method, path, body, s.access_token);
+      });
+    }
+    throw e;
   });
 }
 
