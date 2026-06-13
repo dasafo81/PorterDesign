@@ -1,3 +1,5 @@
+import { refreshSession } from './auth.js';
+
 export const SB_URL="https://rkcidwusjzvfwxszotnb.supabase.co";
 export const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3Vzanp2Znd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDU4NzIsImV4cCI6MjA5MDE4MTg3Mn0.N-frD06x0MzSg8dHmz-xneA16QvVrBmAYUg3ileNpXw";
 
@@ -12,8 +14,8 @@ function getUserToken(){
   }catch(e){return null;}
 }
 
-function sbFetch(method, path, body){
-  var userTok=getUserToken();
+function sbFetchRaw(method, path, body, tokenOverride){
+  var userTok=tokenOverride!==undefined?tokenOverride:getUserToken();
   return fetch(SB_URL+"/rest/v1/"+path, {
     method: method,
     headers: {
@@ -24,10 +26,24 @@ function sbFetch(method, path, body){
     },
     body: body ? JSON.stringify(body) : undefined
   }).then(function(r){
-    if(!r.ok) return r.text().then(function(t){throw new Error(t);});
+    if(!r.ok) return r.text().then(function(t){var err=new Error(t);err.status=r.status;throw err;});
     var ct=r.headers.get("content-type")||"";
     if(ct.includes("json")) return r.json();
     return null;
+  });
+}
+
+// Wrapper z auto-odswiezeniem JWT: jesli Supabase zwroci PGRST303 (JWT expired),
+// odswiez sesje przez refresh_token i powtorz zapytanie raz z nowym tokenem.
+function sbFetch(method, path, body){
+  return sbFetchRaw(method, path, body).catch(function(e){
+    if(e.message&&e.message.indexOf("PGRST303")!==-1){
+      return refreshSession().then(function(s){
+        if(!s||!s.access_token) throw e;
+        return sbFetchRaw(method, path, body, s.access_token);
+      });
+    }
+    throw e;
   });
 }
 
