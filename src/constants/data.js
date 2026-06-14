@@ -1337,6 +1337,8 @@ export function buildSewingRows(client){
             prod:fabObj?fabObj.prod:"-",
             fabW:prod.fabW||prod.fabManW||"-",
             kolor:(pc.rModel==="duo"&&pc.kolor2)?("\u2460 "+(pc.kolor||"-")+" / \u2461 "+pc.kolor2):(pc.kolor||"-"),
+            wCm:par.wCm||null,
+            hCm:par.hCm||null,
             nadprozeCm:par.hNadproza||"-",
             boczki:pc.rMask==="tak"?"TAK":"nie",
             podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
