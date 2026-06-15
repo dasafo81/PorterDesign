@@ -678,6 +678,8 @@ function MailPreview(p){
     if(head){
       setExpanded(function(prev){var n={};n[head.id]=true;return n;});
       if(!head.body&&!bodies[head.id])fetchBody(head.id);
+      // Lokalny mail (np. dopiero wysłany) ma już body w m.body — zbuduj srcDoc od razu
+      if(head.body&&/<[a-z][\s\S]*>/i.test(head.body)&&!resolvedSrcDocs[head.id])buildSrcDoc(head.id,head.body);
       // Opóźnienie 350ms — Graph throttling: body i attachments nie mogą lecieć jednocześnie
       var t=setTimeout(function(){fetchAttachments(head.id);},350);
       return function(){clearTimeout(t);};
