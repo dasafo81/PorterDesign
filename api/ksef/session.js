@@ -4,6 +4,8 @@
 // WAŻNE: brak "export const config = { runtime: 'edge' }"
 // → Vercel używa Node.js runtime automatycznie
 
+import nodeCrypto from 'crypto';
+
 const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
 const KSEF_URLS = {
   test: 'https://ksef-test.podatki.gov.pl/api',
@@ -61,7 +63,6 @@ async function aesDecrypt(combined, hexKey) {
 // Podpisz dane kluczem prywatnym RSA-SHA256 → base64
 // Node.js crypto obsługuje wszystkie formaty PEM natywnie
 function signWithNodeCrypto(data, keyPem, passphrase) {
-  const nodeCrypto = require('crypto');
   const keyObj = nodeCrypto.createPrivateKey({
     key: keyPem,
     format: 'pem',
