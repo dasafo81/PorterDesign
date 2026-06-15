@@ -291,7 +291,7 @@ export const sbApi = {
 var SB_STORAGE = SB_URL + "/storage/v1/object/public/assets/porter-design-assets/";
 
 function imgUrl(path) {
-  return SB_STORAGE + path;
+  return SB_STORAGE + path + "?v=2";
 }
 
 // Logo
