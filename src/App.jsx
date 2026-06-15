@@ -204,7 +204,20 @@ export function App(p){
   }
 
   function openClient(id){setCurClientId(id);setScreen("rooms");}
-  function openRoom(id){setCurRoomId(id);setScreen("windows");}
+  function openRoom(id){
+    // Ensure the room has at least a default window
+    updateClient(curClientId,function(cl){
+      var newRooms=(cl.rooms||[]).map(function(r){
+        if(r.id!==id)return r;
+        if((r.windows||[]).length===0){
+          return mg(r,{windows:[{id:"default_"+r.id,name:"",isDefault:true,products:[]}]});
+        }
+        return r;
+      });
+      return mg(cl,{rooms:newRooms});
+    });
+    setCurRoomId(id);setScreen("windows");
+  }
   function openWin(w){setCurWin(JSON.parse(JSON.stringify(w)));setScreen("detail");}
   function newWin(name){setCurWin({id:Date.now(),name:name,products:[]});setScreen("detail");}
 
@@ -661,56 +674,157 @@ export function App(p){
     );
   }
 
-  // ── WINDOWS ──
+  // ── WINDOWS (room view) ──
   else if(screen==="windows"&&curRoom){
-    var winRows=(curRoom.windows||[]).map(function(w){
-      var t=wt(w);
-      var labels=(w.products||[]).map(function(p){return(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;}).join(", ");
-      var isVariant=!!w.variantGroup;
-      var hasCurtain=(w.products||[]).some(function(p){return p.type==="zaslona"||p.type==="firana";});
-      var variantBadge=isVariant?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"#e8f0fe",color:"#3367d6",borderRadius:6,padding:"2px 7px",marginLeft:6,verticalAlign:"middle"}},"Wariant "+w.variantLabel):null;
-      return ce("div",{key:w.id,
-        style:{display:"flex",alignItems:"center",gap:14,padding:"16px 14px",borderBottom:"1px solid var(--bd3)",borderRadius:0,position:"relative",background:isVariant?"rgba(51,103,214,0.03)":"transparent"}},
-        ce("div",{onClick:function(){openWin(w);},style:{display:"flex",alignItems:"center",gap:14,flex:1,cursor:"pointer",minWidth:0}},
-          ce("img",{src:IMG_OKNO,style:{width:80,height:80,objectFit:"cover",borderRadius:10,flexShrink:0}}),
-          ce("div",{style:{flex:1,minWidth:0}},
-            ce("div",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",marginBottom:3}},w.name,variantBadge),
-            ce("div",{style:{fontSize:12,color:"var(--t3)"}},labels||"\u2014"),
-            t?ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--gr)",marginTop:4}},roundTo10(t)+" z\u0142"):null
-          ),
-          ce("span",{style:{color:"var(--t3)",fontSize:13}},"\u203a")
+    var roomWins=curRoom.windows||[];
+    // "single-window mode": exactly 1 window (default or named) → show products directly
+    var isSingleMode=roomWins.length<=1||(roomWins.length===1&&roomWins[0].isDefault);
+    var singleWin=isSingleMode?(roomWins[0]||null):null;
+
+    // helper: add new window by splitting default into "Okno 1" + new "Okno 2"
+    function addAnotherWindow(){
+      updateClient(curClientId,function(cl){
+        var newRooms=(cl.rooms||[]).map(function(r){
+          if(r.id!==curRoomId)return r;
+          var wins=r.windows||[];
+          var renamedWins=wins.map(function(w,idx){
+            if(w.isDefault||!w.name){return mg(w,{name:"Okno "+(idx+1),isDefault:false});}
+            return w;
+          });
+          var newId=Date.now()+"_w";
+          var nextNum=renamedWins.length+1;
+          return mg(r,{windows:renamedWins.concat([{id:newId,name:"Okno "+nextNum,isDefault:false,products:[]}])});
+        });
+        return mg(cl,{rooms:newRooms});
+      });
+      // Open the newly created window after state settles
+      setTimeout(function(){
+        var updRoom=(clients.find(function(c){return c.id===curClientId;})||{rooms:[]}).rooms.find(function(r){return r.id===curRoomId;});
+        if(updRoom&&(updRoom.windows||[]).length>0){
+          var lastWin=updRoom.windows[updRoom.windows.length-1];
+          openWin(lastWin);
+        }
+      },50);
+    }
+
+    if(isSingleMode){
+      // ── Single-window mode: show products directly ──
+      var sw=singleWin||{id:"default_"+curRoomId,name:"",isDefault:true,products:[]};
+      // sync sw into curWin for addProd/updProd/remProd/dupProd to work
+      if(!curWin||curWin.id!==sw.id){
+        // set curWin lazily (avoid render loop: only if not already set)
+        if(curWin===null||curWin.id!==sw.id){
+          setCurWin(JSON.parse(JSON.stringify(sw)));
+        }
+      }
+      var swProducts=curWin&&curWin.id===sw.id?(curWin.products||[]):(sw.products||[]);
+      var swTotal=swProducts.reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);
+
+      // auto-save swProducts back to room whenever they change
+      function saveSingleWin(){
+        if(!curWin)return;
+        updateClient(curClientId,function(cl){
+          var newRooms=(cl.rooms||[]).map(function(r){
+            if(r.id!==curRoomId)return r;
+            var found=(r.windows||[]).find(function(w){return w.id===curWin.id;});
+            var newWins=found?(r.windows||[]).map(function(w){return w.id===curWin.id?curWin:w;}):(r.windows||[]).concat([curWin]);
+            return mg(r,{windows:newWins});
+          });
+          return mg(cl,{rooms:newRooms});
+        });
+      }
+
+      content=ce(Fragment,null,
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:14}},
+          ce(InlineEdit,{value:curRoom.name,onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:v}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
         ),
-        ce("div",{style:{display:"flex",flexDirection:"column",gap:4,flexShrink:0}},
+        swProducts.length>=2?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14,padding:"10px 14px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd3)"}},
+          swProducts.map(function(p,i){
+            var label=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;
+            var sameTypeBefore=swProducts.slice(0,i).filter(function(x){return x.type===p.type;}).length;
+            var totalOfType=swProducts.filter(function(x){return x.type===p.type;}).length;
+            var chipLabel=totalOfType>1?label+" "+(sameTypeBefore+1):label;
+            return ce("button",{key:p.id,onClick:function(){var el=document.getElementById("sw-anchor-"+p.id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});},style:{padding:"5px 12px",borderRadius:20,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",fontSize:12,fontWeight:500,cursor:"pointer",transition:"all .15s",whiteSpace:"nowrap"}},chipLabel);
+          })
+        ):null,
+        swProducts.map(function(p,i){
+          return ce("div",{key:p.id,id:"sw-anchor-"+p.id},
+            ce(ProdCard,{prod:p,
+              onChange:function(np){setCurWin(function(w){return mg(w,{products:(w.products||[]).map(function(x,j){return j===i?np:x;})});});},
+              onRemove:function(){setCurWin(function(w){return mg(w,{products:(w.products||[]).filter(function(_,j){return j!==i;})});});},
+              onDuplicate:function(){setCurWin(function(w){var prods=w.products||[];var src=prods[i];var copy=mg(src,{id:Date.now()});var next=prods.slice(0,i+1).concat([copy]).concat(prods.slice(i+1));return mg(w,{products:next});});}
+            })
+          );
+        }),
+        ce("button",{
+          onClick:function(){setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([{id:Date.now(),type:"zaslona",c:{},par:{},panels:[{side:"Zas\u0142ona lewa",w:""}],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});},
+          style:{padding:"20px 18px",borderRadius:12,border:"2px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:16,cursor:"pointer",marginBottom:16,width:"100%",minHeight:62,transition:"all .15s"}
+        },"+ Dodaj produkt"),
+        swProducts.length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
+          ce("span",{style:{fontSize:14,color:"var(--grd)"}},"\u0141\u0105cznie pomieszczenie"),
+          ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--grd)"}},roundTo10(swTotal)+" z\u0142")
+        ):null,
+        ce("button",{
+          onClick:function(){saveSingleWin();},
+          style:{padding:"12px 18px",borderRadius:10,border:"none",background:"var(--t1)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",marginBottom:8,width:"100%"}
+        },"Zapisz"),
+        ce("div",{style:{borderTop:"1px solid var(--bd3)",marginTop:16,paddingTop:16}},
           ce("button",{
-            onClick:function(ev){ev.stopPropagation();duplicateWinAsVariant(w);},
-            title:"Utw\u00f3rz wariant tego okna",
-            style:{border:"1px solid #3367d6",background:"#e8f0fe",cursor:"pointer",fontSize:11,color:"#3367d6",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
-          },"\u2B6F Wariant"),
-          hasCurtain?ce("button",{
-            onClick:function(ev){ev.stopPropagation();duplicateWinAsVariantMarszczenie(w);},
-            title:"Wariant z innym procentem marszczenia",
-            style:{border:"1px solid #7b4fa6",background:"#f3eaff",cursor:"pointer",fontSize:11,color:"#7b4fa6",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
-          },"\uD83E\uDDF5 Marszczenie"):null,
-          ce("button",{
-            onClick:function(ev){
-              ev.stopPropagation();
-              var doDelete=function(){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){if(r.id!==curRoomId)return r;var afterDel=(r.windows||[]).filter(function(x){return x.id!==w.id;});var grp=w.variantGroup;if(grp){var remaining=afterDel.filter(function(x){return x.variantGroup===grp;});if(remaining.length===1){afterDel=afterDel.map(function(x){return x.variantGroup===grp?mg(x,{variantGroup:undefined,variantLabel:undefined,variantBaseName:undefined,name:x.variantBaseName||x.name}):x;});}}return mg(r,{windows:afterDel});})});});};
-              if(hasWinData(w)){setConfirmDelete({type:"window",label:w.name,onConfirm:doDelete});}else{doDelete();}
-            },
-            title:"Usu\u0144 okno",
-            style:{border:"none",background:"none",cursor:"pointer",fontSize:18,color:"var(--t3)",padding:"4px 8px",lineHeight:1,opacity:0.5}
-          },"\u00d7")
+            onClick:addAnotherWindow,
+            style:{padding:"14px 18px",borderRadius:10,border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,cursor:"pointer",width:"100%",textAlign:"left"}
+          },"+ Dodaj kolejne okno (wielookienny widok)")
         )
       );
-    });
-    content=ce(Fragment,null,
-      ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}},
-        ce(InlineEdit,{value:curRoom.name+" — okna",onSave:function(v){var n=v.replace(/\s*—\s*okna$/i,"").trim();updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:n}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
-      ),
-      (curRoom.windows||[]).length===0?ce("div",{style:{color:"var(--t3)",fontSize:14,padding:"16px 0 20px",textAlign:"center"}},"Brak okien. Dodaj pierwsze."):null,
-      winRows.length?ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},winRows):null,
-      Btn("+ Dodaj okno",function(){setShowWinModal(true);},false)
-    );
+    } else {
+      // ── Multi-window mode: list all windows ──
+      var winRows=roomWins.map(function(w){
+        var t=wt(w);
+        var labels=(w.products||[]).map(function(p){return(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;}).join(", ");
+        var isVariant=!!w.variantGroup;
+        var hasCurtain=(w.products||[]).some(function(p){return p.type==="zaslona"||p.type==="firana";});
+        var variantBadge=isVariant?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"#e8f0fe",color:"#3367d6",borderRadius:6,padding:"2px 7px",marginLeft:6,verticalAlign:"middle"}},"Wariant "+w.variantLabel):null;
+        return ce("div",{key:w.id,
+          style:{display:"flex",alignItems:"center",gap:14,padding:"16px 14px",borderBottom:"1px solid var(--bd3)",borderRadius:0,position:"relative",background:isVariant?"rgba(51,103,214,0.03)":"transparent"}},
+          ce("div",{onClick:function(){openWin(w);},style:{display:"flex",alignItems:"center",gap:14,flex:1,cursor:"pointer",minWidth:0}},
+            ce("img",{src:IMG_OKNO,style:{width:80,height:80,objectFit:"cover",borderRadius:10,flexShrink:0}}),
+            ce("div",{style:{flex:1,minWidth:0}},
+              ce("div",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",marginBottom:3}},w.name||"Okno",variantBadge),
+              ce("div",{style:{fontSize:12,color:"var(--t3)"}},labels||"\u2014"),
+              t?ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--gr)",marginTop:4}},roundTo10(t)+" z\u0142"):null
+            ),
+            ce("span",{style:{color:"var(--t3)",fontSize:13}},"\u203a")
+          ),
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:4,flexShrink:0}},
+            ce("button",{
+              onClick:function(ev){ev.stopPropagation();duplicateWinAsVariant(w);},
+              title:"Utw\u00f3rz wariant tego okna",
+              style:{border:"1px solid #3367d6",background:"#e8f0fe",cursor:"pointer",fontSize:11,color:"#3367d6",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
+            },"\u2B6F Wariant"),
+            hasCurtain?ce("button",{
+              onClick:function(ev){ev.stopPropagation();duplicateWinAsVariantMarszczenie(w);},
+              title:"Wariant z innym procentem marszczenia",
+              style:{border:"1px solid #7b4fa6",background:"#f3eaff",cursor:"pointer",fontSize:11,color:"#7b4fa6",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
+            },"\uD83E\uDDF5 Marszczenie"):null,
+            ce("button",{
+              onClick:function(ev){
+                ev.stopPropagation();
+                var doDelete=function(){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){if(r.id!==curRoomId)return r;var afterDel=(r.windows||[]).filter(function(x){return x.id!==w.id;});var grp=w.variantGroup;if(grp){var remaining=afterDel.filter(function(x){return x.variantGroup===grp;});if(remaining.length===1){afterDel=afterDel.map(function(x){return x.variantGroup===grp?mg(x,{variantGroup:undefined,variantLabel:undefined,variantBaseName:undefined,name:x.variantBaseName||x.name}):x;});}}return mg(r,{windows:afterDel});})});});};
+                if(hasWinData(w)){setConfirmDelete({type:"window",label:w.name,onConfirm:doDelete});}else{doDelete();}
+              },
+              title:"Usu\u0144 okno",
+              style:{border:"none",background:"none",cursor:"pointer",fontSize:18,color:"var(--t3)",padding:"4px 8px",lineHeight:1,opacity:0.5}
+            },"\u00d7")
+          )
+        );
+      });
+      content=ce(Fragment,null,
+        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}},
+          ce(InlineEdit,{value:curRoom.name,onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:v}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
+        ),
+        winRows.length?ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},winRows):null,
+        Btn("+ Dodaj okno",function(){setShowWinModal(true);},false)
+      );
+    }
   }
 
   // ── DETAIL ──
