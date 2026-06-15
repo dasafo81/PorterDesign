@@ -779,7 +779,8 @@ function MailPreview(p){
         var per=displayPerson(m);
         var isExp=!!expanded[m.id];
         var bodyObj=bodies[m.id];
-        var bodyIsHtml=bodyObj&&bodyObj.isHtml;
+        var mBodyIsHtml=m.body&&/<[a-z][\s\S]*>/i.test(m.body);
+        var bodyIsHtml=(bodyObj&&bodyObj.isHtml)||mBodyIsHtml;
         var bodyContent=m.body||(bodyObj&&bodyObj.content)||"";
         var hasBody=!!(m.body||bodyObj);
         var loading=!!loadingBody[m.id];
