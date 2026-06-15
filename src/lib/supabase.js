@@ -355,6 +355,54 @@ function adminFetch(method, path, body){
   });
 }
 
+// ── KSeF API (wywołuje Edge Functions api/ksef/*) ─────────────────────────
+// Front przekazuje swój JWT — backend weryfikuje, odszyfruje token KSeF i woła MF API.
+function ksefFetch(method, path, body) {
+  var userTok = getUserToken();
+  return fetch(path, {
+    method: method,
+    headers: {
+      "Authorization": "Bearer " + (userTok || ""),
+      "Content-Type": "application/json"
+    },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function(r) {
+    return r.text().then(function(t) {
+      var data;
+      try { data = JSON.parse(t); } catch(e) { data = { error: t }; }
+      if (!r.ok) throw Object.assign(new Error(data.error || ("HTTP " + r.status)), { detail: data.detail, status: r.status });
+      return data;
+    });
+  });
+}
+
+export const ksefApi = {
+  // Sprawdź czy token KSeF jest zapisany (nie zwraca samego tokenu)
+  getTokenStatus: function() {
+    return ksefFetch("GET", "/api/ksef/token");
+  },
+  // Zapisz token KSeF (szyfrowany server-side)
+  saveToken: function(token, env) {
+    return ksefFetch("POST", "/api/ksef/token", { token: token, env: env || "test" });
+  },
+  // Usuń token KSeF
+  deleteToken: function() {
+    return ksefFetch("DELETE", "/api/ksef/token");
+  },
+  // Otwórz sesję KSeF → zwraca { sessionToken, expiresAt, baseUrl }
+  openSession: function() {
+    return ksefFetch("POST", "/api/ksef/session");
+  },
+  // Wyślij fakturę sprzedażową do KSeF
+  sendInvoice: function(invoiceId, sessionToken, baseUrl) {
+    return ksefFetch("POST", "/api/ksef/send", { invoiceId: invoiceId, sessionToken: sessionToken, baseUrl: baseUrl });
+  },
+  // Pobierz faktury kosztowe z KSeF
+  receiveInvoices: function(sessionToken, baseUrl, dateFrom, dateTo) {
+    return ksefFetch("POST", "/api/ksef/receive", { sessionToken: sessionToken, baseUrl: baseUrl, dateFrom: dateFrom, dateTo: dateTo });
+  },
+};
+
 export const adminApi = {
   // Lista wszystkich tenantow z agregowanymi countsami userow i klientow
   getTenants: function(){
