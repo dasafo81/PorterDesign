@@ -133,12 +133,14 @@ async function decryptEncryptedPrivateKey(encPem, passphrase) {
     ['decrypt']
   );
 
-  // Diagnostyka
-  const diagMsg = `PBES2 diag: der_len=${der.length} outer_content_len=${outer.content.length} outer_children=${outerChildren.length} ct_tag=0x${outerChildren[1]?outerChildren[1].tag.toString(16):'?'} ct_len=${ciphertext.length} alg_len=${outerChildren[0].content.length} salt=${Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('')} iter=${iterations} iv=${Array.from(iv).map(b=>b.toString(16).padStart(2,'0')).join('')} pass_len=${(passphrase||'').length}`;
-  console.log(diagMsg);
   // AES-CBC decrypt
   const plainDer = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
-  return new Uint8Array(plainDer);  // PKCS#8 DER (odszyfrowany klucz prywatny)
+  const plainBytes = new Uint8Array(plainDer);
+  // Walidacja: poprawny PKCS#8 zaczyna sie od 0x30 (SEQUENCE)
+  if (plainBytes[0] !== 0x30) {
+    throw new Error('Złe hasło — odszyfrowany klucz nie jest poprawnym DER (pierwszy bajt: 0x' + plainBytes[0].toString(16) + '). Sprawdź hasło do certyfikatu.');
+  }
+  return plainBytes;
 }
 
 // Buduje PKCS#8 DER z PKCS#1 DER (dla kluczy bez hasła w formacie RSA PRIVATE KEY)
