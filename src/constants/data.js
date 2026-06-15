@@ -40,7 +40,7 @@ export const IMG_FALDA_POJEDYNCZA = imgUrl("zasony/falda-pojedyncza.jpg");
 export const IMG_FALDA_PODWOJNA   = imgUrl("zasony/falda-podwojna.jpg");
 export const IMG_FALDA_POTROJNA   = imgUrl("zasony/falda-potrojna.jpg");
 export const IMG_FALDA_PLASKA     = imgUrl("zasony/falda-plaska.jpg");
-export const IMG_FALDA_STUDIO     = imgUrl("zasony/falda-studio.jpg");
+export const IMG_FALDA_STUDIO     = imgUrl("zasony/falda-studio.jpg?v=3");
 export const IMG_MODEL_TASMA      = imgUrl("zasony/model-tasma.jpg");
 export const IMG_MODEL_WAVE       = imgUrl("zasony/model-wave.jpg");
 export const IMG_MODEL_FALDA      = imgUrl("zasony/model-falda.jpg");
