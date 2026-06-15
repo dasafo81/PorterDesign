@@ -552,7 +552,7 @@ export const FABRICS =[
   {name:"Tanini",brutto:160,prod:"OZLEM",width:300},
   {name:"Tailwind",brutto:220,prod:"Ridex",width:300},
   {name:"Tara",brutto:96,prod:"FIBERO G.ROJEK",width:320},
-  {name:"Terra",brutto:200,prod:"Ridex",width:300},
+  {name:"Terra",brutto:200,prod:"DEKOMA",width:300},
   {name:"Tasos",brutto:190,prod:"Spagnolo",width:300},
   {name:"Tela",brutto:150,prod:"DEKOMA",width:null},
   {name:"Terrano Dim-Out",brutto:165,prod:"Spagnolo",width:280},
