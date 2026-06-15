@@ -538,7 +538,7 @@ export function ScreenTasks(p) {
       title: v, done: false, priority: "medium",
       due_date: null, subtasks: [], sort_order: tasks.length,
       owner: adding.owner || null,
-      category: adding.cat === "__none__" ? null : adding.cat,
+      category: (adding.cat === "__none__" || adding.cat === "__overview__") ? null : adding.cat,
       gcal_event_id: null, gcal_cal_id: null,
       created_at: new Date().toISOString()
     };
@@ -708,7 +708,11 @@ export function ScreenTasks(p) {
         gcalToken
           ? ce("span", { style: { fontSize: 11, color: "var(--gr)", display: "flex", alignItems: "center", gap: 5, background: "var(--grl)", borderRadius: 9, padding: "6px 10px" } }, "✓ Synchronizacja z Google Calendar")
           : ce("button", { onClick: gLogin, style: { padding: "8px 12px", borderRadius: 10, border: "1px solid #4285f4", background: "none", color: "#4285f4", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" } }, "🔑 Połącz z Google Calendar"),
-        ce("button", { onClick: function() { openAdd(activeCat, "damian"); },
+        ce("button", { onClick: function() {
+            var targetCat = activeCat === "__overview__" ? CAT_ORDER[0] : activeCat;
+            if (activeCat === "__overview__") { setActiveCat(targetCat); }
+            openAdd(targetCat, "damian");
+          },
           style: { padding: "9px 16px", borderRadius: 11, border: "none", background: "var(--t1)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" } },
           ce("span", null, "+"), "Nowe zadanie")
       )
