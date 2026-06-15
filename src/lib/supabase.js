@@ -226,6 +226,64 @@ export const sbApi = {
     return sbFetch("GET","tenants?select=id,name,config&limit=1").then(function(rows){
       return rows&&rows[0]?rows[0]:null;
     });
+  },
+
+  // \u2500\u2500 FAKTURY (modul Faktury \u2014 multi-tenant, JDG/VAT) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Ustawienia fakturowania tenanta (1 wiersz). Zwraca obiekt lub null.
+  getInvoiceSettings: function(){
+    return sbFetch("GET","invoice_settings?select=*&limit=1").then(function(rows){
+      return (rows&&rows[0])||null;
+    });
+  },
+  // Upsert ustawien. tenant_id ustawia DEFAULT z JWT przy INSERT.
+  saveInvoiceSettings: function(data){
+    return sbFetch("GET","invoice_settings?select=tenant_id&limit=1").then(function(rows){
+      var patch=Object.assign({},data,{updated_at:new Date().toISOString()});
+      if(rows&&rows.length>0){
+        return sbFetch("PATCH","invoice_settings?tenant_id=eq."+rows[0].tenant_id,patch);
+      }
+      return sbFetch("POST","invoice_settings",patch);
+    });
+  },
+  // Lista faktur (naglowki), najnowsze pierwsze.
+  getInvoices: function(){
+    return sbFetch("GET","invoices?select=*&order=created_at.desc");
+  },
+  // Pojedyncza faktura wraz z pozycjami (PostgREST embed).
+  getInvoice: function(id){
+    return sbFetch("GET","invoices?id=eq."+id+"&select=*,invoice_items(*)").then(function(rows){
+      return (rows&&rows[0])||null;
+    });
+  },
+  // Tworzy naglowek faktury (domyslnie status draft). Zwraca utworzony rekord.
+  addInvoice: function(data){
+    return sbFetch("POST","invoices",data).then(function(rows){
+      return Array.isArray(rows)?rows[0]:rows;
+    });
+  },
+  updateInvoice: function(id,data){
+    var patch=Object.assign({},data,{updated_at:new Date().toISOString()});
+    return sbFetch("PATCH","invoices?id=eq."+id,patch);
+  },
+  deleteInvoice: function(id){
+    return sbFetch("DELETE","invoices?id=eq."+id);
+  },
+  // \u2500\u2500 Pozycje faktury \u2500\u2500
+  getInvoiceItems: function(invoiceId){
+    return sbFetch("GET","invoice_items?invoice_id=eq."+invoiceId+"&select=*&order=position.asc");
+  },
+  // Zastepuje wszystkie pozycje faktury nowym zestawem (wstrzykuje invoice_id).
+  replaceInvoiceItems: function(invoiceId, items){
+    return sbFetch("DELETE","invoice_items?invoice_id=eq."+invoiceId).then(function(){
+      if(!items||!items.length)return [];
+      return sbFetch("POST","invoice_items",items.map(function(it){
+        return Object.assign({},it,{invoice_id:invoiceId});
+      }));
+    });
+  },
+  // Atomowe nadanie kolejnego numeru (RPC, bez wyscigow). Zwraca int.
+  nextInvoiceNumber: function(docType, period){
+    return sbFetch("POST","rpc/next_invoice_number",{p_doc_type:docType,p_period:period});
   }
 };
 
