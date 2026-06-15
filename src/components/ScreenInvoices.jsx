@@ -484,10 +484,103 @@ function InvoiceSettings(p){
           UNITS.map(function(u){return ce("option",{key:u,value:u},u);})))
     ),
 
+    ce(KsefTokenPanel,null),
+
     ce("div",{style:{display:"flex",justifyContent:"flex-end",gap:10}},
       ce("button",{onClick:p.onClose,style:btnSecondary},"Anuluj"),
       ce("button",{onClick:save,disabled:busy,style:btnPrimary},busy?"\u23F3 Zapisuję...":"\u2713 Zapisz ustawienia")
     )
+  );
+}
+
+// ── PANEL TOKENU KSEF ─────────────────────
+function KsefTokenPanel(){
+  var [status,setStatus]=useState(null);
+  var [token,setToken]=useState("");
+  var [env,setEnv]=useState("test");
+  var [busy,setBusy]=useState(false);
+  var [err,setErr]=useState(null);
+  var [msg,setMsg]=useState(null);
+
+  useEffect(function(){
+    ksefApi.getTokenStatus()
+      .then(function(s){setStatus(s);setEnv(s.env||"test");})
+      .catch(function(){setStatus({hasToken:false,env:"test"});});
+  },[]);
+
+  function save(){
+    if(!token.trim()){setErr("Wklej token KSeF");return;}
+    setBusy(true);setErr(null);setMsg(null);
+    ksefApi.saveToken(token.trim(),env)
+      .then(function(r){
+        setMsg("\u2713 Token zapisany (\u015brodowisko: "+(r.env==="prod"?"PRODUKCJA \uD83D\uDE80":"TEST \uD83E\uDDEA")+")");
+        setToken("");
+        setStatus({hasToken:true,env:r.env,updated_at:new Date().toISOString()});
+      })
+      .catch(function(e){setErr(e.message||"B\u0142\u0105d zapisu tokenu");})
+      .finally(function(){setBusy(false);});
+  }
+  function del(){
+    if(!confirm("Usun\u0105\u0107 token KSeF?"))return;
+    setBusy(true);setErr(null);setMsg(null);
+    ksefApi.deleteToken()
+      .then(function(){setStatus({hasToken:false,env:"test"});setMsg("\u2713 Token usuni\u0119ty");})
+      .catch(function(e){setErr(e.message);})
+      .finally(function(){setBusy(false);});
+  }
+  function fmtTs(ts){
+    if(!ts)return "";
+    var d=new Date(ts);
+    return d.toLocaleDateString("pl-PL")+" "+d.toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"});
+  }
+  return ce("div",{style:card},
+    ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},
+      "\uD83D\uDD11 Integracja KSeF"),
+    err&&ce("div",{style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#b91c1c",marginBottom:10}},"\u26A0\uFE0F "+err),
+    msg&&ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#065f46",marginBottom:10}},msg),
+    status===null
+      ?ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"8px 0"}},"\u23F3 \u0141adowanie...")
+      :status.hasToken
+        ?ce("div",null,
+            ce("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:10}},
+              ce("span",{style:{fontSize:20}},"\u2705"),
+              ce("div",{style:{flex:1}},
+                ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},
+                  "Token aktywny \u2014 "+(status.env==="prod"?"\uD83D\uDE80 PRODUKCJA":"\uD83E\uDDEA TEST")),
+                status.updated_at&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Zapisany: "+fmtTs(status.updated_at))
+              ),
+              ce("button",{onClick:del,disabled:busy,style:Object.assign({},btnDanger,{fontSize:11,padding:"5px 10px"})},
+                "Usu\u0144 token")
+            ),
+            ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--t2)"}},
+              "\uD83D\uDCA1 Token zaszyfrowany AES-256-GCM, przechowywany wy\u0142\u0105cznie po stronie serwera.")
+          )
+        :ce("div",null,
+            ce("div",{style:{fontSize:12,color:"var(--t2)",marginBottom:12,lineHeight:1.6,background:"var(--bg)",borderRadius:8,padding:"10px 14px",border:"1px solid var(--bd2)"}},
+              "Wygeneruj token na ",
+              ce("a",{href:"https://ksef.podatki.gov.pl",target:"_blank",style:{color:"var(--violet)",fontWeight:600}},"ksef.podatki.gov.pl"),
+              " \u2192 Certyfikaty i uprawnienia \u2192 Tokeny.",ce("br",null),
+              "Zaznacz uprawnienia: Wystawianie \u2022 Odbi\u00f3r \u2022 Odczyt."
+            ),
+            ce("div",{style:{marginBottom:10}},
+              ce("span",{style:label},"Token KSeF"),
+              ce("textarea",{style:Object.assign({},inp,{minHeight:72,fontFamily:"monospace",fontSize:11,resize:"vertical"}),
+                value:token,onChange:function(e){setToken(e.target.value);},
+                placeholder:"Wklej token KSeF..."
+              })
+            ),
+            ce("div",{style:{display:"flex",gap:10,alignItems:"flex-end"}},
+              ce("div",{style:{flex:1}},
+                ce("span",{style:label},"\u015arodowidko"),
+                ce("select",{style:inp,value:env,onChange:function(e){setEnv(e.target.value);}},
+                  ce("option",{value:"test"},"\uD83E\uDDEA TEST"),
+                  ce("option",{value:"prod"},"\uD83D\uDE80 PRODUKCJA")
+                )
+              ),
+              ce("button",{onClick:save,disabled:busy,style:btnPrimary},
+                busy?"\u23F3 Zapisuj\u0119...":"\uD83D\uDD12 Zapisz token")
+            )
+          )
   );
 }
 
