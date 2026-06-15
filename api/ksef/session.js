@@ -1,4 +1,4 @@
-// api/ksef/session.js  (v4 — Node.js runtime, konwencja req/res)
+// api/ksef/session.js  (v4  — Node.js runtime, konwencja req/res)
 import nodeCrypto from 'crypto';
 
 const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
