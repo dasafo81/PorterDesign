@@ -564,8 +564,6 @@ function KsefTokenPanel(){
         onClick:function(){ref.current&&ref.current.click();},
         style:Object.assign({},btnSecondary,{fontSize:12,padding:"7px 12px",whiteSpace:"nowrap"})
       },"\uD83D\uDCC2 "+label),
-      ce("span",{style:{fontSize:11,color:"var(--t3)",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:200}},
-        onFile===function(){}&& "")
     );
   };
 
