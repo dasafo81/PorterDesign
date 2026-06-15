@@ -1,9 +1,4 @@
-// api/ksef/session.js  (v3 — Node.js runtime, obsługa ENCRYPTED PRIVATE KEY)
-// Node.js runtime ma pełne crypto API — obsługuje PKCS#1, PKCS#8, ENCRYPTED PRIVATE KEY.
-
-// WAŻNE: brak "export const config = { runtime: 'edge' }"
-// → Vercel używa Node.js runtime automatycznie
-
+// api/ksef/session.js  (v4 — Node.js runtime, konwencja req/res)
 import nodeCrypto from 'crypto';
 
 const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
@@ -12,28 +7,23 @@ const KSEF_URLS = {
   prod: 'https://ksef.podatki.gov.pl/api',
 };
 
-function cors() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  };
+function setCors(res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
-
-function jsonRes(data, status) {
-  return new Response(JSON.stringify(data), {
-    status: status || 200,
-    headers: Object.assign({ 'Content-Type': 'application/json' }, cors()),
-  });
+function sendJson(res, data, status) {
+  res.status(status || 200).json(data);
 }
 
 async function verifyUser(req) {
   const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!SERVICE) return { ok: false, status: 500, message: 'SUPABASE_SERVICE_ROLE_KEY not set' };
-  const auth = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
-  if (!auth) return { ok: false, status: 401, message: 'missing jwt' };
+  const authHeader = req.headers['authorization'] || req.headers['Authorization'] || '';
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) return { ok: false, status: 401, message: 'missing jwt' };
   const r = await fetch(`${SB_URL}/auth/v1/user`, {
-    headers: { apikey: SERVICE, Authorization: `Bearer ${auth}` },
+    headers: { apikey: SERVICE, Authorization: `Bearer ${token}` },
   });
   if (!r.ok) return { ok: false, status: 401, message: 'invalid jwt' };
   const user = await r.json();
@@ -42,7 +32,6 @@ async function verifyUser(req) {
   return { ok: true, tenantId, service: SERVICE };
 }
 
-// AES-256-GCM decrypt (identyczne z token.js)
 async function aesDecrypt(combined, hexKey) {
   function hexToBytes(h) {
     const a = new Uint8Array(h.length / 2);
@@ -60,57 +49,56 @@ async function aesDecrypt(combined, hexKey) {
   return new TextDecoder().decode(dec);
 }
 
-// Podpisz dane kluczem prywatnym RSA-SHA256 → base64
-// Node.js crypto obsługuje wszystkie formaty PEM natywnie
-function signWithNodeCrypto(data, keyPem, passphrase) {
+function signRSA(data, keyPem, passphrase) {
   const keyObj = nodeCrypto.createPrivateKey({
     key: keyPem,
     format: 'pem',
     passphrase: passphrase || '',
   });
-  const sig = nodeCrypto.sign('sha256', Buffer.from(data, 'utf8'), {
+  return nodeCrypto.sign('sha256', Buffer.from(data, 'utf8'), {
     key: keyObj,
     padding: nodeCrypto.constants.RSA_PKCS1_PADDING,
-  });
-  return sig.toString('base64');
+  }).toString('base64');
 }
 
-export default async function handler(req) {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors() });
-  if (req.method !== 'POST') return jsonRes({ error: 'POST only' }, 405);
+export default async function handler(req, res) {
+  setCors(res);
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  if (req.method !== 'POST') { sendJson(res, { error: 'POST only' }, 405); return; }
 
   const auth = await verifyUser(req);
-  if (!auth.ok) return jsonRes({ error: auth.message }, auth.status);
+  if (!auth.ok) { sendJson(res, { error: auth.message }, auth.status); return; }
 
   const ENC_KEY = process.env.KSEF_ENC_KEY;
-  if (!ENC_KEY) return jsonRes({ error: 'KSEF_ENC_KEY not configured' }, 500);
+  if (!ENC_KEY) { sendJson(res, { error: 'KSEF_ENC_KEY not configured' }, 500); return; }
 
-  // Pobierz certyfikat z DB
   const sbH = { apikey: auth.service, Authorization: `Bearer ${auth.service}` };
+
+  // Pobierz certyfikat
   const credR = await fetch(
     `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,cert_pass_enc,env`,
     { headers: sbH }
   );
-  if (!credR.ok) return jsonRes({ error: 'Błąd odczytu credentials z DB' }, 500);
+  if (!credR.ok) { sendJson(res, { error: 'Błąd odczytu credentials z DB' }, 500); return; }
   const creds = await credR.json();
   const cred = creds && creds[0];
   if (!cred || !cred.cert_pem || !cred.key_encrypted) {
-    return jsonRes({ error: 'Brak certyfikatu KSeF. Wejdź w Ustawienia → KSeF i wgraj pliki .crt i .key.' }, 400);
+    sendJson(res, { error: 'Brak certyfikatu KSeF. Wejdź w Ustawienia → KSeF i wgraj pliki .crt i .key.' }, 400);
+    return;
   }
 
-  // Odszyfruj klucz prywatny (AES)
+  // Odszyfruj klucz
   let keyPem;
   try { keyPem = await aesDecrypt(cred.key_encrypted, ENC_KEY); }
-  catch (e) { return jsonRes({ error: 'Błąd odszyfrowania klucza: ' + e.message }, 500); }
+  catch (e) { sendJson(res, { error: 'Błąd odszyfrowania klucza: ' + e.message }, 500); return; }
 
-  // Odszyfruj hasło do klucza (jeśli było ustawione)
+  // Hasło do klucza
   let keyPass = '';
   if (cred.cert_pass_enc) {
-    try { keyPass = await aesDecrypt(cred.cert_pass_enc, ENC_KEY); }
-    catch (e) { keyPass = ''; }
+    try { keyPass = await aesDecrypt(cred.cert_pass_enc, ENC_KEY); } catch (e) { keyPass = ''; }
   }
 
-  // Pobierz NIP
+  // NIP
   const settR = await fetch(
     `${SB_URL}/rest/v1/invoice_settings?tenant_id=eq.${auth.tenantId}&select=seller_nip`,
     { headers: sbH }
@@ -118,7 +106,7 @@ export default async function handler(req) {
   const setts = settR.ok ? await settR.json() : [];
   const nip = ((setts && setts[0] && setts[0].seller_nip) || '').replace(/[\s\-]/g, '');
   if (!nip || nip.length !== 10) {
-    return jsonRes({ error: 'Brak NIP w ustawieniach faktury. Uzupełnij dane sprzedawcy.' }, 400);
+    sendJson(res, { error: 'Brak NIP w ustawieniach faktury.' }, 400); return;
   }
 
   const baseUrl = KSEF_URLS[cred.env] || KSEF_URLS.test;
@@ -130,20 +118,17 @@ export default async function handler(req) {
     body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
   });
   if (!chalR.ok) {
-    return jsonRes({ error: 'KSeF AuthorisationChallenge failed', detail: await chalR.text() }, 502);
+    sendJson(res, { error: 'KSeF AuthorisationChallenge failed', detail: await chalR.text() }, 502); return;
   }
   const chal = await chalR.json();
-  const challenge = chal.challenge;
-  const timestamp = chal.timestamp;
-  if (!challenge) return jsonRes({ error: 'Brak challenge w odpowiedzi KSeF', detail: chal }, 502);
-
-  // Krok 2: Podpisz challenge+timestamp kluczem prywatnym RSA-SHA256
-  let signature;
-  try {
-    signature = signWithNodeCrypto(challenge + timestamp, keyPem, keyPass);
-  } catch (e) {
-    return jsonRes({ error: 'Błąd podpisywania RSA: ' + e.message }, 500);
+  if (!chal.challenge) {
+    sendJson(res, { error: 'Brak challenge w odpowiedzi KSeF', detail: chal }, 502); return;
   }
+
+  // Krok 2: Podpis RSA-SHA256
+  let signature;
+  try { signature = signRSA(chal.challenge + chal.timestamp, keyPem, keyPass); }
+  catch (e) { sendJson(res, { error: 'Błąd podpisywania RSA: ' + e.message }, 500); return; }
 
   // Krok 3: InitialisationSigned
   const initR = await fetch(`${baseUrl}/online/Session/InitialisationSigned`, {
@@ -151,21 +136,25 @@ export default async function handler(req) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contextIdentifier: { type: 'onip', identifier: nip },
-      authorisationChallengeUtf8: challenge,
-      authorisationTimestampUtf8: timestamp,
+      authorisationChallengeUtf8: chal.challenge,
+      authorisationTimestampUtf8: chal.timestamp,
       keyIdentifier: { type: 'onip', identifier: nip },
       signatureInfo: { type: 'RSA', signature },
     }),
   });
-
   if (!initR.ok) {
-    const t = await initR.text();
-    return jsonRes({ error: 'KSeF InitialisationSigned failed', detail: t }, 502);
+    sendJson(res, { error: 'KSeF InitialisationSigned failed', detail: await initR.text() }, 502); return;
   }
   const init = await initR.json();
   const sessionToken = init.sessionToken && init.sessionToken.token;
-  if (!sessionToken) return jsonRes({ error: 'Brak sessionToken w odpowiedzi KSeF', detail: init }, 502);
+  if (!sessionToken) {
+    sendJson(res, { error: 'Brak sessionToken w odpowiedzi KSeF', detail: init }, 502); return;
+  }
 
-  const expiresAt = new Date(Date.now() + 55 * 60 * 1000).toISOString();
-  return jsonRes({ sessionToken, expiresAt, env: cred.env, baseUrl });
+  sendJson(res, {
+    sessionToken,
+    expiresAt: new Date(Date.now() + 55 * 60 * 1000).toISOString(),
+    env: cred.env,
+    baseUrl,
+  });
 }
