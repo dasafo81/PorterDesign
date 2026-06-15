@@ -381,7 +381,11 @@ export const ksefApi = {
   getTokenStatus: function() {
     return ksefFetch("GET", "/api/ksef/token");
   },
-  // Zapisz token KSeF (szyfrowany server-side)
+  // Zapisz certyfikat KSeF — certPem i keyPem to zawartość plików .crt / .key
+  saveCert: function(certPem, keyPem, keyPass, env) {
+    return ksefFetch("POST", "/api/ksef/token", { certPem: certPem, keyPem: keyPem, keyPass: keyPass || "", env: env || "test" });
+  },
+  // Pozostawione dla kompatybilności (nie używane przy certyfikacie)
   saveToken: function(token, env) {
     return ksefFetch("POST", "/api/ksef/token", { token: token, env: env || "test" });
   },
