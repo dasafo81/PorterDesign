@@ -134,7 +134,7 @@ async function decryptEncryptedPrivateKey(encPem, passphrase) {
   );
 
   // Diagnostyka
-  const diagMsg = `PBES2 diag: salt=${Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('')} iter=${iterations} iv=${Array.from(iv).map(b=>b.toString(16).padStart(2,'0')).join('')} ct_len=${ciphertext.length} pass_len=${(passphrase||'').length}`;
+  const diagMsg = `PBES2 diag: der_len=${der.length} outer_content_len=${outer.content.length} outer_children=${outerChildren.length} ct_tag=0x${outerChildren[1]?outerChildren[1].tag.toString(16):'?'} ct_len=${ciphertext.length} alg_len=${outerChildren[0].content.length} salt=${Array.from(salt).map(b=>b.toString(16).padStart(2,'0')).join('')} iter=${iterations} iv=${Array.from(iv).map(b=>b.toString(16).padStart(2,'0')).join('')} pass_len=${(passphrase||'').length}`;
   console.log(diagMsg);
   // AES-CBC decrypt
   const plainDer = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
