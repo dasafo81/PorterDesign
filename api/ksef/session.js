@@ -68,59 +68,64 @@ function pemToDer(pem) {
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 }
 
-// Importuj klucz prywatny RSA z PEM (PKCS#8 lub PKCS#1)
-// KSeF wymaga RSA-SHA256 (RSASSA-PKCS1-v1_5)
+// Koduje długość w formacie DER (multi-byte dla > 127)
+function derLen(n) {
+  if (n < 0x80) return new Uint8Array([n]);
+  if (n < 0x100) return new Uint8Array([0x81, n]);
+  return new Uint8Array([0x82, (n >> 8) & 0xff, n & 0xff]);
+}
+
+// Buduje element DER: tag + długość + zawartość
+function derTLV(tag, content) {
+  const lenBytes = derLen(content.length);
+  const out = new Uint8Array(1 + lenBytes.length + content.length);
+  out[0] = tag;
+  out.set(lenBytes, 1);
+  out.set(content, 1 + lenBytes.length);
+  return out;
+}
+
+// Scala tablice Uint8Array
+function concat(...arrays) {
+  const total = arrays.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(total);
+  let off = 0;
+  for (const a of arrays) { out.set(a, off); off += a.length; }
+  return out;
+}
+
+// Importuj klucz prywatny RSA z PEM.
+// Obsługuje PKCS#8 (BEGIN PRIVATE KEY) i PKCS#1 (BEGIN RSA PRIVATE KEY).
+// Klucze KSeF z MF są w formacie PKCS#1 — owijamy je w poprawny PKCS#8 DER.
 async function importPrivateKey(keyPem) {
   const der = pemToDer(keyPem);
+  const isPkcs8 = keyPem.includes('BEGIN PRIVATE KEY') && !keyPem.includes('BEGIN RSA PRIVATE KEY');
 
-  // Próba PKCS#8 (-----BEGIN PRIVATE KEY----- lub -----BEGIN RSA PRIVATE KEY-----)
-  // Web Crypto importuje PKCS#8 bezpośrednio.
-  // Jeśli plik jest PKCS#1 (-----BEGIN RSA PRIVATE KEY-----), owijamy go w PKCS#8.
-  const isPkcs8 = keyPem.includes('BEGIN PRIVATE KEY');
-
+  let pkcs8Der;
   if (isPkcs8) {
-    return crypto.subtle.importKey(
-      'pkcs8',
-      der,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
+    pkcs8Der = der;
   } else {
-    // PKCS#1 → musimy opakować w PKCS#8 wrapper
-    // PKCS#8 wrapper dla RSA: sekwencja ASN.1 z OID rsaEncryption + OCTET STRING(PKCS#1)
-    const pkcs8Header = new Uint8Array([
-      0x30, 0x82, 0x00, 0x00,  // SEQUENCE (długość patch-owana poniżej)
-        0x02, 0x01, 0x00,        // INTEGER version = 0
-        0x30, 0x0d,              // SEQUENCE (AlgorithmIdentifier)
-          0x06, 0x09,            // OID rsaEncryption
-          0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
-          0x05, 0x00,            // NULL
-        0x04, 0x82, 0x00, 0x00, // OCTET STRING (długość patch-owana poniżej)
-    ]);
-    const totalInner = pkcs8Header.length - 4 + der.length;  // bez outer SEQUENCE header
-    const totalOuter = totalInner + 4;
-
-    // Patch długości OCTET STRING
-    pkcs8Header[pkcs8Header.length - 2] = (der.length >> 8) & 0xff;
-    pkcs8Header[pkcs8Header.length - 1] = der.length & 0xff;
-
-    // Patch długości outer SEQUENCE
-    pkcs8Header[2] = (totalInner >> 8) & 0xff;
-    pkcs8Header[3] = totalInner & 0xff;
-
-    const pkcs8 = new Uint8Array(totalOuter);
-    pkcs8.set(pkcs8Header, 0);
-    pkcs8.set(der, pkcs8Header.length);
-
-    return crypto.subtle.importKey(
-      'pkcs8',
-      pkcs8,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
+    // PKCS#1 RSA → PKCS#8 wrapper wg RFC 5958 / RFC 3447
+    // PKCS#8 = SEQUENCE {
+    //   INTEGER 0,                          -- version
+    //   SEQUENCE { OID rsaEncryption, NULL }, -- algorithmIdentifier
+    //   OCTET STRING { <PKCS#1 DER> }        -- privateKey
+    // }
+    const oidRSA = new Uint8Array([0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01]);
+    const version      = new Uint8Array([0x02, 0x01, 0x00]);                    // INTEGER 0
+    const algorithmId  = derTLV(0x30, concat(derTLV(0x06, oidRSA), new Uint8Array([0x05, 0x00])));
+    const privateKey   = derTLV(0x04, der);                                     // OCTET STRING
+    const inner        = concat(version, algorithmId, privateKey);
+    pkcs8Der           = derTLV(0x30, inner);                                   // outer SEQUENCE
   }
+
+  return crypto.subtle.importKey(
+    'pkcs8',
+    pkcs8Der,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
 }
 
 // Podpisz dane kluczem prywatnym → base64
