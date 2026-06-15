@@ -17,7 +17,7 @@ $$;
 
 -- ── 1. USTAWIENIA FAKTUROWANIA (1 wiersz na tenanta) ────────────────────────
 create table if not exists invoice_settings (
-  tenant_id          uuid primary key default pd_current_tenant(),
+  tenant_id          uuid primary key default (((auth.jwt() -> 'app_metadata'::text) ->> 'tenant_id'::text))::uuid,
   seller_name        text not null default '',
   seller_nip         text not null default '',
   seller_address     text not null default '',
@@ -43,7 +43,7 @@ create table if not exists invoice_settings (
 -- ── 2. FAKTURY (naglowek) ───────────────────────────────────────────────────
 create table if not exists invoices (
   id            uuid primary key default gen_random_uuid(),
-  tenant_id     uuid not null default pd_current_tenant(),
+  tenant_id     uuid not null default (((auth.jwt() -> 'app_metadata'::text) ->> 'tenant_id'::text))::uuid,
   number        text,                                   -- nadawany przy wystawieniu
   doc_type      text not null default 'vat',            -- vat|proforma|zaliczka|koncowa|korekta|uproszczona
   status        text not null default 'draft',          -- draft|issued|sent|cancelled
@@ -92,7 +92,7 @@ create index if not exists invoices_ksefstatus_idx on invoices(tenant_id, ksef_s
 -- ── 3. POZYCJE FAKTURY ──────────────────────────────────────────────────────
 create table if not exists invoice_items (
   id          uuid primary key default gen_random_uuid(),
-  tenant_id   uuid not null default pd_current_tenant(),
+  tenant_id   uuid not null default (((auth.jwt() -> 'app_metadata'::text) ->> 'tenant_id'::text))::uuid,
   invoice_id  uuid not null references invoices(id) on delete cascade,
   position    int  not null default 1,
   name        text not null default '',
@@ -109,7 +109,7 @@ create index if not exists invoice_items_invoice_idx on invoice_items(invoice_id
 
 -- ── 4. LICZNIKI NUMERACJI (per tenant / typ / okres) ───────────────────────
 create table if not exists invoice_counters (
-  tenant_id   uuid not null default pd_current_tenant(),
+  tenant_id   uuid not null default (((auth.jwt() -> 'app_metadata'::text) ->> 'tenant_id'::text))::uuid,
   doc_type    text not null,
   period      text not null,                            -- np. '2026-06' | '2026' | 'all'
   last_number int  not null default 0,
