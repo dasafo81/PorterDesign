@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { sbApi } from '../lib/supabase.js';
+import { sbApi, ksefApi } from '../lib/supabase.js';
 const ce = React.createElement;
 
 // ── Stałe ──────────────────────────────────────────────────────────────────
