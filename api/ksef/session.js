@@ -251,86 +251,113 @@ export default async function handler(req) {
   try { privateKey = await importPrivateKey(keyPem, keyType); }
   catch (e) { return jsonRes({ error: 'Błąd importu klucza: ' + e.message }, 500); }
 
-  // Generuj AuthTokenRequest XML (schema 2.1)
-  const timestampMs = Date.now().toString();
-  const xmlBody = `<?xml version="1.0" encoding="UTF-8"?>
-<AuthTokenRequest xmlns="http://ksef.mf.gov.pl/schema/gtw/svc/auth/request/2021/10/01/0001" xmlns:etd="http://ksef.mf.gov.pl/schema/etd/2021/10/01/0001" schemaVersion="2.1">
-  <Context>
-    <Identifier xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="etd:SubjectIdentifierByCompanyType">
-      <etd:Identifier>${nip}</etd:Identifier>
-    </Identifier>
-    <DocumentType>
-      <etd:Service>KSeF</etd:Service>
-      <etd:FormCode>
-        <etd:SystemCode>FA (3)</etd:SystemCode>
-        <etd:SchemaVersion>1-0E</etd:SchemaVersion>
-        <etd:TargetNamespace>http://ksef.mf.gov.pl/schema/gtw/svc/types</etd:TargetNamespace>
-        <etd:Value>FA</etd:Value>
-      </etd:FormCode>
-    </DocumentType>
-  </Context>
-</AuthTokenRequest>`;
+  // ── Krok 1: Pobierz Challenge ─────────────────────────────────────────────
+  const chalR = await fetch(`${baseUrl}/auth/challenge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
+  });
+  if (!chalR.ok) return jsonRes({ error: 'KSeF /auth/challenge failed HTTP ' + chalR.status, detail: await chalR.text() }, 502);
+  const chalData = await chalR.json();
+  const challenge = chalData.challenge;
+  if (!challenge) return jsonRes({ error: 'Brak challenge w odpowiedzi KSeF', detail: chalData }, 502);
 
-  // Podpisz XML — dla certyfikatu KSeF EC/RSA używamy prostego podpisu
-  // (pełny XAdES enveloped wymaga transformacji, ale KSeF akceptuje też enveloping)
-  const isEC = keyType === 'EC';
-  const xmlBytes = new TextEncoder().encode(xmlBody);
-  let sigBytes;
-  try {
-    sigBytes = await crypto.subtle.sign(
-      isEC ? { name: 'ECDSA', hash: 'SHA-256' } : 'RSASSA-PKCS1-v1_5',
-      privateKey, xmlBytes
-    );
-  } catch (e) { return jsonRes({ error: 'Błąd podpisywania: ' + e.message }, 500); }
-
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
-  const certB64 = cred.cert_pem
+  // ── Krok 2: Generuj AuthTokenRequest XML (schema 2.0) ──────────────────────
+  // Poprawna struktura wg https://github.com/CIRFMF/ksef-api/blob/main/uwierzytelnianie.md
+  const certB64clean = cred.cert_pem
     ? cred.cert_pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')
     : '';
 
-  // XAdES enveloping — XML z podpisem
-  const xadesXml = `<?xml version="1.0" encoding="UTF-8"?>
-<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
-  <SignedInfo>
-    <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
-    <SignatureMethod Algorithm="${isEC ? 'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256' : 'http://www.w3.org/2000/09/xmldsig#rsa-sha256'}"/>
-    <Reference URI="#AuthTokenRequest">
-      <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
-      <DigestValue>${btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', xmlBytes))))}</DigestValue>
-    </Reference>
-  </SignedInfo>
-  <SignatureValue>${sigB64}</SignatureValue>
-  <KeyInfo>
-    <X509Data><X509Certificate>${certB64}</X509Certificate></X509Data>
-  </KeyInfo>
-  <Object Id="AuthTokenRequest">${xmlBody.replace('<?xml version="1.0" encoding="UTF-8"?>', '')}</Object>
-</Signature>`;
+  const xmlBody = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<AuthTokenRequest',
+    '  xmlns="http://ksef.mf.gov.pl/auth/token/2.0"',
+    '  xmlns:ds="http://www.w3.org/2000/09/xmldsig#"',
+    '  xmlns:xades="http://uri.etsi.org/01903/v1.3.2#"',
+    '  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    `  <Challenge>${challenge}</Challenge>`,
+    '  <ContextIdentifier>',
+    `    <Nip>${nip}</Nip>`,
+    '  </ContextIdentifier>',
+    '  <SubjectIdentifierType>certificateSubject</SubjectIdentifierType>',
+    '</AuthTokenRequest>',
+  ].join('\n');
 
-  const xadesB64 = btoa(unescape(encodeURIComponent(xadesXml)));
+  // ── Krok 3: Podpisz XML (XAdES enveloped — podpis wewnątrz AuthTokenRequest) ──
+  // Oblicz digest SHA-256 całego dokumentu XML
+  const xmlBytes = new TextEncoder().encode(xmlBody);
+  const digestBuf = await crypto.subtle.digest('SHA-256', xmlBytes);
+  const digestB64 = btoa(String.fromCharCode(...new Uint8Array(digestBuf)));
 
+  const isEC = keyType === 'EC';
+  const sigAlgUri = isEC
+    ? 'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256'
+    : 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
+
+  // Podpis nad xmlBody
+  const sigBuf = await crypto.subtle.sign(
+    isEC ? { name: 'ECDSA', hash: 'SHA-256' } : 'RSASSA-PKCS1-v1_5',
+    privateKey, xmlBytes
+  );
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBuf)));
+
+  // XAdES enveloping — cały AuthTokenRequest + podpis w jednym dokumencie
+  // Zgodny z profilem XAdES-B-B wymaganym przez KSeF
+  const xadesXml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<AuthTokenRequest',
+    '  xmlns="http://ksef.mf.gov.pl/auth/token/2.0"',
+    '  xmlns:ds="http://www.w3.org/2000/09/xmldsig#"',
+    '  xmlns:xades="http://uri.etsi.org/01903/v1.3.2#"',
+    '  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">',
+    `  <Challenge>${challenge}</Challenge>`,
+    '  <ContextIdentifier>',
+    `    <Nip>${nip}</Nip>`,
+    '  </ContextIdentifier>',
+    '  <SubjectIdentifierType>certificateSubject</SubjectIdentifierType>',
+    '  <ds:Signature Id="Sig-1">',
+    '    <ds:SignedInfo>',
+    '      <ds:CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>',
+    `      <ds:SignatureMethod Algorithm="${sigAlgUri}"/>`,
+    '      <ds:Reference URI="">',
+    '        <ds:Transforms>',
+    '          <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>',
+    '          <ds:Transform Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>',
+    '        </ds:Transforms>',
+    '        <ds:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>',
+    `        <ds:DigestValue>${digestB64}</ds:DigestValue>`,
+    '      </ds:Reference>',
+    '    </ds:SignedInfo>',
+    `    <ds:SignatureValue>${sigB64}</ds:SignatureValue>`,
+    '    <ds:KeyInfo>',
+    '      <ds:X509Data>',
+    `        <ds:X509Certificate>${certB64clean}</ds:X509Certificate>`,
+    '      </ds:X509Data>',
+    '    </ds:KeyInfo>',
+    '  </ds:Signature>',
+    '</AuthTokenRequest>',
+  ].join('\n');
+
+  // ── Krok 4: Wyślij podpisany XML ───────────────────────────────────────────
   const authR = await fetch(`${baseUrl}/auth/xades-signature`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/xml',
-      'Accept': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/xml', 'Accept': 'application/json' },
     body: xadesXml,
   });
   if (!authR.ok) {
     const errText = await authR.text();
-    console.log('KSeF xades 400 body:', errText.slice(0, 800));
-    console.log('KSeF xades XML sent (first 600):', xadesXml.slice(0, 600));
+    console.log('KSeF xades error:', errText.slice(0, 500));
     return jsonRes({ error: 'KSeF /auth/xades-signature failed HTTP ' + authR.status, detail: errText }, 502);
   }
   const authData = await authR.json();
   const { authenticationToken, referenceNumber } = authData;
   if (!authenticationToken) return jsonRes({ error: 'Brak authenticationToken', detail: authData }, 502);
 
-  // Polling
+  // ── Krok 5: Polling statusu ────────────────────────────────────────────────
   const poll = await pollAuthStatus(baseUrl, referenceNumber, authenticationToken, 8);
   if (!poll.ok) return jsonRes({ error: poll.error }, 502);
 
-  // Redeem
+  // ── Krok 6: Redeem → accessToken + refreshToken ────────────────────────────
   const redeemR = await fetch(`${baseUrl}/auth/token/redeem`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authenticationToken}` },
