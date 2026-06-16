@@ -809,7 +809,7 @@ function KsefView(){
     setSyncing(true); setErr(null); setMsg(null);
     getSession()
       .then(function(s){
-        return ksefApi.receiveInvoices(s.sessionToken,s.baseUrl,
+        return ksefApi.receiveInvoices(s.accessToken,s.baseUrl,
           tab==="incoming"?"incoming":"outgoing",dateFrom,dateTo);
       })
       .then(function(r){
