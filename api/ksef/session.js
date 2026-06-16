@@ -310,11 +310,11 @@ export default async function handler(req) {
 
   const authR = await fetch(`${baseUrl}/auth/xades-signature`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contextIdentifier: { type: 'onip', identifier: nip },
-      signedDocument: xadesB64,
-    }),
+    headers: {
+      'Content-Type': 'application/xml',
+      'Accept': 'application/json',
+    },
+    body: xadesXml,
   });
   if (!authR.ok) {
     const errText = await authR.text();
