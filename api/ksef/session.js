@@ -1,6 +1,6 @@
-// api/ksef/session.js  (v5 — Edge runtime, ENCRYPTED PRIVATE KEY przez Web Crypto)
-// Obsługuje ENCRYPTED PRIVATE KEY (PBES2/AES-256-CBC/PBKDF2-SHA256) bez Node.js crypto.
-// Edge runtime = Cloudflare-like, ma pełny dostęp do sieci (w tym ksef-test.podatki.gov.pl).
+// api/ksef/session.js  (v6 — Edge runtime, klucz już czysty PKCS#8 w bazie)
+// token.js v3 odszyfrował ENCRYPTED PRIVATE KEY przy uploadzie.
+// Tu tylko: AES-GCM decrypt → importKey(pkcs8) → sign → KSeF session.
 
 export const config = { runtime: 'edge' };
 
@@ -29,9 +29,7 @@ async function verifyUser(req) {
   if (!SERVICE) return { ok: false, status: 500, message: 'SUPABASE_SERVICE_ROLE_KEY not set' };
   const auth = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!auth) return { ok: false, status: 401, message: 'missing jwt' };
-  const r = await fetch(`${SB_URL}/auth/v1/user`, {
-    headers: { apikey: SERVICE, Authorization: `Bearer ${auth}` },
-  });
+  const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SERVICE, Authorization: `Bearer ${auth}` } });
   if (!r.ok) return { ok: false, status: 401, message: 'invalid jwt' };
   const user = await r.json();
   const tenantId = user && user.app_metadata && user.app_metadata.tenant_id;
@@ -39,11 +37,11 @@ async function verifyUser(req) {
   return { ok: true, tenantId, service: SERVICE };
 }
 
-// AES-256-GCM decrypt (nasze szyfrowanie tokenu/klucza)
-async function aesGcmDecrypt(combined, hexKey) {
+// AES-256-GCM decrypt
+async function aesDecrypt(combined, hexKey) {
   function hexToBytes(h) {
     const a = new Uint8Array(h.length / 2);
-    for (let i = 0; i < a.length; i++) a[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
+    for (let i = 0; i < a.length; i++) a[i] = parseInt(h.slice(i*2, i*2+2), 16);
     return a;
   }
   function b64ToBytes(b) { return Uint8Array.from(atob(b), c => c.charCodeAt(0)); }
@@ -53,7 +51,7 @@ async function aesGcmDecrypt(combined, hexKey) {
   return new TextDecoder().decode(dec);
 }
 
-// PEM → DER bytes
+// PEM → DER
 function pemToDer(pem) {
   const b64 = pem
     .replace(/-----BEGIN [^-]+-----/g, '')
@@ -62,93 +60,7 @@ function pemToDer(pem) {
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 }
 
-// ── ASN.1 DER parser (minimalny, dla PBES2) ──────────────────────────────────
-// Czyta tag, długość i zawartość elementu DER. Zwraca {tag, content, next}.
-function derRead(buf, offset) {
-  offset = offset || 0;
-  const tag = buf[offset++];
-  let len = buf[offset++];
-  if (len & 0x80) {
-    const numBytes = len & 0x7f;
-    len = 0;
-    for (let i = 0; i < numBytes; i++) len = (len << 8) | buf[offset++];
-  }
-  return { tag, content: buf.slice(offset, offset + len), next: offset + len };
-}
-
-// Parsuje pierwsze N elementów SEQUENCE na tym samym poziomie
-function derSeqChildren(buf) {
-  const children = [];
-  let off = 0;
-  while (off < buf.length) {
-    const el = derRead(buf, off);
-    children.push(el);
-    off = el.next;
-  }
-  return children;
-}
-
-// Deszyfruje ENCRYPTED PRIVATE KEY hasłem (PBES2/PBKDF2/AES-256-CBC)
-// Struktura DER: SEQUENCE { SEQUENCE { OID pbes2, SEQUENCE { SEQUENCE { OID pbkdf2,
-//   SEQUENCE { OCTET STRING salt, INTEGER iter, [INTEGER keyLen,] SEQUENCE { OID hmac } } },
-//   SEQUENCE { OID aes256cbc, OCTET STRING iv } } }, OCTET STRING ciphertext }
-async function decryptEncryptedPrivateKey(encPem, passphrase) {
-  const der = pemToDer(encPem);
-
-  // Outer SEQUENCE
-  const outer = derRead(der, 0);
-  const outerChildren = derSeqChildren(outer.content);
-  // outerChildren[0] = AlgorithmIdentifier SEQUENCE, outerChildren[1] = OCTET STRING ciphertext
-  const algSeq = derSeqChildren(outerChildren[0].content);
-  // algSeq[0] = OID pbes2 (ignorujemy), algSeq[1] = SEQUENCE parametry
-  const pbes2Params = derSeqChildren(algSeq[1].content);
-  // pbes2Params[0] = SEQUENCE kdf, pbes2Params[1] = SEQUENCE enc
-  const kdfSeq = derSeqChildren(pbes2Params[0].content);
-  // kdfSeq[0] = OID pbkdf2, kdfSeq[1] = SEQUENCE pbkdf2Params
-  const pbkdf2Params = derSeqChildren(kdfSeq[1].content);
-  // pbkdf2Params[0] = OCTET STRING salt, pbkdf2Params[1] = INTEGER iterations
-  // pbkdf2Params[2] = opcjonalnie INTEGER keyLen lub SEQUENCE hmac
-  const salt = pbkdf2Params[0].content;
-  // INTEGER: może mieć leading 0x00
-  let iterBytes = pbkdf2Params[1].content;
-  let iterations = 0;
-  for (const b of iterBytes) iterations = (iterations << 8) | b;
-
-  // Algorytm szyfrowania: pbes2Params[1]
-  const encSeq = derSeqChildren(pbes2Params[1].content);
-  // encSeq[0] = OID (AES-256-CBC lub inne), encSeq[1] = OCTET STRING IV
-  const iv = encSeq[1].content;
-
-  // Ciphertext: outerChildren[1].content
-  const ciphertext = outerChildren[1].content;
-
-  // PBKDF2 → klucz AES
-  const passBytes = new TextEncoder().encode(passphrase || '');
-  const baseKey = await crypto.subtle.importKey('raw', passBytes, 'PBKDF2', false, ['deriveKey']);
-  const aesKey = await crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-    baseKey,
-    { name: 'AES-CBC', length: 256 },
-    false,
-    ['decrypt']
-  );
-
-  // AES-CBC decrypt
-  const plainDer = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
-  const plainBytes = new Uint8Array(plainDer);
-  // Diagnostyka: sprawdz OID algorytmu klucza
-  // PKCS#8: SEQUENCE { INTEGER 0, SEQUENCE { OID algo, ... }, OCTET STRING key }
-  // Dla RSA: OID = 1.2.840.113549.1.1.1 (2a 86 48 86 f7 0d 01 01 01)
-  // Dla EC:  OID = 1.2.840.10045.2.1    (2a 86 48 ce 3d 02 01)
-  const hexDump = Array.from(plainBytes.slice(0,32)).map(b=>b.toString(16).padStart(2,'0')).join(' ');
-  console.log('Decrypted DER first 32 bytes:', hexDump);
-  if (plainBytes[0] !== 0x30) {
-    throw new Error('Złe hasło — pierwszy bajt: 0x' + plainBytes[0].toString(16));
-  }
-  return plainBytes;
-}
-
-// Buduje PKCS#8 DER z PKCS#1 DER (dla kluczy bez hasła w formacie RSA PRIVATE KEY)
+// DER length helpers
 function derLen(n) {
   if (n < 0x80) return new Uint8Array([n]);
   if (n < 0x100) return new Uint8Array([0x81, n]);
@@ -167,45 +79,32 @@ function concat(...arrays) {
   for (const a of arrays) { out.set(a, off); off += a.length; }
   return out;
 }
-function pkcs1ToPkcs8(pkcs1Der) {
-  const oid = new Uint8Array([0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01]);
-  const version   = new Uint8Array([0x02,0x01,0x00]);
-  const algId     = derTLV(0x30, concat(derTLV(0x06, oid), new Uint8Array([0x05,0x00])));
-  const privKey   = derTLV(0x04, pkcs1Der);
-  return derTLV(0x30, concat(version, algId, privKey));
-}
 
-// Import klucza prywatnego RSA do Web Crypto (obsługuje PKCS#8 plain i ENCRYPTED)
-async function importPrivateKey(keyPem, passphrase) {
+// Import klucza prywatnego RSA (PKCS#8 PEM lub PKCS#1 PEM)
+async function importPrivateKey(keyPem) {
+  const der = pemToDer(keyPem);
   let pkcs8Der;
 
-  if (keyPem.includes('ENCRYPTED PRIVATE KEY')) {
-    // Deszyfruj hasłem → czysty PKCS#8 DER
-    pkcs8Der = await decryptEncryptedPrivateKey(keyPem, passphrase);
-  } else if (keyPem.includes('BEGIN RSA PRIVATE KEY')) {
+  if (keyPem.includes('BEGIN RSA PRIVATE KEY')) {
     // PKCS#1 → opakuj w PKCS#8
-    pkcs8Der = pkcs1ToPkcs8(pemToDer(keyPem));
+    const oid = new Uint8Array([0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01]);
+    const version = new Uint8Array([0x02,0x01,0x00]);
+    const algId = derTLV(0x30, concat(derTLV(0x06, oid), new Uint8Array([0x05,0x00])));
+    pkcs8Der = derTLV(0x30, concat(version, algId, derTLV(0x04, der)));
   } else {
-    // Już jest PKCS#8 plain
-    pkcs8Der = pemToDer(keyPem);
+    // Już PKCS#8
+    pkcs8Der = der;
   }
 
   return crypto.subtle.importKey(
-    'pkcs8',
-    pkcs8Der,
+    'pkcs8', pkcs8Der,
     { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign']
+    false, ['sign']
   );
 }
 
-// Podpisz dane kluczem → base64
 async function signData(data, privateKey) {
-  const sig = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    privateKey,
-    new TextEncoder().encode(data)
-  );
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, new TextEncoder().encode(data));
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
@@ -221,33 +120,26 @@ export default async function handler(req) {
 
   const sbH = { apikey: auth.service, Authorization: `Bearer ${auth.service}` };
 
-  // Pobierz certyfikat z DB
   const credR = await fetch(
-    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,cert_pass_enc,env`,
+    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env`,
     { headers: sbH }
   );
-  if (!credR.ok) return jsonRes({ error: 'Błąd odczytu credentials z DB' }, 500);
+  if (!credR.ok) return jsonRes({ error: 'Błąd odczytu credentials' }, 500);
   const creds = await credR.json();
   const cred = creds && creds[0];
   if (!cred || !cred.cert_pem || !cred.key_encrypted) {
-    return jsonRes({ error: 'Brak certyfikatu KSeF. Wejdź w Ustawienia → KSeF i wgraj pliki .crt i .key.' }, 400);
+    return jsonRes({ error: 'Brak certyfikatu. Usuń i wgraj ponownie przez Ustawienia → KSeF.' }, 400);
   }
 
-  // Odszyfruj klucz PEM (nasze AES-GCM)
+  // Odszyfruj klucz (już czysty PKCS#8 PEM)
   let keyPem;
-  try { keyPem = await aesGcmDecrypt(cred.key_encrypted, ENC_KEY); }
+  try { keyPem = await aesDecrypt(cred.key_encrypted, ENC_KEY); }
   catch (e) { return jsonRes({ error: 'Błąd odszyfrowania klucza: ' + e.message }, 500); }
 
-  // Hasło do ENCRYPTED PRIVATE KEY
-  let keyPass = '';
-  if (cred.cert_pass_enc) {
-    try { keyPass = await aesGcmDecrypt(cred.cert_pass_enc, ENC_KEY); } catch (e) { keyPass = ''; }
-  }
-
-  // Import klucza prywatnego
+  // Import klucza RSA
   let privateKey;
-  try { privateKey = await importPrivateKey(keyPem, keyPass); }
-  catch (e) { return jsonRes({ error: 'Błąd importu klucza RSA: ' + e.message + '. Sprawdź hasło do certyfikatu.' }, 500); }
+  try { privateKey = await importPrivateKey(keyPem); }
+  catch (e) { return jsonRes({ error: 'Błąd importu klucza RSA: ' + e.message }, 500); }
 
   // NIP
   const settR = await fetch(
@@ -256,30 +148,26 @@ export default async function handler(req) {
   );
   const setts = settR.ok ? await settR.json() : [];
   const nip = ((setts && setts[0] && setts[0].seller_nip) || '').replace(/[\s\-]/g, '');
-  if (!nip || nip.length !== 10) {
-    return jsonRes({ error: 'Brak NIP w ustawieniach faktury.' }, 400);
-  }
+  if (!nip || nip.length !== 10) return jsonRes({ error: 'Brak NIP w ustawieniach.' }, 400);
 
   const baseUrl = KSEF_URLS[cred.env] || KSEF_URLS.test;
 
-  // Krok 1: AuthorisationChallenge
+  // Krok 1: Challenge
   const chalR = await fetch(`${baseUrl}/online/Session/AuthorisationChallenge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
   });
-  if (!chalR.ok) {
-    return jsonRes({ error: 'KSeF AuthorisationChallenge failed', detail: await chalR.text() }, 502);
-  }
+  if (!chalR.ok) return jsonRes({ error: 'KSeF Challenge failed', detail: await chalR.text() }, 502);
   const chal = await chalR.json();
-  if (!chal.challenge) return jsonRes({ error: 'Brak challenge w odpowiedzi KSeF', detail: chal }, 502);
+  if (!chal.challenge) return jsonRes({ error: 'Brak challenge', detail: chal }, 502);
 
-  // Krok 2: Podpis RSA-SHA256
+  // Krok 2: Podpis
   let signature;
   try { signature = await signData(chal.challenge + chal.timestamp, privateKey); }
   catch (e) { return jsonRes({ error: 'Błąd podpisywania: ' + e.message }, 500); }
 
-  // Krok 3: InitialisationSigned
+  // Krok 3: Sesja
   const initR = await fetch(`${baseUrl}/online/Session/InitialisationSigned`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -291,9 +179,7 @@ export default async function handler(req) {
       signatureInfo: { type: 'RSA', signature },
     }),
   });
-  if (!initR.ok) {
-    return jsonRes({ error: 'KSeF InitialisationSigned failed', detail: await initR.text() }, 502);
-  }
+  if (!initR.ok) return jsonRes({ error: 'KSeF InitialisationSigned failed', detail: await initR.text() }, 502);
   const init = await initR.json();
   const sessionToken = init.sessionToken && init.sessionToken.token;
   if (!sessionToken) return jsonRes({ error: 'Brak sessionToken', detail: init }, 502);
