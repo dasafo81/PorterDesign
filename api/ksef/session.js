@@ -189,7 +189,14 @@ export default async function handler(req) {
     catch (e) { return jsonRes({ error: 'Błąd sieci do KSeF: ' + e.message }, 502); }
     if (!pubCertsR.ok) return jsonRes({ error: 'KSeF /security/public-key-certificates HTTP ' + pubCertsR.status }, 502);
     const pubCertsData = await pubCertsR.json();
-    console.log('pub-key-certs response:', JSON.stringify(pubCertsData).slice(0, 400));
+    console.log('pub-key-certs FULL:', JSON.stringify(pubCertsData).slice(0, 800));
+    console.log('pub-key-certs cert[0]:', JSON.stringify(certs[0]).slice(0, 400));
+    if (tokenEncCert) {
+      const k = tokenEncCert;
+      console.log('tokenEncCert keys:', Object.keys(k).join(','));
+      const certVal = k.certificate || k.publicKey || k.value || k.pem || k.content || k.data || '';
+      console.log('certVal first 100:', String(certVal).slice(0,100));
+    }
 
     // Znajdź certyfikat do szyfrowania tokenu (KsefTokenEncryption)
     const certs = pubCertsData.certificates || pubCertsData.items || pubCertsData.data || (Array.isArray(pubCertsData) ? pubCertsData : []);
