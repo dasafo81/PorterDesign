@@ -80,31 +80,37 @@ function concat(...arrays) {
   return out;
 }
 
-// Import klucza prywatnego RSA (PKCS#8 PEM lub PKCS#1 PEM)
-async function importPrivateKey(keyPem) {
+// Import klucza prywatnego (RSA lub EC P-256) z PKCS#8 PEM
+async function importPrivateKey(keyPem, keyType) {
   const der = pemToDer(keyPem);
   let pkcs8Der;
 
   if (keyPem.includes('BEGIN RSA PRIVATE KEY')) {
-    // PKCS#1 → opakuj w PKCS#8
+    // PKCS#1 RSA → opakuj w PKCS#8
     const oid = new Uint8Array([0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01]);
     const version = new Uint8Array([0x02,0x01,0x00]);
     const algId = derTLV(0x30, concat(derTLV(0x06, oid), new Uint8Array([0x05,0x00])));
     pkcs8Der = derTLV(0x30, concat(version, algId, derTLV(0x04, der)));
   } else {
-    // Już PKCS#8
     pkcs8Der = der;
   }
 
+  const isEC = keyType === 'EC';
   return crypto.subtle.importKey(
     'pkcs8', pkcs8Der,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    isEC
+      ? { name: 'ECDSA', namedCurve: 'P-256' }
+      : { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
     false, ['sign']
   );
 }
 
-async function signData(data, privateKey) {
-  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, new TextEncoder().encode(data));
+async function signData(data, privateKey, keyType) {
+  const isEC = keyType === 'EC';
+  const alg = isEC
+    ? { name: 'ECDSA', hash: 'SHA-256' }
+    : 'RSASSA-PKCS1-v1_5';
+  const sig = await crypto.subtle.sign(alg, privateKey, new TextEncoder().encode(data));
   return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
 
@@ -121,7 +127,7 @@ export default async function handler(req) {
   const sbH = { apikey: auth.service, Authorization: `Bearer ${auth.service}` };
 
   const credR = await fetch(
-    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env`,
+    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env,key_type`,
     { headers: sbH }
   );
   if (!credR.ok) return jsonRes({ error: 'Błąd odczytu credentials' }, 500);
@@ -137,8 +143,9 @@ export default async function handler(req) {
   catch (e) { return jsonRes({ error: 'Błąd odszyfrowania klucza: ' + e.message }, 500); }
 
   // Import klucza RSA
+  const keyType = cred.key_type || 'RSA';
   let privateKey;
-  try { privateKey = await importPrivateKey(keyPem); }
+  try { privateKey = await importPrivateKey(keyPem, keyType); }
   catch (e) { return jsonRes({ error: 'Błąd importu klucza RSA: ' + e.message }, 500); }
 
   // NIP
@@ -164,7 +171,7 @@ export default async function handler(req) {
 
   // Krok 2: Podpis
   let signature;
-  try { signature = await signData(chal.challenge + chal.timestamp, privateKey); }
+  try { signature = await signData(chal.challenge + chal.timestamp, privateKey, keyType); }
   catch (e) { return jsonRes({ error: 'Błąd podpisywania: ' + e.message }, 500); }
 
   // Krok 3: Sesja
@@ -176,7 +183,7 @@ export default async function handler(req) {
       authorisationChallengeUtf8: chal.challenge,
       authorisationTimestampUtf8: chal.timestamp,
       keyIdentifier: { type: 'onip', identifier: nip },
-      signatureInfo: { type: 'RSA', signature },
+      signatureInfo: { type: keyType === 'EC' ? 'ECDSA' : 'RSA', signature },
     }),
   });
   if (!initR.ok) return jsonRes({ error: 'KSeF InitialisationSigned failed', detail: await initR.text() }, 502);
