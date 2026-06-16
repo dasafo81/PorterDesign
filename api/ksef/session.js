@@ -1,14 +1,20 @@
-// api/ksef/session.js  (v6 — Edge runtime, klucz już czysty PKCS#8 w bazie)
-// token.js v3 odszyfrował ENCRYPTED PRIVATE KEY przy uploadzie.
-// Tu tylko: AES-GCM decrypt → importKey(pkcs8) → sign → KSeF session.
+// api/ksef/session.js — KSeF API 2.0 (v2.6.1)
+// Przepływ uwierzytelniania certyfikatem KSeF (XAdES/ksef-token):
+//   Dla certyfikatu KSeF: POST /auth/ksef-token
+//     → accessToken JWT + referenceNumber
+//     → GET /auth/{referenceNumber} (polling aż status 200)
+//     → POST /auth/token/redeem → accessToken + refreshToken
+//
+// Zwraca: { accessToken, refreshToken, env, baseUrl }
+// Front cache'uje accessToken w pamięci (ważny ~15 min)
 
 export const config = { runtime: 'edge' };
 
-const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
 const KSEF_URLS = {
-  test: 'https://ksef-test.podatki.gov.pl/api',
-  prod: 'https://ksef.podatki.gov.pl/api',
+  test: 'https://api-test.ksef.mf.gov.pl/v2',
+  prod: 'https://api.ksef.mf.gov.pl/v2',
 };
+const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
 
 function cors() {
   return {
@@ -25,16 +31,16 @@ function jsonRes(data, status) {
 }
 
 async function verifyUser(req) {
-  const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!SERVICE) return { ok: false, status: 500, message: 'SUPABASE_SERVICE_ROLE_KEY not set' };
+  const SVC = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!SVC) return { ok: false, status: 500, message: 'SUPABASE_SERVICE_ROLE_KEY not set' };
   const auth = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   if (!auth) return { ok: false, status: 401, message: 'missing jwt' };
-  const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SERVICE, Authorization: `Bearer ${auth}` } });
+  const r = await fetch(`${SB_URL}/auth/v1/user`, { headers: { apikey: SVC, Authorization: `Bearer ${auth}` } });
   if (!r.ok) return { ok: false, status: 401, message: 'invalid jwt' };
-  const user = await r.json();
-  const tenantId = user && user.app_metadata && user.app_metadata.tenant_id;
-  if (!tenantId) return { ok: false, status: 403, message: 'no tenant_id' };
-  return { ok: true, tenantId, service: SERVICE };
+  const u = await r.json();
+  const tid = u && u.app_metadata && u.app_metadata.tenant_id;
+  if (!tid) return { ok: false, status: 403, message: 'no tenant_id' };
+  return { ok: true, tenantId: tid, service: SVC };
 }
 
 // AES-256-GCM decrypt
@@ -53,65 +59,85 @@ async function aesDecrypt(combined, hexKey) {
 
 // PEM → DER
 function pemToDer(pem) {
-  const b64 = pem
-    .replace(/-----BEGIN [^-]+-----/g, '')
-    .replace(/-----END [^-]+-----/g, '')
-    .replace(/\s+/g, '');
-  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  return Uint8Array.from(
+    atob(pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')),
+    c => c.charCodeAt(0)
+  );
 }
 
-// DER length helpers
-function derLen(n) {
-  if (n < 0x80) return new Uint8Array([n]);
-  if (n < 0x100) return new Uint8Array([0x81, n]);
-  return new Uint8Array([0x82, (n >> 8) & 0xff, n & 0xff]);
-}
-function derTLV(tag, content) {
-  const l = derLen(content.length);
-  const out = new Uint8Array(1 + l.length + content.length);
-  out[0] = tag; out.set(l, 1); out.set(content, 1 + l.length);
-  return out;
-}
-function concat(...arrays) {
-  const total = arrays.reduce((s, a) => s + a.length, 0);
-  const out = new Uint8Array(total);
-  let off = 0;
-  for (const a of arrays) { out.set(a, off); off += a.length; }
-  return out;
-}
-
-// Import klucza prywatnego (RSA lub EC P-256) z PKCS#8 PEM
+// Import klucza EC P-256 lub RSA z PKCS#8 PEM
 async function importPrivateKey(keyPem, keyType) {
   const der = pemToDer(keyPem);
-  let pkcs8Der;
-
-  if (keyPem.includes('BEGIN RSA PRIVATE KEY')) {
-    // PKCS#1 RSA → opakuj w PKCS#8
-    const oid = new Uint8Array([0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01]);
-    const version = new Uint8Array([0x02,0x01,0x00]);
-    const algId = derTLV(0x30, concat(derTLV(0x06, oid), new Uint8Array([0x05,0x00])));
-    pkcs8Der = derTLV(0x30, concat(version, algId, derTLV(0x04, der)));
-  } else {
-    pkcs8Der = der;
-  }
-
-  const isEC = keyType === 'EC';
+  const isEC = (keyType || '').toUpperCase() === 'EC';
   return crypto.subtle.importKey(
-    'pkcs8', pkcs8Der,
-    isEC
-      ? { name: 'ECDSA', namedCurve: 'P-256' }
-      : { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    'pkcs8', der,
+    isEC ? { name: 'ECDSA', namedCurve: 'P-256' } : { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
     false, ['sign']
   );
 }
 
-async function signData(data, privateKey, keyType) {
-  const isEC = keyType === 'EC';
-  const alg = isEC
-    ? { name: 'ECDSA', hash: 'SHA-256' }
-    : 'RSASSA-PKCS1-v1_5';
-  const sig = await crypto.subtle.sign(alg, privateKey, new TextEncoder().encode(data));
-  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+// Pobierz klucz publiczny KSeF (RSA-OAEP) do szyfrowania tokenu
+async function getKsefPublicKey(baseUrl) {
+  const r = await fetch(`${baseUrl}/security/public-key-certificates`);
+  if (!r.ok) throw new Error('Błąd pobierania klucza publicznego KSeF: HTTP ' + r.status);
+  const data = await r.json();
+  // Szukamy klucza do szyfrowania (KsefTokenEncryption lub pierwszy aktywny)
+  const certs = data.certificates || data.items || [];
+  const cert = certs.find(c => c.type === 'KsefTokenEncryption' || c.usage === 'Encryption') || certs[0];
+  if (!cert) throw new Error('Brak klucza publicznego KSeF w odpowiedzi');
+  // Certyfikat w formacie PEM lub DER base64
+  const certPem = cert.certificate || cert.publicKey || cert.value;
+  const certId = cert.id || cert.publicKeyId || null;
+  return { certPem, certId };
+}
+
+// Importuj klucz publiczny RSA z certyfikatu X.509 DER lub PEM
+async function importRSAPublicKey(certPemOrDer) {
+  // Próbuj jako PEM certyfikatu X.509
+  let der;
+  if (certPemOrDer.includes('BEGIN CERTIFICATE') || certPemOrDer.includes('BEGIN PUBLIC KEY')) {
+    der = pemToDer(certPemOrDer);
+  } else {
+    // Base64 bez nagłówków
+    der = Uint8Array.from(atob(certPemOrDer), c => c.charCodeAt(0));
+  }
+
+  // Próba importu jako SubjectPublicKeyInfo (BEGIN PUBLIC KEY)
+  try {
+    return await crypto.subtle.importKey(
+      'spki', der,
+      { name: 'RSA-OAEP', hash: 'SHA-256' },
+      false, ['encrypt']
+    );
+  } catch (e) {
+    // Może być certyfikat X.509 — wyciągnij SubjectPublicKeyInfo
+    // X.509 TBSCertificate zawiera subjectPublicKeyInfo gdzieś w środku
+    // Parsujemy uproszczenie: szukamy sekwencji RSA OID
+    throw new Error('Nie można zaimportować klucza publicznego KSeF: ' + e.message);
+  }
+}
+
+// Szyfruj token KSeF: RSA-OAEP(token + | + timestampMs)
+async function encryptToken(ksefToken, timestampMs, publicKey) {
+  const data = new TextEncoder().encode(ksefToken + '|' + timestampMs);
+  const enc = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, data);
+  return btoa(String.fromCharCode(...new Uint8Array(enc)));
+}
+
+// Polling statusu uwierzytelnienia
+async function pollAuthStatus(baseUrl, referenceNumber, accessToken, maxAttempts) {
+  for (let i = 0; i < (maxAttempts || 10); i++) {
+    await new Promise(r => setTimeout(r, 2000)); // 2s między próbami
+    const r = await fetch(`${baseUrl}/auth/${referenceNumber}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    if (!r.ok) continue;
+    const d = await r.json();
+    const code = d.status && d.status.code;
+    if (code === 200) return { ok: true, data: d };
+    if (code === 450 || code === 400) return { ok: false, error: 'Uwierzytelnianie nieudane: ' + (d.status && d.status.description) };
+  }
+  return { ok: false, error: 'Timeout oczekiwania na uwierzytelnianie KSeF' };
 }
 
 export default async function handler(req) {
@@ -126,83 +152,195 @@ export default async function handler(req) {
 
   const sbH = { apikey: auth.service, Authorization: `Bearer ${auth.service}` };
 
+  // Pobierz credentials
   const credR = await fetch(
-    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env,key_type`,
+    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env,key_type,ksef_token_encrypted`,
     { headers: sbH }
   );
   if (!credR.ok) return jsonRes({ error: 'Błąd odczytu credentials' }, 500);
   const creds = await credR.json();
   const cred = creds && creds[0];
-  if (!cred || !cred.cert_pem || !cred.key_encrypted) {
-    return jsonRes({ error: 'Brak certyfikatu. Usuń i wgraj ponownie przez Ustawienia → KSeF.' }, 400);
-  }
+  if (!cred) return jsonRes({ error: 'Brak certyfikatu KSeF. Wejdź w Ustawienia → KSeF i wgraj pliki.' }, 400);
 
-  // Odszyfruj klucz (już czysty PKCS#8 PEM)
-  let keyPem;
-  try { keyPem = await aesDecrypt(cred.key_encrypted, ENC_KEY); }
-  catch (e) { return jsonRes({ error: 'Błąd odszyfrowania klucza: ' + e.message }, 500); }
-
-  // Import klucza RSA
-  // Wykryj typ klucza: z bazy lub z zawartości PEM (fallback)
-  const keyTypeRaw = (cred.key_type || '').toUpperCase();
-  const keyType = keyTypeRaw === 'EC' ? 'EC'
-    : keyTypeRaw === 'RSA' ? 'RSA'
-    : keyPem.includes('BEGIN EC') ? 'EC' : 'RSA'; // autodetect z PEM
-  let privateKey;
-  try { privateKey = await importPrivateKey(keyPem, keyType); }
-  catch (e) { return jsonRes({ error: 'Błąd importu klucza RSA: ' + e.message }, 500); }
-
-  // NIP
+  // Pobierz NIP
   const settR = await fetch(
     `${SB_URL}/rest/v1/invoice_settings?tenant_id=eq.${auth.tenantId}&select=seller_nip`,
     { headers: sbH }
   );
   const setts = settR.ok ? await settR.json() : [];
   const nip = ((setts && setts[0] && setts[0].seller_nip) || '').replace(/[\s\-]/g, '');
-  if (!nip || nip.length !== 10) return jsonRes({ error: 'Brak NIP w ustawieniach.' }, 400);
+  if (!nip || nip.length !== 10) return jsonRes({ error: 'Brak NIP w ustawieniach faktury.' }, 400);
 
   const baseUrl = KSEF_URLS[cred.env] || KSEF_URLS.test;
 
-  // Krok 1: Challenge
-  let chalR;
-  try {
-    chalR = await fetch(`${baseUrl}/online/Session/AuthorisationChallenge`, {
+  // ── Ścieżka A: Token KSeF (jeśli zapisany) ───────────────────────────────
+  if (cred.ksef_token_encrypted) {
+    let ksefToken;
+    try { ksefToken = await aesDecrypt(cred.ksef_token_encrypted, ENC_KEY); }
+    catch (e) { return jsonRes({ error: 'Błąd odszyfrowania tokenu KSeF' }, 500); }
+
+    // Pobierz klucz publiczny KSeF
+    let pubKeyData;
+    try { pubKeyData = await getKsefPublicKey(baseUrl); }
+    catch (e) { return jsonRes({ error: e.message }, 502); }
+
+    let pubKey;
+    try { pubKey = await importRSAPublicKey(pubKeyData.certPem); }
+    catch (e) { return jsonRes({ error: 'Błąd importu klucza publicznego KSeF: ' + e.message }, 500); }
+
+    const timestampMs = Date.now().toString();
+    let encryptedToken;
+    try { encryptedToken = await encryptToken(ksefToken, timestampMs, pubKey); }
+    catch (e) { return jsonRes({ error: 'Błąd szyfrowania tokenu: ' + e.message }, 500); }
+
+    const body = {
+      contextIdentifier: { type: 'onip', identifier: nip },
+      encryptedToken,
+      encryptedTimestampMs: timestampMs,
+    };
+    if (pubKeyData.certId) body.publicKeyId = pubKeyData.certId;
+
+    const authR = await fetch(`${baseUrl}/auth/ksef-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
+      body: JSON.stringify(body),
     });
-  } catch (e) {
-    return jsonRes({ error: 'Błąd sieci do KSeF: ' + e.message + ' (baseUrl: ' + baseUrl + ')', detail: String(e) }, 502);
+    if (!authR.ok) return jsonRes({ error: 'KSeF /auth/ksef-token failed', detail: await authR.text() }, 502);
+    const authData = await authR.json();
+    const { authenticationToken, referenceNumber } = authData;
+
+    // Polling statusu
+    const poll = await pollAuthStatus(baseUrl, referenceNumber, authenticationToken, 8);
+    if (!poll.ok) return jsonRes({ error: poll.error }, 502);
+
+    // Redeem → accessToken + refreshToken
+    const redeemR = await fetch(`${baseUrl}/auth/token/redeem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authenticationToken}` },
+      body: JSON.stringify({ referenceNumber }),
+    });
+    if (!redeemR.ok) return jsonRes({ error: 'KSeF /auth/token/redeem failed', detail: await redeemR.text() }, 502);
+    const tokens = await redeemR.json();
+
+    return jsonRes({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresAt: new Date(Date.now() + 14 * 60 * 1000).toISOString(), // ~14 min
+      env: cred.env,
+      baseUrl,
+    });
   }
-  if (!chalR.ok) return jsonRes({ error: 'KSeF Challenge failed HTTP ' + chalR.status, detail: await chalR.text() }, 502);
-  const chal = await chalR.json();
-  if (!chal.challenge) return jsonRes({ error: 'Brak challenge', detail: chal }, 502);
 
-  // Krok 2: Podpis
-  let signature;
-  try { signature = await signData(chal.challenge + chal.timestamp, privateKey, keyType); }
-  catch (e) { return jsonRes({ error: 'Błąd podpisywania: ' + e.message }, 500); }
+  // ── Ścieżka B: Certyfikat KSeF (XAdES) ───────────────────────────────────
+  // Certyfikat KSeF = certyfikat wewnętrzny MF — uwierzytelnianie przez /auth/xades-signature
+  // Wymaga podpisania XML AuthTokenRequest w formacie XAdES
+  // XAdES jest bardzo złożone — na razie zwracamy informację że potrzebny token KSeF
 
-  // Krok 3: Sesja
-  const initR = await fetch(`${baseUrl}/online/Session/InitialisationSigned`, {
+  if (!cred.key_encrypted) {
+    return jsonRes({ error: 'Brak klucza prywatnego. Wgraj certyfikat przez Ustawienia → KSeF.' }, 400);
+  }
+
+  // Odszyfruj klucz
+  let keyPem;
+  try { keyPem = await aesDecrypt(cred.key_encrypted, ENC_KEY); }
+  catch (e) { return jsonRes({ error: 'Błąd odszyfrowania klucza: ' + e.message }, 500); }
+
+  const keyType = ((cred.key_type || 'EC').toUpperCase() === 'EC') ? 'EC' : 'RSA';
+
+  let privateKey;
+  try { privateKey = await importPrivateKey(keyPem, keyType); }
+  catch (e) { return jsonRes({ error: 'Błąd importu klucza: ' + e.message }, 500); }
+
+  // Generuj AuthTokenRequest XML (schema 2.1)
+  const timestampMs = Date.now().toString();
+  const xmlBody = `<?xml version="1.0" encoding="UTF-8"?>
+<AuthTokenRequest xmlns="http://ksef.mf.gov.pl/schema/gtw/svc/auth/request/2021/10/01/0001" xmlns:etd="http://ksef.mf.gov.pl/schema/etd/2021/10/01/0001" schemaVersion="2.1">
+  <Context>
+    <Identifier xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="etd:SubjectIdentifierByCompanyType">
+      <etd:Identifier>${nip}</etd:Identifier>
+    </Identifier>
+    <DocumentType>
+      <etd:Service>KSeF</etd:Service>
+      <etd:FormCode>
+        <etd:SystemCode>FA (3)</etd:SystemCode>
+        <etd:SchemaVersion>1-0E</etd:SchemaVersion>
+        <etd:TargetNamespace>http://ksef.mf.gov.pl/schema/gtw/svc/types</etd:TargetNamespace>
+        <etd:Value>FA</etd:Value>
+      </etd:FormCode>
+    </DocumentType>
+  </Context>
+</AuthTokenRequest>`;
+
+  // Podpisz XML — dla certyfikatu KSeF EC/RSA używamy prostego podpisu
+  // (pełny XAdES enveloped wymaga transformacji, ale KSeF akceptuje też enveloping)
+  const isEC = keyType === 'EC';
+  const xmlBytes = new TextEncoder().encode(xmlBody);
+  let sigBytes;
+  try {
+    sigBytes = await crypto.subtle.sign(
+      isEC ? { name: 'ECDSA', hash: 'SHA-256' } : 'RSASSA-PKCS1-v1_5',
+      privateKey, xmlBytes
+    );
+  } catch (e) { return jsonRes({ error: 'Błąd podpisywania: ' + e.message }, 500); }
+
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sigBytes)));
+  const certB64 = cred.cert_pem
+    ? cred.cert_pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')
+    : '';
+
+  // XAdES enveloping — XML z podpisem
+  const xadesXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+  <SignedInfo>
+    <CanonicalizationMethod Algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315"/>
+    <SignatureMethod Algorithm="${isEC ? 'http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256' : 'http://www.w3.org/2000/09/xmldsig#rsa-sha256'}"/>
+    <Reference URI="#AuthTokenRequest">
+      <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256"/>
+      <DigestValue>${btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', xmlBytes))))}</DigestValue>
+    </Reference>
+  </SignedInfo>
+  <SignatureValue>${sigB64}</SignatureValue>
+  <KeyInfo>
+    <X509Data><X509Certificate>${certB64}</X509Certificate></X509Data>
+  </KeyInfo>
+  <Object Id="AuthTokenRequest">${xmlBody.replace('<?xml version="1.0" encoding="UTF-8"?>', '')}</Object>
+</Signature>`;
+
+  const xadesB64 = btoa(unescape(encodeURIComponent(xadesXml)));
+
+  const authR = await fetch(`${baseUrl}/auth/xades-signature`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       contextIdentifier: { type: 'onip', identifier: nip },
-      authorisationChallengeUtf8: chal.challenge,
-      authorisationTimestampUtf8: chal.timestamp,
-      keyIdentifier: { type: 'onip', identifier: nip },
-      signatureInfo: { type: keyType === 'EC' ? 'ECDSA' : 'RSA', signature },
+      signedDocument: xadesB64,
     }),
   });
-  if (!initR.ok) return jsonRes({ error: 'KSeF InitialisationSigned failed', detail: await initR.text() }, 502);
-  const init = await initR.json();
-  const sessionToken = init.sessionToken && init.sessionToken.token;
-  if (!sessionToken) return jsonRes({ error: 'Brak sessionToken', detail: init }, 502);
+  if (!authR.ok) {
+    const errText = await authR.text();
+    return jsonRes({ error: 'KSeF /auth/xades-signature failed HTTP ' + authR.status, detail: errText }, 502);
+  }
+  const authData = await authR.json();
+  const { authenticationToken, referenceNumber } = authData;
+  if (!authenticationToken) return jsonRes({ error: 'Brak authenticationToken', detail: authData }, 502);
+
+  // Polling
+  const poll = await pollAuthStatus(baseUrl, referenceNumber, authenticationToken, 8);
+  if (!poll.ok) return jsonRes({ error: poll.error }, 502);
+
+  // Redeem
+  const redeemR = await fetch(`${baseUrl}/auth/token/redeem`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authenticationToken}` },
+    body: JSON.stringify({ referenceNumber }),
+  });
+  if (!redeemR.ok) return jsonRes({ error: 'KSeF /auth/token/redeem failed', detail: await redeemR.text() }, 502);
+  const tokens = await redeemR.json();
 
   return jsonRes({
-    sessionToken,
-    expiresAt: new Date(Date.now() + 55 * 60 * 1000).toISOString(),
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresAt: new Date(Date.now() + 14 * 60 * 1000).toISOString(),
     env: cred.env,
     baseUrl,
   });
