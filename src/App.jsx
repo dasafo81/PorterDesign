@@ -3,7 +3,7 @@ import { sbApi } from './lib/supabase.js';
 import { signOut } from './lib/auth.js';
 import {
   FABRICS, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
-  IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
+  IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, SELLER,
   buildFabricRows, buildOfferRows, buildSewingRows, calc,
   formatPLN, generateKarniszOrderPDF, generateOfferPDF,
