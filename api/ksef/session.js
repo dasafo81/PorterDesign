@@ -143,7 +143,11 @@ export default async function handler(req) {
   catch (e) { return jsonRes({ error: 'Błąd odszyfrowania klucza: ' + e.message }, 500); }
 
   // Import klucza RSA
-  const keyType = cred.key_type || 'RSA';
+  // Wykryj typ klucza: z bazy lub z zawartości PEM (fallback)
+  const keyTypeRaw = (cred.key_type || '').toUpperCase();
+  const keyType = keyTypeRaw === 'EC' ? 'EC'
+    : keyTypeRaw === 'RSA' ? 'RSA'
+    : keyPem.includes('BEGIN EC') ? 'EC' : 'RSA'; // autodetect z PEM
   let privateKey;
   try { privateKey = await importPrivateKey(keyPem, keyType); }
   catch (e) { return jsonRes({ error: 'Błąd importu klucza RSA: ' + e.message }, 500); }
