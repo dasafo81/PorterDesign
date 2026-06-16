@@ -359,7 +359,12 @@ function adminFetch(method, path, body){
 // Front przekazuje swój JWT — backend weryfikuje, odszyfruje token KSeF i woła MF API.
 function ksefFetch(method, path, body) {
   var userTok = getUserToken();
-  return fetch(path, {
+  // Mapuj /api/ksef/X → Supabase Edge Function ksef-X
+  // (Deno runtime: pełne biblioteki krypto + dostęp do sieci, bez ograniczeń Vercel Hobby)
+  var url = path;
+  var m = path.match(/^\/api\/ksef\/(.+)$/);
+  if (m) url = SB_URL + "/functions/v1/ksef-" + m[1];
+  return fetch(url, {
     method: method,
     headers: {
       "Authorization": "Bearer " + (userTok || ""),
