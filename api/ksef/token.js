@@ -120,7 +120,12 @@ async function decryptEncryptedKey(encPem, passphrase) {
   const plain = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
   const plainBytes = new Uint8Array(plain);
 
-  // Walidacja
+  // Walidacja + wykrycie algorytmu klucza
+  // PKCS#8: SEQUENCE { INTEGER 0, SEQUENCE { OID algo, ... }, OCTET STRING }
+  // OID RSA: 2a 86 48 86 f7 0d 01 01 01
+  // OID EC:  2a 86 48 ce 3d 02 01
+  const hexFirst = Array.from(plainBytes.slice(0,40)).map(b=>b.toString(16).padStart(2,'0')).join(' ');
+  console.log('Decrypted PKCS8 first 40 bytes:', hexFirst);
   if (plainBytes[0] !== 0x30) {
     throw new Error('Złe hasło — odszyfrowany klucz nie jest poprawnym DER (bajt[0]=0x' + plainBytes[0].toString(16) + ')');
   }
