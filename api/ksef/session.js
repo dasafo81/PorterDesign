@@ -173,59 +173,147 @@ export default async function handler(req) {
 
   const baseUrl = KSEF_URLS[cred.env] || KSEF_URLS.test;
 
-  // ── Ścieżka A: Token KSeF (jeśli zapisany) ───────────────────────────────
+  // ── Ścieżka A: Token KSeF ─────────────────────────────────────────────────
+  // Flow: GET /security/public-key-certificates → POST /auth/challenge
+  //   → RSA-OAEP(token|timestampMs, pubKey) → POST /auth/ksef-token
+  //   → poll GET /auth/{ref} → POST /auth/token/redeem → accessToken
   if (cred.token_encrypted) {
+    // 1. Odszyfruj token KSeF
     let ksefToken;
     try { ksefToken = await aesDecrypt(cred.token_encrypted, ENC_KEY); }
-    catch (e) { return jsonRes({ error: 'Błąd odszyfrowania tokenu KSeF' }, 500); }
+    catch (e) { return jsonRes({ error: 'Błąd odszyfrowania tokenu KSeF: ' + e.message }, 500); }
 
-    // Pobierz klucz publiczny KSeF
-    let pubKeyData;
-    try { pubKeyData = await getKsefPublicKey(baseUrl); }
-    catch (e) { return jsonRes({ error: e.message }, 502); }
+    // 2. Pobierz certyfikaty publiczne KSeF
+    let pubCertsR;
+    try { pubCertsR = await fetch(baseUrl + '/security/public-key-certificates'); }
+    catch (e) { return jsonRes({ error: 'Błąd sieci do KSeF: ' + e.message }, 502); }
+    if (!pubCertsR.ok) return jsonRes({ error: 'KSeF /security/public-key-certificates HTTP ' + pubCertsR.status }, 502);
+    const pubCertsData = await pubCertsR.json();
+    console.log('pub-key-certs response:', JSON.stringify(pubCertsData).slice(0, 400));
+
+    // Znajdź certyfikat do szyfrowania tokenu (KsefTokenEncryption)
+    const certs = pubCertsData.certificates || pubCertsData.items || pubCertsData.data || (Array.isArray(pubCertsData) ? pubCertsData : []);
+    const tokenEncCert = certs.find(c =>
+      (c.usage && (c.usage.includes('KsefTokenEncryption') || c.usage === 'KsefTokenEncryption')) ||
+      (c.type && c.type === 'KsefTokenEncryption')
+    ) || certs[0];
+    if (!tokenEncCert) return jsonRes({ error: 'Brak certyfikatu KsefTokenEncryption w odpowiedzi KSeF', detail: pubCertsData }, 502);
+
+    // 3. Importuj klucz publiczny RSA (X.509 DER lub PEM)
+    const certPemOrB64 = tokenEncCert.certificate || tokenEncCert.publicKey || tokenEncCert.value || tokenEncCert.pem || '';
+    const certId = tokenEncCert.id || tokenEncCert.publicKeyId || tokenEncCert.fingerprint || null;
 
     let pubKey;
-    try { pubKey = await importRSAPublicKey(pubKeyData.certPem); }
-    catch (e) { return jsonRes({ error: 'Błąd importu klucza publicznego KSeF: ' + e.message }, 500); }
+    try {
+      // Konwertuj certyfikat X.509 → SubjectPublicKeyInfo dla Web Crypto
+      // Certyfikat KSeF to X.509 w formacie PEM lub base64 DER
+      const certDerB64 = certPemOrB64.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+      const certDer = Uint8Array.from(atob(certDerB64), c => c.charCodeAt(0));
 
-    const timestampMs = Date.now().toString();
+      // Próba importu jako SubjectPublicKeyInfo (BEGIN PUBLIC KEY)
+      try {
+        pubKey = await crypto.subtle.importKey(
+          'spki', certDer,
+          { name: 'RSA-OAEP', hash: { name: 'SHA-256' } },
+          false, ['encrypt']
+        );
+      } catch (spkiErr) {
+        // Może być certyfikat X.509 — wyciągnij SPKI z TBSCertificate
+        // X.509: SEQUENCE { TBSCertificate { ... subjectPublicKeyInfo ... } }
+        // Szukamy sekwencji RSA OID (2a 86 48 86 f7 0d 01 01 01) w DER
+        const rsaOid = [0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01];
+        let spkiStart = -1;
+        for (let i = 0; i < certDer.length - rsaOid.length; i++) {
+          if (rsaOid.every((b, j) => certDer[i+j] === b)) {
+            // Znaleziono OID — SPKI SEQUENCE zaczyna się 2 bajty wcześniej (tag + len)
+            // Cofamy się do początku SEQUENCE zawierającej ten OID
+            spkiStart = i - 2;
+            // Sprawdź czy to SEQUENCE (0x30)
+            while (spkiStart > 0 && certDer[spkiStart] !== 0x30) spkiStart--;
+            break;
+          }
+        }
+        if (spkiStart < 0) throw new Error('Nie znaleziono RSA OID w certyfikacie');
+        // Wyciągnij SPKI SEQUENCE
+        let spkiLen = certDer[spkiStart + 1];
+        let spkiOff = 2;
+        if (spkiLen & 0x80) {
+          const nb = spkiLen & 0x7f;
+          spkiLen = 0;
+          for (let k = 0; k < nb; k++) spkiLen = (spkiLen << 8) | certDer[spkiStart + 2 + k];
+          spkiOff = 2 + nb;
+        }
+        const spkiDer = certDer.slice(spkiStart, spkiStart + spkiOff + spkiLen);
+        pubKey = await crypto.subtle.importKey(
+          'spki', spkiDer,
+          { name: 'RSA-OAEP', hash: { name: 'SHA-256' } },
+          false, ['encrypt']
+        );
+      }
+    } catch (e) {
+      return jsonRes({ error: 'Błąd importu klucza publicznego KSeF: ' + e.message }, 500);
+    }
+
+    // 4. POST /auth/challenge
+    let chalR2;
+    try { chalR2 = await fetch(baseUrl + '/auth/challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
+    }); } catch (e) { return jsonRes({ error: 'Błąd sieci /auth/challenge: ' + e.message }, 502); }
+    if (!chalR2.ok) return jsonRes({ error: 'KSeF /auth/challenge HTTP ' + chalR2.status, detail: await chalR2.text() }, 502);
+    const chalData2 = await chalR2.json();
+    const challenge2 = chalData2.challenge;
+    const timestampMs = chalData2.timestampMs || Date.now().toString();
+    if (!challenge2) return jsonRes({ error: 'Brak challenge w /auth/challenge', detail: chalData2 }, 502);
+
+    // 5. Szyfruj token: RSA-OAEP(token|timestampMs, pubKey)
     let encryptedToken;
-    try { encryptedToken = await encryptToken(ksefToken, timestampMs, pubKey); }
-    catch (e) { return jsonRes({ error: 'Błąd szyfrowania tokenu: ' + e.message }, 500); }
+    try {
+      const plaintext = new TextEncoder().encode(ksefToken + '|' + timestampMs);
+      const encBuf = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, pubKey, plaintext);
+      encryptedToken = btoa(String.fromCharCode(...new Uint8Array(encBuf)));
+    } catch (e) { return jsonRes({ error: 'Błąd szyfrowania tokenu RSA-OAEP: ' + e.message }, 500); }
 
-    const body = {
+    // 6. POST /auth/ksef-token
+    const ksefTokenBody = {
       contextIdentifier: { type: 'onip', identifier: nip },
+      challenge: challenge2,
       encryptedToken,
-      encryptedTimestampMs: timestampMs,
     };
-    if (pubKeyData.certId) body.publicKeyId = pubKeyData.certId;
+    if (certId) ksefTokenBody.publicKeyId = certId;
 
-    const authR = await fetch(`${baseUrl}/auth/ksef-token`, {
+    let authR;
+    try { authR = await fetch(baseUrl + '/auth/ksef-token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!authR.ok) return jsonRes({ error: 'KSeF /auth/ksef-token failed', detail: await authR.text() }, 502);
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(ksefTokenBody),
+    }); } catch (e) { return jsonRes({ error: 'Błąd sieci /auth/ksef-token: ' + e.message }, 502); }
+    if (!authR.ok) return jsonRes({ error: 'KSeF /auth/ksef-token HTTP ' + authR.status, detail: await authR.text() }, 502);
     const authData = await authR.json();
-    const { authenticationToken, referenceNumber } = authData;
+    const authToken2 = authData.authenticationToken && authData.authenticationToken.token
+      || authData.authenticationToken;
+    const referenceNumber2 = authData.referenceNumber;
+    if (!authToken2) return jsonRes({ error: 'Brak authenticationToken w /auth/ksef-token', detail: authData }, 502);
 
-    // Polling statusu
-    const poll = await pollAuthStatus(baseUrl, referenceNumber, authenticationToken, 8);
-    if (!poll.ok) return jsonRes({ error: poll.error }, 502);
+    // 7. Polling statusu
+    const poll2 = await pollAuthStatus(baseUrl, referenceNumber2, authToken2, 10);
+    if (!poll2.ok) return jsonRes({ error: poll2.error }, 502);
 
-    // Redeem → accessToken + refreshToken
-    const redeemR = await fetch(`${baseUrl}/auth/token/redeem`, {
+    // 8. Redeem → accessToken
+    let redeemR;
+    try { redeemR = await fetch(baseUrl + '/auth/token/redeem', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authenticationToken}` },
-      body: JSON.stringify({ referenceNumber }),
-    });
-    if (!redeemR.ok) return jsonRes({ error: 'KSeF /auth/token/redeem failed', detail: await redeemR.text() }, 502);
-    const tokens = await redeemR.json();
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', Authorization: 'Bearer ' + authToken2 },
+      body: JSON.stringify({ referenceNumber: referenceNumber2 }),
+    }); } catch (e) { return jsonRes({ error: 'Błąd sieci /auth/token/redeem: ' + e.message }, 502); }
+    if (!redeemR.ok) return jsonRes({ error: 'KSeF /auth/token/redeem HTTP ' + redeemR.status, detail: await redeemR.text() }, 502);
+    const tokens2 = await redeemR.json();
 
     return jsonRes({
-      accessToken: tokens.accessToken,
-      refreshToken: tokens.refreshToken,
-      expiresAt: new Date(Date.now() + 14 * 60 * 1000).toISOString(), // ~14 min
+      accessToken: tokens2.accessToken,
+      refreshToken: tokens2.refreshToken,
+      expiresAt: new Date(Date.now() + 14 * 60 * 1000).toISOString(),
       env: cred.env,
       baseUrl,
     });
