@@ -154,7 +154,7 @@ export default async function handler(req) {
 
   // Pobierz credentials
   const credR = await fetch(
-    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env,key_type,ksef_token_encrypted`,
+    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env,key_type,token_encrypted`,
     { headers: sbH }
   );
   if (!credR.ok) return jsonRes({ error: 'Błąd odczytu credentials' }, 500);
@@ -174,9 +174,9 @@ export default async function handler(req) {
   const baseUrl = KSEF_URLS[cred.env] || KSEF_URLS.test;
 
   // ── Ścieżka A: Token KSeF (jeśli zapisany) ───────────────────────────────
-  if (cred.ksef_token_encrypted) {
+  if (cred.token_encrypted) {
     let ksefToken;
-    try { ksefToken = await aesDecrypt(cred.ksef_token_encrypted, ENC_KEY); }
+    try { ksefToken = await aesDecrypt(cred.token_encrypted, ENC_KEY); }
     catch (e) { return jsonRes({ error: 'Błąd odszyfrowania tokenu KSeF' }, 500); }
 
     // Pobierz klucz publiczny KSeF
