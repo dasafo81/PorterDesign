@@ -212,51 +212,77 @@ export default async function handler(req) {
 
     let pubKey;
     try {
-      // Konwertuj certyfikat X.509 → SubjectPublicKeyInfo dla Web Crypto
-      // Certyfikat KSeF to X.509 w formacie PEM lub base64 DER
       const certDerB64 = certPemOrB64.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
       const certDer = Uint8Array.from(atob(certDerB64), c => c.charCodeAt(0));
 
-      // Próba importu jako SubjectPublicKeyInfo (BEGIN PUBLIC KEY)
-      try {
-        pubKey = await crypto.subtle.importKey(
-          'spki', certDer,
-          { name: 'RSA-OAEP', hash: { name: 'SHA-256' } },
-          false, ['encrypt']
-        );
-      } catch (spkiErr) {
-        // Może być certyfikat X.509 — wyciągnij SPKI z TBSCertificate
-        // X.509: SEQUENCE { TBSCertificate { ... subjectPublicKeyInfo ... } }
-        // Szukamy sekwencji RSA OID (2a 86 48 86 f7 0d 01 01 01) w DER
-        const rsaOid = [0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01];
-        let spkiStart = -1;
-        for (let i = 0; i < certDer.length - rsaOid.length; i++) {
-          if (rsaOid.every((b, j) => certDer[i+j] === b)) {
-            // Znaleziono OID — SPKI SEQUENCE zaczyna się 2 bajty wcześniej (tag + len)
-            // Cofamy się do początku SEQUENCE zawierającej ten OID
-            spkiStart = i - 2;
-            // Sprawdź czy to SEQUENCE (0x30)
-            while (spkiStart > 0 && certDer[spkiStart] !== 0x30) spkiStart--;
-            break;
+      // Wyciągnij SubjectPublicKeyInfo z certyfikatu X.509 DER
+      // Struktura X.509: SEQUENCE { SEQUENCE(TBSCert) { [0]ver, INT serial, SEQ sigAlg,
+      //   SEQ issuer, SEQ validity, SEQ subject, SEQUENCE(SPKI) { ... }, ... } }
+      // Przechodzimy: outer SEQUENCE → TBSCert SEQUENCE → pomijamy 6 elementów → SPKI
+      function derReadLen(d, off) {
+        let l = d[off++];
+        if (l & 0x80) { const nb=l&0x7f; l=0; for(let i=0;i<nb;i++) l=(l<<8)|d[off++]; }
+        return [l, off];
+      }
+      function derSkip(d, off) {
+        off++; // tag
+        const [l, o] = derReadLen(d, off);
+        return o + l;
+      }
+      function derEnter(d, off) {
+        off++; // tag (SEQUENCE/SET)
+        const [, o] = derReadLen(d, off);
+        return o;
+      }
+      function derReadElement(d, off) {
+        const tag = d[off];
+        const [l, o] = derReadLen(d, off+1);
+        return { tag, start: off, contentOff: o, end: o+l, content: d.slice(o, o+l) };
+      }
+
+      // outer SEQUENCE
+      let off = derEnter(certDer, 0);
+      // TBSCertificate SEQUENCE — wejdź do środka
+      const tbsEl = derReadElement(certDer, off);
+      let tbsOff = tbsEl.contentOff;
+
+      // TBSCert dzieci: [0]version(opt), serialNumber, signature, issuer, validity, subject, subjectPublicKeyInfo
+      // Pomijamy elementy aż trafimy na SEQUENCE która jest SPKI (po subject SEQUENCE)
+      let childIdx = 0;
+      let spkiEl = null;
+      while (tbsOff < tbsEl.end) {
+        const el = derReadElement(certDer, tbsOff);
+        // [0] = context tag (version) — pomijamy
+        // 0x02 = INTEGER (serial) — pomijamy  
+        // 0x30 = SEQUENCE: może być sigAlg, issuer, validity, subject, lub SPKI
+        // SPKI to 7. dziecko (0-indexed: 0=version[optional]/serial, ...)
+        // Bezpieczniej: szukamy SEQUENCE zawierającej AlgorithmIdentifier z RSA OID
+        if (el.tag === 0x30 && el.content.length > 15) {
+          // Sprawdź czy to SPKI: zaczyna się od SEQUENCE { OID ... }
+          const inner = derReadElement(certDer, el.contentOff);
+          if (inner.tag === 0x30 && inner.content.length > 8) {
+            const oidEl = derReadElement(certDer, inner.contentOff);
+            if (oidEl.tag === 0x06 && oidEl.content.length >= 7) {
+              // To jest SPKI (subjectPublicKeyInfo)
+              spkiEl = el;
+              break;
+            }
           }
         }
-        if (spkiStart < 0) throw new Error('Nie znaleziono RSA OID w certyfikacie');
-        // Wyciągnij SPKI SEQUENCE
-        let spkiLen = certDer[spkiStart + 1];
-        let spkiOff = 2;
-        if (spkiLen & 0x80) {
-          const nb = spkiLen & 0x7f;
-          spkiLen = 0;
-          for (let k = 0; k < nb; k++) spkiLen = (spkiLen << 8) | certDer[spkiStart + 2 + k];
-          spkiOff = 2 + nb;
-        }
-        const spkiDer = certDer.slice(spkiStart, spkiStart + spkiOff + spkiLen);
-        pubKey = await crypto.subtle.importKey(
-          'spki', spkiDer,
-          { name: 'RSA-OAEP', hash: { name: 'SHA-256' } },
-          false, ['encrypt']
-        );
+        tbsOff = el.end;
+        childIdx++;
+        if (childIdx > 20) break; // zabezpieczenie
       }
+
+      if (!spkiEl) throw new Error('Nie znaleziono SubjectPublicKeyInfo w certyfikacie X.509');
+      const spkiDer = certDer.slice(spkiEl.start, spkiEl.end);
+      console.log('SPKI DER first bytes:', Array.from(spkiDer.slice(0,8)).map(b=>b.toString(16).padStart(2,'0')).join(' '));
+
+      pubKey = await crypto.subtle.importKey(
+        'spki', spkiDer,
+        { name: 'RSA-OAEP', hash: { name: 'SHA-256' } },
+        false, ['encrypt']
+      );
     } catch (e) {
       return jsonRes({ error: 'Błąd importu klucza publicznego KSeF: ' + e.message }, 500);
     }
