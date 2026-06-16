@@ -495,11 +495,17 @@ function InvoiceSettings(p){
 
 // ── PANEL CERTYFIKATU KSEF ──────────────────
 function KsefTokenPanel(){
-  var [status,setStatus]=useState(null);
+  var [authMode,setAuthMode]=useState("cert"); // cert | token
+  // -- cert state
   var [certText,setCertText]=useState("");
   var [keyText,setKeyText]=useState("");
   var [keyPass,setKeyPass]=useState("");
-  var [env,setEnv]=useState("test");
+  var [env,setEnv]=useState("prod");
+  // -- token state
+  var [tokenText,setTokenText]=useState("");
+  var [tokenEnv,setTokenEnv]=useState("prod");
+  // -- shared
+  var [status,setStatus]=useState(null);
   var [busy,setBusy]=useState(false);
   var [err,setErr]=useState(null);
   var [msg,setMsg]=useState(null);
@@ -508,8 +514,8 @@ function KsefTokenPanel(){
 
   useEffect(function(){
     ksefApi.getTokenStatus()
-      .then(function(s){setStatus(s);setEnv(s.env||"test");})
-      .catch(function(){setStatus({hasCert:false,env:"test"});});
+      .then(function(s){setStatus(s);setEnv(s.env||"prod");setTokenEnv(s.env||"prod");})
+      .catch(function(){setStatus({hasCert:false,env:"prod"});});
   },[]);
 
   function readFile(file,cb){
@@ -518,17 +524,13 @@ function KsefTokenPanel(){
     r.readAsText(file);
   }
 
-  function save(){
+  function saveCert(){
     if(!certText.trim()){setErr("Wgraj plik .crt");return;}
     if(!keyText.trim()){setErr("Wgraj plik .key");return;}
-    if(!certText.includes("-----BEGIN CERTIFICATE-----")){
-      setErr("Nieprawidłowy plik .crt — oczekiwano formatu PEM");return;}
-    if(!keyText.includes("PRIVATE KEY")){
-      setErr("Nieprawidłowy plik .key — oczekiwano formatu PEM");return;}
     setBusy(true);setErr(null);setMsg(null);
     ksefApi.saveCert(certText.trim(),keyText.trim(),keyPass,env)
       .then(function(r){
-        setMsg("\u2713 Certyfikat zapisany (\u015brodowisko: "+(r.env==="prod"?"PRODUKCJA \uD83D\uDE80":"TEST \uD83E\uDDEA")+")");
+        setMsg("\u2713 Certyfikat zapisany (\u015brodowisko: "+(r.env==="prod"?"PRODUKCJA":"TEST")+")");
         setCertText("");setKeyText("");setKeyPass("");
         setStatus({hasCert:true,env:r.env,updated_at:new Date().toISOString()});
       })
@@ -536,11 +538,26 @@ function KsefTokenPanel(){
       .finally(function(){setBusy(false);});
   }
 
+  function saveToken(){
+    var t=(tokenText||"").trim();
+    if(!t){setErr("Wklej token KSeF");return;}
+    if(t.length<20){setErr("Token wygl\u0105da za kr\u00f3tki");return;}
+    setBusy(true);setErr(null);setMsg(null);
+    ksefApi.saveToken(t,tokenEnv)
+      .then(function(r){
+        setMsg("\u2713 Token zapisany (\u015brodowisko: "+(r.env==="prod"?"PRODUKCJA":"TEST")+")");
+        setTokenText("");
+        setStatus({hasCert:true,env:r.env,updated_at:new Date().toISOString()});
+      })
+      .catch(function(e){setErr(e.message||"B\u0142\u0105d zapisu");})
+      .finally(function(){setBusy(false);});
+  }
+
   function del(){
-    if(!confirm("Usun\u0105\u0107 certyfikat KSeF?"))return;
-    setBusy(true);
+    if(!confirm("Usun\u0105\u0107 certyfikat/token KSeF?"))return;
+    setBusy(true);setErr(null);setMsg(null);
     ksefApi.deleteToken()
-      .then(function(){setStatus({hasCert:false,env:"test"});setMsg("\u2713 Certyfikat usuni\u0119ty");})
+      .then(function(){setStatus({hasCert:false,env:"prod"});setMsg("\u2713 Usuni\u0119to");})
       .catch(function(e){setErr(e.message);})
       .finally(function(){setBusy(false);});
   }
@@ -551,27 +568,12 @@ function KsefTokenPanel(){
     return d.toLocaleDateString("pl-PL")+" "+d.toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"});
   }
 
-  var fileBtn=function(label,ref,onFile){
-    return ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-      ce("input",{ref:ref,type:"file",style:{display:"none"},
-        accept:".crt,.key,.pem",
-        onChange:function(e){
-          var f=e.target.files&&e.target.files[0];
-          if(f)readFile(f,onFile);
-          e.target.value="";
-        }}),
-      ce("button",{
-        onClick:function(){ref.current&&ref.current.click();},
-        style:Object.assign({},btnSecondary,{fontSize:12,padding:"7px 12px",whiteSpace:"nowrap"})
-      },"\uD83D\uDCC2 "+label),
-    );
-  };
-
   return ce("div",{style:card},
     ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},
-      "\uD83D\uDD10 Certyfikat KSeF"),
+      "\uD83D\uDD10 Integracja KSeF"),
     err&&ce("div",{style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#b91c1c",marginBottom:10}},"\u26A0\uFE0F "+err),
     msg&&ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#065f46",marginBottom:10}},msg),
+
     status===null
       ?ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"8px 0"}},"\u23F3 \u0141adowanie...")
       :status.hasCert
@@ -580,77 +582,103 @@ function KsefTokenPanel(){
               ce("span",{style:{fontSize:20}},"\u2705"),
               ce("div",{style:{flex:1}},
                 ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},
-                  "Certyfikat aktywny \u2014 "+(status.env==="prod"?"\uD83D\uDE80 PRODUKCJA":"\uD83E\uDDEA TEST")),
-                status.updated_at&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},
-                  "Wgrany: "+fmtTs(status.updated_at))
+                  "KSeF aktywny \u2014 "+(status.env==="prod"?"\uD83D\uDE80 PRODUKCJA":"\uD83E\uDDEA TEST")),
+                status.updated_at&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Zapisany: "+fmtTs(status.updated_at))
               ),
               ce("button",{onClick:del,disabled:busy,
                 style:Object.assign({},btnDanger,{fontSize:11,padding:"5px 10px"})},
                 "Usu\u0144")
             ),
             ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--t2)"}},
-              "\uD83D\uDCA1 Klucz prywatny zaszyfrowany AES-256-GCM. Przegl\u0105darka nigdy nie widzi jego tre\u015bci.")
+              "\uD83D\uDCA1 Dane KSeF s\u0105 zaszyfrowane AES-256-GCM po stronie serwera.")
           )
         :ce("div",null,
-            ce("div",{style:{fontSize:12,color:"var(--t2)",marginBottom:14,lineHeight:1.6,background:"var(--bg)",borderRadius:8,padding:"10px 14px",border:"1px solid var(--bd2)"}},
-              "Wgraj pliki certyfikatu z ",
-              ce("a",{href:"https://ksef.podatki.gov.pl",target:"_blank",style:{color:"var(--violet)",fontWeight:600}},"ksef.podatki.gov.pl"),
-              " \u2192 Certyfikaty i uprawnienia \u2192 Certyfikaty KSeF \u2192 Wnioskuj o certyfikat.",
-              ce("br",null),
-              "Pobierzesz dwa pliki: ",ce("strong",null,".crt")," (certyfikat) i ",ce("strong",null,".key")," (klucz prywatny)."
-            ),
-            ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
-              ce("div",null,
-                ce("span",{style:label},"Plik certyfikatu (.crt)"),
-                ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-                  ce("input",{ref:certRef,type:"file",style:{display:"none"},accept:".crt,.pem",
-                    onChange:function(e){
-                      var f=e.target.files&&e.target.files[0];
-                      if(f)readFile(f,setCertText);
-                      e.target.value="";
-                    }}),
-                  ce("button",{
-                    onClick:function(){certRef.current&&certRef.current.click();},
-                    style:Object.assign({},btnSecondary,{fontSize:12,padding:"7px 12px",width:"100%"})
-                  },certText?"\u2705 .crt wgrany":"\uD83D\uDCC2 Wybierz .crt")
-                )
-              ),
-              ce("div",null,
-                ce("span",{style:label},"Klucz prywatny (.key)"),
-                ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-                  ce("input",{ref:keyRef,type:"file",style:{display:"none"},accept:".key,.pem",
-                    onChange:function(e){
-                      var f=e.target.files&&e.target.files[0];
-                      if(f)readFile(f,setKeyText);
-                      e.target.value="";
-                    }}),
-                  ce("button",{
-                    onClick:function(){keyRef.current&&keyRef.current.click();},
-                    style:Object.assign({},btnSecondary,{fontSize:12,padding:"7px 12px",width:"100%"})
-                  },keyText?"\u2705 .key wgrany":"\uD83D\uDCC2 Wybierz .key")
-                )
-              )
-            ),
-            ce("div",{style:{marginBottom:12}},
-              ce("span",{style:label},"Has\u0142o do klucza (je\u015bli ustawione podczas generowania)"),
-              ce("input",{type:"password",style:inp,value:keyPass,
-                onChange:function(e){setKeyPass(e.target.value);},
-                placeholder:"Pozostaw puste je\u015bli klucz nie ma has\u0142a"
+            // Taby: Certyfikat / Token
+            ce("div",{style:{display:"flex",gap:0,marginBottom:14,borderBottom:"1px solid var(--bd2)"}},
+              [{id:"cert",lbl:"\uD83D\uDCDC Certyfikat KSeF"},{id:"token",lbl:"\uD83D\uDD11 Token KSeF"}].map(function(t){
+                var a=authMode===t.id;
+                return ce("button",{key:t.id,onClick:function(){setAuthMode(t.id);setErr(null);},
+                  style:{border:"none",background:"none",padding:"7px 14px",fontSize:12,
+                    fontWeight:a?700:400,color:a?"var(--violet)":"var(--t3)",cursor:"pointer",
+                    borderBottom:a?"2px solid var(--violet)":"2px solid transparent",marginBottom:-1}},t.lbl);
               })
             ),
-            ce("div",{style:{display:"flex",gap:10,alignItems:"flex-end"}},
-              ce("div",{style:{flex:1}},
-                ce("span",{style:label},"\u015arodowidko KSeF"),
-                ce("select",{style:inp,value:env,onChange:function(e){setEnv(e.target.value);}},
-                  ce("option",{value:"test"},"\uD83E\uDDEA TEST (ksef-test.podatki.gov.pl)"),
-                  ce("option",{value:"prod"},"\uD83D\uDE80 PRODUKCJA (ksef.podatki.gov.pl)")
+
+            // Panel certyfikatu
+            authMode==="cert"&&ce("div",null,
+              ce("div",{style:{fontSize:12,color:"var(--t2)",marginBottom:12,lineHeight:1.6,background:"var(--bg)",borderRadius:8,padding:"10px 14px",border:"1px solid var(--bd2)"}},
+                "Wgraj pliki z ",
+                ce("a",{href:"https://ksef.podatki.gov.pl",target:"_blank",style:{color:"var(--violet)",fontWeight:600}},"ksef.podatki.gov.pl"),
+                " \u2192 Certyfikaty i uprawnienia \u2192 Certyfikaty KSeF."
+              ),
+              ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}},
+                ce("div",null,
+                  ce("span",{style:label},"Plik certyfikatu (.crt)"),
+                  ce("input",{ref:certRef,type:"file",style:{display:"none"},accept:".crt,.pem",
+                    onChange:function(e){var f=e.target.files&&e.target.files[0];if(f)readFile(f,setCertText);e.target.value="";}}),
+                  ce("button",{onClick:function(){certRef.current&&certRef.current.click();},
+                    style:Object.assign({},btnSecondary,{fontSize:12,padding:"7px 12px",width:"100%"})},
+                    certText?"\u2705 .crt wgrany":"\uD83D\uDCC2 Wybierz .crt")
+                ),
+                ce("div",null,
+                  ce("span",{style:label},"Klucz prywatny (.key)"),
+                  ce("input",{ref:keyRef,type:"file",style:{display:"none"},accept:".key,.pem",
+                    onChange:function(e){var f=e.target.files&&e.target.files[0];if(f)readFile(f,setKeyText);e.target.value="";}}),
+                  ce("button",{onClick:function(){keyRef.current&&keyRef.current.click();},
+                    style:Object.assign({},btnSecondary,{fontSize:12,padding:"7px 12px",width:"100%"})},
+                    keyText?"\u2705 .key wgrany":"\uD83D\uDCC2 Wybierz .key")
                 )
               ),
-              ce("button",{
-                onClick:save,
-                disabled:busy||!certText||!keyText,
-                style:Object.assign({},btnPrimary,{opacity:(!certText||!keyText)?0.5:1})
-              },busy?"\u23F3 Zapisuj\u0119...":"\uD83D\uDD12 Zapisz certyfikat")
+              ce("div",{style:{marginBottom:12}},
+                ce("span",{style:label},"Has\u0142o do klucza"),
+                ce("input",{type:"password",style:inp,value:keyPass,
+                  onChange:function(e){setKeyPass(e.target.value);},
+                  placeholder:"Pozostaw puste je\u015bli klucz nie ma has\u0142a"})
+              ),
+              ce("div",{style:{display:"flex",gap:10,alignItems:"flex-end"}},
+                ce("div",{style:{flex:1}},
+                  ce("span",{style:label},"\u015arodowidko"),
+                  ce("select",{style:inp,value:env,onChange:function(e){setEnv(e.target.value);}},
+                    ce("option",{value:"prod"},"\uD83D\uDE80 PRODUKCJA"),
+                    ce("option",{value:"test"},"\uD83E\uDDEA TEST")
+                  )
+                ),
+                ce("button",{onClick:saveCert,disabled:busy||!certText||!keyText,
+                  style:Object.assign({},btnPrimary,{opacity:(!certText||!keyText)?0.5:1})},
+                  busy?"\u23F3 Zapisuj\u0119...":"\uD83D\uDD12 Zapisz certyfikat")
+              )
+            ),
+
+            // Panel tokenu
+            authMode==="token"&&ce("div",null,
+              ce("div",{style:{fontSize:12,color:"var(--t2)",marginBottom:12,lineHeight:1.6,background:"var(--bg)",borderRadius:8,padding:"10px 14px",border:"1px solid var(--bd2)"}},
+                "Wygeneruj token na ",
+                ce("a",{href:"https://ksef.podatki.gov.pl",target:"_blank",style:{color:"var(--violet)",fontWeight:600}},"ksef.podatki.gov.pl"),
+                " \u2192 Certyfikaty i uprawnienia \u2192 Tokeny \u2192 Generuj token.",
+                ce("br",null),
+                "Zaznacz uprawnienia: Wystawianie \u2022 Odbi\u00f3r \u2022 Odczyt."
+              ),
+              ce("div",{style:{marginBottom:12}},
+                ce("span",{style:label},"Token KSeF"),
+                ce("textarea",{
+                  style:Object.assign({},inp,{minHeight:80,fontFamily:"monospace",fontSize:11,resize:"vertical"}),
+                  value:tokenText,
+                  onChange:function(e){setTokenText(e.target.value);},
+                  placeholder:"Wklej token KSeF..."
+                })
+              ),
+              ce("div",{style:{display:"flex",gap:10,alignItems:"flex-end"}},
+                ce("div",{style:{flex:1}},
+                  ce("span",{style:label},"\u015arodowidko"),
+                  ce("select",{style:inp,value:tokenEnv,onChange:function(e){setTokenEnv(e.target.value);}},
+                    ce("option",{value:"prod"},"\uD83D\uDE80 PRODUKCJA"),
+                    ce("option",{value:"test"},"\uD83E\uDDEA TEST")
+                  )
+                ),
+                ce("button",{onClick:saveToken,disabled:busy||!tokenText.trim(),
+                  style:Object.assign({},btnPrimary,{opacity:!tokenText.trim()?0.5:1})},
+                  busy?"\u23F3 Zapisuj\u0119...":"\uD83D\uDD12 Zapisz token")
+              )
             )
           )
   );
