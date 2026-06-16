@@ -181,6 +181,26 @@ export default async function handler(req) {
     const keyPass = (body && body.keyPass || '');
     const env     = (body && body.env) === 'prod' ? 'prod' : 'test';
 
+    // Tryb tokenu — gdy podano token zamiast certyfikatu
+    const ksefToken = (body && body.token || '').trim();
+    if (ksefToken) {
+      if (ksefToken.length < 20) return json({ error: 'Token za krótki' }, 400);
+      const tokenEnc = await aesEncrypt(ksefToken, ENC_KEY);
+      const check2 = await fetch(credUrl + '&select=tenant_id', { headers: sbH });
+      const exists2 = check2.ok && (await check2.json()).length > 0;
+      const payload2 = {
+        tenant_id: auth.tenantId, env,
+        token_encrypted: tokenEnc,
+        cert_pem: null, key_encrypted: null, cert_pass_enc: null, key_type: null,
+        updated_at: new Date().toISOString(),
+      };
+      const method2 = exists2 ? 'PATCH' : 'POST';
+      const url2 = exists2 ? credUrl : `${SB_URL}/rest/v1/ksef_credentials`;
+      const r2 = await fetch(url2, { method: method2, headers: sbH, body: JSON.stringify(payload2) });
+      if (!r2.ok) return json({ error: 'Błąd zapisu tokenu', detail: await r2.text() }, 500);
+      return json({ ok: true, env });
+    }
+
     if (!certPem) return json({ error: 'certPem wymagany' }, 400);
     if (!keyPem)  return json({ error: 'keyPem wymagany' }, 400);
     if (!certPem.includes('-----BEGIN CERTIFICATE-----')) {
