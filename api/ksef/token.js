@@ -1,13 +1,7 @@
-// api/ksef/token.js  (v2 — certyfikat zamiast tokenu)
-// Zarządza certyfikatem KSeF per tenant.
-// GET    → { hasCert, env, updated_at }
-// POST   → przyjmuje { certPem, keyPem, keyPass, env }
-//           certPem i keyPem to zawartość plików .crt / .key w formacie PEM (text)
-//           keyPem jest szyfrowane AES-256-GCM kluczem KSEF_ENC_KEY przed zapisem
-// DELETE → usuwa certyfikat tenanta
-//
-// KSEF_ENC_KEY — 64-znakowy hex (32 bajty), dodaj w Vercel → Settings → Env Vars:
-//   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+// api/ksef/token.js  (v3)
+// Przy zapisie certyfikatu: jeśli klucz jest ENCRYPTED PRIVATE KEY,
+// odszyfrowuje go hasłem (PBKDF2/AES-CBC) i zapisuje czysty PKCS#8
+// zaszyfrowany naszym AES-256-GCM. Session.js nie musi już robić PBKDF2.
 
 export const config = { runtime: 'edge' };
 
@@ -42,21 +36,103 @@ async function verifyUser(req) {
   return { ok: true, tenantId, service: SERVICE };
 }
 
-// AES-256-GCM encrypt → "iv:ciphertext" (obie części base64, separator ":")
-async function encrypt(plain, hexKey) {
-  const keyBytes = hexToBytes(hexKey);
-  const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+// AES-256-GCM encrypt
+async function aesEncrypt(plain, hexKey) {
+  function hexToBytes(h) {
+    const a = new Uint8Array(h.length / 2);
+    for (let i = 0; i < a.length; i++) a[i] = parseInt(h.slice(i*2, i*2+2), 16);
+    return a;
+  }
+  const key = await crypto.subtle.importKey('raw', hexToBytes(hexKey), { name: 'AES-GCM' }, false, ['encrypt']);
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plain));
+  const b64 = b => btoa(String.fromCharCode(...b));
   return b64(iv) + ':' + b64(new Uint8Array(enc));
 }
 
-function hexToBytes(hex) {
-  const a = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < a.length; i++) a[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  return a;
+// AES-256-GCM encrypt bytes (dla binarnego PKCS#8)
+async function aesEncryptBytes(bytes, hexKey) {
+  function hexToBytes(h) {
+    const a = new Uint8Array(h.length / 2);
+    for (let i = 0; i < a.length; i++) a[i] = parseInt(h.slice(i*2, i*2+2), 16);
+    return a;
+  }
+  const key = await crypto.subtle.importKey('raw', hexToBytes(hexKey), { name: 'AES-GCM' }, false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const enc = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes);
+  const b64 = b => btoa(String.fromCharCode(...b));
+  return b64(iv) + ':' + b64(new Uint8Array(enc));
 }
-function b64(bytes) { return btoa(String.fromCharCode(...bytes)); }
+
+// PEM → DER
+function pemToDer(pem) {
+  const b64 = pem
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s+/g, '');
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+// ASN.1 DER parser
+function readTLV(buf, off) {
+  off = off || 0;
+  const tag = buf[off++];
+  let len = buf[off++];
+  if (len & 0x80) {
+    const nb = len & 0x7f; len = 0;
+    for (let i = 0; i < nb; i++) len = (len << 8) | buf[off++];
+  }
+  return { tag, content: buf.slice(off, off + len), next: off + len };
+}
+function seqChildren(buf) {
+  const ch = []; let off = 0;
+  while (off < buf.length) {
+    const el = readTLV(buf, off); ch.push(el); off = el.next;
+  }
+  return ch;
+}
+
+// Deszyfruj ENCRYPTED PRIVATE KEY hasłem → czysty PKCS#8 DER (Uint8Array)
+async function decryptEncryptedKey(encPem, passphrase) {
+  const der = pemToDer(encPem);
+  const outer = readTLV(der, 0);
+  const outerCh = seqChildren(outer.content);
+  const ciphertext = outerCh[1].content;
+  const algIdCh = seqChildren(outerCh[0].content);
+  const pbes2ParamsCh = seqChildren(algIdCh[1].content);
+  const kdfCh = seqChildren(pbes2ParamsCh[0].content);
+  const pbkdf2ParamsCh = seqChildren(kdfCh[1].content);
+  const salt = pbkdf2ParamsCh[0].content;
+  let iterations = 0;
+  for (const b of pbkdf2ParamsCh[1].content) iterations = (iterations << 8) | b;
+  const encCh = seqChildren(pbes2ParamsCh[1].content);
+  const iv = encCh[1].content;
+
+  const passBytes = new TextEncoder().encode(passphrase || '');
+  const baseKey = await crypto.subtle.importKey('raw', passBytes, 'PBKDF2', false, ['deriveKey']);
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-CBC', length: 256 },
+    false,
+    ['decrypt']
+  );
+  const plain = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
+  const plainBytes = new Uint8Array(plain);
+
+  // Walidacja
+  if (plainBytes[0] !== 0x30) {
+    throw new Error('Złe hasło — odszyfrowany klucz nie jest poprawnym DER (bajt[0]=0x' + plainBytes[0].toString(16) + ')');
+  }
+  return plainBytes;
+}
+
+// Konwertuj PKCS#8 DER → PEM string
+function derToPem(der, label) {
+  const b64 = btoa(String.fromCharCode(...der));
+  const lines = b64.match(/.{1,64}/g).join('\n');
+  return `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----`;
+}
 
 export default async function handler(req) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors() });
@@ -66,7 +142,7 @@ export default async function handler(req) {
 
   const ENC_KEY = process.env.KSEF_ENC_KEY;
   if (!ENC_KEY || ENC_KEY.length !== 64) {
-    return json({ error: 'KSEF_ENC_KEY not configured. Dodaj 64-znakowy hex w Vercel → Env Vars.' }, 500);
+    return json({ error: 'KSEF_ENC_KEY not configured (must be 64-char hex).' }, 500);
   }
 
   const sbH = {
@@ -77,17 +153,13 @@ export default async function handler(req) {
   };
   const credUrl = `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}`;
 
-  // ── GET: status certyfikatu ───────────────────────────────────────────────
+  // ── GET ──────────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
     const r = await fetch(credUrl + '&select=tenant_id,env,updated_at,cert_pem', { headers: sbH });
     if (!r.ok) return json({ error: 'db error' }, 500);
     const rows = await r.json();
     const row = rows && rows[0];
-    return json({
-      hasCert: !!(row && row.cert_pem),
-      env: row ? row.env : 'test',
-      updated_at: row ? row.updated_at : null,
-    });
+    return json({ hasCert: !!(row && row.cert_pem), env: row ? row.env : 'test', updated_at: row ? row.updated_at : null });
   }
 
   // ── POST: zapisz certyfikat ───────────────────────────────────────────────
@@ -97,35 +169,46 @@ export default async function handler(req) {
 
     const certPem = (body && body.certPem || '').trim();
     const keyPem  = (body && body.keyPem  || '').trim();
-    const keyPass = (body && body.keyPass || '');   // hasło do klucza (opcjonalne)
+    const keyPass = (body && body.keyPass || '');
     const env     = (body && body.env) === 'prod' ? 'prod' : 'test';
 
-    if (!certPem) return json({ error: 'certPem wymagany (zawartość pliku .crt)' }, 400);
-    if (!keyPem)  return json({ error: 'keyPem wymagany (zawartość pliku .key)' }, 400);
-
-    // Walidacja formatu PEM
+    if (!certPem) return json({ error: 'certPem wymagany' }, 400);
+    if (!keyPem)  return json({ error: 'keyPem wymagany' }, 400);
     if (!certPem.includes('-----BEGIN CERTIFICATE-----')) {
-      return json({ error: 'Nieprawidłowy format certyfikatu — oczekiwano PEM (-----BEGIN CERTIFICATE-----)' }, 400);
+      return json({ error: 'Nieprawidłowy format .crt — oczekiwano PEM' }, 400);
     }
-    if (!keyPem.includes('-----BEGIN') || !keyPem.includes('PRIVATE KEY')) {
-      return json({ error: 'Nieprawidłowy format klucza — oczekiwano PEM (-----BEGIN ... PRIVATE KEY-----)' }, 400);
+    if (!keyPem.includes('PRIVATE KEY')) {
+      return json({ error: 'Nieprawidłowy format .key — oczekiwano PEM' }, 400);
     }
 
-    // Zaszyfruj klucz prywatny i (opcjonalne) hasło
-    const keyEncrypted  = await encrypt(keyPem,  ENC_KEY);
-    const passEncrypted = keyPass ? await encrypt(keyPass, ENC_KEY) : null;
+    // Jeśli klucz jest zaszyfrowany hasłem — odszyfruj teraz i zapisz czysty PKCS#8
+    let keyToStore;
+    if (keyPem.includes('ENCRYPTED PRIVATE KEY')) {
+      if (!keyPass) return json({ error: 'Klucz jest zaszyfrowany — wymagane hasło' }, 400);
+      let pkcs8Der;
+      try {
+        pkcs8Der = await decryptEncryptedKey(keyPem, keyPass);
+      } catch (e) {
+        return json({ error: 'Błąd deszyfrowania klucza: ' + e.message }, 400);
+      }
+      // Konwertuj do PEM i zaszyfruj naszym AES-GCM
+      keyToStore = await aesEncrypt(derToPem(pkcs8Der, 'PRIVATE KEY'), ENC_KEY);
+    } else {
+      // Już czysty PKCS#8 lub PKCS#1 — zaszyfruj bezpośrednio
+      keyToStore = await aesEncrypt(keyPem, ENC_KEY);
+    }
 
-    // Upsert
-    const check  = await fetch(credUrl + '&select=tenant_id', { headers: sbH });
+    // Sprawdź czy rekord istnieje
+    const check = await fetch(credUrl + '&select=tenant_id', { headers: sbH });
     const exists = check.ok && (await check.json()).length > 0;
 
     const payload = {
       tenant_id:       auth.tenantId,
       env,
-      cert_pem:        certPem,       // certyfikat .crt nie jest sekretem — można trzymać plain
-      key_encrypted:   keyEncrypted,  // klucz prywatny — szyfrowany
-      cert_pass_enc:   passEncrypted, // hasło — szyfrowane (null jeśli brak)
-      token_encrypted: null,          // wyczyść stary token jeśli był
+      cert_pem:        certPem,
+      key_encrypted:   keyToStore,  // czysty PKCS#8 zaszyfrowany AES-GCM
+      cert_pass_enc:   null,         // hasło nie jest już potrzebne
+      token_encrypted: null,
       updated_at:      new Date().toISOString(),
     };
 
@@ -136,7 +219,7 @@ export default async function handler(req) {
     return json({ ok: true, env });
   }
 
-  // ── DELETE: usuń certyfikat ───────────────────────────────────────────────
+  // ── DELETE ───────────────────────────────────────────────────────────────
   if (req.method === 'DELETE') {
     await fetch(credUrl, { method: 'DELETE', headers: sbH });
     return json({ ok: true });
