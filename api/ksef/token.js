@@ -120,12 +120,13 @@ async function decryptEncryptedKey(encPem, passphrase) {
   const plain = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
   const plainBytes = new Uint8Array(plain);
 
-  // Walidacja + wykrycie algorytmu klucza
-  // PKCS#8: SEQUENCE { INTEGER 0, SEQUENCE { OID algo, ... }, OCTET STRING }
-  // OID RSA: 2a 86 48 86 f7 0d 01 01 01
-  // OID EC:  2a 86 48 ce 3d 02 01
-  const hexFirst = Array.from(plainBytes.slice(0,40)).map(b=>b.toString(16).padStart(2,'0')).join(' ');
-  console.log('Decrypted PKCS8 first 40 bytes:', hexFirst);
+  // Wykryj typ klucza z OID w PKCS#8
+  // RSA OID: 2a 86 48 86 f7 0d 01 01 01
+  // EC  OID: 2a 86 48 ce 3d 02 01
+  const isEC = plainBytes.length > 10 &&
+    plainBytes[8] === 0x2a && plainBytes[9] === 0x86 && plainBytes[10] === 0x48 &&
+    plainBytes[11] === 0xce && plainBytes[12] === 0x3d;
+  const keyType = isEC ? 'EC' : 'RSA';
   if (plainBytes[0] !== 0x30) {
     throw new Error('Złe hasło — odszyfrowany klucz nie jest poprawnym DER (bajt[0]=0x' + plainBytes[0].toString(16) + ')');
   }
@@ -213,6 +214,7 @@ export default async function handler(req) {
       cert_pem:        certPem,
       key_encrypted:   keyToStore,  // czysty PKCS#8 zaszyfrowany AES-GCM
       cert_pass_enc:   null,         // hasło nie jest już potrzebne
+      key_type:        keyType,   // 'RSA' lub 'EC'
       token_encrypted: null,
       updated_at:      new Date().toISOString(),
     };
