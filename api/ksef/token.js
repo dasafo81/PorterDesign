@@ -120,17 +120,16 @@ async function decryptEncryptedKey(encPem, passphrase) {
   const plain = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
   const plainBytes = new Uint8Array(plain);
 
-  // Wykryj typ klucza z OID w PKCS#8
-  // RSA OID: 2a 86 48 86 f7 0d 01 01 01
-  // EC  OID: 2a 86 48 ce 3d 02 01
-  const isEC = plainBytes.length > 10 &&
-    plainBytes[8] === 0x2a && plainBytes[9] === 0x86 && plainBytes[10] === 0x48 &&
-    plainBytes[11] === 0xce && plainBytes[12] === 0x3d;
-  const keyType = isEC ? 'EC' : 'RSA';
   if (plainBytes[0] !== 0x30) {
     throw new Error('Złe hasło — odszyfrowany klucz nie jest poprawnym DER (bajt[0]=0x' + plainBytes[0].toString(16) + ')');
   }
-  return plainBytes;
+  // Wykryj typ klucza z OID w PKCS#8
+  // RSA OID: 2a 86 48 86 f7 0d 01 01 01
+  // EC  OID: 2a 86 48 ce 3d 02 01
+  const isEC = plainBytes.length > 12 &&
+    plainBytes[8] === 0x2a && plainBytes[9] === 0x86 && plainBytes[10] === 0x48 &&
+    plainBytes[11] === 0xce && plainBytes[12] === 0x3d;
+  return { der: plainBytes, keyType: isEC ? 'EC' : 'RSA' };
 }
 
 // Konwertuj PKCS#8 DER → PEM string
@@ -191,9 +190,11 @@ export default async function handler(req) {
     let keyToStore;
     if (keyPem.includes('ENCRYPTED PRIVATE KEY')) {
       if (!keyPass) return json({ error: 'Klucz jest zaszyfrowany — wymagane hasło' }, 400);
-      let pkcs8Der;
+      let pkcs8Der, keyType;
       try {
-        pkcs8Der = await decryptEncryptedKey(keyPem, keyPass);
+        const result = await decryptEncryptedKey(keyPem, keyPass);
+        pkcs8Der = result.der;
+        keyType = result.keyType;
       } catch (e) {
         return json({ error: 'Błąd deszyfrowania klucza: ' + e.message }, 400);
       }
@@ -202,6 +203,8 @@ export default async function handler(req) {
     } else {
       // Już czysty PKCS#8 lub PKCS#1 — zaszyfruj bezpośrednio
       keyToStore = await aesEncrypt(keyPem, ENC_KEY);
+      // Wykryj typ z nagłówka PEM
+      keyType = keyPem.includes('BEGIN EC') ? 'EC' : 'RSA';
     }
 
     // Sprawdź czy rekord istnieje
