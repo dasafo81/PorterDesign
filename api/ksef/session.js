@@ -164,12 +164,17 @@ export default async function handler(req) {
   const baseUrl = KSEF_URLS[cred.env] || KSEF_URLS.test;
 
   // Krok 1: Challenge
-  const chalR = await fetch(`${baseUrl}/online/Session/AuthorisationChallenge`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
-  });
-  if (!chalR.ok) return jsonRes({ error: 'KSeF Challenge failed', detail: await chalR.text() }, 502);
+  let chalR;
+  try {
+    chalR = await fetch(`${baseUrl}/online/Session/AuthorisationChallenge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contextIdentifier: { type: 'onip', identifier: nip } }),
+    });
+  } catch (e) {
+    return jsonRes({ error: 'Błąd sieci do KSeF: ' + e.message + ' (baseUrl: ' + baseUrl + ')', detail: String(e) }, 502);
+  }
+  if (!chalR.ok) return jsonRes({ error: 'KSeF Challenge failed HTTP ' + chalR.status, detail: await chalR.text() }, 502);
   const chal = await chalR.json();
   if (!chal.challenge) return jsonRes({ error: 'Brak challenge', detail: chal }, 502);
 
