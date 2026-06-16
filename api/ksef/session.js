@@ -318,6 +318,8 @@ export default async function handler(req) {
   });
   if (!authR.ok) {
     const errText = await authR.text();
+    console.log('KSeF xades 400 body:', errText.slice(0, 800));
+    console.log('KSeF xades XML sent (first 600):', xadesXml.slice(0, 600));
     return jsonRes({ error: 'KSeF /auth/xades-signature failed HTTP ' + authR.status, detail: errText }, 502);
   }
   const authData = await authR.json();
