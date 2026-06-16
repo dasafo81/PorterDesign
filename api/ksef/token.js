@@ -188,9 +188,10 @@ export default async function handler(req) {
 
     // Jeśli klucz jest zaszyfrowany hasłem — odszyfruj teraz i zapisz czysty PKCS#8
     let keyToStore;
+    let keyType = 'RSA'; // domyślnie RSA, nadpisywane poniżej
     if (keyPem.includes('ENCRYPTED PRIVATE KEY')) {
       if (!keyPass) return json({ error: 'Klucz jest zaszyfrowany — wymagane hasło' }, 400);
-      let pkcs8Der, keyType;
+      let pkcs8Der;
       try {
         const result = await decryptEncryptedKey(keyPem, keyPass);
         pkcs8Der = result.der;
