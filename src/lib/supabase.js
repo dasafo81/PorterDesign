@@ -393,17 +393,17 @@ export const ksefApi = {
   deleteToken: function() {
     return ksefFetch("DELETE", "/api/ksef/token");
   },
-  // Otwórz sesję KSeF → zwraca { sessionToken, expiresAt, baseUrl }
+  // Uwierzytelnij w KSeF 2.0 → zwraca { accessToken, refreshToken, expiresAt, baseUrl }
   openSession: function() {
     return ksefFetch("POST", "/api/ksef/session");
   },
-  // Wyślij fakturę sprzedażową do KSeF
-  sendInvoice: function(invoiceId, sessionToken, baseUrl) {
-    return ksefFetch("POST", "/api/ksef/send", { invoiceId: invoiceId, sessionToken: sessionToken, baseUrl: baseUrl });
+  // Wyślij fakturę sprzedażową do KSeF 2.0
+  sendInvoice: function(invoiceId, accessToken, baseUrl) {
+    return ksefFetch("POST", "/api/ksef/send", { invoiceId: invoiceId, accessToken: accessToken, baseUrl: baseUrl });
   },
-  // Pobierz faktury kosztowe z KSeF
-  receiveInvoices: function(sessionToken, baseUrl, dateFrom, dateTo) {
-    return ksefFetch("POST", "/api/ksef/receive", { sessionToken: sessionToken, baseUrl: baseUrl, dateFrom: dateFrom, dateTo: dateTo });
+  // Pobierz faktury z KSeF 2.0 (kosztowe i/lub sprzedażowe)
+  receiveInvoices: function(accessToken, baseUrl, direction, dateFrom, dateTo) {
+    return ksefFetch("POST", "/api/ksef/receive", { accessToken: accessToken, baseUrl: baseUrl, direction: direction, dateFrom: dateFrom, dateTo: dateTo });
   },
 };
 
