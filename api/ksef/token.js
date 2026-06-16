@@ -126,9 +126,11 @@ async function decryptEncryptedKey(encPem, passphrase) {
   // Wykryj typ klucza z OID w PKCS#8
   // RSA OID: 2a 86 48 86 f7 0d 01 01 01
   // EC  OID: 2a 86 48 ce 3d 02 01
-  const isEC = plainBytes.length > 12 &&
-    plainBytes[8] === 0x2a && plainBytes[9] === 0x86 && plainBytes[10] === 0x48 &&
-    plainBytes[11] === 0xce && plainBytes[12] === 0x3d;
+  // EC OID (id-ecPublicKey = 2a 86 48 ce 3d 02 01) zaczyna sie na bajcie [10]
+  // Struktura: 30(SEQ) 81 87(len) 02 01 00(INT ver=0) 30 13(SEQ algId) 06 07(OID len=7) 2a 86 48 ce 3d...
+  const isEC = plainBytes.length > 14 &&
+    plainBytes[10] === 0x2a && plainBytes[11] === 0x86 && plainBytes[12] === 0x48 &&
+    plainBytes[13] === 0xce && plainBytes[14] === 0x3d;
   return { der: plainBytes, keyType: isEC ? 'EC' : 'RSA' };
 }
 
