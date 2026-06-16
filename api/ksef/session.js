@@ -136,9 +136,14 @@ async function decryptEncryptedPrivateKey(encPem, passphrase) {
   // AES-CBC decrypt
   const plainDer = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, aesKey, ciphertext);
   const plainBytes = new Uint8Array(plainDer);
-  // Walidacja: poprawny PKCS#8 zaczyna sie od 0x30 (SEQUENCE)
+  // Diagnostyka: sprawdz OID algorytmu klucza
+  // PKCS#8: SEQUENCE { INTEGER 0, SEQUENCE { OID algo, ... }, OCTET STRING key }
+  // Dla RSA: OID = 1.2.840.113549.1.1.1 (2a 86 48 86 f7 0d 01 01 01)
+  // Dla EC:  OID = 1.2.840.10045.2.1    (2a 86 48 ce 3d 02 01)
+  const hexDump = Array.from(plainBytes.slice(0,32)).map(b=>b.toString(16).padStart(2,'0')).join(' ');
+  console.log('Decrypted DER first 32 bytes:', hexDump);
   if (plainBytes[0] !== 0x30) {
-    throw new Error('Złe hasło — odszyfrowany klucz nie jest poprawnym DER (pierwszy bajt: 0x' + plainBytes[0].toString(16) + '). Sprawdź hasło do certyfikatu.');
+    throw new Error('Złe hasło — pierwszy bajt: 0x' + plainBytes[0].toString(16));
   }
   return plainBytes;
 }
