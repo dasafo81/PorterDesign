@@ -100,6 +100,7 @@ async function saveInvoices(headers: Record<string, unknown>[], baseUrl: string,
       const ck = await fetch(`${SB_URL}/rest/v1/invoices?ksef_number=eq.${encodeURIComponent(ksefNum)}&tenant_id=eq.${tenantId}&select=id`, { headers: sbH });
       const ex = ck.ok ? await ck.json() : [];
       const record = {
+        tenant_id: tenantId,
         doc_type: docType, status: isIncoming ? "received" : "issued",
         ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
         number: parsed.number || ksefNum,
