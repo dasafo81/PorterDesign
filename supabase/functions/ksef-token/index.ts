@@ -3,7 +3,7 @@
 // GET → status, POST → zapis (cert+key+pass LUB token), DELETE → usuń.
 // jsrsasign deszyfruje ENCRYPTED PRIVATE KEY hasłem i normalizuje do PKCS#8.
 
-import { rs } from "https://esm.sh/jsrsasign@11.1.0?bundle";
+import rs from "https://esm.sh/jsrsasign@11.1.0?bundle";
 
 const SB_URL = Deno.env.get("SB_URL") || "https://rkcidwusjzvfwxszotnb.supabase.co";
 
