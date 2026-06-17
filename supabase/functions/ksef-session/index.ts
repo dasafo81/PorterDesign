@@ -185,10 +185,13 @@ Deno.serve(async (req: Request) => {
       });
       if (!rdR.ok) return jsonRes({ error: "KSeF /auth/token/redeem HTTP " + rdR.status, detail: await rdR.text() }, 502);
       const tokens = await rdR.json();
+      // KSeF 2.0 zwraca accessToken/refreshToken jako obiekty { token, validUntil }
+      const accessTok = tokens.accessToken?.token || tokens.accessToken;
+      const refreshTok = tokens.refreshToken?.token || tokens.refreshToken;
 
       return jsonRes({
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
+        accessToken: accessTok,
+        refreshToken: refreshTok,
         expiresAt: new Date(Date.now() + 14 * 60 * 1000).toISOString(),
         env: cred.env,
         baseUrl,
