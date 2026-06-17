@@ -367,7 +367,8 @@ function ksefFetch(method, path, body) {
   return fetch(url, {
     method: method,
     headers: {
-      "Authorization": "Bearer " + (userTok || ""),
+      "apikey": SB_KEY,
+      "Authorization": "Bearer " + (userTok || SB_KEY),
       "Content-Type": "application/json"
     },
     body: body ? JSON.stringify(body) : undefined
