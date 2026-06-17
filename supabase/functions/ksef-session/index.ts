@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
       const chR = await fetch(`${baseUrl}/auth/challenge`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ contextIdentifier: { type: "onip", identifier: nip } }),
+        body: JSON.stringify({ contextIdentifier: { type: "Nip", value: nip } }),
       });
       if (!chR.ok) return jsonRes({ error: "KSeF /auth/challenge HTTP " + chR.status, detail: await chR.text() }, 502);
       const chData = await chR.json();
@@ -163,7 +163,7 @@ Deno.serve(async (req: Request) => {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           challenge,
-          contextIdentifier: { type: "onip", identifier: nip },
+          contextIdentifier: { type: "Nip", value: nip },
           encryptedToken,
         }),
       });
