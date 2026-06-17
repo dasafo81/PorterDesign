@@ -5,7 +5,7 @@
 // Deploy: supabase functions deploy ksef-session --no-verify-jwt
 // Sekrety: supabase secrets set KSEF_ENC_KEY=... SUPABASE_SERVICE_ROLE_KEY=...
 
-import { rs } from "https://esm.sh/jsrsasign@11.1.0?bundle";
+import rs from "https://esm.sh/jsrsasign@11.1.0?bundle";
 
 const SB_URL = Deno.env.get("SB_URL") || "https://rkcidwusjzvfwxszotnb.supabase.co";
 const KSEF_URLS: Record<string, string> = {
