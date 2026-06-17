@@ -54,26 +54,29 @@ function parseFA(xml: string) {
 }
 
 async function queryInvoices(baseUrl: string, accessToken: string, subjectType: string, from: string, to: string) {
-  const params = new URLSearchParams({
-    pageSize: "100",
-    subjectType,
-    dateFrom: from + "T00:00:00.000Z",
-    dateTo: to + "T23:59:59.999Z",
+  // KSeF 2.0: POST /invoices/query/metadata z filtrami w body (InvoiceQueryFilters)
+  // subjectType: "Subject1" (sprzedażowe) | "Subject2" (kosztowe)
+  const filters = {
+    subjectType: subjectType === "subject1" ? "Subject1" : "Subject2",
+    dateRange: {
+      from: from + "T00:00:00.000Z",
+      to: to + "T23:59:59.999Z",
+      dateType: "Issue",
+    },
+  };
+  const r = await fetch(`${baseUrl}/invoices/query/metadata?pageOffset=0&pageSize=100`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(filters),
   });
-  const r = await fetch(`${baseUrl}/invoices/query?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!r.ok) {
-    // fallback na /invoices
-    const r2 = await fetch(`${baseUrl}/invoices?${params}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!r2.ok) throw new Error("KSeF query HTTP " + r.status + "/" + r2.status);
-    const d2 = await r2.json();
-    return d2.invoices || d2.items || [];
-  }
+  if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + ": " + (await r.text()).slice(0, 300));
   const d = await r.json();
-  return d.invoices || d.items || [];
+  // Odpowiedź: { invoices: [...] } lub { items: [...] } lub PagedInvoiceResponse
+  return d.invoices || d.items || d.invoiceMetadataList || [];
 }
 
 async function fetchXml(baseUrl: string, accessToken: string, ksefNum: string): Promise<string | null> {
-  const r = await fetch(`${baseUrl}/invoices/${ksefNum}`, { headers: { Authorization: `Bearer ${accessToken}` } });
+  const r = await fetch(`${baseUrl}/invoices/ksef/${ksefNum}`, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!r.ok) return null;
   const ct = r.headers.get("content-type") || "";
   if (ct.includes("xml")) return await r.text();
@@ -88,7 +91,7 @@ async function saveInvoices(headers: Record<string, unknown>[], baseUrl: string,
   const sbH = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=representation" };
   const saved: unknown[] = [], errors: unknown[] = [];
   for (const hdr of headers.slice(0, 100)) {
-    const ksefNum = (hdr.ksefReferenceNumber || hdr.ksefNumber || hdr.id) as string;
+    const ksefNum = (hdr.ksefNumber || hdr.ksefReferenceNumber || hdr.referenceNumber || hdr.id) as string;
     if (!ksefNum) continue;
     try {
       const xml = await fetchXml(baseUrl, accessToken, ksefNum);
