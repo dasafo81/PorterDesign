@@ -145,6 +145,10 @@ Deno.serve(async (req: Request) => {
     if (dir === "incoming" || dir === "all") inH = await queryInvoices(baseUrl, accessToken, "subject2", from, to);
     if (dir === "outgoing" || dir === "all") outH = await queryInvoices(baseUrl, accessToken, "subject1", from, to);
 
+    // DEBUG: pokaż strukturę pierwszej metadanej (nazwy pól)
+    if (inH[0]) console.log("META incoming[0]:", JSON.stringify(inH[0]));
+    if (outH[0]) console.log("META outgoing[0]:", JSON.stringify(outH[0]));
+
     const [inRes, outRes] = await Promise.all([
       inH.length ? saveInvoices(inH, baseUrl, accessToken, auth.tenantId!, auth.service!, "zakup") : Promise.resolve({ saved: [], errors: [] }),
       outH.length ? saveInvoices(outH, baseUrl, accessToken, auth.tenantId!, auth.service!, "vat") : Promise.resolve({ saved: [], errors: [] }),
@@ -154,6 +158,7 @@ Deno.serve(async (req: Request) => {
       ok: true,
       incoming: { fetched: inH.length, saved: inRes.saved.length, errors: inRes.errors.length ? inRes.errors : undefined },
       outgoing: { fetched: outH.length, saved: outRes.saved.length, errors: outRes.errors.length ? outRes.errors : undefined },
+      sample: inH[0] || outH[0] || null,
     });
   } catch (e) {
     return jsonRes({ error: e instanceof Error ? e.message : String(e) }, 502);
