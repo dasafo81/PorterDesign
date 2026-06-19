@@ -682,8 +682,30 @@ export function App(p){
         ce("button",{
           onClick:function(ev){ev.stopPropagation();duplicateRoomAsVariant(r);},
           title:"Utw\u00f3rz wariant tego pomieszczenia",
-          style:{position:"absolute",top:8,right:40,border:"1px solid #059669",background:"rgba(5,150,105,0.10)",cursor:"pointer",fontSize:11,color:"#059669",padding:"4px 8px",borderRadius:6,fontWeight:600,whiteSpace:"nowrap"}
+          style:{position:"absolute",top:8,right:104,border:"1px solid #059669",background:"rgba(5,150,105,0.10)",cursor:"pointer",fontSize:11,color:"#059669",padding:"4px 8px",borderRadius:6,fontWeight:600,whiteSpace:"nowrap"}
         },"\u2B6F Wariant"),
+        ce("button",{
+          onClick:function(ev){
+            ev.stopPropagation();
+            (function(srcRoom){
+              updateClient(curClientId,function(cl){
+                var copy=JSON.parse(JSON.stringify(srcRoom));
+                copy.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+                copy.variantGroup=undefined;copy.variantLabel=undefined;copy.variantBaseName=undefined;
+                copy.name=(srcRoom.name||"Pomieszczenie")+" (kopia)";
+                copy.windows=(copy.windows||[]).map(function(w){
+                  return mg(w,{
+                    id:Date.now()+"_"+Math.random().toString(36).slice(2,7),
+                    products:(w.products||[]).map(function(p){return mg(p,{id:Date.now()+"_"+Math.random().toString(36).slice(2,6)});})
+                  });
+                });
+                return mg(cl,{rooms:(cl.rooms||[]).concat([copy])});
+              });
+            }(r));
+          },
+          title:"Kopiuj pomieszczenie",
+          style:{position:"absolute",top:8,right:40,border:"1px solid #b45309",background:"#fef3c7",cursor:"pointer",fontSize:11,color:"#b45309",padding:"4px 8px",borderRadius:6,fontWeight:600,whiteSpace:"nowrap"}
+        },"\uD83D\uDCC4 Kopiuj"),
         ce("button",{
           onClick:function(ev){
             ev.stopPropagation();
@@ -862,6 +884,27 @@ export function App(p){
               title:"Wariant z innym procentem marszczenia",
               style:{border:"1px solid #7b4fa6",background:"#f3eaff",cursor:"pointer",fontSize:11,color:"#7b4fa6",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
             },"\uD83E\uDDF5 Marszczenie"):null,
+            ce("button",{
+              onClick:function(ev){
+                ev.stopPropagation();
+                (function(srcWin){
+                  updateClient(curClientId,function(cl){
+                    var newRooms=(cl.rooms||[]).map(function(r){
+                      if(r.id!==curRoomId)return r;
+                      var copy=JSON.parse(JSON.stringify(srcWin));
+                      copy.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+                      copy.variantGroup=undefined;copy.variantLabel=undefined;copy.variantBaseName=undefined;
+                      copy.name=(srcWin.name||"Okno")+" (kopia)";
+                      copy.products=(copy.products||[]).map(function(p){return mg(p,{id:Date.now()+"_"+Math.random().toString(36).slice(2,6)});});
+                      return mg(r,{windows:(r.windows||[]).concat([copy])});
+                    });
+                    return mg(cl,{rooms:newRooms});
+                  });
+                }(w));
+              },
+              title:"Kopiuj okno",
+              style:{border:"1px solid #b45309",background:"#fef3c7",cursor:"pointer",fontSize:11,color:"#b45309",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
+            },"\uD83D\uDCC4 Kopiuj"),
             ce("button",{
               onClick:function(ev){
                 ev.stopPropagation();
