@@ -1879,7 +1879,7 @@ export function ModalAIValuation(p){
 
 function roomBaseName(room){
   var n=room.variantBaseName||room.name||'';
-  return n.replace(/ — Wariant [A-Z]$/,'');
+  return n.replace(/ — Wariant [A-Z\.]+$/,'').replace(/ — Wariant [A-Z\.]+$/,'');
 }
 
 function sortRoomsWithVariants(rooms){
