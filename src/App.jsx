@@ -773,7 +773,7 @@ export function App(p){
 
       content=ce(Fragment,null,
         ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:14}},
-          ce(InlineEdit,{value:curRoom.name,onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:v}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
+          ce(InlineEdit,{value:curRoom.name,onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:v,variantBaseName:r.variantGroup?v:r.variantBaseName}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
         ),
         swProducts.length>=2?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14,padding:"10px 14px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd3)"}},
           swProducts.map(function(p,i){
@@ -856,7 +856,7 @@ export function App(p){
       });
       content=ce(Fragment,null,
         ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:10}},
-          ce(InlineEdit,{value:curRoom.name,onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:v}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
+          ce(InlineEdit,{value:curRoom.name,onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:v,variantBaseName:r.variantGroup?v:r.variantBaseName}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
         ),
         winRows.length?ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},winRows):null,
         Btn("+ Dodaj okno",function(){setShowWinModal(true);},false)
