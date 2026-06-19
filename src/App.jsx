@@ -1878,9 +1878,8 @@ export function ModalAIValuation(p){
 }
 
 function roomBaseName(room){
-  if(room.variantBaseName)return room.variantBaseName;
-  // strip ' — Wariant X' suffix from legacy names
-  return (room.name||'').replace(/ — Wariant [A-Z]$/,'');
+  var n=room.variantBaseName||room.name||'';
+  return n.replace(/ — Wariant [A-Z]$/,'');
 }
 
 function sortRoomsWithVariants(rooms){
