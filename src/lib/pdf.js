@@ -327,7 +327,7 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       roomSec+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+tRow+"</tbody></table>";
       roomTotal+=wr.total;});
     if(!roomTotal)return;grandTotal+=roomTotal;
-    var rName=room.name+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
+    var rName=(room.variantBaseName||room.name)+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
     roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#1a1a18;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#f4f4f2;border-left:3px solid #1a1a18;margin-bottom:3mm;\">"+rName+"</div>"+roomSec+"</div>";
   });
   if(!grandTotal)return null;
