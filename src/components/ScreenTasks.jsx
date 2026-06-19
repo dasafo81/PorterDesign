@@ -80,15 +80,16 @@ var OWNER_ORDER = ["damian", "paulina"];
 
 // ── CATEGORY CONFIG ──────────────────────────────────────────────────────────
 var CATEGORIES = {
-  montaz:    { label: "Montaż",              color: "#f97316", icon: "🔧" },
-  aplikacja: { label: "Aplikacja",           color: "#7c3aed", icon: "💻" },
-  marketing: { label: "Marketing",           color: "#db2777", icon: "📣" },
-  legal:     { label: "Dział Legalny",       color: "#64748b", icon: "⚖️" },
-  sprzedaz:  { label: "Sprzedaż",            color: "#059669", icon: "💰" },
-  logistyka: { label: "Logistyka Zamówienia", color: "#2563eb", icon: "📦" },
-  finanse:   { label: "Finanse",             color: "#0d9488", icon: "📊" }
+  montaz:      { label: "Montaż",              color: "#f97316", icon: "🔧" },
+  aplikacja:   { label: "Aplikacja",           color: "#7c3aed", icon: "💻" },
+  marketing:   { label: "Marketing",           color: "#db2777", icon: "📣" },
+  legal:       { label: "Dział Legalny",       color: "#64748b", icon: "⚖️" },
+  sprzedaz:    { label: "Sprzedaż",            color: "#059669", icon: "💰" },
+  logistyka:   { label: "Logistyka Zamówienia", color: "#2563eb", icon: "📦" },
+  finanse:     { label: "Finanse",             color: "#0d9488", icon: "📊" },
+  reklamacje:  { label: "Reklamacje",          color: "#dc2626", icon: "⚠️" }
 };
-var CAT_ORDER = ["montaz", "aplikacja", "marketing", "legal", "sprzedaz", "logistyka", "finanse"];
+var CAT_ORDER = ["montaz", "aplikacja", "marketing", "legal", "sprzedaz", "logistyka", "finanse", "reklamacje"];
 var NONE_CAT = { label: "Pozostałe", color: "#a0a0c0", icon: "📌" };
 
 function catIdOf(task) {
