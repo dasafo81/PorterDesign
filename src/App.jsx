@@ -7,10 +7,10 @@ import {
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, SELLER,
   buildFabricRows, buildOfferRows, buildSewingRows, calc,
   formatPLN, generateKarniszOrderPDF, generateOfferPDF,
-  getPanelsForProd, mg, roundTo10
+  getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
-  generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection, openPDFWindow
+  generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection
 } from './lib/pdf.js';
 import { ModalClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
