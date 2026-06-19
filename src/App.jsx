@@ -1979,7 +1979,7 @@ function ModalSimplifiedPDF(p){
         (client.rooms||[]).map(function(room){
           var rc=buildRoomChoices(room);
           if(!rc.order.length)return null;
-          var roomLabel=room.name+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
+          var roomLabel=(room.variantBaseName||room.name)+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
           return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
             ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.05em",textTransform:"uppercase",borderBottom:"1px solid var(--bd2)"}},roomLabel),
             rc.order.map(function(key,ki){
