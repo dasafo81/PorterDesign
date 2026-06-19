@@ -679,42 +679,44 @@ export function App(p){
         ),
         rTotal?ce("span",{onClick:function(){openRoom(r.id);},style:{fontSize:12,fontWeight:600,color:"var(--gr)",cursor:"pointer"}},roundTo10(rTotal)+" z\u0142"):null,
         ce("span",{onClick:function(){openRoom(r.id);},style:{color:"var(--t3)",fontSize:13,cursor:"pointer"}},"\u203a"),
-        ce("button",{
-          onClick:function(ev){ev.stopPropagation();duplicateRoomAsVariant(r);},
-          title:"Utw\u00f3rz wariant tego pomieszczenia",
-          style:{position:"absolute",top:8,right:104,border:"1px solid #059669",background:"rgba(5,150,105,0.10)",cursor:"pointer",fontSize:11,color:"#059669",padding:"4px 8px",borderRadius:6,fontWeight:600,whiteSpace:"nowrap"}
-        },"\u2B6F Wariant"),
-        ce("button",{
-          onClick:function(ev){
-            ev.stopPropagation();
-            (function(srcRoom){
-              updateClient(curClientId,function(cl){
-                var copy=JSON.parse(JSON.stringify(srcRoom));
-                copy.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
-                copy.variantGroup=undefined;copy.variantLabel=undefined;copy.variantBaseName=undefined;
-                copy.name=(srcRoom.name||"Pomieszczenie")+" (kopia)";
-                copy.windows=(copy.windows||[]).map(function(w){
-                  return mg(w,{
-                    id:Date.now()+"_"+Math.random().toString(36).slice(2,7),
-                    products:(w.products||[]).map(function(p){return mg(p,{id:Date.now()+"_"+Math.random().toString(36).slice(2,6)});})
+        ce("div",{style:{position:"absolute",top:8,right:8,display:"flex",flexDirection:"row",alignItems:"center",gap:6}},
+          ce("button",{
+            onClick:function(ev){ev.stopPropagation();duplicateRoomAsVariant(r);},
+            title:"Utw\u00f3rz wariant tego pomieszczenia",
+            style:{border:"1px solid #059669",background:"rgba(5,150,105,0.10)",cursor:"pointer",fontSize:11,color:"#059669",padding:"4px 8px",borderRadius:6,fontWeight:600,whiteSpace:"nowrap"}
+          },"Wariant"),
+          ce("button",{
+            onClick:function(ev){
+              ev.stopPropagation();
+              (function(srcRoom){
+                updateClient(curClientId,function(cl){
+                  var copy=JSON.parse(JSON.stringify(srcRoom));
+                  copy.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+                  copy.variantGroup=undefined;copy.variantLabel=undefined;copy.variantBaseName=undefined;
+                  copy.name=(srcRoom.name||"Pomieszczenie")+" (kopia)";
+                  copy.windows=(copy.windows||[]).map(function(w){
+                    return mg(w,{
+                      id:Date.now()+"_"+Math.random().toString(36).slice(2,7),
+                      products:(w.products||[]).map(function(p){return mg(p,{id:Date.now()+"_"+Math.random().toString(36).slice(2,6)});})
+                    });
                   });
+                  return mg(cl,{rooms:(cl.rooms||[]).concat([copy])});
                 });
-                return mg(cl,{rooms:(cl.rooms||[]).concat([copy])});
-              });
-            }(r));
-          },
-          title:"Kopiuj pomieszczenie",
-          style:{position:"absolute",top:8,right:40,border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",fontSize:11,color:"var(--t2)",padding:"4px 8px",borderRadius:6,fontWeight:500,whiteSpace:"nowrap"}
-        },"\uD83D\uDCC4 Kopiuj"),
-        ce("button",{
-          onClick:function(ev){
-            ev.stopPropagation();
-            var doDelete=function(){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).filter(function(x){return x.id!==r.id;})});});};
-            if(hasRoomData(r)){setConfirmDelete({type:"room",label:r.name,onConfirm:doDelete});}else{doDelete();}
-          },
-          title:"Usu\u0144 pomieszczenie",
-          style:{position:"absolute",top:8,right:8,border:"none",background:"none",cursor:"pointer",fontSize:18,color:"var(--t3)",padding:"4px 8px",lineHeight:1,opacity:0.5}
-        },"\u00d7")
+              }(r));
+            },
+            title:"Kopiuj pomieszczenie",
+            style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",fontSize:11,color:"var(--t2)",padding:"4px 8px",borderRadius:6,fontWeight:500,whiteSpace:"nowrap"}
+          },"Kopiuj"),
+          ce("button",{
+            onClick:function(ev){
+              ev.stopPropagation();
+              var doDelete=function(){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).filter(function(x){return x.id!==r.id;})});});};
+              if(hasRoomData(r)){setConfirmDelete({type:"room",label:r.name,onConfirm:doDelete});}else{doDelete();}
+            },
+            title:"Usu\u0144 pomieszczenie",
+            style:{border:"none",background:"none",cursor:"pointer",fontSize:18,color:"var(--t3)",padding:"4px 6px",lineHeight:1,opacity:0.5}
+          },"\u00d7")
+        )
       );
     });
     content=ce(Fragment,null,
