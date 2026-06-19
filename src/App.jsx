@@ -1032,12 +1032,9 @@ export function App(p){
         );
       });
 
-      return ce("div",{key:r.id,style:{marginBottom:20}},
-        ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:10}},
-          (function(){var _gs={};(curClient.rooms||[]).forEach(function(x){if(x.variantGroup){_gs[x.variantGroup]=(_gs[x.variantGroup]||0)+1;}});return roomBaseName(r)+((r.variantGroup&&_gs[r.variantGroup]>1)?" \u2014 Wariant "+r.variantLabel:"")+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142");}()
-        ),
-        rows
-      );
+      var _roomLabel=(function(){var _gs={};(curClient.rooms||[]).forEach(function(x){if(x.variantGroup){_gs[x.variantGroup]=(_gs[x.variantGroup]||0)+1;}});return roomBaseName(r)+((r.variantGroup&&_gs[r.variantGroup]>1)?" \u2014 Wariant "+r.variantLabel:"")+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142");}());
+      var _roomHeader=ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:10}},_roomLabel);
+      return ce.apply(null,["div",{key:r.id,style:{marginBottom:20}},_roomHeader].concat(rows));
     }
 
     // Compute client total (Variant A for each group)
