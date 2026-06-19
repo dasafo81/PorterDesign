@@ -320,7 +320,7 @@ export function App(p){
         if(r.id!==room.id)return r;
         if(!r.variantGroup){
           var baseName=r.name;
-          return mg(r,{variantGroup:grpId,variantLabel:"A",variantBaseName:baseName,name:baseName+" — Wariant A"});
+          return mg(r,{variantGroup:grpId,variantLabel:"A",variantBaseName:baseName,name:baseName});
         }
         return r;
       });
@@ -336,7 +336,7 @@ export function App(p){
       newVariant.variantGroup=grpId;
       newVariant.variantLabel=nextLetter;
       newVariant.variantBaseName=baseName;
-      newVariant.name=baseName+" — Wariant "+nextLetter;
+      newVariant.name=baseName;
       return mg(cl,{rooms:newRooms.concat([newVariant])});
     });
   }
@@ -973,7 +973,7 @@ export function App(p){
 
       return ce("div",{key:r.id,style:{marginBottom:20}},
         ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:10}},
-          r.name+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142")
+          (r.variantBaseName||r.name)+(r.variantGroup?" \u2014 Wariant "+r.variantLabel:"")+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142")
         ),
         rows
       );
