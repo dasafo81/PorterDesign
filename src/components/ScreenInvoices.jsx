@@ -1029,7 +1029,7 @@ function KsefView(){
           )
         ),
         ce("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:4}},
-          ce("div",{style:{minWidth:240,border:"1px solid var(--bd2)",
+          ce("div",{style:{minWidth:280,border:"1px solid var(--bd2)",
             borderRadius:8,overflow:"hidden"}},
             [["Netto",invoiceDetail.totals&&invoiceDetail.totals.net||selectedInv.total_net],
              ["VAT",invoiceDetail.totals&&invoiceDetail.totals.vat||selectedInv.total_vat],
