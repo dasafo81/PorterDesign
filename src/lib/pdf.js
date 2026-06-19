@@ -96,7 +96,7 @@ export function generateFabricOrderPDF(client,opts){
 }
 
 // ── WYCENA UPROSZCZONA PDF ─────────────────────────────────────────────────
-export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
+export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVariantLabel){
   comm=comm||0;montaz=montaz||0;
   if(!(client.rooms||[]).length)return null;
   var now=new Date();
@@ -182,6 +182,11 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
   var roomSections2="";var grandTotal2=0;
   (client.rooms||[]).forEach(function(room){
     if(!(room.windows||[]).length)return;
+    // Filtruj warianty pomieszczeń
+    if(room.variantGroup){
+      if(roomVariantLabel){if(room.variantLabel!==roomVariantLabel)return;}
+      else{return;}
+    }
     var wins=room.windows||[];
     var selectedWins=wins.filter(function(w){
       if(!w.variantGroup)return true;
@@ -205,7 +210,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
   });
   if(!grandTotal2)return null;
 
-  var variantSuffix=variantLabel?" \u2014 Wariant "+variantLabel:"";
+  var variantSuffix=(roomVariantLabel?" \u2014 Wariant pom. "+roomVariantLabel:"")+(variantLabel?" \u2014 Wariant okna "+variantLabel:"");
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Aranżacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
@@ -231,26 +236,43 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel){
 export function generateSimplifiedPDF(client,comm,montaz){
   comm=comm||0;montaz=montaz||0;
   if(!(client.rooms||[]).length){alert("Brak pomieszczeń.");return;}
-  var allVariantLabels={};
+  // Zbierz etykiety wariantów okien
+  var allWinLabels={};
   (client.rooms||[]).forEach(function(room){
     (room.windows||[]).forEach(function(w){
-      if(w.variantGroup&&w.variantLabel){allVariantLabels[w.variantLabel]=true;}
+      if(w.variantGroup&&w.variantLabel){allWinLabels[w.variantLabel]=true;}
     });
   });
-  var variantLabelsSorted=Object.keys(allVariantLabels).sort();
-  var hasAnyVariants=variantLabelsSorted.length>0;
-  if(hasAnyVariants){
-    var opened=0;
-    variantLabelsSorted.forEach(function(lbl){
-      var h=buildSimplifiedPDFHtml(client,comm,montaz,lbl);
-      if(h){var clientSlug2=(client.name||"");openPDFWindow(h,clientSlug2+" - Oferta Aranżacji Okiennych (wariant "+lbl+")");opened++;}
-    });
-    if(!opened){alert("Brak pozycji do wyceny.");}
-  } else {
-    var h=buildSimplifiedPDFHtml(client,comm,montaz,null);
+  var winLabels=Object.keys(allWinLabels).sort();
+  // Zbierz etykiety wariantów pomieszczeń
+  var allRoomLabels={};
+  (client.rooms||[]).forEach(function(room){
+    if(room.variantGroup&&room.variantLabel){allRoomLabels[room.variantLabel]=true;}
+  });
+  var roomLabels=Object.keys(allRoomLabels).sort();
+  var hasWinVariants=winLabels.length>0;
+  var hasRoomVariants=roomLabels.length>0;
+  if(!hasWinVariants&&!hasRoomVariants){
+    var h=buildSimplifiedPDFHtml(client,comm,montaz,null,null);
     if(!h){alert("Brak pozycji do wyceny.");return;}
-    var clientSlug3=(client.name||"");openPDFWindow(h,clientSlug3+" - Oferta Aranżacji Okiennych");
+    openPDFWindow(h,(client.name||"")+" - Oferta Aranżacji Okiennych");
+    return;
   }
+  var roomDim=hasRoomVariants?roomLabels:[null];
+  var winDim=hasWinVariants?winLabels:[null];
+  var opened=0;
+  roomDim.forEach(function(rl){
+    winDim.forEach(function(wl){
+      var h=buildSimplifiedPDFHtml(client,comm,montaz,wl,rl);
+      if(!h)return;
+      var suffix="";
+      if(rl)suffix+=" (pomieszczenie "+rl+")";
+      if(wl)suffix+=" (okno "+wl+")";
+      openPDFWindow(h,(client.name||"")+" - Oferta Aranżacji Okiennych"+suffix);
+      opened++;
+    });
+  });
+  if(!opened){alert("Brak pozycji do wyceny.");}
 }
 
 // ── GENEROWANIE MAILA DO KLIENTA ──────────────────────────────────────────
