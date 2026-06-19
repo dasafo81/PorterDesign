@@ -311,6 +311,23 @@ export function App(p){
   }
 
   // ── VARIANT ROOM LOGIC ──
+  function sortRoomsWithVariants(rooms){
+    var seen={};var sorted=[];
+    (rooms||[]).forEach(function(room){
+      if(room.variantGroup){
+        if(!seen[room.variantGroup]){
+          seen[room.variantGroup]=true;
+          var grp=(rooms||[]).filter(function(r){return r.variantGroup===room.variantGroup;});
+          grp.sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+          grp.forEach(function(r){sorted.push(r);});
+        }
+      } else {
+        sorted.push(room);
+      }
+    });
+    return sorted;
+  }
+
   function duplicateRoomAsVariant(room){
     updateClient(curClientId,function(cl){
       var rooms=cl.rooms||[];
@@ -907,7 +924,7 @@ export function App(p){
   else if(screen==="sum"&&curClient){
     var comm=(+commissionInput||0)/100;
     function withComm(price){return comm>0?roundTo10(price*(1+comm)):roundTo10(price);}
-    var sRooms=(curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;});
+    var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
     // ── variant-aware room rendering ──
     function renderRoomSummary(r){
@@ -1923,7 +1940,7 @@ function ModalSimplifiedPDF(p){
 
   function calcTotal(sel){
     var total=0;
-    (client.rooms||[]).forEach(function(room){
+    sortRoomsWithVariants(client.rooms||[]).forEach(function(room){
       var wins=room.windows||[];var groups={};
       wins.forEach(function(w){var k=w.variantGroup||("solo_"+w.id);if(!groups[k])groups[k]=[];groups[k].push(w);});
       Object.keys(groups).forEach(function(key){
@@ -1944,7 +1961,7 @@ function ModalSimplifiedPDF(p){
 
   function doGenerate(setIdx){
     var set=sets[setIdx];var selection=[];
-    (client.rooms||[]).forEach(function(room){
+    sortRoomsWithVariants(client.rooms||[]).forEach(function(room){
       var wins=room.windows||[];var groups={};
       wins.forEach(function(w){var k=w.variantGroup||("solo_"+w.id);if(!groups[k])groups[k]=[];groups[k].push(w);});
       var chosenWins=[];
