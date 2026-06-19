@@ -1486,10 +1486,10 @@ export function ScreenInvoices(p){
             ].map(function(row,i){
               var last=i===2;
               var val=(+(row[1]||0)).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142";
-              return ce("div",{key:row[0],style:{display:"flex",justifyContent:"space-between",
+              return ce("div",{key:row[0],style:{display:"flex",justifyContent:"space-between",gap:8,
                 padding:"8px 16px",background:last?"var(--violet)":"#fff",
                 borderTop:i>0?"1px solid #e5e7eb":"none"}},
-                ce("span",{style:{fontSize:last?13:12,fontWeight:last?700:400,color:last?"white":"#555"}},row[0]),
+                ce("span",{style:{fontSize:last?13:12,fontWeight:last?700:400,color:last?"white":"#555",whiteSpace:"nowrap"}},row[0]),
                 ce("span",{style:{fontSize:last?14:12,fontWeight:700,color:last?"white":"#111"}},val)
               );
             })
