@@ -67,9 +67,12 @@ function parseFA3(xml: string) {
   const seller = {
     nip:     v(p1, "NIP"),
     name:    v(p1, "PelnaNazwa") || v(p1, "Nazwa"),
-    street:  [v(p1, "Ulica"), v(p1, "NrDomu"), v(p1, "NrLokalu")].filter(Boolean).join(" "),
-    city:    [v(p1, "KodPocztowy"), v(p1, "Miejscowosc")].filter(Boolean).join(" "),
+    street:  v(p1, "AdresL1") || [v(p1, "Ulica"), v(p1, "NrDomu"), v(p1, "NrLokalu")].filter(Boolean).join(" "),
+    city:    v(p1, "AdresL2") || [v(p1, "KodPocztowy"), v(p1, "Miejscowosc")].filter(Boolean).join(" "),
     country: v(p1, "KodKraju") || "PL",
+    email:   v(p1, "Email"),
+    phone:   v(p1, "Telefon"),
+    regon:   v(p1, "REGON"),
   };
 
   // ── Podmiot2 (nabywca) ────────────────────────────────────────────────────
@@ -77,9 +80,11 @@ function parseFA3(xml: string) {
   const buyer = {
     nip:     v(p2, "NIP"),
     name:    v(p2, "PelnaNazwa") || v(p2, "Nazwa"),
-    street:  [v(p2, "Ulica"), v(p2, "NrDomu"), v(p2, "NrLokalu")].filter(Boolean).join(" "),
-    city:    [v(p2, "KodPocztowy"), v(p2, "Miejscowosc")].filter(Boolean).join(" "),
+    street:  v(p2, "AdresL1") || [v(p2, "Ulica"), v(p2, "NrDomu"), v(p2, "NrLokalu")].filter(Boolean).join(" "),
+    city:    v(p2, "AdresL2") || [v(p2, "KodPocztowy"), v(p2, "Miejscowosc")].filter(Boolean).join(" "),
     country: v(p2, "KodKraju") || "PL",
+    email:   v(p2, "Email"),
+    phone:   v(p2, "Telefon"),
   };
 
   // ── Sekcja Fa (nagłówek) ──────────────────────────────────────────────────
@@ -124,7 +129,14 @@ function parseFA3(xml: string) {
   // Numer konta bankowego
   function parseBankAccount(): string {
     const platnosc = block(fa, "Platnosc") || block(xml, "Platnosc");
-    return platnosc ? (v(platnosc, "NrRachunku") || v(platnosc, "IBAN") || "") : "";
+    if (!platnosc) return "";
+    const rb = block(platnosc, "RachunekBankowy");
+    const nr = rb ? (v(rb, "NrRB") || v(rb, "IBAN") || "") : "";
+    const bank = rb ? v(rb, "NazwaBanku") : "";
+    if (!nr) return "";
+    // Formatuj numer rachunku co 4 cyfry
+    const fmtNr = nr.replace(/(.{4})/g, "$1 ").trim();
+    return bank ? fmtNr + " (" + bank.trim() + ")" : fmtNr;
   }
 
   // Uwagi — DodatkowyOpis lub StopkaFaktury
@@ -142,7 +154,7 @@ function parseFA3(xml: string) {
     number:      v(fa, "P_2"),
     invoiceType: v(fa, "RodzajFaktury") || "VAT",
     issueDate:   v(fa, "P_1"),
-    saleDate:    v(fa, "P_6") || v(fa, "P_1M") || v(fa, "P_1"),
+    saleDate:    v(fa, "P_6") || v(fa, "P_1"),  // P_1M = miasto wystawienia, nie data
     currency:    v(fa, "KodWaluty") || "PLN",
     paymentForm: parsePayForm(),
     dueDate:     parseDueDate(),
