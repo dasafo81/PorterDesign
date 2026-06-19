@@ -638,6 +638,7 @@ export function App(p){
   // ── ROOMS ──
   else if(screen==="rooms"&&curClient){
     var rooms=curClient.rooms||[];
+    var roomGroupSizes={};rooms.forEach(function(r){if(r.variantGroup){roomGroupSizes[r.variantGroup]=(roomGroupSizes[r.variantGroup]||0)+1;}});
     var roomTiles=rooms.map(function(r){
       var rTotal=rt(r);
       return ce("div",{key:r.id,
@@ -653,7 +654,7 @@ export function App(p){
             ce(InlineEdit,{value:r.name,
               onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{name:v,variantBaseName:x.variantGroup?v:x.variantBaseName}):x;})});});},
               inputStyle:{fontSize:13,fontWeight:500}}),
-            r.variantGroup?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"rgba(5,150,105,0.12)",color:"#059669",borderRadius:6,padding:"2px 4px 2px 7px",verticalAlign:"middle",display:"inline-flex",alignItems:"center",gap:2}},"Wariant ",ce("input",{value:r.variantLabel||"",onClick:function(ev){ev.stopPropagation();},onChange:function(ev){ev.stopPropagation();var v=(ev.target.value||"").toUpperCase().slice(0,1);if(!v)return;updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{variantLabel:v,name:roomBaseName(x)}):x;})});});},style:{width:14,padding:0,border:"none",background:"transparent",color:"#059669",fontWeight:700,fontSize:10,letterSpacing:"0.06em",outline:"none",textTransform:"uppercase"}})):null
+            (r.variantGroup&&roomGroupSizes[r.variantGroup]>1)?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"rgba(5,150,105,0.12)",color:"#059669",borderRadius:6,padding:"2px 4px 2px 7px",verticalAlign:"middle",display:"inline-flex",alignItems:"center",gap:2}},"Wariant ",ce("input",{value:r.variantLabel||"",onClick:function(ev){ev.stopPropagation();},onChange:function(ev){ev.stopPropagation();var v=(ev.target.value||"").toUpperCase().slice(0,1);if(!v)return;updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{variantLabel:v,name:roomBaseName(x)}):x;})});});},style:{width:14,padding:0,border:"none",background:"transparent",color:"#059669",fontWeight:700,fontSize:10,letterSpacing:"0.06em",outline:"none",textTransform:"uppercase"}})):null
           ),
           ce("div",{onClick:function(){openRoom(r.id);},style:{fontSize:11,color:"var(--t3)",cursor:"pointer"}},(r.windows||[]).length+" okien")
         ),
@@ -971,7 +972,7 @@ export function App(p){
 
       return ce("div",{key:r.id,style:{marginBottom:20}},
         ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:10}},
-          roomBaseName(r)+(r.variantGroup?" \u2014 Wariant "+r.variantLabel:"")+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142")
+          (function(){var _gs={};(curClient.rooms||[]).forEach(function(x){if(x.variantGroup){_gs[x.variantGroup]=(_gs[x.variantGroup]||0)+1;}});return roomBaseName(r)+((r.variantGroup&&_gs[r.variantGroup]>1)?" \u2014 Wariant "+r.variantLabel:"")+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142");}()
         ),
         rows
       );
@@ -2025,7 +2026,7 @@ function ModalSimplifiedPDF(p){
         })().map(function(room){
           var rc=buildRoomChoices(room);
           if(!rc.order.length)return null;
-          var roomLabel=roomBaseName(room)+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
+          var _rgs={};(client.rooms||[]).forEach(function(x){if(x.variantGroup){_rgs[x.variantGroup]=(_rgs[x.variantGroup]||0)+1;}});var roomLabel=roomBaseName(room)+((room.variantGroup&&_rgs[room.variantGroup]>1)?" \u2014 Wariant "+room.variantLabel:"");
           return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
             ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.05em",textTransform:"uppercase",borderBottom:"1px solid var(--bd2)"}},roomLabel),
             rc.order.map(function(key,ki){
