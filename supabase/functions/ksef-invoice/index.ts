@@ -78,9 +78,31 @@ function parseFA3(xml: string) {
     issueDate:   xmlVal(fa, "P_1"),
     saleDate:    xmlVal(fa, "P_1M") || xmlVal(fa, "P_6") || xmlVal(fa, "P_1"),
     currency:    xmlVal(fa, "KodWaluty") || "PLN",
-    paymentForm: xmlVal(fa, "FormaPlatnosci") || xmlVal(fa, "P_22"),
-    dueDate:     xmlVal(fa, "TerminPlatnosci") || xmlVal(fa, "DataZaplaty"),
-    notes:       xmlVal(fa, "DodatkowyOpis") || xmlVal(fa, "P_Opis"),
+    paymentForm: (() => {
+      const raw = xmlVal(fa, "FormaPlatnosci") || xmlVal(fa, "P_22") || "";
+      const map: Record<string,string> = {
+        "1":"gotówka","2":"przelew","3":"karta","4":"bon","5":"czek",
+        "6":"akredytywa","7":"mobilna","gotowka":"gotówka","przelew":"przelew",
+      };
+      return map[raw.toLowerCase()] || map[raw] || raw;
+    })(),
+    dueDate: (() => {
+      const raw = xmlVal(fa, "TerminPlatnosci") || xmlVal(fa, "DataZaplaty") || "";
+      // Może być data ISO lub liczba dni
+      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+      if (/^\d+$/.test(raw)) return raw + " dni";
+      return raw;
+    })(),
+    notes: (() => {
+      // DodatkowyOpis zawiera <Klucz>...</Klucz><Wartosc>...</Wartosc>
+      const raw = xmlVal(fa, "DodatkowyOpis") || xmlVal(fa, "P_Opis") || "";
+      // Wyciągnij wartości z <Wartosc> jeśli to struktura XML
+      const wartosc = raw.match(/<(?:[^:>]+:)?Wartosc[^>]*>([\s\S]*?)<\/(?:[^:>]+:)?Wartosc>/gi);
+      if (wartosc && wartosc.length > 0) {
+        return wartosc.map(w => w.replace(/<[^>]+>/g, "").trim()).join(" | ");
+      }
+      return raw;
+    })(),
     invoiceType: xmlVal(fa, "RodzajFaktury") || "VAT",
   };
 
