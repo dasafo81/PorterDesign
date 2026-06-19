@@ -842,9 +842,7 @@ function KsefView(){
     setDetailLoading(true);
     getSession()
       .then(function(s){
-        return ksefFetch("POST","/api/ksef/invoice",{
-          accessToken:s.accessToken, baseUrl:s.baseUrl, ksefNumber:inv.ksef_number
-        });
+        return ksefApi.getInvoice(s.accessToken, s.baseUrl, inv.ksef_number);
       })
       .then(function(d){ setInvoiceDetail(d&&d.parsed?d.parsed:null); })
       .catch(function(e){ setInvoiceDetail({error:e.message||String(e)}); })
