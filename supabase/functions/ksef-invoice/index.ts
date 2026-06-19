@@ -1,7 +1,6 @@
 // supabase/functions/ksef-invoice/index.ts
-// Pobiera XML pojedynczej faktury z KSeF i parsuje FA(3) do struktury JSON.
+// Pobiera XML FA(3) z KSeF i parsuje do JSON.
 // POST { accessToken, baseUrl, ksefNumber }
-// Zwraca: { xml, parsed: { seller, buyer, items, header, totals } }
 
 const SB_URL = Deno.env.get("SB_URL") || "https://rkcidwusjzvfwxszotnb.supabase.co";
 
@@ -31,119 +30,190 @@ async function verifyUser(req: Request) {
   return { ok: true, tenantId: tid, service: SVC };
 }
 
-// Prosta ekstrakcja wartości z XML (bez parsera DOM)
-function xmlVal(xml: string, tag: string): string {
-  const re = new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:[^:>]+:)?${tag}>`, "i");
-  return (xml.match(re)?.[1] || "").trim();
+// Wyciąga tekst z pierwszego pasującego tagu (z opcjonalnym prefixem ns)
+function v(xml: string, tag: string): string {
+  const m = xml.match(new RegExp(`<(?:[\\w]+:)?${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?${tag}>`, "i"));
+  return (m?.[1] || "").trim();
 }
-function xmlAttr(xml: string, tag: string, attr: string): string {
-  const re = new RegExp(`<(?:[^:>]+:)?${tag}[^>]*\\s${attr}="([^"]*)"`, "i");
-  return xml.match(re)?.[1] || "";
+// Wyciąga cały element (z tagami) — do dalszego parsowania
+function block(xml: string, tag: string): string {
+  const m = xml.match(new RegExp(`<(?:[\\w]+:)?${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?${tag}>`, "i"));
+  return m?.[0] || "";
 }
-function xmlAll(xml: string, tag: string): string[] {
-  const re = new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:[^:>]+:)?${tag}>`, "gi");
-  const results: string[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(xml)) !== null) results.push(m[1].trim());
-  return results;
+// Wyciąga wszystkie wystąpienia zawartości tagu
+function all(xml: string, tag: string): string[] {
+  const re = new RegExp(`<(?:[\\w]+:)?${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?${tag}>`, "gi");
+  const out: string[] = [];
+  let m;
+  while ((m = re.exec(xml)) !== null) out.push(m[1].trim());
+  return out;
 }
-function xmlBlock(xml: string, tag: string): string {
-  const re = new RegExp(`<(?:[^:>]+:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:[^:>]+:)?${tag}>`, "i");
-  return xml.match(re)?.[0] || "";
+function num(s: string): number { return parseFloat(s.replace(",", ".")) || 0; }
+function fmt(n: number): string {
+  return n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+// Mapa form płatności FA(3)
+const PAY_MAP: Record<string, string> = {
+  "1":"gotówka","2":"przelew","3":"karta płatnicza","4":"bon","5":"czek",
+  "6":"kredyt","7":"mobilna","8":"skonto",
+  "gotowka":"gotówka","gotówka":"gotówka","przelew":"przelew",
+  "karta":"karta płatnicza","czek":"czek","bon":"bon",
+};
 
 function parseFA3(xml: string) {
-  // Podmiot1 — sprzedawca
-  const p1 = xmlBlock(xml, "Podmiot1");
+  // ── Podmiot1 (sprzedawca) ─────────────────────────────────────────────────
+  const p1 = block(xml, "Podmiot1");
   const seller = {
-    nip:     xmlVal(p1, "NIP"),
-    name:    xmlVal(p1, "PelnaNazwa") || xmlVal(p1, "Nazwa"),
-    address: [xmlVal(p1, "Ulica"), xmlVal(p1, "NrDomu"), xmlVal(p1, "KodPocztowy"), xmlVal(p1, "Miejscowosc")]
-               .filter(Boolean).join(" "),
+    nip:     v(p1, "NIP"),
+    name:    v(p1, "PelnaNazwa") || v(p1, "Nazwa"),
+    street:  [v(p1, "Ulica"), v(p1, "NrDomu"), v(p1, "NrLokalu")].filter(Boolean).join(" "),
+    city:    [v(p1, "KodPocztowy"), v(p1, "Miejscowosc")].filter(Boolean).join(" "),
+    country: v(p1, "KodKraju") || "PL",
   };
 
-  // Podmiot2 — nabywca
-  const p2 = xmlBlock(xml, "Podmiot2");
+  // ── Podmiot2 (nabywca) ────────────────────────────────────────────────────
+  const p2 = block(xml, "Podmiot2");
   const buyer = {
-    nip:     xmlVal(p2, "NIP"),
-    name:    xmlVal(p2, "PelnaNazwa") || xmlVal(p2, "Nazwa"),
-    address: [xmlVal(p2, "Ulica"), xmlVal(p2, "NrDomu"), xmlVal(p2, "KodPocztowy"), xmlVal(p2, "Miejscowosc")]
-               .filter(Boolean).join(" "),
+    nip:     v(p2, "NIP"),
+    name:    v(p2, "PelnaNazwa") || v(p2, "Nazwa"),
+    street:  [v(p2, "Ulica"), v(p2, "NrDomu"), v(p2, "NrLokalu")].filter(Boolean).join(" "),
+    city:    [v(p2, "KodPocztowy"), v(p2, "Miejscowosc")].filter(Boolean).join(" "),
+    country: v(p2, "KodKraju") || "PL",
   };
 
-  // Nagłówek Fa
-  const fa = xmlBlock(xml, "Fa");
-  const header = {
-    number:      xmlVal(fa, "P_2"),
-    issueDate:   xmlVal(fa, "P_1"),
-    saleDate:    xmlVal(fa, "P_1M") || xmlVal(fa, "P_6") || xmlVal(fa, "P_1"),
-    currency:    xmlVal(fa, "KodWaluty") || "PLN",
-    paymentForm: (() => {
-      const raw = xmlVal(fa, "FormaPlatnosci") || xmlVal(fa, "P_22") || "";
-      const map: Record<string,string> = {
-        "1":"gotówka","2":"przelew","3":"karta","4":"bon","5":"czek",
-        "6":"akredytywa","7":"mobilna","gotowka":"gotówka","przelew":"przelew",
-      };
-      return map[raw.toLowerCase()] || map[raw] || raw;
-    })(),
-    dueDate: (() => {
-      // TerminPlatnosci zawiera zagniezdzone <Termin>data</Termin> lub <Dni>N</Dni>
-      const block = xmlBlock(fa, "TerminPlatnosci") || "";
-      const termin = block ? (xmlVal(block, "Termin") || xmlVal(block, "DataZaplaty") || xmlVal(block, "Dni") || "") : "";
-      const raw = termin || xmlVal(fa, "DataZaplaty") || "";
-      if (!raw) return "";
-      if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-      if (/^\d+$/.test(raw)) return raw + " dni";
-      return raw;
-    })(),
-    notes: (() => {
-      // DodatkowyOpis zawiera <Klucz>...</Klucz><Wartosc>...</Wartosc>
-      const raw = xmlVal(fa, "DodatkowyOpis") || xmlVal(fa, "P_Opis") || "";
-      // Wyciągnij wartości z <Wartosc> jeśli to struktura XML
-      const wartosc = raw.match(/<(?:[^:>]+:)?Wartosc[^>]*>([\s\S]*?)<\/(?:[^:>]+:)?Wartosc>/gi);
-      if (wartosc && wartosc.length > 0) {
-        return wartosc.map(w => w.replace(/<[^>]+>/g, "").trim()).join(" | ");
+  // ── Sekcja Fa (nagłówek) ──────────────────────────────────────────────────
+  const fa = block(xml, "Fa");
+
+  // Termin płatności — w sekcji Platnosc[]/TerminPlatnosci lub DataZaplaty
+  // FA(3) struktura: <Platnosc><TerminPlatnosci><Termin>data</Termin></TerminPlatnosci></Platnosc>
+  // Lub prosto: <DataZaplaty>data</DataZaplaty> albo <TerminPlatnosci>data</TerminPlatnosci>
+  function parseDueDate(): string {
+    // Próba 1: <Platnosc> → <TerminPlatnosci> → <Termin>
+    const platnosc = block(fa, "Platnosc") || block(xml, "Platnosc");
+    if (platnosc) {
+      const tpBlock = block(platnosc, "TerminPlatnosci");
+      const termin = tpBlock ? (v(tpBlock, "Termin") || v(tpBlock, "Dni")) : "";
+      if (termin) {
+        if (/^\d{4}-\d{2}-\d{2}/.test(termin)) return termin.slice(0, 10);
+        if (/^\d+$/.test(termin)) return termin + " dni";
+        return termin;
       }
-      return raw;
-    })(),
-    invoiceType: xmlVal(fa, "RodzajFaktury") || "VAT",
+      // Próba 2: <DataZaplaty> w <Platnosc>
+      const dz = v(platnosc, "DataZaplaty");
+      if (dz) return dz.slice(0, 10);
+    }
+    // Próba 3: bezpośrednio w <Fa>
+    const raw = v(fa, "DataZaplaty") || v(fa, "TerminPlatnosci") || "";
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+    // Próba 4: wyciągnij datę z zagnieżdżonego <Termin> jeśli raw zawiera XML
+    if (raw.includes("<")) {
+      const inner = v(raw, "Termin") || v(raw, "DataZaplaty");
+      if (inner && /^\d{4}-\d{2}-\d{2}/.test(inner)) return inner.slice(0, 10);
+    }
+    return raw;
+  }
+
+  // Forma płatności — w <Platnosc> lub <FormaPlatnosci>
+  function parsePayForm(): string {
+    const platnosc = block(fa, "Platnosc") || block(xml, "Platnosc");
+    const raw = (platnosc ? v(platnosc, "FormaPlatnosci") : "") || v(fa, "FormaPlatnosci") || v(fa, "P_22") || "";
+    return PAY_MAP[raw.toLowerCase()] || PAY_MAP[raw] || raw || "przelew";
+  }
+
+  // Numer konta bankowego
+  function parseBankAccount(): string {
+    const platnosc = block(fa, "Platnosc") || block(xml, "Platnosc");
+    return platnosc ? (v(platnosc, "NrRachunku") || v(platnosc, "IBAN") || "") : "";
+  }
+
+  // Uwagi — DodatkowyOpis lub StopkaFaktury
+  function parseNotes(): string {
+    const raw = v(fa, "DodatkowyOpis") || v(xml, "StopkaFaktury") || "";
+    if (!raw) return "";
+    // Wyciągnij <Wartosc> jeśli jest strukturą
+    const wartosci = all(raw, "Wartosc");
+    if (wartosci.length > 0) return wartosci.join(" | ");
+    // Usuń tagi XML jeśli są
+    return raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  const header = {
+    number:      v(fa, "P_2"),
+    invoiceType: v(fa, "RodzajFaktury") || "VAT",
+    issueDate:   v(fa, "P_1"),
+    saleDate:    v(fa, "P_6") || v(fa, "P_1M") || v(fa, "P_1"),
+    currency:    v(fa, "KodWaluty") || "PLN",
+    paymentForm: parsePayForm(),
+    dueDate:     parseDueDate(),
+    bankAccount: parseBankAccount(),
+    notes:       parseNotes(),
+    // Dodatkowe pola FA(3)
+    gtus:        ["GTU_01","GTU_02","GTU_03","GTU_04","GTU_05","GTU_06","GTU_07",
+                  "GTU_08","GTU_09","GTU_10","GTU_11","GTU_12","GTU_13"]
+                  .filter(g => fa.includes(`<${g}`) || fa.includes(`:${g}`)),
+    mpp:         fa.includes("MPP") ? "TAK" : "",
   };
 
-  // Pozycje FaWiersz
-  const itemBlocks = xmlAll(xml, "FaWiersz").length > 0
-    ? xmlAll(xml, "FaWiersz")
-    : xmlAll(xml, "Wiersz");
+  // ── Pozycje FaWiersz ──────────────────────────────────────────────────────
+  const wierszeBlocks = all(xml, "FaWiersz").length > 0
+    ? (() => { const re = new RegExp(`<(?:[\\w]+:)?FaWiersz(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?FaWiersz>`, "gi"); const o=[]; let m; while((m=re.exec(xml))!==null) o.push(m[0]); return o; })()
+    : (() => { const re = new RegExp(`<(?:[\\w]+:)?Wiersz(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?Wiersz>`, "gi"); const o=[]; let m; while((m=re.exec(xml))!==null) o.push(m[0]); return o; })();
 
-  // Jeśli xmlAll nie zwraca bloków — szukamy inaczej
-  const items = itemBlocks.length > 0
-    ? itemBlocks.map(block => ({
-        no:       xmlVal(block, "NrWierszaFa") || "",
-        name:     xmlVal(block, "P_7"),
-        unit:     xmlVal(block, "P_8A"),
-        qty:      parseFloat(xmlVal(block, "P_8B") || "1"),
-        netPrice: parseFloat(xmlVal(block, "P_9A") || "0"),
-        netVal:   parseFloat(xmlVal(block, "P_11") || "0"),
-        vatRate:  xmlVal(block, "P_12"),
-        grossVal: parseFloat(xmlVal(block, "P_11A") || "0"),
-      }))
-    : [];
+  const items = wierszeBlocks.map(w => {
+    const netP  = num(v(w, "P_9A"));   // cena jedn. netto
+    const grossP = num(v(w, "P_9B") || v(w, "P_9C") || ""); // cena jedn. brutto (jeśli jest)
+    const netV  = num(v(w, "P_11"));   // wartość netto
+    const grossV = num(v(w, "P_11A") || ""); // wartość brutto (opcjonalne)
+    const vatR  = v(w, "P_12");
+    const qty   = num(v(w, "P_8B") || "1");
+    // Oblicz brakujące
+    const vatNum = vatR === "zw" || vatR === "np" ? 0 : num(vatR);
+    const computedGrossP = grossP || (netP * (1 + vatNum / 100));
+    const computedGrossV = grossV || (netV * (1 + vatNum / 100));
+    const vatV  = computedGrossV - netV;
 
-  // Podsumowanie
-  // FA(3): P_13_x to sumy netto per stawka VAT, P_14_x to sumy VAT per stawka
-  // P_13_Razem/P_14_Razem to łączne sumy (opcjonalne), P_15 = brutto do zapłaty
-  const netRaw   = xmlVal(fa, "P_13_Razem") || "";
-  const vatRaw   = xmlVal(fa, "P_14_Razem") || "";
-  const grossRaw = xmlVal(fa, "P_15")       || "";
-  let netVal   = parseFloat(netRaw)   || 0;
-  let vatVal   = parseFloat(vatRaw)   || 0;
-  let grossVal = parseFloat(grossRaw) || 0;
-  // Fallback: jeśli nie ma sum zbiorczych, zsumuj z pozycji
-  if (!netVal && items.length > 0) netVal = items.reduce((s, i) => s + (i.netVal || 0), 0);
-  // Jeśli brutto = 0 lub równe netto (błąd parsowania) — oblicz z netto+VAT
-  if (!grossVal || Math.abs(grossVal - netVal) < 0.01) grossVal = netVal + vatVal;
-  const totals = { net: netVal, vat: vatVal, gross: grossVal };
+    return {
+      no:       v(w, "NrWierszaFa"),
+      name:     v(w, "P_7"),
+      pkwiu:    v(w, "PKWiU") || v(w, "P_2A"),
+      unit:     v(w, "P_8A"),
+      qty,
+      netPrice:   netP,
+      grossPrice: parseFloat(computedGrossP.toFixed(2)),
+      netVal:     netV,
+      grossVal:   parseFloat(computedGrossV.toFixed(2)),
+      vatRate:    vatR,
+      vatVal:     parseFloat(vatV.toFixed(2)),
+      gtu:        v(w, "GTU"),
+    };
+  });
 
-  return { seller, buyer, header, items, totals };
+  // ── Podsumowanie ──────────────────────────────────────────────────────────
+  // Szukaj sum w Fa, Rozliczenie lub oblicz z pozycji
+  const rozliczenie = block(xml, "Rozliczenie") || block(xml, "SumyVat") || fa;
+
+  // Próbuj różne pola sum
+  let netTotal   = num(v(rozliczenie, "P_13_Razem") || v(rozliczenie, "WartoscNetto") || "");
+  let vatTotal   = num(v(rozliczenie, "P_14_Razem") || v(rozliczenie, "KwotaVat")    || "");
+  let grossTotal = num(v(rozliczenie, "P_15")       || v(rozliczenie, "WartoscBrutto") || "");
+
+  // Fallback z pozycji
+  if (!netTotal && items.length > 0) netTotal = parseFloat(items.reduce((s,i) => s + i.netVal, 0).toFixed(2));
+  if (!vatTotal && items.length > 0) vatTotal = parseFloat(items.reduce((s,i) => s + i.vatVal, 0).toFixed(2));
+  if (!grossTotal) grossTotal = parseFloat((netTotal + vatTotal).toFixed(2));
+
+  // Sumy VAT per stawka
+  const vatRates: Record<string, {net: number, vat: number, gross: number}> = {};
+  for (const item of items) {
+    const r = item.vatRate || "23";
+    if (!vatRates[r]) vatRates[r] = { net: 0, vat: 0, gross: 0 };
+    vatRates[r].net   += item.netVal;
+    vatRates[r].vat   += item.vatVal;
+    vatRates[r].gross += item.grossVal;
+  }
+
+  return { seller, buyer, header, items, totals: { net: netTotal, vat: vatTotal, gross: grossTotal }, vatRates };
 }
 
 Deno.serve(async (req: Request) => {
@@ -157,11 +227,9 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
 
   const { accessToken, baseUrl, ksefNumber } = body;
-  if (!accessToken || !baseUrl || !ksefNumber) {
+  if (!accessToken || !baseUrl || !ksefNumber)
     return jsonRes({ error: "accessToken, baseUrl, ksefNumber wymagane" }, 400);
-  }
 
-  // Pobierz XML z KSeF
   const r = await fetch(`${baseUrl}/invoices/ksef/${ksefNumber}`, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/xml, text/xml, */*" },
   });
@@ -171,11 +239,7 @@ Deno.serve(async (req: Request) => {
   let xml = "";
   if (ct.includes("json")) {
     const d = await r.json();
-    if (d.invoiceData) {
-      try { xml = atob(d.invoiceData); } catch { xml = d.invoiceData; }
-    } else {
-      xml = JSON.stringify(d);
-    }
+    xml = d.invoiceData ? (() => { try { return atob(d.invoiceData); } catch { return d.invoiceData; } })() : JSON.stringify(d);
   } else {
     xml = await r.text();
   }
