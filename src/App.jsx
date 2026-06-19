@@ -704,7 +704,7 @@ export function App(p){
             }(r));
           },
           title:"Kopiuj pomieszczenie",
-          style:{position:"absolute",top:8,right:40,border:"1px solid #b45309",background:"#fef3c7",cursor:"pointer",fontSize:11,color:"#b45309",padding:"4px 8px",borderRadius:6,fontWeight:600,whiteSpace:"nowrap"}
+          style:{position:"absolute",top:8,right:40,border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",fontSize:11,color:"var(--t2)",padding:"4px 8px",borderRadius:6,fontWeight:500,whiteSpace:"nowrap"}
         },"\uD83D\uDCC4 Kopiuj"),
         ce("button",{
           onClick:function(ev){
@@ -903,7 +903,7 @@ export function App(p){
                 }(w));
               },
               title:"Kopiuj okno",
-              style:{border:"1px solid #b45309",background:"#fef3c7",cursor:"pointer",fontSize:11,color:"#b45309",padding:"5px 9px",borderRadius:7,fontWeight:600,whiteSpace:"nowrap"}
+              style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",fontSize:11,color:"var(--t2)",padding:"5px 9px",borderRadius:7,fontWeight:500,whiteSpace:"nowrap",marginTop:2}
             },"\uD83D\uDCC4 Kopiuj"),
             ce("button",{
               onClick:function(ev){
