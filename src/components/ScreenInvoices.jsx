@@ -1039,11 +1039,11 @@ function KsefView(){
               var val=(+(row[1]||0)).toLocaleString("pl-PL",
                 {minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142";
               return ce("div",{key:row[0],style:{display:"flex",
-                justifyContent:"space-between",padding:"8px 16px",
+                justifyContent:"space-between",gap:8,padding:"8px 16px",
                 background:last?"var(--violet)":"var(--bg)",
                 borderTop:i>0?"1px solid var(--bd2)":"none"}},
                 ce("span",{style:{fontSize:last?13:12,fontWeight:last?700:400,
-                  color:last?"white":"var(--t2)"}},row[0]),
+                  color:last?"white":"var(--t2)",whiteSpace:"nowrap"}},row[0]),
                 ce("span",{style:{fontSize:last?14:12,fontWeight:700,
                   color:last?"white":"var(--t1)"}},val)
               );
