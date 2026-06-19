@@ -938,7 +938,7 @@ function KsefView(){
       padding:"32px 16px",overflowY:"auto",backdropFilter:"blur(4px)"},
     onClick:function(e){if(e.target===e.currentTarget)setSelectedInv(null);}
   },
-    ce("div",{style:{background:"var(--bg2)",borderRadius:14,padding:"24px 28px",
+    ce("div",{style:{background:"#fff",borderRadius:14,padding:"24px 28px",
       maxWidth:780,width:"100%",boxShadow:"0 24px 80px rgba(0,0,0,0.35)"}},
       ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",
         marginBottom:18,borderBottom:"2px solid var(--violet)",paddingBottom:12}},
@@ -1168,7 +1168,7 @@ export function ScreenInvoices(p){
         padding:"32px 16px",overflowY:"auto",backdropFilter:"blur(4px)"},
       onClick:function(e){if(e.target===e.currentTarget)setViewInv(null);}
     },
-      ce("div",{style:{background:"var(--bg2)",borderRadius:14,padding:"24px 28px",
+      ce("div",{style:{background:"#fff",borderRadius:14,padding:"24px 28px",
         maxWidth:760,width:"100%",boxShadow:"0 24px 80px rgba(0,0,0,0.3)"}},
         ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",
           marginBottom:18,borderBottom:"2px solid var(--violet)",paddingBottom:12}},
