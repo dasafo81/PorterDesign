@@ -1068,7 +1068,10 @@ export function ScreenInvoices(p){
   var [invoices,setInvoices]=useState([]);
   var [settings,setSettings]=useState(null);
   var [editInv,setEditInv]=useState(null);   // null = now
-  var [viewInv,setViewInv]=useState(null);   // podglad faktury KSeF w Moje fakturya faktura
+  var [viewInv,setViewInv]=useState(null);
+  var [viewDetail,setViewDetail]=useState(null);
+  var [viewDetailLoading,setViewDetailLoading]=useState(false);
+  var [viewSess,setViewSess]=useState(null);
   var [loading,setLoading]=useState(true);
   var [err,setErr]=useState(null);
 
