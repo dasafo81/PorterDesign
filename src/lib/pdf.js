@@ -278,7 +278,7 @@ export function generateSimplifiedPDF(client,comm,montaz){
 // -- WYCENA UPROSZCZONA -- z selekcji zestawu
 function roomBaseName(room){
   var n=room.variantBaseName||room.name||'';
-  return n.replace(/ — Wariant [A-Z]$/,'');
+  return n.replace(/ — Wariant [A-Z\.]+$/,'').replace(/ — Wariant [A-Z\.]+$/,'');
 }
 
 export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle){
