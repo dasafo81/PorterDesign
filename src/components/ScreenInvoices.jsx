@@ -772,7 +772,7 @@ function InvoiceList(p){
       list.map(function(inv){
         var ps=payStatus(inv);
         return ce("div",{key:inv.id,
-          onClick:function(){p.onEdit(inv);},
+          onClick:function(){ inv.ksef_number?(p.onView&&p.onView(inv)):p.onEdit(inv); },
           style:{display:"grid",gridTemplateColumns:"130px 1fr 110px 90px 90px 80px 36px",gap:8,padding:"11px 16px",
             borderBottom:"1px solid var(--bd3)",cursor:"pointer",transition:"background .12s",
             background:"var(--bg2)"},
