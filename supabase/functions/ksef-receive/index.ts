@@ -1,6 +1,7 @@
 // supabase/functions/ksef-receive/index.ts
-// KSeF 2.0 — pobieranie faktur (kosztowe subject2 / sprzedażowe subject1)
-// POST { accessToken, baseUrl, direction, dateFrom?, dateTo? }
+// KSeF 2.0 — pobieranie faktur z metadanych (bez XML per faktura)
+// Pola metadanych: ksefNumber, invoiceNumber, issueDate, grossAmount, netAmount,
+//   vatAmount, currency, seller{nip,name}, buyer{identifier{value},name}
 
 const SB_URL = Deno.env.get("SB_URL") || "https://rkcidwusjzvfwxszotnb.supabase.co";
 
@@ -28,41 +29,12 @@ async function verifyUser(req: Request) {
   return { ok: true, tenantId: tid, service: SVC };
 }
 
-function xmlVal(xml: string, tag: string): string {
-  const m = xml.match(new RegExp("<" + tag + "[^>]*>([^<]*)</" + tag + ">"));
-  return m ? m[1].trim() : "";
-}
-function parseFA(xml: string) {
-  const nips: string[] = [], names: string[] = [];
-  let m;
-  const rn = /<NIP>([^<]+)<\/NIP>/g, rp = /<PelnaNazwa>([^<]+)<\/PelnaNazwa>/g;
-  while ((m = rn.exec(xml)) !== null) nips.push(m[1].trim());
-  while ((m = rp.exec(xml)) !== null) names.push(m[1].trim());
-  return {
-    number: xmlVal(xml, "P_2") || xmlVal(xml, "NrFaKSeF"),
-    issue_date: xmlVal(xml, "P_1"),
-    sale_date: xmlVal(xml, "P_1M") || xmlVal(xml, "P_1"),
-    due_date: xmlVal(xml, "DataZaplaty"),
-    total_gross: +(xmlVal(xml, "P_15") || 0),
-    total_net: +(xmlVal(xml, "P_13_Razem") || 0),
-    total_vat: +(xmlVal(xml, "P_14_Razem") || 0),
-    currency: xmlVal(xml, "KodWaluty") || "PLN",
-    notes: xmlVal(xml, "P_Opis"),
-    seller_nip: nips[0] || "", seller_name: names[0] || "",
-    buyer_nip: nips[1] || "", buyer_name: names[1] || "",
-  };
-}
-
-async function queryInvoices(baseUrl: string, accessToken: string, subjectType: string, from: string, to: string) {
-  // KSeF 2.0: POST /invoices/query/metadata z filtrami w body (InvoiceQueryFilters)
-  // subjectType: "Subject1" (sprzedażowe) | "Subject2" (kosztowe)
+async function queryMetadata(
+  baseUrl: string, accessToken: string, subjectType: string, from: string, to: string
+): Promise<Record<string, unknown>[]> {
   const filters = {
     subjectType: subjectType === "subject1" ? "Subject1" : "Subject2",
-    dateRange: {
-      from: from + "T00:00:00.000Z",
-      to: to + "T23:59:59.999Z",
-      dateType: "Issue",
-    },
+    dateRange: { from: from + "T00:00:00.000Z", to: to + "T23:59:59.999Z", dateType: "Issue" },
   };
   const r = await fetch(`${baseUrl}/invoices/query/metadata?pageOffset=0&pageSize=100`, {
     method: "POST",
@@ -71,54 +43,86 @@ async function queryInvoices(baseUrl: string, accessToken: string, subjectType: 
   });
   if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + ": " + (await r.text()).slice(0, 300));
   const d = await r.json();
-  // Odpowiedź: { invoices: [...] } lub { items: [...] } lub PagedInvoiceResponse
-  return d.invoices || d.items || d.invoiceMetadataList || [];
+  return (d.invoices || d.items || d.invoiceMetadataList || []) as Record<string, unknown>[];
 }
 
-async function fetchXml(baseUrl: string, accessToken: string, ksefNum: string): Promise<string | null> {
-  const r = await fetch(`${baseUrl}/invoices/ksef/${ksefNum}`, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!r.ok) return null;
-  const ct = r.headers.get("content-type") || "";
-  if (ct.includes("xml")) return await r.text();
-  const d = await r.json();
-  if (d.invoiceData) {
-    try { return atob(d.invoiceData); } catch { return d.invoiceData; }
-  }
-  return null;
+function metaToRecord(
+  meta: Record<string, unknown>, docType: string, tenantId: string
+): Record<string, unknown> {
+  const isIncoming = docType === "zakup";
+  // Kontrahent: dla kosztowych = seller, dla sprzedażowych = buyer
+  const party = isIncoming
+    ? (meta.seller as Record<string, unknown> || {})
+    : (meta.buyer as Record<string, unknown> || {});
+  const buyerName  = String(party.name || "");
+  const buyerNip   = String(
+    party.nip ||
+    (party.identifier as Record<string,unknown>)?.value ||
+    ""
+  );
+
+  return {
+    tenant_id:   tenantId,
+    doc_type:    docType,
+    status:      isIncoming ? "received" : "issued",
+    ksef_status: "confirmed",
+    ksef_number: String(meta.ksefNumber || ""),
+    ksef_mode:   "online",
+    number:      String(meta.invoiceNumber || meta.ksefNumber || ""),
+    issue_date:  String(meta.issueDate || "").slice(0, 10) || null,
+    sale_date:   String(meta.issueDate || "").slice(0, 10) || null,
+    due_date:    null,
+    total_net:   Number(meta.netAmount  || 0),
+    total_vat:   Number(meta.vatAmount  || 0),
+    total_gross: Number(meta.grossAmount || 0),
+    currency:    String(meta.currency || "PLN"),
+    notes:       "",
+    buyer_name:  buyerName,
+    buyer_nip:   buyerNip,
+    xml_payload: null,
+    updated_at:  new Date().toISOString(),
+  };
 }
 
-async function saveInvoices(headers: Record<string, unknown>[], baseUrl: string, accessToken: string, tenantId: string, service: string, docType: string) {
-  const sbH = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=representation" };
-  const saved: unknown[] = [], errors: unknown[] = [];
-  for (const hdr of headers.slice(0, 100)) {
-    const ksefNum = (hdr.ksefNumber || hdr.ksefReferenceNumber || hdr.referenceNumber || hdr.id) as string;
+async function saveInvoices(
+  headers: Record<string, unknown>[],
+  tenantId: string,
+  service: string,
+  docType: string
+): Promise<{ saved: number; errors: unknown[] }> {
+  const sbH = {
+    apikey: service,
+    Authorization: `Bearer ${service}`,
+    "Content-Type": "application/json",
+    Prefer: "return=minimal",
+  };
+  let saved = 0;
+  const errors: unknown[] = [];
+
+  for (const meta of headers) {
+    const ksefNum = String(meta.ksefNumber || "");
     if (!ksefNum) continue;
     try {
-      const xml = await fetchXml(baseUrl, accessToken, ksefNum);
-      const parsed = xml ? parseFA(xml) : {} as ReturnType<typeof parseFA>;
-      const isIncoming = docType === "zakup";
-      const ck = await fetch(`${SB_URL}/rest/v1/invoices?ksef_number=eq.${encodeURIComponent(ksefNum)}&tenant_id=eq.${tenantId}&select=id`, { headers: sbH });
+      const record = metaToRecord(meta, docType, tenantId);
+      // Sprawdź czy istnieje
+      const ck = await fetch(
+        `${SB_URL}/rest/v1/invoices?ksef_number=eq.${encodeURIComponent(ksefNum)}&tenant_id=eq.${tenantId}&select=id`,
+        { headers: sbH }
+      );
       const ex = ck.ok ? await ck.json() : [];
-      const record = {
-        tenant_id: tenantId,
-        doc_type: docType, status: isIncoming ? "received" : "issued",
-        ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
-        number: parsed.number || ksefNum,
-        issue_date: parsed.issue_date || null, sale_date: parsed.sale_date || null, due_date: parsed.due_date || null,
-        total_net: parsed.total_net || 0, total_vat: parsed.total_vat || 0, total_gross: parsed.total_gross || 0,
-        currency: parsed.currency || "PLN", notes: parsed.notes || "",
-        buyer_name: isIncoming ? (parsed.seller_name || hdr.subjectName || "") : (parsed.buyer_name || ""),
-        buyer_nip: isIncoming ? (parsed.seller_nip || hdr.subjectNip || "") : (parsed.buyer_nip || ""),
-        xml_payload: xml || null, updated_at: new Date().toISOString(),
-      };
       if (ex?.length > 0) {
-        await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${ex[0].id}`, { method: "PATCH", headers: sbH, body: JSON.stringify(record) });
-        saved.push({ ksefNum, action: "updated" });
+        await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${ex[0].id}`, {
+          method: "PATCH", headers: sbH, body: JSON.stringify(record),
+        });
       } else {
-        await fetch(`${SB_URL}/rest/v1/invoices`, { method: "POST", headers: sbH, body: JSON.stringify(record) });
-        saved.push({ ksefNum, action: "inserted" });
+        await fetch(`${SB_URL}/rest/v1/invoices`, {
+          method: "POST", headers: sbH, body: JSON.stringify(record),
+        });
       }
-    } catch (e) { errors.push({ ksefNum, err: e instanceof Error ? e.message : String(e) }); }
+      saved++;
+    } catch (e) {
+      errors.push({ ksefNum, err: e instanceof Error ? e.message : String(e) });
+    }
   }
   return { saved, errors };
 }
@@ -130,35 +134,32 @@ Deno.serve(async (req: Request) => {
   const auth = await verifyUser(req);
   if (!auth.ok) return jsonRes({ error: auth.message }, auth.status);
 
-  let body;
+  let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
-  const { accessToken, baseUrl, direction, dateFrom, dateTo } = body || {};
+
+  const { accessToken, baseUrl, direction, dateFrom, dateTo } = body;
   if (!accessToken || !baseUrl) return jsonRes({ error: "accessToken i baseUrl wymagane" }, 400);
 
   const now = new Date();
-  const from = dateFrom || new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
-  const to = dateTo || now.toISOString().slice(0, 10);
-  const dir = direction || "all";
+  const from = String(dateFrom || new Date(now.getTime() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10));
+  const to   = String(dateTo   || now.toISOString().slice(0, 10));
+  const dir  = String(direction || "all");
 
   try {
-    let inH: Record<string, unknown>[] = [], outH: Record<string, unknown>[] = [];
-    if (dir === "incoming" || dir === "all") inH = await queryInvoices(baseUrl, accessToken, "subject2", from, to);
-    if (dir === "outgoing" || dir === "all") outH = await queryInvoices(baseUrl, accessToken, "subject1", from, to);
-
-    // DEBUG: pokaż strukturę pierwszej metadanej (nazwy pól)
-    if (inH[0]) console.log("META incoming[0]:", JSON.stringify(inH[0]));
-    if (outH[0]) console.log("META outgoing[0]:", JSON.stringify(outH[0]));
+    let inH: Record<string, unknown>[] = [];
+    let outH: Record<string, unknown>[] = [];
+    if (dir === "incoming" || dir === "all") inH  = await queryMetadata(baseUrl, String(accessToken), "subject2", from, to);
+    if (dir === "outgoing" || dir === "all") outH = await queryMetadata(baseUrl, String(accessToken), "subject1", from, to);
 
     const [inRes, outRes] = await Promise.all([
-      inH.length ? saveInvoices(inH, baseUrl, accessToken, auth.tenantId!, auth.service!, "zakup") : Promise.resolve({ saved: [], errors: [] }),
-      outH.length ? saveInvoices(outH, baseUrl, accessToken, auth.tenantId!, auth.service!, "vat") : Promise.resolve({ saved: [], errors: [] }),
+      inH.length  ? saveInvoices(inH,  auth.tenantId!, auth.service!, "zakup") : Promise.resolve({ saved: 0, errors: [] }),
+      outH.length ? saveInvoices(outH, auth.tenantId!, auth.service!, "vat")   : Promise.resolve({ saved: 0, errors: [] }),
     ]);
 
     return jsonRes({
       ok: true,
-      incoming: { fetched: inH.length, saved: inRes.saved.length, errors: inRes.errors.length ? inRes.errors : undefined },
-      outgoing: { fetched: outH.length, saved: outRes.saved.length, errors: outRes.errors.length ? outRes.errors : undefined },
-      sample: inH[0] || outH[0] || null,
+      incoming: { fetched: inH.length,  saved: inRes.saved,  errors: inRes.errors.length  ? inRes.errors  : undefined },
+      outgoing: { fetched: outH.length, saved: outRes.saved, errors: outRes.errors.length ? outRes.errors : undefined },
     });
   } catch (e) {
     return jsonRes({ error: e instanceof Error ? e.message : String(e) }, 502);
