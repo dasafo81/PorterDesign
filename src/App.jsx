@@ -311,23 +311,6 @@ export function App(p){
   }
 
   // ── VARIANT ROOM LOGIC ──
-  function sortRoomsWithVariants(rooms){
-    var seen={};var sorted=[];
-    (rooms||[]).forEach(function(room){
-      if(room.variantGroup){
-        if(!seen[room.variantGroup]){
-          seen[room.variantGroup]=true;
-          var grp=(rooms||[]).filter(function(r){return r.variantGroup===room.variantGroup;});
-          grp.sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
-          grp.forEach(function(r){sorted.push(r);});
-        }
-      } else {
-        sorted.push(room);
-      }
-    });
-    return sorted;
-  }
-
   function duplicateRoomAsVariant(room){
     updateClient(curClientId,function(cl){
       var rooms=cl.rooms||[];
@@ -1892,6 +1875,23 @@ export function ModalAIValuation(p){
       )
     )
   ));
+}
+
+function sortRoomsWithVariants(rooms){
+  var seen={};var sorted=[];
+  (rooms||[]).forEach(function(room){
+    if(room.variantGroup){
+      if(!seen[room.variantGroup]){
+        seen[room.variantGroup]=true;
+        var grp=(rooms||[]).filter(function(r){return r.variantGroup===room.variantGroup;});
+        grp.sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+        grp.forEach(function(r){sorted.push(r);});
+      }
+    } else {
+      sorted.push(room);
+    }
+  });
+  return sorted;
 }
 
 // -- MODAL WYCENA UPROSZCZONA -- ZESTAWY
