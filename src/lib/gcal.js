@@ -8,6 +8,7 @@ export var GCAL_SCOPES = "https://www.googleapis.com/auth/calendar.readonly http
 
 var TOKEN_KEY = "pd_gcal_token";
 var TOKEN_EXP_KEY = "pd_gcal_token_exp";
+var TOKEN_HINT_KEY = "pd_gcal_hint";
 var REFRESH_MARGIN_MS = 60 * 1000; // odśwież minutę przed wygaśnięciem
 
 var _gisReadyPromise = null;
@@ -54,11 +55,12 @@ function readCachedToken() {
   } catch (x) { return null; }
 }
 
-function writeCachedToken(token, expiresInSec) {
+function writeCachedToken(token, expiresInSec, hint) {
   try {
     var exp = Date.now() + (expiresInSec || 3600) * 1000;
     localStorage.setItem(TOKEN_KEY, token);
     localStorage.setItem(TOKEN_EXP_KEY, String(exp));
+    if (hint) localStorage.setItem(TOKEN_HINT_KEY, hint);
   } catch (x) {}
 }
 
@@ -66,7 +68,12 @@ function clearCachedToken() {
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(TOKEN_EXP_KEY);
+    localStorage.removeItem(TOKEN_HINT_KEY);
   } catch (x) {}
+}
+
+function readHint() {
+  try { return localStorage.getItem(TOKEN_HINT_KEY) || ""; } catch(x) { return ""; }
 }
 
 function isExpired(exp) {
@@ -91,11 +98,19 @@ export function gcalLogin() {
     return new Promise(function(resolve, reject){
       var client = window.google.accounts.oauth2.initTokenClient({
         client_id: GCAL_CLIENT_ID,
-        scope: GCAL_SCOPES,
+        scope: GCAL_SCOPES + " https://www.googleapis.com/auth/userinfo.email",
         callback: function(resp){
           if (resp.error) { reject(new Error(resp.error_description || resp.error)); return; }
-          writeCachedToken(resp.access_token, resp.expires_in);
-          resolve(resp.access_token);
+          // Pobierz email i zapisz jako hint do cichego refresh (eliminuje account picker przy multi-koncie)
+          fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: { Authorization: "Bearer " + resp.access_token }
+          }).then(function(r){ return r.json(); }).then(function(info){
+            writeCachedToken(resp.access_token, resp.expires_in, info.email || "");
+            resolve(resp.access_token);
+          }).catch(function(){
+            writeCachedToken(resp.access_token, resp.expires_in, "");
+            resolve(resp.access_token);
+          });
         },
         error_callback: function(err){
           reject(new Error((err && err.message) || "Logowanie Google anulowane"));
@@ -111,14 +126,16 @@ function silentRefresh() {
   return loadGSI().then(function(){
     return new Promise(function(resolve, reject){
       var settled = false;
+      var hint = readHint(); // email hint — zapobiega account picker przy multi-koncie Google
       var client = window.google.accounts.oauth2.initTokenClient({
         client_id: GCAL_CLIENT_ID,
         scope: GCAL_SCOPES,
+        hint: hint || undefined,
         callback: function(resp){
           if (settled) return;
           settled = true;
           if (resp.error) { reject(new Error(resp.error_description || resp.error)); return; }
-          writeCachedToken(resp.access_token, resp.expires_in);
+          writeCachedToken(resp.access_token, resp.expires_in, hint);
           resolve(resp.access_token);
         },
         error_callback: function(err){
