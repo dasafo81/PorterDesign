@@ -1036,7 +1036,7 @@ function KsefView(){
              ["BRUTTO \u2013 do zap\u0142aty",invoiceDetail.totals&&invoiceDetail.totals.gross||selectedInv.total_gross]
             ].map(function(row,i){
               var last=i===2;
-              var val=(+row[1]||0).toLocaleString("pl-PL",
+              var val=(+(row[1]||0)).toLocaleString("pl-PL",
                 {minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142";
               return ce("div",{key:row[0],style:{display:"flex",
                 justifyContent:"space-between",padding:"8px 16px",
