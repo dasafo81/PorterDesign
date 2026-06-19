@@ -1067,7 +1067,8 @@ export function ScreenInvoices(p){
   var [mainTab,setMainTab]=useState("local");
   var [invoices,setInvoices]=useState([]);
   var [settings,setSettings]=useState(null);
-  var [editInv,setEditInv]=useState(null);   // null = nowa faktura
+  var [editInv,setEditInv]=useState(null);   // null = now
+  var [viewInv,setViewInv]=useState(null);   // podglad faktury KSeF w Moje fakturya faktura
   var [loading,setLoading]=useState(true);
   var [err,setErr]=useState(null);
 
@@ -1140,7 +1141,8 @@ export function ScreenInvoices(p){
       ),
       ce(InvoiceList,{
         invoices:invoices,
-        onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete
+        onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete,
+        onView:function(inv){ setViewInv(inv); }
       })
     ),
 
@@ -1154,6 +1156,78 @@ export function ScreenInvoices(p){
       settings:settings||{},
       onSaved:onSettingsSaved,
       onClose:function(){setView("list");}
-    })
+    }),
+
+    // Modal podglądu faktury KSeF z listy "Moje faktury"
+    viewInv&&ce("div",{
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,
+        display:"flex",alignItems:"flex-start",justifyContent:"center",
+        padding:"32px 16px",overflowY:"auto"},
+      onClick:function(e){if(e.target===e.currentTarget)setViewInv(null);}
+    },
+      ce("div",{style:{background:"var(--bg2)",borderRadius:14,padding:"24px 28px",
+        maxWidth:760,width:"100%",boxShadow:"0 24px 80px rgba(0,0,0,0.3)"}},
+        ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",
+          marginBottom:18,borderBottom:"2px solid var(--violet)",paddingBottom:12}},
+          ce("div",null,
+            ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--violet)"}},
+              viewInv.number||viewInv.ksef_number),
+            viewInv.ksef_number&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:3}},
+              "KSeF: "+viewInv.ksef_number)
+          ),
+          ce("button",{onClick:function(){setViewInv(null);},
+            style:{border:"none",background:"none",fontSize:22,
+              cursor:"pointer",color:"var(--t3)",lineHeight:1}},"\u00D7")
+        ),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}},
+          ["seller","buyer"].map(function(role){
+            var isS=role==="seller";
+            var name=isS?(viewInv.seller_name||viewInv.buyer_name||""):(viewInv.buyer_name||"");
+            var nip=isS?(viewInv.seller_nip||viewInv.buyer_nip||""):(viewInv.buyer_nip||"");
+            var lbl=isS?"\uD83C\uDFE2 SPRZEDAWCA":"\uD83D\uDC64 NABYWCA";
+            return ce("div",{key:role,style:{padding:"13px",background:"var(--bg)",
+              borderRadius:8,border:"1px solid var(--bd2)"}},
+              ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",
+                letterSpacing:"0.07em",marginBottom:5}},lbl),
+              ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},name||"—"),
+              nip&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},"NIP: "+nip)
+            );
+          })
+        ),
+        ce("div",{style:{display:"flex",gap:20,flexWrap:"wrap",marginBottom:18}},
+          [["Data wystawienia",viewInv.issue_date],["Data sprzeda\u017cy",viewInv.sale_date],
+           ["Termin p\u0142atno\u015bci",viewInv.due_date],["Waluta",viewInv.currency||"PLN"]
+          ].map(function(pair){
+            return ce("div",{key:pair[0]},
+              ce("div",{style:{fontSize:10,color:"var(--t3)",fontWeight:600,
+                letterSpacing:"0.06em"}},pair[0].toUpperCase()),
+              ce("div",{style:{fontSize:13,color:"var(--t1)",marginTop:2}},pair[1]||"—")
+            );
+          })
+        ),
+        ce("div",{style:{display:"flex",justifyContent:"flex-end"}},
+          ce("div",{style:{minWidth:240,border:"1px solid var(--bd2)",
+            borderRadius:8,overflow:"hidden"}},
+            [["Łączna kwota netto",viewInv.total_net],
+             ["VAT",viewInv.total_vat],
+             ["BRUTTO – do zapłaty",viewInv.total_gross]
+            ].map(function(row,i){
+              var last=i===2;
+              var val=(+(row[1]||0)).toLocaleString("pl-PL",
+                {minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142";
+              return ce("div",{key:row[0],style:{display:"flex",
+                justifyContent:"space-between",padding:"8px 16px",
+                background:last?"var(--violet)":"var(--bg)",
+                borderTop:i>0?"1px solid var(--bd2)":"none"}},
+                ce("span",{style:{fontSize:last?13:12,fontWeight:last?700:400,
+                  color:last?"white":"var(--t2)"}},row[0]),
+                ce("span",{style:{fontSize:last?14:12,fontWeight:700,
+                  color:last?"white":"var(--t1)"}},val)
+              );
+            })
+          )
+        )
+      )
+    )
   );
 }
