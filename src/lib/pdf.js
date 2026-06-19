@@ -157,8 +157,14 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
           subtypeLabel="Karnisz Prestige SQUARE";
         }else if(p.type==="karnisz_dek"){
           subtypeLabel="Karnisz dekoracyjny";
+        }else if(p.type==="zaluzja"){
+          var jt2=(p.c||{}).jt||"al25";
+          var JL2={al25:"\u017baluzja Alu 25mm",al35:"\u017baluzja Alu 35mm",al50:"\u017baluzja Alu 50mm",ba35:"\u017baluzja Bamboo 35mm",ba50:"\u017baluzja Bamboo 50mm",bs50:"\u017baluzja Basswood 50mm"};
+          subtypeLabel=JL2[jt2]||("\u017baluzja "+jt2);
+        }else if(p.type==="roleta_shadow"){
+          subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");
         }
-        var key=p.type==="inny"?(p.innyNazwa||"Inne"):(subtypeLabel||p.type);
+        var key=p.type==="inny"?(p.innyNazwa||"Inne"):(p.type==="zaluzja"?(subtypeLabel+"__"+p.id):(subtypeLabel||p.type));
         if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
         typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
         if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
