@@ -56,13 +56,11 @@ export function App(p){
   }),gcalToken=sGcalTok[0],setGcalToken=sGcalTok[1];
   var sGsiRdy=useState(false),gsiReady=sGsiRdy[0],setGsiReady=sGsiRdy[1];
   React.useEffect(function(){
+    // Tylko ładujemy bibliotekę GIS — NIE próbujemy silent refresh przy starcie.
+    // Silent refresh przez GIS implicit flow otwiera account picker gdy jest wiele kont Google.
+    // Token jest odświeżany leniwie: gdy użytkownik wchodzi na CRM/Tasks i token wygasł.
     gcalWaitReady().then(function(){
       setGsiReady(true);
-      var hadSession=false;
-      try{hadSession=!!localStorage.getItem("pd_gcal_token");}catch(x){}
-      if(hadSession&&!gcalHasValidToken()){
-        gcalGetToken().then(function(fresh){setGcalToken(fresh);}).catch(function(){});
-      }
     }).catch(function(){});
   },[]);
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
