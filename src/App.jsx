@@ -651,7 +651,7 @@ export function App(p){
         ce("div",{onClick:function(){openRoom(r.id);},style:{flex:1,cursor:"pointer"}},
           ce("div",{style:{fontSize:15,fontWeight:500,color:"var(--t1)",display:"flex",alignItems:"center",gap:6}},
             ce(InlineEdit,{value:r.name,
-              onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{name:v}):x;})});});},
+              onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{name:v,variantBaseName:x.variantGroup?v:x.variantBaseName}):x;})});});},
               inputStyle:{fontSize:13,fontWeight:500}}),
             r.variantGroup?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"rgba(5,150,105,0.12)",color:"#059669",borderRadius:6,padding:"2px 4px 2px 7px",verticalAlign:"middle",display:"inline-flex",alignItems:"center",gap:2}},"Wariant ",ce("input",{value:r.variantLabel||"",onClick:function(ev){ev.stopPropagation();},onChange:function(ev){ev.stopPropagation();var v=(ev.target.value||"").toUpperCase().slice(0,1);if(!v)return;updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{variantLabel:v,name:roomBaseName(x)}):x;})});});},style:{width:14,padding:0,border:"none",background:"transparent",color:"#059669",fontWeight:700,fontSize:10,letterSpacing:"0.06em",outline:"none",textTransform:"uppercase"}})):null
           ),
