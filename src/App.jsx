@@ -619,10 +619,11 @@ export function App(p){
             :ce("div",{onClick:function(ev){ev.stopPropagation();openRoom(r.id);},style:{width:120,height:120,display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg2)",borderRadius:12,cursor:"pointer",flexShrink:0,fontSize:36,color:"var(--t2)"}},r.name&&r.name[0]||"\u25a1");
         })(),
         ce("div",{onClick:function(){openRoom(r.id);},style:{flex:1,cursor:"pointer"}},
-          ce("div",{style:{fontSize:15,fontWeight:500,color:"var(--t1)"}},
+          ce("div",{style:{fontSize:15,fontWeight:500,color:"var(--t1)",display:"flex",alignItems:"center",gap:6}},
             ce(InlineEdit,{value:r.name,
               onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{name:v}):x;})});});},
-              inputStyle:{fontSize:13,fontWeight:500}})
+              inputStyle:{fontSize:13,fontWeight:500}}),
+            r.variantGroup?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"rgba(5,150,105,0.12)",color:"#059669",borderRadius:6,padding:"2px 7px",verticalAlign:"middle"}},"Wariant "+r.variantLabel):null
           ),
           ce("div",{onClick:function(){openRoom(r.id);},style:{fontSize:11,color:"var(--t3)",cursor:"pointer"}},(r.windows||[]).length+" okien")
         ),
