@@ -1062,12 +1062,222 @@ function KsefView(){
   );
 }
 
+
+// \u2500\u2500 PDF FAKTURY VAT (do druku) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function buildInvoicePDFHtml(inv,settings){
+  var s=settings||{};
+  var items=inv.invoice_items||[];
+  var seller=inv.seller_snapshot||{};
+  var fmtM=function(v){return (+(v||0)).toFixed(2).replace(".",",")+" z\u0142";};
+  var fmtD=function(d){if(!d)return "\u2014";var p=d.split("-");return p[2]+"."+p[1]+"."+p[0];};
+  var rowsHtml=items.map(function(it,i){
+    var vl=it.vat_rate===-1?"zw":(it.vat_rate+"%");
+    return "<tr><td>"+(i+1)+"</td><td style='text-align:left'>"+String(it.name||"")+"</td>"
+      +"<td>"+String(it.quantity||1)+"</td><td>"+String(it.unit||"szt")+"</td>"
+      +"<td>"+fmtM(it.unit_net)+"</td><td>"+fmtM(it.line_net)+"</td>"
+      +"<td>"+vl+"</td><td>"+fmtM(it.line_vat)+"</td>"
+      +"<td style='font-weight:700'>"+fmtM(it.line_gross)+"</td></tr>";
+  }).join("");
+  var docLabel={vat:"Faktura VAT",proforma:"Faktura Proforma",zaliczka:"Faktura Zaliczkowa",korekta:"Faktura Koryguj\u0105ca"}[inv.doc_type]||"Faktura";
+  var selName=seller.name||s.seller_name||"";
+  var selNip=seller.nip||s.seller_nip||"";
+  var selAddr=(seller.address||s.seller_address||"")+" "+(seller.postal||s.seller_postal||"")+" "+(seller.city||s.seller_city||"");
+  var selPhone=seller.phone||s.seller_phone||"";
+  var selEmail=seller.email||s.seller_email||"";
+  var selBank=seller.bank||s.seller_bank||"";
+  return "<!DOCTYPE html><html lang='pl'><head><meta charset='UTF-8'><title>"+(inv.number||docLabel)+"</title>"
+    +"<style>*{margin:0;padding:0;box-sizing:border-box;}"
+    +"body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a18;padding:14mm 12mm;}"
+    +"h1{font-size:18px;font-weight:700;margin-bottom:2mm;}"
+    +".meta{display:flex;justify-content:space-between;gap:20px;margin:6mm 0;}"
+    +".meta-block h4{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:3px;}"
+    +".meta-block p{font-size:10px;line-height:1.6;}"
+    +"table{width:100%;border-collapse:collapse;margin:6mm 0;}"
+    +"th{background:#1a1a18;color:#fff;font-size:8px;text-transform:uppercase;letter-spacing:0.06em;padding:5px 6px;text-align:right;}"
+    +"th:nth-child(2){text-align:left;}"
+    +"td{padding:5px 6px;text-align:right;border-bottom:0.5px solid #e5e5e0;font-size:9.5px;}"
+    +"td:nth-child(2){text-align:left;}"
+    +".sum-box{background:#1a1a18;color:#fff;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin:4mm 0;}"
+    +".info-row{display:flex;gap:6px;font-size:9px;color:#555;margin-top:2mm;}"
+    +".info-row span{background:#f5f5f3;padding:3px 8px;border-radius:4px;}"
+    +".sign-block{display:flex;justify-content:space-between;margin-top:14mm;}"
+    +".sign{width:170px;border-top:0.5px solid #1a1a18;padding-top:3px;font-size:8px;color:#666;text-align:center;}"
+    +"footer{margin-top:8mm;display:flex;justify-content:space-between;font-size:8px;color:#aaa;border-top:0.5px solid #e5e5e0;padding-top:3mm;}"
+    +"@media print{body{padding:12mm 10mm;} @page{size:A4;margin:0;}}"
+    +"</style></head><body>"
+    +"<div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6mm;padding-bottom:5mm;border-bottom:0.5px solid #c8c8c4;'>"
+    +"<div><div style='font-size:22px;font-weight:800;'>PORTER<br>DESIGN</div>"
+    +"<div style='font-size:8px;color:#888;'>Dekoracje okienne</div></div>"
+    +"<div style='text-align:right'><h1>"+(inv.number||docLabel)+"</h1>"
+    +"<div style='font-size:9px;color:#666;'>Wystawiono: "+fmtD(inv.issue_date)+"</div>"
+    +(inv.sale_date?"<div style='font-size:9px;color:#666;'>Data sprzeda\u017cy: "+fmtD(inv.sale_date)+"</div>":"")
+    +"</div></div>"
+    +"<div class='meta'>"
+    +"<div class='meta-block'><h4>Sprzedawca</h4><p><strong>"+selName+"</strong><br>"
+    +selAddr.trim()+(selAddr.trim()?"<br>":"")
+    +"NIP: "+selNip+(selPhone?"<br>Tel.: "+selPhone:"")+(selEmail?"<br>E-mail: "+selEmail:"")
+    +(selBank?"<br>Konto: "+selBank:"")+"</p></div>"
+    +"<div class='meta-block'><h4>Nabywca</h4><p><strong>"+(inv.buyer_name||"")+"</strong>"
+    +(inv.buyer_nip?"<br>NIP: "+inv.buyer_nip:"")
+    +(inv.buyer_address?"<br>"+inv.buyer_address:"")
+    +((inv.buyer_postal||inv.buyer_city)?"<br>"+(inv.buyer_postal||"")+" "+(inv.buyer_city||""):"")
+    +"</p></div>"
+    +"<div class='meta-block'><h4>P\u0142atno\u015b\u0107</h4><p>"
+    +"Forma: <strong>"+(inv.payment_method||"przelew")+"</strong><br>"
+    +"Termin: <strong>"+fmtD(inv.due_date)+"</strong>"
+    +(selBank?"<br>Nr konta:<br><strong>"+selBank+"</strong>":"")
+    +"</p></div></div>"
+    +"<table><thead><tr>"
+    +"<th>Lp.</th><th style='text-align:left'>Nazwa</th><th>Ilo\u015b\u0107</th><th>Jedn.</th>"
+    +"<th>Cena netto</th><th>Wart. netto</th><th>VAT</th><th>Wart. VAT</th><th>Wart. brutto</th>"
+    +"</tr></thead><tbody>"+rowsHtml+"</tbody></table>"
+    +"<div class='sum-box'><span style='font-size:10px;'>Do zap\u0142aty</span>"
+    +"<span style='font-size:18px;font-weight:700;'>"+(+(inv.total_gross||0)).toFixed(2).replace(".",",")+" z\u0142</span></div>"
+    +"<div class='info-row'><span>Netto: "+(+(inv.total_net||0)).toFixed(2).replace(".",",")+" z\u0142</span>"
+    +"<span>VAT: "+(+(inv.total_vat||0)).toFixed(2).replace(".",",")+" z\u0142</span></div>"
+    +(inv.notes?"<div style='margin-top:4mm;padding:6px 10px;background:#f5f5f3;border-radius:6px;font-size:9px;color:#555;'>"+String(inv.notes)+"</div>":"")
+    +"<div class='sign-block'>"
+    +"<div class='sign'>Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
+    +"<div class='sign'>Odebrano / Zatwierdzono</div></div>"
+    +"<footer><span>"+selName+" | "+(seller.city||s.seller_city||"")+"</span>"
+    +"<span>"+(inv.number||"")+"</span></footer>"
+    +"</body></html>";
+}
+
+// \u2500\u2500 EKRAN PO\u015aNIEDNI: AKCJE PO WYSTAWIENIU FAKTURY \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function InvoiceDetailView(p){
+  var [ksefBusy,setKsefBusy]=useState(false);
+  var [ksefMsg,setKsefMsg]=useState(null);
+  var [ksefErr,setKsefErr]=useState(null);
+  var [currentInv,setCurrentInv]=useState(p.invoice||{});
+
+  var isIssued=currentInv.status==="issued";
+  var ksefOk=currentInv.ksef_status==="confirmed";
+  var ksefSent=currentInv.ksef_status==="sent"||currentInv.ksef_status==="pending";
+  var ksefError=currentInv.ksef_status==="error";
+
+  function openPDF(){
+    var html=buildInvoicePDFHtml(currentInv,p.settings||{});
+    var w=window.open("","_blank");
+    if(!w){alert("Zablokowano popup. Zezw\u00f3l na wyskakuj\u0105ce okna.");return;}
+    w.document.write(html);
+    w.document.close();
+    setTimeout(function(){w.print();},600);
+  }
+
+  function sendToKsef(){
+    setKsefBusy(true); setKsefErr(null); setKsefMsg(null);
+    ksefApi.openSession()
+      .then(function(sess){
+        return ksefApi.sendInvoice(currentInv.id,sess.accessToken,sess.baseUrl);
+      })
+      .then(function(res){
+        setKsefMsg(res.ksefNumber
+          ?"\u2705 Wys\u0142ano do KSeF. Nr KSeF: "+res.ksefNumber
+          :"\u23F3 Faktura w kolejce KSeF (oczekuje na potwierdzenie)");
+        sbApi.getInvoices().then(function(all){
+          var updated=(all||[]).find(function(i){return i.id===currentInv.id;});
+          if(updated) setCurrentInv(updated);
+        });
+      })
+      .catch(function(e){ setKsefErr(e.message||"B\u0142\u0105d wys\u0142ki do KSeF"); })
+      .finally(function(){ setKsefBusy(false); });
+  }
+
+  var ksefStatusLabel=ksefOk?"\u2705 Potwierdzona w KSeF"
+    :ksefSent?"\u23F3 W kolejce KSeF"
+    :ksefError?"\u26A0\uFE0F B\u0142\u0105d KSeF"
+    :"\u26AA Nie wys\u0142ano do KSeF";
+  var ksefStatusColor=ksefOk?"#065f46":ksefSent?"#92400e":ksefError?"#b91c1c":"var(--t3)";
+
+  return ce("div",{style:{maxWidth:720,margin:"0 auto",paddingBottom:40}},
+    // Nag\u0142\u00f3wek
+    ce("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:24}},
+      ce("button",{onClick:p.onClose,style:Object.assign({},btnSecondary,{padding:"7px 12px"})},
+        "\u2190 Lista faktur"),
+      ce("div",{style:{flex:1}},
+        ce("h2",{style:{margin:0,fontSize:20,fontWeight:800,color:"var(--t1)"}},currentInv.number||"Faktura"),
+        ce("div",{style:{fontSize:13,color:"var(--t3)",marginTop:2}},
+          (currentInv.buyer_name||"\u2014")+" \u2022 "+fmtDate(currentInv.issue_date)+" \u2022 "+fmtMoney(currentInv.total_gross))
+      ),
+      ce("button",{onClick:p.onEdit,style:btnSecondary},"\u270F\uFE0F Edytuj")
+    ),
+    // Baner sukcesu
+    ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:12,
+      padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}},
+      ce("span",{style:{fontSize:24}},"\u2705"),
+      ce("div",null,
+        ce("div",{style:{fontSize:14,fontWeight:700,color:"#065f46"}},"Faktura wystawiona"),
+        ce("div",{style:{fontSize:12,color:"#047857",marginTop:2}},
+          "Pobierz PDF i wy\u015blij klientowi. Wy\u015blij do KSeF dopiero po akceptacji przez klienta.")
+      )
+    ),
+    // Akcje
+    ce("div",{style:Object.assign({},card,{marginBottom:16})},
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
+        textTransform:"uppercase",marginBottom:14}},"Akcje"),
+      ce("div",{style:{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap"}},
+        ce("button",{onClick:openPDF,
+          style:{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            padding:"14px 18px",borderRadius:10,border:"2px solid var(--violet)",
+            background:"var(--violet)",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:600}},
+          "\uD83D\uDCC4 Pobierz / Drukuj PDF"),
+        currentInv.buyer_email&&ce("button",{
+          onClick:function(){
+            var mailto="mailto:"+encodeURIComponent(currentInv.buyer_email)
+              +"?subject="+encodeURIComponent("Faktura "+(currentInv.number||""))
+              +"&body="+encodeURIComponent("Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
+                +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
+                +".\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design");
+            window.open(mailto);
+          },
+          style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            padding:"14px 18px",borderRadius:10,border:"1px solid var(--bd2)",
+            background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:13,fontWeight:500}},
+          "\uD83D\uDCE7 Otw\u00f3rz w poczcie")
+      ),
+      ce("div",{style:{height:1,background:"var(--bd2)",margin:"14px 0"}}),
+      // KSeF
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}},
+        ce("div",null,
+          ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:3}},"Status KSeF"),
+          ce("div",{style:{fontSize:12,color:ksefStatusColor,fontWeight:500}},ksefStatusLabel),
+          currentInv.ksef_number&&ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:2}},
+            "Nr KSeF: "+currentInv.ksef_number)
+        ),
+        !ksefOk&&isIssued&&ce("button",{
+          onClick:sendToKsef,
+          disabled:ksefBusy||ksefSent,
+          style:Object.assign({},ksefBusy||ksefSent
+            ?{border:"1px solid var(--bd2)",background:"var(--bg2)",color:"var(--t3)",cursor:"not-allowed"}
+            :{border:"none",background:"#1d4ed8",color:"#fff",cursor:"pointer"},
+            {borderRadius:9,padding:"10px 20px",fontSize:13,fontWeight:600})},
+          ksefBusy?"\u23F3 Wysy\u0142am...":ksefSent?"\u23F3 W kolejce...":"\uD83D\uDCE4 Wy\u015blij do KSeF")
+      ),
+      ksefMsg&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"#d1fae5",
+        borderRadius:8,fontSize:12,color:"#065f46"}},ksefMsg),
+      ksefErr&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"#fef2f2",
+        borderRadius:8,fontSize:12,color:"#b91c1c"}},"\u26A0\uFE0F "+ksefErr)
+    ),
+    // Cofnij do szkicu
+    !ksefOk&&ce("div",{style:{border:"1px solid #fca5a5",borderRadius:12,
+      padding:"14px 18px",background:"#fff8f8"}},
+      ce("div",{style:{fontSize:12,fontWeight:700,color:"#b91c1c",marginBottom:6}},
+        "Klient nie zaakceptowa\u0142 faktury?"),
+      ce("div",{style:{fontSize:12,color:"#7f1d1d",marginBottom:10}},
+        "Mo\u017cesz cofn\u0105\u0107 faktur\u0119 do szkicu \u2014 numer zostanie usuni\u0119ty, faktura nie trafi do KSeF."),
+      ce("button",{onClick:p.onRevoke,style:btnDanger},"\u21A9 Cofnij do szkicu")
+    )
+  );
+}
+
 export function ScreenInvoices(p){
   var [view,setView]=useState("list");       // list | editor | settings
   var [mainTab,setMainTab]=useState("local");
   var [invoices,setInvoices]=useState([]);
   var [settings,setSettings]=useState(null);
   var [editInv,setEditInv]=useState(null);   // null = now
+  var [detailInv,setDetailInv]=useState(null); // faktura po zapisaniu
   var [viewInv,setViewInv]=useState(null);
   var [viewDetail,setViewDetail]=useState(null);
   var [viewDetailLoading,setViewDetailLoading]=useState(false);
@@ -1102,9 +1312,13 @@ export function ScreenInvoices(p){
   function openSettings(){ setView("settings"); }
 
   function onSaved(result){
-    // Odśwież listę
     sbApi.getInvoices().then(function(data){ setInvoices(data||[]); });
-    setView("list");
+    if(result&&result.status==="issued"){
+      setDetailInv(result);
+      setView("detail");
+    } else {
+      setView("list");
+    }
   }
   function onSettingsSaved(newSettings){
     setSettings(newSettings);
@@ -1162,6 +1376,22 @@ export function ScreenInvoices(p){
         }
       })
     ),
+
+    !loading&&view==="detail"&&detailInv&&ce(InvoiceDetailView,{
+      invoice:detailInv,
+      settings:settings||{},
+      onEdit:function(){ setEditInv(detailInv); setView("editor"); },
+      onRevoke:function(){
+        if(!confirm("Cofnąć fakturę do szkicu? Numer zostanie usunięty.")) return;
+        sbApi.updateInvoice(detailInv.id,{status:"draft",number:null})
+          .then(function(){
+            sbApi.getInvoices().then(function(data){setInvoices(data||[]);});
+            setView("list");
+          })
+          .catch(function(e){alert("Błąd: "+e.message);});
+      },
+      onClose:function(){setView("list");}
+    }),
 
     !loading&&view==="editor"&&ce(InvoiceEditor,{
       invoice:editInv, settings:settings||{},
