@@ -1985,7 +1985,24 @@ function ModalSimplifiedPDF(p){
           ce("span",{style:{fontSize:12,color:"var(--t3)",fontWeight:600,whiteSpace:"nowrap"}},"Nazwa:"),
           ce("input",{value:activeSet.name,onChange:function(ev){updateName(activeIdx,ev.target.value);},style:{flex:1,padding:"6px 10px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)"}})
         ),
-        (client.rooms||[]).map(function(room){
+        (function(){
+          // Sort: group room variants together (A then B then C), preserve original order for non-variants
+          var allRooms=client.rooms||[];
+          var seen={};var sorted=[];
+          allRooms.forEach(function(room,origIdx){
+            if(room.variantGroup){
+              if(!seen[room.variantGroup]){
+                seen[room.variantGroup]=true;
+                var group=allRooms.filter(function(r){return r.variantGroup===room.variantGroup;});
+                group.sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+                group.forEach(function(r){sorted.push(r);});
+              }
+            } else {
+              sorted.push(room);
+            }
+          });
+          return sorted;
+        })().map(function(room){
           var rc=buildRoomChoices(room);
           if(!rc.order.length)return null;
           var roomLabel=(room.variantBaseName||room.name)+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
