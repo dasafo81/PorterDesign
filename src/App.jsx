@@ -973,7 +973,7 @@ export function App(p){
 
       return ce("div",{key:r.id,style:{marginBottom:20}},
         ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase",marginBottom:10}},
-          (r.variantBaseName||r.name)+(r.variantGroup?" \u2014 Wariant "+r.variantLabel:"")+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142")
+          roomBaseName(r)+(r.variantGroup?" \u2014 Wariant "+r.variantLabel:"")+(hasVariants?" \u2014 od "+withComm(roomBaseTotal)+" z\u0142":" \u2014 "+withComm(roomBaseTotal)+" z\u0142")
         ),
         rows
       );
@@ -1877,6 +1877,12 @@ export function ModalAIValuation(p){
   ));
 }
 
+function roomBaseName(room){
+  if(room.variantBaseName)return room.variantBaseName;
+  // strip ' — Wariant X' suffix from legacy names
+  return (room.name||'').replace(/ — Wariant [A-Z]$/,'');
+}
+
 function sortRoomsWithVariants(rooms){
   var seen={};var sorted=[];
   (rooms||[]).forEach(function(room){
@@ -2022,7 +2028,7 @@ function ModalSimplifiedPDF(p){
         })().map(function(room){
           var rc=buildRoomChoices(room);
           if(!rc.order.length)return null;
-          var roomLabel=(room.variantBaseName||room.name)+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
+          var roomLabel=roomBaseName(room)+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
           return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
             ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.05em",textTransform:"uppercase",borderBottom:"1px solid var(--bd2)"}},roomLabel),
             rc.order.map(function(key,ki){
