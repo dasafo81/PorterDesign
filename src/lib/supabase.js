@@ -407,6 +407,10 @@ export const ksefApi = {
   sendInvoice: function(invoiceId, accessToken, baseUrl) {
     return ksefFetch("POST", "/api/ksef/send", { invoiceId: invoiceId, accessToken: accessToken, baseUrl: baseUrl });
   },
+  // Pobierz pełny XML i dane pojedynczej faktury z KSeF
+  getInvoice: function(accessToken, baseUrl, ksefNumber) {
+    return ksefFetch("POST", "/api/ksef/invoice", { accessToken: accessToken, baseUrl: baseUrl, ksefNumber: ksefNumber });
+  },
   // Pobierz faktury z KSeF 2.0 (kosztowe i/lub sprzedażowe)
   receiveInvoices: function(accessToken, baseUrl, direction, dateFrom, dateTo) {
     return ksefFetch("POST", "/api/ksef/receive", { accessToken: accessToken, baseUrl: baseUrl, direction: direction, dateFrom: dateFrom, dateTo: dateTo });
