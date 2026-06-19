@@ -87,8 +87,11 @@ function parseFA3(xml: string) {
       return map[raw.toLowerCase()] || map[raw] || raw;
     })(),
     dueDate: (() => {
-      const raw = xmlVal(fa, "TerminPlatnosci") || xmlVal(fa, "DataZaplaty") || "";
-      // Może być data ISO lub liczba dni
+      // TerminPlatnosci zawiera zagniezdzone <Termin>data</Termin> lub <Dni>N</Dni>
+      const block = xmlBlock(fa, "TerminPlatnosci") || "";
+      const termin = block ? (xmlVal(block, "Termin") || xmlVal(block, "DataZaplaty") || xmlVal(block, "Dni") || "") : "";
+      const raw = termin || xmlVal(fa, "DataZaplaty") || "";
+      if (!raw) return "";
       if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
       if (/^\d+$/.test(raw)) return raw + " dni";
       return raw;
@@ -126,15 +129,19 @@ function parseFA3(xml: string) {
     : [];
 
   // Podsumowanie
-  const totals = {
-    net:   parseFloat(xmlVal(fa, "P_13_Razem") || xmlVal(fa, "P_15") || "0"),
-    vat:   parseFloat(xmlVal(fa, "P_14_Razem") || "0"),
-    gross: parseFloat(xmlVal(fa, "P_15") || "0"),
-  };
-  // Fallback z metadanych jeśli XML nie ma sum
-  if (!totals.gross && items.length > 0) {
-    totals.net = items.reduce((s, i) => s + i.netVal, 0);
-  }
+  // FA(3): P_13_x to sumy netto per stawka VAT, P_14_x to sumy VAT per stawka
+  // P_13_Razem/P_14_Razem to łączne sumy (opcjonalne), P_15 = brutto do zapłaty
+  const netRaw   = xmlVal(fa, "P_13_Razem") || "";
+  const vatRaw   = xmlVal(fa, "P_14_Razem") || "";
+  const grossRaw = xmlVal(fa, "P_15")       || "";
+  let netVal   = parseFloat(netRaw)   || 0;
+  let vatVal   = parseFloat(vatRaw)   || 0;
+  let grossVal = parseFloat(grossRaw) || 0;
+  // Fallback: jeśli nie ma sum zbiorczych, zsumuj z pozycji
+  if (!netVal && items.length > 0) netVal = items.reduce((s, i) => s + (i.netVal || 0), 0);
+  // Jeśli brutto = 0 lub równe netto (błąd parsowania) — oblicz z netto+VAT
+  if (!grossVal || Math.abs(grossVal - netVal) < 0.01) grossVal = netVal + vatVal;
+  const totals = { net: netVal, vat: vatVal, gross: grossVal };
 
   return { seller, buyer, header, items, totals };
 }
