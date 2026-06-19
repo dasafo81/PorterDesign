@@ -1891,13 +1891,22 @@ function ModalSimplifiedPDF(p){
 
   function makeInitSel(){
     var init={};
+    var roomGroupFirst={};
     (client.rooms||[]).forEach(function(room){
+      if(room.variantGroup){
+        if(!roomGroupFirst[room.variantGroup])roomGroupFirst[room.variantGroup]=room.variantLabel||"A";
+        else if((room.variantLabel||"A")<roomGroupFirst[room.variantGroup])roomGroupFirst[room.variantGroup]=room.variantLabel||"A";
+      }
+    });
+    (client.rooms||[]).forEach(function(room){
+      var isRoomVariant=!!room.variantGroup;
+      var isFirstRV=!isRoomVariant||(room.variantLabel===roomGroupFirst[room.variantGroup]);
       var wins=room.windows||[];var groups={};
       wins.forEach(function(w){var key=w.variantGroup||("solo_"+w.id);if(!groups[key])groups[key]=[];groups[key].push(w);});
       Object.keys(groups).forEach(function(key){
         var gWins=groups[key];
-        if(key.indexOf("solo_")===0){init[room.id+"__"+key]=true;}
-        else{var sorted=gWins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});init[room.id+"__"+key]=sorted[0].id;}
+        if(key.indexOf("solo_")===0){init[room.id+"__"+key]=isFirstRV;}
+        else{var sorted=gWins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});init[room.id+"__"+key]=isFirstRV?sorted[0].id:false;}
       });
     });
     return init;
