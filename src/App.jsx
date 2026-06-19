@@ -309,6 +309,37 @@ export function App(p){
     });
   }
 
+  // ── VARIANT ROOM LOGIC ──
+  function duplicateRoomAsVariant(room){
+    updateClient(curClientId,function(cl){
+      var rooms=cl.rooms||[];
+      var grpId=room.variantGroup||("rvg_"+room.id);
+      var letters="ABCDEFGHIJ";
+      var newRooms=rooms.map(function(r){
+        if(r.id!==room.id)return r;
+        if(!r.variantGroup){
+          var baseName=r.name;
+          return mg(r,{variantGroup:grpId,variantLabel:"A",variantBaseName:baseName,name:baseName+" — Wariant A"});
+        }
+        return r;
+      });
+      var countInGroup=newRooms.filter(function(r){return r.variantGroup===grpId;}).length;
+      var nextLetter=letters[countInGroup]||"?";
+      var srcRoom=newRooms.find(function(r){return r.id===room.id;})||room;
+      var baseName=srcRoom.variantBaseName||room.name;
+      var newVariant=JSON.parse(JSON.stringify(srcRoom));
+      newVariant.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+      newVariant.windows=(newVariant.windows||[]).map(function(w){
+        return mg(w,{id:Date.now()+"_"+Math.random().toString(36).slice(2,7)});
+      });
+      newVariant.variantGroup=grpId;
+      newVariant.variantLabel=nextLetter;
+      newVariant.variantBaseName=baseName;
+      newVariant.name=baseName+" — Wariant "+nextLetter;
+      return mg(cl,{rooms:newRooms.concat([newVariant])});
+    });
+  }
+
   function addRoom(name,img){
     var newRoom={id:Date.now(),name:name,img:img||null,windows:[]};
     updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).concat([newRoom])});});
@@ -629,6 +660,11 @@ export function App(p){
         ),
         rTotal?ce("span",{onClick:function(){openRoom(r.id);},style:{fontSize:12,fontWeight:600,color:"var(--gr)",cursor:"pointer"}},roundTo10(rTotal)+" z\u0142"):null,
         ce("span",{onClick:function(){openRoom(r.id);},style:{color:"var(--t3)",fontSize:13,cursor:"pointer"}},"\u203a"),
+        ce("button",{
+          onClick:function(ev){ev.stopPropagation();duplicateRoomAsVariant(r);},
+          title:"Utw\u00f3rz wariant tego pomieszczenia",
+          style:{position:"absolute",top:8,right:40,border:"1px solid #059669",background:"rgba(5,150,105,0.10)",cursor:"pointer",fontSize:11,color:"#059669",padding:"4px 8px",borderRadius:6,fontWeight:600,whiteSpace:"nowrap"}
+        },"\u2B6F Wariant"),
         ce("button",{
           onClick:function(ev){
             ev.stopPropagation();
