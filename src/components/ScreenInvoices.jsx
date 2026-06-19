@@ -976,18 +976,24 @@ function KsefView(){
                 letterSpacing:"0.07em",marginBottom:5}},label),
               ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},
                 party.name||"\u2014"),
-              party.nip&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},
-                "NIP: "+party.nip),
-              party.address&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},party.address)
+              party.nip&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},"NIP: "+party.nip),
+              party.street&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},party.street),
+              party.city&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},party.city),
+              party.email&&ce("div",{style:{fontSize:11,color:"#888",marginTop:2}},party.email)
             );
           })
         ),
         ce("div",{style:{display:"flex",gap:20,flexWrap:"wrap",marginBottom:16}},
-          [["Data wystawienia",(invoiceDetail.header&&invoiceDetail.header.issueDate)||selectedInv.issue_date],
-           ["Termin p\u0142atno\u015bci",(invoiceDetail.header&&invoiceDetail.header.dueDate)||selectedInv.due_date||"\u2014"],
-           ["Forma p\u0142atno\u015bci",(invoiceDetail.header&&invoiceDetail.header.paymentForm)||"\u2014"],
-           ["Waluta",(invoiceDetail.header&&invoiceDetail.header.currency)||selectedInv.currency||"PLN"]
-          ].map(function(p){
+          (function(){
+            var h=invoiceDetail.header||{};
+            return [
+              ["Data wystawienia",h.issueDate||selectedInv.issue_date],
+              ["Termin p\u0142atno\u015bci",h.dueDate||selectedInv.due_date||"\u2014"],
+              ["Forma p\u0142atno\u015bci",h.paymentForm||"\u2014"],
+              ["Waluta",h.currency||selectedInv.currency||"PLN"],
+              h.mpp?["MPP","TAK"]:null,
+            ].filter(Boolean);
+          })().map(function(p){
             return ce("div",{key:p[0]},
               ce("div",{style:{fontSize:10,color:"var(--t3)",fontWeight:600,
                 letterSpacing:"0.06em"}},p[0].toUpperCase()),
@@ -1050,10 +1056,16 @@ function KsefView(){
             })
           )
         ),
+        invoiceDetail.header&&invoiceDetail.header.bankAccount&&ce("div",{
+          style:{marginTop:12,padding:"10px 14px",background:"#f8f8fb",
+            borderRadius:8,border:"1px solid #e5e7eb",fontSize:12}},
+          ce("div",{style:{fontSize:10,fontWeight:700,color:"#888",letterSpacing:"0.06em",marginBottom:3}},"NUMER KONTA"),
+          ce("span",{style:{fontFamily:"monospace",color:"#111"}},invoiceDetail.header.bankAccount)
+        ),
         invoiceDetail.header&&invoiceDetail.header.notes&&ce("div",{
-          style:{marginTop:12,padding:"10px 14px",background:"var(--bg)",
-            borderRadius:8,border:"1px solid var(--bd2)",fontSize:12,color:"var(--t2)"}},
-          ce("span",{style:{fontWeight:600}},"Uwagi: "),
+          style:{marginTop:8,padding:"10px 14px",background:"#fffbeb",
+            borderRadius:8,border:"1px solid #fde68a",fontSize:12,color:"#78350f"}},
+          ce("div",{style:{fontWeight:700,marginBottom:3}},"Uwagi"),
           invoiceDetail.header.notes
         )
       )
