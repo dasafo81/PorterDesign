@@ -288,7 +288,7 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
   var validDate=new Date(now.getTime()+30*24*60*60*1000);var validStr=validDate.toLocaleDateString("pl-PL");
   var offerNo=getPDFOfferNumber(client);
   function calcProd(p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return comm>0?base*(1+comm):base;}
-  function sewingInfo(p){var c=p.c||{};var sz=c.sz||"wave";var mars=+(c.mars||1.5);if(sz==="flex")return "Flex "+Math.round(mars*100)+"%";return "Wave "+Math.round(mars*100)+"%";}
+  function sewingInfo(p){var c=p.c||{};var sz;if(c.sz==="wave"||c.model==="wave"){sz="Wave";}else if(c.model==="falda"){var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podwójny",potrojna:"Flex Potrójny",plaska:"Fałda Płaska",studio:"Fałda Studio"};sz=c.foldType?foldMap[c.foldType]||("Fałda "+c.foldType):"Fałda";}else if(c.model==="tasma"){sz=c.typMarszczenia||"Smok";}else{sz="Flex";}var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";return sz+" "+mars;}
   function buildWinRowsSel(windows){
     var typeData={};var typeOrder=[];var total=0;
     (windows||[]).forEach(function(w){(w.products||[]).forEach(function(p){
