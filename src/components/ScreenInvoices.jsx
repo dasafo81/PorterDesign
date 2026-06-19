@@ -984,7 +984,7 @@ function KsefView(){
         ),
         ce("div",{style:{display:"flex",gap:20,flexWrap:"wrap",marginBottom:16}},
           [["Data wystawienia",(invoiceDetail.header&&invoiceDetail.header.issueDate)||selectedInv.issue_date],
-           ["Termin p\u0142atno\u015bci",(invoiceDetail.header&&invoiceDetail.header.dueDate)||"\u2014"],
+           ["Termin p\u0142atno\u015bci",(invoiceDetail.header&&invoiceDetail.header.dueDate)||selectedInv.due_date||"\u2014"],
            ["Forma p\u0142atno\u015bci",(invoiceDetail.header&&invoiceDetail.header.paymentForm)||"\u2014"],
            ["Waluta",(invoiceDetail.header&&invoiceDetail.header.currency)||selectedInv.currency||"PLN"]
           ].map(function(p){
