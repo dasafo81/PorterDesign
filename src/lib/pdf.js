@@ -302,13 +302,13 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       var subtypeLabel="";
       if(p.type==="roleta"){var m=(p.c||{}).rModel||"relax";var ML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};subtypeLabel="Roleta "+(ML[m]||m);}
       else if(p.type==="roleta_shadow"){subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");}
-      else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
+      else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba35:"Bamboo 35mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
       else if(p.type==="szyna"){subtypeLabel="Szyna KS "+((p.c||{}).ks==="wave"?"Wave":"Flex");}
       else if(p.type==="karnisz"){var km=(p.c||{}).km||"slim";subtypeLabel="Karnisz el. "+(km==="slim"?"Slim":km==="univ"?"Univ":km);}
       else if(p.type==="prestige_round")subtypeLabel="Karnisz Prestige ROUND";
       else if(p.type==="prestige_square")subtypeLabel="Karnisz Prestige SQUARE";
       else if(p.type==="karnisz_dek")subtypeLabel="Karnisz dekoracyjny";
-      var key=p.type==="inny"?(p.innyNazwa||"Inne"):(subtypeLabel||p.type);
+      var key=p.type==="inny"?(p.innyNazwa||"Inne"):(p.type==="zaluzja"?(subtypeLabel+"__"+p.id):(subtypeLabel||p.type));
       if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
       typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
       if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
