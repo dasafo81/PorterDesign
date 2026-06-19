@@ -1182,50 +1182,71 @@ export function ScreenInvoices(p){
             style:{border:"none",background:"none",fontSize:22,
               cursor:"pointer",color:"var(--t3)",lineHeight:1}},"\u00D7")
         ),
+        viewDetailLoading&&ce("div",{style:{textAlign:"center",padding:"20px 0",color:"#888",fontSize:13}},
+          "\u23F3 Pobieranie szczeg\u00f3\u0142\u00f3w z KSeF..."),
         ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}},
           ["seller","buyer"].map(function(role){
             var isS=role==="seller";
-            var name=isS?(viewInv.seller_name||viewInv.buyer_name||""):(viewInv.buyer_name||"");
-            var nip=isS?(viewInv.seller_nip||viewInv.buyer_nip||""):(viewInv.buyer_nip||"");
+            var det=viewDetail&&viewDetail[role]||{};
+            var name=det.name||(isS?(viewInv.buyer_name||""):"PD Porter Design Paulina Porter");
+            var nip=det.nip||(isS?(viewInv.buyer_nip||""):"8121803400");
+            var addr=det.address||"";
             var lbl=isS?"\uD83C\uDFE2 SPRZEDAWCA":"\uD83D\uDC64 NABYWCA";
-            return ce("div",{key:role,style:{padding:"13px",background:"var(--bg)",
-              borderRadius:8,border:"1px solid var(--bd2)"}},
-              ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",
+            return ce("div",{key:role,style:{padding:"13px",background:"#f8f8fb",
+              borderRadius:8,border:"1px solid #e5e7eb"}},
+              ce("div",{style:{fontSize:10,fontWeight:700,color:"#888",
                 letterSpacing:"0.07em",marginBottom:5}},lbl),
-              ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},name||"—"),
-              nip&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},"NIP: "+nip)
+              ce("div",{style:{fontSize:13,fontWeight:600,color:"#111"}},name||"\u2014"),
+              nip&&ce("div",{style:{fontSize:11,color:"#666",marginTop:2}},"NIP: "+nip),
+              addr&&ce("div",{style:{fontSize:11,color:"#666"}},addr)
             );
           })
         ),
         ce("div",{style:{display:"flex",gap:20,flexWrap:"wrap",marginBottom:18}},
-          [["Data wystawienia",viewInv.issue_date],["Data sprzeda\u017cy",viewInv.sale_date],
-           ["Termin p\u0142atno\u015bci",viewInv.due_date],["Waluta",viewInv.currency||"PLN"]
+          [["Data wystawienia",(viewDetail&&viewDetail.header&&viewDetail.header.issueDate)||viewInv.issue_date],
+           ["Termin p\u0142atno\u015bci",(viewDetail&&viewDetail.header&&viewDetail.header.dueDate)||viewInv.due_date||"\u2014"],
+           ["Forma p\u0142atno\u015bci",(viewDetail&&viewDetail.header&&viewDetail.header.paymentForm)||"\u2014"],
+           ["Waluta",(viewDetail&&viewDetail.header&&viewDetail.header.currency)||viewInv.currency||"PLN"]
           ].map(function(pair){
             return ce("div",{key:pair[0]},
-              ce("div",{style:{fontSize:10,color:"var(--t3)",fontWeight:600,
-                letterSpacing:"0.06em"}},pair[0].toUpperCase()),
-              ce("div",{style:{fontSize:13,color:"var(--t1)",marginTop:2}},pair[1]||"—")
+              ce("div",{style:{fontSize:10,color:"#888",fontWeight:600,letterSpacing:"0.06em"}},pair[0].toUpperCase()),
+              ce("div",{style:{fontSize:13,color:"#111",marginTop:2}},pair[1]||"\u2014")
             );
           })
         ),
-        ce("div",{style:{display:"flex",justifyContent:"flex-end"}},
-          ce("div",{style:{minWidth:240,border:"1px solid var(--bd2)",
-            borderRadius:8,overflow:"hidden"}},
-            [["Łączna kwota netto",viewInv.total_net],
-             ["VAT",viewInv.total_vat],
-             ["BRUTTO – do zapłaty",viewInv.total_gross]
+        viewDetail&&viewDetail.items&&viewDetail.items.length>0&&ce("div",{style:{marginBottom:16}},
+          ce("div",{style:{fontSize:10,fontWeight:700,color:"#888",letterSpacing:"0.08em",marginBottom:6}},"POZYCJE FAKTURY"),
+          ce("div",{style:{border:"1px solid #e5e7eb",borderRadius:8,overflow:"hidden"}},
+            ce("div",{style:{display:"grid",gridTemplateColumns:"2fr 55px 70px 80px 55px 90px",
+              gap:6,padding:"7px 12px",background:"#f8f8fb",fontSize:10,fontWeight:700,color:"#888",letterSpacing:"0.05em"}},
+              ["NAZWA","J.M.","ILO\u015a\u0106","CENA NETTO","VAT","NETTO"].map(function(h){ return ce("div",{key:h},h); })
+            ),
+            viewDetail.items.map(function(item,i){
+              return ce("div",{key:i,style:{display:"grid",gridTemplateColumns:"2fr 55px 70px 80px 55px 90px",
+                gap:6,padding:"7px 12px",borderTop:"1px solid #f0f0f0",fontSize:12,color:"#111"}},
+                ce("div",null,item.name||"\u2014"),
+                ce("div",{style:{color:"#888"}},item.unit||"szt."),
+                ce("div",{style:{textAlign:"right"}},String(item.qty||1).replace(".",",")),
+                ce("div",{style:{textAlign:"right"}},item.netPrice?(+(item.netPrice)).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142":"\u2014"),
+                ce("div",{style:{textAlign:"center",color:"#888"}},item.vatRate||"\u2014"),
+                ce("div",{style:{textAlign:"right",fontWeight:600}},item.netVal?(+(item.netVal)).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142":"\u2014")
+              );
+            })
+          )
+        ),
+        ce("div",{style:{display:"flex",justifyContent:"flex-end",marginTop:4}},
+          ce("div",{style:{minWidth:260,border:"1px solid #e5e7eb",borderRadius:8,overflow:"hidden"}},
+            [["\u0141\u0105czna kwota netto",(viewDetail&&viewDetail.totals&&viewDetail.totals.net)||viewInv.total_net],
+             ["VAT",(viewDetail&&viewDetail.totals&&viewDetail.totals.vat)||viewInv.total_vat],
+             ["BRUTTO \u2013 do zap\u0142aty",(viewDetail&&viewDetail.totals&&viewDetail.totals.gross)||viewInv.total_gross]
             ].map(function(row,i){
               var last=i===2;
-              var val=(+(row[1]||0)).toLocaleString("pl-PL",
-                {minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142";
-              return ce("div",{key:row[0],style:{display:"flex",
-                justifyContent:"space-between",padding:"8px 16px",
-                background:last?"var(--violet)":"var(--bg)",
-                borderTop:i>0?"1px solid var(--bd2)":"none"}},
-                ce("span",{style:{fontSize:last?13:12,fontWeight:last?700:400,
-                  color:last?"white":"var(--t2)"}},row[0]),
-                ce("span",{style:{fontSize:last?14:12,fontWeight:700,
-                  color:last?"white":"var(--t1)"}},val)
+              var val=(+(row[1]||0)).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" z\u0142";
+              return ce("div",{key:row[0],style:{display:"flex",justifyContent:"space-between",
+                padding:"8px 16px",background:last?"var(--violet)":"#fff",
+                borderTop:i>0?"1px solid #e5e7eb":"none"}},
+                ce("span",{style:{fontSize:last?13:12,fontWeight:last?700:400,color:last?"white":"#555"}},row[0]),
+                ce("span",{style:{fontSize:last?14:12,fontWeight:700,color:last?"white":"#111"}},val)
               );
             })
           )
