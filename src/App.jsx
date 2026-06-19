@@ -97,10 +97,29 @@ export function App(p){
   function hasRoomData(r){return !!(r.windows&&r.windows.some(function(w){return hasWinData(w);}));}
   function hasClientData(cl){return !!(cl.rooms&&cl.rooms.some(function(r){return hasRoomData(r)||r.windows&&r.windows.length>0;}));}
 
+  // Usuwa osierocone variantGroup z pokoi (pokój sam w grupie bez wariantu B)
+  function migrateClients(cls){
+    return (cls||[]).map(function(cl){
+      var rooms=cl.rooms||[];
+      var grpCount={};
+      rooms.forEach(function(r){if(r.variantGroup)grpCount[r.variantGroup]=(grpCount[r.variantGroup]||0)+1;});
+      var cleaned=rooms.map(function(r){
+        if(r.variantGroup&&grpCount[r.variantGroup]<2){
+          var c=Object.assign({},r);
+          delete c.variantGroup;delete c.variantLabel;delete c.variantBaseName;
+          return c;
+        }
+        return r;
+      });
+      var changed=cleaned.some(function(r,i){return r!==rooms[i];});
+      return changed?Object.assign({},cl,{rooms:cleaned}):cl;
+    });
+  }
+
   // Załaduj klientów z Supabase przy starcie
   React.useEffect(function(){
     sbApi.getClients().then(function(data){
-      setClients(data||[]);
+      setClients(migrateClients(data||[]));
       setLoading(false);
     }).catch(function(e){
       console.error("Błąd ładowania:",e);
