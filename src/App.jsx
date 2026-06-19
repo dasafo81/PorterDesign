@@ -10,7 +10,7 @@ import {
   getPanelsForProd, mg, roundTo10
 } from './constants/data.js';
 import {
-  generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF
+  generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection, openPDFWindow
 } from './lib/pdf.js';
 import { ModalClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
@@ -78,6 +78,7 @@ export function App(p){
   var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
   var s14b=useState(false),showEmailModal=s14b[0],setShowEmailModal=s14b[1];
+  var s14s=useState(false),showSimplifiedModal=s14s[0],setShowSimplifiedModal=s14s[1];
   var s14m=useState(""),montazInput=s14m[0],setMontazInput=s14m[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
@@ -1023,7 +1024,7 @@ export function App(p){
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
         ce("button",{onClick:function(){generateOfferPDF(curClient,comm,(+montazInput||0)/100);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena PDF"),
-        ce("button",{onClick:function(){generateSimplifiedPDF(curClient,comm,(+montazInput||0)/100);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
+        ce("button",{onClick:function(){setShowSimplifiedModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
         ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:function(){setShowFabricModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){generateKarniszOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
@@ -1130,6 +1131,7 @@ export function App(p){
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showSewingModal?ce(ModalSewing,{client:curClient,onClose:function(){setShowSewingModal(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
+    showSimplifiedModal?ce(ModalSimplifiedPDF,{client:curClient,comm:comm,montaz:(+montazInput||0)/100,onClose:function(){setShowSimplifiedModal(false);}}):null,
     showEmailModal?ce(ModalClientEmail,{client:curClient,onClose:function(){setShowEmailModal(false);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
@@ -1873,6 +1875,151 @@ export function ModalAIValuation(p){
       )
     )
   ));
+}
+
+// -- MODAL WYCENA UPROSZCZONA -- ZESTAWY
+function ModalSimplifiedPDF(p){
+  var client=p.client||{};
+  var comm=p.comm||0;
+  var montaz=p.montaz||0;
+
+  function buildRoomChoices(room){
+    var wins=room.windows||[];var groups={};var order=[];
+    wins.forEach(function(w){var key=w.variantGroup||("solo_"+w.id);if(!groups[key]){groups[key]={isVariant:!!w.variantGroup,wins:[],baseName:w.variantBaseName||w.name};order.push(key);}groups[key].wins.push(w);});
+    return {groups:groups,order:order};
+  }
+
+  function makeInitSel(){
+    var init={};
+    (client.rooms||[]).forEach(function(room){
+      var wins=room.windows||[];var groups={};
+      wins.forEach(function(w){var key=w.variantGroup||("solo_"+w.id);if(!groups[key])groups[key]=[];groups[key].push(w);});
+      Object.keys(groups).forEach(function(key){
+        var gWins=groups[key];
+        if(key.indexOf("solo_")===0){init[room.id+"__"+key]=true;}
+        else{var sorted=gWins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});init[room.id+"__"+key]=sorted[0].id;}
+      });
+    });
+    return init;
+  }
+
+  var ss=useState(function(){return [{id:"set1",name:"Zestaw 1",sel:makeInitSel()}];});
+  var sets=ss[0],setSets=ss[1];
+  var sai=useState(0),activeIdx=sai[0],setActiveIdx=sai[1];
+
+  function addSet(){var newSel=JSON.parse(JSON.stringify(sets[sets.length-1].sel));setSets(function(s){return s.concat([{id:"set"+Date.now(),name:"Zestaw "+(s.length+1),sel:newSel}]);});setActiveIdx(sets.length);}
+  function removeSet(i){setSets(function(s){return s.filter(function(_,idx){return idx!==i;});});setActiveIdx(function(a){return(a>=i&&a>0)?a-1:a;});}
+  function updateName(i,v){setSets(function(s){return s.map(function(st,idx){return idx===i?mg(st,{name:v}):st;});});}
+  function setSel(i,key,val){setSets(function(s){return s.map(function(st,idx){if(idx!==i)return st;var ns=Object.assign({},st.sel);ns[key]=val;return mg(st,{sel:ns});});});}
+
+  function calcTotal(sel){
+    var total=0;
+    (client.rooms||[]).forEach(function(room){
+      var wins=room.windows||[];var groups={};
+      wins.forEach(function(w){var k=w.variantGroup||("solo_"+w.id);if(!groups[k])groups[k]=[];groups[k].push(w);});
+      Object.keys(groups).forEach(function(key){
+        var selKey=room.id+"__"+key;var selVal=sel[selKey];
+        if(!selVal&&selVal!==true)return;
+        var gWins=groups[key];
+        var chosen=key.indexOf("solo_")===0?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
+        if(!chosen)return;
+        (chosen.products||[]).forEach(function(prod){
+          var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;
+          var base=prod.mp!=null?prod.mp:(calc(pfc).total||0);
+          total+=(comm>0?base*(1+comm):base);
+        });
+      });
+    });
+    return total;
+  }
+
+  function doGenerate(setIdx){
+    var set=sets[setIdx];var selection=[];
+    (client.rooms||[]).forEach(function(room){
+      var wins=room.windows||[];var groups={};
+      wins.forEach(function(w){var k=w.variantGroup||("solo_"+w.id);if(!groups[k])groups[k]=[];groups[k].push(w);});
+      var chosenWins=[];
+      Object.keys(groups).forEach(function(key){
+        var selKey=room.id+"__"+key;var selVal=set.sel[selKey];
+        if(!selVal&&selVal!==true)return;
+        var gWins=groups[key];
+        var chosen=key.indexOf("solo_")===0?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
+        if(chosen)chosenWins.push(chosen);
+      });
+      if(chosenWins.length)selection.push({room:room,windows:chosenWins});
+    });
+    var h=buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set.name);
+    if(!h){alert("Brak pozycji do wyceny.");return;}
+    openPDFWindow(h,(client.name||"")+" - "+set.name);
+  }
+
+  var activeSet=sets[Math.min(activeIdx,sets.length-1)];
+
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"16px"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:18,width:580,maxWidth:"100%",maxHeight:"92vh",display:"flex",flexDirection:"column",border:"1px solid var(--bd2)",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
+      ce("div",{style:{padding:"16px 20px 12px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}},
+        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}},"\uD83D\uDCCB Wycena Uproszczona \u2014 zestawy"),
+        ce("button",{onClick:p.onClose,style:{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t3)",lineHeight:1}},"\u00d7")
+      ),
+      ce("div",{style:{display:"flex",padding:"0 20px",borderBottom:"1px solid var(--bd2)",flexShrink:0,overflowX:"auto",alignItems:"flex-end"}},
+        sets.map(function(set,i){
+          var isA=i===activeIdx;
+          return ce("div",{key:set.id,style:{position:"relative",marginRight:4}},
+            ce("button",{onClick:function(){setActiveIdx(i);},style:{padding:"9px 28px 9px 14px",borderRadius:"8px 8px 0 0",border:"1px solid var(--bd2)",borderBottom:isA?"1px solid var(--bg)":"1px solid var(--bd2)",background:isA?"var(--bg)":"var(--bg2)",color:isA?"var(--t1)":"var(--t2)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",whiteSpace:"nowrap",marginBottom:isA?-1:0}},set.name),
+            sets.length>1?ce("button",{onClick:function(ev){ev.stopPropagation();removeSet(i);},style:{position:"absolute",top:4,right:6,border:"none",background:"none",cursor:"pointer",fontSize:11,color:"var(--t3)",padding:"1px 3px",lineHeight:1}},"\u00d7"):null
+          );
+        }),
+        ce("button",{onClick:addSet,style:{padding:"8px 12px",border:"none",background:"transparent",color:"var(--t3)",fontSize:13,cursor:"pointer",whiteSpace:"nowrap",alignSelf:"center"}},"\uff0b Nowy")
+      ),
+      ce("div",{style:{flex:1,overflowY:"auto",padding:"16px 20px"}},
+        ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:8}},
+          ce("span",{style:{fontSize:12,color:"var(--t3)",fontWeight:600,whiteSpace:"nowrap"}},"Nazwa:"),
+          ce("input",{value:activeSet.name,onChange:function(ev){updateName(activeIdx,ev.target.value);},style:{flex:1,padding:"6px 10px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)"}})
+        ),
+        (client.rooms||[]).map(function(room){
+          var rc=buildRoomChoices(room);
+          if(!rc.order.length)return null;
+          var roomLabel=room.name+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
+          return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
+            ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.05em",textTransform:"uppercase",borderBottom:"1px solid var(--bd2)"}},roomLabel),
+            rc.order.map(function(key,ki){
+              var group=rc.groups[key];var selKey=room.id+"__"+key;var selVal=activeSet.sel[selKey];var isLast=ki===rc.order.length-1;
+              if(group.isVariant){
+                var sortedWins=group.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+                return ce("div",{key:key,style:{padding:"10px 12px",borderBottom:isLast?"none":"1px solid var(--bd3)"}},
+                  ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},group.baseName+" \u2014 wybierz wariant:"),
+                  ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                    sortedWins.map(function(w){var isC=selVal===w.id;
+                      return ce("label",{key:w.id,style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"5px 12px",borderRadius:7,border:"1px solid "+(isC?"#3367d6":"var(--bd2)"),background:isC?"#e8f0fe":"transparent",fontSize:12,fontWeight:isC?600:400,color:isC?"#3367d6":"var(--t2)",userSelect:"none"}},
+                        ce("input",{type:"radio",name:selKey+"_"+activeIdx,checked:isC,onChange:function(){setSel(activeIdx,selKey,w.id);},style:{margin:0}}),
+                        "Wariant "+w.variantLabel
+                      );
+                    }),
+                    ce("label",{style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"5px 12px",borderRadius:7,border:"1px solid "+(selVal===false?"#dc2626":"var(--bd2)"),background:selVal===false?"rgba(220,38,38,0.08)":"transparent",fontSize:12,color:selVal===false?"#dc2626":"var(--t3)",userSelect:"none"}},
+                      ce("input",{type:"radio",name:selKey+"_"+activeIdx,checked:selVal===false,onChange:function(){setSel(activeIdx,selKey,false);},style:{margin:0}}),
+                      "Wyklucz"
+                    )
+                  )
+                );
+              } else {
+                var soloWin=group.wins[0];var isChecked=selVal===true;
+                return ce("label",{key:key,style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderBottom:isLast?"none":"1px solid var(--bd3)",cursor:"pointer",userSelect:"none"}},
+                  ce("input",{type:"checkbox",checked:!!isChecked,onChange:function(ev){setSel(activeIdx,selKey,ev.target.checked);},style:{width:15,height:15,cursor:"pointer",flexShrink:0}}),
+                  ce("span",{style:{fontSize:13,color:isChecked?"var(--t1)":"var(--t3)",fontWeight:isChecked?500:400}},soloWin.name||"Okno")
+                );
+              }
+            })
+          );
+        })
+      ),
+      ce("div",{style:{padding:"14px 20px",borderTop:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:12}},
+        ce("div",{style:{fontSize:13,color:"var(--t2)"}},
+          "Suma: ",ce("span",{style:{fontWeight:700,color:"var(--gr)"}},roundTo10(calcTotal(activeSet.sel))+" z\u0142")
+        ),
+        ce("button",{onClick:function(){doGenerate(activeIdx);},style:{padding:"10px 22px",borderRadius:10,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},"\uD83D\uDCCB Generuj PDF")
+      )
+    )
+  );
 }
 
 export const CHANGELOG = [
