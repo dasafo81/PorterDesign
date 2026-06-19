@@ -873,7 +873,7 @@ export function App(p){
             ),
             ce("span",{style:{color:"var(--t3)",fontSize:13}},"\u203a")
           ),
-          ce("div",{style:{display:"flex",flexDirection:"column",gap:4,flexShrink:0}},
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:6,flexShrink:0}},
             ce("button",{
               onClick:function(ev){ev.stopPropagation();duplicateWinAsVariant(w);},
               title:"Utw\u00f3rz wariant tego okna",
@@ -903,7 +903,7 @@ export function App(p){
                 }(w));
               },
               title:"Kopiuj okno",
-              style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",fontSize:11,color:"var(--t2)",padding:"5px 9px",borderRadius:7,fontWeight:500,whiteSpace:"nowrap",marginTop:2}
+              style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",fontSize:11,color:"var(--t2)",padding:"5px 9px",borderRadius:7,fontWeight:500,whiteSpace:"nowrap",marginTop:8}
             },"\uD83D\uDCC4 Kopiuj"),
             ce("button",{
               onClick:function(ev){
