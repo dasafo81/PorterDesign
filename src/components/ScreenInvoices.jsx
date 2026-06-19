@@ -1145,7 +1145,21 @@ export function ScreenInvoices(p){
       ce(InvoiceList,{
         invoices:invoices,
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete,
-        onView:function(inv){ setViewInv(inv); }
+        onView:function(inv){
+          setViewInv(inv); setViewDetail(null); setViewDetailLoading(true);
+          var sp=viewSess&&new Date(viewSess.expiresAt)>new Date()
+            ?Promise.resolve(viewSess)
+            :ksefApi.openSession().then(function(s2){setViewSess(s2);return s2;});
+          sp.then(function(s2){
+            return ksefApi.getInvoice(s2.accessToken,s2.baseUrl,inv.ksef_number);
+          }).then(function(d){
+            setViewDetail(d&&d.parsed?d.parsed:null);
+          }).catch(function(e){
+            setViewDetail({error:e.message||String(e)});
+          }).finally(function(){
+            setViewDetailLoading(false);
+          });
+        }
       })
     ),
 
