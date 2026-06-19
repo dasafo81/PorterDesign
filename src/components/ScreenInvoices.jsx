@@ -933,9 +933,9 @@ function KsefView(){
   ,
   // Modal podgladu faktury KSeF
   selectedInv&&ce("div",{
-    style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,
+    style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.72)",zIndex:1000,
       display:"flex",alignItems:"flex-start",justifyContent:"center",
-      padding:"32px 16px",overflowY:"auto"},
+      padding:"32px 16px",overflowY:"auto",backdropFilter:"blur(4px)"},
     onClick:function(e){if(e.target===e.currentTarget)setSelectedInv(null);}
   },
     ce("div",{style:{background:"var(--bg2)",borderRadius:14,padding:"24px 28px",
@@ -1160,9 +1160,9 @@ export function ScreenInvoices(p){
 
     // Modal podglądu faktury KSeF z listy "Moje faktury"
     viewInv&&ce("div",{
-      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.72)",zIndex:1000,
         display:"flex",alignItems:"flex-start",justifyContent:"center",
-        padding:"32px 16px",overflowY:"auto"},
+        padding:"32px 16px",overflowY:"auto",backdropFilter:"blur(4px)"},
       onClick:function(e){if(e.target===e.currentTarget)setViewInv(null);}
     },
       ce("div",{style:{background:"var(--bg2)",borderRadius:14,padding:"24px 28px",
