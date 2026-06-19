@@ -275,6 +275,83 @@ export function generateSimplifiedPDF(client,comm,montaz){
   if(!opened){alert("Brak pozycji do wyceny.");}
 }
 
+// -- WYCENA UPROSZCZONA -- z selekcji zestawu
+export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle){
+  comm=comm||0;montaz=montaz||0;
+  if(!selection||!selection.length)return null;
+  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
+  var validDate=new Date(now.getTime()+30*24*60*60*1000);var validStr=validDate.toLocaleDateString("pl-PL");
+  var offerNo=getPDFOfferNumber(client);
+  function calcProd(p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return comm>0?base*(1+comm):base;}
+  function sewingInfo(p){var c=p.c||{};var sz=c.sz||"wave";var mars=+(c.mars||1.5);if(sz==="flex")return "Flex "+Math.round(mars*100)+"%";return "Wave "+Math.round(mars*100)+"%";}
+  function buildWinRowsSel(windows){
+    var typeData={};var typeOrder=[];var total=0;
+    (windows||[]).forEach(function(w){(w.products||[]).forEach(function(p){
+      var t=calcProd(p);if(!t)return;
+      var subtypeLabel="";
+      if(p.type==="roleta"){var m=(p.c||{}).rModel||"relax";var ML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};subtypeLabel="Roleta "+(ML[m]||m);}
+      else if(p.type==="roleta_shadow"){subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");}
+      else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
+      else if(p.type==="szyna"){subtypeLabel="Szyna KS "+((p.c||{}).ks==="wave"?"Wave":"Flex");}
+      else if(p.type==="karnisz"){var km=(p.c||{}).km||"slim";subtypeLabel="Karnisz el. "+(km==="slim"?"Slim":km==="univ"?"Univ":km);}
+      else if(p.type==="prestige_round")subtypeLabel="Karnisz Prestige ROUND";
+      else if(p.type==="prestige_square")subtypeLabel="Karnisz Prestige SQUARE";
+      else if(p.type==="karnisz_dek")subtypeLabel="Karnisz dekoracyjny";
+      var key=p.type==="inny"?(p.innyNazwa||"Inne"):(subtypeLabel||p.type);
+      if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
+      typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
+      if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
+      total+=t;
+    });});
+    var rows="";
+    typeOrder.forEach(function(key){var d=typeData[key];
+      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||d.type);
+      var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;\">("+d.sewings.join(", ")+")</span>":"";
+      var isKpl=d.type==="zaslona"||d.type==="firana";
+      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek";
+      var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
+      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+"</td>"
+           +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
+    });
+    return {rows:rows,total:total};
+  }
+  var roomSections="";var grandTotal=0;
+  selection.forEach(function(item){
+    var room=item.room;var wins=item.windows;if(!wins||!wins.length)return;
+    var roomSec="";var roomTotal=0;
+    wins.forEach(function(w){var wr=buildWinRowsSel([w]);if(!wr.total)return;
+      var isV=!!w.variantGroup;var rb=isV?"#e8f0fe":"#f5ede0";var hc=isV?"#3367d6":"#1a1a18";
+      var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(w.name||"Okno");
+      var tRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wLabel+"</td>"
+              +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
+      roomSec+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+tRow+"</tbody></table>";
+      roomTotal+=wr.total;});
+    if(!roomTotal)return;grandTotal+=roomTotal;
+    var rName=room.name+(room.variantGroup?" \u2014 Wariant "+room.variantLabel:"");
+    roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#1a1a18;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#f4f4f2;border-left:3px solid #1a1a18;margin-bottom:3mm;\">"+rName+"</div>"+roomSec+"</div>";
+  });
+  if(!grandTotal)return null;
+  var titleSuffix=setTitle?" \u2014 "+setTitle:"";
+  var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u017c. Okiennych"+titleSuffix+"</title>"+pdfStyles()+"</head><body>"
+    +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
+    +"<div class=\"header\" style=\"padding-top:2mm;\">"
+    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+titleSuffix+"</div>"
+    +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
+    +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
+    +roomSections
+    +(montaz>0?"<div style=\"margin-top:6mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#1a1a18;\">Monta\u017c dekoracji okiennych ("+Math.round(montaz*100)+"%):</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">"+roundTo10(grandTotal*montaz)+" z\u0142</span></div>":"")
+    +(montaz>0?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#555;font-weight:600;\">\u0141\u0105cznie bez monta\u017cu:</span><span style=\"font-size:14px;font-weight:700;color:#555;\">"+roundTo10(grandTotal)+" z\u0142</span></div>":"")
+    +"<div style=\"margin-top:"+(montaz>0?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+    +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(montaz>0?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
+    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(montaz>0?roundTo10(grandTotal*(1+montaz)):roundTo10(grandTotal))+" z\u0142</span></div>"
+    +"<div class=\"sign-block\"><div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div><div class=\"sign\">Akceptacja klienta</div></div>"
+    +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
+    +"</body></html>";
+  return h;
+}
+
+
 // ── GENEROWANIE MAILA DO KLIENTA ──────────────────────────────────────────
 export function generateClientEmail(client){
   var total=roundTo10((client.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return c+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);},0);},0));
