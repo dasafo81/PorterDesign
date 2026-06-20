@@ -23,8 +23,36 @@ async function verifyUser(req) {
 }
 
 function xmlVal(xml,tag) {
-  const m=xml.match(new RegExp('<'+tag+'[^>]*>([^<]*)</'+tag+'>'));
+  const m=xml.match(new RegExp('<(?:[\\w]+:)?'+tag+'(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?'+tag+'>','i'));
   return m?m[1].trim():'';
+}
+function xmlBlock(xml,tag) {
+  const m=xml.match(new RegExp('<(?:[\\w]+:)?'+tag+'(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?'+tag+'>','i'));
+  return m?m[0]:'';
+}
+
+// Termin płatności — Platnosc→TerminPlatnosci→Termin, lub DataZaplaty, w kilku możliwych lokalizacjach
+// (ta sama logika co supabase/functions/ksef-invoice/index.ts, żeby sync od razu zapisywał poprawny termin)
+function parseDueDate(xml,fa) {
+  const platnosc = xmlBlock(fa,'Platnosc') || xmlBlock(xml,'Platnosc');
+  if (platnosc) {
+    const tpBlock = xmlBlock(platnosc,'TerminPlatnosci');
+    const termin = tpBlock ? (xmlVal(tpBlock,'Termin') || xmlVal(tpBlock,'Dni')) : '';
+    if (termin) {
+      if (/^\d{4}-\d{2}-\d{2}/.test(termin)) return termin.slice(0,10);
+      if (/^\d+$/.test(termin)) return termin+' dni';
+      return termin;
+    }
+    const dz = xmlVal(platnosc,'DataZaplaty');
+    if (dz) return dz.slice(0,10);
+  }
+  const raw = xmlVal(fa,'DataZaplaty') || xmlVal(fa,'TerminPlatnosci') || '';
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0,10);
+  if (raw.includes('<')) {
+    const inner = xmlVal(raw,'Termin') || xmlVal(raw,'DataZaplaty');
+    if (inner && /^\d{4}-\d{2}-\d{2}/.test(inner)) return inner.slice(0,10);
+  }
+  return raw;
 }
 
 function parseFA(xml) {
@@ -33,11 +61,12 @@ function parseFA(xml) {
   let m;
   while((m=rn.exec(xml))!==null) nips.push(m[1].trim());
   while((m=rp.exec(xml))!==null) names.push(m[1].trim());
+  const fa = xmlBlock(xml,'Fa');
   return {
     number: xmlVal(xml,'P_2')||xmlVal(xml,'NrFaKSeF'),
     issue_date: xmlVal(xml,'P_1'),
     sale_date: xmlVal(xml,'P_1M')||xmlVal(xml,'P_1'),
-    due_date: xmlVal(xml,'DataZaplaty'),
+    due_date: parseDueDate(xml,fa),
     total_gross: +(xmlVal(xml,'P_15')||0),
     total_net: +(xmlVal(xml,'P_13_Razem')||0),
     total_vat: +(xmlVal(xml,'P_14_Razem')||0),
