@@ -994,6 +994,9 @@ function buildInvoicePDFHtml(inv,settings){
   // Dla sprzeda\u017cowych/proforma jak dot\u0105d: Porter Design = sprzedawca, buyer_* = klient.
   // Fallback: starsze faktury zakupowe (zsynchronizowane przed wprowadzeniem seller_snapshot) maj\u0105
   // prawdziwego sprzedawc\u0119 zapisanego w buyer_* (stara logika) \u2014 u\u017cyj ich, je\u015bli snap jest puste.
+  // UWAGA: dane z KSeF (snap.*, buyer_*) nie maj\u0105 osobnego kodu pocztowego/miasta \u2014 ca\u0142y adres
+  // to AdresL1 (street) + opcjonalna druga linia AdresL2 (city pole tutaj = ta druga linia wprost).
+  // Dane lokalne (s.seller_*) z Ustawie\u0144 maj\u0105 osobny kod+miasto, wi\u0119c te sklejamy jak dot\u0105d.
   var snapEmpty=!snap.name&&!snap.nip;
   var partyTop, partyBottom;
   if(isZakup){
@@ -1003,7 +1006,7 @@ function buildInvoicePDFHtml(inv,settings){
         name:inv.buyer_name||"",
         nip:(inv.buyer_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
         street:inv.buyer_address||"",
-        city:((inv.buyer_postal||"")+" "+(inv.buyer_city||"")).trim()
+        city:inv.buyer_city||""
       };
       partyBottom={
         label:"Nabywca:",
@@ -1018,14 +1021,14 @@ function buildInvoicePDFHtml(inv,settings){
         name:snap.name||"",
         nip:(snap.nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
         street:snap.address||"",
-        city:((snap.postal||"")+" "+(snap.city||"")).trim()
+        city:snap.city||""
       };
       partyBottom={
         label:"Nabywca:",
         name:inv.buyer_name||s.seller_name||"",
         nip:inv.buyer_nip||s.seller_nip||"",
         street:inv.buyer_address||s.seller_address||"",
-        city:((inv.buyer_postal||s.seller_postal||"")+" "+(inv.buyer_city||s.seller_city||"")).trim()
+        city:inv.buyer_address?(inv.buyer_city||""):((s.seller_postal||"")+" "+(s.seller_city||"")).trim()
       };
     }
   } else {
@@ -1034,14 +1037,14 @@ function buildInvoicePDFHtml(inv,settings){
       name:snap.name||s.seller_name||"",
       nip:(snap.nip||s.seller_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
       street:snap.address||s.seller_address||"",
-      city:((snap.postal||s.seller_postal||"")+" "+(snap.city||s.seller_city||"")).trim()
+      city:snap.address?(snap.city||""):((s.seller_postal||"")+" "+(s.seller_city||"")).trim()
     };
     partyBottom={
       label:"Nabywca:",
       name:inv.buyer_name||"",
       nip:inv.buyer_nip||"",
       street:inv.buyer_address||"",
-      city:((inv.buyer_postal||"")+" "+(inv.buyer_city||"")).trim()
+      city:inv.buyer_city||""
     };
   }
   var selBank=snap.bank||s.seller_bank||"";
@@ -1112,8 +1115,10 @@ function buildInvoicePDFHtml(inv,settings){
     +(selBank?"<div style='text-align:right'>Konto: "+selBank+"</div>":"<div></div>")
     +"</div>"
     +"<div class='parties'>"
-    +"<div class='party'><div class='sect-head'>"+partyTop.label+"</div><p><strong>"+partyTop.name+"</strong><br>"
-    +partyTop.street+"<br>"+partyTop.city+" Polska<br>NIP: "+partyTop.nip+"</p></div>"
+    +"<div class='party'><div class='sect-head'>"+partyTop.label+"</div><p><strong>"+partyTop.name+"</strong>"
+    +(partyTop.street?"<br>"+partyTop.street:"")
+    +(partyTop.city.trim()?"<br>"+partyTop.city+" Polska":"")
+    +"<br>NIP: "+partyTop.nip+"</p></div>"
     +"<div class='party'><div class='sect-head'>"+partyBottom.label+"</div><p><strong>"+partyBottom.name+"</strong>"
     +(partyBottom.street?"<br>"+partyBottom.street:"")
     +(partyBottom.city.trim()?"<br>"+partyBottom.city+" Polska":"")
