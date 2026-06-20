@@ -829,8 +829,8 @@ function InvoiceList(p){
     // Tabela
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 85px minmax(160px,260px) 85px 90px 110px 75px 75px 75px 32px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)"}},
-        ["Numer","Typ","Nabywca","Data","Termin pł.","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
+      ce("div",{style:{display:"grid",gridTemplateColumns:"100px 90px 2fr 80px 85px 110px 70px 70px 75px 30px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
+        ["Numer","Typ","Kontrahent","Data","Termin pł.","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=6?"center":"right")}},h);
         })
       ),
@@ -845,22 +845,24 @@ function InvoiceList(p){
               style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}})
           );
         };
+        var isPurchase=inv.doc_type==="zakup";
+        var dirLabel=isPurchase?"📥 Zakupowa":(inv.doc_type==="proforma"?"📄 Proforma":"📤 Sprzedażowa");
+        var contragentName=isPurchase?(inv.seller_name||inv.buyer_name||"—"):(inv.buyer_name||"—");
+        var contragentNip=isPurchase?(inv.seller_nip||""):(inv.buyer_nip||"");
         return ce("div",{key:inv.id,
           onClick:function(){ inv.ksef_number?(p.onView&&p.onView(inv)):p.onEdit(inv); },
-          style:{display:"grid",gridTemplateColumns:"110px 85px minmax(160px,260px) 85px 90px 110px 75px 75px 75px 32px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"100px 90px 2fr 80px 85px 110px 70px 70px 75px 30px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:"pointer",transition:"background .12s",
-            background:"var(--bg2)"},
+            background:"var(--bg2)",width:"100%"},
           onMouseEnter:function(e){e.currentTarget.style.background="var(--bg3||var(--bg))";},
           onMouseLeave:function(e){e.currentTarget.style.background="var(--bg2)";}
         },
           ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--violet)"}},
             inv.number||ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},"(szkic)")),
-          ce("div",{style:{fontSize:11,textAlign:"right",color:"var(--t2)"}},
-            (DOC_TYPES.find(function(d){return d.id===inv.doc_type;})||{}).label||"Faktura"),
+          ce("div",{style:{fontSize:11,textAlign:"right",color:isPurchase?"#b45309":"var(--t2)",fontWeight:isPurchase?600:400}},dirLabel),
           ce("div",null,
-            ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},(inv.buyer_name||"—").slice(0,40)),
-            inv.buyer_nip&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},"NIP: "+inv.buyer_nip),
-            ce(KsefBadge,{status:inv.ksef_status})
+            ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},contragentName.slice(0,40)),
+            contragentNip&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},"NIP: "+contragentNip)
           ),
           ce("div",{style:{fontSize:12,textAlign:"right",color:"var(--t2)"}},fmtDate(inv.issue_date)),
           ce("div",{style:{fontSize:12,textAlign:"right",color:inv.due_date&&inv.due_date<todayISO()&&!inv.paid?"#b91c1c":"var(--t2)"}},fmtDate(inv.due_date)),
