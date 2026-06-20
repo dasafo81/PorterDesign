@@ -30,6 +30,13 @@ function xmlBlock(xml,tag) {
   const m=xml.match(new RegExp('<(?:[\\w]+:)?'+tag+'(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?'+tag+'>','i'));
   return m?m[0]:'';
 }
+function xmlAll(xml,tag) {
+  const re=new RegExp('<(?:[\\w]+:)?'+tag+'(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?'+tag+'>','gi');
+  const out=[]; let m;
+  while((m=re.exec(xml))!==null) out.push(m[0]);
+  return out;
+}
+function numVal(s) { return parseFloat(String(s||'').replace(',','.')) || 0; }
 
 // Termin płatności — Platnosc→TerminPlatnosci→Termin, lub DataZaplaty, w kilku możliwych lokalizacjach
 // (ta sama logika co supabase/functions/ksef-invoice/index.ts, żeby sync od razu zapisywał poprawny termin)
@@ -55,13 +62,30 @@ function parseDueDate(xml,fa) {
   return raw;
 }
 
+function parseParty(block) {
+  return {
+    nip: xmlVal(block,'NIP'),
+    name: xmlVal(block,'PelnaNazwa')||xmlVal(block,'Nazwa'),
+    address: xmlVal(block,'AdresL1')||[xmlVal(block,'Ulica'),xmlVal(block,'NrDomu'),xmlVal(block,'NrLokalu')].filter(Boolean).join(' '),
+    addrLine2: xmlVal(block,'AdresL2')||[xmlVal(block,'KodPocztowy'),xmlVal(block,'Miejscowosc')].filter(Boolean).join(' '),
+    postal: xmlVal(block,'KodPocztowy'),
+    city: xmlVal(block,'Miejscowosc'),
+    email: xmlVal(block,'Email'),
+    phone: xmlVal(block,'Telefon'),
+  };
+}
+
 function parseFA(xml) {
-  const nips=[],names=[];
-  const rn=/<NIP>([^<]+)<\/NIP>/g, rp=/<PelnaNazwa>([^<]+)<\/PelnaNazwa>/g;
-  let m;
-  while((m=rn.exec(xml))!==null) nips.push(m[1].trim());
-  while((m=rp.exec(xml))!==null) names.push(m[1].trim());
   const fa = xmlBlock(xml,'Fa');
+  const p1 = xmlBlock(xml,'Podmiot1'); // sprzedawca na fakturze
+  const p2 = xmlBlock(xml,'Podmiot2'); // nabywca na fakturze
+  const seller = parseParty(p1);
+  const buyer = parseParty(p2);
+  // Numer konta bankowego sprzedawcy (jeśli jest w XML)
+  const platnoscB = xmlBlock(fa,'Platnosc')||xmlBlock(xml,'Platnosc');
+  const rachunek = platnoscB ? xmlBlock(platnoscB,'RachunekBankowy') : '';
+  const bank = rachunek ? (xmlVal(rachunek,'NrRB')||xmlVal(rachunek,'IBAN')||'') : '';
+
   return {
     number: xmlVal(xml,'P_2')||xmlVal(xml,'NrFaKSeF'),
     issue_date: xmlVal(xml,'P_1'),
@@ -72,8 +96,9 @@ function parseFA(xml) {
     total_vat: +(xmlVal(xml,'P_14_Razem')||0),
     currency: xmlVal(xml,'KodWaluty')||'PLN',
     notes: xmlVal(xml,'P_Opis'),
-    seller_nip: nips[0]||'', seller_name: names[0]||'',
-    buyer_nip: nips[1]||'',  buyer_name: names[1]||'',
+    seller_nip: seller.nip||'', seller_name: seller.name||'',
+    buyer_nip: buyer.nip||'',  buyer_name: buyer.name||'',
+    seller_party: seller, buyer_party: buyer, bank: bank,
   };
 }
 
@@ -105,6 +130,42 @@ async function fetchInvoiceXml(baseUrl, accessToken, ksefNumber) {
   return null;
 }
 
+// Pozycje faktury (FaWiersz, lub starszy wariant Wiersz) — mapowane na kształt tabeli invoice_items
+// (ta sama logika ekstrakcji pól co supabase/functions/ksef-invoice/index.ts)
+function parseItems(xml) {
+  let blocks = xmlAll(xml,'FaWiersz');
+  if (blocks.length===0) blocks = xmlAll(xml,'Wiersz');
+
+  return blocks.map(function(w,i){
+    const netP = numVal(xmlVal(w,'P_9A'));
+    const vatRraw = xmlVal(w,'P_12');
+    const vatNum = (vatRraw==='zw'||vatRraw==='np') ? -1 : numVal(vatRraw);
+    const qty = numVal(xmlVal(w,'P_8B')||'1');
+    const netV = numVal(xmlVal(w,'P_11')) || +(netP*qty).toFixed(2);
+    const vatV = vatNum===-1 ? 0 : +(netV*(vatNum/100)).toFixed(2);
+    const grossV = +(netV+vatV).toFixed(2);
+    return {
+      position: i+1,
+      name: xmlVal(w,'P_7')||('Pozycja '+(i+1)),
+      pkwiu: xmlVal(w,'PKWiU')||xmlVal(w,'P_2A')||'',
+      unit: xmlVal(w,'P_8A')||'szt',
+      quantity: qty||1,
+      unit_net: netP,
+      vat_rate: vatNum,
+      line_net: netV,
+      line_vat: vatV,
+      line_gross: grossV,
+    };
+  });
+}
+
+async function saveInvoiceItems(invoiceId, items, sbH) {
+  await fetch(`${SB_URL}/rest/v1/invoice_items?invoice_id=eq.${invoiceId}`,{method:'DELETE',headers:sbH});
+  if (!items||items.length===0) return;
+  await fetch(`${SB_URL}/rest/v1/invoice_items`,{method:'POST',headers:sbH,
+    body:JSON.stringify(items.map(function(it){ return Object.assign({},it,{invoice_id:invoiceId}); }))});
+}
+
 async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, docType) {
   const sbH = { apikey:service, Authorization:`Bearer ${service}`, 'Content-Type':'application/json', Prefer:'return=representation' };
   const saved=[], errors=[];
@@ -120,6 +181,14 @@ async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, do
       const ck = await fetch(`${SB_URL}/rest/v1/invoices?ksef_number=eq.${encodeURIComponent(ksefNum)}&tenant_id=eq.${tenantId}&select=id`,{headers:sbH});
       const ex = ck.ok ? await ck.json() : [];
 
+      const sellerSnapshot = parsed.seller_party ? {
+        name: parsed.seller_party.name||'', nip: parsed.seller_party.nip||'',
+        address: parsed.seller_party.address||'',
+        postal: parsed.seller_party.postal||'', city: parsed.seller_party.city||parsed.seller_party.addrLine2||'',
+        bank: parsed.bank||'', email: parsed.seller_party.email||'', phone: parsed.seller_party.phone||'',
+      } : {};
+      const buyerParty = parsed.buyer_party||{};
+
       const record = {
         doc_type: docType, status: isIncoming?'received':'issued',
         ksef_status: 'confirmed', ksef_number: ksefNum, ksef_mode: 'online',
@@ -129,15 +198,22 @@ async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, do
         currency: parsed.currency||'PLN', notes: parsed.notes||'',
         buyer_name: isIncoming?(parsed.seller_name||hdr.subjectName||''):(parsed.buyer_name||''),
         buyer_nip:  isIncoming?(parsed.seller_nip ||hdr.subjectNip ||''):(parsed.buyer_nip ||''),
-        seller_snapshot: {}, xml_payload: xml||null, updated_at: new Date().toISOString(),
+        buyer_address: isIncoming?(parsed.seller_party&&parsed.seller_party.address||''):(buyerParty.address||''),
+        buyer_postal:  isIncoming?(parsed.seller_party&&parsed.seller_party.postal||''):(buyerParty.postal||''),
+        buyer_city:    isIncoming?(parsed.seller_party&&(parsed.seller_party.city||parsed.seller_party.addrLine2)||''):(buyerParty.city||buyerParty.addrLine2||''),
+        seller_snapshot: sellerSnapshot, xml_payload: xml||null, updated_at: new Date().toISOString(),
       };
 
       if (ex&&ex.length>0) {
         await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${ex[0].id}`,{method:'PATCH',headers:sbH,body:JSON.stringify(record)});
         saved.push({ksefNum,action:'updated'});
+        await saveInvoiceItems(ex[0].id, parseItems(xml||''), sbH);
       } else {
-        await fetch(`${SB_URL}/rest/v1/invoices`,{method:'POST',headers:sbH,body:JSON.stringify(record)});
+        const ins = await fetch(`${SB_URL}/rest/v1/invoices`,{method:'POST',headers:sbH,body:JSON.stringify(record)});
+        const insRows = ins.ok ? await ins.json() : [];
+        const newId = insRows&&insRows[0]&&insRows[0].id;
         saved.push({ksefNum,action:'inserted'});
+        if (newId) await saveInvoiceItems(newId, parseItems(xml||''), sbH);
       }
     } catch(e) { errors.push({ksefNum,err:e.message}); }
   }
