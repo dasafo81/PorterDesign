@@ -1519,9 +1519,11 @@ export function ScreenInvoices(p){
         invoices:invoices,
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete,
         onTogglePaid:function(inv,val){
-          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:val}):x;});});
-          sbApi.updateInvoice(inv.id,{paid:val}).catch(function(){
-            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:!val}):x;});});
+          // Zaznaczenie jako zapłacona ustawia paid_amount na pełną kwotę brutto; odznaczenie zeruje
+          var newAmount=val?(+(inv.total_gross)||0):0;
+          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:val,paid_amount:newAmount}):x;});});
+          sbApi.updateInvoice(inv.id,{paid:val,paid_amount:newAmount}).catch(function(){
+            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:!val,paid_amount:inv.paid_amount||0}):x;});});
           });
         },
         onToggleApproved:function(inv,val){
