@@ -196,11 +196,13 @@ async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, do
         issue_date: parsed.issue_date||null, sale_date: parsed.sale_date||null, due_date: parsed.due_date||null,
         total_net: parsed.total_net||0, total_vat: parsed.total_vat||0, total_gross: parsed.total_gross||0,
         currency: parsed.currency||'PLN', notes: parsed.notes||'',
-        buyer_name: isIncoming?(parsed.seller_name||hdr.subjectName||''):(parsed.buyer_name||''),
-        buyer_nip:  isIncoming?(parsed.seller_nip ||hdr.subjectNip ||''):(parsed.buyer_nip ||''),
-        buyer_address: isIncoming?(parsed.seller_party&&parsed.seller_party.address||''):(buyerParty.address||''),
-        buyer_postal:  isIncoming?(parsed.seller_party&&parsed.seller_party.postal||''):(buyerParty.postal||''),
-        buyer_city:    isIncoming?(parsed.seller_party&&(parsed.seller_party.city||parsed.seller_party.addrLine2)||''):(buyerParty.city||buyerParty.addrLine2||''),
+        // buyer_* = Podmiot2 z XML (dla faktur zakupowych to my, Porter Design).
+        // Prawdziwy sprzedawca (kontrahent zewnętrzny przy zakupie) jest w seller_snapshot.
+        buyer_name: buyerParty.name||hdr.subjectName||parsed.buyer_name||'',
+        buyer_nip:  buyerParty.nip ||hdr.subjectNip ||parsed.buyer_nip ||'',
+        buyer_address: buyerParty.address||'',
+        buyer_postal:  buyerParty.postal||'',
+        buyer_city:    buyerParty.city||buyerParty.addrLine2||'',
         seller_snapshot: sellerSnapshot, xml_payload: xml||null, updated_at: new Date().toISOString(),
       };
 
