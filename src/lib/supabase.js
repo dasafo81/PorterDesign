@@ -245,9 +245,11 @@ export const sbApi = {
       return sbFetch("POST","invoice_settings",patch);
     });
   },
-  // Lista faktur (naglowki), najnowsze pierwsze.
+  // Lista faktur (naglowki), najnowsze pierwsze wg daty wystawienia.
+  // (created_at sortowalo wg momentu zapisu do bazy - przy synchronizacji z KSeF
+  // kolejnosc zapisu nie pokrywa sie z chronologia faktur, co myliło uzytkownika)
   getInvoices: function(){
-    return sbFetch("GET","invoices?select=*&order=created_at.desc");
+    return sbFetch("GET","invoices?select=*&order=issue_date.desc.nullslast,created_at.desc");
   },
   // Pojedyncza faktura wraz z pozycjami (PostgREST embed).
   getInvoice: function(id){
