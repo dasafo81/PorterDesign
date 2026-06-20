@@ -207,7 +207,7 @@ async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, do
       const sellerSnapshot = parsed.seller_party ? {
         name: parsed.seller_party.name||'', nip: parsed.seller_party.nip||'',
         address: parsed.seller_party.address||'',
-        postal: parsed.seller_party.postal||'', city: parsed.seller_party.city||parsed.seller_party.addrLine2||'',
+        postal: '', city: parsed.seller_party.addrLine2||'',
         bank: parsed.bank||'', email: parsed.seller_party.email||'', phone: parsed.seller_party.phone||'',
       } : {};
       const buyerParty = parsed.buyer_party||{};
@@ -221,11 +221,14 @@ async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, do
         currency: parsed.currency||'PLN', notes: parsed.notes||'',
         // buyer_* = Podmiot2 z XML (dla faktur zakupowych to my, Porter Design).
         // Prawdziwy sprzedawca (kontrahent zewnętrzny przy zakupie) jest w seller_snapshot.
+        // UWAGA: FA(3) nie wysyła osobno kodu pocztowego/miasta — adres to AdresL1 (+ opcjonalnie
+        // AdresL2 jako druga linia), więc buyer_address/buyer_city trzymają te linie wprost,
+        // bez sztucznego rozbijania na komponenty których w XML po prostu nie ma.
         buyer_name: buyerParty.name||hdr.subjectName||parsed.buyer_name||'',
         buyer_nip:  buyerParty.nip ||hdr.subjectNip ||parsed.buyer_nip ||'',
         buyer_address: buyerParty.address||'',
-        buyer_postal:  buyerParty.postal||'',
-        buyer_city:    buyerParty.city||buyerParty.addrLine2||'',
+        buyer_postal:  '',
+        buyer_city:    buyerParty.addrLine2||'',
         seller_snapshot: sellerSnapshot, xml_payload: xml||null, updated_at: new Date().toISOString(),
       };
 
