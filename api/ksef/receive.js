@@ -1,7 +1,7 @@
 // api/ksef/receive.js — KSeF API 2.0
 // POST { accessToken, baseUrl, direction, dateFrom?, dateTo? }
 // direction: "incoming" | "outgoing" | "all"
-// Używa GET /invoices z filtrem subjectType
+// Używa POST /invoices/query/metadata (InvoiceQueryFilters, dateType=Issue) z paginacją pageOffset/pageSize
 
 export const config = { runtime: 'edge' };
 const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
@@ -103,31 +103,54 @@ function parseFA(xml) {
 }
 
 async function queryInvoices(baseUrl, accessToken, subjectType, dateFrom, dateTo) {
-  // KSeF 2.0: GET /invoices z parametrami query
-  const params = new URLSearchParams({
-    pageSize: '100',
-    ...(subjectType ? { subjectType } : {}),
-    ...(dateFrom ? { acquisitionTimestampThresholdFrom: dateFrom + 'T00:00:00.000Z' } : {}),
-    ...(dateTo   ? { acquisitionTimestampThresholdTo:   dateTo   + 'T23:59:59.999Z' } : {}),
-  });
-  const r = await fetch(`${baseUrl}/invoices?${params}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!r.ok) throw new Error('KSeF /invoices failed HTTP ' + r.status + ': ' + await r.text());
-  const d = await r.json();
-  return d.invoices || d.items || [];
+  // KSeF 2.0: POST /invoices/query/metadata z body InvoiceQueryFilters.
+  // dateType: "Issue" = filtrujemy po dacie wystawienia faktury (issueDate), a nie po dacie
+  // technicznego przyjęcia przez KSeF (Invoicing) — to dawało wrażenie "brakujących" nowszych faktur,
+  // bo invoicing date może być inna (czasem znacznie późniejsza) niż data wystawienia widoczna na dokumencie.
+  const filters = {
+    subjectType: subjectType,
+    dateRange: {
+      from: dateFrom ? (dateFrom + 'T00:00:00+00:00') : undefined,
+      to:   dateTo   ? (dateTo   + 'T23:59:59+00:00') : undefined,
+      dateType: 'Issue',
+    },
+  };
+
+  let all = [];
+  let pageOffset = 0;
+  const pageSize = 100;
+  for (let page = 0; page < 50; page++) { // bezpiecznik: max 5000 faktur na zakres
+    const url = `${baseUrl}/invoices/query/metadata?pageOffset=${pageOffset}&pageSize=${pageSize}`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(filters),
+    });
+    if (!r.ok) throw new Error('KSeF query/metadata HTTP ' + r.status + ': ' + await r.text());
+    const d = await r.json();
+    const items = d.invoices || d.items || d.invoiceMetadataList || [];
+    all = all.concat(items);
+    const hasMore = d.hasMore === true || items.length === pageSize;
+    if (!hasMore || items.length === 0) break;
+    pageOffset += pageSize;
+  }
+  return all;
 }
 
 async function fetchInvoiceXml(baseUrl, accessToken, ksefNumber) {
-  const r = await fetch(`${baseUrl}/invoices/${ksefNumber}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+  const r = await fetch(`${baseUrl}/invoices/ksef/${ksefNumber}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/xml, text/xml, */*' },
   });
   if (!r.ok) return null;
-  const d = await r.json();
-  if (d.invoiceData) {
-    try { return decodeURIComponent(escape(atob(d.invoiceData))); } catch(e) { return d.invoiceData; }
+  const ct = r.headers.get('content-type') || '';
+  if (ct.includes('json')) {
+    const d = await r.json();
+    if (d.invoiceData) {
+      try { return decodeURIComponent(escape(atob(d.invoiceData))); } catch(e) { return d.invoiceData; }
+    }
+    return null;
   }
-  return null;
+  return await r.text();
 }
 
 // Pozycje faktury (FaWiersz, lub starszy wariant Wiersz) — mapowane na kształt tabeli invoice_items
@@ -171,7 +194,7 @@ async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, do
   const saved=[], errors=[];
 
   for (const hdr of headers.slice(0,100)) {
-    const ksefNum = hdr.ksefReferenceNumber || hdr.ksefNumber || hdr.id;
+    const ksefNum = hdr.ksefNumber || hdr.ksefReferenceNumber || hdr.id;
     if (!ksefNum) continue;
     try {
       const xml = await fetchInvoiceXml(baseUrl, accessToken, ksefNum);
