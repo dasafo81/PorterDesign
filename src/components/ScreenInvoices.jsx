@@ -164,6 +164,10 @@ function InvoiceEditor(p){
   var [buyerPostal,setBuyerPostal]=useState(initInv.buyer_postal||"");
   var [buyerCity,setBuyerCity]=useState(initInv.buyer_city||"");
   var [buyerEmail,setBuyerEmail]=useState(initInv.buyer_email||"");
+  var [clientId,setClientId]=useState(initInv.client_id||null);
+  var [dealId,setDealId]=useState(initInv.deal_id||null);
+  var [clientSearch,setClientSearch]=useState("");
+  var [clientDropOpen,setClientDropOpen]=useState(false);
   var [items,setItems]=useState(
     (initInv.invoice_items&&initInv.invoice_items.length>0)
       ? initInv.invoice_items
@@ -201,6 +205,33 @@ function InvoiceEditor(p){
       .finally(function(){setNipLoading(false);});
   }
 
+  // Lista klientów z CRM (przekazana z ScreenInvoices), filtrowana po wyszukiwaniu
+  var clientsList=p.clients||[];
+  var dealsList=p.deals||[];
+  var filteredClients=clientSearch.trim()
+    ? clientsList.filter(function(c){
+        var q=clientSearch.toLowerCase();
+        return (c.name||"").toLowerCase().includes(q);
+      })
+    : clientsList;
+
+  function pickClient(c){
+    setClientId(c.id);
+    setBuyerName(c.name||buyerName);
+    setBuyerAddr(c.addr||buyerAddr);
+    setBuyerPostal(c.postal||buyerPostal);
+    setBuyerCity(c.city||buyerCity);
+    setBuyerEmail(c.email||buyerEmail);
+    // Znajdź aktywny deal tego klienta jeśli istnieje
+    var d=dealsList.find(function(x){return x.client_id===c.id;});
+    setDealId(d?d.id:null);
+    setClientSearch(c.name||"");
+    setClientDropOpen(false);
+  }
+  function clearClient(){
+    setClientId(null); setDealId(null); setClientSearch("");
+  }
+
   function addItem(){
     setItems(function(prev){
       var n=freshItem(); n.position=prev.length+1;
@@ -235,6 +266,7 @@ function InvoiceEditor(p){
       doc_type:docType,
       issue_date:issueDate, sale_date:saleDate, due_date:dueDate,
       payment_method:payMethod,
+      client_id:clientId, deal_id:dealId,
       buyer_name:buyerName, buyer_nip:buyerNip,
       buyer_address:buyerAddr, buyer_postal:buyerPostal,
       buyer_city:buyerCity, buyer_email:buyerEmail,
@@ -329,6 +361,36 @@ function InvoiceEditor(p){
     // ── SEKCJA: Nabywca ──
     ce("div",{style:card},
       ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83C\uDFE2 Nabywca"),
+      ce("div",{style:{marginBottom:14,position:"relative"}},
+        ce("span",{style:label},"Klient z CRM (opcjonalnie)"),
+        ce("div",{style:{display:"flex",gap:8}},
+          ce("input",{style:Object.assign({},inp,{flex:1}),
+            value:clientSearch,
+            placeholder:"Szukaj klienta po imieniu i nazwisku...",
+            onChange:function(e){setClientSearch(e.target.value);setClientDropOpen(true);if(!e.target.value)clearClient();},
+            onFocus:function(){setClientDropOpen(true);}}),
+          clientId&&ce("button",{onClick:clearClient,type:"button",
+            style:Object.assign({},btnSecondary,{padding:"8px 12px"})},"\u00D7")
+        ),
+        clientDropOpen&&filteredClients.length>0&&ce("div",{
+          style:{position:"absolute",top:"100%",left:0,right:0,zIndex:50,
+            background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:8,
+            maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.15)",marginTop:4}},
+          filteredClients.slice(0,30).map(function(c){
+            return ce("div",{key:c.id,
+              onClick:function(){pickClient(c);},
+              style:{padding:"8px 12px",cursor:"pointer",fontSize:13,
+                borderBottom:"1px solid var(--bd3)",color:"var(--t1)"},
+              onMouseEnter:function(e){e.currentTarget.style.background="var(--bg3)";},
+              onMouseLeave:function(e){e.currentTarget.style.background="transparent";}},
+              c.name,
+              c.addr&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},c.addr)
+            );
+          })
+        ),
+        clientId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},
+          "\u2713 Powi\u0105zano z klientem CRM"+(dealId?" \u2014 deal #"+dealId:""))
+      ),
       ce("div",{style:{display:"flex",gap:8,marginBottom:10}},
         ce("div",{style:{flex:1}},
           ce("span",{style:label},"NIP nabywcy"),
@@ -1294,15 +1356,19 @@ export function ScreenInvoices(p){
   var [viewDetail,setViewDetail]=useState(null);
   var [viewDetailLoading,setViewDetailLoading]=useState(false);
   var [viewSess,setViewSess]=useState(null);
+  var [clientsAll,setClientsAll]=useState([]);
+  var [dealsAll,setDealsAll]=useState([]);
   var [loading,setLoading]=useState(true);
   var [err,setErr]=useState(null);
 
   // Ładuj faktury i ustawienia
   useEffect(function(){
-    Promise.all([sbApi.getInvoices(), sbApi.getInvoiceSettings()])
+    Promise.all([sbApi.getInvoices(), sbApi.getInvoiceSettings(), sbApi.getClients(), sbApi.getDeals()])
       .then(function(results){
         setInvoices(results[0]||[]);
         setSettings(results[1]||{});
+        setClientsAll(results[2]||[]);
+        setDealsAll(results[3]||[]);
         setLoading(false);
       })
       .catch(function(e){
@@ -1407,6 +1473,7 @@ export function ScreenInvoices(p){
 
     !loading&&view==="editor"&&ce(InvoiceEditor,{
       invoice:editInv, settings:settings||{},
+      clients:clientsAll, deals:dealsAll,
       onSave:onSaved,
       onClose:function(){setView("list");}
     }),
