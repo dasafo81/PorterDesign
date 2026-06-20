@@ -755,6 +755,7 @@ function StatusBadge(p){
   var cfg={
     draft:    {label:"Szkic",     bg:"var(--bg2)",   color:"var(--t3)"},
     issued:   {label:"Wystawiona",bg:"#dbeafe",      color:"#1e40af"},
+    received: {label:"Otrzymana", bg:"#d1fae5",      color:"#065f46"},
     sent:     {label:"Wysłana",   bg:"#ede9fe",      color:"#5b21b6"},
     cancelled:{label:"Anulowana", bg:"#fef2f2",      color:"#b91c1c"},
   };
