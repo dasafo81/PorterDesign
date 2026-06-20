@@ -819,7 +819,10 @@ function InvoiceList(p){
         ce("option",{value:"sent"},"Wysłane"),
         ce("option",{value:"cancelled"},"Anulowane")),
       ce("button",{onClick:p.onNew,style:btnPrimary},"+ Nowa faktura"),
-      ce("button",{onClick:p.onSettings,style:btnSecondary},"\u2699\uFE0F Ustawienia")
+      ce("button",{onClick:p.onSettings,style:btnSecondary},"\u2699\uFE0F Ustawienia"),
+      p.onFetchDueDates&&ce("button",{onClick:p.onFetchDueDates,disabled:p.fetchingDueDates,
+        style:Object.assign({},btnSecondary,{opacity:p.fetchingDueDates?0.6:1})},
+        p.fetchingDueDates?"\u23F3 Pobieram terminy\u2026":"\uD83D\uDCC5 Doci\u0105gnij terminy p\u0142atno\u015bci")
     ),
 
     // Brak faktur
@@ -829,7 +832,7 @@ function InvoiceList(p){
     // Tabela
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"100px 90px 2fr 80px 85px 110px 70px 70px 75px 30px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 36px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
         ["Numer","Typ","Kontrahent","Data","Termin pł.","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=6?"center":"right")}},h);
         })
@@ -851,7 +854,7 @@ function InvoiceList(p){
         var contragentNip=isPurchase?(inv.seller_nip||""):(inv.buyer_nip||"");
         return ce("div",{key:inv.id,
           onClick:function(){ inv.ksef_number?(p.onView&&p.onView(inv)):p.onEdit(inv); },
-          style:{display:"grid",gridTemplateColumns:"100px 90px 2fr 80px 85px 110px 70px 70px 75px 30px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 36px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:"pointer",transition:"background .12s",
             background:"var(--bg2)",width:"100%"},
           onMouseEnter:function(e){e.currentTarget.style.background="var(--bg3||var(--bg))";},
@@ -871,7 +874,12 @@ function InvoiceList(p){
             ce("div",{style:{fontSize:10,color:"var(--t3)"}},"netto "+fmtMoney(inv.total_net))
           ),
           cb(inv.paid,function(v){p.onTogglePaid&&p.onTogglePaid(inv,v);}),
-          cb(inv.approved,function(v){p.onToggleApproved&&p.onToggleApproved(inv,v);}),
+          inv.ksef_number
+            ? ce("div",{style:{textAlign:"center"},title:"Zatwierdzone automatycznie przez nadanie numeru KSeF"},
+                ce("input",{type:"checkbox",checked:true,disabled:true,
+                  onClick:function(e){e.stopPropagation();},
+                  style:{width:16,height:16,accentColor:"var(--violet)",opacity:0.6,cursor:"not-allowed"}}))
+            : cb(inv.approved,function(v){p.onToggleApproved&&p.onToggleApproved(inv,v);}),
           ce("div",{style:{textAlign:"center"}},ce(StatusBadge,{status:inv.status})),
           ce("div",{style:{textAlign:"right"}},
             ce("button",{
@@ -1453,6 +1461,7 @@ export function ScreenInvoices(p){
   var [viewDetail,setViewDetail]=useState(null);
   var [viewDetailLoading,setViewDetailLoading]=useState(false);
   var [viewSess,setViewSess]=useState(null);
+  var [fetchingDueDates,setFetchingDueDates]=useState(false);
   var [clientsAll,setClientsAll]=useState([]);
   var [dealsAll,setDealsAll]=useState([]);
   var [loading,setLoading]=useState(true);
@@ -1505,6 +1514,35 @@ export function ScreenInvoices(p){
       .catch(function(e){ alert("Błąd usuwania: "+e.message); });
   }
 
+  function fetchMissingDueDates(){
+    var missing=invoices.filter(function(x){return x.ksef_number&&!x.due_date;});
+    if(missing.length===0){ alert("Wszystkie faktury z KSeF maj\u0105 ju\u017c uzupe\u0142niony termin p\u0142atno\u015bci."); return; }
+    setFetchingDueDates(true);
+    var sp=viewSess&&new Date(viewSess.expiresAt)>new Date()
+      ? Promise.resolve(viewSess)
+      : ksefApi.openSession().then(function(s2){ setViewSess(s2); return s2; });
+    sp.then(function(s2){
+      // Sekwencyjnie, z ma\u0142ym op\u00f3\u017anieniem, \u017ceby nie przeci\u0105\u017cy\u0107 limit\u00f3w API KSeF
+      var i=0;
+      function next(){
+        if(i>=missing.length){ setFetchingDueDates(false); return; }
+        var inv=missing[i]; i++;
+        ksefApi.getInvoice(s2.accessToken,s2.baseUrl,inv.ksef_number)
+          .then(function(d){
+            var parsed=d&&d.parsed;
+            if(parsed&&parsed.header&&parsed.header.dueDate){
+              var dd=parsed.header.dueDate.replace(/\s*dni$/,"")||null;
+              sbApi.updateInvoice(inv.id,{due_date:dd}).catch(function(){});
+              setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{due_date:parsed.header.dueDate}):x;});});
+            }
+          })
+          .catch(function(){})
+          .finally(function(){ setTimeout(next,400); });
+      }
+      next();
+    }).catch(function(){ setFetchingDueDates(false); });
+  }
+
   // Brak ustawień — banner informacyjny
   var settingsEmpty=!settings||!settings.seller_name;
 
@@ -1534,6 +1572,7 @@ export function ScreenInvoices(p){
       ce(InvoiceList,{
         invoices:invoices,
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete,
+        onFetchDueDates:fetchMissingDueDates, fetchingDueDates:fetchingDueDates,
         onTogglePaid:function(inv,val){
           // Zaznaczenie jako zapłacona ustawia paid_amount na pełną kwotę brutto; odznaczenie zeruje
           var newAmount=val?(+(inv.total_gross)||0):0;
