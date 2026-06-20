@@ -188,6 +188,15 @@ function InvoiceEditor(p){
         var s=d&&d.result&&d.result.subject;
         if(!s){setErr("Nie znaleziono podmiotu dla NIP: "+nip);return;}
         setBuyerName(s.name||buyerName);
+        // Biała Lista dla JDG często zwraca tylko imię i nazwisko bez nazwy handlowej — to ograniczenie rejestru, nie błąd aplikacji
+        if(s.name&&!/[a-zA-Z]{3,}.*\s.*[a-zA-Z]{3,}.*\s/.test(s.name)){
+          setErr("Biała Lista zwróciła tylko imię i nazwisko („"+s.name+"”) — to wszystko co jest dostępne w rejestrze VAT dla tego NIP. Możesz dopisać nazwę handlową ręcznie jeśli potrzebna.");
+        }
+        // Numer konta z Białej Listy (jeśli kontrahent go ujawnił)
+        if(s.accountNumbers&&s.accountNumbers.length>0&&!buyerBank){
+          var acc=s.accountNumbers[0];
+          setBuyerBank&&setBuyerBank(acc.replace(/(.{4})/g,"$1 ").trim());
+        }
         // Adres może być złożony; wyciągamy najlepiej jak możemy
         var adr=s.workingAddress||s.residenceAddress||"";
         var parts=adr.split(",").map(function(x){return x.trim();});
