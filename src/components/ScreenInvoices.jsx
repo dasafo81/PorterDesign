@@ -925,7 +925,15 @@ function KsefView(){
       .then(function(s){
         return ksefApi.getInvoice(s.accessToken, s.baseUrl, inv.ksef_number);
       })
-      .then(function(d){ setInvoiceDetail(d&&d.parsed?d.parsed:null); })
+      .then(function(d){
+        var parsed=d&&d.parsed?d.parsed:null;
+        setInvoiceDetail(parsed);
+        // Uzupełnij termin płatności w bazie jeśli go brakowało (metadane KSeF go nie zawierają)
+        if(parsed&&parsed.header&&parsed.header.dueDate&&!inv.due_date){
+          sbApi.updateInvoice(inv.id,{due_date:parsed.header.dueDate.replace(/\s*dni$/,"")||null}).catch(function(){});
+          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{due_date:parsed.header.dueDate}):x;});});
+        }
+      })
       .catch(function(e){ setInvoiceDetail({error:e.message||String(e)}); })
       .finally(function(){ setDetailLoading(false); });
   }
@@ -1546,7 +1554,12 @@ export function ScreenInvoices(p){
           sp.then(function(s2){
             return ksefApi.getInvoice(s2.accessToken,s2.baseUrl,inv.ksef_number);
           }).then(function(d){
-            setViewDetail(d&&d.parsed?d.parsed:null);
+            var parsed=d&&d.parsed?d.parsed:null;
+            setViewDetail(parsed);
+            if(parsed&&parsed.header&&parsed.header.dueDate&&!inv.due_date){
+              sbApi.updateInvoice(inv.id,{due_date:parsed.header.dueDate.replace(/\s*dni$/,"")||null}).catch(function(){});
+              setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{due_date:parsed.header.dueDate}):x;});});
+            }
           }).catch(function(e){
             setViewDetail({error:e.message||String(e)});
           }).finally(function(){
