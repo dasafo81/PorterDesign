@@ -896,8 +896,9 @@ function InvoiceList(p){
         var isPurchase=inv.doc_type==="zakup";
         var dirLabel=isPurchase?"📥 Zakupowa":(inv.doc_type==="proforma"?"📄 Proforma":"📤 Sprzedażowa");
         var snap=inv.seller_snapshot||{};
-        var contragentName=isPurchase?(snap.name||"—"):(inv.buyer_name||"—");
-        var contragentNip=isPurchase?(snap.nip||""):(inv.buyer_nip||"");
+        // Fallback do buyer_* dla starych rekordów sprzed wprowadzenia seller_snapshot przy synchronizacji
+        var contragentName=isPurchase?(snap.name||inv.buyer_name||"—"):(inv.buyer_name||"—");
+        var contragentNip=isPurchase?(snap.nip||inv.buyer_nip||""):(inv.buyer_nip||"");
         var isBusy=p.viewBusyId===inv.id;
         return ce("div",{key:inv.id,
           onClick:function(){ if(isBusy)return; inv.ksef_number?(p.onView&&p.onView(inv)):p.onEdit(inv); },
@@ -991,22 +992,42 @@ function buildInvoicePDFHtml(inv,settings){
   // Sprzedawca/Nabywca: dla faktur zakupowych to my (Porter Design) jeste\u015bmy nabywc\u0105,
   // a kontrahent zewn\u0119trzny (zapisany w seller_snapshot przy synchronizacji z KSeF) jest sprzedawc\u0105.
   // Dla sprzeda\u017cowych/proforma jak dot\u0105d: Porter Design = sprzedawca, buyer_* = klient.
+  // Fallback: starsze faktury zakupowe (zsynchronizowane przed wprowadzeniem seller_snapshot) maj\u0105
+  // prawdziwego sprzedawc\u0119 zapisanego w buyer_* (stara logika) \u2014 u\u017cyj ich, je\u015bli snap jest puste.
+  var snapEmpty=!snap.name&&!snap.nip;
   var partyTop, partyBottom;
   if(isZakup){
-    partyTop={
-      label:"Sprzedawca:",
-      name:snap.name||"",
-      nip:(snap.nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
-      street:snap.address||"",
-      city:((snap.postal||"")+" "+(snap.city||"")).trim()
-    };
-    partyBottom={
-      label:"Nabywca:",
-      name:inv.buyer_name||s.seller_name||"",
-      nip:inv.buyer_nip||s.seller_nip||"",
-      street:inv.buyer_address||s.seller_address||"",
-      city:((inv.buyer_postal||s.seller_postal||"")+" "+(inv.buyer_city||s.seller_city||"")).trim()
-    };
+    if(snapEmpty){
+      partyTop={
+        label:"Sprzedawca:",
+        name:inv.buyer_name||"",
+        nip:(inv.buyer_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
+        street:inv.buyer_address||"",
+        city:((inv.buyer_postal||"")+" "+(inv.buyer_city||"")).trim()
+      };
+      partyBottom={
+        label:"Nabywca:",
+        name:s.seller_name||"",
+        nip:s.seller_nip||"",
+        street:s.seller_address||"",
+        city:((s.seller_postal||"")+" "+(s.seller_city||"")).trim()
+      };
+    } else {
+      partyTop={
+        label:"Sprzedawca:",
+        name:snap.name||"",
+        nip:(snap.nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
+        street:snap.address||"",
+        city:((snap.postal||"")+" "+(snap.city||"")).trim()
+      };
+      partyBottom={
+        label:"Nabywca:",
+        name:inv.buyer_name||s.seller_name||"",
+        nip:inv.buyer_nip||s.seller_nip||"",
+        street:inv.buyer_address||s.seller_address||"",
+        city:((inv.buyer_postal||s.seller_postal||"")+" "+(inv.buyer_city||s.seller_city||"")).trim()
+      };
+    }
   } else {
     partyTop={
       label:"Sprzedawca:",
