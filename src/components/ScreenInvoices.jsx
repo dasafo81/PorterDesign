@@ -825,17 +825,25 @@ function InvoiceList(p){
     // Tabela
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"130px 1fr 110px 90px 90px 80px 36px",gap:8,padding:"10px 16px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)"}},
-        ["Numer","Nabywca","Data","Brutto","Płatność","Status",""].map(function(h,i){
-          return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:i>=3?"right":"left"}},h);
+      ce("div",{style:{display:"grid",gridTemplateColumns:"130px 1fr 100px 90px 80px 80px 70px 36px",gap:8,padding:"10px 16px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)"}},
+        ["Numer","Nabywca","Data","Brutto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
+          return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:i>=2?"center":"left"}},h);
         })
       ),
       // Wiersze
       list.map(function(inv){
         var ps=payStatus(inv);
+        var cb=function(checked,onToggle){
+          return ce("div",{style:{textAlign:"center"}},
+            ce("input",{type:"checkbox",checked:!!checked,
+              onClick:function(e){e.stopPropagation();},
+              onChange:function(e){onToggle(e.target.checked);},
+              style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}})
+          );
+        };
         return ce("div",{key:inv.id,
           onClick:function(){ inv.ksef_number?(p.onView&&p.onView(inv)):p.onEdit(inv); },
-          style:{display:"grid",gridTemplateColumns:"130px 1fr 110px 90px 90px 80px 36px",gap:8,padding:"11px 16px",
+          style:{display:"grid",gridTemplateColumns:"130px 1fr 100px 90px 80px 80px 70px 36px",gap:8,padding:"11px 16px",
             borderBottom:"1px solid var(--bd3)",cursor:"pointer",transition:"background .12s",
             background:"var(--bg2)"},
           onMouseEnter:function(e){e.currentTarget.style.background="var(--bg3||var(--bg))";},
@@ -850,8 +858,9 @@ function InvoiceList(p){
           ),
           ce("div",{style:{fontSize:12,textAlign:"right",color:"var(--t2)"}},fmtDate(inv.issue_date)),
           ce("div",{style:{fontSize:13,fontWeight:700,textAlign:"right",color:"var(--t1)"}},fmtMoney(inv.total_gross)),
-          ce("div",{style:{fontSize:11,textAlign:"right",color:ps.color,fontWeight:500}},ps.label),
-          ce("div",{style:{textAlign:"right"}},ce(StatusBadge,{status:inv.status})),
+          cb(inv.paid,function(v){p.onTogglePaid&&p.onTogglePaid(inv,v);}),
+          cb(inv.approved,function(v){p.onToggleApproved&&p.onToggleApproved(inv,v);}),
+          ce("div",{style:{textAlign:"center"}},ce(StatusBadge,{status:inv.status})),
           ce("div",{style:{textAlign:"right"}},
             ce("button",{
               onClick:function(e){e.stopPropagation();if(confirm("Usunąć fakturę?"))p.onDelete(inv.id);},
@@ -1505,6 +1514,18 @@ export function ScreenInvoices(p){
       ce(InvoiceList,{
         invoices:invoices,
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete,
+        onTogglePaid:function(inv,val){
+          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:val}):x;});});
+          sbApi.updateInvoice(inv.id,{paid:val}).catch(function(){
+            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:!val}):x;});});
+          });
+        },
+        onToggleApproved:function(inv,val){
+          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{approved:val}):x;});});
+          sbApi.updateInvoice(inv.id,{approved:val}).catch(function(){
+            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{approved:!val}):x;});});
+          });
+        },
         onView:function(inv){
           setViewInv(inv); setViewDetail(null); setViewDetailLoading(true);
           var sp=viewSess&&new Date(viewSess.expiresAt)>new Date()
