@@ -821,7 +821,9 @@ function InvoiceList(p){
         ce("option",{value:"cancelled"},"Anulowane")),
       ce("button",{onClick:p.onNew,style:btnPrimary},"+ Nowa faktura"),
       ce("button",{onClick:p.onSettings,style:btnSecondary},"\u2699\uFE0F Ustawienia"),
-      p.onFetchDueDates&&ce("button",{onClick:p.onFetchDueDates,disabled:p.fetchingDueDates,
+      p.onFetchDueDates
+        &&(p.fetchingDueDates||(p.invoices||[]).some(function(x){return x.ksef_number&&!x.due_date;}))
+        &&ce("button",{onClick:p.onFetchDueDates,disabled:p.fetchingDueDates,
         style:Object.assign({},btnSecondary,{opacity:p.fetchingDueDates?0.6:1})},
         p.fetchingDueDates?"\u23F3 Pobieram terminy\u2026":"\uD83D\uDCC5 Doci\u0105gnij terminy p\u0142atno\u015bci")
     ),
