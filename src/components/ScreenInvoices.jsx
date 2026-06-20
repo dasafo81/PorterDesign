@@ -1138,83 +1138,151 @@ function KsefView(){
 
 
 // \u2500\u2500 PDF FAKTURY VAT (do druku) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+function numberToWordsPL(n){
+  var jed=["zero","jeden","dwa","trzy","cztery","pi\u0119\u0107","sze\u015b\u0107","siedem","osiem","dziewi\u0119\u0107"];
+  var nast=["dziesi\u0119\u0107","jedena\u015bcie","dwana\u015bcie","trzyna\u015bcie","czterna\u015bcie","pi\u0119tna\u015bcie","szesna\u015bcie","siedemna\u015bcie","osiemna\u015bcie","dziewi\u0119tna\u015bcie"];
+  var dzies=["","","dwadzie\u015bcia","trzydzie\u015bci","czterdzie\u015bci","pi\u0119\u0107dziesi\u0105t","sze\u015b\u0107dziesi\u0105t","siedemdziesi\u0105t","osiemdziesi\u0105t","dziewi\u0119\u0107dziesi\u0105t"];
+  var set=["","sto","dwie\u015bcie","trzysta","czterysta","pi\u0119\u0107set","sze\u015b\u0107set","siedemset","osiemset","dziewi\u0119\u0107set"];
+  function trzy(num){
+    var s="";
+    var h=Math.floor(num/100), r=num%100;
+    if(h>0) s+=set[h]+" ";
+    if(r>=10&&r<20) s+=nast[r-10];
+    else{
+      var d=Math.floor(r/10), j=r%10;
+      if(d>0) s+=dzies[d]+(j>0?" ":"");
+      if(j>0||r===0&&h===0) s+=jed[j];
+    }
+    return s.trim();
+  }
+  function forma(num,f1,f2,f5){
+    var m10=num%10, m100=num%100;
+    if(num===1) return f1;
+    if(m10>=2&&m10<=4&&!(m100>=12&&m100<=14)) return f2;
+    return f5;
+  }
+  n=Math.round(n);
+  if(n===0) return "zero z\u0142otych";
+  var tys=Math.floor(n/1000), reszta=n%1000;
+  var parts=[];
+  if(tys>0){
+    parts.push(trzy(tys)+" "+forma(tys,"tysi\u0105c","tysi\u0105ce","tysi\u0119cy"));
+  }
+  if(reszta>0||tys===0){
+    parts.push(trzy(reszta));
+  }
+  var slowna=parts.filter(Boolean).join(" ").trim();
+  return slowna.charAt(0).toUpperCase()+slowna.slice(1)+" z\u0142otych 00/100";
+}
+
 function buildInvoicePDFHtml(inv,settings){
   var s=settings||{};
   var items=inv.invoice_items||[];
   var seller=inv.seller_snapshot||{};
-  var fmtM=function(v){return (+(v||0)).toFixed(2).replace(".",",")+" z\u0142";};
+  var fmtM=function(v){return (+(v||0)).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});};
   var fmtD=function(d){if(!d)return "\u2014";var p=d.split("-");return p[2]+"."+p[1]+"."+p[0];};
-  var rowsHtml=items.map(function(it,i){
-    var vl=it.vat_rate===-1?"zw":(it.vat_rate+"%");
-    return "<tr><td>"+(i+1)+"</td><td style='text-align:left'>"+String(it.name||"")+"</td>"
-      +"<td>"+String(it.quantity||1)+"</td><td>"+String(it.unit||"szt")+"</td>"
-      +"<td>"+fmtM(it.unit_net)+"</td><td>"+fmtM(it.line_net)+"</td>"
-      +"<td>"+vl+"</td><td>"+fmtM(it.line_vat)+"</td>"
-      +"<td style='font-weight:700'>"+fmtM(it.line_gross)+"</td></tr>";
-  }).join("");
-  var docLabel={vat:"Faktura VAT",proforma:"Faktura Proforma",zaliczka:"Faktura Zaliczkowa",korekta:"Faktura Koryguj\u0105ca"}[inv.doc_type]||"Faktura";
+  var docLabel={vat:"Faktura",proforma:"Faktura Proforma",zaliczka:"Faktura Zaliczkowa",korekta:"Faktura Koryguj\u0105ca"}[inv.doc_type]||"Faktura";
   var selName=seller.name||s.seller_name||"";
-  var selNip=seller.nip||s.seller_nip||"";
-  var selAddr=(seller.address||s.seller_address||"")+" "+(seller.postal||s.seller_postal||"")+" "+(seller.city||s.seller_city||"");
-  var selPhone=seller.phone||s.seller_phone||"";
-  var selEmail=seller.email||s.seller_email||"";
+  var selNip=(seller.nip||s.seller_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4");
+  var selStreet=seller.address||s.seller_address||"";
+  var selCity=((seller.postal||s.seller_postal||"")+" "+(seller.city||s.seller_city||"")).trim();
   var selBank=seller.bank||s.seller_bank||"";
+
+  var paid=+(inv.paid_amount||0);
+  var gross=+(inv.total_gross||0);
+  var remaining=gross-paid;
+
+  var rowsHtml=items.map(function(it,i){
+    var rate=it.vat_rate;
+    var vl=rate===-1?"zw":(rate+"%");
+    var qty=+(it.quantity||1);
+    var unitGross=qty?(+(it.line_gross||0)/qty):0;
+    return "<tr>"
+      +"<td>"+(i+1)+"</td>"
+      +"<td style='text-align:left'>"+String(it.name||"")+"</td>"
+      +"<td>"+String(qty).replace(".",",")+"</td>"
+      +"<td>"+String(it.unit||"szt")+"</td>"
+      +"<td>"+fmtM(unitGross)+"</td>"
+      +"<td>"+fmtM(it.line_net)+"</td>"
+      +"<td>"+vl+"</td>"
+      +"<td>"+fmtM(it.line_vat)+"</td>"
+      +"<td style='font-weight:700'>"+fmtM(it.line_gross)+"</td>"
+      +"</tr>";
+  }).join("");
+
   return "<!DOCTYPE html><html lang='pl'><head><meta charset='UTF-8'><title>"+(inv.number||docLabel)+"</title>"
     +"<style>*{margin:0;padding:0;box-sizing:border-box;}"
-    +"body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a18;padding:14mm 12mm;}"
-    +"h1{font-size:18px;font-weight:700;margin-bottom:2mm;}"
-    +".meta{display:flex;justify-content:space-between;gap:20px;margin:6mm 0;}"
-    +".meta-block h4{font-size:8px;text-transform:uppercase;letter-spacing:0.08em;color:#888;margin-bottom:3px;}"
-    +".meta-block p{font-size:10px;line-height:1.6;}"
-    +"table{width:100%;border-collapse:collapse;margin:6mm 0;}"
-    +"th{background:#1a1a18;color:#fff;font-size:8px;text-transform:uppercase;letter-spacing:0.06em;padding:5px 6px;text-align:right;}"
-    +"th:nth-child(2){text-align:left;}"
-    +"td{padding:5px 6px;text-align:right;border-bottom:0.5px solid #e5e5e0;font-size:9.5px;}"
-    +"td:nth-child(2){text-align:left;}"
-    +".sum-box{background:#1a1a18;color:#fff;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;margin:4mm 0;}"
-    +".info-row{display:flex;gap:6px;font-size:9px;color:#555;margin-top:2mm;}"
-    +".info-row span{background:#f5f5f3;padding:3px 8px;border-radius:4px;}"
-    +".sign-block{display:flex;justify-content:space-between;margin-top:14mm;}"
-    +".sign{width:170px;border-top:0.5px solid #1a1a18;padding-top:3px;font-size:8px;color:#666;text-align:center;}"
-    +"footer{margin-top:8mm;display:flex;justify-content:space-between;font-size:8px;color:#aaa;border-top:0.5px solid #e5e5e0;padding-top:3mm;}"
+    +"body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a1a;padding:16mm 14mm;}"
+    +"h1{font-size:26px;font-weight:700;letter-spacing:0.02em;}"
+    +".top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8mm;}"
+    +".logo{font-size:30px;font-weight:800;letter-spacing:-0.02em;line-height:0.95;}"
+    +".meta-table{font-size:11px;}"
+    +".meta-table tr td:first-child{font-weight:700;padding-right:10px;text-align:right;}"
+    +".meta-table tr td{padding:2px 0;}"
+    +".pay-row{display:flex;justify-content:space-between;margin:6mm 0;font-size:11px;}"
+    +".sect-head{background:#f0f0f0;padding:6px 10px;font-weight:700;font-size:13px;margin-top:6mm;}"
+    +".parties{display:flex;gap:24px;margin-top:2mm;margin-bottom:6mm;}"
+    +".party{flex:1;}"
+    +".party p{font-size:12px;line-height:1.7;padding:4px 10px;}"
+    +"table.items{width:100%;border-collapse:collapse;margin-bottom:4mm;}"
+    +"table.items th{background:#f0f0f0;font-size:10px;font-weight:700;padding:7px 6px;text-align:right;border-bottom:1px solid #ccc;}"
+    +"table.items th:nth-child(1),table.items th:nth-child(2){text-align:left;}"
+    +"table.items td{padding:7px 6px;text-align:right;font-size:11px;border-bottom:1px solid #eee;}"
+    +"table.items td:nth-child(1),table.items td:nth-child(2){text-align:left;}"
+    +"table.items tfoot td{font-weight:700;background:#f7f7f7;border-top:1px solid #ccc;}"
+    +".totals{display:flex;justify-content:flex-end;margin-top:4mm;}"
+    +".totals table td{padding:3px 0 3px 24px;font-size:13px;text-align:right;}"
+    +".totals table td:first-child{font-weight:700;padding-left:0;}"
+    +".totals .grand td{font-size:15px;}"
+    +".slownie{margin-top:4mm;text-align:right;font-size:11px;}"
+    +".notes-box{margin-top:6mm;padding:8px 12px;background:#f7f7f7;border-radius:4px;font-size:10px;color:#444;}"
+    +".kasowa{margin-top:10mm;font-size:11px;}"
+    +".sign-name{text-align:right;margin-top:6mm;font-size:13px;}"
+    +".sign-block{display:flex;justify-content:space-between;margin-top:16mm;}"
+    +".sign{width:200px;border-top:1px solid #1a1a1a;padding-top:4px;font-size:10px;color:#444;text-align:center;}"
     +"@media print{body{padding:12mm 10mm;} @page{size:A4;margin:0;}}"
     +"</style></head><body>"
-    +"<div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6mm;padding-bottom:5mm;border-bottom:0.5px solid #c8c8c4;'>"
-    +"<div><div style='font-size:22px;font-weight:800;'>PORTER<br>DESIGN</div>"
-    +"<div style='font-size:8px;color:#888;'>Dekoracje okienne</div></div>"
-    +"<div style='text-align:right'><h1>"+(inv.number||docLabel)+"</h1>"
-    +"<div style='font-size:9px;color:#666;'>Wystawiono: "+fmtD(inv.issue_date)+"</div>"
-    +(inv.sale_date?"<div style='font-size:9px;color:#666;'>Data sprzeda\u017cy: "+fmtD(inv.sale_date)+"</div>":"")
-    +"</div></div>"
-    +"<div class='meta'>"
-    +"<div class='meta-block'><h4>Sprzedawca</h4><p><strong>"+selName+"</strong><br>"
-    +selAddr.trim()+(selAddr.trim()?"<br>":"")
-    +"NIP: "+selNip+(selPhone?"<br>Tel.: "+selPhone:"")+(selEmail?"<br>E-mail: "+selEmail:"")
-    +(selBank?"<br>Konto: "+selBank:"")+"</p></div>"
-    +"<div class='meta-block'><h4>Nabywca</h4><p><strong>"+(inv.buyer_name||"")+"</strong>"
-    +(inv.buyer_nip?"<br>NIP: "+inv.buyer_nip:"")
+    +"<div class='top'>"
+    +"<div class='logo'>" + (s.logo_html || "PD") + "<div style='font-size:10px;font-weight:400;letter-spacing:0.15em;color:#888;margin-top:2px;'>PORTER DESIGN</div></div>"
+    +"<div style='text-align:center;flex:1;'><h1>"+docLabel+"</h1></div>"
+    +"<table class='meta-table'><tr><td>Numer faktury:</td><td>"+(inv.number||"")+"</td></tr>"
+    +"<tr><td>Data wystawienia:</td><td>"+fmtD(inv.issue_date)+"</td></tr>"
+    +"<tr><td>Data sprzeda\u017cy:</td><td>"+fmtD(inv.sale_date)+"</td></tr></table>"
+    +"</div>"
+    +"<div class='pay-row'>"
+    +"<div>Termin p\u0142atno\u015bci: "+fmtD(inv.due_date)+"<br>Spos\u00f3b p\u0142atno\u015bci: "+(inv.payment_method||"przelew").replace(/^./,function(c){return c.toUpperCase();})+"</div>"
+    +(selBank?"<div style='text-align:right'>Konto: "+selBank+"</div>":"<div></div>")
+    +"</div>"
+    +"<div class='parties'>"
+    +"<div class='party'><div class='sect-head'>Sprzedawca:</div><p><strong>"+selName+"</strong><br>"
+    +selStreet+"<br>"+selCity+" Polska<br>NIP: "+selNip+"</p></div>"
+    +"<div class='party'><div class='sect-head'>Nabywca:</div><p><strong>"+(inv.buyer_name||"")+"</strong>"
     +(inv.buyer_address?"<br>"+inv.buyer_address:"")
-    +((inv.buyer_postal||inv.buyer_city)?"<br>"+(inv.buyer_postal||"")+" "+(inv.buyer_city||""):"")
-    +"</p></div>"
-    +"<div class='meta-block'><h4>P\u0142atno\u015b\u0107</h4><p>"
-    +"Forma: <strong>"+(inv.payment_method||"przelew")+"</strong><br>"
-    +"Termin: <strong>"+fmtD(inv.due_date)+"</strong>"
-    +(selBank?"<br>Nr konta:<br><strong>"+selBank+"</strong>":"")
-    +"</p></div></div>"
-    +"<table><thead><tr>"
-    +"<th>Lp.</th><th style='text-align:left'>Nazwa</th><th>Ilo\u015b\u0107</th><th>Jedn.</th>"
-    +"<th>Cena netto</th><th>Wart. netto</th><th>VAT</th><th>Wart. VAT</th><th>Wart. brutto</th>"
-    +"</tr></thead><tbody>"+rowsHtml+"</tbody></table>"
-    +"<div class='sum-box'><span style='font-size:10px;'>Do zap\u0142aty</span>"
-    +"<span style='font-size:18px;font-weight:700;'>"+(+(inv.total_gross||0)).toFixed(2).replace(".",",")+" z\u0142</span></div>"
-    +"<div class='info-row'><span>Netto: "+(+(inv.total_net||0)).toFixed(2).replace(".",",")+" z\u0142</span>"
-    +"<span>VAT: "+(+(inv.total_vat||0)).toFixed(2).replace(".",",")+" z\u0142</span></div>"
-    +(inv.notes?"<div style='margin-top:4mm;padding:6px 10px;background:#f5f5f3;border-radius:6px;font-size:9px;color:#555;'>"+String(inv.notes)+"</div>":"")
+    +((inv.buyer_postal||inv.buyer_city)?"<br>"+(inv.buyer_postal||"")+" "+(inv.buyer_city||"")+" Polska":"")
+    +(inv.buyer_nip?"<br>NIP: "+inv.buyer_nip:"")+"</p></div>"
+    +"</div>"
+    +"<table class='items'><thead><tr>"
+    +"<th>Lp.</th><th>Nazwa produktu / us\u0142ugi</th><th>Ilo\u015b\u0107</th><th>Jedn.</th>"
+    +"<th>Cena jedn.<br>brutto</th><th>Warto\u015b\u0107<br>netto</th><th>Stawka<br>VAT</th>"
+    +"<th>Warto\u015b\u0107<br>VAT</th><th>Warto\u015b\u0107<br>brutto</th>"
+    +"</tr></thead><tbody>"+rowsHtml+"</tbody>"
+    +"<tfoot><tr><td colspan='5' style='text-align:right'>Suma:</td>"
+    +"<td>"+fmtM(inv.total_net)+"</td><td>"+(items[0]&&items[0].vat_rate===-1?"zw":"23%")+"</td>"
+    +"<td>"+fmtM(inv.total_vat)+"</td><td>"+fmtM(inv.total_gross)+"</td></tr></tfoot>"
+    +"</table>"
+    +"<div class='totals'><table>"
+    +"<tr><td>\u0141\u0105cznie:</td><td>"+fmtM(gross)+" PLN</td></tr>"
+    +"<tr><td>Zap\u0142acono:</td><td>"+fmtM(paid)+" PLN</td></tr>"
+    +"<tr class='grand'><td>Do zap\u0142aty:</td><td>"+fmtM(remaining)+" PLN</td></tr>"
+    +"</table></div>"
+    +"<div class='slownie'><strong>S\u0142ownie:</strong> "+numberToWordsPL(gross)+"</div>"
+    +(inv.notes?"<div class='notes-box'>"+String(inv.notes)+"</div>":"")
+    +((inv.payment_method||"").toLowerCase()==="gotówka"||(inv.payment_method||"").toLowerCase()==="gotowka"?"<div class='kasowa'>Metoda Kasowa</div>":"")
+    +"<div class='sign-name'>Paulina Porter</div>"
     +"<div class='sign-block'>"
-    +"<div class='sign'>Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
-    +"<div class='sign'>Odebrano / Zatwierdzono</div></div>"
-    +"<footer><span>"+selName+" | "+(seller.city||s.seller_city||"")+"</span>"
-    +"<span>"+(inv.number||"")+"</span></footer>"
+    +"<div class='sign'>Osoba uprawniona do odbioru</div>"
+    +"<div class='sign'>Osoba uprawniona do wystawienia</div>"
+    +"</div>"
     +"</body></html>";
 }
 
