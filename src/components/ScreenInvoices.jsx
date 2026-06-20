@@ -829,7 +829,7 @@ function InvoiceList(p){
     // Tabela
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 90px 1fr 90px 100px 95px 80px 80px 70px 36px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 85px minmax(160px,260px) 85px 90px 110px 75px 75px 75px 32px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)"}},
         ["Numer","Typ","Nabywca","Data","Termin pł.","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=6?"center":"right")}},h);
         })
@@ -847,7 +847,7 @@ function InvoiceList(p){
         };
         return ce("div",{key:inv.id,
           onClick:function(){ inv.ksef_number?(p.onView&&p.onView(inv)):p.onEdit(inv); },
-          style:{display:"grid",gridTemplateColumns:"110px 90px 1fr 90px 100px 95px 80px 80px 70px 36px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"110px 85px minmax(160px,260px) 85px 90px 110px 75px 75px 75px 32px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:"pointer",transition:"background .12s",
             background:"var(--bg2)"},
           onMouseEnter:function(e){e.currentTarget.style.background="var(--bg3||var(--bg))";},
