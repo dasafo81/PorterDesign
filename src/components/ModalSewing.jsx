@@ -100,7 +100,7 @@ export function ModalSewing(p){
     );
   }
 
-  function mkTermInput(val,setVal){
+  function TermInput(p){var val=p.val,setVal=p.setVal;
     var cs=useState(false),calOpen=cs[0],setCalOpen=cs[1];
     var today=new Date();
     var initYear=today.getFullYear(),initMonth=today.getMonth();
@@ -240,7 +240,7 @@ export function ModalSewing(p){
     content=ce('div',{style:{display:'flex',flexDirection:'column',gap:16}},
       ce('button',{onClick:function(){setMode('choose');},style:{border:'none',background:'none',cursor:'pointer',fontSize:13,color:'var(--t2)',textAlign:'left',padding:0}},'\u2190 Wr\xf3\u0107'),
       mkHouseSelect(selHouse,setSelHouse,customHouse,setCustomHouse),
-      mkTermInput(term,setTerm),
+      ce(TermInput,{val:term,setVal:setTerm}),
       mkNotesInput(notes,setNotes),
       mkAttachInput(attachB64,setAttachB64,attachName,setAttachName),
       ce('div',{style:{display:'flex',gap:10,marginTop:4}},
@@ -283,7 +283,7 @@ export function ModalSewing(p){
         )
       ),
       mkHouseSelect(splitHouse,setSplitHouse,splitCustom,setSplitCustom),
-      mkTermInput(splitTerm,setSplitTerm),
+      ce(TermInput,{val:splitTerm,setVal:setSplitTerm}),
       mkNotesInput(splitNotes,setSplitNotes),
       mkAttachInput(splitAttach,setSplitAttach,splitAttachName,setSplitAttachName),
       ce('div',{style:{display:'flex',gap:10,marginTop:4}},
