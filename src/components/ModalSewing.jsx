@@ -250,7 +250,7 @@ export function ModalFabricOrder(p){
         ce('div',{style:{fontSize:17,fontWeight:700,color:'var(--t1)'}},'\uD83E\uDDF5 Zamówienie tkaniny'),
         ce('button',{onClick:p.onClose,style:{border:'none',background:'none',cursor:'pointer',fontSize:22,color:'var(--t3)',padding:'0 4px'}},'\xd7')
       ),
-      ce('div',{style:{fontSize:13,color:'var(--t2)'}},'Gdzie wysłać tkaninę?'),
+      ce('div',{style:{fontSize:13,color:'var(--t2)'}},'Zamówienie tkaniny od producenta — podaj szwalnié docelową (opcjonalnie).'),
       ce('div',null,
         ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:8}},'SZWALNIA'),
         ce('select',{value:selHouse,onChange:function(ev){setSelHouse(ev.target.value);},style:Object.assign({},INP,{minHeight:48})},
