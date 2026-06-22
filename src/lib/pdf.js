@@ -437,20 +437,18 @@ export function generateSewingOrderPDF(client, modalData){
     :'';
 
   var extraStyles=`
-    @page{size:A4 landscape;margin:12mm 14mm;}
-    body{padding:0 !important;font-size:13px;}
+    body{font-size:13px;}
     table{font-size:13px;}
     caption{font-size:11px;}
     th{font-size:11px;padding:5px 7px;font-weight:700;}
-    td{padding:5px 7px;font-size:13px;}
-    @media print{body{padding:0 !important;} @page{size:A4 landscape;margin:12mm 14mm;}}
+    td{padding:5px 7px;font-size:13px;line-height:1.4;}
   `;
 
   var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;')
     .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
-    +'<div class="header"><div><div class="logo-text" style="font-size:16px;letter-spacing:0.12em">Porter Design</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div class="header"><div><img src="'+LOGO_PDF_G+'" style="height:50px;width:auto;" alt="Porter Design"/></div>'
     +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
     +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+' &nbsp;|&nbsp; Klient: <strong>'+client.name+'</strong></div></div></div>'
     +'<div class="meta">'
@@ -485,7 +483,7 @@ export function generateSewingOrderPDF(client, modalData){
       +'</div></body></html>');
   }
 
-  openPDFWindow(html,"zlecenie-szycia");
+  openPDFWindow(html,"zlecenie-szycia",{landscape:true});
 }
 
 
@@ -527,12 +525,12 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shAddr2?'<br><span style="font-size:12px">'+_shAddr2.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
-  var extraStyles='@page{size:A4 landscape;margin:12mm 14mm;}body{padding:0 !important;font-size:13px;}table{font-size:13px;}caption{font-size:11px;}th{font-size:11px;padding:5px 7px;font-weight:700;}td{padding:5px 7px;font-size:13px;}@media print{body{padding:0 !important;} @page{size:A4 landscape;margin:12mm 14mm;}}';
+  var extraStyles='body{font-size:13px;}table{font-size:13px;}caption{font-size:11px;}th{font-size:11px;padding:5px 7px;font-weight:700;}td{padding:5px 7px;font-size:13px;line-height:1.4;}';
   var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
     .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
-    +'<div class="header"><div><div class="logo-text" style="font-size:16px;letter-spacing:0.12em">Porter Design</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div class="header"><div><img src="'+LOGO_PDF_G+'" style="height:50px;width:auto;" alt="Porter Design"/></div>'
     +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
     +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+'</div></div></div>'
     +'<div class="meta">'
@@ -545,7 +543,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +notesBlock
     +'<div class="sign-block"><div class="sign">Data odbioru tkaniny</div><div class="sign">Podpis zleceniodawcy</div><div class="sign">Podpis szwalni</div></div>'
     +'</body></html>';
-  openPDFWindow(h,'Zlecenie szycia');
+  openPDFWindow(h,'Zlecenie szycia',{landscape:true});
   if(attachB64){
     setTimeout(function(){
       var w2=window.open('','_blank','width=900,height=700');
