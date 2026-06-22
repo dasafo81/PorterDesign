@@ -428,8 +428,9 @@ export function generateSewingOrderPDF(client, modalData){
   var notesFieldHTML=''; // uwagi są już w kolumnie tabeli — nie powielamy
 
   var _sh=sewingHouse||'';var _shParts=_sh.split(' — ');var _shName=_shParts[0]||_sh;var _shAddr=_shParts.slice(1).join(' — ');
+  var _shAddrParts=_shAddr?_shAddr.split(', '):[]; var _shStreet=_shAddrParts[0]||''; var _shCity=_shAddrParts.slice(1).join(', ');
   var sewHouseBlock=sewingHouse
-    ?('<strong style="font-size:13px">'+_shName.replace(/</g,'&lt;')+'</strong>'+(_shAddr?'<br><span style="font-size:12px">'+_shAddr.replace(/</g,'&lt;')+'</span>':''))
+    ?('<strong style="font-size:13px">'+_shName.replace(/</g,'&lt;')+'</strong>'+(_shStreet?'<br><span style="font-size:12px">'+_shStreet.replace(/</g,'&lt;')+'</span>':'')+(_shCity?'<br><span style="font-size:12px">'+_shCity.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________<br>____________________________</div>';
 
   var notesBlock=notes
@@ -521,8 +522,9 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   });
   var notesFieldHTML2=''; // uwagi są już w kolumnie tabeli — nie powielamy
   var _sh2=sewingHouse||'';var _shParts2=_sh2.split(' — ');var _shName2=_shParts2[0]||_sh2;var _shAddr2=_shParts2.slice(1).join(' — ');
+  var _shAddrParts2=_shAddr2?_shAddr2.split(', '):[]; var _shStreet2=_shAddrParts2[0]||''; var _shCity2=_shAddrParts2.slice(1).join(', ');
   var sewHouseBlock=sewingHouse
-    ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shAddr2?'<br><span style="font-size:12px">'+_shAddr2.replace(/</g,'&lt;')+'</span>':''))
+    ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shStreet2?'<br><span style="font-size:12px">'+_shStreet2.replace(/</g,'&lt;')+'</span>':'')+(_shCity2?'<br><span style="font-size:12px">'+_shCity2.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
   var extraStyles='body{font-size:13px;}table{font-size:13px;}caption{font-size:11px;}th{font-size:11px;padding:5px 7px;font-weight:700;}td{padding:5px 7px;font-size:13px;line-height:1.4;}';
