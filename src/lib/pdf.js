@@ -436,13 +436,16 @@ export function generateSewingOrderPDF(client, modalData){
     :'';
 
   var extraStyles=`
-    table{font-size:8px;}
-    th{font-size:7px;padding:3px 4px;}
-    td{padding:3px 4px;font-size:8px;}
+    @page{size:A4 landscape;margin:10mm 14mm;}
+    body{padding:0;}
+    table{font-size:10px;}
+    th{font-size:9px;padding:4px 6px;}
+    td{padding:4px 6px;font-size:10px;}
   `;
 
   var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
-    +pdfStyles().replace('</style>',extraStyles+'</style>')
+    +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;')
+    .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
     +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
     +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zlecenie szycia</div>'
@@ -520,9 +523,10 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     ?('<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>')
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
-  var extraStyles='table{font-size:8px;}th{font-size:7px;padding:3px 4px;}td{padding:3px 4px;font-size:8px;}';
+  var extraStyles='@page{size:A4 landscape;margin:10mm 14mm;}body{padding:0;}table{font-size:10px;}th{font-size:9px;padding:4px 6px;}td{padding:4px 6px;font-size:10px;}';
   var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
-    +pdfStyles().replace('</style>',extraStyles+'</style>')
+    +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
+    .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
     +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
     +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zlecenie szycia</div>'
