@@ -101,9 +101,96 @@ export function ModalSewing(p){
   }
 
   function mkTermInput(val,setVal){
-    return ce('div',null,
+    var cs=useState(false),calOpen=cs[0],setCalOpen=cs[1];
+    var today=new Date();
+    var initYear=today.getFullYear(),initMonth=today.getMonth();
+    var parsed=val&&/^\d{2}\.\d{2}\.\d{4}$/.test(val)?new Date(val.split('.')[2],val.split('.')[1]-1,val.split('.')[0]):null;
+    var vs=useState(parsed&&!isNaN(parsed)?parsed.getFullYear():initYear),viewYear=vs[0],setViewYear=vs[1];
+    var vm=useState(parsed&&!isNaN(parsed)?parsed.getMonth():initMonth),viewMonth=vm[0],setViewMonth=vm[1];
+
+    var MONTHS=['Stycze\u0144','Luty','Marzec','Kwiecie\u0144','Maj','Czerwiec','Lipiec','Sierpie\u0144','Wrzesie\u0144','Pa\u017adziernik','Listopad','Grudzie\u0144'];
+    var DOW=['Pn','Wt','\u015ar','Cz','Pt','Sb','Nd'];
+
+    function prevMonth(){
+      if(viewMonth===0){setViewMonth(11);setViewYear(function(y){return y-1;});}
+      else setViewMonth(function(m){return m-1;});
+    }
+    function nextMonth(){
+      if(viewMonth===11){setViewMonth(0);setViewYear(function(y){return y+1;});}
+      else setViewMonth(function(m){return m+1;});
+    }
+    function pickDate(d){
+      var dd=String(d).padStart(2,'0');
+      var mm=String(viewMonth+1).padStart(2,'0');
+      setVal(dd+'.'+mm+'.'+viewYear);
+      setCalOpen(false);
+    }
+
+    var firstDay=new Date(viewYear,viewMonth,1).getDay();
+    var offset=(firstDay===0?6:firstDay-1);
+    var daysInMonth=new Date(viewYear,viewMonth+1,0).getDate();
+    var cells=[];
+    for(var i=0;i<offset;i++)cells.push(null);
+    for(var d2=1;d2<=daysInMonth;d2++)cells.push(d2);
+    while(cells.length%7!==0)cells.push(null);
+
+    var selectedDay=parsed&&!isNaN(parsed)&&parsed.getFullYear()===viewYear&&parsed.getMonth()===viewMonth?parsed.getDate():null;
+    var todayDay=today.getFullYear()===viewYear&&today.getMonth()===viewMonth?today.getDate():null;
+
+    return ce('div',{style:{position:'relative'}},
       ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:8}},'TERMIN REALIZACJI'),
-      ce('input',{type:'text',value:val,onChange:function(ev){setVal(ev.target.value);},placeholder:'np. 25.04.2026',style:Object.assign({},INP,{minHeight:48})})
+      ce('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+        ce('input',{type:'text',value:val,onChange:function(ev){setVal(ev.target.value);},placeholder:'np. 25.04.2026',style:Object.assign({},INP,{minHeight:48,flex:1})}),
+        ce('button',{
+          type:'button',
+          onClick:function(){setCalOpen(function(o){return !o;});},
+          title:'Otw\u00f3rz kalendarz',
+          style:{width:48,height:48,borderRadius:10,border:'1.5px solid var(--bd2)',background:calOpen?'var(--t1)':'var(--bg2)',
+            cursor:'pointer',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,
+            color:calOpen?'#fff':'var(--t1)',transition:'all .15s'}
+        },'\uD83D\uDCC5')
+      ),
+      calOpen?ce('div',{style:{
+        position:'absolute',top:'calc(100% + 6px)',left:0,zIndex:2000,
+        background:'var(--bg)',border:'1.5px solid var(--bd2)',borderRadius:14,
+        boxShadow:'0 8px 32px rgba(0,0,0,0.18)',padding:'14px 16px',width:280,
+        userSelect:'none'
+      }},
+        ce('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}},
+          ce('button',{type:'button',onClick:prevMonth,style:{border:'none',background:'none',cursor:'pointer',fontSize:18,color:'var(--t2)',padding:'2px 6px',borderRadius:6}},'\u2039'),
+          ce('span',{style:{fontWeight:700,fontSize:14,color:'var(--t1)'}},MONTHS[viewMonth]+' '+viewYear),
+          ce('button',{type:'button',onClick:nextMonth,style:{border:'none',background:'none',cursor:'pointer',fontSize:18,color:'var(--t2)',padding:'2px 6px',borderRadius:6}},'\u203a')
+        ),
+        ce('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:4}},
+          DOW.map(function(d3,i){return ce('div',{key:i,style:{textAlign:'center',fontSize:10,fontWeight:700,color:'var(--t3)',padding:'2px 0'}},d3);})
+        ),
+        ce('div',{style:{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}},
+          cells.map(function(day,idx2){
+            if(!day) return ce('div',{key:'e'+idx2});
+            var isSel=day===selectedDay;
+            var isToday=day===todayDay;
+            return ce('button',{
+              key:'d'+day,
+              type:'button',
+              onClick:function(){pickDate(day);},
+              style:{
+                padding:'6px 2px',borderRadius:8,border:isToday&&!isSel?'1.5px solid var(--bd2)':'1.5px solid transparent',
+                background:isSel?'var(--t1)':'transparent',
+                color:isSel?'#fff':isToday?'var(--t1)':'var(--t2)',
+                fontWeight:isSel||isToday?700:400,
+                fontSize:13,cursor:'pointer',textAlign:'center',transition:'all .1s'
+              }
+            },day);
+          })
+        ),
+        ce('div',{style:{marginTop:10,paddingTop:8,borderTop:'1px solid var(--bd3)',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+          ce('button',{type:'button',onClick:function(){
+            var t2=new Date();setViewYear(t2.getFullYear());setViewMonth(t2.getMonth());
+          },style:{border:'none',background:'none',cursor:'pointer',fontSize:12,color:'var(--t3)'}},'Dzisiaj'),
+          ce('button',{type:'button',onClick:function(){setCalOpen(false);},
+            style:{border:'none',background:'none',cursor:'pointer',fontSize:12,color:'var(--t3)'}},'\u00d7 Zamknij')
+        )
+      ):null
     );
   }
 
