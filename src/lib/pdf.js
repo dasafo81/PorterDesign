@@ -427,8 +427,9 @@ export function generateSewingOrderPDF(client, modalData){
 
   var notesFieldHTML=''; // uwagi są już w kolumnie tabeli — nie powielamy
 
+  var _sh=sewingHouse||'';var _shParts=_sh.split(' — ');var _shName=_shParts[0]||_sh;var _shAddr=_shParts.slice(1).join(' — ');
   var sewHouseBlock=sewingHouse
-    ?'<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>'
+    ?('<strong style="font-size:13px">'+_shName.replace(/</g,'&lt;')+'</strong>'+(_shAddr?'<br><span style="font-size:12px">'+_shAddr.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________<br>____________________________</div>';
 
   var notesBlock=notes
@@ -437,10 +438,11 @@ export function generateSewingOrderPDF(client, modalData){
 
   var extraStyles=`
     @page{size:A4 landscape;margin:10mm 14mm;}
-    body{padding:0;}
-    table{font-size:10px;}
-    th{font-size:9px;padding:4px 6px;}
-    td{padding:4px 6px;font-size:10px;}
+    body{padding:0;font-size:13px;}
+    table{font-size:13px;}
+    caption{font-size:11px;}
+    th{font-size:11px;padding:5px 7px;font-weight:700;}
+    td{padding:5px 7px;font-size:13px;}
   `;
 
   var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
@@ -519,11 +521,12 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
       r.note||''];
   });
   var notesFieldHTML2=''; // uwagi są już w kolumnie tabeli — nie powielamy
+  var _sh2=sewingHouse||'';var _shParts2=_sh2.split(' — ');var _shName2=_shParts2[0]||_sh2;var _shAddr2=_shParts2.slice(1).join(' — ');
   var sewHouseBlock=sewingHouse
-    ?('<div style="font-size:11px;line-height:1.6;white-space:pre-wrap">'+sewingHouse.replace(/</g,'&lt;')+'</div>')
+    ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shAddr2?'<br><span style="font-size:12px">'+_shAddr2.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
-  var extraStyles='@page{size:A4 landscape;margin:10mm 14mm;}body{padding:0;}table{font-size:10px;}th{font-size:9px;padding:4px 6px;}td{padding:4px 6px;font-size:10px;}';
+  var extraStyles='@page{size:A4 landscape;margin:10mm 14mm;}body{padding:0;font-size:13px;}table{font-size:13px;}caption{font-size:11px;}th{font-size:11px;padding:5px 7px;font-weight:700;}td{padding:5px 7px;font-size:13px;}';
   var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
     .replace('</style>',extraStyles+'</style>')
