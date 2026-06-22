@@ -437,21 +437,22 @@ export function generateSewingOrderPDF(client, modalData){
     :'';
 
   var extraStyles=`
-    @page{size:A4 landscape;margin:10mm 14mm;}
-    body{padding:0;font-size:13px;}
+    @page{size:A4 landscape;margin:12mm 14mm;}
+    body{padding:0 !important;font-size:13px;}
     table{font-size:13px;}
     caption{font-size:11px;}
     th{font-size:11px;padding:5px 7px;font-weight:700;}
     td{padding:5px 7px;font-size:13px;}
+    @media print{body{padding:0 !important;} @page{size:A4 landscape;margin:12mm 14mm;}}
   `;
 
   var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;')
     .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
-    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
-    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zlecenie szycia</div>'
-    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Data: '+dateStr+' &nbsp;|&nbsp; Klient: <strong>'+client.name+'</strong></div></div></div>'
+    +'<div class="header"><div><div class="logo-text" style="font-size:16px;letter-spacing:0.12em">Porter Design</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
+    +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+' &nbsp;|&nbsp; Klient: <strong>'+client.name+'</strong></div></div></div>'
     +'<div class="meta">'
     +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong>'+SELLER.name+'</strong><br>'+SELLER.addr+', '+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
@@ -526,14 +527,14 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shAddr2?'<br><span style="font-size:12px">'+_shAddr2.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
-  var extraStyles='@page{size:A4 landscape;margin:10mm 14mm;}body{padding:0;font-size:13px;}table{font-size:13px;}caption{font-size:11px;}th{font-size:11px;padding:5px 7px;font-weight:700;}td{padding:5px 7px;font-size:13px;}';
+  var extraStyles='@page{size:A4 landscape;margin:12mm 14mm;}body{padding:0 !important;font-size:13px;}table{font-size:13px;}caption{font-size:11px;}th{font-size:11px;padding:5px 7px;font-weight:700;}td{padding:5px 7px;font-size:13px;}@media print{body{padding:0 !important;} @page{size:A4 landscape;margin:12mm 14mm;}}';
   var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
     .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
-    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
-    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zlecenie szycia</div>'
-    +'<div style="font-size:10px;color:#6b6b66;margin-top:4px">Data: '+dateStr+'</div></div></div>'
+    +'<div class="header"><div><div class="logo-text" style="font-size:16px;letter-spacing:0.12em">Porter Design</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
+    +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+'</div></div></div>'
     +'<div class="meta">'
     +'<div class="meta-block"><h4>KLIENT</h4><p style="font-size:11px;line-height:1.6">'+(client.name||'')+'</p></div>'
     +'<div class="meta-block"><h4>SZWALNIA</h4>'+sewHouseBlock+'</div>'
