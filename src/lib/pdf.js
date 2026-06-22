@@ -22,11 +22,12 @@ export function generateFabricOrderPDF(client,opts){
   rows.forEach(function(r){
     if(!r.metry||r.metry<=0)return; // skip zero-meter rows
     var key=r.prod||"Inny";
-    if(key==="-")return; // skip manual/custom fabrics with no supplier
+    if(key==="-")key="Bez producenta"; // group manual/custom fabrics under generic key
     if(!bySupplier[key])bySupplier[key]=[];
     bySupplier[key].push(r);
   });
   var suppliers=Object.keys(bySupplier).sort();
+  if(!suppliers.length){alert("Brak tkanin do zamówienia (brak metrażu lub producenta).");return;}
 
   // Build and open one PDF window per supplier
   var extraStyles=`
