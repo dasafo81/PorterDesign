@@ -139,6 +139,22 @@ export function App(p){
     if(screen==="detail")window.scrollTo({top:0,behavior:"instant"});
   },[screen,curWin&&curWin.id]);
 
+  // Sync curWin do aktualnego okna w single-window mode (przez useEffect, nie podczas renderowania)
+  React.useEffect(function(){
+    if(screen==="windows"&&curClientId&&curRoomId){
+      var cl=(clients||[]).find(function(c){return c.id===curClientId;});
+      var room=cl?(cl.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
+      if(!room)return;
+      var wins=room.windows||[];
+      var isSingle=wins.length<=1;
+      if(!isSingle)return;
+      var sw=wins[0]||{id:"default_"+curRoomId,name:"",isDefault:true,products:[]};
+      if(!curWin||curWin.id!==sw.id){
+        setCurWin(JSON.parse(JSON.stringify(sw)));
+      }
+    }
+  },[screen,curRoomId,curClientId]);
+
   // Zapisz zmiany w Supabase z debounce
   function saveClientToSb(id, data){
     if(offlineMode){
@@ -791,13 +807,7 @@ export function App(p){
     if(isSingleMode){
       // ── Single-window mode: show products directly ──
       var sw=singleWin||{id:"default_"+curRoomId,name:"",isDefault:true,products:[]};
-      // sync sw into curWin for addProd/updProd/remProd/dupProd to work
-      if(!curWin||curWin.id!==sw.id){
-        // set curWin lazily (avoid render loop: only if not already set)
-        if(curWin===null||curWin.id!==sw.id){
-          setCurWin(JSON.parse(JSON.stringify(sw)));
-        }
-      }
+      // sync sw into curWin handled by useEffect below (not during render)
       var swProducts=curWin&&curWin.id===sw.id?(curWin.products||[]):(sw.products||[]);
       var swTotal=swProducts.reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);
 
