@@ -226,122 +226,123 @@ function TabRails(p) {
   useEffect(function() { reload(); }, []);
 
   function handleDelete(scrap) {
-    if (!confirm("Usunąć ścinkę " + scrap.length_cm + " cm (" + scrap.color + ")?")) return;
+    if (!confirm("Usun\u0105\u0107 \u015bcink\u0119 " + scrap.length_cm + " cm (" + scrap.color + ", " + scrap.rail_type + ")?")) return;
     sbApi.deleteRailScrap(scrap.id)
       .then(function() { setScraps(function(prev) { return prev.filter(function(x) { return x.id !== scrap.id; }); }); })
-      .catch(function(e) { alert("Błąd: " + e.message); });
+      .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
   }
 
-  var types = [];
-  scraps.forEach(function(s) { if (s.rail_type && types.indexOf(s.rail_type) === -1) types.push(s.rail_type); });
-
+  // Filtrowanie
   var filtered = scraps.filter(function(s) {
     if (filterType && s.rail_type !== filterType) return false;
     if (minLen && s.length_cm < parseInt(minLen)) return false;
     return true;
   });
 
-  // Grupuj po typie, każda grupa posortowana od najdłuższej
-  var groups = {};
+  // Kolory w ustalonej kolejności
+  var COLOR_ORDER = ["bia\u0142a", "czarna", "off white"];
+  var colorSet = [];
   filtered.forEach(function(s) {
-    var key = s.rail_type || "Inne";
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(s);
+    var c = s.color || "inna";
+    if (colorSet.indexOf(c) === -1) colorSet.push(c);
   });
-  Object.keys(groups).forEach(function(k) {
-    groups[k].sort(function(a, b) { return b.length_cm - a.length_cm; });
+  // Posortuj kolory wg COLOR_ORDER, reszta na końcu
+  colorSet.sort(function(a, b) {
+    var ai = COLOR_ORDER.indexOf(a); var bi = COLOR_ORDER.indexOf(b);
+    if (ai === -1 && bi === -1) return a.localeCompare(b);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
   });
 
-  // Kolory do legendy
-  var COLOR_DOT = { "biała": "#f5f5f0", "czarna": "#1a1a1a", "off white": "#f0ece0", "inna": "#a78bfa" };
-  function colorDot(c) {
-    var col = COLOR_DOT[c] || "#94a3b8";
-    return ce("span", { style: { display: "inline-block", width: 10, height: 10, borderRadius: "50%", background: col, border: "1.5px solid var(--bd2)", marginRight: 5, flexShrink: 0 } });
+  // Grupuj ścinki per kolor, każda posortowana malejąco po długości
+  var byColor = {};
+  colorSet.forEach(function(c) { byColor[c] = []; });
+  filtered.forEach(function(s) {
+    var c = s.color || "inna";
+    if (!byColor[c]) byColor[c] = [];
+    byColor[c].push(s);
+  });
+  colorSet.forEach(function(c) {
+    byColor[c].sort(function(a, b) { return b.length_cm - a.length_cm; });
+  });
+
+  // Typy do filtra
+  var types = [];
+  scraps.forEach(function(s) { if (s.rail_type && types.indexOf(s.rail_type) === -1) types.push(s.rail_type); });
+
+  var COLOR_STYLE = {
+    "bia\u0142a":    { dot: "#f0f0ec", border: "#ccc",    header: "#f8f8f6" },
+    "czarna":   { dot: "#1a1a1a", border: "#555",    header: "#f0f0f0" },
+    "off white":{ dot: "#ede8d8", border: "#bbb",    header: "#faf8f2" }
+  };
+  function getColorStyle(c) {
+    return COLOR_STYLE[c] || { dot: "#a78bfa", border: "#a78bfa", header: "#f5f3ff" };
   }
 
   return ce("div", null,
-    // Nagłówek
-    ce("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 } },
+
+    // Nagłówek + przycisk
+    ce("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 10 } },
       ce("div", null,
-        ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCCF Ścinki szyn KS"),
-        ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } }, scraps.length + " szt. na stanie")
+        ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCCF \u015acinki szyn KS"),
+        ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } }, filtered.length + " szt. \u2022 " + colorSet.length + " kolor\u00f3w")
       ),
       ce("button", { onClick: function() { setShowModal(true); },
-        style: { padding: "9px 16px", borderRadius: 10, border: "none", background: "var(--violet)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 } },
-        "+ Dodaj ścinkę")
+        style: { padding: "9px 16px", background: "var(--violet)", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13 } },
+        "+ Dodaj \u015bcink\u0119")
     ),
 
     // Filtry
-    ce("div", { style: { display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap", alignItems: "flex-end" } },
-      ce("div", null,
-        ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", marginBottom: 4 } }, "MIN. DŁUGOŚĆ [cm]"),
-        ce("input", { type: "number", min: "0", value: minLen, onChange: function(e) { setMinLen(e.target.value); },
-          placeholder: "np. 200",
-          style: { fontSize: 13, padding: "8px 12px", border: "1.5px solid var(--bd2)", borderRadius: 9, background: "var(--bg)", color: "var(--t1)", width: 120, outline: "none" } })
+    ce("div", { style: { display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" } },
+      ce("select", { value: filterType, onChange: function(e) { setFilterType(e.target.value); },
+        style: { fontSize: 12, padding: "6px 10px", border: "1.5px solid var(--bd2)", borderRadius: 8, background: "var(--bg)", color: "var(--t2)", cursor: "pointer" } },
+        ce("option", { value: "" }, "Wszystkie typy"),
+        types.map(function(t) { return ce("option", { key: t, value: t }, t); })
       ),
-      types.length > 1 && ce("div", null,
-        ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", marginBottom: 4 } }, "TYP"),
-        ce("div", { style: { display: "flex", gap: 6 } },
-          [{ v: "", l: "Wszystkie" }].concat(types.map(function(t) { return { v: t, l: t }; })).map(function(o) {
-            var active = filterType === o.v;
-            return ce("button", { key: o.v, onClick: function() { setFilterType(o.v); },
-              style: { padding: "8px 12px", borderRadius: 8, border: active ? "1.5px solid var(--violet)" : "1.5px solid var(--bd2)", background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t3)", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" } }, o.l);
-          })
-        )
-      )
+      ce("input", { type: "number", placeholder: "Min. cm", value: minLen, onChange: function(e) { setMinLen(e.target.value); },
+        style: { fontSize: 12, padding: "6px 10px", border: "1.5px solid var(--bd2)", borderRadius: 8, background: "var(--bg)", color: "var(--t2)", width: 90 } })
     ),
 
-    err && ce("div", { style: { background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: 12, fontSize: 13, color: "#b91c1c", marginBottom: 12 } }, err),
-    loading && ce("div", { style: { textAlign: "center", padding: "40px 0", color: "var(--t3)" } }, "⏳ Ładowanie..."),
+    err && ce("div", { style: { color: "#dc2626", fontSize: 13, marginBottom: 10 } }, err),
+    loading && ce("div", { style: { color: "var(--t3)", fontSize: 13 } }, "\u23f3 \u0141adowanie..."),
 
-    !loading && filtered.length === 0 && ce("div", { style: { textAlign: "center", padding: "40px 0", color: "var(--t3)" } },
-      ce("div", { style: { fontSize: 32, marginBottom: 8 } }, "\uD83D\uDCCF"),
-      ce("div", { style: { fontSize: 14, fontWeight: 600, color: "var(--t1)" } }, minLen || filterType ? "Brak ścinków spełniających kryteria" : "Brak ścinków w magazynie"),
-      !minLen && !filterType && ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 4 } }, "Kliknij + Dodaj ścinkę")
-    ),
+    // Tabela kolumny per kolor
+    !loading && filtered.length === 0 && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak \u015bcinek. Dodaj pierwsz\u0105!"),
 
-    // Tabele pogrupowane po typie
-    !loading && Object.keys(groups).map(function(groupName) {
-      var rows = groups[groupName];
-      return ce("div", { key: groupName, style: { marginBottom: 20 } },
-        // Nagłówek grupy
-        ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 } },
-          ce("span", null, groupName),
-          ce("span", { style: { background: "rgba(124,58,237,0.12)", color: "var(--violet)", borderRadius: 20, padding: "1px 8px", fontSize: 11 } }, rows.length + " szt.")
-        ),
-        // Tabela
-        ce("div", { style: { border: "1.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
-          // Header row
-          ce("div", { style: { display: "grid", gridTemplateColumns: "80px 1fr 36px", background: "var(--bg3, var(--bd2))", padding: "7px 14px", gap: 12 } },
-            ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Długość"),
-            ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.06em" } }, "Kolor"),
-            ce("div", null)
+    !loading && filtered.length > 0 && ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(" + colorSet.length + ", 1fr)", gap: 10, alignItems: "start" } },
+      colorSet.map(function(color) {
+        var cs = getColorStyle(color);
+        var list = byColor[color];
+        return ce("div", { key: color, style: { border: "1.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
+          // Nagłówek kolumny koloru
+          ce("div", { style: { background: cs.header, padding: "8px 12px", display: "flex", alignItems: "center", gap: 7, borderBottom: "1.5px solid var(--bd2)" } },
+            ce("span", { style: { display: "inline-block", width: 11, height: 11, borderRadius: "50%", background: cs.dot, border: "1.5px solid " + cs.border, flexShrink: 0 } }),
+            ce("span", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)", textTransform: "capitalize" } }, color),
+            ce("span", { style: { fontSize: 11, color: "var(--t3)", marginLeft: "auto" } }, list.length + " szt.")
           ),
-          // Data rows
-          rows.map(function(scrap, idx) {
-            var isLast = idx === rows.length - 1;
-            return ce("div", { key: scrap.id,
-              style: { display: "grid", gridTemplateColumns: "80px 1fr 36px", padding: "10px 14px", gap: 12, alignItems: "center", borderTop: idx === 0 ? "none" : "1px solid var(--bd2)", background: idx % 2 === 0 ? "var(--bg2)" : "var(--bg)" } },
-              // Długość
-              ce("div", { style: { display: "flex", alignItems: "baseline", gap: 3 } },
-                ce("span", { style: { fontSize: 18, fontWeight: 800, color: "var(--violet)" } }, scrap.length_cm),
-                ce("span", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 600 } }, " cm")
-              ),
-              // Kolor
-              ce("div", { style: { display: "flex", alignItems: "center", fontSize: 13, color: "var(--t1)" } },
-                colorDot(scrap.color),
-                scrap.color || ce("span", { style: { color: "var(--t3)", fontStyle: "italic" } }, "—")
-              ),
-              // Usuń
-              ce("button", { onClick: function() { handleDelete(scrap); },
-                title: "Usuń",
-                style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 16, padding: 4, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" } },
-                "\uD83D\uDDD1")
-            );
-          })
-        )
-      );
-    }),
+          // Wiersze
+          ce("div", null,
+            list.map(function(scrap, idx) {
+              return ce("div", { key: scrap.id,
+                style: { display: "grid", gridTemplateColumns: "1fr auto auto", alignItems: "center", padding: "6px 10px", borderBottom: idx < list.length - 1 ? "1px solid var(--bd3)" : "none", background: idx % 2 === 0 ? "var(--bg)" : "var(--bg2)", gap: 6 } },
+                // Długość
+                ce("div", { style: { display: "flex", alignItems: "baseline", gap: 3 } },
+                  ce("span", { style: { fontSize: 16, fontWeight: 800, color: "var(--violet)" } }, scrap.length_cm),
+                  ce("span", { style: { fontSize: 10, color: "var(--t3)", fontWeight: 600 } }, " cm")
+                ),
+                // Typ
+                ce("span", { style: { fontSize: 10, color: "var(--t3)", background: "var(--bg2)", border: "1px solid var(--bd2)", borderRadius: 5, padding: "2px 5px", whiteSpace: "nowrap" } }, scrap.rail_type || "\u2014"),
+                // Usuń
+                ce("button", { onClick: function() { handleDelete(scrap); }, title: "Usu\u0144",
+                  style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 14, padding: "2px 4px", borderRadius: 5, lineHeight: 1 } },
+                  "\uD83D\uDDD1")
+              );
+            })
+          )
+        );
+      })
+    ),
 
     showModal && ce(ModalScrap, {
       onSave: function() { setShowModal(false); reload(); },
