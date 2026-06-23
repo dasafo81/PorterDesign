@@ -300,6 +300,17 @@ export const sbApi = {
   },
   deleteWarehouseItem: function(id){
     return sbFetch("DELETE","warehouse_items?id=eq."+id);
+  },
+
+  // Szyny KS - scinki
+  getRailScraps: function(){
+    return sbFetch("GET","rail_scraps?select=*&order=length_cm.desc");
+  },
+  addRailScrap: function(data){
+    return sbFetch("POST","rail_scraps",Object.assign({},data,{created_at:new Date().toISOString()}));
+  },
+  deleteRailScrap: function(id){
+    return sbFetch("DELETE","rail_scraps?id=eq."+id);
   }
 };
 
