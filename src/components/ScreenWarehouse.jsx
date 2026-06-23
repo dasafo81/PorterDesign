@@ -10,7 +10,7 @@ var CATEGORIES = [
   { id: "probnik",   label: "Pr\u00F3bniki/Katalogi",   icon: "\uD83D\uDCD6", unit: "szt", lowAt: 1 }
 ];
 
-var RAIL_TYPES = ["Szyna KS", "Inna"];
+var RAIL_TYPES = ["Szyna slim", "Szyna dekoracyjna", "Inna"];
 
 function stockBadge(item) {
   var qty = +(item.quantity || 0);
@@ -142,7 +142,7 @@ function ItemCard(p) {
 // ── Zakładka: Szyny KS ───────────────────────────────────────────────────────
 function ModalScrap(p) {
   var s1 = useState("");            var len = s1[0]; var setLen = s1[1];
-  var s2 = useState("Szyna KS");    var railType = s2[0]; var setRailType = s2[1];
+  var s2 = useState("Szyna slim");  var railType = s2[0]; var setRailType = s2[1];
   var s3 = useState("biała");       var color = s3[0]; var setColor = s3[1];
   var s4 = useState(false);         var customColor = s4[0]; var setCustomColor = s4[1];
   var s5 = useState(false);         var busy = s5[0]; var setBusy = s5[1];
@@ -176,10 +176,10 @@ function ModalScrap(p) {
       ce("div", { style: { marginBottom: 16 } },
         ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Typ"),
         ce("div", { style: { display: "flex", gap: 6 } },
-          ["Szyna KS", "Inna"].map(function(t) {
+          RAIL_TYPES.map(function(t) {
             var active = railType === t;
             return ce("button", { key: t, onClick: function() { setRailType(t); },
-              style: { flex: 1, padding: "8px", borderRadius: 8, border: active ? "1.5px solid var(--violet)" : "1.5px solid var(--bd2)", background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t2)", fontSize: 13, fontWeight: active ? 700 : 400, cursor: "pointer" } }, t);
+              style: { flex: 1, padding: "6px 8px", borderRadius: 8, border: active ? "1.5px solid var(--violet)" : "1.5px solid var(--bd2)", background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t2)", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" } }, t);
           })
         )
       ),
