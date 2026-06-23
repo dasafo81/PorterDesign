@@ -6,5 +6,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-  }
+    rollupOptions: {
+      cache: false
+    }
+  },
+  cacheDir: '.vite_cache_disabled'
 })
