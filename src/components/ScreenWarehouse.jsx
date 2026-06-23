@@ -10,7 +10,7 @@ var CATEGORIES = [
   { id: "probnik",   label: "Pr\u00F3bniki/Katalogi",   icon: "\uD83D\uDCD6", unit: "szt", lowAt: 1 }
 ];
 
-var RAIL_TYPES = ["KS Silent 19mm", "KS 28mm", "KS Silent 28mm", "KS 19mm", "Inne"];
+var RAIL_TYPES = ["Szyna KS", "Inna"];
 
 function stockBadge(item) {
   var qty = +(item.quantity || 0);
@@ -144,7 +144,6 @@ function ModalScrap(p) {
   var s3 = useState("");              var color = s3[0]; var setColor = s3[1];
   var s4 = useState(false);           var busy = s4[0]; var setBusy = s4[1];
   var s5 = useState(null);            var err = s5[0]; var setErr = s5[1];
-  var s6 = useState(false);           var customType = s6[0]; var setCustomType = s6[1];
 
   function save() {
     var l = parseInt(len);
@@ -175,15 +174,12 @@ function ModalScrap(p) {
       ce("div", { style: { marginBottom: 14 } },
         ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Typ szyny *"),
         ce("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 } },
-          RAIL_TYPES.filter(function(t) { return t !== "Inne"; }).map(function(t) {
+          RAIL_TYPES.map(function(t) {
             var active = railType === t && !customType;
             return ce("button", { key: t, onClick: function() { setRailType(t); setCustomType(false); },
               style: { padding: "6px 12px", borderRadius: 8, border: active ? "1.5px solid var(--violet)" : "1.5px solid var(--bd2)", background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t2)", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" } }, t);
           }),
-          ce("button", { onClick: function() { setCustomType(true); setRailType(""); },
-            style: { padding: "6px 12px", borderRadius: 8, border: customType ? "1.5px solid var(--violet)" : "1.5px solid var(--bd2)", background: customType ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: customType ? "var(--violet)" : "var(--t2)", fontSize: 12, cursor: "pointer" } }, "Inny...")
-        ),
-        customType && ce("input", { value: railType, onChange: function(e) { setRailType(e.target.value); }, placeholder: "Wpisz typ szyny...", style: inp })
+        )
       ),
 
       // Kolor
@@ -313,7 +309,7 @@ function TabRails(p) {
               ce("button", { onClick: function() { handleDelete(scrap); },
                 title: "Zu\u017Cyta / usu\u0144",
                 style: { border: "1.5px solid rgba(220,38,38,0.3)", background: "rgba(220,38,38,0.06)", color: "#dc2626", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontWeight: 700 } },
-                "\u2713 Zu\u017Cyta")
+                "\uD83D\uDDD1 Usu\u0144")
             );
           })
         )
