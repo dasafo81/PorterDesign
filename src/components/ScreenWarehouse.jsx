@@ -215,7 +215,6 @@ function TabRails(p) {
   var s3 = useState(null);  var err = s3[0]; var setErr = s3[1];
   var s4 = useState(false); var showModal = s4[0]; var setShowModal = s4[1];
   var s5 = useState("");    var filterType = s5[0]; var setFilterType = s5[1];
-  var s6 = useState("");    var filterColor = s6[0]; var setFilterColor = s6[1];
 
   function reload() {
     setLoading(true);
@@ -232,25 +231,24 @@ function TabRails(p) {
       .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
   }
 
-  // Unikalne wartości do filtrów
   var allTypes = [];
-  var allColors = [];
   scraps.forEach(function(s) {
     if (s.rail_type && allTypes.indexOf(s.rail_type) === -1) allTypes.push(s.rail_type);
-    var c = s.color || "inna";
-    if (allColors.indexOf(c) === -1) allColors.push(c);
   });
 
-  // Filtrowanie
   var filtered = scraps.filter(function(s) {
     if (filterType && s.rail_type !== filterType) return false;
-    if (filterColor && (s.color || "inna") !== filterColor) return false;
     return true;
   });
 
   // Kolory w ustalonej kolejności
   var COLOR_ORDER = ["bia\u0142a", "czarna", "off white"];
-  var colorSections = allColors.slice().sort(function(a, b) {
+  var colorSet = [];
+  filtered.forEach(function(s) {
+    var c = (s.color || "inna").toLowerCase();
+    if (colorSet.indexOf(c) === -1) colorSet.push(c);
+  });
+  colorSet.sort(function(a, b) {
     var ai = COLOR_ORDER.indexOf(a); var bi = COLOR_ORDER.indexOf(b);
     if (ai === -1 && bi === -1) return a.localeCompare(b);
     if (ai === -1) return 1; if (bi === -1) return -1;
@@ -259,15 +257,17 @@ function TabRails(p) {
 
   // Grupuj per kolor, sortuj malejąco
   var byColor = {};
-  colorSections.forEach(function(c) { byColor[c] = []; });
+  colorSet.forEach(function(c) { byColor[c] = []; });
   filtered.forEach(function(s) {
-    var c = s.color || "inna";
+    var c = (s.color || "inna").toLowerCase();
     if (!byColor[c]) byColor[c] = [];
     byColor[c].push(s);
   });
-  colorSections.forEach(function(c) {
+  colorSet.forEach(function(c) {
     byColor[c].sort(function(a, b) { return b.length_cm - a.length_cm; });
   });
+
+  var maxRows = colorSet.reduce(function(m, c) { return Math.max(m, (byColor[c]||[]).length); }, 0);
 
   var COLOR_DOT = { "bia\u0142a": "#f0f0ec", "czarna": "#1a1a1a", "off white": "#ede8d8" };
   var COLOR_DOT_BORDER = { "czarna": "#555" };
@@ -275,21 +275,17 @@ function TabRails(p) {
   var TYPE_BG    = { "KS": "#E6F1FB", "DS": "#EAF3DE", "Slim": "#FAEEDA", "Prestige Round": "#FBEAF0", "Prestige Square": "#FAECE7" };
 
   function typeBadge(t) {
+    if (!t) return null;
     var bg = TYPE_BG[t] || "var(--bg2)";
     var col = TYPE_COLOR[t] || "var(--t3)";
-    return ce("span", { style: { display: "inline-block", padding: "1px 7px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: bg, color: col, whiteSpace: "nowrap" } }, t || "\u2014");
+    return ce("span", { style: { display: "inline-block", padding: "1px 6px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: bg, color: col, whiteSpace: "nowrap" } }, t);
   }
 
-  function colorDot(c) {
-    var bg = COLOR_DOT[c] || "#a78bfa";
-    var border = COLOR_DOT_BORDER[c] || "var(--bd2)";
-    return ce("span", { style: { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: bg, border: "0.5px solid " + border, marginRight: 5, flexShrink: 0, verticalAlign: "middle" } });
-  }
-
-  var pillBase = { padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "0.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)" };
+  var pillBase   = { padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "0.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)" };
   var pillActive = Object.assign({}, pillBase, { background: "#EEEDFE", borderColor: "#AFA9EC", color: "#3C3489" });
 
-  var totalFiltered = filtered.length;
+  // Szerokość kolumny per kolor zależy od liczby kolorów
+  var colW = colorSet.length > 0 ? Math.floor(100 / colorSet.length) + "%" : "33%";
 
   return ce("div", null,
 
@@ -297,16 +293,15 @@ function TabRails(p) {
     ce("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 10 } },
       ce("div", null,
         ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCCF \u015acinki szyn KS"),
-        ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } },
-          totalFiltered + " szt." + (filterType || filterColor ? " (przefiltrowane)" : " \u2022 " + colorSections.filter(function(c){return byColor[c]&&byColor[c].length>0;}).length + " kolor\u00f3w"))
+        ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } }, filtered.length + " szt.")
       ),
       ce("button", { onClick: function() { setShowModal(true); },
         style: { padding: "8px 16px", background: "var(--violet)", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13 } },
         "+ Dodaj \u015bcink\u0119")
     ),
 
-    // Filtry — typ
-    ce("div", { style: { display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap", alignItems: "center" } },
+    // Filtr typ
+    ce("div", { style: { display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" } },
       ce("span", { style: { fontSize: 11, color: "var(--t3)", marginRight: 2 } }, "Typ:"),
       ce("button", { onClick: function() { setFilterType(""); }, style: filterType === "" ? pillActive : pillBase }, "Wszystkie"),
       allTypes.map(function(t) {
@@ -314,77 +309,67 @@ function TabRails(p) {
       })
     ),
 
-    // Filtry — kolor
-    ce("div", { style: { display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" } },
-      ce("span", { style: { fontSize: 11, color: "var(--t3)", marginRight: 2 } }, "Kolor:"),
-      ce("button", { onClick: function() { setFilterColor(""); }, style: filterColor === "" ? pillActive : pillBase }, "Wszystkie"),
-      colorSections.map(function(c) {
-        return ce("button", { key: c, onClick: function() { setFilterColor(filterColor === c ? "" : c); },
-          style: Object.assign({}, filterColor === c ? pillActive : pillBase, { display: "inline-flex", alignItems: "center", gap: 4 }) },
-          colorDot(c),
-          c.charAt(0).toUpperCase() + c.slice(1));
-      })
-    ),
-
     err && ce("div", { style: { color: "#dc2626", fontSize: 13, marginBottom: 10 } }, err),
     loading && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "\u23f3 \u0141adowanie..."),
+    !loading && filtered.length === 0 && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak \u015bcinek."),
 
-    !loading && totalFiltered === 0 && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak \u015bcinek."),
-
-    // Tabela
-    !loading && totalFiltered > 0 && ce("div", { style: { border: "0.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
-      // Thead
+    // Tabela 3-kolumnowa
+    !loading && filtered.length > 0 && ce("div", { style: { border: "0.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
       ce("table", { style: { width: "100%", borderCollapse: "collapse", tableLayout: "fixed" } },
-        ce("colgroup", null,
-          ce("col", { style: { width: 90 } }),
-          ce("col", { style: { width: 130 } }),
-          ce("col", null),
-          ce("col", { style: { width: 36 } })
-        ),
+
+        // Nagłówki kolorów
         ce("thead", null,
-          ce("tr", { style: { background: "var(--bg2)" } },
-            ce("th", { style: { padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)" } }, "D\u0142ugo\u015b\u0107"),
-            ce("th", { style: { padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)" } }, "Typ"),
-            ce("th", { style: { padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)" } }, "Kolor"),
-            ce("th", { style: { borderBottom: "0.5px solid var(--bd2)" } })
+          ce("tr", null,
+            colorSet.map(function(color) {
+              var dotBg = COLOR_DOT[color] || "#a78bfa";
+              var dotBorder = COLOR_DOT_BORDER[color] || "var(--bd2)";
+              return ce("th", { key: color, colSpan: 2,
+                style: { padding: "8px 12px", background: "var(--bg2)", borderBottom: "0.5px solid var(--bd2)",
+                  borderRight: "0.5px solid var(--bd2)", fontSize: 12, fontWeight: 600, color: "var(--t1)", textAlign: "left" } },
+                ce("span", { style: { display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: dotBg, border: "0.5px solid " + dotBorder, marginRight: 6, verticalAlign: "middle" } }),
+                color.charAt(0).toUpperCase() + color.slice(1),
+                ce("span", { style: { fontSize: 10, color: "var(--t3)", fontWeight: 400, marginLeft: 6 } }, (byColor[color]||[]).length + " szt.")
+              );
+            })
+          ),
+          // Sub-nagłówki: cm / typ per każdy kolor
+          ce("tr", null,
+            colorSet.map(function(color) {
+              return [
+                ce("th", { key: color + "-len", style: { padding: "4px 12px", background: "var(--bg2)", borderBottom: "0.5px solid var(--bd2)", fontSize: 9, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase", width: "10%" } }, "cm"),
+                ce("th", { key: color + "-type", style: { padding: "4px 12px", background: "var(--bg2)", borderBottom: "0.5px solid var(--bd2)", borderRight: "0.5px solid var(--bd2)", fontSize: 9, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase" } }, "typ")
+              ];
+            })
           )
         ),
+
+        // Wiersze danych
         ce("tbody", null,
-          colorSections.map(function(color) {
-            var list = byColor[color] || [];
-            if (list.length === 0) return null;
-            var dotBg = COLOR_DOT[color] || "#a78bfa";
-            var dotBorder = COLOR_DOT_BORDER[color] || "#ccc";
-            var rows = [
-              // Sekcja-nagłówek
-              ce("tr", { key: "sec-" + color },
-                ce("td", { colSpan: 4, style: { padding: "5px 12px", background: "var(--bg2)", fontSize: 10, fontWeight: 600, color: "var(--t3)", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)", borderTop: "0.5px solid var(--bd2)" } },
-                  ce("span", { style: { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: dotBg, border: "0.5px solid " + dotBorder, marginRight: 6, verticalAlign: "middle" } }),
-                  color.charAt(0).toUpperCase() + color.slice(1) + " \u00b7 " + list.length + " szt."
-                )
-              )
-            ];
-            list.forEach(function(scrap, idx) {
-              rows.push(
-                ce("tr", { key: scrap.id, style: { background: idx % 2 === 0 ? "var(--bg)" : "var(--bg2)", borderBottom: idx < list.length - 1 ? "0.5px solid var(--bd3)" : "none" } },
-                  ce("td", { style: { padding: "6px 12px" } },
-                    ce("span", { style: { fontSize: 15, fontWeight: 600, color: "var(--violet)" } }, scrap.length_cm),
-                    ce("sup", { style: { fontSize: 10, color: "var(--t3)", fontWeight: 400, marginLeft: 1 } }, " cm")
+          Array.from({ length: maxRows }, function(_, i) {
+            return ce("tr", { key: i, style: { background: i % 2 === 0 ? "var(--bg)" : "var(--bg2)" } },
+              colorSet.map(function(color) {
+                var scrap = (byColor[color] || [])[i];
+                if (!scrap) {
+                  return [
+                    ce("td", { key: color + "-len", style: { padding: "6px 12px", borderBottom: "0.5px solid var(--bd3)" } }),
+                    ce("td", { key: color + "-type", style: { padding: "6px 12px", borderBottom: "0.5px solid var(--bd3)", borderRight: "0.5px solid var(--bd2)" } })
+                  ];
+                }
+                return [
+                  ce("td", { key: color + "-len", style: { padding: "5px 12px", borderBottom: "0.5px solid var(--bd3)" } },
+                    ce("div", { style: { display: "flex", alignItems: "center", gap: 4 } },
+                      ce("span", { style: { fontSize: 15, fontWeight: 600, color: "var(--violet)" } }, scrap.length_cm),
+                      ce("span", { style: { fontSize: 9, color: "var(--t3)" } }, "cm"),
+                      ce("button", { onClick: function() { handleDelete(scrap); }, title: "Usu\u0144",
+                        style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 12, padding: "0 2px", opacity: .4, marginLeft: 2, lineHeight: 1 } }, "\uD83D\uDDD1")
+                    )
                   ),
-                  ce("td", { style: { padding: "6px 12px" } }, typeBadge(scrap.rail_type)),
-                  ce("td", { style: { padding: "6px 12px", fontSize: 12, color: "var(--t2)" } },
-                    colorDot(scrap.color || ""),
-                    scrap.color || ce("span", { style: { color: "var(--t3)", fontStyle: "italic" } }, "\u2014")
-                  ),
-                  ce("td", { style: { padding: "6px 8px", textAlign: "right" } },
-                    ce("button", { onClick: function() { handleDelete(scrap); }, title: "Usu\u0144",
-                      style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 14, padding: "2px 4px", borderRadius: 5, opacity: .5 } },
-                      "\uD83D\uDDD1")
+                  ce("td", { key: color + "-type", style: { padding: "5px 12px", borderBottom: "0.5px solid var(--bd3)", borderRight: "0.5px solid var(--bd2)" } },
+                    typeBadge(scrap.rail_type)
                   )
-                )
-              );
-            });
-            return rows;
+                ];
+              })
+            );
           })
         )
       )
