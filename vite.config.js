@@ -7,8 +7,11 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     rollupOptions: {
-      cache: false
+      output: {
+        entryFileNames: 'assets/app-[hash].js',
+        chunkFileNames: 'assets/app-[hash].js',
+        assetFileNames: 'assets/app-[hash][extname]'
+      }
     }
-  },
-  cacheDir: '.vite_cache_disabled'
+  }
 })
