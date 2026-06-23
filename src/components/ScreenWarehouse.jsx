@@ -10,7 +10,7 @@ var CATEGORIES = [
   { id: "probnik",   label: "Pr\u00F3bniki/Katalogi",   icon: "\uD83D\uDCD6", unit: "szt", lowAt: 1 }
 ];
 
-var RAIL_TYPES = ["Szyna slim", "Szyna dekoracyjna", "Inna"];
+var RAIL_TYPES = ["Szyna KS", "Szyna slim", "Szyna dekoracyjna"];
 
 function stockBadge(item) {
   var qty = +(item.quantity || 0);
@@ -142,7 +142,7 @@ function ItemCard(p) {
 // ── Zakładka: Szyny KS ───────────────────────────────────────────────────────
 function ModalScrap(p) {
   var s1 = useState("");            var len = s1[0]; var setLen = s1[1];
-  var s2 = useState("Szyna slim");  var railType = s2[0]; var setRailType = s2[1];
+  var s2 = useState("Szyna KS");    var railType = s2[0]; var setRailType = s2[1];
   var s3 = useState("biała");       var color = s3[0]; var setColor = s3[1];
   var s4 = useState(false);         var customColor = s4[0]; var setCustomColor = s4[1];
   var s5 = useState(false);         var busy = s5[0]; var setBusy = s5[1];
