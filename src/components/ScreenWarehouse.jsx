@@ -215,7 +215,7 @@ function TabRails(p) {
   var s3 = useState(null);  var err = s3[0]; var setErr = s3[1];
   var s4 = useState(false); var showModal = s4[0]; var setShowModal = s4[1];
   var s5 = useState("");    var filterType = s5[0]; var setFilterType = s5[1];
-  var s6 = useState("");    var minLen = s6[0]; var setMinLen = s6[1];
+  var s6 = useState("");    var filterColor = s6[0]; var setFilterColor = s6[1];
 
   function reload() {
     setLoading(true);
@@ -232,116 +232,162 @@ function TabRails(p) {
       .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
   }
 
+  // Unikalne wartości do filtrów
+  var allTypes = [];
+  var allColors = [];
+  scraps.forEach(function(s) {
+    if (s.rail_type && allTypes.indexOf(s.rail_type) === -1) allTypes.push(s.rail_type);
+    var c = s.color || "inna";
+    if (allColors.indexOf(c) === -1) allColors.push(c);
+  });
+
   // Filtrowanie
   var filtered = scraps.filter(function(s) {
     if (filterType && s.rail_type !== filterType) return false;
-    if (minLen && s.length_cm < parseInt(minLen)) return false;
+    if (filterColor && (s.color || "inna") !== filterColor) return false;
     return true;
   });
 
   // Kolory w ustalonej kolejności
   var COLOR_ORDER = ["bia\u0142a", "czarna", "off white"];
-  var colorSet = [];
-  filtered.forEach(function(s) {
-    var c = s.color || "inna";
-    if (colorSet.indexOf(c) === -1) colorSet.push(c);
-  });
-  // Posortuj kolory wg COLOR_ORDER, reszta na końcu
-  colorSet.sort(function(a, b) {
+  var colorSections = allColors.slice().sort(function(a, b) {
     var ai = COLOR_ORDER.indexOf(a); var bi = COLOR_ORDER.indexOf(b);
     if (ai === -1 && bi === -1) return a.localeCompare(b);
-    if (ai === -1) return 1;
-    if (bi === -1) return -1;
+    if (ai === -1) return 1; if (bi === -1) return -1;
     return ai - bi;
   });
 
-  // Grupuj ścinki per kolor, każda posortowana malejąco po długości
+  // Grupuj per kolor, sortuj malejąco
   var byColor = {};
-  colorSet.forEach(function(c) { byColor[c] = []; });
+  colorSections.forEach(function(c) { byColor[c] = []; });
   filtered.forEach(function(s) {
     var c = s.color || "inna";
     if (!byColor[c]) byColor[c] = [];
     byColor[c].push(s);
   });
-  colorSet.forEach(function(c) {
+  colorSections.forEach(function(c) {
     byColor[c].sort(function(a, b) { return b.length_cm - a.length_cm; });
   });
 
-  // Typy do filtra
-  var types = [];
-  scraps.forEach(function(s) { if (s.rail_type && types.indexOf(s.rail_type) === -1) types.push(s.rail_type); });
+  var COLOR_DOT = { "bia\u0142a": "#f0f0ec", "czarna": "#1a1a1a", "off white": "#ede8d8" };
+  var COLOR_DOT_BORDER = { "czarna": "#555" };
+  var TYPE_COLOR = { "KS": "#185FA5", "DS": "#3B6D11", "Slim": "#854F0B", "Prestige Round": "#993556", "Prestige Square": "#993C1D" };
+  var TYPE_BG    = { "KS": "#E6F1FB", "DS": "#EAF3DE", "Slim": "#FAEEDA", "Prestige Round": "#FBEAF0", "Prestige Square": "#FAECE7" };
 
-  var COLOR_STYLE = {
-    "bia\u0142a":    { dot: "#f0f0ec", border: "#ccc",    header: "#f8f8f6" },
-    "czarna":   { dot: "#1a1a1a", border: "#555",    header: "#f0f0f0" },
-    "off white":{ dot: "#ede8d8", border: "#bbb",    header: "#faf8f2" }
-  };
-  function getColorStyle(c) {
-    return COLOR_STYLE[c] || { dot: "#a78bfa", border: "#a78bfa", header: "#f5f3ff" };
+  function typeBadge(t) {
+    var bg = TYPE_BG[t] || "var(--bg2)";
+    var col = TYPE_COLOR[t] || "var(--t3)";
+    return ce("span", { style: { display: "inline-block", padding: "1px 7px", borderRadius: 20, fontSize: 10, fontWeight: 600, background: bg, color: col, whiteSpace: "nowrap" } }, t || "\u2014");
   }
+
+  function colorDot(c) {
+    var bg = COLOR_DOT[c] || "#a78bfa";
+    var border = COLOR_DOT_BORDER[c] || "var(--bd2)";
+    return ce("span", { style: { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: bg, border: "0.5px solid " + border, marginRight: 5, flexShrink: 0, verticalAlign: "middle" } });
+  }
+
+  var pillBase = { padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: "pointer", border: "0.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)" };
+  var pillActive = Object.assign({}, pillBase, { background: "#EEEDFE", borderColor: "#AFA9EC", color: "#3C3489" });
+
+  var totalFiltered = filtered.length;
 
   return ce("div", null,
 
-    // Nagłówek + przycisk
+    // Nagłówek
     ce("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 10 } },
       ce("div", null,
         ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCCF \u015acinki szyn KS"),
-        ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } }, filtered.length + " szt. \u2022 " + colorSet.length + " kolor\u00f3w")
+        ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } },
+          totalFiltered + " szt." + (filterType || filterColor ? " (przefiltrowane)" : " \u2022 " + colorSections.filter(function(c){return byColor[c]&&byColor[c].length>0;}).length + " kolor\u00f3w"))
       ),
       ce("button", { onClick: function() { setShowModal(true); },
-        style: { padding: "9px 16px", background: "var(--violet)", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13 } },
+        style: { padding: "8px 16px", background: "var(--violet)", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13 } },
         "+ Dodaj \u015bcink\u0119")
     ),
 
-    // Filtry
-    ce("div", { style: { display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" } },
-      ce("select", { value: filterType, onChange: function(e) { setFilterType(e.target.value); },
-        style: { fontSize: 12, padding: "6px 10px", border: "1.5px solid var(--bd2)", borderRadius: 8, background: "var(--bg)", color: "var(--t2)", cursor: "pointer" } },
-        ce("option", { value: "" }, "Wszystkie typy"),
-        types.map(function(t) { return ce("option", { key: t, value: t }, t); })
-      ),
-      ce("input", { type: "number", placeholder: "Min. cm", value: minLen, onChange: function(e) { setMinLen(e.target.value); },
-        style: { fontSize: 12, padding: "6px 10px", border: "1.5px solid var(--bd2)", borderRadius: 8, background: "var(--bg)", color: "var(--t2)", width: 90 } })
+    // Filtry — typ
+    ce("div", { style: { display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap", alignItems: "center" } },
+      ce("span", { style: { fontSize: 11, color: "var(--t3)", marginRight: 2 } }, "Typ:"),
+      ce("button", { onClick: function() { setFilterType(""); }, style: filterType === "" ? pillActive : pillBase }, "Wszystkie"),
+      allTypes.map(function(t) {
+        return ce("button", { key: t, onClick: function() { setFilterType(filterType === t ? "" : t); }, style: filterType === t ? pillActive : pillBase }, t);
+      })
+    ),
+
+    // Filtry — kolor
+    ce("div", { style: { display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" } },
+      ce("span", { style: { fontSize: 11, color: "var(--t3)", marginRight: 2 } }, "Kolor:"),
+      ce("button", { onClick: function() { setFilterColor(""); }, style: filterColor === "" ? pillActive : pillBase }, "Wszystkie"),
+      colorSections.map(function(c) {
+        return ce("button", { key: c, onClick: function() { setFilterColor(filterColor === c ? "" : c); },
+          style: Object.assign({}, filterColor === c ? pillActive : pillBase, { display: "inline-flex", alignItems: "center", gap: 4 }) },
+          colorDot(c),
+          c.charAt(0).toUpperCase() + c.slice(1));
+      })
     ),
 
     err && ce("div", { style: { color: "#dc2626", fontSize: 13, marginBottom: 10 } }, err),
-    loading && ce("div", { style: { color: "var(--t3)", fontSize: 13 } }, "\u23f3 \u0141adowanie..."),
+    loading && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "\u23f3 \u0141adowanie..."),
 
-    // Tabela kolumny per kolor
-    !loading && filtered.length === 0 && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak \u015bcinek. Dodaj pierwsz\u0105!"),
+    !loading && totalFiltered === 0 && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak \u015bcinek."),
 
-    !loading && filtered.length > 0 && ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(" + colorSet.length + ", 1fr)", gap: 10, alignItems: "start" } },
-      colorSet.map(function(color) {
-        var cs = getColorStyle(color);
-        var list = byColor[color];
-        return ce("div", { key: color, style: { border: "1.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
-          // Nagłówek kolumny koloru
-          ce("div", { style: { background: cs.header, padding: "8px 12px", display: "flex", alignItems: "center", gap: 7, borderBottom: "1.5px solid var(--bd2)" } },
-            ce("span", { style: { display: "inline-block", width: 11, height: 11, borderRadius: "50%", background: cs.dot, border: "1.5px solid " + cs.border, flexShrink: 0 } }),
-            ce("span", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)", textTransform: "capitalize" } }, color),
-            ce("span", { style: { fontSize: 11, color: "var(--t3)", marginLeft: "auto" } }, list.length + " szt.")
-          ),
-          // Wiersze
-          ce("div", null,
-            list.map(function(scrap, idx) {
-              return ce("div", { key: scrap.id,
-                style: { display: "grid", gridTemplateColumns: "1fr auto auto", alignItems: "center", padding: "6px 10px", borderBottom: idx < list.length - 1 ? "1px solid var(--bd3)" : "none", background: idx % 2 === 0 ? "var(--bg)" : "var(--bg2)", gap: 6 } },
-                // Długość
-                ce("div", { style: { display: "flex", alignItems: "baseline", gap: 3 } },
-                  ce("span", { style: { fontSize: 16, fontWeight: 800, color: "var(--violet)" } }, scrap.length_cm),
-                  ce("span", { style: { fontSize: 10, color: "var(--t3)", fontWeight: 600 } }, " cm")
-                ),
-                // Typ
-                ce("span", { style: { fontSize: 10, color: "var(--t3)", background: "var(--bg2)", border: "1px solid var(--bd2)", borderRadius: 5, padding: "2px 5px", whiteSpace: "nowrap" } }, scrap.rail_type || "\u2014"),
-                // Usuń
-                ce("button", { onClick: function() { handleDelete(scrap); }, title: "Usu\u0144",
-                  style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 14, padding: "2px 4px", borderRadius: 5, lineHeight: 1 } },
-                  "\uD83D\uDDD1")
-              );
-            })
+    // Tabela
+    !loading && totalFiltered > 0 && ce("div", { style: { border: "0.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
+      // Thead
+      ce("table", { style: { width: "100%", borderCollapse: "collapse", tableLayout: "fixed" } },
+        ce("colgroup", null,
+          ce("col", { style: { width: 90 } }),
+          ce("col", { style: { width: 130 } }),
+          ce("col", null),
+          ce("col", { style: { width: 36 } })
+        ),
+        ce("thead", null,
+          ce("tr", { style: { background: "var(--bg2)" } },
+            ce("th", { style: { padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)" } }, "D\u0142ugo\u015b\u0107"),
+            ce("th", { style: { padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)" } }, "Typ"),
+            ce("th", { style: { padding: "7px 12px", fontSize: 10, fontWeight: 600, color: "var(--t3)", textAlign: "left", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)" } }, "Kolor"),
+            ce("th", { style: { borderBottom: "0.5px solid var(--bd2)" } })
           )
-        );
-      })
+        ),
+        ce("tbody", null,
+          colorSections.map(function(color) {
+            var list = byColor[color] || [];
+            if (list.length === 0) return null;
+            var dotBg = COLOR_DOT[color] || "#a78bfa";
+            var dotBorder = COLOR_DOT_BORDER[color] || "#ccc";
+            var rows = [
+              // Sekcja-nagłówek
+              ce("tr", { key: "sec-" + color },
+                ce("td", { colSpan: 4, style: { padding: "5px 12px", background: "var(--bg2)", fontSize: 10, fontWeight: 600, color: "var(--t3)", letterSpacing: ".05em", textTransform: "uppercase", borderBottom: "0.5px solid var(--bd2)", borderTop: "0.5px solid var(--bd2)" } },
+                  ce("span", { style: { display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: dotBg, border: "0.5px solid " + dotBorder, marginRight: 6, verticalAlign: "middle" } }),
+                  color.charAt(0).toUpperCase() + color.slice(1) + " \u00b7 " + list.length + " szt."
+                )
+              )
+            ];
+            list.forEach(function(scrap, idx) {
+              rows.push(
+                ce("tr", { key: scrap.id, style: { background: idx % 2 === 0 ? "var(--bg)" : "var(--bg2)", borderBottom: idx < list.length - 1 ? "0.5px solid var(--bd3)" : "none" } },
+                  ce("td", { style: { padding: "6px 12px" } },
+                    ce("span", { style: { fontSize: 15, fontWeight: 600, color: "var(--violet)" } }, scrap.length_cm),
+                    ce("sup", { style: { fontSize: 10, color: "var(--t3)", fontWeight: 400, marginLeft: 1 } }, " cm")
+                  ),
+                  ce("td", { style: { padding: "6px 12px" } }, typeBadge(scrap.rail_type)),
+                  ce("td", { style: { padding: "6px 12px", fontSize: 12, color: "var(--t2)" } },
+                    colorDot(scrap.color || ""),
+                    scrap.color || ce("span", { style: { color: "var(--t3)", fontStyle: "italic" } }, "\u2014")
+                  ),
+                  ce("td", { style: { padding: "6px 8px", textAlign: "right" } },
+                    ce("button", { onClick: function() { handleDelete(scrap); }, title: "Usu\u0144",
+                      style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 14, padding: "2px 4px", borderRadius: 5, opacity: .5 } },
+                      "\uD83D\uDDD1")
+                  )
+                )
+              );
+            });
+            return rows;
+          })
+        )
+      )
     ),
 
     showModal && ce(ModalScrap, {
