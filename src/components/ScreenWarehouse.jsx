@@ -175,7 +175,7 @@ function ModalScrap(p) {
         ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Typ szyny *"),
         ce("div", { style: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 } },
           RAIL_TYPES.map(function(t) {
-            var active = railType === t && !customType;
+            var active = railType === t;
             return ce("button", { key: t, onClick: function() { setRailType(t); setCustomType(false); },
               style: { padding: "6px 12px", borderRadius: 8, border: active ? "1.5px solid var(--violet)" : "1.5px solid var(--bd2)", background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t2)", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer" } }, t);
           }),
