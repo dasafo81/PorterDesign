@@ -1257,30 +1257,71 @@ export function buildOfferRows(client){
 
 export function buildFabricRows(client){
   // One row per window: {prod, fabName, kolor, width, metry, room, win, note}
+  // Obsługuje: zaslona, firana, roleta (w tym Duo)
   var rows=[];
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
-        if(p.type!=="zaslona"&&p.type!=="firana")return;
         var pc=p.c||{};
-        var panels=getPanelsForProd(p);
-        var pForCalc=Object.assign({},p,{panels:panels});
-        var res=calc(pForCalc);
-        var metry=0;
-        (res.lines||[]).forEach(function(l){
-          var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
-        });
-        rows.push({
-          fabName:p.fabName||(p.fabManName||"tkanina"),
-          prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
-          kolor:pc.kolor||"-",
-          brutto:p.fabMan||p.fabP||0,
-          width:p.fabW||null,
-          metry:metry,
-          room:r.name,
-          win:w.name,
-          note:p.note||""
-        });
+        // ── zasłony i firany ─────────────────────────────────────────
+        if(p.type==="zaslona"||p.type==="firana"){
+          var panels=getPanelsForProd(p);
+          var pForCalc=Object.assign({},p,{panels:panels});
+          var res=calc(pForCalc);
+          var metry=0;
+          (res.lines||[]).forEach(function(l){
+            var m=l.match(/([\d,.]+)mb/);if(m)metry+=parseFloat(m[1].replace(",","."));
+          });
+          rows.push({
+            fabName:p.fabName||(p.fabManName||"tkanina"),
+            prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
+            kolor:pc.kolor||"-",
+            brutto:p.fabMan||p.fabP||0,
+            width:p.fabW||null,
+            metry:metry,
+            room:r.name,
+            win:w.name,
+            note:p.note||""
+          });
+          return;
+        }
+        // ── rolety rzymskie ───────────────────────────────────────
+        if(p.type==="roleta"){
+          var par=p.par||{};
+          var isBezMech=pc.rSystem==="bez_mechanizmu";
+          var rWcm=isBezMech?(par.wCm||0)+30:(par.wCm||0)+20;
+          var rTunele=isBezMech?0:Math.floor((par.hCm||0)/23);
+          var rHcm=isBezMech?(par.hCm||0):(par.hCm||0)+5+10+rTunele*2;
+          var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
+          var fabObj=p.fabName?FABRICS.find(function(f){return f.name===p.fabName;}):null;
+          rows.push({
+            fabName:p.fabName||(p.fabManName||"tkanina"),
+            prod:fabObj?fabObj.prod:"-",
+            kolor:pc.kolor||"-",
+            brutto:p.fabMan||p.fabP||0,
+            width:p.fabW||null,
+            metry:rMetry,
+            room:r.name,
+            win:w.name,
+            note:"Roleta"+(p.note?" — "+p.note:"")
+          });
+          // Roleta Duo — druga warstwa tkaniny
+          if(pc.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
+            var fab2Obj=p.fab2Name?FABRICS.find(function(f){return f.name===p.fab2Name;}):null;
+            rows.push({
+              fabName:p.fab2Name||(p.fab2ManName||"tkanina"),
+              prod:fab2Obj?fab2Obj.prod:"-",
+              kolor:pc.kolor2||"-",
+              brutto:p.fab2Man||p.fab2P||0,
+              width:p.fab2W||null,
+              metry:rMetry,
+              room:r.name,
+              win:w.name,
+              note:"Roleta Duo (warstwa 2)"+(p.note?" — "+p.note:"")
+            });
+          }
+          return;
+        }
       });
     });
   });
