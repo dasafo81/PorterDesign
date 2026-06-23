@@ -1379,7 +1379,7 @@ export function ModalClientEmail(p){
       +(total>0?"\n\nOrientacyjna wartość realizacji: "+total+" zł brutto\n(zaliczka 50% = "+zaliczka+" zł)":"")
       +"\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wpłaty zaliczki w wysokości 50% wartości zamówienia."
       +"\n\nChętnie przyjadę z wzornikami tkanin, aby dobrać kolor i fakturę do wnętrza."
-      +"\n\nKoszt pomiaru z dojazdem wynosi 250 PLN i jest w całości odliczany od wartości zamówienia przy realizacji."
+      +"\n\nKoszt pomiaru z dojazdem wynosi 250 zł brutto i jest w całości odliczany od wartości zamówienia, jeśli przekracza ono 6 000 zł brutto."
       +"\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design\nTel.: "+SELLER.tel+"\nE-mail: "+SELLER.email;
     return mail;
   }
