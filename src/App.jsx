@@ -22,6 +22,7 @@ import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 import { ScreenTasks } from './components/ScreenTasks.jsx';
 import { ScreenAdmin } from './components/ScreenAdmin.jsx';
 import { ScreenInvoices } from './components/ScreenInvoices.jsx';
+import { ScreenWarehouse } from './components/ScreenWarehouse.jsx';
 const ce = React.createElement;
 
 
@@ -1144,14 +1145,15 @@ export function App(p){
       )
     ),
     // ── Main nav tabs ──
-    ce("div",{style:{display:"grid",gridTemplateColumns:(isSuperAdmin?"1fr 1fr 1fr 1fr 1fr 1fr 1fr":"1fr 1fr 1fr 1fr 1fr 1fr"),gap:4,marginBottom:"1.2rem",background:"rgba(255,255,255,0.48)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid rgba(255,255,255,0.72)",boxShadow:"0 4px 20px rgba(99,102,241,0.10), 0 1px 0 rgba(255,255,255,0.80) inset"}},
+    ce("div",{style:{display:"grid",gridTemplateColumns:(isSuperAdmin?"1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr":"1fr 1fr 1fr 1fr 1fr 1fr 1fr"),gap:4,marginBottom:"1.2rem",background:"rgba(255,255,255,0.48)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid rgba(255,255,255,0.72)",boxShadow:"0 4px 20px rgba(99,102,241,0.10), 0 1px 0 rgba(255,255,255,0.80) inset"}},
       [
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
         {id:"kalendarz", label:"Kalen.",icon:"\uD83D\uDCC5"},
         {id:"mail",      label:"Mail",  icon:"\u2709"},
         {id:"zadania",   label:"Zadania",icon:"\u2713"},
-        {id:"faktury",   label:"Faktury", icon:"\uD83D\uDCB0"}
+        {id:"faktury",   label:"Faktury", icon:"\uD83D\uDCB0"},
+        {id:"magazyn",   label:"Magazyn", icon:"\uD83D\uDCE6"}
       ].concat(isSuperAdmin?[{id:"admin",label:"Admin",icon:"\u2699"}]:[]).map(function(tab){
         var active=appMode===tab.id;
         return ce("button",{key:tab.id,
@@ -1190,6 +1192,8 @@ export function App(p){
         ? ce(ScreenTasks,{})
       : appMode==="faktury"
         ? ce(ScreenInvoices,{})
+      : appMode==="magazyn"
+        ? ce(ScreenWarehouse,{})
       : appMode==="admin"
         ? ce(ScreenAdmin,null)
         : ce(Fragment,null,
