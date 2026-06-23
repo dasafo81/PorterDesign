@@ -304,7 +304,11 @@ export const sbApi = {
 
   // Szyny KS - scinki
   getRailScraps: function(){
-    return sbFetch("GET","rail_scraps?select=*&order=length_cm.desc");
+    return sbFetch("GET","rail_scraps?select=*&order=length_cm.desc").then(function(rows){
+      return (rows||[]).map(function(r){
+        return Object.assign({},r,{rail_type: r.rail_type==="Szyna KS"?"KS":r.rail_type});
+      });
+    });
   },
   addRailScrap: function(data){
     return sbFetch("POST","rail_scraps",Object.assign({},data,{created_at:new Date().toISOString()}));
