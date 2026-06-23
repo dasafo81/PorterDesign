@@ -286,6 +286,20 @@ export const sbApi = {
   // Atomowe nadanie kolejnego numeru (RPC, bez wyscigow). Zwraca int.
   nextInvoiceNumber: function(docType, period){
     return sbFetch("POST","rpc/next_invoice_number",{p_doc_type:docType,p_period:period});
+  },
+
+  // Magazyn
+  getWarehouseItems: function(){
+    return sbFetch("GET","warehouse_items?select=*&order=category.asc,name.asc");
+  },
+  addWarehouseItem: function(data){
+    return sbFetch("POST","warehouse_items",Object.assign({},data,{created_at:new Date().toISOString(),updated_at:new Date().toISOString()}));
+  },
+  updateWarehouseItem: function(id,data){
+    return sbFetch("PATCH","warehouse_items?id=eq."+id,Object.assign({},data,{updated_at:new Date().toISOString()}));
+  },
+  deleteWarehouseItem: function(id){
+    return sbFetch("DELETE","warehouse_items?id=eq."+id);
   }
 };
 
@@ -443,19 +457,5 @@ export const adminApi = {
   // Aktualizuje config (branding) tenanta. config = {brand_name, logo_url}
   updateTenant: function(tenantId, config){
     return adminFetch("PATCH","/api/admin/tenants",{id:tenantId,config:config});
-  },
-
-  // Magazyn
-  getWarehouseItems: function(){
-    return sbFetch("GET","warehouse_items?select=*&order=category.asc,name.asc");
-  },
-  addWarehouseItem: function(data){
-    return sbFetch("POST","warehouse_items",Object.assign({},data,{created_at:new Date().toISOString(),updated_at:new Date().toISOString()}));
-  },
-  updateWarehouseItem: function(id, data){
-    return sbFetch("PATCH","warehouse_items?id=eq."+id, Object.assign({},data,{updated_at:new Date().toISOString()}));
-  },
-  deleteWarehouseItem: function(id){
-    return sbFetch("DELETE","warehouse_items?id=eq."+id);
   }
 };
