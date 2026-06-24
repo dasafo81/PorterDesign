@@ -380,6 +380,27 @@ export function App(p){
     updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).concat([newRoom])});});
   }
 
+  function moveRoom(roomId,dir){
+    updateClient(curClientId,function(cl){
+      var rooms=(cl.rooms||[]).slice();
+      var idx=rooms.findIndex(function(r){return r.id===roomId;});
+      if(idx<0)return cl;
+      var grp=rooms[idx].variantGroup;
+      var blockIdxs=grp
+        ?rooms.map(function(_,i){return i;}).filter(function(i){return rooms[i].variantGroup===grp;})
+        :[idx];
+      var blockStart=blockIdxs[0];var blockEnd=blockIdxs[blockIdxs.length-1];
+      if(dir===-1&&blockStart===0)return cl;
+      if(dir===1&&blockEnd===rooms.length-1)return cl;
+      var before=rooms.slice(0,blockStart);
+      var block=rooms.slice(blockStart,blockEnd+1);
+      var after=rooms.slice(blockEnd+1);
+      var pivot;
+      if(dir===-1){pivot=before.pop();return mg(cl,{rooms:before.concat(block).concat([pivot]).concat(after)});}
+      else{pivot=after.shift();return mg(cl,{rooms:before.concat([pivot]).concat(block).concat(after)});}
+    });
+  }
+
   function saveWin(){
     updateClient(curClientId,function(cl){
       var newRooms=(cl.rooms||[]).map(function(r){
@@ -675,10 +696,25 @@ export function App(p){
   else if(screen==="rooms"&&curClient){
     var rooms=curClient.rooms||[];
     var roomGroupSizes={};rooms.forEach(function(r){if(r.variantGroup){roomGroupSizes[r.variantGroup]=(roomGroupSizes[r.variantGroup]||0)+1;}});
-    var roomTiles=rooms.map(function(r){
+    var roomTiles=rooms.map(function(r,roomIdx){
       var rTotal=rt(r);
+      var roomsLen=rooms.length;
       return ce("div",{key:r.id,
         style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,padding:"18px 16px",display:"flex",alignItems:"center",gap:16,boxShadow:"0 1px 6px rgba(0,0,0,0.04)",position:"relative"}},
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:3,alignSelf:"center",flexShrink:0}},
+          ce("button",{
+            onClick:function(ev){ev.stopPropagation();moveRoom(r.id,-1);},
+            disabled:roomIdx===0,
+            title:"Przesuń w górę",
+            style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:roomIdx===0?"not-allowed":"pointer",fontSize:11,color:roomIdx===0?"var(--t3)":"var(--t1)",width:24,height:24,borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1,opacity:roomIdx===0?0.35:0.7}
+          },"▲"),
+          ce("button",{
+            onClick:function(ev){ev.stopPropagation();moveRoom(r.id,1);},
+            disabled:roomIdx===roomsLen-1,
+            title:"Przesuń w dół",
+            style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:roomIdx===roomsLen-1?"not-allowed":"pointer",fontSize:11,color:roomIdx===roomsLen-1?"var(--t3)":"var(--t1)",width:24,height:24,borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1,opacity:roomIdx===roomsLen-1?0.35:0.7}
+          },"▼")
+        ),
         (function(){
           var _img=r.img||(r.name&&r.name.toLowerCase().includes("salon")?IMG_ROOM_SALON:r.name&&r.name.toLowerCase().includes("kuchnia")?IMG_ROOM_KUCHNIA:r.name&&r.name.toLowerCase().includes("sypialnia")?IMG_ROOM_SYPIALNIA:r.name&&r.name.toLowerCase().includes("gabinet")?IMG_ROOM_GABINET:r.name&&r.name.toLowerCase().includes("pok")?IMG_ROOM_POKÓJ:null);
           return _img
