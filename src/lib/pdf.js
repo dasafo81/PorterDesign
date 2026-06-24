@@ -379,12 +379,15 @@ export function generateSewingOrderPDF(client, modalData){
   var sewingHouse=modalData.sewingHouse||"";
   var notes=modalData.notes||"";
   var termStr=modalData.term||"________________";
+  var termCurtainsStr=modalData.termCurtains||termStr;
+  var termRoletyStr=modalData.termRolety||termStr;
   var attachB64=modalData.attachB64||null;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
   var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
 
   var curtainRows=rows.filter(function(r){return r._type!=="roleta";});
   var romanRows=rows.filter(function(r){return r._type==="roleta";});
+  var hasBothTypes=curtainRows.length>0&&romanRows.length>0;
 
   // Tabela zasłon/firan
   var tableHeader=["Pomieszczenie","Rodzaj","Styl szycia","Tkanina","Producent","Kolor","Szer. (cm)","Wys. (cm)","Podzia\u0142","Typ do\u0142u","Wys. ta\u015bmy / Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Podszewka","Ta\u015bma na stoj\u0105co","Uwagi"];
@@ -456,10 +459,10 @@ export function generateSewingOrderPDF(client, modalData){
     +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong>'+SELLER.name+'</strong><br>'+SELLER.addr+', '+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
-    +'<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin realizacji: <strong>'+termStr+'</strong></p></div>'
+    +( hasBothTypes ? '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin zasłony: <strong>'+termCurtainsStr+'</strong> &nbsp;&bull;&nbsp; Termin rolety: <strong>'+termRoletyStr+'</strong></p>' : '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin realizacji: <strong>'+termStr+'</strong></p>')+'</div>'
     +'</div>'
-    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zas\u0142ony i firany \u2014 specyfikacja szycia"):"")
-    +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,"Rolety rzymskie \u2014 specyfikacja szycia")+notesFieldHTML:"")
+    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,hasBothTypes?"Zas\u0142ony i firany \u2014 termin: "+termCurtainsStr:"Zas\u0142ony i firany \u2014 specyfikacja szycia"):"")
+    +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,hasBothTypes?"Rolety rzymskie \u2014 termin: "+termRoletyStr:"Rolety rzymskie \u2014 specyfikacja szycia")+notesFieldHTML:"")
     +notesBlock
     +'<div class="sign-block" style="margin-top:14mm">'
     +'<div class="sign">Zleceniodawca<br><strong>Paulina Porter</strong></div>'
@@ -495,10 +498,13 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   var sewingHouse=modalData.sewingHouse||'';
   var notes=modalData.notes||'';
   var termStr=modalData.term||'________________';
+  var termCurtainsStr2=modalData.termCurtains||termStr;
+  var termRoletyStr2=modalData.termRolety||termStr;
   var attachB64=modalData.attachB64||null;
   var now=new Date();var dateStr=now.toLocaleDateString('pl-PL');
   var curtainRows2=rows.filter(function(r){return r._type!=='roleta';});
   var romanRows2=rows.filter(function(r){return r._type==='roleta';});
+  var hasBothTypes2=curtainRows2.length>0&&romanRows2.length>0;
   var tableHeader=['Pomieszczenie','Rodzaj','Styl szycia','Tkanina','Producent','Kolor','Szer. (cm)','Wys. (cm)','Podzia\u0142','Typ do\u0142u','Wys. ta\u015bmy / Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Ta\u015bma na stoj\u0105co','Uwagi'];
   var tableRows=curtainRows2.map(function(r){
     var tasmyGlide=r.szStyle==='Wave'?r.glide:(r.tasma&&r.tasma!=='-'?r.tasma:'-');
@@ -540,8 +546,8 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +'<div class="meta-block"><h4>SZWALNIA</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>TERMIN</h4><p style="font-size:13px;font-weight:600">'+termStr+'</p></div>'
     +'</div>'
-    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,'Zas\u0142ony i firany \u2014 specyfikacja szycia'):'')
-    +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,'Rolety rzymskie \u2014 specyfikacja szycia')+notesFieldHTML2:'')
+    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,hasBothTypes2?'Zas\u0142ony i firany \u2014 termin: '+termCurtainsStr2:'Zas\u0142ony i firany \u2014 specyfikacja szycia'):'')
+    +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,hasBothTypes2?'Rolety rzymskie \u2014 termin: '+termRoletyStr2:'Rolety rzymskie \u2014 specyfikacja szycia')+notesFieldHTML2:'')
     +notesBlock
     +'<div class="sign-block"><div class="sign">Data odbioru tkaniny</div><div class="sign">Podpis zleceniodawcy</div><div class="sign">Podpis szwalni</div></div>'
     +'</body></html>';
