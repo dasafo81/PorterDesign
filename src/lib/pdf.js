@@ -332,7 +332,7 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
     var room=item.room;var wins=item.windows;if(!wins||!wins.length)return;
     var roomSec="";var roomTotal=0;
     wins.forEach(function(w){var wr=buildWinRowsSel([w]);if(!wr.total)return;
-      var isV=!!w.variantGroup;var rb=isV?"#e8f0fe":"#f5ede0";var hc=isV?"#3367d6":"#1a1a18";
+      var isV=!!w.variantGroup;var rb=isV?"#eeece9":"#f5ede0";var hc=isV?"#1a1a18":"#1a1a18";
       var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(w.name||"Okno");
       var tRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wLabel+"</td>"
               +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
