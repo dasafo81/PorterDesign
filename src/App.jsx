@@ -1979,27 +1979,34 @@ function ModalSimplifiedPDF(p){
   var client=p.client||{};
   var comm=p.comm||0;
   var montaz=p.montaz||0;
+  var useState=React.useState;
 
   function buildGroups(){
-    var result=[];var roomVariantSeen={};
+    var result=[];
+    var roomVariantMap={};var roomVariantOrder=[];var plainRooms=[];
     (client.rooms||[]).forEach(function(room){
-      if(room.variantGroup){if(roomVariantSeen[room.variantGroup])return;roomVariantSeen[room.variantGroup]=true;}
+      if(room.variantGroup){
+        if(!roomVariantMap[room.variantGroup]){roomVariantMap[room.variantGroup]=[];roomVariantOrder.push(room.variantGroup);}
+        roomVariantMap[room.variantGroup].push(room);
+      } else {plainRooms.push(room);}
+    });
+    roomVariantOrder.forEach(function(grpId){
+      var rooms=roomVariantMap[grpId].slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+      result.push({type:"roomVariant",grpId:grpId,rooms:rooms,baseName:rooms[0].variantBaseName||rooms[0].name});
+    });
+    plainRooms.forEach(function(room){
       var wins=room.windows||[];var groups={};var order=[];
       wins.forEach(function(w){var key=w.variantGroup||("solo_"+w.id);if(!groups[key]){groups[key]={isVariant:!!w.variantGroup,wins:[],baseName:w.variantBaseName||w.name};order.push(key);}groups[key].wins.push(w);});
-      if(order.length)result.push({room:room,groups:groups,order:order});
+      if(order.length)result.push({type:"room",room:room,groups:groups,order:order});
     });
     return result;
   }
 
   function makeInitSel(rgs){
     var init={};
-    rgs.forEach(function(rg){
-      var room=rg.room;
-      rg.order.forEach(function(key){
-        var g=rg.groups[key];
-        if(!g.isVariant){init[room.id+"__"+key]=true;}
-        else{var sorted=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});init[room.id+"__"+key]=sorted[0].id;}
-      });
+    rgs.forEach(function(item){
+      if(item.type==="roomVariant"){init["rv__"+item.grpId]=item.rooms[0].id;}
+      else{var room=item.room;item.order.forEach(function(key){var g=item.groups[key];if(!g.isVariant){init[room.id+"__"+key]=true;}else{var sorted=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});init[room.id+"__"+key]=sorted[0].id;}});}
     });
     return init;
   }
@@ -2012,83 +2019,119 @@ function ModalSimplifiedPDF(p){
 
   function calcTotal(){
     var total=0;
-    roomGroups.forEach(function(rg){
-      var room=rg.room;
-      rg.order.forEach(function(key){
-        var selKey=room.id+"__"+key;var selVal=sel[selKey];
-        if(!selVal&&selVal!==true)return;
-        var gWins=rg.groups[key].wins;
-        var chosen=!rg.groups[key].isVariant?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
-        if(!chosen)return;
-        (chosen.products||[]).forEach(function(prod){
-          var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;
-          var base=prod.mp!=null?prod.mp:(calc(pfc).total||0);
-          total+=(comm>0?base*(1+comm):base);
+    roomGroups.forEach(function(item){
+      if(item.type==="roomVariant"){
+        var selRoomId=sel["rv__"+item.grpId];if(!selRoomId)return;
+        var chosenRoom=item.rooms.find(function(r){return r.id===selRoomId;});if(!chosenRoom)return;
+        (chosenRoom.windows||[]).forEach(function(w){(w.products||[]).forEach(function(prod){var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;var base=prod.mp!=null?prod.mp:(calc(pfc).total||0);total+=(comm>0?base*(1+comm):base);});});
+      } else {
+        var room=item.room;
+        item.order.forEach(function(key){
+          var selKey=room.id+"__"+key;var selVal=sel[selKey];if(!selVal&&selVal!==true)return;
+          var gWins=item.groups[key].wins;
+          var chosen=!item.groups[key].isVariant?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
+          if(!chosen)return;
+          (chosen.products||[]).forEach(function(prod){var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;var base=prod.mp!=null?prod.mp:(calc(pfc).total||0);total+=(comm>0?base*(1+comm):base);});
         });
-      });
+      }
     });
     return total;
   }
 
   function doGenerate(){
     var selection=[];
-    roomGroups.forEach(function(rg){
-      var room=rg.room;var chosenWins=[];
-      rg.order.forEach(function(key){
-        var selKey=room.id+"__"+key;var selVal=sel[selKey];
-        if(!selVal&&selVal!==true)return;
-        var gWins=rg.groups[key].wins;
-        var chosen=!rg.groups[key].isVariant?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
-        if(chosen)chosenWins.push(chosen);
-      });
-      if(chosenWins.length)selection.push({room:room,windows:chosenWins});
+    roomGroups.forEach(function(item){
+      if(item.type==="roomVariant"){
+        var selRoomId=sel["rv__"+item.grpId];if(!selRoomId)return;
+        var chosenRoom=item.rooms.find(function(r){return r.id===selRoomId;});
+        if(chosenRoom&&(chosenRoom.windows||[]).length){selection.push({room:chosenRoom,windows:chosenRoom.windows});}
+      } else {
+        var room=item.room;var chosenWins=[];
+        item.order.forEach(function(key){
+          var selKey=room.id+"__"+key;var selVal=sel[selKey];if(!selVal&&selVal!==true)return;
+          var gWins=item.groups[key].wins;
+          var chosen=!item.groups[key].isVariant?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
+          if(chosen)chosenWins.push(chosen);
+        });
+        if(chosenWins.length)selection.push({room:room,windows:chosenWins});
+      }
     });
     var h=buildSimplifiedPDFFromSelection(client,comm,montaz,selection,null);
     if(!h){alert("Brak pozycji do wyceny.");return;}
     openPDFWindow(h,(client.name||"")+" - Oferta");
   }
 
+  function pillStyle(active,color){
+    var c=color||"var(--gr)";
+    return {display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"1.5px solid "+(active?c:"var(--bd2)"),background:active?(c==="var(--gr)"?"var(--grl)":"#f5ede0"):"transparent",fontSize:13,color:active?c:"var(--t2)",fontWeight:active?600:400};
+  }
+
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"16px"}},
-    ce("div",{style:{background:"var(--bg)",borderRadius:18,width:520,maxWidth:"100%",maxHeight:"90vh",display:"flex",flexDirection:"column",border:"1px solid var(--bd2)",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:18,width:540,maxWidth:"100%",maxHeight:"90vh",display:"flex",flexDirection:"column",border:"1px solid var(--bd2)",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
       ce("div",{style:{padding:"16px 20px 12px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}},
-        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}},"\uD83D\uDCCB Wycena Uproszczona \u2014 wybierz okna"),
+        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}}),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t3)",lineHeight:1}},"\u00d7")
       ),
       ce("div",{style:{flex:1,overflowY:"auto",padding:"16px 20px"}},
-        roomGroups.map(function(rg){
-          var room=rg.room;
-          return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
-            ce("div",{style:{padding:"7px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase"}},
-              room.variantBaseName||room.name
-            ),
-            rg.order.map(function(key,ki){
-              var g=rg.groups[key];var selKey=room.id+"__"+key;var selVal=sel[selKey];
-              if(g.isVariant){
-                var sortedWins=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
-                return ce("div",{key:key,style:{padding:"10px 12px",borderTop:"1px solid var(--bd3)"}},
-                  ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},g.baseName+" \u2014 wariant:"),
-                  ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                    sortedWins.map(function(w){var isC=selVal===w.id;
-                      return ce("label",{key:w.id,style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"1.5px solid "+(isC?"var(--gr)":"var(--bd2)"),background:isC?"var(--grl)":"transparent",fontSize:13,color:isC?"var(--gr)":"var(--t2)",fontWeight:isC?600:400}},
-                        ce("input",{type:"radio",name:selKey,checked:isC,onChange:function(){setKey(selKey,w.id);},style:{display:"none"}}),
-                        "Wariant "+w.variantLabel
-                      );
-                    }),
-                    ce("label",{style:{display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"1.5px solid "+(selVal===false?"#c8956c":"var(--bd2)"),background:selVal===false?"#f5ede0":"transparent",fontSize:13,color:selVal===false?"#c8956c":"var(--t3)",fontWeight:selVal===false?600:400}},
-                      ce("input",{type:"radio",name:selKey,checked:selVal===false,onChange:function(){setKey(selKey,false);},style:{display:"none"}}),
-                      "Wyklucz"
-                    )
+        roomGroups.map(function(item){
+          if(item.type==="roomVariant"){
+            var selRoomId=sel["rv__"+item.grpId];
+            return ce("div",{key:"rv_"+item.grpId,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
+              ce("div",{style:{padding:"7px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase"}},
+                item.baseName
+              ),
+              ce("div",{style:{padding:"10px 12px"}},
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},"Wariant pomieszczenia:"),
+                ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                  item.rooms.map(function(room){
+                    var isC=selRoomId===room.id;
+                    return ce("label",{key:room.id,style:pillStyle(isC,"var(--gr)")},
+                      ce("input",{type:"radio",name:"rv__"+item.grpId,checked:isC,onChange:function(){setKey("rv__"+item.grpId,room.id);},style:{display:"none"}}),
+                      "Wariant "+(room.variantLabel||room.name)
+                    );
+                  }),
+                  ce("label",{style:pillStyle(selRoomId===false,"#c8956c")},
+                    ce("input",{type:"radio",name:"rv__"+item.grpId,checked:selRoomId===false,onChange:function(){setKey("rv__"+item.grpId,false);},style:{display:"none"}}),
+                    "Wyklucz"
                   )
-                );
-              } else {
-                var soloWin=g.wins[0];var isChecked=selVal===true;
-                return ce("label",{key:key,style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderTop:ki===0?"none":"1px solid var(--bd3)",cursor:"pointer",userSelect:"none"}},
-                  ce("input",{type:"checkbox",checked:!!isChecked,onChange:function(ev){setKey(selKey,ev.target.checked);},style:{width:15,height:15,cursor:"pointer",flexShrink:0}}),
-                  ce("span",{style:{fontSize:13,color:isChecked?"var(--t1)":"var(--t3)",fontWeight:isChecked?500:400}},soloWin.name||"Okno")
-                );
-              }
-            })
-          );
+                )
+              )
+            );
+          } else {
+            var room=item.room;
+            return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
+              ce("div",{style:{padding:"7px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase"}},
+                room.name
+              ),
+              item.order.map(function(key,ki){
+                var g=item.groups[key];var selKey=room.id+"__"+key;var selVal=sel[selKey];
+                if(g.isVariant){
+                  var sortedWins=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+                  return ce("div",{key:key,style:{padding:"10px 12px",borderTop:"1px solid var(--bd3)"}},
+                    ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},g.baseName+" \u2014 wariant:"),
+                    ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                      sortedWins.map(function(w){var isC=selVal===w.id;
+                        return ce("label",{key:w.id,style:pillStyle(isC,"var(--gr)")},
+                          ce("input",{type:"radio",name:selKey,checked:isC,onChange:function(){setKey(selKey,w.id);},style:{display:"none"}}),
+                          "Wariant "+w.variantLabel
+                        );
+                      }),
+                      ce("label",{style:pillStyle(selVal===false,"#c8956c")},
+                        ce("input",{type:"radio",name:selKey,checked:selVal===false,onChange:function(){setKey(selKey,false);},style:{display:"none"}}),
+                        "Wyklucz"
+                      )
+                    )
+                  );
+                } else {
+                  var soloWin=g.wins[0];var isChecked=selVal===true;
+                  return ce("label",{key:key,style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderTop:ki===0?"none":"1px solid var(--bd3)",cursor:"pointer",userSelect:"none"}},
+                    ce("input",{type:"checkbox",checked:!!isChecked,onChange:function(ev){setKey(selKey,ev.target.checked);},style:{width:15,height:15,cursor:"pointer",flexShrink:0}}),
+                    ce("span",{style:{fontSize:13,color:isChecked?"var(--t1)":"var(--t3)",fontWeight:isChecked?500:400}},soloWin.name||"Okno")
+                  );
+                }
+              })
+            );
+          }
         })
       ),
       ce("div",{style:{padding:"14px 20px",borderTop:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:12}},
