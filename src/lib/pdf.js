@@ -222,7 +222,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
     +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
-    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+variantSuffix+"</div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta"+variantSuffix+"</div>"
     +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections2
@@ -262,7 +262,7 @@ export function generateSimplifiedPDF(client,comm,montaz){
   if(!hasWinVariants&&!hasRoomVariants){
     var h=buildSimplifiedPDFHtml(client,comm,montaz,null,null);
     if(!h){alert("Brak pozycji do wyceny.");return;}
-    openPDFWindow(h,(client.name||"")+" - Oferta Aranżacji Okiennych");
+    openPDFWindow(h,(client.name||"")+" - Oferta");
     return;
   }
   var roomDim=hasRoomVariants?roomLabels:[null];
@@ -275,7 +275,7 @@ export function generateSimplifiedPDF(client,comm,montaz){
       var suffix="";
       if(rl)suffix+=" (pomieszczenie "+rl+")";
       if(wl)suffix+=" (okno "+wl+")";
-      openPDFWindow(h,(client.name||"")+" - Oferta Aranżacji Okiennych"+suffix);
+      openPDFWindow(h,(client.name||"")+" - Oferta"+suffix);
       opened++;
     });
   });
@@ -348,7 +348,7 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
     +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
-    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Wycena Uproszczona"+titleSuffix+"</div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta"+titleSuffix+"</div>"
     +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections
