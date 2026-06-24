@@ -14,9 +14,9 @@ export const CRM_STAGES =[
   {id:"zamowienie", label:"Zamówienie", color:"#8b5cf6", clientStatus:"nowe"},
   {id:"realizacja", label:"Realizacja", color:"#10b981", clientStatus:"nowe"},
   {id:"montaz",     label:"Monta\u017c",     color:"#f97316", clientStatus:"nowe"},
-  {id:"zakonczone", label:"Zako\u0144czone", color:"#6b7280", clientStatus:"zrealizowane"},
   {id:"posprzedazowa", label:"Obs\u0142uga posprzeda\u017cowa", color:"#14b8a6", clientStatus:"zrealizowane"}
 ];
+export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane"};
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
 
 export function clientTotal2(cl){
@@ -1130,8 +1130,9 @@ function KanbanCol(kp){
   var stage=kp.stage; var deals=kp.deals;
   var clients=kp.clients; var openDeal=kp.openDeal;
   var fmtDate=kp.fmtDate; var clientTotal2=kp.clientTotal2;
+  var wide=!!kp.wide;
   var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
-  return ce("div",{style:{flex:"1 1 0",minWidth:190,maxWidth:280}},
+  return ce("div",{style:wide?{flex:"1 1 0",minWidth:280}:{flex:"1 1 0",minWidth:190,maxWidth:280}},
     ce("div",{style:{
       background:"var(--bg2)",border:"1px solid var(--bd2)",
       borderRadius:14,padding:"10px 8px",height:"100%"
@@ -1189,9 +1190,10 @@ function KanbanBoard(kp){
           return ce(KanbanCol,Object.assign({key:stage.id,stage:stage},colProps));
         })
       ),
-      ce("div",{style:{margin:"14px 0 8px",height:1,background:"var(--bd2)"}}),
-      ce("div",{style:{display:"flex",gap:10,paddingBottom:4,marginLeft:-4,paddingLeft:4,flexWrap:"wrap"}},
-        ce(KanbanCol,Object.assign({stage:STAGE_ODRZUCONE},colProps))
+      ce("div",{style:{margin:"16px 0 10px",height:1,background:"var(--bd2)"}}),
+      ce("div",{style:{display:"flex",gap:10,paddingBottom:4,marginLeft:-4,paddingLeft:4}},
+        ce(KanbanCol,Object.assign({stage:STAGE_ZAKONCZONE,wide:true},colProps)),
+        ce(KanbanCol,Object.assign({stage:STAGE_ODRZUCONE,wide:true},colProps))
       )
     )
   );
