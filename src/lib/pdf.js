@@ -147,7 +147,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
         var subtypeLabel=null;
         if(p.type==="szyna"){
           var ksMode=(p.c||{}).ks||"flex";
-          var ksLbl=ksMode==="manual"?"KS Manualna":ksMode==="flex"?"KS Flex":ksMode==="wave"?"KS Wave":("KS "+ksMode);
+          var ksLbl=ksMode==="manual"?"Szyna KS Manualna":ksMode==="flex"?"Szyna KS Flex":ksMode==="wave"?"Szyna KS Wave":("Szyna KS "+ksMode);
           subtypeLabel=ksLbl;
         }else if(p.type==="karnisz"){
           var kmMode=(p.c||{}).km||"slim";
@@ -162,6 +162,9 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
           var jt2=(p.c||{}).jt||"al25";
           var JL2={al25:"\u017baluzja Alu 25mm",al35:"\u017baluzja Alu 35mm",al50:"\u017baluzja Alu 50mm",ba35:"\u017baluzja Bamboo 35mm",ba50:"\u017baluzja Bamboo 50mm",bs50:"\u017baluzja Basswood 50mm"};
           subtypeLabel=JL2[jt2]||("\u017baluzja "+jt2);
+        }else if(p.type==="roleta"){
+          var rM=(p.c||{}).rModel||"relax";var RML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
+          subtypeLabel="Roleta "+(RML[rM]||rM);
         }else if(p.type==="roleta_shadow"){
           subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");
         }
@@ -305,7 +308,7 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       else if(p.type==="roleta_shadow"){subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");}
       else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba35:"Bamboo 35mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
       else if(p.type==="szyna"){subtypeLabel="Szyna KS "+((p.c||{}).ks==="wave"?"Wave":"Flex");}
-      else if(p.type==="karnisz"){var km=(p.c||{}).km||"slim";subtypeLabel="Karnisz el. "+(km==="slim"?"Slim":km==="univ"?"Univ":km);}
+      else if(p.type==="karnisz"){var km=(p.c||{}).km||"slim";subtypeLabel="Karnisz elektryczny "+(km==="slim"?"Slim":km==="univ"?"Universal":km.toUpperCase());}
       else if(p.type==="prestige_round")subtypeLabel="Karnisz Prestige ROUND";
       else if(p.type==="prestige_square")subtypeLabel="Karnisz Prestige SQUARE";
       else if(p.type==="karnisz_dek")subtypeLabel="Karnisz dekoracyjny";
@@ -317,7 +320,7 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
     });});
     var rows="";
     typeOrder.forEach(function(key){var d=typeData[key];
-      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||d.type);
+      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
       var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek";
