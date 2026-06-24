@@ -526,13 +526,13 @@ export function ProdCard(p){
           )
         ),
         ce(Fld,{label:"Prawa sztuka"},
-          ce("div",{style:{display:"flex",alignItems:"center",gap:8,background:totalW>0?"var(--bg3)":"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
-            ce("button",{onClick:function(){if(totalW>0&&(+rVal||0)>0)setRightW((+rVal||0)-1);},disabled:totalW>0,style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:totalW>0?"default":"pointer",color:"var(--t3)",flexShrink:0}},"\u2212"),
-            ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:17}},
-              ce("input",{type:"text",inputMode:"numeric",value:rVal,readOnly:totalW>0,onChange:function(ev){if(!totalW)setRightW(ev.target.value);},style:{width:60,border:"none",background:"transparent",textAlign:"center",fontSize:17,color:totalW>0?"var(--t2)":"var(--t1)",fontWeight:500,outline:"none"}}),
+          ce("div",{style:{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
+            ce("button",{onClick:function(){if((+rVal||0)>0)setRightW((+rVal||0)-1);},style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t2)",flexShrink:0}},"\u2212"),
+            ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:17,color:"var(--t1)",fontWeight:500}},
+              ce("input",{type:"text",inputMode:"numeric",value:rVal,onChange:function(ev){setRightW(ev.target.value);},style:{width:60,border:"none",background:"transparent",textAlign:"center",fontSize:17,color:"var(--t1)",fontWeight:500,outline:"none"}}),
               ce("span",{style:{color:"var(--t3)",fontSize:14}},"cm")
             ),
-            ce("button",{onClick:function(){if(!totalW)setRightW((+rVal||0)+1);},disabled:totalW>0,style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:totalW>0?"default":"pointer",color:"var(--t3)",flexShrink:0}},"+")
+            ce("button",{onClick:function(){setRightW((+rVal||0)+1);},style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:totalW>0?"default":"pointer",color:"var(--t3)",flexShrink:0}},"+")
           )
         )
       );
