@@ -1328,7 +1328,7 @@ export function ProdCard(p){
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
       ),
       ce(Chips,{items:[
         ce(Chip,{key:"fl",label:"Flex 80 z\u0142/mb",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
@@ -1348,7 +1348,7 @@ export function ProdCard(p){
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
       ),
       ce(Chips,{items:[
         ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
@@ -1447,6 +1447,9 @@ export function ProdCard(p){
           )
         )
       ),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hPres||"",onChange:function(ev){sp("hPres",ev.target.value);},placeholder:"\u2013",style:IST}))
+      ),
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"NAP\u0118D"),
         ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
@@ -1527,6 +1530,9 @@ export function ProdCard(p){
     var kdAkc=prod.kdAkc||{};
     var kdKolor=prod.kdKolor||"bialy_mat";
     form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hDek||"",onChange:function(ev){sp("hDek",ev.target.value);},placeholder:"\u2013",style:IST}))
+      ),
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ROZMIAR PROFILU"),
         ce("div",{style:{display:"flex",gap:10}},
