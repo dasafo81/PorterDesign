@@ -880,7 +880,9 @@ export function App(p){
             ce(ProdCard,{prod:p,
               onChange:function(np){setCurWin(function(w){return mg(w,{products:(w.products||[]).map(function(x,j){return j===i?np:x;})});});},
               onRemove:function(){setCurWin(function(w){return mg(w,{products:(w.products||[]).filter(function(_,j){return j!==i;})});});},
-              onDuplicate:function(){setCurWin(function(w){var prods=w.products||[];var src=prods[i];var copy=mg(src,{id:Date.now()});var next=prods.slice(0,i+1).concat([copy]).concat(prods.slice(i+1));return mg(w,{products:next});});}
+              onDuplicate:function(){setCurWin(function(w){var prods=w.products||[];var src=prods[i];var copy=mg(src,{id:Date.now()});var next=prods.slice(0,i+1).concat([copy]).concat(prods.slice(i+1));return mg(w,{products:next});});},
+              onMoveUp:i>0?function(){moveProd(i,-1);}:undefined,
+              onMoveDown:i<swProducts.length-1?function(){moveProd(i,1);}:undefined
             })
           );
         }),
