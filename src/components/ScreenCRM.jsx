@@ -15,7 +15,7 @@ export const CRM_STAGES =[
   {id:"realizacja", label:"Realizacja", color:"#10b981", clientStatus:"nowe"},
   {id:"montaz",     label:"Monta\u017c",     color:"#f97316", clientStatus:"nowe"},
   {id:"zakonczone", label:"Zako\u0144czone", color:"#6b7280", clientStatus:"zrealizowane"},
-  {id:"posprzedazowa", label:"Obs\u0142uga posprzeda\u017cowej", color:"#14b8a6", clientStatus:"zrealizowane"}
+  {id:"posprzedazowa", label:"Obs\u0142uga posprzeda\u017cowa", color:"#14b8a6", clientStatus:"zrealizowane"}
 ];
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
 
