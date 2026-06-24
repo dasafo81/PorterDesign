@@ -321,7 +321,7 @@ export function ModalDeal(p){
           ce(CheckRow,{checked:reviewSent,onChange:setReviewSent,label:"Wysłano prośbę o opinię",sublabel:"Google / Facebook / referencja"}),
           ce(CheckRow,{checked:washingSent,onChange:setWashingSent,label:"Wysłano instrukcję prania",sublabel:"Pielęgnacja i konserwacja tkanin"}),
           ce(CheckRow,{checked:invoiceSent,onChange:setInvoiceSent,label:"Wysłano fakturę (FV)",sublabel:"Dokument księgowy do klienta"})
-        )
+        ),
 
         ce("div",{style:{marginBottom:12}},
           ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"NOTATKI"),
