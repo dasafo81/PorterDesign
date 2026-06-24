@@ -78,6 +78,10 @@ export function ModalDeal(p){
   var sid=useState(!!d.install_done),installDone=sid[0],setInstallDone=sid[1];
   var sinst=useState(d.installer_name||""),installerName=sinst[0],setInstallerName=sinst[1];
   var sinstcal=useState(d.installer_calendar_id||""),installerCalId=sinstcal[0],setInstallerCalId=sinstcal[1];
+  var sdel2=useState(d.delivery_date2?d.delivery_date2.slice(0,16):""),delivDate2=sdel2[0],setDelivDate2=sdel2[1];
+  var sinst2=useState(d.installer_name2||""),installerName2=sinst2[0],setInstallerName2=sinst2[1];
+  var sinstcal2=useState(d.installer_calendar_id2||""),installerCalId2=sinstcal2[0],setInstallerCalId2=sinstcal2[1];
+  var sinslbl2=useState(d.install_label2||""),installLabel2=sinslbl2[0],setInstallLabel2=sinslbl2[1];
   var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
   var ssh=useState(d.sewing_house||""),sewingHouse=ssh[0],setSewingHouse=ssh[1];
   var ssd=useState(d.sewing_sent_date?d.sewing_sent_date.slice(0,10):""),sewingSentDate=ssd[0],setSewingSentDate=ssd[1];
@@ -115,6 +119,10 @@ export function ModalDeal(p){
       install_done:installDone,
       installer_name:installerName||null,
       installer_calendar_id:installerCalId||null,
+      delivery_date2:delivDate2||null,
+      installer_name2:installerName2||null,
+      installer_calendar_id2:installerCalId2||null,
+      install_label2:installLabel2||null,
       acquisition:acquisition||null,
       sewing_house:sewingHouse||null,
       sewing_sent_date:sewingSentDate||null,
@@ -156,11 +164,11 @@ export function ModalDeal(p){
     }).catch(function(e){alert("Błąd uploadu: "+e.message);setUploading(false);});
   }
 
-  function addToGcal(title,dateStr){
+  function addToGcal(title,dateStr,calIdOvr){
     if(!dateStr){alert("Nie wybrano daty.");return;}
-    if(!gcalToken){alert("Zaloguj się najpierw do Google Calendar.");return;}
-    if(!calList.length){alert("Brak dostępnych kalendarzy.");return;}
-    var calId=installerCalId||(calList.find(function(c){return c.primary;})||calList[0]).id;
+    if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
+    if(!calList.length){alert("Brak dost\u0119pnych kalendarzy.");return;}
+    var calId=calIdOvr||installerCalId||(calList.find(function(c){return c.primary;})||calList[0]).id;
     var startDt=new Date(dateStr);
     var endDt=new Date(startDt.getTime()+60*60*1000);
     function pad(n){return String(n).padStart(2,"0");}
@@ -297,7 +305,43 @@ export function ModalDeal(p){
               )
             ):null
           ),
-          ce(CheckRow,{checked:installDone,onChange:setInstallDone,label:"Montaż zrealizowany",sublabel:delivDate?("Zaplanowany: "+fmtDate(delivDate)+(installerName?" — "+installerName:"")):null})
+          ce(CheckRow,{checked:installDone,onChange:setInstallDone,label:"Montaż zrealizowany",sublabel:delivDate?("Zaplanowany: "+fmtDate(delivDate)+(installerName?" — "+installerName:"")):null}),
+
+          ce("div",{style:{borderTop:"1px dashed var(--bd2)",marginTop:4,paddingTop:10}},
+            ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--t2)",textTransform:"uppercase",marginBottom:8}},"TERMIN 2 (np. elektryk / inny)"),
+            ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
+              ce("div",{style:{flex:1}},
+                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA I GODZINA"),
+                ce("input",{type:"datetime-local",value:delivDate2,onChange:function(ev){setDelivDate2(ev.target.value);},style:INP})
+              ),
+              delivDate2&&gcalToken?ce("button",{
+                onClick:function(){addToGcal(installLabel2||"Montaż 2",delivDate2,installerCalId2||installerCalId);},
+                title:"Dodaj termin 2 do Google Calendar",
+                style:{padding:"10px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:16,flexShrink:0}
+              },"📅"):null
+            ),
+            ce("div",{style:{display:"flex",gap:8}},
+              ce("div",{style:{flex:1}},
+                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"OPIS (np. elektryk, prasowanie)"),
+                ce("input",{type:"text",value:installLabel2,onChange:function(ev){setInstallLabel2(ev.target.value);},placeholder:"np. Elektryk, Prasowanie...",style:INP})
+              )
+            ),
+            ce("div",{style:{display:"flex",gap:8}},
+              ce("div",{style:{flex:1}},
+                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"MONTAŻYSTA"),
+                ce("select",{value:installerName2,onChange:function(ev){setInstallerName2(ev.target.value);},style:INP},
+                  INSTALLER_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
+                )
+              ),
+              calList.length>0?ce("div",{style:{flex:1}},
+                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"KALENDARZ"),
+                ce("select",{value:installerCalId2,onChange:function(ev){setInstallerCalId2(ev.target.value);},style:INP},
+                  ce("option",{value:""},"— główny —"),
+                  calList.map(function(c){return ce("option",{key:c.id,value:c.id},c.summary);})
+                )
+              ):null
+            )
+          )
         ),
 
         ce(SectionCard,{icon:"✂️",title:"Zamówienie szycia",done:sewingConfirmed},
@@ -491,6 +535,7 @@ export function CRMKalendarz(p){
     var name=cl?cl.name:"Klient";
     if(deal.visit_date){dealEvents.push({date:new Date(deal.visit_date),label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});}
     if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});}
+    if(deal.delivery_date2){dealEvents.push({date:new Date(deal.delivery_date2),label:"\uD83D\uDD27 "+(deal.install_label2||"Termin 2"),client:name,deal:deal,color:"#8b5cf6",type:"delivery2"});}
     if(deal.followup_date){dealEvents.push({date:new Date(deal.followup_date),label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});}
   });
   dealEvents.sort(function(a,b){return a.date-b.date;});
@@ -512,6 +557,11 @@ export function CRMKalendarz(p){
       targetCalId = ev.deal.installer_calendar_id;
       var installerCal = calList.find(function(c){return c.id===ev.deal.installer_calendar_id;});
       if(installerCal) descParts.push("Monta\u017cysta: "+installerCal.summary);
+    }
+    if(ev.type==="delivery2"&&ev.deal&&ev.deal.installer_calendar_id2){
+      targetCalId = ev.deal.installer_calendar_id2;
+      var installerCal2 = calList.find(function(c){return c.id===ev.deal.installer_calendar_id2;});
+      if(installerCal2) descParts.push("Monta\u017cysta: "+installerCal2.summary);
     }
     
     var body={
