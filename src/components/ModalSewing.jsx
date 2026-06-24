@@ -37,9 +37,14 @@ export function ModalSewing(p){
   var cs=useState(''),customHouse=cs[0],setCustomHouse=cs[1];
   var ns=useState(''),notes=ns[0],setNotes=ns[1];
   var ts=useState(''),term=ts[0],setTerm=ts[1];
+  var tc=useState(''),termCurtains=tc[0],setTermCurtains=tc[1];
+  var tr=useState(''),termRolety=tr[0],setTermRolety=tr[1];
   var as=useState(null),attachB64=as[0],setAttachB64=as[1];
   var fns=useState(''),attachName=fns[0],setAttachName=fns[1];
   var allRows=buildSewingRows(p.client);
+  var hasCurtains=allRows.some(function(r){return r._type!=='roleta';});
+  var hasRolety=allRows.some(function(r){return r._type==='roleta';});
+  var hasBothSewTypes=hasCurtains&&hasRolety;
   var used=useState([]),usedIds=used[0],setUsedIds=used[1];
   var sel=useState([]),selIds=sel[0],setSelIds=sel[1];
   var sh=useState(SEWING_HOUSES[0]),splitHouse=sh[0],setSplitHouse=sh[1];
@@ -60,7 +65,10 @@ export function ModalSewing(p){
 
   function generateSingle(){
     var house=selHouse==='__custom__'?customHouse:selHouse;
-    generateSewingOrderPDF(p.client,{sewingHouse:house,notes:notes,term:term,attachB64:attachB64});
+    generateSewingOrderPDF(p.client,{sewingHouse:house,notes:notes,term:term,
+      termCurtains:hasBothSewTypes?termCurtains:term,
+      termRolety:hasBothSewTypes?termRolety:term,
+      attachB64:attachB64});
     p.onClose();
   }
 
@@ -100,7 +108,7 @@ export function ModalSewing(p){
     );
   }
 
-  function TermInput(p){var val=p.val,setVal=p.setVal;
+  function TermInput(p){var val=p.val,setVal=p.setVal,label=p.label||'TERMIN REALIZACJI';
     var cs=useState(false),calOpen=cs[0],setCalOpen=cs[1];
     var today=new Date();
     var initYear=today.getFullYear(),initMonth=today.getMonth();
@@ -138,7 +146,7 @@ export function ModalSewing(p){
     var todayDay=today.getFullYear()===viewYear&&today.getMonth()===viewMonth?today.getDate():null;
 
     return ce('div',{style:{position:'relative'}},
-      ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:8}},'TERMIN REALIZACJI'),
+      ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:8}},label),
       ce('div',{style:{display:'flex',gap:8,alignItems:'center'}},
         ce('input',{type:'text',value:val,onChange:function(ev){setVal(ev.target.value);},placeholder:'np. 25.04.2026',style:Object.assign({},INP,{minHeight:48,flex:1})}),
         ce('button',{
@@ -240,7 +248,13 @@ export function ModalSewing(p){
     content=ce('div',{style:{display:'flex',flexDirection:'column',gap:16}},
       ce('button',{onClick:function(){setMode('choose');},style:{border:'none',background:'none',cursor:'pointer',fontSize:13,color:'var(--t2)',textAlign:'left',padding:0}},'\u2190 Wr\xf3\u0107'),
       mkHouseSelect(selHouse,setSelHouse,customHouse,setCustomHouse),
-      ce(TermInput,{val:term,setVal:setTerm}),
+      hasBothSewTypes
+        ?ce('div',{style:{display:'flex',flexDirection:'column',gap:12}},
+            ce('div',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',marginBottom:2}},'TERMINY REALIZACJI — dwa typy szycia'),
+            ce(TermInput,{val:termCurtains,setVal:setTermCurtains,label:'TERMIN — Zas\u0142ony / Firany'}),
+            ce(TermInput,{val:termRolety,setVal:setTermRolety,label:'TERMIN — Rolety rzymskie'})
+          )
+        :ce(TermInput,{val:term,setVal:setTerm}),
       mkNotesInput(notes,setNotes),
       mkAttachInput(attachB64,setAttachB64,attachName,setAttachName),
       ce('div',{style:{display:'flex',gap:10,marginTop:4}},
