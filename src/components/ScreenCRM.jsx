@@ -14,7 +14,8 @@ export const CRM_STAGES =[
   {id:"zamowienie", label:"Zamówienie", color:"#8b5cf6", clientStatus:"nowe"},
   {id:"realizacja", label:"Realizacja", color:"#10b981", clientStatus:"nowe"},
   {id:"montaz",     label:"Monta\u017c",     color:"#f97316", clientStatus:"nowe"},
-  {id:"zakonczone", label:"Zako\u0144czone", color:"#6b7280", clientStatus:"zrealizowane"}
+  {id:"zakonczone", label:"Zako\u0144czone", color:"#6b7280", clientStatus:"zrealizowane"},
+  {id:"posprzedazowa", label:"Obs\u0142uga posprzeda\u017cowej", color:"#14b8a6", clientStatus:"zrealizowane"}
 ];
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
 
@@ -83,6 +84,7 @@ export function ModalDeal(p){
   var ssc=useState(!!d.sewing_confirmed),sewingConfirmed=ssc[0],setSewingConfirmed=ssc[1];
   var srev=useState(!!d.review_sent),reviewSent=srev[0],setReviewSent=srev[1];
   var sinv=useState(!!d.invoice_sent),invoiceSent=sinv[0],setInvoiceSent=sinv[1];
+  var swash=useState(!!d.washing_sent),washingSent=swash[0],setWashingSent=swash[1];
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
@@ -119,6 +121,7 @@ export function ModalDeal(p){
       sewing_confirmed:sewingConfirmed,
       review_sent:reviewSent,
       invoice_sent:invoiceSent,
+      washing_sent:washingSent,
       updated_at:new Date().toISOString()
     };
     sbApi.updateDeal(d.id,patch).then(function(){
@@ -314,10 +317,11 @@ export function ModalDeal(p){
           ce(CheckRow,{checked:sewingConfirmed,onChange:setSewingConfirmed,label:"Zlecenie szycia potwierdzone przez szwalnię",sublabel:sewingHouse&&sewingHouse!=="__custom__"?sewingHouse:null})
         ),
 
-        ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent},
+        ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent&&washingSent},
           ce(CheckRow,{checked:reviewSent,onChange:setReviewSent,label:"Wysłano prośbę o opinię",sublabel:"Google / Facebook / referencja"}),
+          ce(CheckRow,{checked:washingSent,onChange:setWashingSent,label:"Wysłano instrukcję prania",sublabel:"Pielęgnacja i konserwacja tkanin"}),
           ce(CheckRow,{checked:invoiceSent,onChange:setInvoiceSent,label:"Wysłano fakturę (FV)",sublabel:"Dokument księgowy do klienta"})
-        ),
+        )
 
         ce("div",{style:{marginBottom:12}},
           ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"NOTATKI"),
