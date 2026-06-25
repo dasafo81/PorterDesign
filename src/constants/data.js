@@ -1407,7 +1407,7 @@ export function buildSewingRows(client){
         if(pc.model==="wave"||pc.sz==="wave"){
           sz="Wave";
         }else if(pc.model==="falda"){
-          var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podw\xf3jny",potrojna:"Flex Potr\xf3jny",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
+          var foldMap={pojedyncza:"Flex I",podwojna:"Flex II",potrojna:"Flex III",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
           sz=pc.foldType?foldMap[pc.foldType]||("Fa\u0142da "+pc.foldType):"Fa\u0142da";
         }else if(pc.model==="tasma"){
           sz=pc.typMarszczenia||"Smok";
