@@ -378,35 +378,33 @@ export function generateClientEmail(client){
 
 
 // ── Helper: zbiera opcje szycia zasłon i generuje blok „opcji” pod tabelą ──
-function buildCurtainOptionsHTML(curtainRows){
+// ── Helper: opcje szycia zasłon — z modalu (sewOpts) lub agregowane z wierszy ──
+function buildCurtainOptionsHTML(curtainRows, sewOpts){
   if(!curtainRows.length)return '';
-  var hasLead=curtainRows.some(function(r){return r.leadInSides==='tak';});
-  var hasTasmaNaStojaco=curtainRows.some(function(r){return r.tasmaNaStojaco==='tak';});
-  var podszewkaVals=[];
-  curtainRows.forEach(function(r){
-    if(r.podszewka&&r.podszewka!=='nie'&&r.podszewka!=='-'){
-      var v=r.podszewka; if(podszewkaVals.indexOf(v)<0)podszewkaVals.push(v);
-    }
-  });
-  var tasmaVals=[];
-  curtainRows.forEach(function(r){
-    if(r.tasma&&r.tasma!=='-'){var v=r.tasma;if(tasmaVals.indexOf(v)<0)tasmaVals.push(v);}
-  });
-  var haczykVals=[];
-  curtainRows.forEach(function(r){
-    if(r.haczyk&&r.haczyk!=='-'){var v=r.haczyk;if(haczykVals.indexOf(v)<0)haczykVals.push(v);}
-  });
-  var glideVals=[];
-  curtainRows.forEach(function(r){
-    if(r.glide&&r.glide!=='-'){var v=r.glide;if(glideVals.indexOf(v)<0)glideVals.push(v);}
-  });
   var items=[];
-  if(hasLead)items.push('<strong>Ołów w bokach:</strong> tak');
-  if(hasTasmaNaStojaco)items.push('<strong>Taśma na stojąco:</strong> tak');
-  if(podszewkaVals.length)items.push('<strong>Podszewka:</strong> '+podszewkaVals.join(', '));
-  if(haczykVals.length)items.push('<strong>Wysokość ryszki:</strong> '+haczykVals.join(' / '));
-  if(tasmaVals.length)items.push('<strong>Wysokość taśmy:</strong> '+tasmaVals.join(' / '));
-  if(glideVals.length)items.push('<strong>Odstępy między ślizgami (Wave):</strong> '+glideVals.join(' / '));
+  if(sewOpts){
+    // Użyj wartości z modalu
+    if(sewOpts.leadInSides)items.push('<strong>Ołów w bokach:</strong> tak');
+    if(sewOpts.tasmaNaStojaco)items.push('<strong>Taśma na stojąco:</strong> tak');
+    if(sewOpts.podszewka)items.push('<strong>Podszewka:</strong> '+(sewOpts.podszewkaNazwa||'tak'));
+    if(sewOpts.ryszka)items.push('<strong>Wysokość ryszki:</strong> '+(sewOpts.ryszkaNazwa||''));
+    if(sewOpts.tasmyH)items.push('<strong>Wysokość taśmy:</strong> '+(sewOpts.tasmyHNazwa||''));
+    if(sewOpts.glide)items.push('<strong>Odstępy między ślizgami (Wave):</strong> '+(sewOpts.glideNazwa||''));
+  }else{
+    // Fallback: agreguj z wierszy
+    var hasLead=curtainRows.some(function(r){return r.leadInSides==='tak';});
+    var hasTasmaNaStojaco=curtainRows.some(function(r){return r.tasmaNaStojaco==='tak';});
+    var pv=[];curtainRows.forEach(function(r){if(r.podszewka&&r.podszewka!=='nie'&&r.podszewka!=='-'){var v=r.podszewka;if(pv.indexOf(v)<0)pv.push(v);}});
+    var tv=[];curtainRows.forEach(function(r){if(r.tasma&&r.tasma!=='-'){var v=r.tasma;if(tv.indexOf(v)<0)tv.push(v);}});
+    var hv=[];curtainRows.forEach(function(r){if(r.haczyk&&r.haczyk!=='-'){var v=r.haczyk;if(hv.indexOf(v)<0)hv.push(v);}});
+    var gv=[];curtainRows.forEach(function(r){if(r.glide&&r.glide!=='-'){var v=r.glide;if(gv.indexOf(v)<0)gv.push(v);}});
+    if(hasLead)items.push('<strong>Ołów w bokach:</strong> tak');
+    if(hasTasmaNaStojaco)items.push('<strong>Taśma na stojąco:</strong> tak');
+    if(pv.length)items.push('<strong>Podszewka:</strong> '+pv.join(', '));
+    if(hv.length)items.push('<strong>Wysokość ryszki:</strong> '+hv.join(' / '));
+    if(tv.length)items.push('<strong>Wysokość taśmy:</strong> '+tv.join(' / '));
+    if(gv.length)items.push('<strong>Odstępy między ślizgami (Wave):</strong> '+gv.join(' / '));
+  }
   if(!items.length)return '';
   return '<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;">'
     +'<div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Opcje szycia — zasłony i firany</div>'
@@ -448,7 +446,7 @@ export function generateSewingOrderPDF(client, modalData){
     ];
   });
   if(curtainRows.length) tableRows.push(['','<strong>RAZEM: '+curtainRows.length+' szt.</strong>','','','','','','','']);
-  var curtainOptionsHTML=buildCurtainOptionsHTML(curtainRows);
+  var curtainOptionsHTML=buildCurtainOptionsHTML(curtainRows,modalData.sewOpts||null);
 
   // Tabela rolet rzymskich
   var romanHeader=["Pomieszczenie","Rodzaj","Tkanina","Producent","Kolor",
@@ -550,7 +548,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
       r.split,r.note||''];
   });
   if(curtainRows2.length) tableRows.push(['','<strong>RAZEM: '+curtainRows2.length+' szt.</strong>','','','','','','','']);
-  var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2);
+  var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2,modalData.sewOpts||null);
   var romanHeader2=['Pomieszczenie','Rodzaj','Tkanina','Producent','Kolor',
     'Szeroko\u015b\u0107 (cm)','Wysoko\u015b\u0107 (cm)','Wys. nadpro\u017ca (cm)',
     'Boczki/maskownice','Podszewka','System','Strona obs\u0142ugi',
