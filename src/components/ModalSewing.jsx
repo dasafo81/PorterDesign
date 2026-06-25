@@ -379,7 +379,8 @@ export function ModalSewing(p){
       ),
       content
     )
-  ))
+  ));
+}
 
 
 // ── MODAL ZAMÓWIENIA TKANINY (wybór szwalni + uwagi) ──────────────────
