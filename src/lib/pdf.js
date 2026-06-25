@@ -476,11 +476,10 @@ export function generateSewingOrderPDF(client, modalData){
 
   var extraStyles=`
     body{font-size:13px;}
-    table{font-size:12px;border-collapse:collapse;border:1.5px solid #b0b0a8;}
+    table{font-size:12px;}
     caption{font-size:11px;}
-    th{font-size:10px;padding:5px 7px;font-weight:700;border:1px solid #b0b0a8;background:#f0f0ec;}
-    td{padding:5px 7px;font-size:12px;line-height:1.5;border:1px solid #c8c8c4;vertical-align:top;}
-    tr:nth-child(even) td{background:#fafaf8;}
+    th{font-size:10px;padding:5px 7px;}
+    td{padding:5px 7px;font-size:12px;line-height:1.5;}
   `;
 
   var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
@@ -569,7 +568,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shStreet2?'<br><span style="font-size:12px">'+_shStreet2.replace(/</g,'&lt;')+'</span>':'')+(_shCity2?'<br><span style="font-size:12px">'+_shCity2.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
-  var extraStyles='body{font-size:13px;}table{font-size:12px;border-collapse:collapse;border:1.5px solid #b0b0a8;}caption{font-size:11px;}th{font-size:10px;padding:5px 7px;font-weight:700;border:1px solid #b0b0a8;background:#f0f0ec;}td{padding:5px 7px;font-size:12px;line-height:1.5;border:1px solid #c8c8c4;vertical-align:top;}tr:nth-child(even) td{background:#fafaf8;}';
+  var extraStyles='body{font-size:13px;}table{font-size:12px;}caption{font-size:11px;}th{font-size:10px;padding:5px 7px;}td{padding:5px 7px;font-size:12px;line-height:1.5;}';
   var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
     .replace('</style>',extraStyles+'</style>')
