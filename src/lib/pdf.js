@@ -476,10 +476,11 @@ export function generateSewingOrderPDF(client, modalData){
 
   var extraStyles=`
     body{font-size:13px;}
-    table{font-size:12px;}
+    table{font-size:12px;border-collapse:collapse!important;border:1.5px solid #999!important;}
     caption{font-size:11px;}
-    th{font-size:10px;padding:5px 7px;}
-    td{padding:5px 7px;font-size:12px;line-height:1.5;}
+    th{font-size:10px;padding:5px 8px;border:1px solid #999!important;background:#ebebeb!important;}
+    td{padding:5px 8px;font-size:12px;line-height:1.5;border:1px solid #bbb!important;vertical-align:top;}
+    tr:nth-child(even) td{background:#fafaf8;}
   `;
 
   var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
@@ -498,10 +499,7 @@ export function generateSewingOrderPDF(client, modalData){
     +(curtainRows.length?makeTableHTML(tableHeader,tableRows,hasBothTypes?"Zasłony i firany — termin: "+termCurtainsStr:"Zasłony i firany — specyfikacja szycia")+curtainOptionsHTML:"")
     +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,hasBothTypes?"Rolety rzymskie \u2014 termin: "+termRoletyStr:"Rolety rzymskie \u2014 specyfikacja szycia")+notesFieldHTML:"")
     +notesBlock
-    +'<div class="sign-block" style="margin-top:14mm">'
-    +'<div class="sign">Zleceniodawca<br><strong>Paulina Porter</strong></div>'
-    +'<div class="sign">Szwalnia \u2014 przyj\u0119to zlecenie</div>'
-    +'</div>'
+
     +'<div class="footer"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Strona 1</span></div>'
     +"</body></html>";
 
@@ -568,7 +566,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shStreet2?'<br><span style="font-size:12px">'+_shStreet2.replace(/</g,'&lt;')+'</span>':'')+(_shCity2?'<br><span style="font-size:12px">'+_shCity2.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
-  var extraStyles='body{font-size:13px;}table{font-size:12px;}caption{font-size:11px;}th{font-size:10px;padding:5px 7px;}td{padding:5px 7px;font-size:12px;line-height:1.5;}';
+  var extraStyles='body{font-size:13px;}table{font-size:12px;border-collapse:collapse!important;border:1.5px solid #999!important;}caption{font-size:11px;}th{font-size:10px;padding:5px 8px;border:1px solid #999!important;background:#ebebeb!important;}td{padding:5px 8px;font-size:12px;line-height:1.5;border:1px solid #bbb!important;vertical-align:top;}tr:nth-child(even) td{background:#fafaf8;}';
   var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
     .replace('</style>',extraStyles+'</style>')
@@ -584,7 +582,6 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,hasBothTypes2?'Zasłony i firany — termin: '+termCurtainsStr2:'Zasłony i firany — specyfikacja szycia')+curtainOptionsHTML2:'')
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,hasBothTypes2?'Rolety rzymskie \u2014 termin: '+termRoletyStr2:'Rolety rzymskie \u2014 specyfikacja szycia')+notesFieldHTML2:'')
     +notesBlock
-    +'<div class="sign-block"><div class="sign">Data odbioru tkaniny</div><div class="sign">Podpis zleceniodawcy</div><div class="sign">Podpis szwalni</div></div>'
     +'</body></html>';
   openPDFWindow(h,'Zlecenie szycia',{landscape:true});
   if(attachB64){
