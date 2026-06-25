@@ -53,6 +53,9 @@ export function ModalSewing(p){
   var st2=useState(''),splitTerm=st2[0],setSplitTerm=st2[1];
   var sa=useState(null),splitAttach=sa[0],setSplitAttach=sa[1];
   var sfn=useState(''),splitAttachName=sfn[0],setSplitAttachName=sfn[1];
+  var so=useState(null),sewOpts=so[0],setSewOpts=so[1];
+  var sop=useState(false),showSewOpts=sop[0],setShowSewOpts=sop[1];
+  var sopFrom=useState('single'),sewOptsFrom=sopFrom[0],setSewOptsFrom=sopFrom[1];
 
   function handleFile(ev,setB64,setName){
     var file=ev.target.files&&ev.target.files[0];
@@ -63,29 +66,49 @@ export function ModalSewing(p){
     reader.readAsDataURL(file);
   }
 
+  function buildDefaultSewOpts(curtainRows){
+    var hasLead=curtainRows.some(function(r){return r.leadInSides==='tak';});
+    var hasTasmaNaStojaco=curtainRows.some(function(r){return r.tasmaNaStojaco==='tak';});
+    var pv=[];curtainRows.forEach(function(r){if(r.podszewka&&r.podszewka!=='nie'&&r.podszewka!=='-'){var v=r.podszewka;if(pv.indexOf(v)<0)pv.push(v);}});
+    var tv=[];curtainRows.forEach(function(r){if(r.tasma&&r.tasma!=='-'){var v=r.tasma;if(tv.indexOf(v)<0)tv.push(v);}});
+    var hv=[];curtainRows.forEach(function(r){if(r.haczyk&&r.haczyk!=='-'){var v=r.haczyk;if(hv.indexOf(v)<0)hv.push(v);}});
+    var gv=[];curtainRows.forEach(function(r){if(r.glide&&r.glide!=='-'){var v=r.glide;if(gv.indexOf(v)<0)gv.push(v);}});
+    var hasWave=curtainRows.some(function(r){return r.szStyle==='Wave';});
+    return {leadInSides:hasLead,tasmaNaStojaco:hasTasmaNaStojaco,
+      podszewka:pv.length>0,podszewkaNazwa:pv.join(', '),
+      ryszka:hv.length>0,ryszkaNazwa:hv.join(' / '),
+      tasmyH:tv.length>0,tasmyHNazwa:tv.join(' / '),
+      glide:hasWave&&gv.length>0,glideNazwa:gv.join(' / ')};
+  }
   function generateSingle(){
+    if(hasCurtains){
+      setSewOptsFrom('single');
+      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta';})));
+      setShowSewOpts(true);
+    }else{doGenerateSingle(null);}
+  }
+  function doGenerateSingle(opts){
     var house=selHouse==='__custom__'?customHouse:selHouse;
     generateSewingOrderPDF(p.client,{sewingHouse:house,notes:notes,term:term,
       termCurtains:hasBothSewTypes?termCurtains:term,
       termRolety:hasBothSewTypes?termRolety:term,
-      attachB64:attachB64});
+      attachB64:attachB64,sewOpts:opts});
     p.onClose();
   }
 
   function generateSplitBatch(){
-    if(!selIds.length){alert('Wybierz przynajmniej jedn\u0105 pozycj\u0119.');return;}
+    if(!selIds.length){alert('Wybierz przynajmniej jedną pozycję.');return;}
+    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta';});
+    if(sc.length){setSewOptsFrom('split');if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));setShowSewOpts(true);return;}
+    doGenerateSplitBatch(null);
+  }
+  function doGenerateSplitBatch(opts){
     var house=splitHouse==='__custom__'?splitCustom:splitHouse;
     var selectedRows=selIds.map(function(i){return allRows[i];});
-    generateSewingOrderPDFFromRows(selectedRows,p.client,{sewingHouse:house,notes:splitNotes,term:splitTerm,attachB64:splitAttach});
+    generateSewingOrderPDFFromRows(selectedRows,p.client,{sewingHouse:house,notes:splitNotes,term:splitTerm,attachB64:splitAttach,sewOpts:opts});
     var newUsed=usedIds.concat(selIds);
-    setUsedIds(newUsed);
-    setSelIds([]);
-    setSplitHouse(SEWING_HOUSES[0]);
-    setSplitCustom('');
-    setSplitNotes('');
-    setSplitTerm('');
-    setSplitAttach(null);
-    setSplitAttachName('');
+    setUsedIds(newUsed);setSelIds([]);
+    setSplitHouse(SEWING_HOUSES[0]);setSplitCustom('');setSplitNotes('');setSplitTerm('');setSplitAttach(null);setSplitAttachName('');
     if(newUsed.length>=allRows.length) p.onClose();
   }
 
@@ -313,16 +336,50 @@ export function ModalSewing(p){
     );
   }
 
-  return ce('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:'1rem'}},
+  var INP_SO={padding:'8px 10px',fontSize:13,border:'1.5px solid var(--bd2)',borderRadius:8,background:'var(--bg)',color:'var(--t1)',boxSizing:'border-box',outline:'none'};
+  function SewOptsRow(rp){
+    var opts=sewOpts||{};
+    var chk=!!(opts[rp.checkKey]);
+    return ce('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'0.5px solid var(--bd2)'}},
+      ce('input',{type:'checkbox',checked:chk,onChange:function(e){var k=rp.checkKey;setSewOpts(function(prev){var n=Object.assign({},prev||{});n[k]=e.target.checked;return n;});},style:{width:16,height:16,cursor:'pointer',accentColor:'var(--t1)',flexShrink:0}}),
+      ce('span',{style:{fontSize:13,color:'var(--t1)',width:190,flexShrink:0,fontWeight:chk?600:400}},rp.label),
+      chk&&rp.textKey?ce('input',{type:'text',value:((sewOpts||{})[rp.textKey]||''),onChange:function(e){var k2=rp.textKey;setSewOpts(function(prev){var n=Object.assign({},prev||{});n[k2]=e.target.value;return n;});},placeholder:rp.placeholder||'',style:Object.assign({},INP_SO,{flex:1})}):null
+    );
+  }
+  function confirmSewOpts(){
+    setShowSewOpts(false);
+    if(sewOptsFrom==='single')doGenerateSingle(sewOpts);
+    else doGenerateSplitBatch(sewOpts);
+  }
+  return ce(Fragment,null,
+    showSewOpts?ce('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1100,padding:'1rem'}},
+      ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:'1.6rem',width:'min(500px,96vw)',border:'1px solid var(--bd2)',boxShadow:'0 16px 48px rgba(0,0,0,0.25)',display:'flex',flexDirection:'column',gap:4}},
+        ce('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}},
+          ce('div',{style:{fontSize:16,fontWeight:700,color:'var(--t1)'}},'✂️ Opcje szycia — zasłony i firany'),
+          ce('button',{onClick:function(){setShowSewOpts(false);},style:{border:'none',background:'none',cursor:'pointer',fontSize:22,color:'var(--t3)',padding:'0 4px'}},'×')
+        ),
+        ce('div',{style:{fontSize:12,color:'var(--t2)',marginBottom:6}},'Odznacz opcje, które nie dotyczą tego zlecenia. Wartości wypełniane automatycznie z produktów.'),
+        ce(SewOptsRow,{checkKey:'leadInSides',label:'Ołów w bokach'}),
+        ce(SewOptsRow,{checkKey:'tasmaNaStojaco',label:'Taśma na stojąco'}),
+        ce(SewOptsRow,{checkKey:'podszewka',label:'Podszewka',textKey:'podszewkaNazwa',placeholder:'np. Trevira CS, ecru'}),
+        ce(SewOptsRow,{checkKey:'ryszka',label:'Wysokość ryszki',textKey:'ryszkaNazwa',placeholder:'np. 2.5 cm'}),
+        ce(SewOptsRow,{checkKey:'tasmyH',label:'Wysokość taśmy',textKey:'tasmyHNazwa',placeholder:'np. 8 cm'}),
+        ce(SewOptsRow,{checkKey:'glide',label:'Odstępy ślizgów (Wave)',textKey:'glideNazwa',placeholder:'np. 8 cm'}),
+        ce('div',{style:{display:'flex',gap:10,marginTop:14}},
+          ce('button',{onClick:confirmSewOpts,style:{flex:1,padding:'14px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'✂️ Generuj PDF'),
+          ce('button',{onClick:function(){setShowSewOpts(false);},style:{padding:'14px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')
+        )
+      )
+    ):null,
+    ce('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:'1rem'}},
     ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:'1.8rem',width:'min(560px,96vw)',border:'1px solid var(--bd2)',boxShadow:'0 16px 48px rgba(0,0,0,0.2)',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16}},
       ce('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}},
-        ce('div',{style:{fontSize:17,fontWeight:700,color:'var(--t1)'}},'\u2702\ufe0f Zlecenie szycia'),
-        ce('button',{onClick:p.onClose,style:{border:'none',background:'none',cursor:'pointer',fontSize:22,color:'var(--t3)',padding:'0 4px'}},'\xd7')
+        ce('div',{style:{fontSize:17,fontWeight:700,color:'var(--t1)'}},'✂️ Zlecenie szycia'),
+        ce('button',{onClick:p.onClose,style:{border:'none',background:'none',cursor:'pointer',fontSize:22,color:'var(--t3)',padding:'0 4px'}},'×')
       ),
       content
     )
-  );
-}
+  ))
 
 
 // ── MODAL ZAMÓWIENIA TKANINY (wybór szwalni + uwagi) ──────────────────
