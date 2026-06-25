@@ -1104,7 +1104,7 @@ export function ProdCard(p){
         ce("p",{style:{fontSize:13,color:"var(--t2)",marginBottom:16}},"Wybierz model rolety"),
         roletaModelSelector,
         isDuo?ce("div",{style:{marginTop:20}},
-          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"MODEL 1 WARSTWY (Duo)"),
+          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"MODEL SZYCIA (Duo)"),
           ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
             ROLETA_MODELS.filter(function(m){return m.key!=="duo";}).map(function(m){
               var isA=c.rDuoModel===m.key;
