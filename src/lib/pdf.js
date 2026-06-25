@@ -575,9 +575,10 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
     +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+'</div></div></div>'
     +'<div class="meta">'
-    +'<div class="meta-block"><h4>KLIENT</h4><p style="font-size:11px;line-height:1.6">'+(client.name||'')+'</p></div>'
-    +'<div class="meta-block"><h4>SZWALNIA</h4>'+sewHouseBlock+'</div>'
-    +'<div class="meta-block"><h4>TERMIN</h4><p style="font-size:13px;font-weight:600">'+termStr+'</p></div>'
+    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong>'+SELLER.name+'</strong><br>'+SELLER.addr+', '+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
+    +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
+    +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+(client.name||'')+'</strong></p>'
+    +(hasBothTypes2?'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin zas\u0142ony: <strong>'+termCurtainsStr2+'</strong> &bull; Termin rolety: <strong>'+termRoletyStr2+'</strong></p>':'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>')+'</div>'
     +'</div>'
     +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,hasBothTypes2?'Zasłony i firany — termin: '+termCurtainsStr2:'Zasłony i firany — specyfikacja szycia')+curtainOptionsHTML2:'')
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,hasBothTypes2?'Rolety rzymskie \u2014 termin: '+termRoletyStr2:'Rolety rzymskie \u2014 specyfikacja szycia')+notesFieldHTML2:'')
