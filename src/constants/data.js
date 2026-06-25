@@ -1491,7 +1491,7 @@ export function pdfStyles(){
     .meta-block p{font-size:10px;line-height:1.5;}
     table{width:100%;border-collapse:collapse!important;margin-bottom:6mm;border:1.5px solid #999!important;}
     caption{font-size:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b6b66;text-align:left;margin-bottom:3px;}
-    th{background:#ebebе7;font-size:8px;font-weight:700;padding:5px 7px;text-align:left;border:1px solid #999!important;}
+    th{background:#ebebeb;font-size:8px;font-weight:700;padding:5px 7px;text-align:left;border:1px solid #999!important;}
     td{padding:5px 7px;border:1px solid #bbb!important;font-size:9px;vertical-align:top;}
     tr:nth-child(even) td{background:#fafaf8;}
     .total-row td{font-weight:700;background:#f8f8f6;font-size:10px;}
