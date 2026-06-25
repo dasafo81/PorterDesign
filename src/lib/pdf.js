@@ -376,6 +376,44 @@ export function generateClientEmail(client){
   return mail;
 }
 
+
+// ── Helper: zbiera opcje szycia zasłon i generuje blok „opcji” pod tabelą ──
+function buildCurtainOptionsHTML(curtainRows){
+  if(!curtainRows.length)return '';
+  var hasLead=curtainRows.some(function(r){return r.leadInSides==='tak';});
+  var hasTasmaNaStojaco=curtainRows.some(function(r){return r.tasmaNaStojaco==='tak';});
+  var podszewkaVals=[];
+  curtainRows.forEach(function(r){
+    if(r.podszewka&&r.podszewka!=='nie'&&r.podszewka!=='-'){
+      var v=r.podszewka; if(podszewkaVals.indexOf(v)<0)podszewkaVals.push(v);
+    }
+  });
+  var tasmaVals=[];
+  curtainRows.forEach(function(r){
+    if(r.tasma&&r.tasma!=='-'){var v=r.tasma;if(tasmaVals.indexOf(v)<0)tasmaVals.push(v);}
+  });
+  var haczykVals=[];
+  curtainRows.forEach(function(r){
+    if(r.haczyk&&r.haczyk!=='-'){var v=r.haczyk;if(haczykVals.indexOf(v)<0)haczykVals.push(v);}
+  });
+  var glideVals=[];
+  curtainRows.forEach(function(r){
+    if(r.glide&&r.glide!=='-'){var v=r.glide;if(glideVals.indexOf(v)<0)glideVals.push(v);}
+  });
+  var items=[];
+  if(hasLead)items.push('<strong>Ołów w bokach:</strong> tak');
+  if(hasTasmaNaStojaco)items.push('<strong>Taśma na stojąco:</strong> tak');
+  if(podszewkaVals.length)items.push('<strong>Podszewka:</strong> '+podszewkaVals.join(', '));
+  if(haczykVals.length)items.push('<strong>Wysokość ryszki:</strong> '+haczykVals.join(' / '));
+  if(tasmaVals.length)items.push('<strong>Wysokość taśmy:</strong> '+tasmaVals.join(' / '));
+  if(glideVals.length)items.push('<strong>Odstępy między ślizgami (Wave):</strong> '+glideVals.join(' / '));
+  if(!items.length)return '';
+  return '<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;">'
+    +'<div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Opcje szycia — zasłony i firany</div>'
+    +items.join(' &nbsp;&bull;&nbsp; ')
+    +'</div>';
+}
+
 export function generateSewingOrderPDF(client, modalData){
   var rows=buildSewingRows(client);
   if(!rows.length){alert("Brak pozycji szycia.");return;}
@@ -392,30 +430,25 @@ export function generateSewingOrderPDF(client, modalData){
   var romanRows=rows.filter(function(r){return r._type==="roleta";});
   var hasBothTypes=curtainRows.length>0&&romanRows.length>0;
 
-  // Tabela zasłon/firan
-  var tableHeader=["Pomieszczenie","Rodzaj","Styl szycia","Tkanina","Producent","Kolor","Szer. (cm)","Wys. (cm)","Podzia\u0142","Typ do\u0142u","Wys. ta\u015bmy / Odst\u0119p \u015blizg.","O\u0142\xf3w w bokach","Podszewka","Ta\u015bma na stoj\u0105co","Uwagi"];
-  var tableRows=curtainRows.map(function(r){
-    var tasmyGlide=r.szStyle==="Wave"?r.glide:(r.tasma&&r.tasma!=="-"?r.tasma:"-");
+  // Tabela zasłon/firan — uproszczone kolumny
+  var tableHeader=["Lp.","Pomieszczenie","Model szycia","Tkanina i kolor","Producent","Szerokość","Wysokość","Podział","Uwagi"];
+  var tableRows=curtainRows.map(function(r,i){
+    var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
+    var tkaninaPlusKolor='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?' — '+r.kolor:'');
     return [
+      String(i+1),
       r.room,
-      r.type,
-      r.szStyle+" "+r.marszczenie,
-      "<strong>"+r.fabric+"</strong>",
-      r.prod||"-",
-      r.kolor,
-      r.wCm?(r.wCm+"cm"):"-",
-      r.hCm?(r.hCm+"cm"):"-",
+      modelStr,
+      tkaninaPlusKolor,
+      r.prod||'-',
+      r.wCm?(r.wCm+' cm'):'-',
+      r.hCm?(r.hCm+' cm'):'-',
       r.split,
-      r.bottom,
-      tasmyGlide,
-      r.leadInSides,
-      r.podszewka||"nie",
-      r.tasmaNaStojaco||"-",
-      r.note||""
+      r.note||''
     ];
   });
-  var curtainMetry=curtainRows.reduce(function(a,r){return a+r.metry;},0);
-  if(curtainRows.length) tableRows.push(["<strong>RAZEM</strong>","","","","","","","","","","","","","",""]);
+  if(curtainRows.length) tableRows.push(['','<strong>RAZEM: '+curtainRows.length+' szt.</strong>','','','','','','','']);
+  var curtainOptionsHTML=buildCurtainOptionsHTML(curtainRows);
 
   // Tabela rolet rzymskich
   var romanHeader=["Pomieszczenie","Rodzaj","Tkanina","Producent","Kolor",
@@ -464,7 +497,7 @@ export function generateSewingOrderPDF(client, modalData){
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
     +( hasBothTypes ? '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin zasłony: <strong>'+termCurtainsStr+'</strong> &nbsp;&bull;&nbsp; Termin rolety: <strong>'+termRoletyStr+'</strong></p>' : '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin realizacji: <strong>'+termStr+'</strong></p>')+'</div>'
     +'</div>'
-    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,hasBothTypes?"Zas\u0142ony i firany \u2014 termin: "+termCurtainsStr:"Zas\u0142ony i firany \u2014 specyfikacja szycia"):"")
+    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,hasBothTypes?"Zasłony i firany — termin: "+termCurtainsStr:"Zasłony i firany — specyfikacja szycia")+curtainOptionsHTML:"")
     +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,hasBothTypes?"Rolety rzymskie \u2014 termin: "+termRoletyStr:"Rolety rzymskie \u2014 specyfikacja szycia")+notesFieldHTML:"")
     +notesBlock
     +'<div class="sign-block" style="margin-top:14mm">'
@@ -508,15 +541,16 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   var curtainRows2=rows.filter(function(r){return r._type!=='roleta';});
   var romanRows2=rows.filter(function(r){return r._type==='roleta';});
   var hasBothTypes2=curtainRows2.length>0&&romanRows2.length>0;
-  var tableHeader=['Pomieszczenie','Rodzaj','Styl szycia','Tkanina','Producent','Kolor','Szer. (cm)','Wys. (cm)','Podzia\u0142','Typ do\u0142u','Wys. ta\u015bmy / Odst\u0119p \u015blizg.','O\u0142\xf3w w bokach','Podszewka','Ta\u015bma na stoj\u0105co','Uwagi'];
-  var tableRows=curtainRows2.map(function(r){
-    var tasmyGlide=r.szStyle==='Wave'?r.glide:(r.tasma&&r.tasma!=='-'?r.tasma:'-');
-    return [r.room,r.type,r.szStyle+' '+r.marszczenie,'<strong>'+r.fabric+'</strong>',r.prod||'-',r.kolor,
-      r.wCm?(r.wCm+'cm'):'-',r.hCm?(r.hCm+'cm'):'-',
-      r.split,r.bottom,tasmyGlide,r.leadInSides,r.podszewka||'nie',r.tasmaNaStojaco||'-',r.note||''];
+  var tableHeader=['Lp.','Pomieszczenie','Model szycia','Tkanina i kolor','Producent','Szerokość','Wysokość','Podział','Uwagi'];
+  var tableRows=curtainRows2.map(function(r,i){
+    var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
+    var tkaninaPlusKolor='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?' — '+r.kolor:'');
+    return [String(i+1),r.room,modelStr,tkaninaPlusKolor,r.prod||'-',
+      r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
+      r.split,r.note||''];
   });
-  var curtainMetry2=curtainRows2.reduce(function(a,r){return a+r.metry;},0);
-  if(curtainRows2.length) tableRows.push(['<strong>RAZEM</strong>','','','','','','','','','','','','','','']);
+  if(curtainRows2.length) tableRows.push(['','<strong>RAZEM: '+curtainRows2.length+' szt.</strong>','','','','','','','']);
+  var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2);
   var romanHeader2=['Pomieszczenie','Rodzaj','Tkanina','Producent','Kolor',
     'Szeroko\u015b\u0107 (cm)','Wysoko\u015b\u0107 (cm)','Wys. nadpro\u017ca (cm)',
     'Boczki/maskownice','Podszewka','System','Strona obs\u0142ugi',
@@ -549,7 +583,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +'<div class="meta-block"><h4>SZWALNIA</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>TERMIN</h4><p style="font-size:13px;font-weight:600">'+termStr+'</p></div>'
     +'</div>'
-    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,hasBothTypes2?'Zas\u0142ony i firany \u2014 termin: '+termCurtainsStr2:'Zas\u0142ony i firany \u2014 specyfikacja szycia'):'')
+    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,hasBothTypes2?'Zasłony i firany — termin: '+termCurtainsStr2:'Zasłony i firany — specyfikacja szycia')+curtainOptionsHTML2:'')
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,hasBothTypes2?'Rolety rzymskie \u2014 termin: '+termRoletyStr2:'Rolety rzymskie \u2014 specyfikacja szycia')+notesFieldHTML2:'')
     +notesBlock
     +'<div class="sign-block"><div class="sign">Data odbioru tkaniny</div><div class="sign">Podpis zleceniodawcy</div><div class="sign">Podpis szwalni</div></div>'
