@@ -1419,8 +1419,8 @@ export function buildSewingRows(client){
         var splitDesc="-";
         if(split==="left") splitDesc="Lewa sztuka";
         else if(split==="right") splitDesc="Prawa sztuka";
-        else if(split==="equal"){var tw2=par.wCm||0;splitDesc="Komplet r\xf3wny ("+Math.floor(tw2/2)+" + "+Math.ceil(tw2/2)+" cm)";}
-        else splitDesc="Komplet nier\xf3wny: L="+(pc.leftW||0)+"cm / P="+(pc.rightW||0)+"cm";
+        else if(split==="equal"){var tw2=par.wCm||0;splitDesc="Kurtyna "+Math.floor(tw2/2)+" + "+Math.ceil(tw2/2)+" cm";}
+        else splitDesc=(pc.leftW||0)+"cm + "+(pc.rightW||0)+"cm";
         var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"O\u0142owianka"};
         var bottomDesc=(bottomMap[pc.bottomType||"single"]||"Pojedynczy")+(pc.bottomSize?" "+pc.bottomSize+"cm":"");
         rows.push({
