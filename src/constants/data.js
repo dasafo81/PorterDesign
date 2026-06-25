@@ -1489,11 +1489,11 @@ export function pdfStyles(){
     .meta-block{flex:1;}
     .meta-block h4{font-size:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b6b66;margin-bottom:3px;}
     .meta-block p{font-size:10px;line-height:1.5;}
-    table{width:100%;border-collapse:collapse;margin-bottom:6mm;}
+    table{width:100%;border-collapse:collapse;margin-bottom:6mm;border:1px solid #b0b0a8;}
     caption{font-size:8px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#6b6b66;text-align:left;margin-bottom:3px;}
-    th{background:#f2f2ef;font-size:8px;font-weight:600;padding:4px 6px;text-align:left;border-bottom:0.5px solid #c8c8c4;}
-    td{padding:4px 6px;border-bottom:0.5px solid #eaeae6;font-size:9px;vertical-align:top;}
-    tr:last-child td{border-bottom:none;}
+    th{background:#f0f0ec;font-size:8px;font-weight:700;padding:5px 7px;text-align:left;border:1px solid #b0b0a8;}
+    td{padding:5px 7px;border:1px solid #c8c8c4;font-size:9px;vertical-align:top;}
+    tr:nth-child(even) td{background:#fafaf8;}
     .total-row td{font-weight:700;background:#f8f8f6;font-size:10px;}
     .sum-box{background:#1a1a18;color:#fff;padding:8px 12px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm;}
     .sum-box .label{font-size:9px;letter-spacing:0.06em;opacity:0.7;}
