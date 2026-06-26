@@ -213,20 +213,18 @@ export default async function handler(req) {
   // (wywołanie z api/admin/* przy tworzeniu tenanta).
   // Pozostałe wymagają JWT zalogowanego usera.
   const authHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  // service_role key => wywołanie server-side (np. api/admin/users po stworzeniu tenanta)
   const isServiceCall = authHeader === SERVICE;
 
-  if (!PUBLIC_TEMPLATES.includes(template) || (!isServiceCall)) {
-    // Dla non-public zawsze sprawdzamy JWT; dla public akceptujemy service_role
-    if (!isServiceCall) {
-      const user = await verifyJwt(req, SERVICE, SB_URL);
-      if (!user) return json({ error: 'unauthorized' }, 401);
-      // Każdy zalogowany user może wywołać public templates (np. "wyślij mi reset")
-      // Dla trial_expiring wymagamy super-admina lub tenant-admina
-      if (template === 'trial_expiring') {
-        const meta = user.app_metadata || {};
-        if (!meta.is_super_admin && !meta.is_tenant_admin) {
-          return json({ error: 'tenant-admin or super-admin required' }, 403);
-        }
+  if (!isServiceCall) {
+    // Nie service_role — sprawdź czy to zalogowany user z JWT
+    const user = await verifyJwt(req, SERVICE, SB_URL);
+    if (!user) return json({ error: 'unauthorized' }, 401);
+    // trial_expiring tylko dla admina
+    if (template === 'trial_expiring') {
+      const meta = user.app_metadata || {};
+      if (!meta.is_super_admin && !meta.is_tenant_admin) {
+        return json({ error: 'tenant-admin or super-admin required' }, 403);
       }
     }
   }
