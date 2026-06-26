@@ -1,8 +1,8 @@
 // msal.js — Microsoft Authentication Library dla Porter Design Assistant
+// Multi-tenant: authority = /common — obsługuje dowolny Azure AD + konta osobiste MS
 import * as msal from "@azure/msal-browser";
 
 var CLIENT_ID = "ad714f55-19fb-4a5e-90a5-4253846e9338";
-var TENANT_ID = "d2f92663-b7a9-47ff-87f1-8746f1f9b3ad";
 
 export var MSAL_SCOPES = [
   "Mail.Send",
@@ -13,7 +13,7 @@ export var MSAL_SCOPES = [
 var msalConfig = {
   auth: {
     clientId: CLIENT_ID,
-    authority: "https://login.microsoftonline.com/" + TENANT_ID,
+    authority: "https://login.microsoftonline.com/common",
     redirectUri: window.location.origin
   },
   cache: {
