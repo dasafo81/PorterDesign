@@ -320,8 +320,17 @@ export const sbApi = {
   // Pobiera zapisane adresy pasujące do query (dla podpowiedzi w polu Do:)
   searchMailRecipients: function(query){
     if(!query)return Promise.resolve([]);
-    var q=encodeURIComponent(query.toLowerCase());
-    return sbFetch("GET","mail_recipients?or=(email_lower.ilike.*"+q+"*,name.ilike.*"+q+"*)&order=last_used_at.desc&limit=8");
+    var q=query.toLowerCase().replace(/[%_]/g,"");
+    // Dwa osobne zapytania: po email i po nazwie, łączymy po stronie klienta
+    var byEmail=sbFetch("GET","mail_recipients?email_lower=ilike.*"+encodeURIComponent(q)+"*&order=last_used_at.desc&limit=8");
+    var byName=sbFetch("GET","mail_recipients?name=ilike.*"+encodeURIComponent(q)+"*&order=last_used_at.desc&limit=8");
+    return Promise.all([byEmail,byName]).then(function(results){
+      var seen={}, merged=[];
+      (results[0]||[]).concat(results[1]||[]).forEach(function(r){
+        if(r&&r.email_lower&&!seen[r.email_lower]){seen[r.email_lower]=1;merged.push(r);}
+      });
+      return merged.slice(0,8);
+    }).catch(function(){return [];});
   },
   // Zapisuje/aktualizuje adres odbiorcy po wysłaniu maila (upsert po email_lower)
   upsertMailRecipient: function(email, name){
