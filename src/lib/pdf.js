@@ -451,7 +451,7 @@ export function generateSewingOrderPDF(client, modalData){
   // Tabela rolet rzymskich
   var romanHeader=["Lp.","Pomieszczenie","Model szycia","Tkanina / Kolor","Producent",
     "Szerokość","Wysokość","Wys. nadproża",
-    "Mechanizm","Strona łańcuszka","Kolor łańcuszka","Uwagi"];
+    "Mechanizm","Strona łańcuszka","Rodzaj łańcuszka","Uwagi"];
   var romanTableRows=romanRows.map(function(r,i){
     var tkR="<strong>"+r.fabric+"</strong>"+(r.kolor&&r.kolor!=="-"?"<br><span style=\"color:#6b6b66;font-size:10px\">"+r.kolor+"</span>":"");
     return [String(i+1),r.room,r.type||"-",tkR,r.prod||"-",
@@ -553,7 +553,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2,modalData.sewOpts||null);
   var romanHeader2=['Lp.','Pomieszczenie','Model szycia','Tkanina / Kolor','Producent',
     'Szerokość','Wysokość','Wys. nadproża',
-    'Mechanizm','Strona łańcuszka','Kolor łańcuszka','Uwagi'];
+    'Mechanizm','Strona łańcuszka','Rodzaj łańcuszka','Uwagi'];
   var romanTableRows2=romanRows2.map(function(r,i){
     var tkR2='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
     return [String(i+1),r.room,r.type||'-',tkR2,r.prod||'-',
