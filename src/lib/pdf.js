@@ -524,7 +524,7 @@ export function generateSewingOrderPDF(client, modalData){
       +'</div></body></html>');
   }
 
-  openPDFWindow(html,"zlecenie-szycia",{landscape:true});
+  openPDFWindow(html,"Zlecenie szycia - "+(client.name||""),{landscape:true});
 }
 
 
@@ -593,7 +593,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,'Rolety rzymskie \u2014 specyfikacja szycia',['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML2+notesFieldHTML2:'')
     +notesBlock
     +'</body></html>';
-  openPDFWindow(h,'Zlecenie szycia',{landscape:true});
+  openPDFWindow(h,'Zlecenie szycia - '+(client.name||''),{landscape:true});
   if(attachB64){
     setTimeout(function(){
       var w2=window.open('','_blank','width=900,height=700');
