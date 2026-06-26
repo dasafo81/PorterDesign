@@ -500,8 +500,8 @@ export function generateSewingOrderPDF(client, modalData){
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
     +( hasBothTypes ? '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin zasłony: <strong>'+termCurtainsStr+'</strong> &nbsp;&bull;&nbsp; Termin rolety: <strong>'+termRoletyStr+'</strong></p>' : '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin realizacji: <strong>'+termStr+'</strong></p>')+'</div>'
     +'</div>'
-    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,hasBothTypes?"Zasłony i firany — termin: "+termCurtainsStr:"Zasłony i firany — specyfikacja szycia",['3%','14%','10%','16%','11%','7%','7%','18%','14%'])+curtainOptionsHTML:"")
-    +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,hasBothTypes?"Rolety rzymskie \u2014 termin: "+termRoletyStr:"Rolety rzymskie \u2014 specyfikacja szycia",['3%','11%','13%','14%','9%','6%','6%','7%','8%','9%','9%','5%'])+romanOptsHTML+notesFieldHTML:"")
+    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,hasBothTypes?"Zasłony i firany — termin: "+termCurtainsStr:"Zasłony i firany — specyfikacja szycia",['3%','11%','9%','14%','9%','6%','6%','13%','29%'])+curtainOptionsHTML:"")
+    +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,hasBothTypes?"Rolety rzymskie \u2014 termin: "+termRoletyStr:"Rolety rzymskie \u2014 specyfikacja szycia",['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML+notesFieldHTML:"")
     +notesBlock
 
     +'<div class="footer"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Strona 1</span></div>'
@@ -588,8 +588,8 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+(client.name||'')+'</strong></p>'
     +(hasBothTypes2?'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin zas\u0142ony: <strong>'+termCurtainsStr2+'</strong> &bull; Termin rolety: <strong>'+termRoletyStr2+'</strong></p>':'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>')+'</div>'
     +'</div>'
-    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,hasBothTypes2?'Zasłony i firany — termin: '+termCurtainsStr2:'Zasłony i firany — specyfikacja szycia',['3%','14%','10%','16%','11%','7%','7%','18%','14%'])+curtainOptionsHTML2:'')
-    +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,hasBothTypes2?'Rolety rzymskie \u2014 termin: '+termRoletyStr2:'Rolety rzymskie \u2014 specyfikacja szycia',['3%','11%','13%','14%','9%','6%','6%','7%','8%','9%','9%','5%'])+romanOptsHTML2+notesFieldHTML2:'')
+    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,hasBothTypes2?'Zasłony i firany — termin: '+termCurtainsStr2:'Zasłony i firany — specyfikacja szycia',['3%','11%','9%','14%','9%','6%','6%','13%','29%'])+curtainOptionsHTML2:'')
+    +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,hasBothTypes2?'Rolety rzymskie \u2014 termin: '+termRoletyStr2:'Rolety rzymskie \u2014 specyfikacja szycia',['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML2+notesFieldHTML2:'')
     +notesBlock
     +'</body></html>';
   openPDFWindow(h,'Zlecenie szycia',{landscape:true});
