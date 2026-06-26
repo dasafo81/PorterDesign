@@ -550,7 +550,6 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
       r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
       r.split,r.note||''];
   });
-  if(curtainRows2.length) tableRows.push(['','<strong>RAZEM: '+curtainRows2.length+' szt.</strong>','','','','','','','']);
   var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2,modalData.sewOpts||null);
   var romanHeader2=['Lp.','Pomieszczenie','Model szycia','Tkanina / Kolor','Producent',
     'Szerokość','Wysokość','Wys. nadproża',
