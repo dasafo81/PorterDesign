@@ -501,7 +501,7 @@ export function generateSewingOrderPDF(client, modalData){
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
     +'<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin: <strong>'+termStr+'</strong></p>'+'</div>'
     +'</div>'
-    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zasłony i firany — specyfikacja szycia",['3%','11%','9%','14%','9%','6%','6%','13%','29%'])+curtainOptionsHTML:"")
+    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zasłony i firany — specyfikacja szycia",['3%','11%','7%','14%','7%','7%','7%','13%','31%'])+curtainOptionsHTML:"")
     +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,"Rolety rzymskie \u2014 specyfikacja szycia",['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML+notesFieldHTML:"")
     +notesBlock
 
@@ -589,7 +589,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+(client.name||'')+'</strong></p>'
     +'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>'+'</div>'
     +'</div>'
-    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,'Zasłony i firany — specyfikacja szycia',['3%','11%','9%','14%','9%','6%','6%','13%','29%'])+curtainOptionsHTML2:'')
+    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,'Zasłony i firany — specyfikacja szycia',['3%','11%','7%','14%','7%','7%','7%','13%','31%'])+curtainOptionsHTML2:'')
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,'Rolety rzymskie \u2014 specyfikacja szycia',['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML2+notesFieldHTML2:'')
     +notesBlock
     +'</body></html>';
