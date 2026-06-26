@@ -233,6 +233,7 @@ export const FABRICS =[
   {name:"Betty*213",brutto:90,prod:"MARGO TEXTIL",width:315},
   {name:"Billy Dim-Out",brutto:195,prod:"MARGO TEXTIL",width:295},
   {name:"Blanca",brutto:110,prod:"MARGO TEXTIL",width:320},
+  {name:"Blackout Uni",brutto:90,prod:"LART",width:280},
   {name:"Blue Star Blackout",brutto:130,prod:"MARGO TEXTIL",width:300},
   {name:"Blues",brutto:291,prod:"Ridex",width:290},
   {name:"Boccelino",brutto:370,prod:"Ridex",width:295},
