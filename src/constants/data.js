@@ -1386,7 +1386,7 @@ export function buildSewingRows(client){
             nadprozeCm:par.hNadproza||"-",
             boczki:pc.rMask==="tak"?"TAK":"nie",
             podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
-            rSystem:pc.rSystem==="elektryk"?"elektryczny":"manualny",
+            rSystem:pc.rSystem==="elektryk"?"elektryczny":pc.rSystem==="polautomatyczny"?"półautomatyczny":"manualny",
             stronaObslugi:rStrona,
             lancuszek:pc.rSystem==="elektryk"?"-":pc.rSystem==="bez_mechanizmu"?"":rLancuszek,
             kolorLancuszka:(function(){
