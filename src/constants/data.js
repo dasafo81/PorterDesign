@@ -504,6 +504,7 @@ export const FABRICS =[
   {name:"Romnari",brutto:140,prod:"OZLEM",width:315},
   {name:"Rosier",brutto:200,prod:"OZLEM",width:315},
   {name:"Royal Dimout",brutto:140,prod:"MARGO TEXTIL",width:280},
+  {name:"Royal Velvet",brutto:220,prod:"FARGOTEX",width:295},
   {name:"Rugia",brutto:40,prod:"KAMELEON.PRO",width:null},
   {name:"Rustic Llado",brutto:185,prod:"Spagnolo",width:300},
   {name:"San Antonio",brutto:160,prod:"MARGO TEXTIL",width:320},
