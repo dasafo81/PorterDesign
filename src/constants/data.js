@@ -1386,7 +1386,12 @@ export function buildSewingRows(client){
             rSystem:pc.rSystem==="elektryk"?"elektryczny":"manualny",
             stronaObslugi:rStrona,
             lancuszek:pc.rSystem==="elektryk"?"-":pc.rSystem==="bez_mechanizmu"?"":rLancuszek,
-            kolorLancuszka:pc.rSystem==="elektryk"||pc.rSystem==="bez_mechanizmu"?"-":(pc.kolorLancuszka||"-"),
+            kolorLancuszka:(function(){
+              if(pc.rSystem==="elektryk"||pc.rSystem==="bez_mechanizmu")return "-";
+              if(pc.lancuszek==="bialy")return "Biały";
+              var km={srebrny:"Srebrny",zloty:"Złoty",stare_zloto:"Stare złoto",antracyt:"Antracyt",miedz:"Miedź"};
+              return km[pc.kolorLancuszka]||"Srebrny";
+            })(),
             tasmaNaStojaco:"-",
             szStyle:"-",marszczenie:"-",tasma:"-",haczyk:"-",
             split:"-",bottom:"-",glide:"-",leadInSides:"-",
