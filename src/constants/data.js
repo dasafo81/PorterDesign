@@ -1366,7 +1366,8 @@ export function buildSewingRows(client){
           var rLancuszek=pc.lancuszek==="metalowy"
             ?"Metalowy"+(pc.kolorLancuszka?" ("+pc.kolorLancuszka+")":"")
             :"Biały";
-          var rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.rModel==="duo"&&pc.rSystem!=="bez_mechanizmu"?"Obie strony":(pc.rSystem==="polautomatyczny"?"Obie strony":(pc.stronaObslugi||"Lewo")));
+          var // elektryk: stronaSilnika | manual Duo: obie strony | półautomat/manual: stronaObslugi
+          rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.rModel==="duo"&&pc.rSystem==="manual"?"Obie strony":(pc.stronaObslugi||"Lewo"));
           var fab2Obj=prod.fab2Name?FABRICS.find(function(f){return f.name===prod.fab2Name;}):null;
           var fabricDesc=prod.fabName||(prod.fabManName||"tkanina");
           if(pc.rModel==="duo"){
