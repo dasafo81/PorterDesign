@@ -1469,12 +1469,16 @@ export function openPDFWindow(htmlContent, title, opts){
   setTimeout(function(){URL.revokeObjectURL(url);},60000);
 }
 
-export function makeTableHTML(headers, rows, caption){
+export function makeTableHTML(headers, rows, caption, colWidths){
+  var colgroupHTML="";
+  if(colWidths&&colWidths.length){
+    colgroupHTML="<colgroup>"+colWidths.map(function(w){return w?"<col style=\"width:"+w+"\">":"<col>";}).join("")+"</colgroup>";
+  }
   var headerHTML=headers.map(function(h){return "<th>"+h+"</th>";}).join("");
   var rowsHTML=rows.map(function(r){
     return "<tr>"+r.map(function(c){return "<td>"+c+"</td>";}).join("")+"</tr>";
   }).join("");
-  return "<table><caption>"+caption+"</caption><thead><tr>"+headerHTML+"</tr></thead><tbody>"+rowsHTML+"</tbody></table>";
+  return "<table>"+colgroupHTML+"<caption>"+caption+"</caption><thead><tr>"+headerHTML+"</tr></thead><tbody>"+rowsHTML+"</tbody></table>";
 }
 
 export function pdfStyles(){
