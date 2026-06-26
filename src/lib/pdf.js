@@ -407,7 +407,7 @@ function buildCurtainOptionsHTML(curtainRows, sewOpts){
   }
   if(!items.length)return '';
   return '<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;">'
-    +'<div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Opcje szycia — zasłony i firany</div>'
+    +'<div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Dodatkowe informacje</div>'
     +items.join(' &nbsp;&bull;&nbsp; ')
     +'</div>';
 }
@@ -445,7 +445,7 @@ export function generateSewingOrderPDF(client, modalData){
       r.note||''
     ];
   });
-  if(curtainRows.length) tableRows.push(['','<strong>RAZEM: '+curtainRows.length+' szt.</strong>','','','','','','','']);
+  // RAZEM row removed
   var curtainOptionsHTML=buildCurtainOptionsHTML(curtainRows,modalData.sewOpts||null);
 
   // Tabela rolet rzymskich
@@ -460,18 +460,18 @@ export function generateSewingOrderPDF(client, modalData){
       r.rSystem||"-",r.stronaObslugi||"-",r.kolorLancuszka||"-",
       r.note||""];
   });
-  if(romanRows.length) romanTableRows.push(["","<strong>RAZEM: "+romanRows.length+" szt.</strong>","","","","","","","","","",""]);
+
   var rOI=[];var hBcz=romanRows.some(function(r){return r.boczki&&r.boczki!=="nie"&&r.boczki!=="-";});
   if(hBcz)rOI.push("<strong>Boczki/maskownice:</strong> tak");
   var pvRr=[];romanRows.forEach(function(r){if(r.podszewka&&r.podszewka!=="nie"&&r.podszewka!=="-"){var v=r.podszewka;if(pvRr.indexOf(v)<0)pvRr.push(v);}});
   if(pvRr.length)rOI.push("<strong>Podszewka:</strong> "+pvRr.join(", "));
-  var romanOptsHTML=rOI.length?'<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Opcje szycia — rolety rzymskie</div>'+rOI.join(" &nbsp;&bull;&nbsp; ")+'</div>':"";
+  var romanOptsHTML=rOI.length?'<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Dodatkowe informacje</div>'+rOI.join(" &nbsp;&bull;&nbsp; ")+'</div>':"";
   var notesFieldHTML=''; // uwagi są już w kolumnie tabeli — nie powielamy
 
   var _sh=sewingHouse||'';var _shParts=_sh.split(' — ');var _shName=_shParts[0]||_sh;var _shAddr=_shParts.slice(1).join(' — ');
   var _shAddrParts=_shAddr?_shAddr.split(', '):[]; var _shStreet=_shAddrParts[0]||''; var _shCity=_shAddrParts.slice(1).join(', ');
   var sewHouseBlock=sewingHouse
-    ?('<strong style="font-size:13px">'+_shName.replace(/</g,'&lt;')+'</strong>'+(_shStreet?'<br><span style="font-size:12px">'+_shStreet.replace(/</g,'&lt;')+'</span>':'')+(_shCity?'<br><span style="font-size:12px">'+_shCity.replace(/</g,'&lt;')+'</span>':''))
+    ?('<strong style="font-size:12px;font-weight:700">'+_shName.toUpperCase().replace(/</g,'&lt;')+'</strong>'+(_shStreet?'<br><span style="font-size:12px">'+_shStreet.replace(/</g,'&lt;')+'</span>':'')+(_shCity?'<br><span style="font-size:12px">'+_shCity.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________<br>____________________________</div>';
 
   var notesBlock=notes
@@ -495,7 +495,7 @@ export function generateSewingOrderPDF(client, modalData){
     +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
     +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+' &nbsp;|&nbsp; Klient: <strong>'+client.name+'</strong></div></div></div>'
     +'<div class="meta">'
-    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong>'+SELLER.name+'</strong><br>'+SELLER.addr+', '+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
+    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-size:12px;font-weight:700">PD PORTER DESIGN</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
     +( hasBothTypes ? '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin zasłony: <strong>'+termCurtainsStr+'</strong> &nbsp;&bull;&nbsp; Termin rolety: <strong>'+termRoletyStr+'</strong></p>' : '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin realizacji: <strong>'+termStr+'</strong></p>')+'</div>'
@@ -566,12 +566,12 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   if(hBcz2)rOI2.push('<strong>Boczki/maskownice:</strong> tak');
   var pvRr2=[];romanRows2.forEach(function(r){if(r.podszewka&&r.podszewka!=='nie'&&r.podszewka!=='-'){var v=r.podszewka;if(pvRr2.indexOf(v)<0)pvRr2.push(v);}});
   if(pvRr2.length)rOI2.push('<strong>Podszewka:</strong> '+pvRr2.join(', '));
-  var romanOptsHTML2=rOI2.length?'<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Opcje szycia — rolety rzymskie</div>'+rOI2.join(' &nbsp;&bull;&nbsp; ')+'</div>':'';
+  var romanOptsHTML2=rOI2.length?'<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Dodatkowe informacje</div>'+rOI2.join(' &nbsp;&bull;&nbsp; ')+'</div>':'';
   var notesFieldHTML2=''; // uwagi są już w kolumnie tabeli — nie powielamy
   var _sh2=sewingHouse||'';var _shParts2=_sh2.split(' — ');var _shName2=_shParts2[0]||_sh2;var _shAddr2=_shParts2.slice(1).join(' — ');
   var _shAddrParts2=_shAddr2?_shAddr2.split(', '):[]; var _shStreet2=_shAddrParts2[0]||''; var _shCity2=_shAddrParts2.slice(1).join(', ');
   var sewHouseBlock=sewingHouse
-    ?('<strong style="font-size:13px">'+_shName2.replace(/</g,'&lt;')+'</strong>'+(_shStreet2?'<br><span style="font-size:12px">'+_shStreet2.replace(/</g,'&lt;')+'</span>':'')+(_shCity2?'<br><span style="font-size:12px">'+_shCity2.replace(/</g,'&lt;')+'</span>':''))
+    ?('<strong style="font-size:12px;font-weight:700">'+_shName2.toUpperCase().replace(/</g,'&lt;')+'</strong>'+(_shStreet2?'<br><span style="font-size:12px">'+_shStreet2.replace(/</g,'&lt;')+'</span>':'')+(_shCity2?'<br><span style="font-size:12px">'+_shCity2.replace(/</g,'&lt;')+'</span>':''))
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
   var extraStyles='body{font-size:13px;}table{font-size:12px;border-collapse:collapse!important;border:1.5px solid #999!important;}caption{font-size:11px;}th{font-size:10px;padding:5px 8px;border:1px solid #999!important;background:#ebebeb!important;}td{padding:5px 8px;font-size:12px;line-height:1.5;border:1px solid #bbb!important;vertical-align:top;}tr:nth-child(even) td{background:#fafaf8;}';
@@ -583,7 +583,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
     +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+'</div></div></div>'
     +'<div class="meta">'
-    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong>'+SELLER.name+'</strong><br>'+SELLER.addr+', '+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
+    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-size:12px;font-weight:700">PD PORTER DESIGN</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+(client.name||'')+'</strong></p>'
     +(hasBothTypes2?'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin zas\u0142ony: <strong>'+termCurtainsStr2+'</strong> &bull; Termin rolety: <strong>'+termRoletyStr2+'</strong></p>':'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>')+'</div>'
