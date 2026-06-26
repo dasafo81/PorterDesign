@@ -2105,10 +2105,10 @@ export function ScreenMail(p){
           showCcBcc?"\u2212 Ukryj CC/UDW":"+ CC / UDW")
       ),
       ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},onBlur:function(){setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:Object.assign({},INP,{background:"#fff"})}),
-      contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--bg1)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:9999,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",overflow:"hidden",marginTop:2,maxHeight:280,overflowY:"auto"}},
+      contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"#ffffff",border:"1px solid #d1d5db",borderRadius:10,zIndex:9999,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",overflow:"hidden",marginTop:2,maxHeight:280,overflowY:"auto"}},
         contactSug.map(function(c){
           return ce("div",{key:c.email,onClick:function(){setToEmail(c.email);setContactSug([]);},
-            style:{padding:"9px 12px",fontSize:13,cursor:"pointer",borderBottom:"1px solid var(--bd3)",display:"flex",alignItems:"center",gap:10}},
+            style:{padding:"9px 12px",fontSize:13,cursor:"pointer",borderBottom:"1px solid #e5e7eb",display:"flex",alignItems:"center",gap:10,background:"#ffffff"}},
             ce(Avatar,{size:28,bg:"#c8a96a",label:initials(c.name)}),
             ce("div",null,
               ce("div",{style:{fontWeight:600,color:"var(--t1)",fontSize:13}},c.name),
