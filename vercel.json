@@ -1,5 +1,5 @@
 {
-  "buildCommand": "rm -rf node_modules/.vite && npm run build",
+  "buildCommand": "rm -rf node_modules/.vite && npm run build && cp register.html dist/register.html && cp landing.html dist/landing.html",
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
