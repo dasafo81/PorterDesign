@@ -451,13 +451,13 @@ export function generateSewingOrderPDF(client, modalData){
   // Tabela rolet rzymskich
   var romanHeader=["Lp.","Pomieszczenie","Model szycia","Tkanina / Kolor","Producent",
     "Szerokość","Wysokość","Wys. nadproża",
-    "Mechanizm","Strona łańcuszka","Rodzaj łańcuszka","Uwagi"];
+    "Mechanizm","Strona łańcuszka","Kolor łańcuszka","Uwagi"];
   var romanTableRows=romanRows.map(function(r,i){
     var tkR="<strong>"+r.fabric+"</strong>"+(r.kolor&&r.kolor!=="-"?"<br><span style=\"color:#6b6b66;font-size:10px\">"+r.kolor+"</span>":"");
     return [String(i+1),r.room,r.type||"-",tkR,r.prod||"-",
       r.wCm?(r.wCm+" cm"):"-",r.hCm?(r.hCm+" cm"):"-",
       r.nadprozeCm&&r.nadprozeCm!=="-"?(r.nadprozeCm+" cm"):"-",
-      r.rSystem||"-",r.stronaObslugi||"-",r.lancuszek!=null?r.lancuszek:"-",
+      r.rSystem||"-",r.stronaObslugi||"-",r.kolorLancuszka||"-",
       r.note||""];
   });
   if(romanRows.length) romanTableRows.push(["","<strong>RAZEM: "+romanRows.length+" szt.</strong>","","","","","","","","","",""]);
@@ -553,13 +553,13 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
   var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2,modalData.sewOpts||null);
   var romanHeader2=['Lp.','Pomieszczenie','Model szycia','Tkanina / Kolor','Producent',
     'Szerokość','Wysokość','Wys. nadproża',
-    'Mechanizm','Strona łańcuszka','Rodzaj łańcuszka','Uwagi'];
+    'Mechanizm','Strona łańcuszka','Kolor łańcuszka','Uwagi'];
   var romanTableRows2=romanRows2.map(function(r,i){
     var tkR2='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
     return [String(i+1),r.room,r.type||'-',tkR2,r.prod||'-',
       r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
       r.nadprozeCm&&r.nadprozeCm!=='-'?(r.nadprozeCm+' cm'):'-',
-      r.rSystem||'-',r.stronaObslugi||'-',r.lancuszek!=null?r.lancuszek:'-',
+      r.rSystem||'-',r.stronaObslugi||'-',r.kolorLancuszka||"-",
       r.note||''];
   });
   var rOI2=[];var hBcz2=romanRows2.some(function(r){return r.boczki&&r.boczki!=='nie'&&r.boczki!=='-';});
