@@ -580,7 +580,7 @@ export const FABRICS =[
   {name:"Vox",brutto:120,prod:"SAMA TEKSTIL",width:300},
   {name:"Vual",brutto:70,prod:"SAMA TEKSTIL",width:360},
   {name:"Vulcano Dim-Out",brutto:180,prod:"Spagnolo",width:280},
-  {name:"Wave",brutto:180,prod:"MARGO TEXTIL",width:null},
+  {name:"Wave",brutto:180,prod:"MARGO TEXTIL",width:300},
   {name:"Wonder",brutto:160,prod:"MARGO TEXTIL",width:310},
   {name:"Yita",brutto:95,prod:"SAMA TEKSTIL",width:300},
   {name:"Yorkshire Tweed",brutto:221,prod:"Ridex",width:310},
