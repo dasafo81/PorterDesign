@@ -474,3 +474,41 @@ export const adminApi = {
     return adminFetch("PATCH","/api/admin/tenants",{id:tenantId,config:config});
   }
 };
+
+// ── MAIL API (transakcyjny, przez Resend) ────────────────────────────────────
+// Wywołuje /api/mail/send z JWT zalogowanego usera.
+// Używany przez frontend do: resetu hasła, przypomnień o trialu itp.
+// Maile przy rejestracji (welcome) są wysyłane server-side z api/admin/*.
+
+function mailFetch(template, to, data) {
+  var userTok = getUserToken();
+  return fetch('/api/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + (userTok || ''),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ template: template, to: to, data: data || {} }),
+  }).then(function(r) {
+    return r.json().then(function(d) {
+      if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+      return d;
+    });
+  });
+}
+
+export const mailApi = {
+  // Reset hasła — wysyła link generowany przez Supabase
+  sendPasswordReset: function(email, resetUrl) {
+    return mailFetch('password_reset', email, { reset_url: resetUrl });
+  },
+  // Przypomnienie o kończącym się trialu (tylko tenant-admin lub super-admin)
+  sendTrialExpiring: function(email, brandName, trialEndDate, upgradeUrl) {
+    return mailFetch('trial_expiring', email, {
+      brand_name: brandName,
+      trial_end_date: trialEndDate,
+      upgrade_url: upgradeUrl,
+    });
+  },
+};
+
