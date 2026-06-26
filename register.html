@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zarejestruj się — Asystent Dekoracji</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1c2b32; --ink2: #4a6070; --ink3: #8aa0ac;
+    --wsp: #849ca6; --wsp-dark: #5d7a87; --wsp-light: #ccd9de;
+    --wsp-bg: #f4f7f8; --wsp-bg2: #e8eef1; --white: #ffffff; --border: #dde5e8;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--wsp-bg); min-height: 100vh; display: flex; flex-direction: column; }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2.5rem; background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px); border-bottom: 1px solid rgba(132,156,166,0.15);
+  }
+  .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
+  .nav-logo span { color: var(--ink3); font-weight: 400; font-style: italic; }
+  .nav-link { font-size: 13px; color: var(--ink2); text-decoration: none; }
+  .nav-link:hover { color: var(--ink); }
+
+  main {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 7rem 1.5rem 3rem;
+  }
+
+  .card {
+    background: var(--white); border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 2.5rem 2.5rem 2rem;
+    width: 100%; max-width: 480px;
+    box-shadow: 0 4px 32px rgba(28,43,50,0.06);
+  }
+
+  .card-header { text-align: center; margin-bottom: 2rem; }
+  .card-header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.9rem; font-weight: 700; color: var(--ink);
+    margin-bottom: 0.4rem;
+  }
+  .card-header p { font-size: 14px; color: var(--ink3); line-height: 1.5; }
+  .card-header .trial-badge {
+    display: inline-block; margin-top: 0.75rem;
+    background: var(--wsp-bg2); color: var(--wsp-dark);
+    font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
+    padding: 5px 14px; border-radius: 20px;
+    border: 1px solid var(--wsp-light);
+  }
+
+  .form-group { margin-bottom: 1.1rem; }
+  .form-group label {
+    display: block; font-size: 12px; font-weight: 500;
+    color: var(--ink2); letter-spacing: 0.04em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%; padding: 11px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--white); color: var(--ink);
+    outline: none; transition: border-color .15s;
+  }
+  .form-group input:focus { border-color: var(--wsp); }
+  .form-group input::placeholder { color: var(--ink3); }
+  .form-group .hint { font-size: 11px; color: var(--ink3); margin-top: 4px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* honeypot */
+  .hp { display: none !important; }
+
+  .submit-btn {
+    width: 100%; padding: 13px; margin-top: 0.5rem;
+    background: var(--wsp-dark); color: var(--white);
+    border: none; border-radius: 8px; font-size: 15px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif; cursor: pointer;
+    transition: background .2s, opacity .2s;
+  }
+  .submit-btn:hover { background: var(--ink); }
+  .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .msg {
+    display: none; padding: 12px 16px; border-radius: 8px;
+    font-size: 13px; line-height: 1.5; margin-top: 1rem;
+  }
+  .msg.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
+  .msg.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; display: block; }
+
+  .login-link { text-align: center; margin-top: 1.25rem; font-size: 13px; color: var(--ink3); }
+  .login-link a { color: var(--wsp-dark); text-decoration: none; font-weight: 500; }
+  .login-link a:hover { text-decoration: underline; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+  .terms { font-size: 11px; color: var(--ink3); text-align: center; line-height: 1.6; }
+  .terms a { color: var(--wsp-dark); text-decoration: none; }
+
+  footer {
+    text-align: center; padding: 1.5rem;
+    font-size: 12px; color: var(--ink3);
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Asystent <span>Dekoracji</span></a>
+  <a class="nav-link" href="/">← Powrót do strony głównej</a>
+</nav>
+
+<main>
+  <div class="card">
+    <div class="card-header">
+      <h1>Załóż konto</h1>
+      <p>Oprogramowanie dla studiów dekoracji okien</p>
+      <span class="trial-badge">3 dni bezpłatnego dostępu</span>
+    </div>
+
+    <form id="regForm" novalidate>
+      <!-- honeypot — nie wypełniaj -->
+      <div class="hp">
+        <input type="text" name="honeypot" id="honeypot" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label for="studio_name">Nazwa studia *</label>
+        <input type="text" id="studio_name" name="studio_name"
+          placeholder="np. Studio Zasłon Kowalska"
+          autocomplete="organization" required>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="email">Adres e-mail *</label>
+          <input type="email" id="email" name="email"
+            placeholder="kontakt@studio.pl"
+            autocomplete="email" required>
+        </div>
+        <div class="form-group">
+          <label for="phone">Telefon *</label>
+          <input type="tel" id="phone" name="phone"
+            placeholder="500 000 000"
+            autocomplete="tel" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="nip">NIP <span style="font-weight:400;text-transform:none">(opcjonalny)</span></label>
+          <input type="text" id="nip" name="nip"
+            placeholder="1234567890"
+            autocomplete="off" maxlength="13">
+        </div>
+        <div class="form-group">
+          <label for="password">Hasło *</label>
+          <input type="password" id="password" name="password"
+            placeholder="min. 8 znaków"
+            autocomplete="new-password" required>
+          <div class="hint">Co najmniej 8 znaków</div>
+        </div>
+      </div>
+
+      <div id="msg" class="msg"></div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">
+        Utwórz konto bezpłatnie
+      </button>
+
+      <hr class="divider">
+
+      <p class="terms">
+        Rejestrując się, akceptujesz
+        <a href="/regulamin.html">Regulamin</a> oraz
+        <a href="/polityka-prywatnosci.html">Politykę Prywatności</a>.
+      </p>
+    </form>
+
+    <p class="login-link">
+      Masz już konto? <a href="/">Zaloguj się</a>
+    </p>
+  </div>
+</main>
+
+<footer>
+  © 2026 Asystent Dekoracji · <a href="mailto:kontakt@asystentdekoracji.pl" style="color:var(--wsp-dark);text-decoration:none">kontakt@asystentdekoracji.pl</a>
+</footer>
+
+<script>
+  var form = document.getElementById('regForm');
+  var msg  = document.getElementById('msg');
+  var btn  = document.getElementById('submitBtn');
+
+  function showMsg(type, text) {
+    msg.className = 'msg ' + type;
+    msg.textContent = text;
+  }
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    msg.className = 'msg'; msg.textContent = '';
+
+    var studio_name = document.getElementById('studio_name').value.trim();
+    var email       = document.getElementById('email').value.trim().toLowerCase();
+    var phone       = document.getElementById('phone').value.trim();
+    var nip         = document.getElementById('nip').value.trim();
+    var password    = document.getElementById('password').value;
+    var honeypot    = document.getElementById('honeypot').value;
+
+    // Podstawowa walidacja po stronie klienta
+    if (!studio_name) { showMsg('error', 'Podaj nazwę studia.'); return; }
+    if (!email || !email.includes('@')) { showMsg('error', 'Podaj poprawny adres e-mail.'); return; }
+    if (!phone || phone.replace(/\s/g,'').length < 9) { showMsg('error', 'Podaj numer telefonu.'); return; }
+    if (!password || password.length < 8) { showMsg('error', 'Hasło musi mieć co najmniej 8 znaków.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Tworzenie konta…';
+
+    try {
+      var resp = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studio_name: studio_name, email: email, phone: phone, nip: nip, password: password, honeypot: honeypot }),
+      });
+      var data = await resp.json();
+
+      if (resp.ok && data.ok) {
+        form.innerHTML = '<div style="text-align:center;padding:1rem 0">'
+          + '<div style="font-size:2rem;margin-bottom:1rem">✉️</div>'
+          + '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.75rem">Sprawdź skrzynkę e-mail</h2>'
+          + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Wysłaliśmy link aktywacyjny na adres<br><strong>' + email + '</strong><br><br>Kliknij w link w mailu, aby aktywować konto i zalogować się.</p>'
+          + '</div>';
+      } else {
+        showMsg('error', data.error || 'Wystąpił błąd. Spróbuj ponownie.');
+        btn.disabled = false;
+        btn.textContent = 'Utwórz konto bezpłatnie';
+      }
+    } catch (err) {
+      showMsg('error', 'Błąd połączenia. Sprawdź internet i spróbuj ponownie.');
+      btn.disabled = false;
+      btn.textContent = 'Utwórz konto bezpłatnie';
+    }
+  });
+</script>
+</body>
+</html>
