@@ -499,7 +499,7 @@ export function generateSewingOrderPDF(client, modalData){
     +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-size:12px;font-weight:700">PD PORTER DESIGN</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
-    '<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin: <strong>'+termStr+'</strong></p>')+'</div>'
+    +'<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin: <strong>'+termStr+'</strong></p>')+'</div>'
     +'</div>'
     +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zasłony i firany — specyfikacja szycia",['3%','11%','9%','14%','9%','6%','6%','13%','29%'])+curtainOptionsHTML:"")
     +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,"Rolety rzymskie \u2014 specyfikacja szycia",['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML+notesFieldHTML:"")
@@ -588,7 +588,7 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-size:12px;font-weight:700">PD PORTER DESIGN</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>Tel.: '+SELLER.tel+'<br>E-mail: '+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+(client.name||'')+'</strong></p>'
-    '<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>')+'</div>'
+    +'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>')+'</div>'
     +'</div>'
     +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,'Zasłony i firany — specyfikacja szycia',['3%','11%','9%','14%','9%','6%','6%','13%','29%'])+curtainOptionsHTML2:'')
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,'Rolety rzymskie \u2014 specyfikacja szycia',['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML2+notesFieldHTML2:'')
