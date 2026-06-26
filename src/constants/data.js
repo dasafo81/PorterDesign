@@ -1489,8 +1489,8 @@ export function makeTableHTML(headers, rows, caption, colWidths){
 
 export function pdfStyles(){
   return `<style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:Arial,Helvetica,sans-serif;font-size:10px;color:#1a1a18;background:#fff;padding:18mm 16mm;}
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');*{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Montserrat',Arial,Helvetica,sans-serif;font-size:10px;color:#1a1a18;background:#fff;padding:18mm 16mm;}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10mm;border-bottom:0.5px solid #c8c8c4;padding-bottom:7mm;}
     .logo-text{font-size:20px;font-weight:700;letter-spacing:0.15em;color:#1a1a18;}
     .logo-sub{font-size:8px;letter-spacing:0.25em;color:#6b6b66;text-transform:uppercase;margin-top:2px;}
