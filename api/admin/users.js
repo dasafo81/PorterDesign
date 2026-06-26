@@ -90,6 +90,11 @@ export default async function handler(req) {
     const tenantsArr = await tResp.json();
     if (!Array.isArray(tenantsArr) || tenantsArr.length === 0) return json({ error: 'tenant not found' }, 404);
 
+    // Pobierz nazwę tenanta do maila powitalnego
+    const tNameResp = await fetch(`${SB_URL}/rest/v1/tenants?id=eq.${encodeURIComponent(tenantId)}&select=name`, { headers });
+    const tNameArr = tNameResp.ok ? await tNameResp.json() : [];
+    const tenantName = (tNameArr[0] && tNameArr[0].name) || '';
+
     const resp = await fetch(`${SB_URL}/auth/v1/admin/users`, {
       method: 'POST',
       headers: headers,
@@ -105,6 +110,29 @@ export default async function handler(req) {
     });
     if (!resp.ok) return json({ error: 'failed to create user', detail: await resp.text() }, resp.status);
     const created = await resp.json();
+
+    // Wyślij mail powitalny (best-effort — błąd nie blokuje odpowiedzi)
+    if (isTenantAdmin) {
+      const mailOrigin = new URL(req.url).origin;
+      fetch(`${mailOrigin}/api/mail/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${auth.service}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          template: 'welcome',
+          to: email,
+          data: {
+            brand_name: tenantName,
+            email: email,
+            login_url: mailOrigin,
+            trial_days: 14,
+          },
+        }),
+      }).catch(function(e) { console.error('welcome mail failed:', e); });
+    }
+
     return json(mapUser(created), 201);
   }
 
