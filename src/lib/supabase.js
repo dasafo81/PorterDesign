@@ -315,6 +315,29 @@ export const sbApi = {
   },
   deleteRailScrap: function(id){
     return sbFetch("DELETE","rail_scraps?id=eq."+id);
+  },
+  // ── MAIL RECIPIENTS HISTORY (historia adresów odbiorców) ──
+  // Pobiera zapisane adresy pasujące do query (dla podpowiedzi w polu Do:)
+  searchMailRecipients: function(query){
+    if(!query)return Promise.resolve([]);
+    var q=encodeURIComponent(query.toLowerCase());
+    return sbFetch("GET","mail_recipients?or=(email_lower.ilike.*"+q+"*,name.ilike.*"+q+"*)&order=last_used_at.desc&limit=8");
+  },
+  // Zapisuje/aktualizuje adres odbiorcy po wysłaniu maila (upsert po email_lower)
+  upsertMailRecipient: function(email, name){
+    if(!email)return Promise.resolve();
+    var emailLower=email.toLowerCase().trim();
+    var userTok=getUserToken();
+    return fetch(SB_URL+"/rest/v1/mail_recipients",{
+      method:"POST",
+      headers:{
+        "apikey":SB_KEY,
+        "Authorization":"Bearer "+(userTok||SB_KEY),
+        "Content-Type":"application/json",
+        "Prefer":"resolution=merge-duplicates,return=minimal"
+      },
+      body:JSON.stringify({email:email.trim(),email_lower:emailLower,name:name||"",last_used_at:new Date().toISOString()})
+    }).catch(function(){return null;});
   }
 };
 
