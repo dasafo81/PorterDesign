@@ -1683,8 +1683,17 @@ export function ScreenMail(p){
     if(val.length<2){setContactSug([]);return;}
     var q=val.toLowerCase();
     var fc=clients.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).map(function(c){return {email:c.email,name:c.name};});
-    var merged=fc.reduce(function(acc,c){if(!acc.find(function(x){return x.email===c.email;}))acc.push(c);return acc;},[]).slice(0,5);
-    setContactSug(merged);
+    // Dociągnij historię adresów z Supabase (cross-device, cross-session)
+    sbApi.searchMailRecipients(q).then(function(rows){
+      var hist=(rows||[]).map(function(r){return {email:r.email,name:r.name||""};});
+      var combined=fc.slice();
+      hist.forEach(function(h){if(!combined.find(function(x){return x.email.toLowerCase()===h.email.toLowerCase();}))combined.push(h);});
+      setContactSug(combined.slice(0,8));
+    }).catch(function(){
+      setContactSug(fc.slice(0,5));
+    });
+    // Pokaż lokalnych od razu, Supabase dopełni za chwilę
+    setContactSug(fc.slice(0,5));
   }
 
   // Czy treść maila (HTML z RichTextEditora) jest faktycznie pusta?
@@ -1851,6 +1860,8 @@ export function ScreenMail(p){
             body:body,attachments:attachments.slice()};
           setAllMails(function(prev){return [nm].concat(prev);});
           setSending(false); setJustSent(true);
+          // Zapisz adres odbiorcy w historii (Supabase — działa cross-device)
+          sbApi.upsertMailRecipient(toEmail, toName).catch(function(){});
           setTimeout(function(){setJustSent(false);},3000);
           setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
           setCcEmail(""); setBccEmail("");
