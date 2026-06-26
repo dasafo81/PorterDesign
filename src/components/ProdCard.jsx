@@ -955,13 +955,15 @@ export function ProdCard(p){
         ):null
       ),
       // Strona obsługi
-      !isDuo?ce("div",null,
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA OBS\u0141UGI"),
+      // półautomat: zawsze pokaż wybór strony (także dla Duo)
+      // manual: tylko gdy nie Duo (Duo ma obsługę obustronną)
+      (rSystem==="polautomatyczny"||!isDuo)?ce("div",null,
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA STEROWANIA"),
         ce("div",{style:{display:"flex",gap:10}},
           ["Lewo","Prawo"].map(function(str){
             var isA=c.stronaObslugi===str||(str==="Lewo"&&!c.stronaObslugi);
             return ce("button",{key:str,onClick:function(){sc("stronaObslugi",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"✓ "+str:str
+              isA?"\u2713 "+str:str
             );
           })
         )
