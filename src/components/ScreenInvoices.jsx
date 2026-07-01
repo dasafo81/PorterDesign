@@ -59,6 +59,16 @@ function calcLine(unit_net, qty, vat_rate){
   var line_gross=+(line_net+line_vat).toFixed(2);
   return {line_net, line_vat, line_gross};
 }
+// Oblicza linię faktury od strony brutto → netto.
+function calcLineFromGross(unit_gross, qty, vat_rate){
+  var q=+(qty)||1, g=+(unit_gross)||0;
+  var line_gross=+(g*q).toFixed(2);
+  var divisor = vat_rate===-1 ? 1 : (1 + (+(vat_rate)/100));
+  var line_net=+(line_gross/divisor).toFixed(2);
+  var line_vat=+(line_gross-line_net).toFixed(2);
+  var unit_net=q?+(line_net/q).toFixed(4):0;
+  return {unit_net, line_net, line_vat, line_gross};
+}
 
 // Sumuje pozycje per stawka VAT. Zwraca tablicę {vat_rate, net, vat, gross}
 function calcTotals(items){
@@ -78,7 +88,7 @@ function formatNumber(tmpl, nr, date){
   var d=date?new Date(date):new Date();
   var mm=String(d.getMonth()+1).padStart(2,"0");
   var yyyy=String(d.getFullYear());
-  return (tmpl||"FV/{nr}/{MM}/{YYYY}")
+  return (tmpl||"{nr}/{MM}/{YYYY}")
     .replace("{nr}",String(nr).padStart(3,"0"))
     .replace("{MM}",mm)
     .replace("{YYYY}",yyyy);
@@ -97,13 +107,19 @@ function ItemRow(p){
   var it=p.item, idx=p.idx, onChange=p.onChange, onRemove=p.onRemove;
   function upd(field,val){
     var next=Object.assign({},it,{[field]:val});
-    if(field==="unit_net"||field==="quantity"||field==="vat_rate"){
+    if(field==="unit_gross"){
+      // Przelicz brutto → netto
+      var nums=calcLineFromGross(val,it.quantity,it.vat_rate);
+      next=Object.assign(next,nums,{unit_gross:val});
+    } else if(field==="unit_net"||field==="quantity"||field==="vat_rate"){
       var nums=calcLine(
         field==="unit_net"?val:it.unit_net,
         field==="quantity"?val:it.quantity,
         field==="vat_rate"?val:it.vat_rate
       );
-      next=Object.assign(next,nums);
+      // Wylicz unit_gross z nowego line_gross/qty
+      var q2=+(field==="quantity"?val:it.quantity)||1;
+      next=Object.assign(next,nums,{unit_gross:+(nums.line_gross/q2).toFixed(4)});
     }
     onChange(idx,next);
   }
@@ -122,6 +138,9 @@ function ItemRow(p){
     // Cena netto
     ce("input",{style:Object.assign({},inpSm,{textAlign:"right"}), value:it.unit_net, type:"number", min:0, step:0.01,
       onChange:function(e){upd("unit_net",e.target.value);}}),
+    // Cena brutto
+    ce("input",{style:Object.assign({},inpSm,{textAlign:"right",background:"#f0f7ff"}), value:+(it.unit_gross||0).toFixed(2), type:"number", min:0, step:0.01,
+      onChange:function(e){upd("unit_gross",e.target.value);}}),
     // VAT
     ce("select",{style:inpSm, value:it.vat_rate,
       onChange:function(e){upd("vat_rate",+(e.target.value));}},
@@ -527,7 +546,7 @@ function InvoiceSettings(p){
     ce("div",{style:card},
       ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:14,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83D\uDD22 Numeracja"),
       row("Szablon numeru",
-        ce("input",{style:inp,value:form.numbering_format||"FV/{nr}/{MM}/{YYYY}",onChange:function(e){upd("numbering_format",e.target.value);}}),
+        ce("input",{style:inp,value:form.numbering_format||"{nr}/{MM}/{YYYY}",onChange:function(e){upd("numbering_format",e.target.value);}}),
         "Zmienne: {nr} = kolejny numer, {MM} = miesiąc, {YYYY} = rok. Przykład: FV/{nr}/{MM}/{YYYY} → FV/001/06/2026"),
       row("Reset licznika",
         ce("select",{style:inp,value:form.numbering_reset||"monthly",onChange:function(e){upd("numbering_reset",e.target.value);}},
