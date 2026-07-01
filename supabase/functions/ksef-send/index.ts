@@ -91,7 +91,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   const payMap: Record<string,string> = {"przelew":"6","gotówka":"1","karta":"5","BLIK":"5"};
   const payCode = payMap[inv.payment_method||""]||"6";
   return `<?xml version="1.0" encoding="UTF-8"?>
-<Faktura xmlns="http://ksef.mf.gov.pl/schema/gtw/svc/types" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/" xmlns:etd="http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/01/05/eD/DefinicjeTypy/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Naglowek>
     <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
     <DataWytworzeniaFa>${new Date().toISOString().replace("Z","+00:00")}</DataWytworzeniaFa>
