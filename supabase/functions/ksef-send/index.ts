@@ -176,6 +176,22 @@ async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise
   });
 }
 
+// RSA-OAEP-SHA256 - Web Crypto z kluczem publicznym wyciągniętym przez jsrsasign
+async function rsaOaepEncrypt(data: Uint8Array, certPem: string): Promise<Uint8Array> {
+  const x509 = new rs.X509();
+  x509.readCertPEM(certPem);
+  const pubKeyObj = x509.getPublicKey();
+  const jwk = rs.KEYUTIL.getJWKFromKey(pubKeyObj);
+  const key = await crypto.subtle.importKey(
+    "jwk",
+    { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RSA-OAEP-256", ext: true },
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    false, ["encrypt"]
+  );
+  const encrypted = await crypto.subtle.encrypt({ name: "RSA-OAEP" }, key, data);
+  return new Uint8Array(encrypted);
+}
+
 async function encryptInvoice(xmlBytes: Uint8Array, aesKey: CryptoKey, iv: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(await crypto.subtle.encrypt({ name: "AES-CBC", iv }, aesKey, xmlBytes));
 }
@@ -226,7 +242,7 @@ Deno.serve(async (req: Request) => {
     const aesKey = await crypto.subtle.importKey("raw", aesKeyRaw, { name: "AES-CBC" }, false, ["encrypt"]);
 
     // 3. Zaszyfruj klucz AES przez RSA-OAEP-SHA256 (jsrsasign — zgodność z Node.js crypto)
-    const encryptedKeyBytes = rsaOaepEncrypt(aesKeyRaw, certPem);
+    const encryptedKeyBytes = await rsaOaepEncrypt(aesKeyRaw, certPem);
     const encryptedSymmetricKey = bufToB64(encryptedKeyBytes.buffer);
     const initializationVector = bufToB64(iv.buffer);
 
