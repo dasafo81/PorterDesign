@@ -1063,7 +1063,7 @@ function buildInvoicePDFHtml(inv,settings){
       name:snap.name||s.seller_name||"",
       nip:(snap.nip||s.seller_nip||"").replace(/[\s\-]/g,""),
       street:snap.address||s.seller_address||"",
-      postal:snap.address?"":s.seller_postal||"", city:snap.address?(snap.city||""):s.seller_city||""
+      postal:snap.postal||s.seller_postal||"", city:snap.city||s.seller_city||""
     };
     partyBottom={
       label:"Nabywca:",
@@ -1161,7 +1161,6 @@ function buildInvoicePDFHtml(inv,settings){
     +"</table>"
     +"<div class='totals'><table>"
     +"<tr><td>\u0141\u0105cznie:</td><td>"+fmtM(gross)+" PLN</td></tr>"
-    +"<tr><td>Zap\u0142acono:</td><td>"+fmtM(paid)+" PLN</td></tr>"
     +"<tr class='grand'><td>Do zap\u0142aty:</td><td>"+fmtM(remaining)+" PLN</td></tr>"
     +"</table></div>"
     +"<div class='slownie'><strong>S\u0142ownie:</strong> "+numberToWordsPL(gross)+"</div>"
