@@ -89,7 +89,7 @@ function formatNumber(tmpl, nr, date){
   var mm=String(d.getMonth()+1).padStart(2,"0");
   var yyyy=String(d.getFullYear());
   return (tmpl||"{nr}/{MM}/{YYYY}")
-    .replace("{nr}",String(nr).padStart(3,"0"))
+    .replace("{nr}",String(nr).padStart(2,"0"))
     .replace("{MM}",mm)
     .replace("{YYYY}",yyyy);
 }
@@ -1132,16 +1132,16 @@ function buildInvoicePDFHtml(inv,settings){
     +"</div>"
     +"<div class='pay-row'>"
     +"<div>Termin p\u0142atno\u015bci: "+fmtD(inv.due_date)+"<br>Spos\u00f3b p\u0142atno\u015bci: "+(inv.payment_method||"przelew").replace(/^./,function(c){return c.toUpperCase();})+"</div>"
-    +(selBank?"<div style='text-align:right'>Konto: "+selBank+"</div>":"<div></div>")
+    +(selBank?"<div style='text-align:right'>Bank Millennium: "+selBank+"</div>":"<div></div>")
     +"</div>"
     +"<div class='parties'>"
     +"<div class='party'><div class='sect-head'>"+partyTop.label+"</div><p><strong>"+partyTop.name+"</strong>"
     +(partyTop.street?"<br>"+partyTop.street:"")
-    +(partyTop.city.trim()?"<br>"+partyTop.city+" Polska":"")
+    +(partyTop.city.trim()?"<br>"+partyTop.city:"")
     +"<br>NIP: "+partyTop.nip+"</p></div>"
     +"<div class='party'><div class='sect-head'>"+partyBottom.label+"</div><p><strong>"+partyBottom.name+"</strong>"
     +(partyBottom.street?"<br>"+partyBottom.street:"")
-    +(partyBottom.city.trim()?"<br>"+partyBottom.city+" Polska":"")
+    +(partyBottom.city.trim()?"<br>"+partyBottom.city:"")
     +(partyBottom.nip?"<br>NIP: "+partyBottom.nip:"")+"</p></div>"
     +"</div>"
     +"<table class='items'><thead><tr>"
