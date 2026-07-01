@@ -133,33 +133,43 @@ async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise
   });
   if (!r.ok) throw new Error(`GET /security/public-key-certificates HTTP ${r.status}: ${(await r.text()).slice(0,300)}`);
   const data = await r.json();
-  const certs: Array<Record<string,string>> = data.certificates || data.items || (Array.isArray(data) ? data : [data]);
+  // Odpowiedź: array PublicKeyCertificate { certificate, usage: ["SymmetricKeyEncryption"|"KsefTokenEncryption"] }
+  const certs: Array<Record<string,unknown>> = Array.isArray(data) ? data : (data.certificates || data.items || [data]);
   const cert = certs.find(c => {
     const usage = c.usage;
     if (Array.isArray(usage)) return usage.some((u: string) => String(u).includes("SymmetricKeyEncryption"));
-    return String(usage||"").includes("SymmetricKeyEncryption") || c.type === "SymmetricKeyEncryption";
-  }) || certs[0];
+    return String(usage||"").includes("SymmetricKeyEncryption");
+  });
   if (!cert) {
-    // Debug: pokaż wszystkie dostępne usage
-    const availableUsages = certs.map(c => ({ usage: c.usage, type: c.type, hasCert: !!(c.certificate || c.publicKey || c.value) }));
-    throw new Error(`Brak certyfikatu SymmetricKeyEncryption. Dostępne: ${JSON.stringify(availableUsages).slice(0,400)}`);
+    const debug = certs.map(c => ({ usage: c.usage, hasCert: !!(c.certificate) }));
+    throw new Error(`Brak cert SymmetricKeyEncryption. Dostępne: ${JSON.stringify(debug).slice(0,300)}`);
   }
-  // Debug: log wybrany usage do response (tymczasowo)
-  console.log("Wybrany cert usage:", cert.usage, "type:", cert.type);
-  const certB64 = String(cert.certificate || cert.publicKey || cert.value || "");
-  const certPem = "-----BEGIN CERTIFICATE-----\n" +
-    certB64.replace(/-----[^-]+-----/g,"").replace(/\s+/g,"").match(/.{1,64}/g)!.join("\n") +
-    "\n-----END CERTIFICATE-----";
-  const x509 = new rs.X509();
-  x509.readCertPEM(certPem);
-  const pubKeyObj = x509.getPublicKey();
-  const jwk = rs.KEYUTIL.getJWKFromKey(pubKeyObj);
+  // certificate z KSeF to base64 DER (X.509) - trzeba wyciągnąć SPKI
+  // Ale WebCrypto akceptuje X.509 przez "x509" format (Deno >= 1.33)
+  const certB64 = String(cert.certificate || "");
+  const derBuf = Uint8Array.from(atob(certB64), c => c.charCodeAt(0)).buffer;
+  // Deno obsługuje "x509" jako format do importu certyfikatu X.509
   return await crypto.subtle.importKey(
-    "jwk",
-    { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RSA-OAEP-256", ext: true },
+    "spki" as "spki",
+    derBuf,
     { name: "RSA-OAEP", hash: "SHA-256" },
     false, ["encrypt"]
-  );
+  ).catch(async () => {
+    // Fallback: może to jednak X.509 - wyciągnij SPKI z X.509 przez jsrsasign
+    const certPem = "-----BEGIN CERTIFICATE-----\n" +
+      certB64.match(/.{1,64}/g)!.join("\n") +
+      "\n-----END CERTIFICATE-----";
+    const x509 = new rs.X509();
+    x509.readCertPEM(certPem);
+    const pubKeyObj = x509.getPublicKey();
+    const jwk = rs.KEYUTIL.getJWKFromKey(pubKeyObj);
+    return await crypto.subtle.importKey(
+      "jwk",
+      { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RSA-OAEP-256", ext: true },
+      { name: "RSA-OAEP", hash: "SHA-256" },
+      false, ["encrypt"]
+    );
+  });
 }
 
 async function encryptInvoice(xmlBytes: Uint8Array, aesKey: CryptoKey, iv: Uint8Array): Promise<Uint8Array> {
