@@ -217,17 +217,17 @@ Deno.serve(async (req: Request) => {
   const xmlBytes = new TextEncoder().encode(xml);
 
   try {
-    // 1. Certyfikat publiczny KSeF
-    const ksefPublicKey = await fetchKsefPublicKey(baseUrl, accessToken);
+    // 1. Certyfikat KSeF (PEM)
+    const certPem = await fetchKsefCertPem(baseUrl, accessToken);
 
-    // 2. Klucz AES-256-CBC + IV
-    const aesKey = await crypto.subtle.generateKey({ name: "AES-CBC", length: 256 }, true, ["encrypt"]);
+    // 2. Klucz AES-256 + IV (raw bytes, jak w SDK)
+    const aesKeyRaw = crypto.getRandomValues(new Uint8Array(32));
     const iv = crypto.getRandomValues(new Uint8Array(16));
-    const aesKeyRaw = await crypto.subtle.exportKey("raw", aesKey);
+    const aesKey = await crypto.subtle.importKey("raw", aesKeyRaw, { name: "AES-CBC" }, false, ["encrypt"]);
 
-    // 3. Zaszyfruj klucz AES przez RSA-OAEP
-    const encryptedKeyBuf = await crypto.subtle.encrypt({ name: "RSA-OAEP" }, ksefPublicKey, aesKeyRaw);
-    const encryptedSymmetricKey = bufToB64(encryptedKeyBuf);
+    // 3. Zaszyfruj klucz AES przez RSA-OAEP-SHA256 (jsrsasign — zgodność z Node.js crypto)
+    const encryptedKeyBytes = rsaOaepEncrypt(aesKeyRaw, certPem);
+    const encryptedSymmetricKey = bufToB64(encryptedKeyBytes.buffer);
     const initializationVector = bufToB64(iv.buffer);
 
     // 4. Otwórz sesję online
