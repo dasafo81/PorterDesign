@@ -139,7 +139,7 @@ function ItemRow(p){
     ce("input",{style:Object.assign({},inpSm,{textAlign:"right"}), value:it.unit_net, type:"number", min:0, step:0.01,
       onChange:function(e){upd("unit_net",e.target.value);}}),
     // Cena brutto
-    ce("input",{style:Object.assign({},inpSm,{textAlign:"right",background:"#f0f7ff"}), value:+(it.unit_gross||0).toFixed(2), type:"number", min:0, step:0.01,
+    ce("input",{style:Object.assign({},inpSm,{textAlign:"right",background:"#f0f7ff"}), value:+(+(it.unit_gross)||0).toFixed(2), type:"number", min:0, step:0.01,
       onChange:function(e){upd("unit_gross",e.target.value);}}),
     // VAT
     ce("select",{style:inpSm, value:it.vat_rate,
