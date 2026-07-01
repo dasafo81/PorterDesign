@@ -1467,11 +1467,8 @@ export function ScreenInvoices(p){
           setViewBusyId(inv.id);
           sbApi.getInvoice(inv.id)
             .then(function(full){
-              var html=buildInvoicePDFHtml(full||inv,settings||{});
-              var w=window.open("","_blank");
-              if(!w){alert("Zablokowano popup. Zezw\u00f3l na wyskakuj\u0105ce okna.");return;}
-              w.document.write(html);
-              w.document.close();
+              setDetailInv(full||inv);
+              setView("detail");
             })
             .catch(function(e){ alert("B\u0142\u0105d wczytywania faktury: "+(e.message||e)); })
             .finally(function(){ setViewBusyId(null); });
