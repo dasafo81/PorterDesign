@@ -901,7 +901,7 @@ function InvoiceList(p){
         var contragentNip=isPurchase?(snap.nip||inv.buyer_nip||""):(inv.buyer_nip||"");
         var isBusy=p.viewBusyId===inv.id;
         return ce("div",{key:inv.id,
-          onClick:function(){ if(isBusy)return; inv.ksef_number?(p.onView&&p.onView(inv)):p.onEdit(inv); },
+          onClick:function(){ if(isBusy)return; (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv); },
           style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 36px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
             background:"var(--bg2)",width:"100%",opacity:isBusy?0.6:1},
