@@ -89,7 +89,7 @@ function formatNumber(tmpl, nr, date){
   var mm=String(d.getMonth()+1).padStart(2,"0");
   var yyyy=String(d.getFullYear());
   return (tmpl||"{nr}/{MM}/{YYYY}")
-    .replace("{nr}",String(nr).padStart(2,"0"))
+    .replace("{nr}",String(nr))
     .replace("{MM}",mm)
     .replace("{YYYY}",yyyy);
 }
