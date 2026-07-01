@@ -315,7 +315,7 @@ Deno.serve(async (req: Request) => {
     await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
       method: "PATCH", headers: sbH,
       body: JSON.stringify({
-        ksef_status: "sent",
+        ksef_status: invoiceRefNumber ? "confirmed" : "sent",
         ksef_number: invoiceRefNumber || null,
         ksef_mode: "online",
         ksef_sent_at: new Date().toISOString(),
