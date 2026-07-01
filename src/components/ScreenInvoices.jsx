@@ -1408,8 +1408,14 @@ export function ScreenInvoices(p){
       settings:settings||{},
       onEdit:function(){ setEditInv(detailInv); setView("editor"); },
       onRevoke:function(){
-        if(!confirm("Cofnąć fakturę do szkicu? Numer zostanie usunięty.")) return;
-        sbApi.updateInvoice(detailInv.id,{status:"draft",number:null})
+        if(!confirm("Cofnąć fakturę do szkicu? Numer zostanie usunięty, licznik cofnięty.")) return;
+        var inv=detailInv;
+        var period=inv.issue_date?inv.issue_date.slice(0,7):"";
+        var docType=inv.doc_type||"vat";
+        sbApi.updateInvoice(inv.id,{status:"draft",number:null})
+          .then(function(){
+            if(period) return sbApi.decrementInvoiceCounter(docType,period);
+          })
           .then(function(){
             sbApi.getInvoices().then(function(data){setInvoices(data||[]);});
             setView("list");
