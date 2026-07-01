@@ -1000,6 +1000,22 @@ function numberToWordsPL(n){
   return slowna.charAt(0).toUpperCase()+slowna.slice(1)+" z\u0142otych 00/100";
 }
 
+// Formatuje adres: ulica w linii 1, kod+miasto w linii 2
+function fmtAddr(street, postal, city){
+  var lines=[];
+  var s=(street||'').trim();
+  var p=(postal||'').trim();
+  var ct=(city||'').trim();
+  if(s) lines.push(s);
+  // city moze zawierac juz kod pocztowy (XX-XXX)
+  if(ct && /\d{2}-\d{3}/.test(ct)){
+    lines.push(ct);
+  } else if(p||ct){
+    lines.push((p+' '+ct).trim());
+  }
+  return lines.join('<br>');
+}
+
 function buildInvoicePDFHtml(inv,settings){
   var s=settings||{};
   var items=inv.invoice_items||[];
@@ -1026,14 +1042,14 @@ function buildInvoicePDFHtml(inv,settings){
         name:inv.buyer_name||"",
         nip:(inv.buyer_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
         street:inv.buyer_address||"",
-        city:inv.buyer_city||""
+        postal:"", city:inv.buyer_city||""
       };
       partyBottom={
         label:"Nabywca:",
         name:s.seller_name||"",
         nip:s.seller_nip||"",
         street:s.seller_address||"",
-        city:((s.seller_postal||"")+" "+(s.seller_city||"")).trim()
+        postal:s.seller_postal||"", city:s.seller_city||""
       };
     } else {
       partyTop={
@@ -1041,14 +1057,14 @@ function buildInvoicePDFHtml(inv,settings){
         name:snap.name||"",
         nip:(snap.nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
         street:snap.address||"",
-        city:snap.city||""
+        postal:"", city:snap.city||""
       };
       partyBottom={
         label:"Nabywca:",
         name:inv.buyer_name||s.seller_name||"",
         nip:inv.buyer_nip||s.seller_nip||"",
         street:inv.buyer_address||s.seller_address||"",
-        city:inv.buyer_address?(inv.buyer_city||""):((s.seller_postal||"")+" "+(s.seller_city||"")).trim()
+        postal:inv.buyer_postal||s.seller_postal||"", city:inv.buyer_city||s.seller_city||""
       };
     }
   } else {
@@ -1057,14 +1073,14 @@ function buildInvoicePDFHtml(inv,settings){
       name:snap.name||s.seller_name||"",
       nip:(snap.nip||s.seller_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
       street:snap.address||s.seller_address||"",
-      city:snap.address?(snap.city||""):((s.seller_postal||"")+" "+(s.seller_city||"")).trim()
+      postal:snap.address?"":s.seller_postal||"", city:snap.address?(snap.city||""):s.seller_city||""
     };
     partyBottom={
       label:"Nabywca:",
       name:inv.buyer_name||"",
       nip:inv.buyer_nip||"",
       street:inv.buyer_address||"",
-      city:inv.buyer_city||""
+      postal:inv.buyer_postal||"", city:inv.buyer_city||""
     };
   }
   var selBank=snap.bank||s.seller_bank||"";
@@ -1136,12 +1152,10 @@ function buildInvoicePDFHtml(inv,settings){
     +"</div>"
     +"<div class='parties'>"
     +"<div class='party'><div class='sect-head'>"+partyTop.label+"</div><p><strong>"+partyTop.name+"</strong>"
-    +(partyTop.street?"<br>"+partyTop.street:"")
-    +(partyTop.city.trim()?"<br>"+partyTop.city:"")
+    +(partyTop.street||partyTop.city?"<br>"+fmtAddr(partyTop.street,partyTop.postal,partyTop.city):"")
     +"<br>NIP: "+partyTop.nip+"</p></div>"
     +"<div class='party'><div class='sect-head'>"+partyBottom.label+"</div><p><strong>"+partyBottom.name+"</strong>"
-    +(partyBottom.street?"<br>"+partyBottom.street:"")
-    +(partyBottom.city.trim()?"<br>"+partyBottom.city:"")
+    +(partyBottom.street||partyBottom.city?"<br>"+fmtAddr(partyBottom.street,partyBottom.postal,partyBottom.city):"")
     +(partyBottom.nip?"<br>NIP: "+partyBottom.nip:"")+"</p></div>"
     +"</div>"
     +"<table class='items'><thead><tr>"
