@@ -124,7 +124,7 @@ function ItemRow(p){
     onChange(idx,next);
   }
 
-  return ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 60px 70px 80px 70px 90px 90px 28px",gap:6,alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--bd3)"}},
+  return ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 60px 70px 80px 80px 70px 90px 90px 28px",gap:6,alignItems:"center",padding:"8px 0",borderBottom:"1px solid var(--bd3)"}},
     // Nazwa
     ce("input",{style:inpSm, value:it.name||"", placeholder:"Nazwa towaru / usługi",
       onChange:function(e){upd("name",e.target.value);}}),
