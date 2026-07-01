@@ -256,9 +256,11 @@ Deno.serve(async (req: Request) => {
     try { sendData = JSON.parse(sendText); } catch { /* ignore */ }
     const invoiceRefNumber = sendData.referenceNumber || "";
 
-    // NIE zamykamy sesji od razu — KSeF potrzebuje czasu na przetwarzanie faktury.
-    // Zamknięcie sesji zaraz po wysyłce powoduje status 415 (sesja anulowana).
-    // Sesja zostanie zamknięta przez ksef-status po otrzymaniu ksefReferenceNumber.
+    // Zamknij sesję online — bez tego KSeF nie rozpoczyna przetwarzania faktur.
+    // Sesja online w KSeF 2.0 to batch upload; close = "koniec batcha, przetwarzaj".
+    await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/close`, {
+      method: "POST", headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+    }).catch(() => {});
 
     await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
       method: "PATCH", headers: sbH,
