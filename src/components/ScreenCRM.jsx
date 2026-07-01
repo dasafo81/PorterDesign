@@ -165,7 +165,7 @@ export function ModalDeal(p){
     }).catch(function(e){alert("Błąd uploadu: "+e.message);setUploading(false);});
   }
 
-  function addToGcal(title,dateStr,calIdOvr){
+  function addToGcal(title,dateStr,calIdOvr,onSave){
     if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
     if(!calList.length){alert("Brak dost\u0119pnych kalendarzy.");return;}
     var pad=function(n){return String(n).padStart(2,"0");};
@@ -177,7 +177,7 @@ export function ModalDeal(p){
     var mm=hasTime?pad(baseDate.getMinutes()):"00";
     var endHH=pad(Math.min(parseInt(hh,10)+1,23));
     var calId=calIdOvr||installerCalId||(calList.find(function(c){return c.primary;})||calList[0]).id;
-    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+mm,note:"",calId:calId,saving:false});
+    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+mm,note:"",calId:calId,saving:false,onSave:onSave||null});
   }
 
   function submitGcalDraft(){
@@ -220,6 +220,8 @@ export function ModalDeal(p){
     }
     Promise.all(targets.map(function(cid){return postToCalendar(cid,gcalToken);}))
       .then(function(){
+        var dtStr=dft.date+"T"+dft.timeFrom;
+        if(dft.onSave)dft.onSave(dtStr);
         setGcalDraft(null);
         var msg="Dodano do kalendarza! ✅"+(targets.length>1?" ("+targets.length+" kalendarze)":"");
         alert(msg);
@@ -302,16 +304,15 @@ export function ModalDeal(p){
       ce("div",{style:{padding:"18px 20px 24px"}},
 
         ce(SectionCard,{icon:"📅",title:"Spotkanie",done:visitDone},
-          ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
-            ce("div",{style:{flex:1}},
-              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA I GODZINA"),
-              ce("input",{type:"datetime-local",value:visitDate,onChange:function(ev){setVisitDate(ev.target.value);},style:INP})
-            ),
-            visitDate&&gcalToken?ce("button",{
-              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate);},
-              title:"Dodaj do Google Calendar",
-              style:{padding:"10px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:16,flexShrink:0}
-            },"📅"):null
+          ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+            visitDate?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
+              "📅 "+fmtDate(visitDate)+(visitDate.length>10?" "+visitDate.slice(11,16):"")
+            ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
+            gcalToken?ce("button",{
+              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt){setVisitDate(dt);});},
+              title:"Ustaw termin i dodaj do Google Calendar",
+              style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
+            },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):null
           ),
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SKĄD KLIENT"),
@@ -323,16 +324,15 @@ export function ModalDeal(p){
         ),
 
         ce(SectionCard,{icon:"🔧",title:"Montaż",done:installDone},
-          ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
-            ce("div",{style:{flex:1}},
-              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA I GODZINA"),
-              ce("input",{type:"datetime-local",value:delivDate,onChange:function(ev){setDelivDate(ev.target.value);},style:INP})
-            ),
-            delivDate&&gcalToken?ce("button",{
-              onClick:function(){addToGcal("Montaż",delivDate);},
-              title:"Dodaj montaż do Google Calendar",
-              style:{padding:"10px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:16,flexShrink:0}
-            },"📅"):null
+          ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+            delivDate?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
+              "📅 "+fmtDate(delivDate)+(delivDate.length>10?" "+delivDate.slice(11,16):"")
+            ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
+            gcalToken?ce("button",{
+              onClick:function(){addToGcal("Montaż",delivDate,"",function(dt){setDelivDate(dt);});},
+              title:"Ustaw termin i dodaj do Google Calendar",
+              style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
+            },"📅 "+(delivDate?"Zmień":"Ustaw termin")):null
           ),
           ce("div",{style:{display:"flex",gap:8}},
             ce("div",{style:{flex:1}},
@@ -353,16 +353,15 @@ export function ModalDeal(p){
 
           ce("div",{style:{borderTop:"1px dashed var(--bd2)",marginTop:4,paddingTop:10}},
             ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--t2)",textTransform:"uppercase",marginBottom:8}},"TERMIN 2 (np. elektryk / inny)"),
-            ce("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
-              ce("div",{style:{flex:1}},
-                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA I GODZINA"),
-                ce("input",{type:"datetime-local",value:delivDate2,onChange:function(ev){setDelivDate2(ev.target.value);},style:INP})
-              ),
-              delivDate2&&gcalToken?ce("button",{
-                onClick:function(){addToGcal(installLabel2||"Montaż 2",delivDate2,installerCalId2||installerCalId);},
-                title:"Dodaj termin 2 do Google Calendar",
-                style:{padding:"10px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:16,flexShrink:0}
-              },"📅"):null
+            ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+              delivDate2?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
+                "📅 "+fmtDate(delivDate2)+(delivDate2.length>10?" "+delivDate2.slice(11,16):"")
+              ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
+              gcalToken?ce("button",{
+                onClick:function(){addToGcal(installLabel2||"Montaż 2",delivDate2,installerCalId2||installerCalId,function(dt){setDelivDate2(dt);});},
+                title:"Ustaw termin i dodaj do Google Calendar",
+                style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
+              },"📅 "+(delivDate2?"Zmień":"Ustaw termin")):null
             ),
             ce("div",{style:{display:"flex",gap:8}},
               ce("div",{style:{flex:1}},
@@ -452,8 +451,24 @@ export function ModalDeal(p){
       ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:24,width:"100%",maxWidth:380,boxShadow:"0 8px 40px rgba(0,0,0,0.25)"}},
         ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:4}},"📅 Dodaj do kalendarza"),
         // Podsumowanie terminu (tylko info, nie edytowalne)
-        ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16}},
-          gcalDraft.title+" — "+gcalDraft.date.split("-").reverse().join(".")+" "+gcalDraft.timeFrom+"–"+gcalDraft.timeTo
+        ce("div",{style:{marginBottom:12}},
+          ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"DATA"),
+          ce("input",{type:"date",value:gcalDraft.date,style:Object.assign({},INP),
+            onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{date:ev.target.value});});}})
+        ),
+        ce("div",{style:{display:"flex",gap:8,marginBottom:12}},
+          ce("div",{style:{flex:1}},
+            ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"OD"),
+            ce("select",{value:gcalDraft.timeFrom,style:Object.assign({},INP),
+              onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{timeFrom:ev.target.value});});}},
+              (function(){var opts=[];for(var h=6;h<22;h++){["00","15","30","45"].forEach(function(m){opts.push(String(h).padStart(2,"0")+":"+m);});}return opts.map(function(o){return ce("option",{key:o,value:o},o);});})())
+          ),
+          ce("div",{style:{flex:1}},
+            ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"DO"),
+            ce("select",{value:gcalDraft.timeTo,style:Object.assign({},INP),
+              onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{timeTo:ev.target.value});});}},
+              (function(){var opts=[];for(var h=6;h<24;h++){["00","15","30","45"].forEach(function(m){opts.push(String(h).padStart(2,"0")+":"+m);});}return opts.map(function(o){return ce("option",{key:o,value:o},o);});})())
+          )
         ),
         // Uwaga
         ce("div",{style:{marginBottom:16}},
