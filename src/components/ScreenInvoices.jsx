@@ -1334,8 +1334,8 @@ function InvoiceDetailView(p){
       ksefErr&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"#fef2f2",
         borderRadius:8,fontSize:12,color:"#b91c1c"}},"\u26A0\uFE0F "+ksefErr)
     ),
-    // Cofnij do szkicu
-    !ksefOk&&ce("div",{style:{border:"1px solid #fca5a5",borderRadius:12,
+    // Cofnij do szkicu (tylko wystawiona, nie wysłana do KSeF)
+    !ksefOk&&isIssued&&ce("div",{style:{border:"1px solid #fca5a5",borderRadius:12,
       padding:"14px 18px",background:"#fff8f8"}},
       ce("div",{style:{fontSize:12,fontWeight:700,color:"#b91c1c",marginBottom:6}},
         "Klient nie zaakceptowa\u0142 faktury?"),
