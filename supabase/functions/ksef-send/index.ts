@@ -93,7 +93,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   <Naglowek>
     <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
     <DataWytworzeniaFa>${new Date().toISOString().replace("Z","+00:00")}</DataWytworzeniaFa>
-    <NrFaKSeF>${escXml(inv.number||"")}</NrFaKSeF>
+    <!-- NrFaKSeF nadawany przez KSeF po przyjęciu, nie wysyłamy -->
     <SystemInfo>PorterDesign</SystemInfo>
   </Naglowek>
   <Podmiot1>
