@@ -9,6 +9,7 @@ var DOC_TYPES = [
   {id:"proforma", label:"Faktura Proforma"},
   {id:"zaliczka", label:"Faktura Zaliczkowa"},
   {id:"korekta",  label:"Faktura Korygująca"},
+  {id:"eko",      label:"Dokument EKO (gotówkowy, 0% VAT)"},
 ];
 var PAYMENT_METHODS = ["przelew","gotówka","karta","BLIK"];
 var UNITS = ["szt","m","m²","mb","kpl","usługa","godz"];
@@ -307,7 +308,8 @@ function InvoiceEditor(p){
 
     var prom;
     if(isNew){
-      prom=sbApi.addInvoice(Object.assign({status:"draft"},header));
+      var initStatus=docType==="eko"?"issued":"draft";
+      prom=sbApi.addInvoice(Object.assign({status:initStatus},header));
     } else {
       prom=sbApi.updateInvoice(p.invoice.id,header).then(function(){return {id:p.invoice.id};});
     }
@@ -315,15 +317,29 @@ function InvoiceEditor(p){
     prom.then(function(inv){
       var invId=inv.id||inv[0]&&inv[0].id;
       var itemsToSave=items.map(function(it,i){
+        var effVat=docType==="eko"?0:+(it.vat_rate);
+        var effNet=+(it.line_net)||0;
+        var effVatAmt=docType==="eko"?0:+(it.line_vat)||0;
         return {
           position:i+1, name:it.name, quantity:+(it.quantity)||1,
           unit:it.unit||"szt", unit_net:+(it.unit_net)||0,
-          vat_rate:+(it.vat_rate), line_net:+(it.line_net)||0,
-          line_vat:+(it.line_vat)||0, line_gross:+(it.line_gross)||0,
+          vat_rate:effVat, line_net:effNet,
+          line_vat:effVatAmt, line_gross:effNet+effVatAmt,
           pkwiu:it.pkwiu||""
         };
       });
       return sbApi.replaceInvoiceItems(invId,itemsToSave).then(function(){
+        if(docType==="eko"&&isNew){
+          var period2=periodKey(settings.numbering_reset||"monthly",issueDate||todayISO());
+          return sbApi.nextInvoiceNumber("eko",period2).then(function(nr){
+            var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
+            var rawNum=formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
+            var ekoNum=rawNum.replace(/^FV\//,"EKO/");
+            return sbApi.updateInvoice(invId,{status:"issued",number:ekoNum}).then(function(){
+              return Object.assign({},inv,{id:invId,status:"issued",number:ekoNum});
+            });
+          });
+        }
         return Object.assign({},inv,{id:invId,status:"draft"});
       });
     })
@@ -360,6 +376,8 @@ function InvoiceEditor(p){
       fldRow("Typ dokumentu",
         ce("select",{style:inp,value:docType,onChange:function(e){setDocType(e.target.value);}},
           DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);}))),
+      docType==="eko"&&ce("div",{style:{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#166534",marginTop:4}},
+        "🟢 Dokument EKO — 0% VAT, wydatki gotówkowe, wystawiany od razu (bez KSeF). Stawka VAT zostanie wyzerowana przy zapisie."),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}},
         ce("div",null,ce("span",{style:label},"Data wystawienia"),ce("input",{style:inp,type:"date",value:issueDate,onChange:function(e){setIssueDate(e.target.value);}})),
         ce("div",null,ce("span",{style:label},"Data sprzedaży"),ce("input",{style:inp,type:"date",value:saleDate,onChange:function(e){setSaleDate(e.target.value);}})),
@@ -857,7 +875,8 @@ function InvoiceList(p){
         ce("option",{value:"all"},"Wszystkie"),
         ce("option",{value:"vat"},"Sprzeda\u017cowa"),
         ce("option",{value:"zakup"},"Zakupowa"),
-        ce("option",{value:"proforma"},"Pro forma")),
+        ce("option",{value:"proforma"},"Pro forma"),
+        ce("option",{value:"eko"},"EKO (gotówkowe)")),
       ce("button",{onClick:p.onNew,style:btnPrimary},"+ Nowa faktura"),
       ce("button",{onClick:p.onSettings,style:btnSecondary},"\u2699\uFE0F Ustawienia"),
       ce("button",{onClick:function(){setSyncOpen(!syncOpen);},
@@ -904,7 +923,7 @@ function InvoiceList(p){
           );
         };
         var isPurchase=inv.doc_type==="zakup";
-        var dirLabel=isPurchase?"📥 Zakupowa":(inv.doc_type==="proforma"?"📄 Proforma":"📤 Sprzedażowa");
+        var dirLabel=isPurchase?"📥 Zakupowa":(inv.doc_type==="proforma"?"📄 Proforma":inv.doc_type==="eko"?"🟢 EKO":"📤 Sprzedażowa");
         var snap=inv.seller_snapshot||{};
         // Fallback do buyer_* dla starych rekordów sprzed wprowadzenia seller_snapshot przy synchronizacji
         var contragentName=isPurchase?(snap.name||inv.buyer_name||"—"):(inv.buyer_name||"—");
@@ -1013,7 +1032,7 @@ function buildInvoicePDFHtml(inv,settings){
   var snap=inv.seller_snapshot||{};
   var fmtM=function(v){return (+(v||0)).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});};
   var fmtD=function(d){if(!d)return "\u2014";var p=d.split("-");return p[2]+"."+p[1]+"."+p[0];};
-  var docLabel={vat:"Faktura",zakup:"Faktura zakupowa",proforma:"Faktura Proforma",zaliczka:"Faktura Zaliczkowa",korekta:"Faktura Koryguj\u0105ca"}[inv.doc_type]||"Faktura";
+  var docLabel={vat:"Faktura",zakup:"Faktura zakupowa",proforma:"Faktura Proforma",zaliczka:"Faktura Zaliczkowa",korekta:"Faktura Koryguj\u0105ca",eko:"Dokument EKO"}[inv.doc_type]||"Faktura";
 
   // Sprzedawca/Nabywca: dla faktur zakupowych to my (Porter Design) jeste\u015bmy nabywc\u0105,
   // a kontrahent zewn\u0119trzny (zapisany w seller_snapshot przy synchronizacji z KSeF) jest sprzedawc\u0105.
@@ -1185,6 +1204,7 @@ function InvoiceDetailView(p){
 
   var isIssued=currentInv.status==="issued";
   var isDraftInv=currentInv.status==="draft";
+  var isEko=currentInv.doc_type==="eko";
   var ksefOk=currentInv.ksef_status==="confirmed";
   var ksefSent=currentInv.ksef_status==="sent"||currentInv.ksef_status==="pending";
   var ksefError=currentInv.ksef_status==="error";
@@ -1314,8 +1334,8 @@ function InvoiceDetailView(p){
           "\uD83D\uDCE7 Otw\u00f3rz w poczcie")
       ),
       ce("div",{style:{height:1,background:"var(--bd2)",margin:"14px 0"}}),
-      // KSeF
-      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}},
+      // KSeF (ukryty dla dok. EKO)
+      !isEko&&ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}},
         ce("div",null,
           ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:3}},"Status KSeF"),
           ce("div",{style:{fontSize:12,color:ksefStatusColor,fontWeight:500}},ksefStatusLabel),
