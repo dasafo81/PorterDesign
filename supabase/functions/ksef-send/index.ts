@@ -1,3 +1,5 @@
+import rs from "https://esm.sh/jsrsasign@11.1.0?bundle";
+
 const SB_URL = Deno.env.get("SB_URL") || "https://rkcidwusjzvfwxszotnb.supabase.co";
 
 function cors() {
@@ -125,81 +127,29 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
 
 // Importuje klucz publiczny RSA z certyfikatu X.509 (DER lub PEM).
 // Deno wspiera "x509" jako format importu od v1.33 — używamy tego zamiast ręcznego ASN.1.
-async function importPublicKeyFromCert(certInput: string): Promise<CryptoKey> {
-  // Normalizuj do czystego base64 DER
-  let b64 = certInput.trim();
-  if (b64.startsWith("-----")) {
-    b64 = b64.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
-  }
-  const derBuf = b64ToBuf(b64).buffer;
-
-  // Próba 1: importKey("x509") — Deno >= 1.33
-  try {
-    return await crypto.subtle.importKey(
-      "x509" as "spki",   // Deno akceptuje "x509" choć TS tego nie wie
-      derBuf,
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      false, ["encrypt"]
-    );
-  } catch (_e1) {
-    // Próba 2: wyciągnij SPKI ręcznie przez szukanie BIT STRING z kluczem RSA
-    // Struktura X.509 TBSCertificate zawiera subjectPublicKeyInfo jako SEQUENCE
-    // Szukamy sekwencji zawierającej OID rsaEncryption i następującego po niej BIT STRING
-    const der = new Uint8Array(derBuf);
-
-    // Znajdź SubjectPublicKeyInfo: szukamy SEQUENCE (0x30) zawierającej OID rsaEncryption
-    // potem BIT STRING (0x03) z właściwym kluczem
-    // Podejście: znajdź OID rsaEncryption, cofnij się do obejmującego SEQUENCE
-    const rsaOid = [0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01];
-
-    let oidPos = -1;
-    outer: for (let i = 0; i < der.length - rsaOid.length; i++) {
-      for (let j = 0; j < rsaOid.length; j++) {
-        if (der[i+j] !== rsaOid[j]) continue outer;
-      }
-      oidPos = i;
-      break;
-    }
-    if (oidPos < 0) throw new Error("OID rsaEncryption nie znaleziony w certyfikacie");
-
-    // OID jest poprzedzony tag(0x06) + len — cofamy się do SEQUENCE algorithmIdentifier
-    // AlgorithmIdentifier SEQUENCE zaczyna się 2+ bajty przed OID tagiem (0x06)
-    // Szukamy wstecz pierwszego 0x30 który jest SEQUENCE obejmującym AlgorithmIdentifier + BIT STRING
-    // To jest SubjectPublicKeyInfo
-    let spkiStart = oidPos - 4; // przed: 0x30 len 0x06 len [OID]
-    while (spkiStart > 0 && der[spkiStart] !== 0x30) spkiStart--;
-
-    // Odczytaj długość tego SEQUENCE
-    function readLen(pos: number): { len: number; headerSize: number } {
-      const b = der[pos];
-      if (b < 0x80) return { len: b, headerSize: 1 };
-      const n = b & 0x7f;
-      let l = 0;
-      for (let k = 0; k < n; k++) l = (l << 8) | der[pos+1+k];
-      return { len: l, headerSize: 1 + n };
-    }
-
-    const { len, headerSize } = readLen(spkiStart + 1);
-    const spkiBuf = der.slice(spkiStart, spkiStart + 1 + headerSize + len).buffer;
-
-    return await crypto.subtle.importKey(
-      "spki", spkiBuf,
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      false, ["encrypt"]
-    );
-  }
-}
-
 async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise<CryptoKey> {
   const r = await fetch(`${baseUrl}/security/public-key-certificates`, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
   });
   if (!r.ok) throw new Error(`GET /security/public-key-certificates HTTP ${r.status}: ${(await r.text()).slice(0,300)}`);
   const data = await r.json();
-  const certs: Array<{certificate: string; active?: boolean}> = data.certificates || data.items || (Array.isArray(data) ? data : [data]);
-  const cert = certs.find(c => c.active !== false) || certs[0];
-  if (!cert?.certificate) throw new Error(`Brak certyfikatu w odpowiedzi KSeF: ${JSON.stringify(data).slice(0,200)}`);
-  return await importPublicKeyFromCert(cert.certificate);
+  const certs: Array<Record<string,string>> = data.certificates || data.items || (Array.isArray(data) ? data : [data]);
+  const cert = certs.find(c => String(c.usage||"").includes("KsefTokenEncryption") || c.type === "KsefTokenEncryption") || certs[0];
+  if (!cert) throw new Error(`Brak certyfikatu: ${JSON.stringify(data).slice(0,200)}`);
+  const certB64 = String(cert.certificate || cert.publicKey || cert.value || "");
+  const certPem = "-----BEGIN CERTIFICATE-----\n" +
+    certB64.replace(/-----[^-]+-----/g,"").replace(/\s+/g,"").match(/.{1,64}/g)!.join("\n") +
+    "\n-----END CERTIFICATE-----";
+  const x509 = new rs.X509();
+  x509.readCertPEM(certPem);
+  const pubKeyObj = x509.getPublicKey();
+  const jwk = rs.KEYUTIL.getJWKFromKey(pubKeyObj);
+  return await crypto.subtle.importKey(
+    "jwk",
+    { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RSA-OAEP-256", ext: true },
+    { name: "RSA-OAEP", hash: "SHA-256" },
+    false, ["encrypt"]
+  );
 }
 
 async function encryptInvoice(xmlBytes: Uint8Array, aesKey: CryptoKey, iv: Uint8Array): Promise<Uint8Array> {
