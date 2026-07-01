@@ -264,17 +264,6 @@ Deno.serve(async (req: Request) => {
     // Bez pollingu — status sprawdzany oddzielnie przez ksef-status
     // (Edge Functions mają ~15s limit, polling powodował EarlyDrop)
 
-        await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
-              method: "PATCH", headers: sbH,
-              body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg, ksef_number: sessionRef }),
-            });
-            return jsonRes({ error: "KSeF odrzucił fakturę", detail: errMsg, sessionRef }, 502);
-          }
-        }
-      } catch { /* kontynuuj */ }
-    }
-
-    // 9. Zapisz wynik
     await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
       method: "PATCH", headers: sbH,
       body: JSON.stringify({
