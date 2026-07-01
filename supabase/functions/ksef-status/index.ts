@@ -86,7 +86,26 @@ Deno.serve(async (req: Request) => {
           ksef_error: null,
         }),
       });
+      // Zamknij sesję online w KSeF (już przetworzone)
+      await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/close`, {
+        method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => {});
       return jsonRes({ ok: true, ksefStatus: "confirmed", ksefNumber: first.ksefReferenceNumber });
+    }
+
+    // Sprawdź czy sesja jest w stanie umożliwiającym przetworzenie
+    const statusCode = first?.status?.code;
+    if (statusCode && statusCode !== 100 && statusCode !== 150 && statusCode !== 200) {
+      const errMsg = first.status.description
+        + (first.status.details ? ": " + first.status.details.join("; ") : "");
+      await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
+        method: "PATCH", headers: sbH,
+        body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg.slice(0,500) }),
+      });
+      await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/close`, {
+        method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
+      }).catch(() => {});
+      return jsonRes({ error: "KSeF odrzucił fakturę", detail: errMsg, statusCode }, 502);
     }
 
     if (first?.processingCode && first.processingCode !== 200 && first.processingCode !== 100) {
