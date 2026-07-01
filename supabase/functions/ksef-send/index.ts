@@ -311,12 +311,40 @@ Deno.serve(async (req: Request) => {
       method: "POST", headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
     }).catch(() => {});
 
-    // 8. Zapisz wynik
+    // 8. Polling numeru KSeF faktury (KSeF 2.0 async — max 10 prób co 2s)
+    let ksefInvoiceNumber = "";
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const statusR = await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/invoices`, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+        });
+        if (statusR.ok) {
+          const statusData = await statusR.json();
+          const invoiceList = statusData.invoices || statusData.items || [];
+          const first = invoiceList[0];
+          if (first?.ksefReferenceNumber) {
+            ksefInvoiceNumber = first.ksefReferenceNumber;
+            break;
+          }
+          if (first?.processingCode && first.processingCode !== 200) {
+            const errMsg = first.processingDescription || `processingCode: ${first.processingCode}`;
+            await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
+              method: "PATCH", headers: sbH,
+              body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg, ksef_number: sessionRef }),
+            });
+            return jsonRes({ error: "KSeF odrzucił fakturę", detail: errMsg, sessionRef }, 502);
+          }
+        }
+      } catch { /* kontynuuj */ }
+    }
+
+    // 9. Zapisz wynik
     await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
       method: "PATCH", headers: sbH,
       body: JSON.stringify({
-        ksef_status: invoiceRefNumber ? "confirmed" : "sent",
-        ksef_number: invoiceRefNumber || null,
+        ksef_status: ksefInvoiceNumber ? "confirmed" : "sent",
+        ksef_number: ksefInvoiceNumber || sessionRef,
         ksef_mode: "online",
         ksef_sent_at: new Date().toISOString(),
         ksef_error: null,
@@ -324,7 +352,7 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
-    return jsonRes({ ok: true, ksefStatus: "sent", referenceNumber: invoiceRefNumber, sessionRef, xmlLength: xml.length });
+    return jsonRes({ ok: true, ksefStatus: ksefInvoiceNumber ? "confirmed" : "sent", ksefNumber: ksefInvoiceNumber, sessionRef, xmlLength: xml.length });
 
   } catch(e) {
     const msg = e instanceof Error ? e.message : String(e);
