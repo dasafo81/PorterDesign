@@ -134,7 +134,7 @@ async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise
   if (!r.ok) throw new Error(`GET /security/public-key-certificates HTTP ${r.status}: ${(await r.text()).slice(0,300)}`);
   const data = await r.json();
   const certs: Array<Record<string,string>> = data.certificates || data.items || (Array.isArray(data) ? data : [data]);
-  const cert = certs.find(c => String(c.usage||"").includes("KsefTokenEncryption") || c.type === "KsefTokenEncryption") || certs[0];
+  const cert = certs.find(c => String(c.usage||"").includes("SymmetricKeyEncryption") || c.type === "SymmetricKeyEncryption") || certs.find(c => String(c.usage||"").includes("KsefTokenEncryption")) || certs[0];
   if (!cert) throw new Error(`Brak certyfikatu: ${JSON.stringify(data).slice(0,200)}`);
   const certB64 = String(cert.certificate || cert.publicKey || cert.value || "");
   const certPem = "-----BEGIN CERTIFICATE-----\n" +
