@@ -1030,7 +1030,7 @@ function buildInvoicePDFHtml(inv,settings){
       partyTop={
         label:"Sprzedawca:",
         name:inv.buyer_name||"",
-        nip:(inv.buyer_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
+        nip:(inv.buyer_nip||"").replace(/[\s\-]/g,""),
         street:inv.buyer_address||"",
         postal:"", city:inv.buyer_city||""
       };
@@ -1045,7 +1045,7 @@ function buildInvoicePDFHtml(inv,settings){
       partyTop={
         label:"Sprzedawca:",
         name:snap.name||"",
-        nip:(snap.nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
+        nip:(snap.nip||"").replace(/[\s\-]/g,""),
         street:snap.address||"",
         postal:"", city:snap.city||""
       };
@@ -1061,7 +1061,7 @@ function buildInvoicePDFHtml(inv,settings){
     partyTop={
       label:"Sprzedawca:",
       name:snap.name||s.seller_name||"",
-      nip:(snap.nip||s.seller_nip||"").replace(/(\d{3})(\d{2})(\d{2})(\d{3})/,"$1-$2-$3-$4"),
+      nip:(snap.nip||s.seller_nip||"").replace(/[\s\-]/g,""),
       street:snap.address||s.seller_address||"",
       postal:snap.address?"":s.seller_postal||"", city:snap.address?(snap.city||""):s.seller_city||""
     };
@@ -1166,7 +1166,7 @@ function buildInvoicePDFHtml(inv,settings){
     +"</table></div>"
     +"<div class='slownie'><strong>S\u0142ownie:</strong> "+numberToWordsPL(gross)+"</div>"
     +(inv.notes?"<div class='notes-box'>"+String(inv.notes)+"</div>":"")
-    +(inv.kasowa?"<div class='kasowa'>Metoda Kasowa</div>":"")
+    +(inv.kasowa===true||inv.kasowa==="true"?"<div class='kasowa'>Metoda Kasowa</div>":"")
     +(isZakup?"":"<div class='sign-name'>Paulina Porter</div>"
     +"<div class='sign-block'>"
     +"<div class='sign'>Osoba uprawniona do odbioru</div>"
