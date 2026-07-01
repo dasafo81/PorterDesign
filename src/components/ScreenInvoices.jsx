@@ -282,7 +282,7 @@ function InvoiceEditor(p){
     return null;
   }
 
-  function save(andIssue){
+  function save(){
     var vErr=validate();
     if(vErr){setErr(vErr);return;}
     setBusy(true); setErr(null);
@@ -305,8 +305,6 @@ function InvoiceEditor(p){
       }
     };
 
-    var doIssue=andIssue&&isNew;
-
     var prom;
     if(isNew){
       prom=sbApi.addInvoice(Object.assign({status:"draft"},header));
@@ -326,17 +324,7 @@ function InvoiceEditor(p){
         };
       });
       return sbApi.replaceInvoiceItems(invId,itemsToSave).then(function(){
-        if(doIssue){
-          // Nadaj numer
-          var period=periodKey(settings.numbering_reset||"monthly",issueDate);
-          return sbApi.nextInvoiceNumber(docType,period).then(function(nr){
-            var num=formatNumber(settings.numbering_format,nr,issueDate);
-            return sbApi.updateInvoice(invId,{status:"issued",number:num}).then(function(){
-              return Object.assign({},inv,{id:invId,number:num,status:"issued"});
-            });
-          });
-        }
-        return Object.assign({},inv,{id:invId});
+        return Object.assign({},inv,{id:invId,status:"draft"});
       });
     })
     .then(function(result){
@@ -496,11 +484,8 @@ function InvoiceEditor(p){
     // Przyciski zapisu
     ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}},
       ce("button",{onClick:p.onClose,style:btnSecondary,disabled:busy},"Anuluj"),
-      ce("button",{onClick:function(){save(false);},style:btnSecondary,disabled:busy},
-        busy?"\u23F3 Zapisuję...":"Zapisz szkic"),
-      (isNew||isDraft)&&ce("button",{onClick:function(){save(true);},
-        style:Object.assign({},btnPrimary,{background:"#059669"}),disabled:busy},
-        busy?"\u23F3 Wystawiam...":"\u2713 Wystaw fakturę")
+      ce("button",{onClick:function(){save();},style:btnPrimary,disabled:busy},
+        busy?"\u23F3 Zapisuję...":"\uD83D\uDCBE Zapisz szkic")
     )
   );
 }
@@ -1139,11 +1124,13 @@ function buildInvoicePDFHtml(inv,settings){
     +".slownie{margin-top:4mm;text-align:right;font-size:11px;}"
     +".notes-box{margin-top:6mm;padding:8px 12px;background:#f7f7f7;border-radius:4px;font-size:10px;color:#444;}"
     +".kasowa{margin-top:10mm;font-size:11px;}"
+    +".watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:88px;font-weight:900;color:rgba(0,0,0,0.06);pointer-events:none;z-index:0;letter-spacing:6px;white-space:nowrap;}"
     +".sign-name{text-align:right;margin-top:6mm;font-size:13px;}"
     +".sign-block{display:flex;justify-content:space-between;margin-top:16mm;}"
     +".sign{width:200px;border-top:1px solid #1a1a1a;padding-top:4px;font-size:10px;color:#444;text-align:center;}"
     +"@media print{body{padding:12mm 10mm;} @page{size:A4;margin:0;}}"
     +"</style></head><body>"
+    +(inv.status==="draft"?"<div class='watermark'>SZKIC</div>":"")
     +"<div class='top'>"
     +"<div class=\'logo\'><img src=\'" + "https://rkcidwusjzvfwxszotnb.supabase.co/storage/v1/object/public/assets/porter-design-assets/logo.png?v=2" + "\'  alt=\'Porter Design\' style=\'height:54px;width:auto;display:block;\'></div>"
     +"<div style='text-align:center;flex:1;'><h1>"+docLabel+"</h1></div>"
@@ -1194,8 +1181,11 @@ function InvoiceDetailView(p){
   var [ksefMsg,setKsefMsg]=useState(null);
   var [ksefErr,setKsefErr]=useState(null);
   var [currentInv,setCurrentInv]=useState(p.invoice||{});
+  var [issueBusy,setIssueBusy]=useState(false);
+  var [issueErr,setIssueErr]=useState(null);
 
   var isIssued=currentInv.status==="issued";
+  var isDraftInv=currentInv.status==="draft";
   var ksefOk=currentInv.ksef_status==="confirmed";
   var ksefSent=currentInv.ksef_status==="sent"||currentInv.ksef_status==="pending";
   var ksefError=currentInv.ksef_status==="error";
@@ -1207,6 +1197,26 @@ function InvoiceDetailView(p){
     w.document.write(html);
     w.document.close();
     setTimeout(function(){w.print();},600);
+  }
+
+  function issueInvoice(){
+    if(!confirm("Wystawi\u0107 faktur\u0119? Zostanie nadany numer i status zmieni si\u0119 na \"wystawiona\".")) return;
+    setIssueBusy(true); setIssueErr(null);
+    var settings=p.settings||{};
+    var period=periodKey(settings.numbering_reset||"monthly",currentInv.issue_date||todayISO());
+    sbApi.nextInvoiceNumber(currentInv.doc_type||"vat",period)
+      .then(function(nr){
+        var num=formatNumber(settings.numbering_format,nr,currentInv.issue_date||todayISO());
+        return sbApi.updateInvoice(currentInv.id,{status:"issued",number:num})
+          .then(function(){ return num; });
+      })
+      .then(function(num){
+        return sbApi.getInvoice(currentInv.id).then(function(full){
+          setCurrentInv(full||Object.assign({},currentInv,{status:"issued",number:num}));
+        });
+      })
+      .catch(function(e){ setIssueErr(e.message||"B\u0142\u0105d wystawiania"); })
+      .finally(function(){ setIssueBusy(false); });
   }
 
   function sendToKsef(){
@@ -1246,16 +1256,37 @@ function InvoiceDetailView(p){
       ),
       ce("button",{onClick:p.onEdit,style:btnSecondary},"\u270F\uFE0F Edytuj")
     ),
-    // Baner sukcesu
-    ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:12,
-      padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}},
-      ce("span",{style:{fontSize:24}},"\u2705"),
-      ce("div",null,
-        ce("div",{style:{fontSize:14,fontWeight:700,color:"#065f46"}},"Faktura wystawiona"),
-        ce("div",{style:{fontSize:12,color:"#047857",marginTop:2}},
-          "Pobierz PDF i wy\u015blij klientowi. Wy\u015blij do KSeF dopiero po akceptacji przez klienta.")
-      )
-    ),
+    // Baner: szkic lub wystawiona
+    isDraftInv
+      ? ce("div",{style:{background:"#fef9c3",border:"1px solid #fde68a",borderRadius:12,
+          padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",
+          justifyContent:"space-between",gap:12,flexWrap:"wrap"}},
+          ce("div",{style:{display:"flex",alignItems:"center",gap:12}},
+            ce("span",{style:{fontSize:24}},"\uD83D\uDCC4"),
+            ce("div",null,
+              ce("div",{style:{fontSize:14,fontWeight:700,color:"#78350f"}},"Szkic faktury"),
+              ce("div",{style:{fontSize:12,color:"#92400e",marginTop:2}},
+                "PDF ze stemplem SZKIC mo\u017cesz pobra\u0107 i przes\u0142a\u0107 klientowi. Po akceptacji — wystaw faktur\u0119.")
+            )
+          ),
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}},
+            issueErr&&ce("div",{style:{fontSize:12,color:"#b91c1c",marginBottom:4}},issueErr),
+            ce("button",{onClick:issueInvoice,disabled:issueBusy,
+              style:{padding:"11px 24px",borderRadius:9,border:"none",whiteSpace:"nowrap",
+                background:issueBusy?"#9ca3af":"#059669",color:"#fff",
+                cursor:issueBusy?"not-allowed":"pointer",fontSize:13,fontWeight:700}},
+              issueBusy?"\u23F3 Wystawiam...":"\u2705 Wystaw faktur\u0119")
+          )
+        )
+      : ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:12,
+          padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}},
+          ce("span",{style:{fontSize:24}},"\u2705"),
+          ce("div",null,
+            ce("div",{style:{fontSize:14,fontWeight:700,color:"#065f46"}},"Faktura wystawiona"),
+            ce("div",{style:{fontSize:12,color:"#047857",marginTop:2}},
+              "Pobierz PDF i wy\u015blij klientowi, nast\u0119pnie wy\u015blij do KSeF.")
+          )
+        ),
     // Akcje
     ce("div",{style:Object.assign({},card,{marginBottom:16})},
       ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
@@ -1357,12 +1388,9 @@ export function ScreenInvoices(p){
 
   function onSaved(result){
     sbApi.getInvoices().then(function(data){ setInvoices(data||[]); });
-    if(result&&result.status==="issued"){
-      setDetailInv(result);
-      setView("detail");
-    } else {
-      setView("list");
-    }
+    sbApi.getInvoice(result.id).then(function(full){
+      setDetailInv(full||result); setView("detail");
+    }).catch(function(){ setDetailInv(result); setView("detail"); });
   }
   function onSettingsSaved(newSettings){
     setSettings(newSettings);
