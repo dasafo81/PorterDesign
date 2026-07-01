@@ -99,11 +99,11 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     <SystemInfo>PorterDesign</SystemInfo>
   </Naglowek>
   <Podmiot1>
-    <DaneIdentyfikacyjne><NIP>${escXml(sellerNip)}</NIP><PelnaNazwa>${escXml(s.name||settings.seller_name||"")}</PelnaNazwa></DaneIdentyfikacyjne>
+    <DaneIdentyfikacyjne><NIP>${escXml(sellerNip)}</NIP><Nazwa>${escXml(s.name||settings.seller_name||"")}</Nazwa></DaneIdentyfikacyjne>
     <Adres><KodKraju>PL</KodKraju><AdresL1>${escXml((s.address||settings.seller_address||"")+" "+(s.postal||settings.seller_postal||""))}</AdresL1><AdresL2>${escXml(s.city||settings.seller_city||"")}</AdresL2></Adres>
   </Podmiot1>
   <Podmiot2>
-    <DaneIdentyfikacyjne>${buyerNip?`<NIP>${escXml(buyerNip)}</NIP>`:""}<PelnaNazwa>${escXml(inv.buyer_name||"")}</PelnaNazwa></DaneIdentyfikacyjne>
+    <DaneIdentyfikacyjne>${buyerNip?`<NIP>${escXml(buyerNip)}</NIP>`:""}<Nazwa>${escXml(inv.buyer_name||"")}</Nazwa></DaneIdentyfikacyjne>
     <Adres><KodKraju>PL</KodKraju><AdresL1>${escXml((inv.buyer_address||"")+" "+(inv.buyer_postal||""))}</AdresL1><AdresL2>${escXml(inv.buyer_city||"")}</AdresL2></Adres>
   </Podmiot2>
   <Fa>
