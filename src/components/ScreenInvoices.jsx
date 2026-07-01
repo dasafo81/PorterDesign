@@ -1206,7 +1206,10 @@ function InvoiceDetailView(p){
     var period=periodKey(settings.numbering_reset||"monthly",currentInv.issue_date||todayISO());
     sbApi.nextInvoiceNumber(currentInv.doc_type||"vat",period)
       .then(function(nr){
-        var num=formatNumber(settings.numbering_format,nr,currentInv.issue_date||todayISO());
+        // PostgREST rpc zwraca int, [int] lub null — normalizujemy do liczby
+        var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
+        if(nrNum<=0) throw new Error("Nie uda\u0142o si\u0119 pobra\u0107 numeru faktury (wynik: "+JSON.stringify(nr)+"). Sprawd\u017a po\u0142\u0105czenie z baz\u0105.");
+        var num=formatNumber(settings.numbering_format,nrNum,currentInv.issue_date||todayISO());
         return sbApi.updateInvoice(currentInv.id,{status:"issued",number:num})
           .then(function(){ return num; });
       })
@@ -1397,9 +1400,16 @@ export function ScreenInvoices(p){
     setView("list");
   }
   function onDelete(id){
+    var inv=invoices.find(function(i){return i.id===id;});
     sbApi.deleteInvoice(id)
-      .then(function(){ setInvoices(function(prev){return prev.filter(function(i){return i.id!==id;});}); })
-      .catch(function(e){ alert("Błąd usuwania: "+e.message); });
+      .then(function(){
+        setInvoices(function(prev){return prev.filter(function(i){return i.id!==id;});});
+        if(inv&&inv.status==="issued"&&inv.number&&inv.issue_date&&settings){
+          var period=periodKey(settings.numbering_reset||"monthly",inv.issue_date);
+          sbApi.decrementInvoiceCounter(inv.doc_type||"vat",period).catch(function(){});
+        }
+      })
+      .catch(function(e){ alert("B\u0142\u0105d usuwania: "+e.message); });
   }
 
   // Brak ustawień — banner informacyjny
