@@ -176,7 +176,16 @@ export function ModalDeal(p){
     var hh=hasTime?pad(baseDate.getHours()):"09";
     var mm=hasTime?pad(baseDate.getMinutes()):"00";
     var endHH=pad(Math.min(parseInt(hh,10)+1,23));
-    var calId=calIdOvr||installerCalId||(calList.find(function(c){return c.primary;})||calList[0]).id;
+    // Auto-dopasuj kalendarz montazysta po nazwie
+    var autoCalId=(function(){
+      if(calIdOvr)return calIdOvr;
+      if(installerName){
+        var matched=calList.find(function(c){return c.summary&&c.summary.toLowerCase().indexOf(installerName.toLowerCase())>=0;});
+        if(matched)return matched.id;
+      }
+      return (calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
+    })();
+    var calId=autoCalId;
     setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+mm,note:"",calId:calId,saving:false,onSave:onSave||null});
   }
 
@@ -341,13 +350,7 @@ export function ModalDeal(p){
                 INSTALLER_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
               )
             ),
-            calList.length>0?ce("div",{style:{flex:1}},
-              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"KALENDARZ"),
-              ce("select",{value:installerCalId,onChange:function(ev){setInstallerCalId(ev.target.value);},style:INP},
-                ce("option",{value:""},"— główny —"),
-                calList.map(function(c){return ce("option",{key:c.id,value:c.id},c.summary);})
-              )
-            ):null
+            null
           ),
           ce(CheckRow,{checked:installDone,onChange:setInstallDone,label:"Montaż zrealizowany",sublabel:delivDate?("Zaplanowany: "+fmtDate(delivDate)+(installerName?" — "+installerName:"")):null}),
 
@@ -376,13 +379,7 @@ export function ModalDeal(p){
                   INSTALLER_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
                 )
               ),
-              calList.length>0?ce("div",{style:{flex:1}},
-                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"KALENDARZ"),
-                ce("select",{value:installerCalId2,onChange:function(ev){setInstallerCalId2(ev.target.value);},style:INP},
-                  ce("option",{value:""},"— główny —"),
-                  calList.map(function(c){return ce("option",{key:c.id,value:c.id},c.summary);})
-                )
-              ):null
+     null
             )
           )
         ),
@@ -484,7 +481,7 @@ export function ModalDeal(p){
             var primaryCal=(calList.find(function(c){return c.primary;})||calList[0]||{});
             var instCal=calList.find(function(c){return c.id===gcalDraft.calId;});
             var labels=[];
-            if(instCal&&instCal.id!==primaryCal.id)labels.push(instCal.summary||gcalDraft.calId);
+            if(instCal&&instCal.id!==primaryCal.id)labels.push(instCal.summary||installerName||gcalDraft.calId);
             labels.push(primaryCal.summary||"primary");
             return labels.join(" + ");
           })()
