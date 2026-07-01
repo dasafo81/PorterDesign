@@ -1209,6 +1209,31 @@ function InvoiceDetailView(p){
   var ksefSent=currentInv.ksef_status==="sent"||currentInv.ksef_status==="pending";
   var ksefError=currentInv.ksef_status==="error";
 
+  // Auto-polling statusu KSeF co 10s gdy faktura jest w kolejce
+  useEffect(function(){
+    if(!ksefSent||!currentInv.id) return;
+    var interval=setInterval(function(){
+      sbApi.getInvoice(currentInv.id).then(function(fresh){
+        if(!fresh) return;
+        setCurrentInv(fresh);
+        if(fresh.ksef_status==="confirmed"){
+          setKsefMsg("✅ Potwierdzona w KSeF. Nr KSeF: "+(fresh.ksef_number||""));
+          clearInterval(interval);
+        }
+      }).catch(function(){});
+    },10000);
+    return function(){ clearInterval(interval); };
+  },[ksefSent,currentInv.id]);
+
+  function refreshKsefStatus(){
+    setKsefBusy(true);
+    sbApi.getInvoice(currentInv.id).then(function(fresh){
+      if(fresh) setCurrentInv(fresh);
+      if(fresh&&fresh.ksef_status==="confirmed")
+        setKsefMsg("✅ Potwierdzona w KSeF. Nr KSeF: "+(fresh.ksef_number||""));
+    }).catch(function(){}).finally(function(){ setKsefBusy(false); });
+  }
+
   function openPDF(){
     var html=buildInvoicePDFHtml(currentInv,p.settings||{});
     var w=window.open("","_blank");
@@ -1349,7 +1374,11 @@ function InvoiceDetailView(p){
             ?{border:"1px solid var(--bd2)",background:"var(--bg2)",color:"var(--t3)",cursor:"not-allowed"}
             :{border:"none",background:"#1d4ed8",color:"#fff",cursor:"pointer"},
             {borderRadius:9,padding:"10px 20px",fontSize:13,fontWeight:600})},
-          ksefBusy?"\u23F3 Wysy\u0142am...":ksefSent?"\u23F3 W kolejce...":"\uD83D\uDCE4 Wy\u015blij do KSeF")
+          ksefBusy?"\u23F3 Wysy\u0142am...":ksefSent?"\u23F3 W kolejce...":"\uD83D\uDCE4 Wy\u015blij do KSeF"),
+        ksefSent&&ce("button",{onClick:refreshKsefStatus,disabled:ksefBusy,
+          style:{marginTop:6,padding:"7px 14px",borderRadius:8,border:"1px solid var(--bd2)",
+            background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:12,fontWeight:500}},
+          "\uD83D\uDD04 Sprawdź status KSeF")
       ),
       ksefMsg&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"#d1fae5",
         borderRadius:8,fontSize:12,color:"#065f46"}},ksefMsg),
