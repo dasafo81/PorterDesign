@@ -134,8 +134,18 @@ async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise
   if (!r.ok) throw new Error(`GET /security/public-key-certificates HTTP ${r.status}: ${(await r.text()).slice(0,300)}`);
   const data = await r.json();
   const certs: Array<Record<string,string>> = data.certificates || data.items || (Array.isArray(data) ? data : [data]);
-  const cert = certs.find(c => String(c.usage||"").includes("SymmetricKeyEncryption") || c.type === "SymmetricKeyEncryption") || certs.find(c => String(c.usage||"").includes("KsefTokenEncryption")) || certs[0];
-  if (!cert) throw new Error(`Brak certyfikatu: ${JSON.stringify(data).slice(0,200)}`);
+  const cert = certs.find(c => {
+    const usage = c.usage;
+    if (Array.isArray(usage)) return usage.some((u: string) => String(u).includes("SymmetricKeyEncryption"));
+    return String(usage||"").includes("SymmetricKeyEncryption") || c.type === "SymmetricKeyEncryption";
+  }) || certs[0];
+  if (!cert) {
+    // Debug: pokaż wszystkie dostępne usage
+    const availableUsages = certs.map(c => ({ usage: c.usage, type: c.type, hasCert: !!(c.certificate || c.publicKey || c.value) }));
+    throw new Error(`Brak certyfikatu SymmetricKeyEncryption. Dostępne: ${JSON.stringify(availableUsages).slice(0,400)}`);
+  }
+  // Debug: log wybrany usage do response (tymczasowo)
+  console.log("Wybrany cert usage:", cert.usage, "type:", cert.type);
   const certB64 = String(cert.certificate || cert.publicKey || cert.value || "");
   const certPem = "-----BEGIN CERTIFICATE-----\n" +
     certB64.replace(/-----[^-]+-----/g,"").replace(/\s+/g,"").match(/.{1,64}/g)!.join("\n") +
