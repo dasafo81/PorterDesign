@@ -1200,7 +1200,7 @@ function InvoiceDetailView(p){
   }
 
   function issueInvoice(){
-    if(!confirm("Wystawi\u0107 faktur\u0119? Zostanie nadany numer i status zmieni si\u0119 na \"wystawiona\".")) return;
+    if(!confirm("Wystawi\u0107 faktur\u0119? Zostanie nadany numer i status zmieni si\u0119 na wystawiona.")) return;
     setIssueBusy(true); setIssueErr(null);
     var settings=p.settings||{};
     var period=periodKey(settings.numbering_reset||"monthly",currentInv.issue_date||todayISO());
