@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
 
   // Zapytaj KSeF o status faktury w sesji
   try {
-    const statusR = await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/invoices`, {
+    const statusR = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}/invoices`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
     });
     if (!statusR.ok) {
