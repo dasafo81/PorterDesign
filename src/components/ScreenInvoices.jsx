@@ -439,8 +439,8 @@ function InvoiceEditor(p){
       ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83D\uDCCB Pozycje"),
 
       // Nagłówki kolumn
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 60px 70px 80px 70px 90px 90px 28px",gap:6,marginBottom:4}},
-        ["Nazwa towaru / usługi","Ilość","Jm","Cena netto","VAT","Netto","Brutto",""].map(function(h,i){
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 60px 70px 80px 80px 70px 90px 90px 28px",gap:6,marginBottom:4}},
+        ["Nazwa towaru / usługi","Ilość","Jm","Cena netto","Cena brutto","VAT","Netto","Brutto",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",textAlign:i>=5?"right":"left"}},h);
         })
       ),
