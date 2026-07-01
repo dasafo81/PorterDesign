@@ -372,7 +372,7 @@ function InvoiceEditor(p){
             PAYMENT_METHODS.map(function(m){return ce("option",{key:m,value:m},m);})),
           ce("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"var(--t2)",cursor:"pointer",userSelect:"none",whiteSpace:"nowrap"}},
             ce("input",{type:"checkbox",checked:kasowa,onChange:function(e){setKasowa(e.target.checked);},style:{width:15,height:15,cursor:"pointer"}}),
-            "Metoda kasowa"))))
+            "Metoda kasowa")))
     ),
 
     // ── SEKCJA: Nabywca ──
