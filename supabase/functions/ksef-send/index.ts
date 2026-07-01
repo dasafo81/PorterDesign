@@ -144,6 +144,10 @@ async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise
     const debug = certs.map(c => ({ usage: c.usage, hasCert: !!(c.certificate) }));
     throw new Error(`Brak cert SymmetricKeyEncryption. Dostępne: ${JSON.stringify(debug).slice(0,300)}`);
   }
+  // DEBUG: zapisz strukturę cert do środowiska żeby zobaczyć
+  console.log("KSeF cert keys:", Object.keys(cert));
+  console.log("KSeF cert usage:", cert.usage);
+  console.log("KSeF cert.certificate first 100 chars:", String(cert.certificate||"").slice(0,100));
   // certificate z KSeF to base64 DER (X.509) - trzeba wyciągnąć SPKI
   // Ale WebCrypto akceptuje X.509 przez "x509" format (Deno >= 1.33)
   const certB64 = String(cert.certificate || "");
