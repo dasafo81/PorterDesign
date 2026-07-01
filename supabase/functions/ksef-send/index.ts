@@ -94,6 +94,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
 <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/" xmlns:etd="http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/01/05/eD/DefinicjeTypy/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Naglowek>
     <KodFormularza kodSystemowy="FA (3)" wersjaSchemy="1-0E">FA</KodFormularza>
+    <WariantFormularza>3</WariantFormularza>
     <DataWytworzeniaFa>${new Date().toISOString().replace("Z","+00:00")}</DataWytworzeniaFa>
     <!-- NrFaKSeF nadawany przez KSeF po przyjęciu, nie wysyłamy -->
     <SystemInfo>PorterDesign</SystemInfo>
