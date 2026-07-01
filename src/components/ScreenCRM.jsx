@@ -92,6 +92,7 @@ export function ModalDeal(p){
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
+  var sgcd=useState(null),gcalDraft=sgcd[0],setGcalDraft=sgcd[1];
 
   var SEWING_HOUSES_OPT=[
     "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
@@ -165,25 +166,68 @@ export function ModalDeal(p){
   }
 
   function addToGcal(title,dateStr,calIdOvr){
-    if(!dateStr){alert("Nie wybrano daty.");return;}
     if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
     if(!calList.length){alert("Brak dost\u0119pnych kalendarzy.");return;}
+    var pad=function(n){return String(n).padStart(2,"0");};
+    var baseDate=dateStr?new Date(dateStr):new Date();
+    var dateVal=baseDate.getFullYear()+"-"+pad(baseDate.getMonth()+1)+"-"+pad(baseDate.getDate());
+    // Czy użytkownik wybrał godzinę inną niż północ
+    var hasTime=dateStr&&dateStr.includes("T")&&!dateStr.endsWith("T00:00")&&!dateStr.endsWith("T00:00:00");
+    var hh=hasTime?pad(baseDate.getHours()):"09";
+    var mm=hasTime?pad(baseDate.getMinutes()):"00";
+    var endHH=pad(Math.min(parseInt(hh,10)+1,23));
     var calId=calIdOvr||installerCalId||(calList.find(function(c){return c.primary;})||calList[0]).id;
-    var startDt=new Date(dateStr);
-    var endDt=new Date(startDt.getTime()+60*60*1000);
-    function pad(n){return String(n).padStart(2,"0");}
-    function fmtLocal(dt){return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate())+"T"+pad(dt.getHours())+":"+pad(dt.getMinutes())+":00";}
+    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+mm,note:"",calId:calId,saving:false});
+  }
+
+  function submitGcalDraft(){
+    var dft=gcalDraft;
+    if(!dft||dft.saving)return;
+    if(!dft.date){alert("Podaj datę.");return;}
+    setGcalDraft(function(d){return Object.assign({},d,{saving:true});});
+    var pad=function(n){return String(n).padStart(2,"0");};
     var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;
-    var event={summary:title+(cl?" — "+cl.name:""),description:notes||"",start:{dateTime:fmtLocal(startDt),timeZone:tz},end:{dateTime:fmtLocal(endDt),timeZone:tz}};
-    fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events",{
-      method:"POST",headers:{"Authorization":"Bearer "+gcalToken,"Content-Type":"application/json"},body:JSON.stringify(event)
-    }).then(function(r){
-      if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);alert("Token odświeżony — spróbuj ponownie.");});}
-      if(!r.ok)return r.text().then(function(t){throw new Error(t);});
-      return r.json();
-    }).then(function(ev){
-      if(ev&&ev.id)alert("Dodano do kalendarza: "+calId);
-    }).catch(function(e){alert("Błąd GCal: "+e.message);});
+    var startDt=new Date(dft.date+"T"+dft.timeFrom+":00");
+    var endDt=new Date(dft.date+"T"+dft.timeTo+":00");
+    if(endDt<=startDt)endDt=new Date(startDt.getTime()+60*60*1000);
+    function fmtLocal(dt){return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate())+"T"+pad(dt.getHours())+":"+pad(dt.getMinutes())+":00";}
+    var clData=cl||null;
+    var descParts=[];
+    if(clData&&clData.name)descParts.push("Klient: "+clData.name);
+    if(clData&&clData.address)descParts.push("Adres: "+clData.address);
+    if(clData&&clData.phone)descParts.push("Tel: "+clData.phone);
+    if(dft.note)descParts.push(dft.note);
+    var eventBody={
+      summary:dft.title+(clData?" — "+clData.name:""),
+      description:descParts.join("\n"),
+      location:clData&&clData.address?clData.address:undefined,
+      start:{dateTime:fmtLocal(startDt),timeZone:tz},
+      end:{dateTime:fmtLocal(endDt),timeZone:tz}
+    };
+    var primaryCal=(calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
+    var targets=[dft.calId];
+    if(dft.calId!==primaryCal)targets.push(primaryCal);
+    function postToCalendar(calId,tok){
+      return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events",{
+        method:"POST",
+        headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
+        body:JSON.stringify(eventBody)
+      }).then(function(r){
+        if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return postToCalendar(calId,fresh);});}
+        if(!r.ok)return r.text().then(function(t){throw new Error(t);});
+        return r.json();
+      });
+    }
+    Promise.all(targets.map(function(cid){return postToCalendar(cid,gcalToken);}))
+      .then(function(){
+        setGcalDraft(null);
+        var msg="Dodano do kalendarza! ✅"+(targets.length>1?" ("+targets.length+" kalendarze)":"");
+        alert(msg);
+      })
+      .catch(function(e){
+        setGcalDraft(function(d){return Object.assign({},d,{saving:false});});
+        alert("Błąd GCal: "+e.message);
+      });
   }
 
   var INP={padding:"10px 12px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:9,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box",outline:"none"};
@@ -399,6 +443,78 @@ export function ModalDeal(p){
 
       )
     )
+    ,
+
+    gcalDraft?ce("div",{
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:3100,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"},
+      onClick:function(ev){if(ev.target===ev.currentTarget)setGcalDraft(null);}
+    },
+      ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:24,width:"100%",maxWidth:400,boxShadow:"0 8px 40px rgba(0,0,0,0.25)"}},
+        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:16}},"📅 Dodaj do Google Calendar"),
+        ce("div",{style:{marginBottom:12}},
+          ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"TYTU\u0141"),
+          ce("input",{type:"text",value:gcalDraft.title,style:Object.assign({},INP),
+            onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{title:ev.target.value});});}})
+        ),
+        ce("div",{style:{marginBottom:12}},
+          ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"DATA"),
+          ce("input",{type:"date",value:gcalDraft.date,style:Object.assign({},INP),
+            onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{date:ev.target.value});});}})
+        ),
+        ce("div",{style:{display:"flex",gap:8,marginBottom:12}},
+          ce("div",{style:{flex:1}},
+            ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"OD"),
+            ce("select",{value:gcalDraft.timeFrom,style:Object.assign({},INP),
+              onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{timeFrom:ev.target.value});});}},
+              (function(){
+                var opts=[];
+                for(var h=6;h<22;h++){["00","15","30","45"].forEach(function(m){opts.push(String(h).padStart(2,"0")+":"+m);});}
+                return opts.map(function(o){return ce("option",{key:o,value:o},o);});
+              })()
+            )
+          ),
+          ce("div",{style:{flex:1}},
+            ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"DO"),
+            ce("select",{value:gcalDraft.timeTo,style:Object.assign({},INP),
+              onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{timeTo:ev.target.value});});}},
+              (function(){
+                var opts=[];
+                for(var h=6;h<24;h++){["00","15","30","45"].forEach(function(m){opts.push(String(h).padStart(2,"0")+":"+m);});}
+                return opts.map(function(o){return ce("option",{key:o,value:o},o);});
+              })()
+            )
+          )
+        ),
+        ce("div",{style:{marginBottom:16}},
+          ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"UWAGA (opcjonalnie)"),
+          ce("input",{type:"text",value:gcalDraft.note,placeholder:"np. dzie\u0144 wcze\u015bniej zadzwoni\u0107...",style:Object.assign({},INP),
+            onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{note:ev.target.value});});},
+            onKeyDown:function(ev){if(ev.key==="Enter")submitGcalDraft();}})
+        ),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:16,padding:"8px 10px",background:"var(--bg2)",borderRadius:8}},
+          "📅 Dodaje do: ",
+          (function(){
+            var primaryCal=(calList.find(function(c){return c.primary;})||calList[0]||{});
+            var instCal=calList.find(function(c){return c.id===gcalDraft.calId;});
+            var labels=[];
+            if(instCal&&instCal.id!==primaryCal.id)labels.push(instCal.summary||gcalDraft.calId);
+            labels.push(primaryCal.summary||"primary");
+            return labels.join(" + ");
+          })()
+        ),
+        ce("div",{style:{display:"flex",gap:8}},
+          ce("button",{
+            onClick:function(){setGcalDraft(null);},
+            style:{flex:1,padding:"10px",borderRadius:9,border:"1px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:13,cursor:"pointer"}
+          },"Anuluj"),
+          ce("button",{
+            onClick:submitGcalDraft,
+            disabled:gcalDraft.saving,
+            style:{flex:2,padding:"10px",borderRadius:9,border:"none",background:"#4285f4",color:"#fff",fontSize:13,fontWeight:700,cursor:gcalDraft.saving?"wait":"pointer"}
+          },gcalDraft.saving?"⏳ Dodaję...":"✅ Dodaj do kalendarza")
+        )
+      )
+    ):null
   );
 }
 
