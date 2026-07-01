@@ -66,15 +66,43 @@ Deno.serve(async (req: Request) => {
 
   // Zapytaj KSeF o status faktury w sesji
   try {
-    const statusR = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}/invoices`, {
+    // Krok 1: sprawdź status SESJI (jak waitForUpo w SDK)
+    // Kod 100 = InProgress, 200 = Success, inne = błąd
+    const sessR = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
     });
-    if (!statusR.ok) {
-      const t = await statusR.text();
-      return jsonRes({ error: `KSeF status HTTP ${statusR.status}`, detail: t }, 502);
+    if (!sessR.ok) {
+      const t = await sessR.text();
+      return jsonRes({ error: `KSeF sesja HTTP ${sessR.status}`, detail: t }, 502);
     }
-    const statusData = await statusR.json();
-    const invoiceList = statusData.invoices || statusData.items || [];
+    const sessData = await sessR.json();
+    const sessStatus = sessData.status?.code;
+
+    if (sessStatus === 100 || sessStatus === 150) {
+      // Sesja jeszcze przetwarza
+      return jsonRes({ ok: true, ksefStatus: "sent", pending: true, sessionStatus: sessStatus, raw: sessData });
+    }
+
+    if (sessStatus !== 200) {
+      // Błąd sesji
+      const errMsg = (sessData.status?.description || "błąd nieznany")
+        + (sessData.status?.details ? ": " + sessData.status.details.join("; ") : "");
+      await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
+        method: "PATCH", headers: sbH,
+        body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg.slice(0,500) }),
+      });
+      return jsonRes({ error: "KSeF - błąd sesji", detail: errMsg, statusCode: sessStatus }, 502);
+    }
+
+    // Krok 2: sesja zakończona (200) — pobierz szczegóły faktury
+    const invR2 = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}/invoices`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+    });
+    if (!invR2.ok) {
+      return jsonRes({ error: `KSeF faktury HTTP ${invR2.status}`, detail: await invR2.text() }, 502);
+    }
+    const invData = await invR2.json();
+    const invoiceList = invData.invoices || invData.items || [];
     const first = invoiceList[0];
 
     if (first?.ksefReferenceNumber) {
@@ -86,38 +114,20 @@ Deno.serve(async (req: Request) => {
           ksef_error: null,
         }),
       });
-      // Zamknij sesję online w KSeF (już przetworzone)
-      await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/close`, {
-        method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
-      }).catch(() => {});
       return jsonRes({ ok: true, ksefStatus: "confirmed", ksefNumber: first.ksefReferenceNumber });
     }
 
-    // Sprawdź czy sesja jest w stanie umożliwiającym przetworzenie
-    const statusCode = first?.status?.code;
-    if (statusCode && statusCode !== 100 && statusCode !== 150 && statusCode !== 200) {
+    if (first?.status?.code && first.status.code !== 200) {
       const errMsg = first.status.description
         + (first.status.details ? ": " + first.status.details.join("; ") : "");
       await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
         method: "PATCH", headers: sbH,
         body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg.slice(0,500) }),
       });
-      await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/close`, {
-        method: "POST", headers: { Authorization: `Bearer ${accessToken}` },
-      }).catch(() => {});
-      return jsonRes({ error: "KSeF odrzucił fakturę", detail: errMsg, statusCode }, 502);
+      return jsonRes({ error: "KSeF odrzucił fakturę", detail: errMsg, statusCode: first.status.code }, 502);
     }
 
-    if (first?.processingCode && first.processingCode !== 200 && first.processingCode !== 100) {
-      const errMsg = first.processingDescription || `processingCode: ${first.processingCode}`;
-      await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
-        method: "PATCH", headers: sbH,
-        body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg }),
-      });
-      return jsonRes({ error: "KSeF odrzucił fakturę", detail: errMsg }, 502);
-    }
-
-    return jsonRes({ ok: true, ksefStatus: "sent", pending: true, raw: statusData });
+    return jsonRes({ ok: true, ksefStatus: "sent", pending: true, raw: invData });
 
   } catch(e) {
     const msg = e instanceof Error ? e.message : String(e);
