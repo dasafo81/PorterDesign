@@ -287,6 +287,19 @@ export const sbApi = {
   nextInvoiceNumber: function(docType, period){
     return sbFetch("POST","rpc/next_invoice_number",{p_doc_type:docType,p_period:period});
   },
+  // Dekrementuje licznik przy wycofaniu faktury (usuwa wiersz gdy last_number <= 1)
+  decrementInvoiceCounter: function(docType, period){
+    var enc=encodeURIComponent;
+    return sbFetch("GET","invoice_counters?doc_type=eq."+enc(docType)+"&period=eq."+enc(period)+"&select=last_number")
+      .then(function(rows){
+        var cur=rows&&rows[0]&&rows[0].last_number;
+        if(!cur||cur<=0) return;
+        if(cur<=1){
+          return sbFetch("DELETE","invoice_counters?doc_type=eq."+enc(docType)+"&period=eq."+enc(period));
+        }
+        return sbFetch("PATCH","invoice_counters?doc_type=eq."+enc(docType)+"&period=eq."+enc(period),{last_number:cur-1});
+      });
+  },
 
   // Magazyn
   getWarehouseItems: function(){
