@@ -256,13 +256,9 @@ Deno.serve(async (req: Request) => {
     try { sendData = JSON.parse(sendText); } catch { /* ignore */ }
     const invoiceRefNumber = sendData.referenceNumber || "";
 
-    // 7. Zamknij sesję
-    await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/close`, {
-      method: "POST", headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
-    }).catch(() => {});
-
-    // Bez pollingu — status sprawdzany oddzielnie przez ksef-status
-    // (Edge Functions mają ~15s limit, polling powodował EarlyDrop)
+    // NIE zamykamy sesji od razu — KSeF potrzebuje czasu na przetwarzanie faktury.
+    // Zamknięcie sesji zaraz po wysyłce powoduje status 415 (sesja anulowana).
+    // Sesja zostanie zamknięta przez ksef-status po otrzymaniu ksefReferenceNumber.
 
     await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
       method: "PATCH", headers: sbH,
