@@ -177,6 +177,7 @@ function InvoiceEditor(p){
   var [saleDate,setSaleDate]=useState(initInv.sale_date||today);
   var [dueDate,setDueDate]=useState(initInv.due_date||addDays(today,defaultDays));
   var [payMethod,setPayMethod]=useState(initInv.payment_method||settings.default_payment_method||"przelew");
+  var [kasowa,setKasowa]=useState(!!(initInv.kasowa));
   var [notes,setNotes]=useState(initInv.notes||"");
   var [buyerName,setBuyerName]=useState(initInv.buyer_name||"");
   var [buyerNip,setBuyerNip]=useState(initInv.buyer_nip||"");
@@ -289,7 +290,7 @@ function InvoiceEditor(p){
     var header={
       doc_type:docType,
       issue_date:issueDate, sale_date:saleDate, due_date:dueDate,
-      payment_method:payMethod,
+      payment_method:payMethod, kasowa:kasowa,
       client_id:clientId, deal_id:dealId,
       buyer_name:buyerName, buyer_nip:buyerNip,
       buyer_address:buyerAddr, buyer_postal:buyerPostal,
@@ -378,8 +379,12 @@ function InvoiceEditor(p){
       ),
       ce("div",{style:{marginTop:12}},
         ce("span",{style:label},"Forma płatności"),
-        ce("select",{style:Object.assign({},inp,{maxWidth:220}),value:payMethod,onChange:function(e){setPayMethod(e.target.value);}},
-          PAYMENT_METHODS.map(function(m){return ce("option",{key:m,value:m},m);})))
+        ce("div",{style:{display:"flex",alignItems:"center",gap:16}},
+          ce("select",{style:Object.assign({},inp,{maxWidth:220}),value:payMethod,onChange:function(e){setPayMethod(e.target.value);}},
+            PAYMENT_METHODS.map(function(m){return ce("option",{key:m,value:m},m);})),
+          ce("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"var(--t2)",cursor:"pointer",userSelect:"none",whiteSpace:"nowrap"}},
+            ce("input",{type:"checkbox",checked:kasowa,onChange:function(e){setKasowa(e.target.checked);},style:{width:15,height:15,cursor:"pointer"}}),
+            "Metoda kasowa"))))
     ),
 
     // ── SEKCJA: Nabywca ──
@@ -1174,7 +1179,7 @@ function buildInvoicePDFHtml(inv,settings){
     +"</table></div>"
     +"<div class='slownie'><strong>S\u0142ownie:</strong> "+numberToWordsPL(gross)+"</div>"
     +(inv.notes?"<div class='notes-box'>"+String(inv.notes)+"</div>":"")
-    +((inv.payment_method||"").toLowerCase()==="gotówka"||(inv.payment_method||"").toLowerCase()==="gotowka"?"<div class='kasowa'>Metoda Kasowa</div>":"")
+    +(inv.kasowa?"<div class='kasowa'>Metoda Kasowa</div>":"")
     +(isZakup?"":"<div class='sign-name'>Paulina Porter</div>"
     +"<div class='sign-block'>"
     +"<div class='sign'>Osoba uprawniona do odbioru</div>"
