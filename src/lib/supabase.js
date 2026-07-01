@@ -433,8 +433,8 @@ function adminFetch(method, path, body){
 
 // ── KSeF API (wywołuje Edge Functions api/ksef/*) ─────────────────────────
 // Front przekazuje swój JWT — backend weryfikuje, odszyfruje token KSeF i woła MF API.
-function ksefFetch(method, path, body) {
-  var userTok = getUserToken();
+function ksefFetchRaw(method, path, body, tokenOverride) {
+  var userTok = tokenOverride !== undefined ? tokenOverride : getUserToken();
   // Mapuj /api/ksef/X → Supabase Edge Function ksef-X
   // (Deno runtime: pełne biblioteki krypto + dostęp do sieci, bez ograniczeń Vercel Hobby)
   var url = path;
@@ -455,6 +455,21 @@ function ksefFetch(method, path, body) {
       if (!r.ok) throw Object.assign(new Error(data.error || ("HTTP " + r.status)), { detail: data.detail, status: r.status });
       return data;
     });
+  });
+}
+
+// Wrapper z auto-refresh JWT: jeśli Edge Function zwróci 401/invalid jwt,
+// odśwież sesję Supabase i ponów request z nowym tokenem.
+function ksefFetch(method, path, body) {
+  return ksefFetchRaw(method, path, body).catch(function(e) {
+    var is401 = e.status === 401 || (e.message && (e.message.indexOf("invalid jwt") !== -1 || e.message.indexOf("missing jwt") !== -1));
+    if (is401) {
+      return refreshSession().then(function(s) {
+        if (!s || !s.access_token) throw e;
+        return ksefFetchRaw(method, path, body, s.access_token);
+      });
+    }
+    throw e;
   });
 }
 
