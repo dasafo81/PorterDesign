@@ -498,6 +498,9 @@ export const ksefApi = {
   sendInvoice: function(invoiceId, accessToken, baseUrl) {
     return ksefFetch("POST", "/api/ksef/send", { invoiceId: invoiceId, accessToken: accessToken, baseUrl: baseUrl });
   },
+  checkStatus: function(invoiceId, accessToken, baseUrl) {
+    return ksefFetch("POST", "/api/ksef/status", { invoiceId: invoiceId, accessToken: accessToken, baseUrl: baseUrl });
+  },
   // Pobierz pełny XML i dane pojedynczej faktury z KSeF
   getInvoice: function(accessToken, baseUrl, ksefNumber) {
     return ksefFetch("POST", "/api/ksef/invoice", { accessToken: accessToken, baseUrl: baseUrl, ksefNumber: ksefNumber });
