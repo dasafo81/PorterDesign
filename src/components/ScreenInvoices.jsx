@@ -140,6 +140,7 @@ function ItemRow(p){
 function InvoiceEditor(p){
   // p: invoice (lub null = nowa), settings, clients, onSave, onClose
   var isNew=!p.invoice||!p.invoice.id;
+  var isDraft=!isNew&&p.invoice.status==="draft";
   var settings=p.settings||{};
   var defaultVat=+(settings.default_vat)||23;
   var defaultDays=+(settings.default_payment_days)||14;
@@ -473,7 +474,7 @@ function InvoiceEditor(p){
       ce("button",{onClick:p.onClose,style:btnSecondary,disabled:busy},"Anuluj"),
       ce("button",{onClick:function(){save(false);},style:btnSecondary,disabled:busy},
         busy?"\u23F3 Zapisuję...":"Zapisz szkic"),
-      isNew&&ce("button",{onClick:function(){save(true);},
+      (isNew||isDraft)&&ce("button",{onClick:function(){save(true);},
         style:Object.assign({},btnPrimary,{background:"#059669"}),disabled:busy},
         busy?"\u23F3 Wystawiam...":"\u2713 Wystaw fakturę")
     )
