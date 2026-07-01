@@ -449,48 +449,20 @@ export function ModalDeal(p){
       style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:3100,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"},
       onClick:function(ev){if(ev.target===ev.currentTarget)setGcalDraft(null);}
     },
-      ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:24,width:"100%",maxWidth:400,boxShadow:"0 8px 40px rgba(0,0,0,0.25)"}},
-        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:16}},"📅 Dodaj do Google Calendar"),
-        ce("div",{style:{marginBottom:12}},
-          ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"TYTU\u0141"),
-          ce("input",{type:"text",value:gcalDraft.title,style:Object.assign({},INP),
-            onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{title:ev.target.value});});}})
+      ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:24,width:"100%",maxWidth:380,boxShadow:"0 8px 40px rgba(0,0,0,0.25)"}},
+        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:4}},"📅 Dodaj do kalendarza"),
+        // Podsumowanie terminu (tylko info, nie edytowalne)
+        ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16}},
+          gcalDraft.title+" — "+gcalDraft.date.split("-").reverse().join(".")+" "+gcalDraft.timeFrom+"–"+gcalDraft.timeTo
         ),
-        ce("div",{style:{marginBottom:12}},
-          ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"DATA"),
-          ce("input",{type:"date",value:gcalDraft.date,style:Object.assign({},INP),
-            onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{date:ev.target.value});});}})
-        ),
-        ce("div",{style:{display:"flex",gap:8,marginBottom:12}},
-          ce("div",{style:{flex:1}},
-            ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"OD"),
-            ce("select",{value:gcalDraft.timeFrom,style:Object.assign({},INP),
-              onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{timeFrom:ev.target.value});});}},
-              (function(){
-                var opts=[];
-                for(var h=6;h<22;h++){["00","15","30","45"].forEach(function(m){opts.push(String(h).padStart(2,"0")+":"+m);});}
-                return opts.map(function(o){return ce("option",{key:o,value:o},o);});
-              })()
-            )
-          ),
-          ce("div",{style:{flex:1}},
-            ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"DO"),
-            ce("select",{value:gcalDraft.timeTo,style:Object.assign({},INP),
-              onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{timeTo:ev.target.value});});}},
-              (function(){
-                var opts=[];
-                for(var h=6;h<24;h++){["00","15","30","45"].forEach(function(m){opts.push(String(h).padStart(2,"0")+":"+m);});}
-                return opts.map(function(o){return ce("option",{key:o,value:o},o);});
-              })()
-            )
-          )
-        ),
+        // Uwaga
         ce("div",{style:{marginBottom:16}},
           ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"UWAGA (opcjonalnie)"),
-          ce("input",{type:"text",value:gcalDraft.note,placeholder:"np. dzie\u0144 wcze\u015bniej zadzwoni\u0107...",style:Object.assign({},INP),
+          ce("input",{type:"text",value:gcalDraft.note,placeholder:"np. dzie\u0144 wcze\u015bniej zadzwoni\u0107...",style:Object.assign({},INP),autoFocus:true,
             onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{note:ev.target.value});});},
-            onKeyDown:function(ev){if(ev.key==="Enter")submitGcalDraft();}})
+            onKeyDown:function(ev){if(ev.key==="Enter")submitGcalDraft();if(ev.key==="Escape")setGcalDraft(null);}})
         ),
+        // Info kalendarze
         ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:16,padding:"8px 10px",background:"var(--bg2)",borderRadius:8}},
           "📅 Dodaje do: ",
           (function(){
@@ -502,6 +474,7 @@ export function ModalDeal(p){
             return labels.join(" + ");
           })()
         ),
+        // Przyciski
         ce("div",{style:{display:"flex",gap:8}},
           ce("button",{
             onClick:function(){setGcalDraft(null);},
