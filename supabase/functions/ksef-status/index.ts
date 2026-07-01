@@ -84,14 +84,31 @@ Deno.serve(async (req: Request) => {
     }
 
     if (sessStatus !== 200) {
-      // Błąd sesji
-      const errMsg = (sessData.status?.description || "błąd nieznany")
+      // Sesja zakończona błędem — pobierz szczegół odrzucenia z /invoices/failed
+      let detailedError = "";
+      let failedRaw = null;
+      try {
+        const failedR = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}/invoices/failed`, {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+        });
+        if (failedR.ok) {
+          failedRaw = await failedR.json();
+          const failedList = failedRaw.invoices || failedRaw.items || [];
+          const failed = failedList[0];
+          if (failed) {
+            detailedError = (failed.status?.description || "")
+              + (failed.status?.details ? " — " + failed.status.details.join("; ") : "");
+          }
+        }
+      } catch { /* ignore */ }
+      const sessMsg = (sessData.status?.description || "błąd nieznany")
         + (sessData.status?.details ? ": " + sessData.status.details.join("; ") : "");
+      const fullMsg = detailedError || sessMsg;
       await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
         method: "PATCH", headers: sbH,
-        body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg.slice(0,500) }),
+        body: JSON.stringify({ ksef_status: "error", ksef_error: fullMsg.slice(0,500) }),
       });
-      return jsonRes({ error: "KSeF - błąd sesji", detail: errMsg, statusCode: sessStatus }, 502);
+      return jsonRes({ error: "KSeF - błąd sesji/faktury", detail: fullMsg, sessDetail: sessMsg, failedRaw, statusCode: sessStatus }, 502);
     }
 
     // Krok 2: sesja zakończona (200) — pobierz szczegóły faktury
