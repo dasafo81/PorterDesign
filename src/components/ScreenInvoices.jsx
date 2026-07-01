@@ -1226,12 +1226,18 @@ function InvoiceDetailView(p){
   },[ksefSent,currentInv.id]);
 
   function refreshKsefStatus(){
-    setKsefBusy(true);
-    sbApi.getInvoice(currentInv.id).then(function(fresh){
+    setKsefBusy(true); setKsefErr(null);
+    ksefApi.openSession().then(function(sess){
+      return ksefApi.checkStatus(currentInv.id, sess.accessToken, sess.baseUrl);
+    }).then(function(res){
+      if(res.ksefStatus==="confirmed") setKsefMsg("✅ Potwierdzona w KSeF. Nr KSeF: "+(res.ksefNumber||""));
+      else setKsefMsg("⏳ Faktura nadal w kolejce KSeF. Spróbuj za chwilę.");
+      return sbApi.getInvoice(currentInv.id);
+    }).then(function(fresh){
       if(fresh) setCurrentInv(fresh);
-      if(fresh&&fresh.ksef_status==="confirmed")
-        setKsefMsg("✅ Potwierdzona w KSeF. Nr KSeF: "+(fresh.ksef_number||""));
-    }).catch(function(){}).finally(function(){ setKsefBusy(false); });
+    }).catch(function(e){
+      setKsefErr(e.message||"Błąd sprawdzania statusu");
+    }).finally(function(){ setKsefBusy(false); });
   }
 
   function openPDF(){
