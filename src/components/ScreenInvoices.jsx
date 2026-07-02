@@ -1279,12 +1279,11 @@ function InvoiceDetailView(p){
         return ksefApi.sendInvoice(currentInv.id,sess.accessToken,sess.baseUrl);
       })
       .then(function(res){
-        setKsefMsg(res.ksefNumber
-          ?"\u2705 Wys\u0142ano do KSeF. Nr KSeF: "+res.ksefNumber
-          :"\u23F3 Faktura w kolejce KSeF (oczekuje na potwierdzenie)");
-        sbApi.getInvoices().then(function(all){
-          var updated=(all||[]).find(function(i){return i.id===currentInv.id;});
-          if(updated) setCurrentInv(updated);
+        setKsefMsg(res.ksefStatus==="confirmed"
+          ?"\u2705 Potwierdzona w KSeF. Nr KSeF: "+(res.ksefNumber||"")
+          :"\u23F3 Faktura w kolejce KSeF (status od\u015bwie\u017cy si\u0119 automatycznie)");
+        sbApi.getInvoice(currentInv.id).then(function(fresh){
+          if(fresh) setCurrentInv(fresh);
         });
       })
       .catch(function(e){ setKsefErr(e.message||"B\u0142\u0105d wys\u0142ki do KSeF"); })
