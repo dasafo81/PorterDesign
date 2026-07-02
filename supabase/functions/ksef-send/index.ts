@@ -109,7 +109,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     <Adres><KodKraju>PL</KodKraju><AdresL1>${escXml((s.address||settings.seller_address||"")+" "+(s.postal||settings.seller_postal||""))}</AdresL1><AdresL2>${escXml(s.city||settings.seller_city||"")}</AdresL2></Adres>
   </Podmiot1>
   <Podmiot2>
-    <DaneIdentyfikacyjne>${buyerNip?`<NIP>${escXml(buyerNip)}</NIP>`:""}<Nazwa>${escXml(inv.buyer_name||"")}</Nazwa></DaneIdentyfikacyjne>
+    <DaneIdentyfikacyjne>${buyerNip?`<NIP>${escXml(buyerNip)}</NIP>`:`<BrakID>1</BrakID>`}<Nazwa>${escXml(inv.buyer_name||"")}</Nazwa></DaneIdentyfikacyjne>
     <Adres><KodKraju>PL</KodKraju><AdresL1>${escXml((inv.buyer_address||"")+" "+(inv.buyer_postal||""))}</AdresL1><AdresL2>${escXml(inv.buyer_city||"")}</AdresL2></Adres>
     <JST>2</JST>
     <GV>2</GV>
