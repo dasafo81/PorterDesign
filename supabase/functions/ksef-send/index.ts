@@ -284,6 +284,7 @@ Deno.serve(async (req: Request) => {
       method: "POST", headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
     }).catch(() => {});
 
+    // Zapisz 'sent' od razu — sessionRef trafia do DB nawet jeśli polling poniżej się nie powiedzie
     await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
       method: "PATCH", headers: sbH,
       body: JSON.stringify({
@@ -296,7 +297,54 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
-    return jsonRes({ ok: true, ksefStatus: "sent", sessionRef, xmlLength: xml.length });
+    // Auto-polling: KSeF przetwarza sesję zwykle w 1-3 s — czekamy do ~12 s,
+    // żeby użytkownik nie musiał ręcznie klikać "sprawdź status".
+    // Kod 100/150 = przetwarzanie, 200 = sukces, inne = błąd.
+    const authH = { Authorization: `Bearer ${accessToken}`, Accept: "application/json" };
+    for (let i = 0; i < 8; i++) {
+      await new Promise(res => setTimeout(res, 1500));
+      const sessR2 = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}`, { headers: authH });
+      if (!sessR2.ok) continue;
+      const sessData2 = await sessR2.json();
+      const code = sessData2.status?.code;
+      if (code === 100 || code === 150) continue;
+
+      if (code === 200) {
+        const invR2 = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}/invoices`, { headers: authH });
+        const invData2 = invR2.ok ? await invR2.json() : {};
+        const first2 = (invData2.invoices || invData2.items || [])[0];
+        const ksefNum2 = first2?.ksefNumber || first2?.ksefReferenceNumber;
+        if (ksefNum2) {
+          await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
+            method: "PATCH", headers: sbH,
+            body: JSON.stringify({ ksef_status: "confirmed", ksef_number: ksefNum2, ksef_upo: first2.upoDownloadUrl || null, ksef_error: null }),
+          });
+          return jsonRes({ ok: true, ksefStatus: "confirmed", ksefNumber: ksefNum2, sessionRef });
+        }
+        break; // 200 bez numeru — zostaw 'sent', dokończy ksef-status
+      }
+
+      // Sesja zakończona błędem — pobierz szczegóły odrzucenia z /invoices/failed
+      let errMsg = (sessData2.status?.description || "błąd sesji")
+        + (sessData2.status?.details ? ": " + sessData2.status.details.join("; ") : "");
+      let failedRaw = null;
+      try {
+        const failedR = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionRef)}/invoices/failed`, { headers: authH });
+        if (failedR.ok) {
+          failedRaw = await failedR.json();
+          const failed = (failedRaw.invoices || failedRaw.items || [])[0];
+          if (failed) errMsg = (failed.status?.description || "")
+            + (failed.status?.details ? " — " + failed.status.details.join("; ") : "");
+        }
+      } catch { /* ignore */ }
+      await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
+        method: "PATCH", headers: sbH,
+        body: JSON.stringify({ ksef_status: "error", ksef_error: errMsg.slice(0,500) }),
+      });
+      return jsonRes({ error: "KSeF - błąd sesji/faktury", detail: errMsg, failedRaw, statusCode: code }, 502);
+    }
+
+    return jsonRes({ ok: true, ksefStatus: "sent", pending: true, sessionRef, xmlLength: xml.length });
 
   } catch(e) {
     const msg = e instanceof Error ? e.message : String(e);
