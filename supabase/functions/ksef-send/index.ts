@@ -67,26 +67,32 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   const totalVat   = fmt2(items.reduce((a,i) => a+round2(i.line_vat),   0));
   const totalGross = fmt2(items.reduce((a,i) => a+round2(i.line_gross), 0));
   const pozycje = items.map((it,idx) => {
-    const vc = vatCode(it.vat_rate);
     return `
     <FaWiersz>
       <NrWierszaFa>${idx+1}</NrWierszaFa>
       <P_7>${escXml(it.name||"")}</P_7>
+      ${it.pkwiu?`<PKWiU>${escXml(it.pkwiu)}</PKWiU>`:""}
       <P_8A>${escXml(it.unit||"szt")}</P_8A>
       <P_8B>${fmt2(it.quantity)}</P_8B>
       <P_9A>${fmt2(it.unit_net)}</P_9A>
       <P_11>${fmt2(it.line_net)}</P_11>
-      <P_12>${it.vat_rate===-1?"zw":fmt2(it.vat_rate)}</P_12>
-      <P_12_XII>${vc}</P_12_XII>
-      <P_13>${fmt2(it.line_vat)}</P_13>
-      ${it.pkwiu?`<PKWiU>${escXml(it.pkwiu)}</PKWiU>`:""}
+      <P_12>${it.vat_rate===-1?"zw":String(Math.round(+it.vat_rate))}</P_12>
     </FaWiersz>`;
   }).join("");
-  const stawki = Object.keys(vatGroups).map(k => {
-    const g = vatGroups[k]; const vc = vatCode(+k);
+  const stawki = Object.keys(vatGroups).map(Number).sort((a,b)=>b-a).map(r => {
+    const g = vatGroups[r];
+    if (r === 23 || r === 22) return `
+    <P_13_1>${fmt2(g.net)}</P_13_1><P_14_1>${fmt2(g.vat)}</P_14_1>`;
+    if (r === 8 || r === 7) return `
+    <P_13_2>${fmt2(g.net)}</P_13_2><P_14_2>${fmt2(g.vat)}</P_14_2>`;
+    if (r === 5) return `
+    <P_13_3>${fmt2(g.net)}</P_13_3><P_14_3>${fmt2(g.vat)}</P_14_3>`;
+    if (r === 0) return `
+    <P_13_6_1>${fmt2(g.net)}</P_13_6_1>`;
+    if (r === -1) return `
+    <P_13_7>${fmt2(g.net)}</P_13_7>`;
     return `
-    <P_13_${vc}>${fmt2(g.net)}</P_13_${vc}>
-    <P_14_${vc}>${fmt2(g.vat)}</P_14_${vc}>`;
+    <P_13_1>${fmt2(g.net)}</P_13_1><P_14_1>${fmt2(g.vat)}</P_14_1>`;
   }).join("");
   const payMap: Record<string,string> = {"przelew":"6","gotówka":"1","karta":"5","BLIK":"5"};
   const payCode = payMap[inv.payment_method||""]||"6";
@@ -111,17 +117,16 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   <Fa>
     <KodWaluty>PLN</KodWaluty>
     <P_1>${isoDate(inv.issue_date)}</P_1><P_1M>${isoDate(inv.sale_date||inv.issue_date)}</P_1M>
-    <P_2>${escXml(inv.number||"")}</P_2><P_15>${totalGross}</P_15>
+    <P_2>${escXml(inv.number||"")}</P_2>${stawki}
+    <P_15>${totalGross}</P_15>
     <Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19N>1</P_19N></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
     <RodzajFaktury>VAT</RodzajFaktury>
     ${inv.notes?`<DodatkowyOpis><Klucz>Uwagi</Klucz><Wartosc>${escXml(String(inv.notes).slice(0,512))}</Wartosc></DodatkowyOpis>`:""}
     ${pozycje}
-    <Rozliczenie>${stawki}
-    <P_13_Razem>${totalNet}</P_13_Razem>
-    <P_14_Razem>${totalVat}</P_14_Razem></Rozliczenie>
     <Platnosc>
-      <Zaplacono>2</Zaplacono><DataZaplaty>${isoDate(inv.due_date)}</DataZaplaty><FormaPlatnosci>${payCode}</FormaPlatnosci>
-      ${(s.bank||settings.seller_bank)?`<NrRachunku>${escXml((s.bank||settings.seller_bank||"").replace(/\s/g,""))}</NrRachunku>`:""}
+      ${inv.due_date?`<TerminPlatnosci><Termin>${isoDate(inv.due_date)}</Termin></TerminPlatnosci>`:""}
+      <FormaPlatnosci>${payCode}</FormaPlatnosci>
+      ${(s.bank||settings.seller_bank)?`<RachunekBankowy><NrRB>${escXml((s.bank||settings.seller_bank||"").replace(/\s/g,""))}</NrRB></RachunekBankowy>`:""}
     </Platnosc>
   </Fa>
 </Faktura>`;
