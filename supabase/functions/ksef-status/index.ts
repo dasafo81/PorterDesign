@@ -122,16 +122,18 @@ Deno.serve(async (req: Request) => {
     const invoiceList = invData.invoices || invData.items || [];
     const first = invoiceList[0];
 
-    if (first?.ksefReferenceNumber) {
+    const ksefNum = first?.ksefNumber || first?.ksefReferenceNumber;
+    if (ksefNum) {
       await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, {
         method: "PATCH", headers: sbH,
         body: JSON.stringify({
           ksef_status: "confirmed",
-          ksef_number: first.ksefReferenceNumber,
+          ksef_number: ksefNum,
+          ksef_upo: first.upoDownloadUrl || null,
           ksef_error: null,
         }),
       });
-      return jsonRes({ ok: true, ksefStatus: "confirmed", ksefNumber: first.ksefReferenceNumber });
+      return jsonRes({ ok: true, ksefStatus: "confirmed", ksefNumber: ksefNum });
     }
 
     if (first?.status?.code && first.status.code !== 200) {
