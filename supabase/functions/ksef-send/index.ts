@@ -114,7 +114,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     <P_2>${escXml(inv.number||"")}</P_2><P_15>${totalGross}</P_15>
     <Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19N>1</P_19N></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
     <RodzajFaktury>VAT</RodzajFaktury>
-    ${inv.notes?`<DodatkowyOpis><P_Opis>${escXml(inv.notes)}</P_Opis></DodatkowyOpis>`:""}
+    ${inv.notes?`<DodatkowyOpis><Klucz>Uwagi</Klucz><Wartosc>${escXml(String(inv.notes).slice(0,512))}</Wartosc></DodatkowyOpis>`:""}
     ${pozycje}
     <Rozliczenie>${stawki}
     <P_13_Razem>${totalNet}</P_13_Razem>
