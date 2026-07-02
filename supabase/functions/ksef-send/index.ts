@@ -129,7 +129,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
 
 // Importuje klucz publiczny RSA z certyfikatu X.509 (DER lub PEM).
 // Deno wspiera "x509" jako format importu od v1.33 — używamy tego zamiast ręcznego ASN.1.
-async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise<CryptoKey> {
+async function fetchKsefCertPem(baseUrl: string, accessToken: string): Promise<string> {
   const r = await fetch(`${baseUrl}/security/public-key-certificates`, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
   });
@@ -146,36 +146,11 @@ async function fetchKsefPublicKey(baseUrl: string, accessToken: string): Promise
     const debug = certs.map(c => ({ usage: c.usage, hasCert: !!(c.certificate) }));
     throw new Error(`Brak cert SymmetricKeyEncryption. Dostępne: ${JSON.stringify(debug).slice(0,300)}`);
   }
-  // DEBUG: zapisz strukturę cert do środowiska żeby zobaczyć
-  console.log("KSeF cert keys:", Object.keys(cert));
-  console.log("KSeF cert usage:", cert.usage);
-  console.log("KSeF cert.certificate first 100 chars:", String(cert.certificate||"").slice(0,100));
-  // certificate z KSeF to base64 DER (X.509) - trzeba wyciągnąć SPKI
-  // Ale WebCrypto akceptuje X.509 przez "x509" format (Deno >= 1.33)
+  // certificate z KSeF to base64 DER (X.509) — opakuj w PEM dla jsrsasign (rsaOaepEncrypt)
   const certB64 = String(cert.certificate || "");
-  const derBuf = Uint8Array.from(atob(certB64), c => c.charCodeAt(0)).buffer;
-  // Deno obsługuje "x509" jako format do importu certyfikatu X.509
-  return await crypto.subtle.importKey(
-    "spki" as "spki",
-    derBuf,
-    { name: "RSA-OAEP", hash: "SHA-256" },
-    false, ["encrypt"]
-  ).catch(async () => {
-    // Fallback: może to jednak X.509 - wyciągnij SPKI z X.509 przez jsrsasign
-    const certPem = "-----BEGIN CERTIFICATE-----\n" +
-      certB64.match(/.{1,64}/g)!.join("\n") +
-      "\n-----END CERTIFICATE-----";
-    const x509 = new rs.X509();
-    x509.readCertPEM(certPem);
-    const pubKeyObj = x509.getPublicKey();
-    const jwk = rs.KEYUTIL.getJWKFromKey(pubKeyObj);
-    return await crypto.subtle.importKey(
-      "jwk",
-      { kty: "RSA", n: jwk.n, e: jwk.e, alg: "RSA-OAEP-256", ext: true },
-      { name: "RSA-OAEP", hash: "SHA-256" },
-      false, ["encrypt"]
-    );
-  });
+  return "-----BEGIN CERTIFICATE-----\n" +
+    certB64.match(/.{1,64}/g)!.join("\n") +
+    "\n-----END CERTIFICATE-----";
 }
 
 // RSA-OAEP-SHA256 - Web Crypto z kluczem publicznym wyciągniętym przez jsrsasign
