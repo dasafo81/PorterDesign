@@ -198,12 +198,32 @@ function InvoiceEditor(p){
   var [busy,setBusy]=useState(false);
   var [err,setErr]=useState(null);
 
-  // GUS/NIP lookup (białe API gov.pl)
+  // GUS/NIP lookup — najpierw prawdziwe API GUS (REGON BIR przez /api/gus, pełna nazwa
+  // i adres także dla JDG), a dopiero w razie błędu fallback na Białą Listę VAT.
   var [nipLoading,setNipLoading]=useState(false);
   function lookupNip(){
     var nip=(buyerNip||"").replace(/[\s\-]/g,"");
     if(nip.length<10){setErr("NIP musi mieć 10 cyfr");return;}
     setNipLoading(true); setErr(null);
+    fetch("/api/gus?nip="+nip)
+      .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+      .then(function(res){
+        var d=res.d||{};
+        if(res.ok&&d.name){
+          setBuyerName(d.name);
+          if(d.street)setBuyerAddr(d.street);
+          if(d.postal)setBuyerPostal(d.postal);
+          if(d.city)setBuyerCity(d.city);
+          setNipLoading(false);
+          return;
+        }
+        // GUS nie znalazł / brak klucza — spróbuj Białej Listy
+        lookupNipWL(nip);
+      })
+      .catch(function(){lookupNipWL(nip);});
+  }
+  // Fallback: Biała Lista VAT (dla JDG zwraca tylko imię i nazwisko, adres często pusty)
+  function lookupNipWL(nip){
     fetch("https://wl-api.mf.gov.pl/api/search/nip/"+nip+"?date="+todayISO())
       .then(function(r){return r.json();})
       .then(function(d){
@@ -227,7 +247,7 @@ function InvoiceEditor(p){
           setBuyerAddr(adr);
         }
       })
-      .catch(function(){setErr("Błąd połączenia z API GUS");})
+      .catch(function(){setErr("Błąd połączenia z GUS i Białą Listą");})
       .finally(function(){setNipLoading(false);});
   }
 
