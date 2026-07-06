@@ -1191,6 +1191,7 @@ export function InlineEdit(p){
   if(editing){
     return ce("span",{style:{display:"inline-flex",alignItems:"center",gap:4}},
       ce("input",{autoFocus:true,value:val,
+        onClick:function(ev){ev.stopPropagation();},
         onChange:function(ev){setVal(ev.target.value);},
         onKeyDown:function(ev){
           if(ev.key==="Enter")confirm();
