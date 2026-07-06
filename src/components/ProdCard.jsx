@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
+  FABRICS, getFabricEffective, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
   IMG_FALDA_POTROJNA, IMG_FALDA_STUDIO, IMG_JZ_ALUMINIUM, IMG_JZ_BAMBOO,
   IMG_JZ_BASSWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
   IMG_OKNO, IMG_ROLETA_BACK, IMG_ROLETA_CASCADE, IMG_ROLETA_DUO,
@@ -52,8 +52,12 @@ export function Section(p){
 export function FabPicker(p){
   var qs=useState("");var q=qs[0],setQ=qs[1];
   var os=useState(false);var open=os[0],setOpen=os[1];
-  var list=q?FABRICS.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):FABRICS;
-  var sf=FABRICS.find(function(f){return f.name===p.fabName;});
+  // Nadpisania z Katalogu (Magazyn → Katalog) scalone z bazą — cena/wysokość zawsze aktualne.
+  // Scalenie tutaj (a nie w handlerach onSelect w ProdCard) wystarcza dla obu
+  // pikerow tkaniny (główna + warstwa 2 Roleta Duo), bo oba używają tego komponentu.
+  var effFabrics=FABRICS.map(function(f){var ov=getFabricEffective(f.name);return ov?Object.assign({},f,{brutto:ov.brutto,width:ov.width,prod:ov.prod}):f;});
+  var list=q?effFabrics.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):effFabrics;
+  var sf=effFabrics.find(function(f){return f.name===p.fabName;});
   var hasSelection=p.fabName||p.fabMan!=null;
   return ce("div",{style:{border:"1.5px solid "+(open?"var(--t1)":"var(--bd2)"),borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4,transition:"border-color .15s"}},
     ce("div",{
