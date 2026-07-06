@@ -315,6 +315,20 @@ export const sbApi = {
     return sbFetch("DELETE","warehouse_items?id=eq."+id);
   },
 
+  // Katalog produktow (nadpisania + produkty wlasne)
+  getCatalogItems: function(){
+    return sbFetch("GET","catalog_items?select=*");
+  },
+  addCatalogItem: function(data){
+    return sbFetch("POST","catalog_items",Object.assign({},data,{created_at:new Date().toISOString(),updated_at:new Date().toISOString()}));
+  },
+  updateCatalogItem: function(id,data){
+    return sbFetch("PATCH","catalog_items?id=eq."+id,Object.assign({},data,{updated_at:new Date().toISOString()}));
+  },
+  deleteCatalogItem: function(id){
+    return sbFetch("DELETE","catalog_items?id=eq."+id);
+  },
+
   // Szyny KS - scinki
   getRailScraps: function(){
     return sbFetch("GET","rail_scraps?select=*&order=length_cm.desc").then(function(rows){
