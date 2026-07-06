@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { sbApi } from '../lib/supabase.js';
+import {
+  FABRICS, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
+  PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
+  KD_AKCESORIA, RS_MASKS
+} from '../constants/data.js';
 const ce = React.createElement;
 
 // ── Konfiguracja ─────────────────────────────────────────────────────────────
@@ -480,12 +485,316 @@ function TabWarehouse(p) {
   );
 }
 
+// ── Katalog produktów: mnożnik detaliczny per grupa ──────────────────────────
+// 1 = cena użyta w silniku wyceny 1:1. KN_* mają już wbudowane ×1.23×2,
+// a RS_MOTORS/RS_REMOTES/RRZ_*_ACC/KD_AKCESORIA/FABRICS silnik bierze wprost —
+// dlatego domyślnie 1 (parytet z wyceniarką). Zmień per grupa jeśli lista jest hurtowa.
+var CATALOG_FACTOR = {
+  tkaniny: 1, silniki_shadow: 1, sterowanie_shadow: 1, silniki_karnisz: 1,
+  piloty_karnisz: 1, prestige: 1, acc_somfy: 1, acc_premium: 1, uchwyty_kd: 1, maskownice: 1
+};
+function fx(gid, price) {
+  if (price == null) return null;
+  var f = CATALOG_FACTOR[gid] != null ? CATALOG_FACTOR[gid] : 1;
+  return Math.round(price * f * 100) / 100;
+}
+function fmtPrice(v) { return v == null ? "\u2014" : (Math.round(v * 100) / 100).toString().replace(".", ","); }
+
+// ── Katalog: pozycje bazowe ze stałych data.js ───────────────────────────────
+function buildBaseCatalog() {
+  return [
+    { id: "tkaniny", label: "Tkaniny", icon: "\uD83E\uDDF5", tracksHeight: true,
+      items: FABRICS.map(function(f) {
+        return { baseKey: "tkaniny::" + f.name, name: f.name, price: fx("tkaniny", f.brutto),
+          unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null };
+      }) },
+    { id: "silniki_shadow", label: "Silniki \u2014 Roleta Shadow", icon: "\u2699\uFE0F",
+      items: RS_MOTORS.map(function(m) {
+        return { baseKey: "silniki_shadow::" + m.id, name: m.label, price: fx("silniki_shadow", m.price),
+          unit: "z\u0142", meta: m.type === "wire" ? "przewodowy" : "radiowy", heightCm: null };
+      }) },
+    { id: "sterowanie_shadow", label: "Sterowanie \u2014 Roleta Shadow", icon: "\uD83D\uDCE1",
+      items: RS_REMOTES.map(function(r) {
+        return { baseKey: "sterowanie_shadow::" + r.id, name: r.label, price: fx("sterowanie_shadow", r.price),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "silniki_karnisz", label: "Silniki \u2014 Karnisz elektryczny", icon: "\u26A1",
+      items: KN_LIST.map(function(m) {
+        return { baseKey: "silniki_karnisz::" + m.v, name: m.l, price: fx("silniki_karnisz", m.cena),
+          unit: "z\u0142", meta: m.power === "aku" ? "akumulator" : "230V", heightCm: null };
+      }) },
+    { id: "piloty_karnisz", label: "Piloty \u2014 Karnisz elektryczny", icon: "\uD83C\uDF9B\uFE0F",
+      items: KN_PILOTY.filter(function(x) { return x.cena; }).map(function(x) {
+        return { baseKey: "piloty_karnisz::" + x.v, name: x.l, price: fx("piloty_karnisz", x.cena),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "prestige", label: "Automatyka \u2014 Karnisz Prestige", icon: "\u26A1",
+      items: PRESTIGE_PILOTY.concat(PRESTIGE_CENTRALKI).filter(function(x) { return x.c; }).map(function(x) {
+        return { baseKey: "prestige::" + x.v, name: x.l, price: fx("prestige", x.c),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "acc_somfy", label: "Akcesoria \u2014 Roleta rzymska (Somfy)", icon: "\uD83E\uDDF0",
+      items: RRZ_SOMFY_ACC.map(function(a) {
+        return { baseKey: "acc_somfy::" + a.id, name: a.label, price: fx("acc_somfy", a.price),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "acc_premium", label: "Akcesoria \u2014 Roleta rzymska (Premium Line)", icon: "\uD83E\uDDF0",
+      items: RRZ_PREMIUM_ACC.map(function(a) {
+        return { baseKey: "acc_premium::" + a.id, name: a.label, price: fx("acc_premium", a.price),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "uchwyty_kd", label: "Uchwyty i akcesoria \u2014 Karnisz dekoracyjny", icon: "\uD83D\uDD29",
+      items: KD_AKCESORIA.map(function(a) {
+        return { baseKey: "uchwyty_kd::" + a.id, name: a.label, price: fx("uchwyty_kd", a.cena),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "maskownice", label: "Maskownice \u2014 Roleta Shadow", icon: "\uD83E\uDDF1",
+      items: Object.keys(RS_MASKS).map(function(k) {
+        var lbl = { oval: "Owalna", kwadro: "Kwadratowa", cube: "Cube" }[k] || k;
+        return { baseKey: "maskownice::" + k, name: lbl, price: fx("maskownice", RS_MASKS[k]),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "inne", label: "Inne / w\u0142asne", icon: "\uD83D\uDCE6", tracksHeight: false, items: [] }
+  ];
+}
+
+// ── Katalog: scalenie bazy z nadpisaniami i produktami własnymi z Supabase ────
+function mergeCatalog(baseGroups, rows) {
+  var ovByKey = {}, customByGroup = {};
+  (rows || []).forEach(function(r) {
+    if (r.base_key) ovByKey[r.base_key] = r;
+    else (customByGroup[r.group_id] = customByGroup[r.group_id] || []).push(r);
+  });
+  return baseGroups.map(function(g) {
+    var items = g.items.map(function(it) {
+      var o = ovByKey[it.baseKey];
+      return {
+        rowId: o ? o.id : null, baseKey: it.baseKey, groupId: g.id, isBase: true,
+        overridden: !!o,
+        name:     o && o.name != null      ? o.name      : it.name,
+        price:    o && o.price != null     ? o.price     : it.price,
+        unit:     o && o.unit              ? o.unit      : it.unit,
+        meta:     o && o.meta != null      ? o.meta      : it.meta,
+        heightCm: o && o.height_cm != null ? o.height_cm : it.heightCm,
+        hidden:   o ? !!o.hidden : false
+      };
+    }).filter(function(m) { return !m.hidden; });
+    (customByGroup[g.id] || []).forEach(function(c) {
+      items.push({ rowId: c.id, baseKey: null, groupId: g.id, isBase: false, overridden: false,
+        name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm });
+    });
+    items.forEach(function(m) {
+      m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
+      m.warn = (g.tracksHeight && m.heightCm == null) ? "brak wysoko\u015bci" : null;
+    });
+    return { id: g.id, label: g.label, icon: g.icon, tracksHeight: g.tracksHeight, items: items };
+  });
+}
+
+// ── Modal: dodaj / edytuj pozycję katalogu ───────────────────────────────────
+function ModalCatalogItem(p) {
+  var it = p.item || {};
+  var isBase = !!it.baseKey;
+  var hasRow = !!it.rowId;
+  var sG = useState(it.groupId || "inne");                    var grp = sG[0];    var setGrp = sG[1];
+  var sN = useState(it.name || "");                           var name = sN[0];   var setName = sN[1];
+  var sP = useState(it.price != null ? String(it.price) : ""); var price = sP[0]; var setPrice = sP[1];
+  var sU = useState(it.unit || "z\u0142");                    var unit = sU[0];   var setUnit = sU[1];
+  var sM = useState(it.meta || "");                           var meta = sM[0];   var setMeta = sM[1];
+  var sH = useState(it.heightCm != null ? String(it.heightCm) : ""); var height = sH[0]; var setHeight = sH[1];
+  var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
+
+  function num(v) { return v === "" ? null : parseFloat(String(v).replace(",", ".")); }
+  function body() {
+    return { group_id: grp, name: name.trim(), price: num(price), unit: unit.trim() || "z\u0142",
+      meta: meta.trim() || null, height_cm: num(height) };
+  }
+  function save() {
+    if (!name.trim()) return;
+    setBusy(true);
+    var op;
+    if (hasRow) op = sbApi.updateCatalogItem(it.rowId, body());
+    else if (isBase) op = sbApi.addCatalogItem(Object.assign({ base_key: it.baseKey }, body()));
+    else op = sbApi.addCatalogItem(Object.assign({ base_key: null }, body()));
+    op.then(function() { setBusy(false); p.onSave(); })
+      .catch(function(e) { setBusy(false); alert("B\u0142\u0105d: " + e.message); });
+  }
+  function resetBase() {
+    if (!hasRow) return;
+    setBusy(true);
+    sbApi.deleteCatalogItem(it.rowId)
+      .then(function() { setBusy(false); p.onSave(); })
+      .catch(function(e) { setBusy(false); alert("B\u0142\u0105d: " + e.message); });
+  }
+
+  var lbl = { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 };
+  return ce("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 },
+      onClick: function(e) { if (e.target === e.currentTarget) p.onClose(); } },
+    ce("div", { style: { background: "var(--bg)", borderRadius: 16, padding: 24, width: "min(440px, 94vw)", maxHeight: "88vh", overflowY: "auto", border: "1px solid var(--bd2)", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" } },
+      ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)", marginBottom: 4 } },
+        hasRow ? "Edytuj pozycj\u0119" : (isBase ? "Edytuj pozycj\u0119 bazow\u0105" : "Nowy produkt")),
+      isBase && ce("div", { style: { fontSize: 11, color: "var(--t3)", marginBottom: 16 } },
+        "Pozycja z cennika \u2014 zapis utworzy nadpisanie (orygina\u0142 pozostaje w kodzie)."),
+      !isBase && ce("div", { style: { height: 12 } }),
+
+      ce("div", { style: { marginBottom: 12 } },
+        ce("div", { style: lbl }, "Grupa"),
+        ce("select", { value: grp, disabled: isBase, onChange: function(e) { setGrp(e.target.value); },
+          style: Object.assign({}, inp, { opacity: isBase ? 0.6 : 1 }) },
+          p.groups.map(function(g) { return ce("option", { key: g.id, value: g.id }, g.label); }))
+      ),
+      ce("div", { style: { marginBottom: 12 } },
+        ce("div", { style: lbl }, "Nazwa"),
+        ce("input", { value: name, onChange: function(e) { setName(e.target.value); }, style: inp })
+      ),
+      ce("div", { style: { display: "flex", gap: 10, marginBottom: 12 } },
+        ce("div", { style: { flex: 2 } },
+          ce("div", { style: lbl }, "Cena"),
+          ce("input", { value: price, onChange: function(e) { setPrice(e.target.value); }, placeholder: "np. 180", style: inp })),
+        ce("div", { style: { flex: 1 } },
+          ce("div", { style: lbl }, "Jedn."),
+          ce("input", { value: unit, onChange: function(e) { setUnit(e.target.value); }, style: inp }))
+      ),
+      ce("div", { style: { marginBottom: 12 } },
+        ce("div", { style: lbl }, "Wysoko\u015b\u0107 / parametr (cm)"),
+        ce("input", { value: height, onChange: function(e) { setHeight(e.target.value); }, placeholder: "np. 300", style: inp })
+      ),
+      ce("div", { style: { marginBottom: 20 } },
+        ce("div", { style: lbl }, "Producent / opis (inne)"),
+        ce("input", { value: meta, onChange: function(e) { setMeta(e.target.value); }, placeholder: "np. MARGO TEXTIL", style: inp })
+      ),
+
+      ce("div", { style: { display: "flex", gap: 10 } },
+        ce("button", { onClick: p.onClose, style: btn({ flex: 1, padding: 12, background: "var(--bg2)", color: "var(--t2)", border: "1.5px solid var(--bd2)" }) }, "Anuluj"),
+        ce("button", { onClick: save, disabled: busy, style: btn({ flex: 2, padding: 12, background: "var(--violet)", color: "#fff", opacity: busy ? 0.7 : 1 }) },
+          busy ? "Zapisuj\u0119..." : "Zapisz")
+      ),
+      isBase && hasRow && ce("button", { onClick: resetBase, disabled: busy,
+        style: { marginTop: 10, width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--bd2)", background: "transparent", color: "var(--t3)", fontSize: 12, fontWeight: 600, cursor: "pointer" } },
+        "\u21BA Przywr\u00f3\u0107 warto\u015bci z cennika")
+    )
+  );
+}
+
+// ── Zakładka: Katalog ────────────────────────────────────────────────────────
+function TabCatalog(p) {
+  var s0 = useState([]);    var rows = s0[0];    var setRows = s0[1];
+  var s0b = useState(true); var loading = s0b[0]; var setLoading = s0b[1];
+  var s0c = useState(null); var err = s0c[0];    var setErr = s0c[1];
+  var s1 = useState("");    var search = s1[0];  var setSearch = s1[1];
+  var s2 = useState(false); var onlyNoH = s2[0]; var setOnlyNoH = s2[1];
+  var s3 = useState(null);  var editItem = s3[0]; var setEditItem = s3[1];
+
+  function reload() {
+    setLoading(true);
+    sbApi.getCatalogItems()
+      .then(function(d) { setRows(d || []); setLoading(false); })
+      .catch(function(e) { setErr(e.message); setLoading(false); });
+  }
+  useEffect(function() { reload(); }, []);
+
+  function handleDelete(it) {
+    if (!it.rowId || it.isBase) return;
+    if (!confirm("Usun\u0105\u0107 \u201E" + it.name + "\u201C?")) return;
+    sbApi.deleteCatalogItem(it.rowId)
+      .then(function() { setRows(function(prev) { return prev.filter(function(x) { return x.id !== it.rowId; }); }); })
+      .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
+  }
+
+  var baseGroups = buildBaseCatalog();
+  var groups = mergeCatalog(baseGroups, rows);
+  var groupOpts = baseGroups.map(function(g) { return { id: g.id, label: g.label }; });
+
+  var q = search.trim().toLowerCase();
+  var totalItems = groups.reduce(function(a, gr) { return a + gr.items.length; }, 0);
+  var fabG = groups.find(function(gr) { return gr.id === "tkaniny"; });
+  var noHeightCount = fabG ? fabG.items.filter(function(it) { return it.warn; }).length : 0;
+
+  var rendered = groups.map(function(gr) {
+    var items = gr.items.filter(function(it) {
+      if (onlyNoH && !it.warn) return false;
+      if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
+      return true;
+    });
+    return { group: gr, items: items };
+  }).filter(function(x) { return x.items.length > 0; });
+
+  return ce("div", null,
+    ce("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 } },
+      ce("div", null,
+        ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCD1 Katalog produkt\u00f3w"),
+        ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } },
+          totalItems + " pozycji cennikowych" + (noHeightCount > 0 ? " \u00B7 \u26A0\uFE0F " + noHeightCount + " tkanin bez wysoko\u015bci" : ""))
+      ),
+      ce("button", { onClick: function() { setEditItem({ groupId: "inne" }); },
+        style: btn({ padding: "10px 18px", background: "var(--violet)", color: "#fff", display: "flex", alignItems: "center", gap: 6 }) },
+        ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj produkt")
+    ),
+
+    ce("div", { style: { display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" } },
+      ce("input", { value: search, onChange: function(e) { setSearch(e.target.value); }, placeholder: "\uD83D\uDD0D Szukaj produktu, producenta...",
+        style: Object.assign({}, inp, { flex: 1, minWidth: 180 }) }),
+      noHeightCount > 0 && ce("button", { onClick: function() { setOnlyNoH(!onlyNoH); },
+        style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (onlyNoH ? "#d97706" : "var(--bd2)"), background: onlyNoH ? "rgba(217,119,6,0.10)" : "var(--bg2)", color: onlyNoH ? "#d97706" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
+        "\u26A0\uFE0F Bez wysoko\u015bci (" + noHeightCount + ")")
+    ),
+
+    err && ce("div", { style: { background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: 12, fontSize: 13, color: "#b91c1c", marginBottom: 14 } }, err),
+    loading && ce("div", { style: { textAlign: "center", padding: "50px 0", color: "var(--t3)" } }, "\u23F3 \u0141adowanie..."),
+
+    !loading && rendered.length === 0 && ce("div", { style: { textAlign: "center", padding: "50px 0", color: "var(--t3)" } },
+      ce("div", { style: { fontSize: 36, marginBottom: 10 } }, "\uD83D\uDD0D"),
+      ce("div", { style: { fontSize: 14, fontWeight: 600, color: "var(--t1)" } }, "Brak pasuj\u0105cych produkt\u00f3w")
+    ),
+
+    !loading && rendered.map(function(x) {
+      var gr = x.group;
+      return ce("div", { key: gr.id, style: { marginBottom: 22 } },
+        ce("div", { style: { display: "flex", alignItems: "center", gap: 8, marginBottom: 10, paddingBottom: 6, borderBottom: "1.5px solid var(--bd2)" } },
+          ce("span", { style: { fontSize: 16 } }, gr.icon),
+          ce("span", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)" } }, gr.label),
+          ce("span", { style: { background: "var(--bd2)", color: "var(--t3)", borderRadius: 20, padding: "1px 8px", fontSize: 11, fontWeight: 700 } }, x.items.length)
+        ),
+        ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 } },
+          x.items.map(function(it, idx) {
+            return ce("div", { key: it.rowId || it.baseKey || idx,
+              style: { background: "var(--bg2)", border: "1.5px solid " + (it.warn ? "#f0c98a" : "var(--bd2)"), borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer" },
+              onClick: function() { setEditItem(it); } },
+              ce("div", { style: { minWidth: 0, flex: 1 } },
+                ce("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+                  it.name,
+                  !it.isBase && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "var(--violet)", background: "rgba(124,58,237,0.10)", borderRadius: 6, padding: "1px 5px" } }, "w\u0142asny"),
+                  it.overridden && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#0369a1", background: "rgba(3,105,161,0.10)", borderRadius: 6, padding: "1px 5px" } }, "edyt.")
+                ),
+                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail].filter(Boolean).join(" \u00B7 ") || "\u2014"),
+                it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
+              ),
+              ce("div", { style: { display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" } },
+                ce("div", { style: { fontSize: 14, fontWeight: 800, color: "var(--violet)" } }, fmtPrice(it.price) + " " + (it.unit || "z\u0142")),
+                !it.isBase && ce("button", { onClick: function(e) { e.stopPropagation(); handleDelete(it); },
+                  title: "Usu\u0144", style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 13, opacity: 0.5, padding: "0 2px" } }, "\uD83D\uDDD1")
+              )
+            );
+          })
+        )
+      );
+    }),
+
+    editItem !== null && ce(ModalCatalogItem, {
+      item: editItem, groups: groupOpts,
+      onSave: function() { setEditItem(null); reload(); },
+      onClose: function() { setEditItem(null); }
+    })
+  );
+}
+
 // ── Ekran główny Magazyn ──────────────────────────────────────────────────────
 export function ScreenWarehouse(p) {
   var s1 = useState("warehouse"); var tab = s1[0]; var setTab = s1[1];
 
   var tabs = [
     { id: "warehouse", label: "Magazyn", icon: "\uD83D\uDCE6" },
+    { id: "catalog",   label: "Katalog", icon: "\uD83D\uDCD1" },
     { id: "rails",     label: "Szyny KS \u2014 \u015bcinki", icon: "\uD83D\uDCCF" }
   ];
 
@@ -498,6 +807,8 @@ export function ScreenWarehouse(p) {
           t.icon + " " + t.label);
       })
     ),
-    tab === "warehouse" ? ce(TabWarehouse, {}) : ce(TabRails, {})
+    tab === "warehouse" ? ce(TabWarehouse, {})
+      : tab === "catalog" ? ce(TabCatalog, {})
+      : ce(TabRails, {})
   );
 }// ── Zakładka: Szyny KS ───────────────────────────────────────────────────────
