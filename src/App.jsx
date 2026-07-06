@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { sbApi } from './lib/supabase.js';
 import { signOut } from './lib/auth.js';
 import {
-  FABRICS, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
+  FABRICS, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
-  KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, SELLER,
+  KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
   buildFabricRows, buildOfferRows, buildSewingRows, calc,
   formatPLN, generateKarniszOrderPDF, generateOfferPDF, generateRailsInstallPDF,
   getPanelsForProd, mg, openPDFWindow, roundTo10
@@ -126,6 +126,12 @@ export function App(p){
       console.error("Błąd ładowania:",e);
       setLoading(false);
     });
+  },[]);
+
+  // Załaduj nadpisania tkanin z Katalogu (Magazyn → Katalog) przy starcie.
+  // Cicho pomijamy błąd — brak nadpisań = ceny bazowe z FABRICS, jak dotychczas.
+  React.useEffect(function(){
+    sbApi.getCatalogItems().then(primeFabricOverrides).catch(function(){});
   },[]);
 
   // Hydratuj lokalne pola Polecenie/Montaż z aktualnego klienta przy każdej zmianie klienta
@@ -1614,8 +1620,8 @@ export function ModalAIValuation(p){
         var winTotal=0,prodSummary=[];
         (win.products||[]).forEach(function(prod){
           if(prod.fabName){
-            var fab=FABRICS.find(function(f){return f.name===prod.fabName;});
-            if(fab){prod.fabP=fab.brutto;prod.fabW=fab.width||300;}
+            var fabEff=getFabricEffective(prod.fabName);
+            if(fabEff){prod.fabP=fabEff.brutto;prod.fabW=fabEff.width||300;}
           }
           var prodForCalc=prod;
           if(prod.type==="zaslona"||prod.type==="firana"){
@@ -1755,8 +1761,8 @@ export function ModalAIValuation(p){
             if(prod.c)clean.c=prod.c;
             if(prod.fabName){
               clean.fabName=prod.fabName;
-              var fabObj=FABRICS.find(function(f){return f.name===prod.fabName;});
-              if(fabObj){clean.fabP=fabObj.brutto;clean.fabW=fabObj.width||0;}
+              var fabObjEff=getFabricEffective(prod.fabName);
+              if(fabObjEff){clean.fabP=fabObjEff.brutto;clean.fabW=fabObjEff.width||0;}
             }
             if(prod.variant)clean.variant=prod.variant;
             return clean;
