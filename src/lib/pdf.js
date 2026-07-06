@@ -175,7 +175,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
         total+=t;
       });
     });
-    var rows="";
+    var rows="";var items=[];
     typeOrder.forEach(function(key){
       var d=typeData[key];
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||pluralProd(d.type,d.count));
@@ -183,9 +183,11 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var isKpl=(d.type==="zaslona"||d.type==="firana");
       var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek");
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
+      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
+      items.push({label:labelHTML,total:d.total});
+      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
-    return {rows:rows,total:total};
+    return {rows:rows,total:total,items:items};
   }
 
   // variantLabel=undefined/null → plain PDF; variantLabel=string → filtruj wariant
@@ -210,8 +212,16 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var headerColor=isVariantWin?"#1a1a18":"#1a1a18";
       var totalRowBg=isVariantWin?"#eeece9":"#f5ede0";
       var winLabel=isVariantWin?(w.variantBaseName||w.name):w.name;
-      var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
-      roomSection2+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+totalRow2+"</tbody></table>";
+      var winBody;
+      if(wr.items.length===1){
+        // Pojedynczy produkt — jeden wiersz (nazwa okna + produkt), bez powtórzonej sumy
+        winBody="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"<br><span style=\"font-size:9px;font-weight:400;color:#888;\">"+wr.items[0].label+"</span></td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
+      }else{
+        // Kilka produktów — pozycje + podsumowanie okna
+        var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
+        winBody=wr.rows+totalRow2;
+      }
+      roomSection2+="<table style=\"width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><colgroup><col><col style=\"width:30mm;\"></colgroup><tbody>"+winBody+"</tbody></table>";
       roomTotal2+=wr.total;
     });
     if(!roomTotal2)return;
@@ -318,17 +328,19 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
       total+=t;
     });});
-    var rows="";
+    var rows="";var items=[];
     typeOrder.forEach(function(key){var d=typeData[key];
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
       var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek";
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+"</td>"
+      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
+      items.push({label:labelHTML,total:d.total});
+      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td>"
            +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
-    return {rows:rows,total:total};
+    return {rows:rows,total:total,items:items};
   }
   var roomSections="";var grandTotal=0;
   selection.forEach(function(item){
@@ -337,9 +349,17 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
     wins.forEach(function(w){var wr=buildWinRowsSel([w]);if(!wr.total)return;
       var isV=!!w.variantGroup;var rb=isV?"#eeece9":"#f5ede0";var hc=isV?"#1a1a18":"#1a1a18";
       var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(w.name||"Okno");
-      var tRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wLabel+"</td>"
-              +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
-      roomSec+="<table style=\"width:100%;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><tbody>"+wr.rows+tRow+"</tbody></table>";
+      var winBody;
+      if(wr.items.length===1){
+        // Pojedynczy produkt — jeden wiersz (nazwa okna + produkt), bez powtórzonej sumy
+        winBody="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wLabel+"<br><span style=\"font-size:9px;font-weight:400;color:#888;\">"+wr.items[0].label+"</span></td>"
+               +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
+      }else{
+        var tRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wLabel+"</td>"
+                +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
+        winBody=wr.rows+tRow;
+      }
+      roomSec+="<table style=\"width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><colgroup><col><col style=\"width:30mm;\"></colgroup><tbody>"+winBody+"</tbody></table>";
       roomTotal+=wr.total;});
     if(!roomTotal)return;grandTotal+=roomTotal;
     var rName=roomBaseName(room);
