@@ -1466,7 +1466,7 @@ export const BANNER_PDF_G ="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4
 export function openPDFWindow(htmlContent, title, opts){
   opts=opts||{};
   var pageSize=opts.landscape?"A4 landscape":"A4";
-  var pageMargin=opts.landscape?"12mm 14mm":"0";
+  var pageMargin=opts.landscape?"12mm 14mm":"14mm 12mm";
   var printReady=htmlContent.replace("</head>",
     "<style>@media print{@page{size:"+pageSize+";margin:"+pageMargin+";}body{padding:0 !important;margin:0;}}</style>\n"+
     "<script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script>\n"+
