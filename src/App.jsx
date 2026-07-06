@@ -918,7 +918,23 @@ export function App(p){
           ce("div",{onClick:function(){openWin(w);},style:{display:"flex",alignItems:"center",gap:14,flex:1,cursor:"pointer",minWidth:0}},
             ce("img",{src:IMG_OKNO,style:{width:80,height:80,objectFit:"cover",borderRadius:10,flexShrink:0}}),
             ce("div",{style:{flex:1,minWidth:0}},
-              ce("div",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",marginBottom:3}},w.name||"Okno",variantBadge),
+              ce("div",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",marginBottom:3,display:"flex",alignItems:"center",flexWrap:"wrap"}},
+                ce(InlineEdit,{
+                  value:w.name||"Okno",
+                  inputStyle:{fontSize:15,fontWeight:600},
+                  onSave:function(v){
+                    updateClient(curClientId,function(cl){
+                      return mg(cl,{rooms:(cl.rooms||[]).map(function(r){
+                        if(r.id!==curRoomId)return r;
+                        return mg(r,{windows:(r.windows||[]).map(function(x){
+                          return x.id===w.id?mg(x,{name:v,variantBaseName:x.variantGroup?v:x.variantBaseName}):x;
+                        })});
+                      })});
+                    });
+                  }
+                }),
+                variantBadge
+              ),
               ce("div",{style:{fontSize:12,color:"var(--t3)"}},labels||"\u2014"),
               t?ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--gr)",marginTop:4}},roundTo10(t)+" z\u0142"):null
             ),
