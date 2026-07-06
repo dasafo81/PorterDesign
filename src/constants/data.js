@@ -593,6 +593,32 @@ export const FABRICS =[
   {name:"Zora",brutto:40,prod:"KAMELEON.PRO",width:null}
 ];
 
+// ── Nadpisania tkanin z Katalogu (Magazyn → Katalog) ───────────────────
+// Cache w pamiećci procesu, wypełniany raz przy starcie apki (App.jsx wywołuje
+// primeFabricOverrides po pobraniu catalog_items z Supabase). Klucz nadpisania
+// to base_key w formacie "tkaniny::<nazwa>" (patrz ScreenWarehouse.jsx).
+var _fabricOverrides = {};
+export function primeFabricOverrides(rows){
+  _fabricOverrides = {};
+  (rows||[]).forEach(function(r){
+    if(r.base_key && r.base_key.indexOf("tkaniny::")===0){
+      _fabricOverrides[r.base_key.slice(9)] = r;
+    }
+  });
+}
+// Zwraca efektywną tkaninę (baza FABRICS + nadpisanie z katalogu, jeśli istnieje)
+export function getFabricEffective(name){
+  var base = FABRICS.find(function(f){return f.name===name;});
+  var ov = _fabricOverrides[name];
+  if(!base && !ov) return null;
+  return {
+    name: name,
+    brutto: (ov && ov.price!=null) ? ov.price : (base?base.brutto:null),
+    width:  (ov && ov.height_cm!=null) ? ov.height_cm : (base?base.width:null),
+    prod:   (ov && ov.meta) ? ov.meta : (base?base.prod:"-")
+  };
+}
+
 export const PROD_TYPES =[
   {id:"zaslona",label:"Zas\u0142ona",icon:"🪟"},
   {id:"firana",label:"Firana",icon:"🌿"},
