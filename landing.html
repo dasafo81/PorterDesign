@@ -91,6 +91,8 @@
   @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   .success-msg { display: none; text-align: center; padding: 2rem; color: var(--wsp-dark); font-size: 15px; line-height: 1.7; }
+  /* honeypot */
+  .hp { display: none !important; }
   .success-msg strong { display: block; font-size: 1.8rem; font-family: 'Cormorant Garamond', serif; margin-bottom: .5rem; }
   @media (max-width: 600px) {
     nav { padding: 1rem 1.2rem; }
@@ -259,7 +261,8 @@
         <div class="field"><label>Adres e-mail</label><input type="email" id="f-email" placeholder="paulina@studio.pl"></div>
         <div class="field"><label>Miasto</label><input type="text" id="f-city" placeholder="Warszawa"></div>
         <div class="field"><label>Co chcesz usprawnić? (opcjonalnie)</label><textarea id="f-msg" placeholder="np. wyceny zajmują mi za dużo czasu..."></textarea></div>
-        <button class="submit-btn" onclick="handleSubmit()">Wyślij — chcę zobaczyć demo</button>
+        <div class="field hp"><label>Nie wypełniaj tego pola</label><input type="text" id="f-hp" tabindex="-1" autocomplete="off"></div>
+        <button class="submit-btn" id="submit-btn" onclick="handleSubmit()">Wyślij — chcę zobaczyć demo</button>
         <p class="form-note">Odpowiem w ciągu 24 godzin · Bez spamu, tylko konkretna rozmowa</p>
       </div>
       <div class="success-msg" id="success-msg">
@@ -277,10 +280,37 @@
 function handleSubmit() {
   var name = document.getElementById('f-name').value.trim();
   var email = document.getElementById('f-email').value.trim();
+  var studio = document.getElementById('f-studio').value.trim();
+  var city = document.getElementById('f-city').value.trim();
+  var message = document.getElementById('f-msg').value.trim();
+  var honeypot = document.getElementById('f-hp').value;
   if (!name || !email) { alert('Uzupełnij imię i adres e-mail.'); return; }
-  // TODO: podepnij Formspree → fetch('https://formspree.io/f/TWOJ_ID', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name,email}) })
-  document.getElementById('form-wrap').style.display = 'none';
-  document.getElementById('success-msg').style.display = 'block';
+
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Wysyłanie…';
+
+  fetch('/api/lead', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, email: email, studio: studio, city: city, message: message, honeypot: honeypot }),
+  })
+    .then(function(resp) { return resp.json().then(function(data) { return { ok: resp.ok, data: data }; }); })
+    .then(function(result) {
+      if (result.ok && result.data.ok) {
+        document.getElementById('form-wrap').style.display = 'none';
+        document.getElementById('success-msg').style.display = 'block';
+      } else {
+        alert(result.data.error || 'Wystąpił błąd. Spróbuj ponownie.');
+        btn.disabled = false;
+        btn.textContent = 'Wyślij — chcę zobaczyć demo';
+      }
+    })
+    .catch(function() {
+      alert('Błąd połączenia. Sprawdź internet i spróbuj ponownie.');
+      btn.disabled = false;
+      btn.textContent = 'Wyślij — chcę zobaczyć demo';
+    });
 }
 document.querySelectorAll('a[href^="#"]').forEach(function(a) {
   a.addEventListener('click', function(e) {
