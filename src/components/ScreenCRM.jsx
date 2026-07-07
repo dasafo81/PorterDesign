@@ -519,6 +519,8 @@ export function CRMKalendarz(p){
   var sNewEv=useState(null),newEvDraft=sNewEv[0],setNewEvDraft=sNewEv[1];
   var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
   var sSelGcalEv=useState(null),selectedGcalEv=sSelGcalEv[0],setSelectedGcalEv=sSelGcalEv[1];
+  var sDragOver=useState(null),dragOverDay=sDragOver[0],setDragOverDay=sDragOver[1];
+  var dragEvRef=React.useRef(null);
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
   React.useEffect(function(){
@@ -837,6 +839,63 @@ export function CRMKalendarz(p){
     return result;
   }
 
+  // ── Klucz dnia (porównania / podświetlenie drop) ──
+  function dayKeyStr(d){var pad=function(n){return String(n).padStart(2,'0');};return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+
+  // ── Przeniesienie zdarzenia GCal na inny dzień (drag&drop) ──
+  function moveEventToDate(raw,targetDate){
+    if(!raw||!gcalToken) return;
+    var calId=raw._calId||'primary';
+    var startDT=raw.start&&(raw.start.dateTime||raw.start.date);
+    var endDT=raw.end&&(raw.end.dateTime||raw.end.date);
+    if(!startDT) return;
+    var isAllDay=!!(raw.start&&raw.start.date&&!raw.start.dateTime);
+    var oldStart=new Date(startDT);
+    if(isSameDay(oldStart,targetDate)) return;
+    var pad=function(n){return String(n).padStart(2,'0');};
+    var body,newStartObj,newEndObj;
+    if(isAllDay){
+      var oldEndDate=endDT?new Date(endDT):new Date(oldStart.getTime()+86400000);
+      var durDays=Math.max(1,Math.round((oldEndDate-oldStart)/86400000));
+      var ns=new Date(targetDate);ns.setHours(0,0,0,0);
+      var ne=new Date(ns);ne.setDate(ne.getDate()+durDays);
+      var fmtD=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+      newStartObj={date:fmtD(ns)};newEndObj={date:fmtD(ne)};
+      body={start:newStartObj,end:newEndObj};
+    } else {
+      var oldEnd=endDT?new Date(endDT):new Date(oldStart.getTime()+3600000);
+      var durMs=Math.max(0,oldEnd-oldStart);
+      var ns2=new Date(targetDate);ns2.setHours(oldStart.getHours(),oldStart.getMinutes(),oldStart.getSeconds(),0);
+      var ne2=new Date(ns2.getTime()+durMs);
+      newStartObj={dateTime:ns2.toISOString(),timeZone:'Europe/Warsaw'};
+      newEndObj={dateTime:ne2.toISOString(),timeZone:'Europe/Warsaw'};
+      body={start:newStartObj,end:newEndObj};
+    }
+    var prevSnapshot=gcalEvents;
+    setGcalEvents(function(evs){
+      return evs.map(function(e){
+        return e.id===raw.id&&e._calId===raw._calId ? Object.assign({},e,{start:newStartObj,end:newEndObj}) : e;
+      });
+    });
+    function doPatch(t){
+      return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events/'+encodeURIComponent(raw.id),{
+        method:'PATCH',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+    }
+    doPatch(gcalToken)
+      .then(function(r){
+        if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doPatch(fresh);});}
+        return r;
+      })
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);})
+      .catch(function(){
+        setGcalEvents(prevSnapshot);
+        fetchEvents(gcalToken);
+        alert('Nie uda\u0142o si\u0119 przenie\u015b\u0107 wydarzenia.');
+      });
+  }
+
   function prevPeriod(){
     var d=new Date(refDate);
     if(calView==="week") d.setDate(d.getDate()-7);
@@ -881,9 +940,21 @@ export function CRMKalendarz(p){
           var evs=getEventsForDay(d);
           var isToday=isSameDay(d,today);
           var isCurrentMonth=d.getMonth()===month;
-          return ce("div",{key:i,style:{background:"var(--bg)",minHeight:80,padding:"4px 5px",border:"1px solid var(--bd2)",borderTop:isToday?"2px solid var(--t1)":"1px solid var(--bd2)",position:"relative"}},
+          var dk=dayKeyStr(d);
+          var isDragOver=dragOverDay===dk;
+          return ce("div",{key:i,
+            onDoubleClick:function(){openNewEventModal(d);},
+            onDragOver:function(e){e.preventDefault();e.dataTransfer.dropEffect="move";if(dragOverDay!==dk)setDragOverDay(dk);},
+            onDragLeave:function(){if(dragOverDay===dk)setDragOverDay(null);},
+            onDrop:function(e){e.preventDefault();setDragOverDay(null);var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,d);},
+            style:{background:isDragOver?"rgba(124,58,237,0.08)":"var(--bg)",minHeight:80,padding:"4px 5px",border:isDragOver?"1px dashed var(--violet)":"1px solid var(--bd2)",borderTop:isToday?"2px solid var(--t1)":(isDragOver?"1px dashed var(--violet)":"1px solid var(--bd2)"),position:"relative",cursor:"default"}},
             ce("div",{style:{fontSize:11,fontWeight:isToday?700:400,background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?20:null,height:isToday?20:null,borderRadius:isToday?10:null,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:2}},d.getDate()),
-            evs.slice(0,3).map(function(ev,ei){return ce("div",{key:ei,title:ev.title,style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",fontWeight:600},onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}}},
+            evs.slice(0,3).map(function(ev,ei){var canDrag=!!ev.gcalRaw;return ce("div",{key:ei,title:ev.title,
+              draggable:canDrag,
+              onDragStart:canDrag?function(e){dragEvRef.current=ev.gcalRaw;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",ev.gcalRaw.id||"");}catch(_){}}:undefined,
+              onDragEnd:function(){dragEvRef.current=null;setDragOverDay(null);},
+              onDoubleClick:function(e){e.stopPropagation();},
+              style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:canDrag?"grab":"pointer",fontWeight:600},onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}}},
               (ev.time?(new Date(ev.time).getHours()+":"+String(new Date(ev.time).getMinutes()).padStart(2,"0")+" "):"")+ ev.title
             );}),
             evs.length>3?ce("div",{onClick:function(e){e.stopPropagation();setRefDate(new Date(d));setCalView("day");},
@@ -925,8 +996,19 @@ export function CRMKalendarz(p){
             ce("div",{key:"h"+h,style:{fontSize:9,color:"var(--t3)",textAlign:"right",paddingRight:6,paddingTop:2,borderTop:"1px solid var(--bd2)"}},h+":00"),
             weekDays.map(function(d,di){
               var evs=getEventsForDay(d).filter(function(ev){return ev.time&&new Date(ev.time).getHours()===h;});
-              return ce("div",{key:"d"+di,style:{borderLeft:"1px solid var(--bd2)",borderTop:"1px solid var(--bd2)",minHeight:36,padding:2,position:"relative"}},
-                evs.map(function(ev,ei){return ce("div",{key:ei,title:ev.title,onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",fontWeight:600}},ev.title);})
+              var wdk=dayKeyStr(d);
+              return ce("div",{key:"d"+di,
+                onDoubleClick:function(){var dd=new Date(d);dd.setHours(h,0,0,0);openNewEventModal(dd);},
+                onDragOver:function(e){e.preventDefault();e.dataTransfer.dropEffect="move";if(dragOverDay!==wdk)setDragOverDay(wdk);},
+                onDragLeave:function(){if(dragOverDay===wdk)setDragOverDay(null);},
+                onDrop:function(e){e.preventDefault();setDragOverDay(null);var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,d);},
+                style:{borderLeft:"1px solid var(--bd2)",borderTop:"1px solid var(--bd2)",minHeight:36,padding:2,position:"relative",background:dragOverDay===wdk?"rgba(124,58,237,0.08)":undefined}},
+                evs.map(function(ev,ei){var canDrag=!!ev.gcalRaw;return ce("div",{key:ei,title:ev.title,
+                  draggable:canDrag,
+                  onDragStart:canDrag?function(e){dragEvRef.current=ev.gcalRaw;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",ev.gcalRaw.id||"");}catch(_){}}:undefined,
+                  onDragEnd:function(){dragEvRef.current=null;setDragOverDay(null);},
+                  onDoubleClick:function(e){e.stopPropagation();},
+                  onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:canDrag?"grab":"pointer",fontWeight:600}},ev.title);})
               );
             })
           ];
@@ -950,7 +1032,9 @@ export function CRMKalendarz(p){
         var hEvs=evs.filter(function(ev){return ev.time&&new Date(ev.time).getHours()===h;});
         var allDayEvs=h===7?evs.filter(function(ev){return !ev.time;}):[];
         var hasContent=hEvs.length>0||allDayEvs.length>0;
-        return ce("div",{key:h,style:{display:"flex",gap:0,borderTop:"1px solid "+(hasContent?"var(--bd2)":"var(--bd3)"),minHeight:hasContent?52:32}},
+        return ce("div",{key:h,
+          onDoubleClick:function(){var dd=new Date(refDate);dd.setHours(h,0,0,0);openNewEventModal(dd);},
+          style:{display:"flex",gap:0,borderTop:"1px solid "+(hasContent?"var(--bd2)":"var(--bd3)"),minHeight:hasContent?52:32,cursor:"default"}},
           ce("div",{style:{width:52,flexShrink:0,padding:"5px 8px 0",fontSize:10,color:hasContent?"var(--t3)":"var(--bd2)",fontWeight:hasContent?700:400,textAlign:"right",userSelect:"none"}},h+":00"),
           ce("div",{style:{flex:1,padding:"4px 8px",display:"flex",flexDirection:"column",gap:4}},
             allDayEvs.map(function(ev,ei){
