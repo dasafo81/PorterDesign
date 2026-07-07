@@ -223,7 +223,7 @@ export const sbApi = {
   // Pobierz config (branding) wlasnego tenanta - RLS policy own_tenant pozwala
   // userowi czytac tylko swoj rekord z tabeli tenants.
   getMyTenant: function(){
-    return sbFetch("GET","tenants?select=id,name,config&limit=1").then(function(rows){
+    return sbFetch("GET","tenants?select=id,name,config,trial_ends_at,subscription_status,plan&limit=1").then(function(rows){
       return rows&&rows[0]?rows[0]:null;
     });
   },
@@ -585,6 +585,29 @@ export const mailApi = {
       brand_name: brandName,
       trial_end_date: trialEndDate,
       upgrade_url: upgradeUrl,
+    });
+  },
+};
+
+// ── STRIPE API (checkout/billing) ────────────────────────────────────────────
+// Wywołuje /api/stripe/checkout z JWT zalogowanego usera (musi być tenant-admin).
+
+export const stripeApi = {
+  // plan = "start" | "studio" | "pro" — zwraca Promise<string> (URL do Stripe Checkout)
+  createCheckoutSession: function(plan) {
+    var userTok = getUserToken();
+    return fetch('/api/stripe/checkout', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + (userTok || ''),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ plan: plan }),
+    }).then(function(r) {
+      return r.json().then(function(d) {
+        if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+        return d.url;
+      });
     });
   },
 };
