@@ -623,6 +623,9 @@ function KsefTokenPanel(){
   var [busy,setBusy]=useState(false);
   var [err,setErr]=useState(null);
   var [msg,setMsg]=useState(null);
+  var [testBusy,setTestBusy]=useState(false);
+  var [testMsg,setTestMsg]=useState(null);
+  var [testErr,setTestErr]=useState(null);
   var certRef=React.useRef(null);
   var keyRef=React.useRef(null);
 
@@ -676,6 +679,16 @@ function KsefTokenPanel(){
       .finally(function(){setBusy(false);});
   }
 
+  // Testuje po\u0142\u0105czenie z KSeF bez wysy\u0142ania faktury \u2014 u\u017cywa tego samego
+  // /api/ksef/session co realna wysy\u0142ka, wi\u0119c wynik jest wiarygodny.
+  function testConnection(){
+    setTestBusy(true);setTestErr(null);setTestMsg(null);
+    ksefApi.openSession()
+      .then(function(){setTestMsg("\u2705 Po\u0142\u0105czenie dzia\u0142a \u2014 KSeF zaakceptowa\u0142 dane uwierzytelniaj\u0105ce.");})
+      .catch(function(e){setTestErr(e.message||"B\u0142\u0105d testu po\u0142\u0105czenia");})
+      .finally(function(){setTestBusy(false);});
+  }
+
   function fmtTs(ts){
     if(!ts)return "";
     var d=new Date(ts);
@@ -699,10 +712,15 @@ function KsefTokenPanel(){
                   "KSeF aktywny \u2014 "+(status.env==="prod"?"\uD83D\uDE80 PRODUKCJA":"\uD83E\uDDEA TEST")),
                 status.updated_at&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Zapisany: "+fmtTs(status.updated_at))
               ),
+              ce("button",{onClick:testConnection,disabled:testBusy,
+                style:Object.assign({},btnSecondary,{fontSize:11,padding:"5px 10px",marginRight:6})},
+                testBusy?"\u23F3 Testuj\u0119...":"\uD83D\uDD0C Testuj po\u0142\u0105czenie"),
               ce("button",{onClick:del,disabled:busy,
                 style:Object.assign({},btnDanger,{fontSize:11,padding:"5px 10px"})},
                 "Usu\u0144")
             ),
+            testMsg&&ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#065f46",marginBottom:10}},testMsg),
+            testErr&&ce("div",{style:{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#b91c1c",marginBottom:10}},"\u26A0\uFE0F "+testErr),
             ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:8,padding:"10px 14px",fontSize:12,color:"var(--t2)"}},
               "\uD83D\uDCA1 Dane KSeF s\u0105 zaszyfrowane AES-256-GCM po stronie serwera.")
           )
