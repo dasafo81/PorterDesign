@@ -1548,7 +1548,7 @@ export function pdfStyles(){
   </style>`;
 }
 
-export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
+export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validDays){
   montaz=montaz||0;
   comm=comm||0;
   offerNotes=offerNotes||"";
@@ -1564,7 +1564,8 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
   var netto=total/1.23;var vat=total-netto;
   var now=new Date();
   var dateStr=now.toLocaleDateString("pl-PL");
-  var validStr=new Date(now.getTime()+30*24*3600*1000).toLocaleDateString("pl-PL");
+  var _vd=(validDays!=null&&!isNaN(validDays))?validDays:30;
+  var validStr=new Date(now.getTime()+_vd*24*3600*1000).toLocaleDateString("pl-PL");
   var offerNo=getPDFOfferNumber(client);
 
   var tableRows=rows.map(function(r){
@@ -1616,10 +1617,20 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes){
   return html;
 }
 
+// Pyta o okres ważności oferty (dni). Zwraca liczbę dni lub null gdy anulowano.
+export function promptOfferValidDays(){
+  var v=window.prompt("Oferta ważna przez ile dni?","30");
+  if(v===null)return null;
+  var n=parseInt(String(v).replace(/[^0-9]/g,""),10);
+  return (isNaN(n)||n<=0)?30:n;
+}
+
 export function generateOfferPDF(client,comm,montaz){
   var offerNotes=window.prompt("Uwagi do oferty (opcjonalne):","") || "";
   if(offerNotes===null)return;
-  var html=buildOfferPDFHtml(client,comm,montaz,offerNotes);
+  var validDays=promptOfferValidDays();
+  if(validDays===null)return;
+  var html=buildOfferPDFHtml(client,comm,montaz,offerNotes,validDays);
   if(!html){alert("Brak wycenionych produktów.");return;}
   openPDFWindow(html, getPDFOfferNumber(client));
 }
