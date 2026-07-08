@@ -7,7 +7,7 @@ import {
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
   buildFabricRows, buildOfferRows, buildSewingRows, calc,
   formatPLN, generateKarniszOrderPDF, generateOfferPDF, generateRailsInstallPDF,
-  getPanelsForProd, mg, openPDFWindow, roundTo10
+  getPanelsForProd, mg, openPDFWindow, promptOfferValidDays, roundTo10
 } from './constants/data.js';
 import {
   generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection
@@ -2116,7 +2116,9 @@ function ModalSimplifiedPDF(p){
         if(chosenWins.length)selection.push({room:room,windows:chosenWins});
       }
     });
-    var h=buildSimplifiedPDFFromSelection(client,comm,montaz,selection,null);
+    var _vd=promptOfferValidDays();
+    if(_vd===null)return;
+    var h=buildSimplifiedPDFFromSelection(client,comm,montaz,selection,null,_vd);
     if(!h){alert("Brak pozycji do wyceny.");return;}
     openPDFWindow(h,(client.name||"")+" - Oferta");
   }
