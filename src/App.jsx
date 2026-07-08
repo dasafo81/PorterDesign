@@ -7,7 +7,7 @@ import {
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
   buildFabricRows, buildOfferRows, buildSewingRows, calc,
   formatPLN, generateKarniszOrderPDF, generateOfferPDF, generateRailsInstallPDF,
-  getPanelsForProd, mg, openPDFWindow, promptOfferValidDays, roundTo10
+  getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
   generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection
@@ -2074,6 +2074,7 @@ function ModalSimplifiedPDF(p){
   var roomGroups=React.useMemo(function(){return buildGroups();},[client]);
   var ss=useState(function(){return makeInitSel(buildGroups());});
   var sel=ss[0],setSel2=ss[1];
+  var svu=useState("");var validUntil=svu[0],setValidUntil=svu[1];
 
   function setKey(key,val){setSel2(function(s){var ns=Object.assign({},s);ns[key]=val;return ns;});}
 
@@ -2116,9 +2117,9 @@ function ModalSimplifiedPDF(p){
         if(chosenWins.length)selection.push({room:room,windows:chosenWins});
       }
     });
-    var _vd=promptOfferValidDays();
-    if(_vd===null)return;
-    var h=buildSimplifiedPDFFromSelection(client,comm,montaz,selection,null,_vd);
+    var _vu=null;
+    if(validUntil){var _d=new Date(validUntil+"T00:00:00");if(!isNaN(_d))_vu=_d;}
+    var h=buildSimplifiedPDFFromSelection(client,comm,montaz,selection,null,_vu);
     if(!h){alert("Brak pozycji do wyceny.");return;}
     openPDFWindow(h,(client.name||"")+" - Oferta");
   }
@@ -2199,6 +2200,10 @@ function ModalSimplifiedPDF(p){
       ce("div",{style:{padding:"14px 20px",borderTop:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:12}},
         ce("div",{style:{fontSize:13,color:"var(--t2)"}},
           "Suma: ",ce("span",{style:{fontWeight:700,color:"var(--gr)"}},roundTo10(calcTotal())+" z\u0142")
+        ),
+        ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          ce("label",{style:{fontSize:13,color:"var(--t2)",whiteSpace:"nowrap"}},"Oferta wa\u017cna do:"),
+          ce("input",{type:"date",value:validUntil,onChange:function(ev){setValidUntil(ev.target.value);},title:"Puste = 30 dni od dzi\u015b",style:{padding:"7px 10px",borderRadius:8,border:"1px solid var(--bd2)",fontSize:13,color:"var(--t1)",background:"var(--bg)",fontFamily:"inherit"}})
         ),
         ce("button",{onClick:doGenerate,style:{padding:"10px 22px",borderRadius:10,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},"\uD83D\uDCCB Generuj PDF")
       )
