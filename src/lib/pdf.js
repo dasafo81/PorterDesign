@@ -6,7 +6,7 @@ import {
   BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES,
   SELLER, buildFabricRows, buildSewingRows, calc,
   getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
-  openPDFWindow, pdfStyles, promptOfferValidDays, roundTo10
+  openPDFWindow, pdfStyles, roundTo10
 } from '../constants/data.js';
 
 export function generateFabricOrderPDF(client,opts){
@@ -97,13 +97,12 @@ export function generateFabricOrderPDF(client,opts){
 }
 
 // ── WYCENA UPROSZCZONA PDF ─────────────────────────────────────────────────
-export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVariantLabel,validDays){
+export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVariantLabel,validUntil){
   comm=comm||0;montaz=montaz||0;
   if(!(client.rooms||[]).length)return null;
   var now=new Date();
   var dateStr=now.toLocaleDateString("pl-PL");
-  var _vd=(validDays!=null&&!isNaN(validDays))?validDays:30;
-  var validDate=new Date(now.getTime()+_vd*24*60*60*1000);
+  var validDate=((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*60*60*1000);
   var validStr=validDate.toLocaleDateString("pl-PL");
   var offerNo=getPDFOfferNumber(client);
 
@@ -257,8 +256,6 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
 export function generateSimplifiedPDF(client,comm,montaz){
   comm=comm||0;montaz=montaz||0;
   if(!(client.rooms||[]).length){alert("Brak pomieszczeń.");return;}
-  var _vd=promptOfferValidDays();
-  if(_vd===null)return;
   // Zbierz etykiety wariantów okien
   var allWinLabels={};
   (client.rooms||[]).forEach(function(room){
@@ -276,7 +273,7 @@ export function generateSimplifiedPDF(client,comm,montaz){
   var hasWinVariants=winLabels.length>0;
   var hasRoomVariants=roomLabels.length>0;
   if(!hasWinVariants&&!hasRoomVariants){
-    var h=buildSimplifiedPDFHtml(client,comm,montaz,null,null,_vd);
+    var h=buildSimplifiedPDFHtml(client,comm,montaz,null,null);
     if(!h){alert("Brak pozycji do wyceny.");return;}
     openPDFWindow(h,(client.name||"")+" - Oferta");
     return;
@@ -286,7 +283,7 @@ export function generateSimplifiedPDF(client,comm,montaz){
   var opened=0;
   roomDim.forEach(function(rl){
     winDim.forEach(function(wl){
-      var h=buildSimplifiedPDFHtml(client,comm,montaz,wl,rl,_vd);
+      var h=buildSimplifiedPDFHtml(client,comm,montaz,wl,rl);
       if(!h)return;
       var suffix="";
       if(rl)suffix+=" (pomieszczenie "+rl+")";
@@ -304,11 +301,11 @@ function roomBaseName(room){
   return n.replace(/ — Wariant [A-Z\.]+$/,'').replace(/ — Wariant [A-Z\.]+$/,'');
 }
 
-export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle,validDays){
+export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle,validUntil){
   comm=comm||0;montaz=montaz||0;
   if(!selection||!selection.length)return null;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
-  var _vd=(validDays!=null&&!isNaN(validDays))?validDays:30;var validDate=new Date(now.getTime()+_vd*24*60*60*1000);var validStr=validDate.toLocaleDateString("pl-PL");
+  var validDate=((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*60*60*1000);var validStr=validDate.toLocaleDateString("pl-PL");
   var offerNo=getPDFOfferNumber(client);
   function calcProd(p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return comm>0?base*(1+comm):base;}
   function sewingInfo(p){var c=p.c||{};var sz;if(c.sz==="wave"||c.model==="wave"){sz="Wave";}else if(c.model==="falda"){var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podwójny",potrojna:"Flex Potrójny",plaska:"Fałda Płaska",studio:"Fałda Studio"};sz=c.foldType?foldMap[c.foldType]||("Fałda "+c.foldType):"Fałda";}else if(c.model==="tasma"){sz=c.typMarszczenia||"Smok";}else{sz="Flex";}var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";return sz+" "+mars;}
