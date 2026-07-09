@@ -1431,10 +1431,21 @@ function RichTextEditor(p){
   }
 
   function onPaste(e){
-    // Wymuszamy wklejanie jako plain text — bez śmieci ze stylami z Worda/Gmaila
+    // Wymuszamy wklejanie jako plain text — bez śmieci ze stylami z Worda/Gmaila,
+    // ale jeśli wklejony tekst zawiera adres URL, zamieniamy go na klikalny <a>
+    // (inaczej link wklejony np. do oferty trafiał do maila jako martwy tekst).
     e.preventDefault();
     var text=(e.clipboardData||window.clipboardData).getData("text/plain");
-    document.execCommand("insertText", false, text);
+    var urlRe=/(https?:\/\/[^\s<]+)/gi;
+    if(urlRe.test(text)){
+      var esc=text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      var html=esc.replace(/(https?:\/\/[^\s<]+)/gi,function(m){
+        return '<a href="'+m+'" target="_blank">'+m+'</a>';
+      }).replace(/\n/g,"<br>");
+      document.execCommand("insertHTML", false, html);
+    } else {
+      document.execCommand("insertText", false, text);
+    }
   }
 
   function onKeyDown(e){
@@ -1902,14 +1913,17 @@ export function ScreenMail(p){
       msalGetToken().then(function(freshToken){
         if(freshToken)setAccessToken(freshToken);
         var tok=freshToken||accessToken;
-        var msgPayload={
-          subject:subject,
-          body:{contentType:"HTML",content:htmlBody},
-          toRecipients:[{emailAddress:{address:toEmail,name:toName}}]
-        };
         var parseRecips=function(str){
           return String(str||"").split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean)
             .map(function(addr){return {emailAddress:{address:addr}};});
+        };
+        // "Do" może zawierać kilka adresów oddzielonych przecinkiem/średnikiem — tak samo jak CC/BCC
+        var toList=parseRecips(toEmail);
+        if(toList.length===1&&toName)toList[0].emailAddress.name=toName;
+        var msgPayload={
+          subject:subject,
+          body:{contentType:"HTML",content:htmlBody},
+          toRecipients:toList
         };
         var ccList=parseRecips(ccEmail),bccList=parseRecips(bccEmail);
         if(ccList.length)msgPayload.ccRecipients=ccList;
