@@ -88,6 +88,15 @@
   .submit-btn:hover { background: var(--wsp-dark); }
   .form-note { font-size: 11px; color: var(--ink3); text-align: center; margin-top: 12px; line-height: 1.5; }
   footer { padding: 2rem; border-top: 1px solid var(--border); text-align: center; font-size: 11px; color: var(--ink3); letter-spacing: 0.14em; text-transform: uppercase; }
+  .ksef-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 101; background: var(--ink); color: white; text-align: center; padding: 9px 1rem; font-size: 12.5px; letter-spacing: 0.02em; }
+  .ksef-banner a { color: var(--wsp-light); text-decoration: underline; text-underline-offset: 2px; }
+  .ksef-banner + nav { top: 38px; }
+  body { padding-top: 38px; }
+  .trust-line { max-width: 620px; margin: 2.2rem auto 0; padding: 1.1rem 1.4rem; background: var(--wsp-bg); border: 1px solid var(--wsp-light); border-radius: 12px; font-size: 13px; color: var(--ink2); line-height: 1.6; opacity: 0; animation: fadeUp .7s .75s forwards; }
+  .trust-line strong { color: var(--ink); font-weight: 500; }
+  @media (max-width: 600px) {
+    .ksef-banner { font-size: 11px; padding: 8px 0.8rem; }
+  }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   .success-msg { display: none; text-align: center; padding: 2rem; color: var(--wsp-dark); font-size: 15px; line-height: 1.7; }
@@ -102,6 +111,7 @@
 </style>
 </head>
 <body>
+<div class="ksef-banner">⏰ KSeF obowiązkowy od kwietnia 2026 · Asystent Dekoracji ma gotową integrację → <a href="#funkcje">zobacz</a></div>
 <nav>
   <a class="nav-logo" href="#">Asystent <span>Dekoracji</span></a>
   <a class="nav-cta" href="/register">Wypróbuj za darmo</a>
@@ -110,8 +120,8 @@
 <section class="hero">
   <div>
     <p class="hero-eyebrow">Oprogramowanie dla studia dekoracji okien</p>
-    <h1>Koniec z arkuszami.<br>Zacznij <em>wyceniać profesjonalnie.</em></h1>
-    <p class="hero-sub">Asystent Dekoracji to kompletne narzędzie dla Twojego studia — od pierwszego spotkania z klientem, przez wycenę, aż po fakturę KSeF i magazyn.</p>
+    <h1>Całe studio dekoracji okien<br><em>w jednej aplikacji.</em></h1>
+    <p class="hero-sub">Wyceny, CRM, kalendarz, poczta, faktury z KSeF i magazyn — stworzone przez dekoratorów dla dekoratorów. Skróć czas obsługi zlecenia o ponad 60%.</p>
     <div class="hero-actions">
       <a href="/register" class="btn-primary">Wypróbuj za darmo (14 dni)</a>
       <a href="#funkcje" class="btn-secondary">Zobacz możliwości</a>
@@ -123,6 +133,7 @@
         Dedykowane dla branży dekoracji okien
       </span>
     </div>
+    <p class="trust-line"><strong>Stworzona przez specjalistów dla specjalistów.</strong> Testowana miesiącami na realnych zleceniach dla klientów premium — każde pole w tej aplikacji ma powód.</p>
   </div>
 </section>
 
@@ -220,14 +231,14 @@
   <div class="section-inner">
     <p class="section-label">Możliwości</p>
     <h2 class="section-title">Wszystko czego potrzebujesz<br>w jednym miejscu</h2>
-    <p class="section-sub">Zaprojektowane specjalnie dla studiów dekoracji okien.</p>
+    <p class="section-sub">Zamiast wyceny w Excelu, osobnego CRM, kalendarza, poczty, programu do faktur i zeszytu magazynowego — jedno konto, zaprojektowane specjalnie dla studiów dekoracji okien.</p>
     <div class="features-grid">
       <div class="feat-card"><div class="feat-icon">📐</div><h3>Wyceny pokój po pokoju</h3><p>Zasłony, rolety, żaluzje, karnisze, automatyka — konfigurujesz każde okno osobno. Cena brutto z marżą wyliczana automatycznie. Warianty A/B do porównania dla klientki.</p></div>
       <div class="feat-card"><div class="feat-icon">✂️</div><h3>Zlecenia szycia i zamówienia szyn</h3><p>Jednym kliknięciem generujesz zlecenie szycia dla krawcowej, zamówienie tkanin oraz zamówienie karniszy — ze wszystkimi wymiarami i specyfikacją.</p></div>
       <div class="feat-card"><div class="feat-icon">🗂️</div><h3>CRM z tablicą kanban</h3><p>Wizualna tablica prowadzi każde zlecenie od pierwszego kontaktu po obsługę posprzedażową. Dwa terminy montażu, historia klientki, notatki i załączniki.</p></div>
       <div class="feat-card"><div class="feat-icon">💰</div><h3>Faktury KSeF</h3><p>Wystawiasz faktury sprzedaży i zakupu zgodnie z KSeF. Automatyczna numeracja, obsługa VAT, wysyłka do Krajowego Systemu e-Faktur.</p></div>
       <div class="feat-card"><div class="feat-icon">📦</div><h3>Magazyn i ścinki szyn</h3><p>Śledzisz stany magazynowe tkanin i akcesoriów. Dedykowany moduł do zarządzania ścinkami szyn (KS, DS, Slim, Prestige) z filtrowaniem po typie i kolorze.</p></div>
-      <div class="feat-card"><div class="feat-icon">📅</div><h3>Kalendarz i integracja Google</h3><p>Terminy montażu trafiają bezpośrednio do kalendarzy ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM.</p></div>
+      <div class="feat-card"><div class="feat-icon">📅</div><h3>Kalendarz i integracja Google</h3><p>Po połączeniu własnego konta Google Calendar terminy pomiarów i montaży trafiają bezpośrednio do kalendarza ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM, bez przełączania aplikacji.</p></div>
       <div class="feat-card"><div class="feat-icon">📧</div><h3>Poczta — Outlook i Gmail</h3><p>Wysyłasz oferty PDF przez swoje konto pocztowe. Historia korespondencji widoczna przy każdym kliencie bez przełączania okien.</p></div>
       <div class="feat-card"><div class="feat-icon">📄</div><h3>Dokumenty PDF jednym kliknięciem</h3><p>Oferta dla klientki, zlecenie szycia, zamówienie tkanin, zamówienie karniszy — gotowe dokumenty z logo studia w kilka sekund.</p></div>
       <div class="feat-card"><div class="feat-icon">✅</div><h3>Zadania dla całego zespołu</h3><p>Moduł zadań z kategoriami, priorytetami i przypisaniem do osoby. Synchronizacja z Google Calendar. Nic się nie gubi.</p></div>
@@ -274,7 +285,14 @@
   </div>
 </section>
 
-<footer>Asystent Dekoracji · Profesjonalne oprogramowanie dla branży dekoracji okien · &copy; 2026</footer>
+<footer>
+  <div style="margin-bottom: 0.9rem;">
+    <a href="/privacy" style="color: var(--ink3); text-decoration: none; margin: 0 10px;">Polityka prywatności</a> ·
+    <a href="/terms" style="color: var(--ink3); text-decoration: none; margin: 0 10px;">Regulamin</a> ·
+    <a href="#kontakt" style="color: var(--ink3); text-decoration: none; margin: 0 10px;">Kontakt</a>
+  </div>
+  <div>Asystent Dekoracji · Profesjonalne oprogramowanie dla branży dekoracji okien · &copy; 2026</div>
+</footer>
 
 <script>
 function handleSubmit() {
