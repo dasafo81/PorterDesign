@@ -357,7 +357,7 @@ function InvoiceEditor(p){
           return sbApi.nextInvoiceNumber(docType,period2).then(function(nr){
             var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
             var rawNum=formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
-            var num=docType==="eko"?rawNum.replace(/^FV\//,"EKO/"):rawNum;
+            var num=docType==="eko"?("EKO/"+rawNum):rawNum;
             return sbApi.updateInvoice(invId,{status:"issued",number:num}).then(function(){
               return Object.assign({},inv,{id:invId,status:"issued",number:num});
             });
@@ -1290,11 +1290,8 @@ function InvoiceDetailView(p){
   var [ksefMsg,setKsefMsg]=useState(null);
   var [ksefErr,setKsefErr]=useState(null);
   var [currentInv,setCurrentInv]=useState(p.invoice||{});
-  var [issueBusy,setIssueBusy]=useState(false);
-  var [issueErr,setIssueErr]=useState(null);
 
   var isIssued=currentInv.status==="issued";
-  var isDraftInv=currentInv.status==="draft";
   var isEko=currentInv.doc_type==="eko";
   var ksefOk=currentInv.ksef_status==="confirmed";
   var ksefSent=currentInv.ksef_status==="sent"||currentInv.ksef_status==="pending";
@@ -1340,29 +1337,6 @@ function InvoiceDetailView(p){
     setTimeout(function(){w.print();},600);
   }
 
-  function issueInvoice(){
-    if(!confirm("Wystawi\u0107 faktur\u0119? Zostanie nadany numer i status zmieni si\u0119 na wystawiona.")) return;
-    setIssueBusy(true); setIssueErr(null);
-    var settings=p.settings||{};
-    var period=periodKey(settings.numbering_reset||"monthly",currentInv.issue_date||todayISO());
-    sbApi.nextInvoiceNumber(currentInv.doc_type||"vat",period)
-      .then(function(nr){
-        // PostgREST rpc zwraca int, [int] lub null — normalizujemy do liczby
-        var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
-        if(nrNum<=0) throw new Error("Nie uda\u0142o si\u0119 pobra\u0107 numeru faktury (wynik: "+JSON.stringify(nr)+"). Sprawd\u017a po\u0142\u0105czenie z baz\u0105.");
-        var num=formatNumber(settings.numbering_format,nrNum,currentInv.issue_date||todayISO());
-        return sbApi.updateInvoice(currentInv.id,{status:"issued",number:num})
-          .then(function(){ return num; });
-      })
-      .then(function(num){
-        return sbApi.getInvoice(currentInv.id).then(function(full){
-          setCurrentInv(full||Object.assign({},currentInv,{status:"issued",number:num}));
-        });
-      })
-      .catch(function(e){ setIssueErr(e.message||"B\u0142\u0105d wystawiania"); })
-      .finally(function(){ setIssueBusy(false); });
-  }
-
   function sendToKsef(){
     setKsefBusy(true); setKsefErr(null); setKsefMsg(null);
     ksefApi.openSession()
@@ -1399,37 +1373,16 @@ function InvoiceDetailView(p){
       ),
       ce("button",{onClick:p.onEdit,style:btnSecondary},"\u270F\uFE0F Edytuj")
     ),
-    // Baner: szkic lub wystawiona
-    isDraftInv
-      ? ce("div",{style:{background:"#fef9c3",border:"1px solid #fde68a",borderRadius:12,
-          padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",
-          justifyContent:"space-between",gap:12,flexWrap:"wrap"}},
-          ce("div",{style:{display:"flex",alignItems:"center",gap:12}},
-            ce("span",{style:{fontSize:24}},"\uD83D\uDCC4"),
-            ce("div",null,
-              ce("div",{style:{fontSize:14,fontWeight:700,color:"#78350f"}},"Szkic faktury"),
-              ce("div",{style:{fontSize:12,color:"#92400e",marginTop:2}},
-                "PDF ze stemplem SZKIC mo\u017cesz pobra\u0107 i przes\u0142a\u0107 klientowi. Po akceptacji — wystaw faktur\u0119.")
-            )
-          ),
-          ce("div",{style:{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}},
-            issueErr&&ce("div",{style:{fontSize:12,color:"#b91c1c",marginBottom:4}},issueErr),
-            ce("button",{onClick:issueInvoice,disabled:issueBusy,
-              style:{padding:"11px 24px",borderRadius:9,border:"none",whiteSpace:"nowrap",
-                background:issueBusy?"#9ca3af":"#059669",color:"#fff",
-                cursor:issueBusy?"not-allowed":"pointer",fontSize:13,fontWeight:700}},
-              issueBusy?"\u23F3 Wystawiam...":"\u2705 Wystaw faktur\u0119")
-          )
+    // Baner: faktura wystawiona (opcja szkicu została usunięta z workflow)
+    ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:12,
+        padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}},
+        ce("span",{style:{fontSize:24}},"\u2705"),
+        ce("div",null,
+          ce("div",{style:{fontSize:14,fontWeight:700,color:"#065f46"}},"Faktura wystawiona"),
+          ce("div",{style:{fontSize:12,color:"#047857",marginTop:2}},
+            "Pobierz PDF i wy\u015blij klientowi, nast\u0119pnie wy\u015blij do KSeF.")
         )
-      : ce("div",{style:{background:"#d1fae5",border:"1px solid #6ee7b7",borderRadius:12,
-          padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}},
-          ce("span",{style:{fontSize:24}},"\u2705"),
-          ce("div",null,
-            ce("div",{style:{fontSize:14,fontWeight:700,color:"#065f46"}},"Faktura wystawiona"),
-            ce("div",{style:{fontSize:12,color:"#047857",marginTop:2}},
-              "Pobierz PDF i wy\u015blij klientowi, nast\u0119pnie wy\u015blij do KSeF.")
-          )
-        ),
+      ),
     // Podgl\u0105d faktury \u2014 renderowany od razu, bez potrzeby pobierania PDF
     ce("div",{style:Object.assign({},card,{marginBottom:16,padding:0,overflow:"hidden"})},
       ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
@@ -1490,15 +1443,6 @@ function InvoiceDetailView(p){
         borderRadius:8,fontSize:12,color:"#065f46"}},ksefMsg),
       ksefErr&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"#fef2f2",
         borderRadius:8,fontSize:12,color:"#b91c1c"}},"\u26A0\uFE0F "+ksefErr)
-    ),
-    // Cofnij do szkicu (tylko wystawiona, nie wysłana do KSeF)
-    !ksefOk&&isIssued&&ce("div",{style:{border:"1px solid #fca5a5",borderRadius:12,
-      padding:"14px 18px",background:"#fff8f8"}},
-      ce("div",{style:{fontSize:12,fontWeight:700,color:"#b91c1c",marginBottom:6}},
-        "Klient nie zaakceptowa\u0142 faktury?"),
-      ce("div",{style:{fontSize:12,color:"#7f1d1d",marginBottom:10}},
-        "Mo\u017cesz cofn\u0105\u0107 faktur\u0119 do szkicu \u2014 numer zostanie usuni\u0119ty, faktura nie trafi do KSeF."),
-      ce("button",{onClick:p.onRevoke,style:btnDanger},"\u21A9 Cofnij do szkicu")
     )
   );
 }
@@ -1613,18 +1557,6 @@ export function ScreenInvoices(p){
       invoice:detailInv,
       settings:settings||{},
       onEdit:function(){ setEditInv(detailInv); setView("editor"); },
-      onRevoke:function(){
-        // Numer NIE wraca do licznika — patrz komentarz w onDelete: cofnięcie licznika
-        // bez pewności, że to był ostatni nadany numer, powodowało duplikaty numeracji.
-        if(!confirm("Cofnąć fakturę do szkicu? Numer zostanie usunięty (nie zostanie ponownie użyty — kolejna wystawiona faktura dostanie następny wolny numer).")) return;
-        var inv=detailInv;
-        sbApi.updateInvoice(inv.id,{status:"draft",number:null})
-          .then(function(){
-            sbApi.getInvoices().then(function(data){setInvoices(data||[]);});
-            setView("list");
-          })
-          .catch(function(e){alert("Błąd: "+e.message);});
-      },
       onClose:function(){setView("list");}
     }),
 
