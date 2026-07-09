@@ -44,9 +44,11 @@ export function App(p){
   },[]);
   // Branding tenanta - wczytany raz po starcie, fallback Porter Design jesli config pusty
   var sTenantCfg=useState(null),tenantConfig=sTenantCfg[0],setTenantConfig=sTenantCfg[1];
+  var sIsDemo=useState(false),isDemo=sIsDemo[0],setIsDemo=sIsDemo[1];
   React.useEffect(function(){
     sbApi.getMyTenant().then(function(t){
       if(t&&t.config)setTenantConfig(t.config);
+      if(t&&t.is_demo)setIsDemo(true);
     }).catch(function(){});
   },[]);
   var brandName=(tenantConfig&&tenantConfig.brand_name)||"Porter Design";
@@ -638,6 +640,15 @@ export function App(p){
           ce("span",null,"Nowy klient")
         )
       ),
+
+      // ── Demo banner ──
+      isDemo?ce("div",{style:{border:"1.5px solid #8b5cf6",background:"rgba(139,92,246,0.08)",backdropFilter:"blur(10px)",borderRadius:14,padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,color:"#6d28d9",marginBottom:14}},
+        ce("div",{style:{display:"flex",alignItems:"center",gap:10}},
+          ce("span",{style:{fontSize:20}},"\uD83E\uDDEA"),
+          ce("span",{style:{fontSize:13,fontWeight:600}},"Tryb demo \u2014 dane przyk\u0142adowe. Wysy\u0142ka do KSeF i maile s\u0105 symulowane.")
+        ),
+        ce("a",{href:"/register",style:{fontSize:13,fontWeight:700,color:"#6d28d9",textDecoration:"underline",whiteSpace:"nowrap"}},"Za\u0142\u00f3\u017c konto")
+      ):null,
 
       // ── Offline banner ──
       (function(){
