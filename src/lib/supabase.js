@@ -53,8 +53,8 @@ export const sbApi = {
     return sbFetch("GET","clients?select=*&order=id.desc");
   },
   // Dodaj nowego klienta
-  addClient: function(name, addr, phone, email){
-    return sbFetch("POST","clients",{name:name,addr:addr,phone:phone||"",email:email||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
+  addClient: function(name, addr, phone, email, postal, city){
+    return sbFetch("POST","clients",{name:name,addr:addr,phone:phone||"",email:email||"",postal:postal||"",city:city||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]});
   },
   addClientFull: function(data){
     return sbFetch("POST","clients",data);
