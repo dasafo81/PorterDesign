@@ -21,26 +21,27 @@
     padding: 1.2rem 2.5rem; background: rgba(255,255,255,0.92);
     backdrop-filter: blur(12px); border-bottom: 1px solid rgba(132,156,166,0.15);
   }
-  .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
+  .nav-logo { display: flex; align-items: center; gap: 10px; font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
+  .nav-logo img { height: 34px; width: 34px; object-fit: contain; }
   .nav-logo span { color: var(--ink3); font-weight: 400; font-style: italic; }
   .nav-cta { padding: 10px 22px; border-radius: 8px; background: var(--wsp); color: white; font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-decoration: none; border: none; cursor: pointer; transition: background .2s; }
   .nav-cta:hover { background: var(--wsp-dark); }
-  .hero { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 7rem 2rem 4rem; background: var(--white); text-align: center; position: relative; overflow: hidden; }
-  .hero::before { content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1400px; height: 100%; background: radial-gradient(ellipse 60% 50% at 80% 20%, rgba(132,156,166,0.12) 0%, transparent 70%), radial-gradient(ellipse 40% 60% at 10% 80%, rgba(132,156,166,0.08) 0%, transparent 60%); pointer-events: none; }
+  .hero { display: flex; align-items: center; justify-content: center; padding: 6.5rem 2rem 4rem; background: linear-gradient(160deg, #eee9fc 0%, #f6f3fd 34%, #e7f4ef 100%); text-align: center; position: relative; overflow: hidden; }
+  .hero::before { content: ""; position: absolute; top: -180px; left: 50%; transform: translateX(-50%); width: 900px; height: 500px; background: radial-gradient(ellipse at center, rgba(111,92,240,0.14) 0%, transparent 65%); pointer-events: none; }
   .hero > div { position: relative; z-index: 1; }
   .hero-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.28em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1.4rem; opacity: 0; animation: fadeUp .6s .1s forwards; }
   .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.8rem, 7vw, 5.2rem); font-weight: 700; line-height: 1.08; letter-spacing: -0.01em; color: var(--ink); max-width: 820px; margin: 0 auto 1.5rem; opacity: 0; animation: fadeUp .7s .2s forwards; }
   .hero h1 em { color: var(--wsp-dark); font-style: italic; }
-  .hero-sub { font-size: clamp(1rem, 2.5vw, 1.15rem); color: var(--ink2); line-height: 1.7; max-width: 540px; margin: 0 auto 2.8rem; font-weight: 300; opacity: 0; animation: fadeUp .7s .35s forwards; }
+  .hero-sub { font-size: clamp(1rem, 2.5vw, 1.15rem); color: var(--ink2); line-height: 1.7; max-width: 600px; margin: 0 auto 2rem; font-weight: 300; opacity: 0; animation: fadeUp .7s .35s forwards; }
   .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; opacity: 0; animation: fadeUp .7s .5s forwards; }
   .btn-primary { padding: 16px 36px; border-radius: 10px; background: var(--ink); color: white; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; transition: background .2s, transform .15s; display: inline-block; }
   .btn-primary:hover { background: var(--wsp-dark); transform: translateY(-1px); }
   .btn-secondary { padding: 16px 36px; border-radius: 10px; border: 1.5px solid var(--border); color: var(--ink2); font-size: 14px; font-weight: 400; letter-spacing: 0.04em; text-decoration: none; background: transparent; transition: border-color .2s, color .2s; display: inline-block; }
   .btn-secondary:hover { border-color: var(--wsp); color: var(--wsp-dark); }
-  .hero-badge { margin-top: 3.5rem; opacity: 0; animation: fadeUp .7s .65s forwards; }
+  .hero-badge { margin-top: 1.6rem; opacity: 0; animation: fadeUp .7s .65s forwards; }
   .badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 100px; background: var(--wsp-bg); border: 1px solid var(--wsp-light); font-size: 12px; color: var(--wsp-dark); font-weight: 500; }
   .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wsp); animation: pulse 2s infinite; }
-  .mockup-wrap { max-width: 900px; margin: 5rem auto 0; padding: 0 1.5rem; opacity: 0; animation: fadeUp .9s .8s forwards; }
+  .mockup-wrap { max-width: 980px; margin: 2.8rem auto 0; padding: 0 1.5rem; opacity: 0; animation: fadeUp .9s .8s forwards; position: relative; z-index: 1; }
   section { padding: 6rem 2rem; }
   .section-inner { max-width: 1100px; margin: 0 auto; }
   .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.26em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1rem; text-align: center; }
@@ -153,7 +154,7 @@
 <body>
 <div class="ksef-banner">⏰ KSeF obowiązkowy od kwietnia 2026 · Asystent Dekoracji ma gotową integrację → <a href="#funkcje">zobacz</a></div>
 <nav>
-  <a class="nav-logo" href="#">Asystent <span>Dekoracji</span></a>
+  <a class="nav-logo" href="#"><img src="/logo-mark-192.png" alt="Asystent Dekoracji — logo">Asystent <span>Dekoracji</span></a>
   <a class="nav-cta" href="/register">Wypróbuj za darmo</a>
 </nav>
 
@@ -174,46 +175,46 @@
       </span>
     </div>
     <p class="trust-line"><strong>Stworzona przez specjalistów dla specjalistów.</strong> Testowana miesiącami na realnych zleceniach dla klientów premium — każde pole w tej aplikacji ma powód.</p>
-  </div>
-</section>
 
-<div class="mockup-wrap">
-  <div class="app-frame">
-    <div class="app-topnav">
-      <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
-      <div class="app-tab active"><span class="ic">📈</span>CRM</div>
-      <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
-      <div class="app-tab"><span class="ic">✉️</span>Mail</div>
-      <div class="app-tab"><span class="ic">✅</span>Zadania</div>
-      <div class="app-tab"><span class="ic">💰</span>Faktury</div>
-      <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
-    </div>
-    <div class="app-panel">
-      <div class="kanban-mini">
-        <div class="kanban-col">
-          <div class="kanban-col-title"><span class="kdot" style="background:#6f5cf0"></span>Zapytanie · 3</div>
-          <div class="kanban-card" style="border-left-color:#6f5cf0">K. Sobolewska<span>2 450 zł</span></div>
-          <div class="kanban-card" style="border-left-color:#6f5cf0">Dom &amp; Styl<span>18 900 zł</span></div>
+    <div class="mockup-wrap">
+      <div class="app-frame">
+        <div class="app-topnav">
+          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
+          <div class="app-tab active"><span class="ic">📈</span>CRM</div>
+          <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
+          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
+          <div class="app-tab"><span class="ic">✅</span>Zadania</div>
+          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
+          <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
         </div>
-        <div class="kanban-col">
-          <div class="kanban-col-title"><span class="kdot" style="background:#4a7fe0"></span>Wycena · 2</div>
-          <div class="kanban-card" style="border-left-color:#4a7fe0">M. Adamczyk<span>7 640 zł</span></div>
-          <div class="kanban-card" style="border-left-color:#4a7fe0">R. Górecka<span>11 200 zł</span></div>
-        </div>
-        <div class="kanban-col">
-          <div class="kanban-col-title"><span class="kdot" style="background:#3fae6a"></span>Realizacja · 2</div>
-          <div class="kanban-card" style="border-left-color:#3fae6a">P. Kamińska<span>9 380 zł</span></div>
-          <div class="kanban-card" style="border-left-color:#3fae6a">Studio Bella<span>14 950 zł</span></div>
-        </div>
-        <div class="kanban-col">
-          <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
-          <div class="kanban-card" style="border-left-color:#e8703a">J. Nowicka<span>5 120 zł</span></div>
-          <div class="kanban-card" style="border-left-color:#e8703a">T. Wysocki<span>21 300 zł</span></div>
+        <div class="app-panel">
+          <div class="kanban-mini">
+            <div class="kanban-col">
+              <div class="kanban-col-title"><span class="kdot" style="background:#6f5cf0"></span>Zapytanie · 3</div>
+              <div class="kanban-card" style="border-left-color:#6f5cf0">K. Sobolewska<span>2 450 zł</span></div>
+              <div class="kanban-card" style="border-left-color:#6f5cf0">Dom &amp; Styl<span>18 900 zł</span></div>
+            </div>
+            <div class="kanban-col">
+              <div class="kanban-col-title"><span class="kdot" style="background:#4a7fe0"></span>Wycena · 2</div>
+              <div class="kanban-card" style="border-left-color:#4a7fe0">M. Adamczyk<span>7 640 zł</span></div>
+              <div class="kanban-card" style="border-left-color:#4a7fe0">R. Górecka<span>11 200 zł</span></div>
+            </div>
+            <div class="kanban-col">
+              <div class="kanban-col-title"><span class="kdot" style="background:#3fae6a"></span>Realizacja · 2</div>
+              <div class="kanban-card" style="border-left-color:#3fae6a">P. Kamińska<span>9 380 zł</span></div>
+              <div class="kanban-card" style="border-left-color:#3fae6a">Studio Bella<span>14 950 zł</span></div>
+            </div>
+            <div class="kanban-col">
+              <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
+              <div class="kanban-card" style="border-left-color:#e8703a">J. Nowicka<span>5 120 zł</span></div>
+              <div class="kanban-card" style="border-left-color:#e8703a">T. Wysocki<span>21 300 zł</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
+</section>
 
 <section>
   <div class="section-inner">
