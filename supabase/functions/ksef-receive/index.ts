@@ -260,19 +260,24 @@ async function queryMetadataWindow(
   let all: Record<string, unknown>[] = [];
   let pageOffset = 0;
   const pageSize = 100;
-  for (let page = 0; page < 50; page++) { // bezpiecznik: max 5000 faktur na okno
+  // UWAGA: pageOffset to NUMER STRONY (0,1,2...), a nie przesuniecie rekordu.
+  // Wczesniej robilismy `pageOffset += pageSize`, wiec po pierwszej pelnej stronie
+  // prosilismy o strone nr 100 => rekord 10 000 => KSeF 21405
+  // ("You cannot retrieve invoices starting from number 10 000 or higher").
+  // Nie ujawnialo sie przy oknie 30 dni, bo wyniki miescily sie na jednej stronie.
+  // KSeF nie pozwala siegnac poza rekord 10 000, wiec max 99 stron po 100.
+  for (pageOffset = 0; pageOffset < 99; pageOffset++) {
     const r = await ksefFetch(`${baseUrl}/invoices/query/metadata?pageOffset=${pageOffset}&pageSize=${pageSize}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(filters),
     });
-    if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + " (okno " + from + ".." + to + "): " + (await r.text()).slice(0, 300));
+    if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + " (okno " + from + ".." + to + ", strona " + pageOffset + "): " + (await r.text()).slice(0, 300));
     const d = await r.json();
     const items = (d.invoices || d.items || d.invoiceMetadataList || []) as Record<string, unknown>[];
     all = all.concat(items);
     const hasMore = d.hasMore === true || items.length === pageSize;
     if (!hasMore || items.length === 0) break;
-    pageOffset += pageSize;
   }
   return all;
 }
