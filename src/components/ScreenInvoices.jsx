@@ -139,9 +139,11 @@ function ItemRow(p){
     // Cena netto
     ce("input",{style:Object.assign({},inpSm,{textAlign:"right"}), value:it.unit_net, type:"number", min:0, step:0.01,
       onChange:function(e){upd("unit_net",e.target.value);}}),
-    // Cena brutto
-    ce("input",{style:Object.assign({},inpSm,{textAlign:"right",background:"#f0f7ff"}), value:+(+(it.unit_gross)||0).toFixed(2), type:"number", min:0, step:0.01,
-      onChange:function(e){upd("unit_gross",e.target.value);}}),
+    // Cena brutto — bez type:number (brak strzalek), puste zamiast 0
+    ce("input",{style:Object.assign({},inpSm,{textAlign:"right",background:"#f0f7ff"}),
+      value:(it.unit_gross==null||it.unit_gross===""||+(it.unit_gross)===0)?"":(typeof it.unit_gross==="string"?it.unit_gross:+(+(it.unit_gross)).toFixed(2)),
+      inputMode:"decimal", placeholder:"0,00",
+      onChange:function(e){upd("unit_gross",e.target.value.replace(",","."));}}),
     // VAT
     ce("select",{style:inpSm, value:it.vat_rate,
       onChange:function(e){upd("vat_rate",+(e.target.value));}},
