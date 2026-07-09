@@ -882,7 +882,9 @@ function InvoiceList(p){
         var allErrs=inErrs.concat(outErrs);
         var skipCount=((r.incoming&&r.incoming.skipped)||0)+((r.outgoing&&r.outgoing.skipped)||0);
         var remaining=r.remaining||0;
+        var repaired=r.repaired||0;
         setSyncMsg("\u2713 Pobrano z KSeF: "+((r.incoming&&r.incoming.fetched)||0)+" zakupowych, "+((r.outgoing&&r.outgoing.fetched)||0)+" sprzeda\u017cowych. Nowych/zaktualizowanych: "+(inCount+outCount)+"."
+          +(repaired>0?" Uzupe\u0142niono pozycje: "+repaired+".":"")
           +(skipCount>0?" Pomini\u0119to (ju\u017c kompletne): "+skipCount+".":"")
           +(remaining>0?" \u23F3 Pozosta\u0142o "+remaining+" \u2014 kliknij \"Pobierz z KSeF\" jeszcze raz, aby doko\u0144czy\u0107.":""));
         if(allErrs.length>0){
