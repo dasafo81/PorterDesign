@@ -23,6 +23,7 @@ import { ScreenTasks } from './components/ScreenTasks.jsx';
 import { ScreenAdmin } from './components/ScreenAdmin.jsx';
 import { ScreenInvoices } from './components/ScreenInvoices.jsx';
 import { ScreenWarehouse } from './components/ScreenWarehouse.jsx';
+import { THEMES, applyTheme, loadSavedTheme, getCurrentThemeId } from './lib/themes.js';
 const ce = React.createElement;
 
 
@@ -32,7 +33,10 @@ export function App(p){
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
   // Super-admin flaga z JWT — pokazuje zakladke Admin tylko gdy is_super_admin: true
   var sIsSuper=useState(false),isSuperAdmin=sIsSuper[0],setIsSuperAdmin=sIsSuper[1];
+  var sThemePicker=useState(false),themePickerOpen=sThemePicker[0],setThemePickerOpen=sThemePicker[1];
+  var sCurrentTheme=useState(getCurrentThemeId),currentThemeId=sCurrentTheme[0],setCurrentThemeId=sCurrentTheme[1];
   React.useEffect(function(){
+    loadSavedTheme();
     try{
       var raw=localStorage.getItem("sb_session");
       if(!raw)return;
@@ -1197,6 +1201,52 @@ export function App(p){
           disabled:offlineMode,
           style:{border:"1.5px solid rgba(124,58,237,0.25)",background:offlineMode?"var(--bd3)":"rgba(124,58,237,0.08)",cursor:offlineMode?"not-allowed":"pointer",padding:"6px 11px",borderRadius:10,color:offlineMode?"var(--t3)":"var(--violet)",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:5,flexShrink:0,opacity:offlineMode?0.4:1}
         },"\uD83E\uDD16 AI"):null,
+        // Theme picker
+        ce("div",{style:{position:"relative",flexShrink:0}},
+          ce("button",{
+            onClick:function(){setThemePickerOpen(function(o){return !o;});},
+            title:"Motyw kolorystyczny",
+            style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t2)",fontSize:14,display:"flex",alignItems:"center",gap:4,flexShrink:0,transition:"all .15s"}
+          },"\uD83C\uDFA8"),
+          themePickerOpen?ce("div",{
+            style:{position:"absolute",top:"calc(100% + 8px)",right:0,zIndex:9999,
+              background:"var(--bg2)",border:"1.5px solid var(--bd2)",borderRadius:16,
+              padding:"10px",boxShadow:"0 12px 40px rgba(0,0,0,0.18)",
+              backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
+              display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,width:220}
+          },
+            Object.values(THEMES).map(function(th){
+              var active=currentThemeId===th.id;
+              return ce("button",{
+                key:th.id,
+                onClick:function(){
+                  applyTheme(th.id);
+                  setCurrentThemeId(th.id);
+                  setThemePickerOpen(false);
+                },
+                style:{
+                  border:"2px solid "+(active?"var(--violet)":"var(--bd2)"),
+                  borderRadius:12,padding:"10px 8px",cursor:"pointer",
+                  background:active?"var(--violet-l)":"var(--bg3)",
+                  display:"flex",flexDirection:"column",alignItems:"center",gap:6,
+                  transition:"all .15s"
+                }
+              },
+                ce("div",{style:{display:"flex",gap:4}},
+                  th.preview.map(function(c,i){
+                    return ce("div",{key:i,style:{width:14,height:14,borderRadius:"50%",background:c,boxShadow:"0 1px 3px rgba(0,0,0,0.18)"}});
+                  })
+                ),
+                ce("span",{style:{fontSize:11,fontWeight:active?700:500,color:"var(--t1)",letterSpacing:"0.01em"}},th.name)
+              );
+            }),
+            // Close on outside click overlay
+            ce("div",{
+              onClick:function(){setThemePickerOpen(false);},
+              style:{position:"fixed",inset:0,zIndex:-1}
+            })
+          ):null
+        ),
         // Logout
         ce("button",{
           onClick:function(){signOut().finally(function(){onLogout();});},
