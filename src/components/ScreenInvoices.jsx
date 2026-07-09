@@ -1136,6 +1136,13 @@ function buildInvoicePDFHtml(inv,settings){
   var gross=+(inv.total_gross||0);
   var remaining=gross-paid;
 
+  // Kod QR faktury \u2014 prosty QR weryfikacyjny (numer, NIP sprzedawcy, kwota, nr KSeF jesli jest).
+  // UWAGA: to NIE jest oficjalny kryptograficzny "Kod QR I/II" wg specyfikacji KSeF (ten wymaga
+  // podpisu XAdES/hasha XML) \u2014 to praktyczny kod do szybkiej weryfikacji danych faktury.
+  var qrPayload="Faktura "+(inv.number||"")+" | NIP: "+(partyTop.nip||"")+" | Brutto: "+fmtM(gross)+" PLN"
+    +(inv.ksef_number?(" | KSeF: "+inv.ksef_number):"");
+  var qrUrl="https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=0&data="+encodeURIComponent(qrPayload);
+
   var rowsHtml=items.map(function(it,i){
     var rate=it.vat_rate;
     var vl=rate===-1?"zw":(rate+"%");
@@ -1174,10 +1181,13 @@ function buildInvoicePDFHtml(inv,settings){
     +"table.items td{padding:7px 6px;text-align:right;font-size:11px;border-bottom:1px solid #eee;}"
     +"table.items td:nth-child(1),table.items td:nth-child(2){text-align:left;}"
     +"table.items tfoot td{font-weight:700;background:#f7f7f7;border-top:1px solid #ccc;}"
-    +".totals{display:flex;justify-content:flex-end;margin-top:4mm;}"
+    +".totals{display:flex;justify-content:space-between;align-items:flex-end;margin-top:4mm;}"
     +".totals table td{padding:3px 0 3px 24px;font-size:13px;text-align:right;}"
     +".totals table td:first-child{font-weight:700;padding-left:0;}"
     +".totals .grand td{font-size:15px;}"
+    +".qr-box{text-align:center;}"
+    +".qr-box img{display:block;width:86px;height:86px;}"
+    +".qr-box .qr-label{font-size:8px;color:#888;margin-top:3px;}"
     +".slownie{margin-top:4mm;text-align:right;font-size:11px;}"
     +".notes-box{margin-top:6mm;padding:8px 12px;background:#f7f7f7;border-radius:4px;font-size:10px;color:#444;}"
     +".kasowa{margin-top:10mm;font-size:11px;}"
@@ -1216,7 +1226,9 @@ function buildInvoicePDFHtml(inv,settings){
     +"<td>"+fmtM(inv.total_net)+"</td><td>"+(items[0]&&items[0].vat_rate===-1?"zw":"23%")+"</td>"
     +"<td>"+fmtM(inv.total_vat)+"</td><td>"+fmtM(inv.total_gross)+"</td></tr></tfoot>"
     +"</table>"
-    +"<div class='totals'><table>"
+    +"<div class='totals'>"
+    +"<div class='qr-box'><img src='"+qrUrl+"' alt='Kod QR faktury'><div class='qr-label'>Weryfikacja faktury</div></div>"
+    +"<table>"
     +"<tr><td>\u0141\u0105cznie:</td><td>"+fmtM(gross)+" PLN</td></tr>"
     +"<tr class='grand'><td>Do zap\u0142aty:</td><td>"+fmtM(remaining)+" PLN</td></tr>"
     +"</table></div>"
@@ -1377,6 +1389,16 @@ function InvoiceDetailView(p){
               "Pobierz PDF i wy\u015blij klientowi, nast\u0119pnie wy\u015blij do KSeF.")
           )
         ),
+    // Podgl\u0105d faktury \u2014 renderowany od razu, bez potrzeby pobierania PDF
+    ce("div",{style:Object.assign({},card,{marginBottom:16,padding:0,overflow:"hidden"})},
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
+        textTransform:"uppercase",padding:"14px 18px 0"}},"Podgl\u0105d"),
+      ce("iframe",{
+        title:"Podgl\u0105d faktury",
+        srcDoc:buildInvoicePDFHtml(currentInv,p.settings||{}),
+        style:{width:"100%",height:640,border:"none",marginTop:10}
+      })
+    ),
     // Akcje
     ce("div",{style:Object.assign({},card,{marginBottom:16})},
       ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
