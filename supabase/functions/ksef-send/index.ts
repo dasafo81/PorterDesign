@@ -206,6 +206,7 @@ Deno.serve(async (req: Request) => {
   if (!invR.ok) return jsonRes({ error: "Błąd pobierania faktury" }, 500);
   const inv = (await invR.json())?.[0];
   if (!inv) return jsonRes({ error: "Faktura nie znaleziona" }, 404);
+  if (inv.doc_type === "eko") return jsonRes({ error: "Dokumenty EKO (gotówkowe) nie mogą być wysyłane do KSeF" }, 400);
   if (inv.status !== "issued") return jsonRes({ error: "Tylko wystawione faktury można wysłać do KSeF" }, 400);
   if (inv.ksef_status === "confirmed") return jsonRes({ error: `Już w KSeF (nr: ${inv.ksef_number})` }, 400);
 
