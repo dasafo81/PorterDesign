@@ -328,8 +328,11 @@ function InvoiceEditor(p){
 
     var prom;
     if(isNew){
-      var initStatus=docType==="eko"?"issued":"draft";
-      prom=sbApi.addInvoice(Object.assign({status:initStatus},header));
+      // "draft" tu jest tylko przejściowe — chwilę niżej, zaraz po zapisaniu pozycji,
+      // nadajemy numer i przestawiamy na "issued". Opcja ręcznego "Wystaw fakturę" jako
+      // osobny krok została usunięta: każda nowa faktura (niezależnie od typu dokumentu)
+      // jest wystawiana od razu przy zapisie, tak jak dotychczas działo się to tylko dla EKO.
+      prom=sbApi.addInvoice(Object.assign({status:"draft"},header));
     } else {
       prom=sbApi.updateInvoice(p.invoice.id,header).then(function(){return {id:p.invoice.id};});
     }
@@ -349,18 +352,18 @@ function InvoiceEditor(p){
         };
       });
       return sbApi.replaceInvoiceItems(invId,itemsToSave).then(function(){
-        if(docType==="eko"&&isNew){
+        if(isNew){
           var period2=periodKey(settings.numbering_reset||"monthly",issueDate||todayISO());
-          return sbApi.nextInvoiceNumber("eko",period2).then(function(nr){
+          return sbApi.nextInvoiceNumber(docType,period2).then(function(nr){
             var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
             var rawNum=formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
-            var ekoNum=rawNum.replace(/^FV\//,"EKO/");
-            return sbApi.updateInvoice(invId,{status:"issued",number:ekoNum}).then(function(){
-              return Object.assign({},inv,{id:invId,status:"issued",number:ekoNum});
+            var num=docType==="eko"?rawNum.replace(/^FV\//,"EKO/"):rawNum;
+            return sbApi.updateInvoice(invId,{status:"issued",number:num}).then(function(){
+              return Object.assign({},inv,{id:invId,status:"issued",number:num});
             });
           });
         }
-        return Object.assign({},inv,{id:invId,status:"draft"});
+        return Object.assign({},inv,{id:invId});
       });
     })
     .then(function(result){
@@ -523,7 +526,7 @@ function InvoiceEditor(p){
     ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}},
       ce("button",{onClick:p.onClose,style:btnSecondary,disabled:busy},"Anuluj"),
       ce("button",{onClick:function(){save();},style:btnPrimary,disabled:busy},
-        busy?"\u23F3 Zapisuję...":"\uD83D\uDCBE Zapisz szkic")
+        busy?"\u23F3 Zapisuję...":(isNew?"\u2705 Wystaw fakturę":"\uD83D\uDCBE Zapisz zmiany"))
     )
   );
 }
