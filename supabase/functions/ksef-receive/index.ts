@@ -149,20 +149,30 @@ function parseItems(xml: string) {
   });
 }
 
-async function fetchInvoiceXml(baseUrl: string, accessToken: string, ksefNumber: string): Promise<string | null> {
-  const r = await fetch(`${baseUrl}/invoices/ksef/${ksefNumber}`, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/xml, text/xml, */*" },
-  });
-  if (!r.ok) return null;
+async function fetchInvoiceXml(baseUrl: string, accessToken: string, ksefNumber: string): Promise<{ xml: string | null; diag: string }> {
+  let r: Response;
+  try {
+    r = await fetch(`${baseUrl}/invoices/ksef/${encodeURIComponent(ksefNumber)}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/xml, text/xml, */*" },
+    });
+  } catch (e) {
+    return { xml: null, diag: "fetch nie powiodl sie (siec/CORS?): " + (e instanceof Error ? e.message : String(e)) };
+  }
+  if (!r.ok) {
+    const body = await r.text().catch(() => "");
+    return { xml: null, diag: `HTTP ${r.status} ${r.statusText} z ${baseUrl}/invoices/ksef/${ksefNumber} — ${body.slice(0, 300)}` };
+  }
   const ct = r.headers.get("content-type") || "";
   if (ct.includes("json")) {
     const d = await r.json();
     if (d.invoiceData) {
-      try { return decodeURIComponent(escape(atob(d.invoiceData))); } catch { return d.invoiceData; }
+      try { return { xml: decodeURIComponent(escape(atob(d.invoiceData))), diag: "" }; }
+      catch { return { xml: d.invoiceData, diag: "" }; }
     }
-    return null;
+    return { xml: null, diag: "odpowiedz JSON bez pola invoiceData: " + JSON.stringify(d).slice(0, 300) };
   }
-  return await r.text();
+  const text = await r.text();
+  return { xml: text, diag: "" };
 }
 
 async function queryMetadata(
@@ -214,11 +224,11 @@ async function saveInvoices(
     const ksefNum = String(meta.ksefNumber || meta.ksefReferenceNumber || "");
     if (!ksefNum) continue;
     try {
-      const xml = await fetchInvoiceXml(baseUrl, accessToken, ksefNum);
+      const { xml, diag } = await fetchInvoiceXml(baseUrl, accessToken, ksefNum);
       // Brak XML (blad sieci / KSeF chwilowo niedostepne) nie moze skutkowac zapisem "pustej"
       // faktury ani nadpisaniem juz poprawnie zapisanej (brak pozycji, brak danych kontrahenta,
       // brak terminu platnosci) — pomijamy, sync mozna powtorzyc pozniej.
-      if (!xml) { errors.push({ ksefNum, err: "brak XML z KSeF — pominieto" }); continue; }
+      if (!xml) { errors.push({ ksefNum, err: diag || "brak XML z KSeF — pominieto" }); continue; }
       const parsed = parseFA(xml);
 
       const ck = await fetch(
