@@ -153,7 +153,7 @@ function parseItems(xml: string) {
 // KSeF API 2.0 dopuszcza max 8 zadan/sekunde. Pobieranie XML w petli bez przerwy
 // powodowalo HTTP 429 na wszystkich fakturach poza pierwszymi kilkoma (efekt: faktury
 // bez pozycji i bez terminu platnosci). Trzymamy sie ~5 req/s z zapasem.
-const KSEF_MIN_INTERVAL_MS = 200;
+const KSEF_MIN_INTERVAL_MS = 150;
 let ksefLastCallAt = 0;
 
 function sleep(ms: number): Promise<void> {
@@ -246,30 +246,55 @@ async function saveInvoiceItems(invoiceId: string, items: Record<string, unknown
   });
 }
 
+// Jednorazowo wczytuje mape ksef_number -> id oraz zbior numerow ktore maja juz XML.
+// Wczesniej robilismy to per faktura, a `select=id,xml_payload` sciagalo caly XML (dziesiatki kB)
+// tylko po to, zeby sprawdzic czy jest niepusty — 58 takich zapytan zabijalo czas wykonania.
+async function loadExisting(tenantId: string, sbH: Record<string, string>) {
+  const idByKsef = new Map<string, string>();
+  const completeKsef = new Set<string>();
+
+  const rAll = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&select=id,ksef_number`, { headers: sbH });
+  if (rAll.ok) {
+    for (const row of await rAll.json()) {
+      if (row.ksef_number) idByKsef.set(row.ksef_number, row.id);
+    }
+  }
+  const rDone = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&xml_payload=not.is.null&select=ksef_number`, { headers: sbH });
+  if (rDone.ok) {
+    for (const row of await rDone.json()) {
+      if (row.ksef_number) completeKsef.add(row.ksef_number);
+    }
+  }
+  return { idByKsef, completeKsef };
+}
+
 async function saveInvoices(
   metaHeaders: Record<string, unknown>[],
-  baseUrl: string, accessToken: string, tenantId: string, service: string, docType: string
-): Promise<{ saved: number; skipped: number; errors: unknown[] }> {
+  baseUrl: string, accessToken: string, tenantId: string, service: string, docType: string,
+  deadlineAt: number,
+  existing: { idByKsef: Map<string, string>; completeKsef: Set<string> }
+): Promise<{ saved: number; skipped: number; remaining: number; errors: unknown[] }> {
   const sbH = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=representation" };
   let saved = 0;
   let skipped = 0;
+  let remaining = 0;
   const errors: unknown[] = [];
   const isIncoming = docType === "zakup";
 
   for (const meta of metaHeaders) {
     const ksefNum = String(meta.ksefNumber || meta.ksefReferenceNumber || "");
     if (!ksefNum) continue;
-    try {
-      // Najpierw sprawdzamy baze — jesli faktura ma juz pobrany XML, nie odpytujemy KSeF ponownie.
-      // Dzieki temu sync jest wznawialny (przy 8 zad./s i limicie czasu Edge Function jeden przebieg
-      // moze nie zdazyc przerobic wszystkich faktur) i kolejne uruchomienia dobieraja tylko braki.
-      const ck = await fetch(
-        `${SB_URL}/rest/v1/invoices?ksef_number=eq.${encodeURIComponent(ksefNum)}&tenant_id=eq.${tenantId}&select=id,xml_payload`,
-        { headers: sbH }
-      );
-      const ex = ck.ok ? await ck.json() : [];
-      if (ex?.length > 0 && ex[0].xml_payload) { skipped++; continue; }
 
+    // Faktura ma juz pobrany XML — nie odpytujemy KSeF ponownie (sync wznawialny).
+    if (existing.completeKsef.has(ksefNum)) { skipped++; continue; }
+
+    // Budzet czasu: Edge Function ma twardy limit (~150 s) i po jego przekroczeniu gateway
+    // zwraca 504, gubiac caly postep. Konczymy wczesniej i zwracamy ile zostalo — kolejne
+    // klikniecie "Synchronizuj" dobierze reszte, bo gotowe faktury sa pomijane.
+    if (Date.now() > deadlineAt) { remaining++; continue; }
+
+    try {
+      const ex = existing.idByKsef.get(ksefNum);
       const { xml, diag } = await fetchInvoiceXml(baseUrl, accessToken, ksefNum);
       // Brak XML (blad sieci / KSeF chwilowo niedostepne) nie moze skutkowac zapisem "pustej"
       // faktury ani nadpisaniem juz poprawnie zapisanej (brak pozycji, brak danych kontrahenta,
@@ -299,26 +324,31 @@ async function saveInvoices(
       };
 
       let invoiceId: string | null = null;
-      if (ex?.length > 0) {
-        invoiceId = ex[0].id;
+      if (ex) {
+        invoiceId = ex;
         await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, { method: "PATCH", headers: sbH, body: JSON.stringify(record) });
       } else {
         const ins = await fetch(`${SB_URL}/rest/v1/invoices`, { method: "POST", headers: sbH, body: JSON.stringify(record) });
         const insRows = ins.ok ? await ins.json() : [];
         invoiceId = insRows?.[0]?.id || null;
+        if (invoiceId) existing.idByKsef.set(ksefNum, invoiceId);
       }
       if (invoiceId) await saveInvoiceItems(invoiceId, parseItems(xml), sbH);
+      existing.completeKsef.add(ksefNum);
       saved++;
     } catch (e) {
       errors.push({ ksefNum, err: e instanceof Error ? e.message : String(e) });
     }
   }
-  return { saved, skipped, errors };
+  return { saved, skipped, remaining, errors };
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
   if (req.method !== "POST") return jsonRes({ error: "POST only" }, 405);
+
+  const startedAt = Date.now();
+  ksefLastCallAt = 0; // reset throttle na nowe zadanie (isolate moze byc wspoldzielony)
 
   const auth = await verifyUser(req);
   if (!auth.ok) return jsonRes({ error: auth.message }, auth.status);
@@ -340,14 +370,22 @@ Deno.serve(async (req: Request) => {
     if (dir === "incoming" || dir === "all") inH  = await queryMetadata(baseUrl as string, accessToken as string, "subject2", from, to);
     if (dir === "outgoing" || dir === "all") outH = await queryMetadata(baseUrl as string, accessToken as string, "subject1", from, to);
 
+    // Budzet czasu na przetwarzanie faktur — zostawiamy margines przed twardym limitem
+    // Edge Function (~150 s), zeby zdazyc zwrocic odpowiedz zamiast dostac 504 z gatewaya.
+    const deadlineAt = startedAt + 95_000;
+    const sbH = { apikey: auth.service, Authorization: `Bearer ${auth.service}`, "Content-Type": "application/json", Prefer: "return=representation" };
+    const existing = await loadExisting(auth.tenantId, sbH);
+
     // UWAGA: sekwencyjnie, nie Promise.all — rownolegle wywolania podwajaly tempo zapytan
     // do KSeF i omijaly wspolny throttle (limit 8 zad./s => HTTP 429).
-    const empty = { saved: 0, skipped: 0, errors: [] as unknown[] };
-    const inRes  = inH.length  ? await saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, "zakup") : empty;
-    const outRes = outH.length ? await saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, "vat")   : empty;
+    const empty = { saved: 0, skipped: 0, remaining: 0, errors: [] as unknown[] };
+    const inRes  = inH.length  ? await saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, "zakup", deadlineAt, existing) : empty;
+    const outRes = outH.length ? await saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, "vat",   deadlineAt, existing) : empty;
 
+    const remaining = inRes.remaining + outRes.remaining;
     return jsonRes({
       ok: true,
+      remaining,
       incoming: { fetched: inH.length,  saved: inRes.saved,  skipped: inRes.skipped,  errors: inRes.errors.length  ? inRes.errors  : undefined },
       outgoing: { fetched: outH.length, saved: outRes.saved, skipped: outRes.skipped, errors: outRes.errors.length ? outRes.errors : undefined },
     });
