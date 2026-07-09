@@ -210,7 +210,26 @@ async function fetchInvoiceXml(baseUrl: string, accessToken: string, ksefNumber:
   return { xml: text, diag: "" };
 }
 
-async function queryMetadata(
+// KSeF odrzuca zapytanie o metadane, jesli dateRange przekracza 3 miesiace (blad 21405).
+// Dzielimy zakres na okna po 80 dni (z zapasem wzgledem "3 miesiecy" = do 92 dni).
+function dateWindows(from: string, to: string, maxDays = 80): { from: string; to: string }[] {
+  const out: { from: string; to: string }[] = [];
+  const end = new Date(to + "T00:00:00Z");
+  let cur = new Date(from + "T00:00:00Z");
+  if (isNaN(cur.getTime()) || isNaN(end.getTime()) || cur > end) return out;
+
+  while (cur <= end) {
+    const winEnd = new Date(cur);
+    winEnd.setUTCDate(winEnd.getUTCDate() + maxDays - 1);
+    const clamped = winEnd > end ? end : winEnd;
+    out.push({ from: cur.toISOString().slice(0, 10), to: clamped.toISOString().slice(0, 10) });
+    cur = new Date(clamped);
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return out;
+}
+
+async function queryMetadataWindow(
   baseUrl: string, accessToken: string, subjectType: string, from: string, to: string
 ): Promise<Record<string, unknown>[]> {
   const filters = {
@@ -220,19 +239,37 @@ async function queryMetadata(
   let all: Record<string, unknown>[] = [];
   let pageOffset = 0;
   const pageSize = 100;
-  for (let page = 0; page < 50; page++) { // bezpiecznik: max 5000 faktur na zakres
+  for (let page = 0; page < 50; page++) { // bezpiecznik: max 5000 faktur na okno
     const r = await ksefFetch(`${baseUrl}/invoices/query/metadata?pageOffset=${pageOffset}&pageSize=${pageSize}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(filters),
     });
-    if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + ": " + (await r.text()).slice(0, 300));
+    if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + " (okno " + from + ".." + to + "): " + (await r.text()).slice(0, 300));
     const d = await r.json();
     const items = (d.invoices || d.items || d.invoiceMetadataList || []) as Record<string, unknown>[];
     all = all.concat(items);
     const hasMore = d.hasMore === true || items.length === pageSize;
     if (!hasMore || items.length === 0) break;
     pageOffset += pageSize;
+  }
+  return all;
+}
+
+async function queryMetadata(
+  baseUrl: string, accessToken: string, subjectType: string, from: string, to: string
+): Promise<Record<string, unknown>[]> {
+  const seen = new Set<string>();
+  const all: Record<string, unknown>[] = [];
+  for (const win of dateWindows(from, to)) {
+    const items = await queryMetadataWindow(baseUrl, accessToken, subjectType, win.from, win.to);
+    for (const it of items) {
+      // Deduplikacja na wypadek faktur pojawiajacych sie na styku okien
+      const key = String(it.ksefNumber || it.ksefReferenceNumber || "");
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      all.push(it);
+    }
   }
   return all;
 }
