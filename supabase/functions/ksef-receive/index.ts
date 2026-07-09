@@ -321,16 +321,22 @@ async function saveInvoiceItems(invoiceId: string, items: Record<string, unknown
 // tylko po to, zeby sprawdzic czy jest niepusty — 58 takich zapytan zabijalo czas wykonania.
 async function loadExisting(tenantId: string, sbH: Record<string, string>) {
   const idByKsef = new Map<string, string>();
+  const byNumber = new Map<string, string>();  // doc_type+"|"+number -> id (fallback, patrz saveInvoices)
   const xmlPresent = new Set<string>();   // ksef_number
   const itemsPresent = new Set<string>(); // invoice_id
 
   // Kazde z tych zapytan MUSI sie udac. Wczesniej blad byl polykany (`if (r.ok)` bez `else`),
   // przez co zbiory wychodzily puste => nic nie bylo pomijane ani naprawiane, a kazdy sync
   // od nowa odpytywal KSeF o wszystkie faktury.
-  const rAll = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&select=id,ksef_number&limit=10000`, { headers: sbH });
+  const rAll = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&select=id,ksef_number,doc_type,number&limit=10000`, { headers: sbH });
   if (!rAll.ok) throw new Error("loadExisting/invoices HTTP " + rAll.status + ": " + (await rAll.text()).slice(0, 200));
   for (const row of await rAll.json()) {
     if (row.ksef_number) idByKsef.set(row.ksef_number, row.id);
+    // Faktura wystawiona lokalnie i wyslana do KSeF czasem ma zapisany numer sesji
+    // (sessionRef) zamiast finalnego ksef_number, jesli polling w ksef-send nie
+    // zdazyl go potwierdzic. Dopasowanie po wlasnym numerze faktury ("8/07/2026")
+    // pozwala sync'owi trafic w ten sam rekord zamiast tworzyc duplikat.
+    if (row.number) byNumber.set(row.doc_type + "|" + row.number, row.id);
   }
 
   const rDone = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&xml_payload=not.is.null&select=ksef_number&limit=10000`, { headers: sbH });
@@ -345,7 +351,7 @@ async function loadExisting(tenantId: string, sbH: Record<string, string>) {
     if (row.invoice_id) itemsPresent.add(row.invoice_id);
   }
 
-  return { idByKsef, xmlPresent, itemsPresent };
+  return { idByKsef, byNumber, xmlPresent, itemsPresent };
 }
 
 // Pobiera zapisany wczesniej XML z bazy (bez odpytywania KSeF) — do naprawy faktur,
@@ -361,7 +367,7 @@ async function saveInvoices(
   metaHeaders: Record<string, unknown>[],
   baseUrl: string, accessToken: string, tenantId: string, service: string, docType: string,
   deadlineAt: number,
-  existing: { idByKsef: Map<string, string>; xmlPresent: Set<string>; itemsPresent: Set<string> }
+  existing: { idByKsef: Map<string, string>; byNumber: Map<string, string>; xmlPresent: Set<string>; itemsPresent: Set<string> }
 ): Promise<{ saved: number; repaired: number; skipped: number; remaining: number; errors: unknown[] }> {
   const sbH = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=representation" };
   let saved = 0;
@@ -405,13 +411,22 @@ async function saveInvoices(
     if (Date.now() > deadlineAt) { remaining++; continue; }
 
     try {
-      const ex = existing.idByKsef.get(ksefNum);
+      let ex = existing.idByKsef.get(ksefNum);
       const { xml, diag } = await fetchInvoiceXml(baseUrl, accessToken, ksefNum);
       // Brak XML (blad sieci / KSeF chwilowo niedostepne) nie moze skutkowac zapisem "pustej"
       // faktury ani nadpisaniem juz poprawnie zapisanej (brak pozycji, brak danych kontrahenta,
       // brak terminu platnosci) — pomijamy, sync mozna powtorzyc pozniej.
       if (!xml) { errors.push({ ksefNum, err: diag || "brak XML z KSeF — pominieto" }); continue; }
       const parsed = parseFA(xml);
+
+      // Fallback: dopasowanie po ksef_number zawiodlo (np. lokalna faktura ma zapisany
+      // numer sesji zamiast finalnego numeru KSeF — polling w ksef-send nie potwierdzil
+      // go na czas). Probujemy po wlasnym numerze faktury (doc_type+number), zanim
+      // zdecydujemy sie utworzyc nowy rekord — bez tego kazdy taki przypadek dawal duplikat.
+      if (!ex && parsed.number) {
+        const fallbackId = existing.byNumber.get(docType + "|" + parsed.number);
+        if (fallbackId) ex = fallbackId;
+      }
 
       // Dla faktur zakupowych prawdziwy sprzedawca (kontrahent zewnętrzny) trzymamy w seller_snapshot,
       // a buyer_* = my (Porter Design) — spójnie z api/ksef/receive.js i logiką PDF.
@@ -445,6 +460,7 @@ async function saveInvoices(
         invoiceId = ex;
         const up = await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, { method: "PATCH", headers: sbH, body: JSON.stringify(record) });
         if (!up.ok) throw new Error("PATCH invoices HTTP " + up.status + ": " + (await up.text()).slice(0, 200));
+        existing.idByKsef.set(ksefNum, invoiceId);
       } else {
         const ins = await fetch(`${SB_URL}/rest/v1/invoices`, { method: "POST", headers: sbH, body: JSON.stringify(record) });
         if (!ins.ok) throw new Error("POST invoices HTTP " + ins.status + ": " + (await ins.text()).slice(0, 200));
