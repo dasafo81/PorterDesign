@@ -48,6 +48,23 @@ function xmlAll(xml: string, tag: string): string[] {
 }
 function numVal(s: unknown): number { return parseFloat(String(s || "").replace(",", ".")) || 0; }
 
+// ── Twarda walidacja przed zapisem do bazy ─────────────────────────────────
+// Regexowy parser XML potrafi trafic w nieoczekiwany tag (np. wyciagnal "Zielonka"
+// do kolumny typu `date` => Postgres 22007 i porzucenie calej faktury). Do kolumn
+// typowanych wpuszczamy WYLACZNIE wartosci poprawnego typu, w przeciwnym razie null/0.
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function asDate(v: unknown, field: string, ksefNum: string): string | null {
+  if (!v) return null;
+  const s = String(v).trim().slice(0, 10);
+  if (ISO_DATE_RE.test(s) && !isNaN(new Date(s + "T00:00:00Z").getTime())) return s;
+  console.warn(`[ksef-receive] ${ksefNum}: odrzucono nieprawidlowa date w polu ${field}: ${JSON.stringify(String(v).slice(0, 60))}`);
+  return null;
+}
+function asNum(v: unknown): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 // Doda N dni do daty YYYY-MM-DD, zwraca YYYY-MM-DD (lub null jesli data bazowa niepoprawna)
 function addDays(dateStr: string, days: number): string | null {
   if (!dateStr) return null;
@@ -110,7 +127,11 @@ function parseFA(xml: string) {
   return {
     number: xmlVal(xml, "P_2") || xmlVal(xml, "NrFaKSeF"),
     issue_date: issueDate,
-    sale_date: xmlVal(xml, "P_1M") || issueDate,
+    // UWAGA: data sprzedazy to P_6 (data dokonania/zakonczenia dostawy lub uslugi).
+    // P_1M to MIEJSCE wystawienia faktury (nazwa miejscowosci!) — czytanie stad daty
+    // wrzucalo do kolumny `date` np. "Zielonka" => Postgres 22007 i utrata faktury.
+    // Dla faktur okresowych P_6 moze byc zastapione przez OkresFa/P_6_Od.
+    sale_date: xmlVal(xml, "P_6") || xmlVal(xml, "P_6_Od") || issueDate,
     due_date: parseDueDate(xml, fa, issueDate),
     total_gross: +(xmlVal(xml, "P_15") || 0),
     total_net: +(xmlVal(xml, "P_13_Razem") || 0),
@@ -396,12 +417,18 @@ async function saveInvoices(
       } : {};
       const buyerParty = isIncoming ? parsed.seller_party : parsed.buyer_party;
 
+      // Metadane KSeF maja wlasne issueDate — uzywamy go jako fallbacku, gdy data z XML
+      // nie przejdzie walidacji (lista faktur sortuje po issue_date, wiec null bylby bolesny).
+      const metaIssue = String(meta.issueDate || "").slice(0, 10);
+
       const record = {
         tenant_id: tenantId, doc_type: docType, status: isIncoming ? "received" : "issued",
         ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
         number: parsed.number || ksefNum,
-        issue_date: parsed.issue_date || null, sale_date: parsed.sale_date || null, due_date: parsed.due_date || null,
-        total_net: parsed.total_net || 0, total_vat: parsed.total_vat || 0, total_gross: parsed.total_gross || 0,
+        issue_date: asDate(parsed.issue_date, "issue_date", ksefNum) || asDate(metaIssue, "meta.issueDate", ksefNum),
+        sale_date: asDate(parsed.sale_date, "sale_date", ksefNum) || asDate(metaIssue, "meta.issueDate", ksefNum),
+        due_date: asDate(parsed.due_date, "due_date", ksefNum),
+        total_net: asNum(parsed.total_net), total_vat: asNum(parsed.total_vat), total_gross: asNum(parsed.total_gross),
         currency: parsed.currency || "PLN", notes: parsed.notes || "",
         buyer_name: buyerParty.name || "", buyer_nip: buyerParty.nip || "",
         buyer_address: buyerParty.address || "", buyer_postal: "", buyer_city: buyerParty.addrLine2 || "",
