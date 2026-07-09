@@ -1551,14 +1551,12 @@ export function ScreenInvoices(p){
     setView("list");
   }
   function onDelete(id){
-    var inv=invoices.find(function(i){return i.id===id;});
+    // Uwaga: numer NIE jest cofany do licznika (nawet dla faktur wystawionych) —
+    // dekrementacja bez sprawdzenia, czy to faktycznie ostatni nadany numer w danym
+    // okresie/typie, prowadziła do przydzielenia tego samego numeru dwóm różnym fakturom.
     sbApi.deleteInvoice(id)
       .then(function(){
         setInvoices(function(prev){return prev.filter(function(i){return i.id!==id;});});
-        if(inv&&inv.status==="issued"&&inv.number&&inv.issue_date&&settings){
-          var period=periodKey(settings.numbering_reset||"monthly",inv.issue_date);
-          sbApi.decrementInvoiceCounter(inv.doc_type||"vat",period).catch(function(){});
-        }
       })
       .catch(function(e){ alert("B\u0142\u0105d usuwania: "+e.message); });
   }
@@ -1613,14 +1611,11 @@ export function ScreenInvoices(p){
       settings:settings||{},
       onEdit:function(){ setEditInv(detailInv); setView("editor"); },
       onRevoke:function(){
-        if(!confirm("Cofnąć fakturę do szkicu? Numer zostanie usunięty, licznik cofnięty.")) return;
+        // Numer NIE wraca do licznika — patrz komentarz w onDelete: cofnięcie licznika
+        // bez pewności, że to był ostatni nadany numer, powodowało duplikaty numeracji.
+        if(!confirm("Cofnąć fakturę do szkicu? Numer zostanie usunięty (nie zostanie ponownie użyty — kolejna wystawiona faktura dostanie następny wolny numer).")) return;
         var inv=detailInv;
-        var period=inv.issue_date?inv.issue_date.slice(0,7):"";
-        var docType=inv.doc_type||"vat";
         sbApi.updateInvoice(inv.id,{status:"draft",number:null})
-          .then(function(){
-            if(period) return sbApi.decrementInvoiceCounter(docType,period);
-          })
           .then(function(){
             sbApi.getInvoices().then(function(data){setInvoices(data||[]);});
             setView("list");
