@@ -97,6 +97,26 @@ export const JZ_AL50_COLORS =[
   {v:"brown_matt",        l:"Brown Matt",        code:"K-0014",     maxWidth:490, surchargePct:0}
 ];
 
+// Prowadzenie boczne (żaluzje) — jednolita dopłata niezależnie od wariantu
+export const JZ_PROWADZENIE_BOCZNE =[
+  {v:"nie",          l:"nie",                     price:0},
+  {v:"plaskie",      l:"tak - płaskie",            price:46.91},
+  {v:"katowe",       l:"tak - \"L\" kątowe",       price:46.91},
+  {v:"bezinwazyjne", l:"tak - bezinwazyjne",       price:46.91}
+];
+
+// Mocowania bezinwazyjne — dostępne tylko gdy prowadzenie boczne = "bezinwazyjne"
+export const JZ_MOCOWANIA_BEZINW =[
+  {v:"brak",        l:"- brak -",                                 code:null,       price:0},
+  {v:"biale",       l:"białe",                                    code:"50-001",   price:36.08},
+  {v:"biale_naw",   l:"białe - do okna z nawiewnikiem max 42mm",   code:"50-001-A", price:53.97},
+  {v:"brazowe",     l:"brązowe",                                  code:"50-060",   price:36.08},
+  {v:"szare",       l:"szare",                                    code:"50-011",   price:36.08},
+  {v:"antracytowe", l:"antracytowe",                               code:"50-016",   price:36.08},
+  {v:"czarne",      l:"czarne",                                    code:"50-049",   price:36.08},
+  {v:"czarne_naw",  l:"czarne - do okna z nawiewnikiem max 42mm",  code:"50-049-A", price:53.97}
+];
+
 // ── SILNIKI DO ŻALUZJI ────────────────────────────────────────────────────
 export const JZALUZJA_MOTORS = [
   {id:"somfy_sonesse2_40_r1_zigbee", label:"Somfy Sonesse2 40 R1 Zigbee 9/12 UN",       tech:"Zigbee 3.0", nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1848.30},
@@ -1043,6 +1063,22 @@ export function calc(p){
       var tDop=46.43;
       if(wCm<60){warn=(warn?warn+" | ":"")+"Tasiemka niedostępna dla szer. < 60 cm.";c.tasiemka=undefined;}
       else{total+=tDop;lines.push("Dodatkowa tasiemka +"+tDop.toFixed(2)+" z\u0142");}
+    }
+    // Prowadzenie boczne
+    if(c.jzProwBoczne&&c.jzProwBoczne!=="nie"){
+      var pb=JZ_PROWADZENIE_BOCZNE.find(function(x){return x.v===c.jzProwBoczne;});
+      if(pb&&pb.price>0){
+        total+=pb.price;
+        lines.push("Prowadzenie boczne \u2014 "+pb.l+" +"+pb.price.toFixed(2)+" z\u0142");
+      }
+      // Mocowania bezinwazyjne — tylko dla wariantu "bezinwazyjne"
+      if(c.jzProwBoczne==="bezinwazyjne"&&c.jzMocBezinw&&c.jzMocBezinw!=="brak"){
+        var mb=JZ_MOCOWANIA_BEZINW.find(function(x){return x.v===c.jzMocBezinw;});
+        if(mb&&mb.price>0){
+          total+=mb.price;
+          lines.push("Mocowania bezinwazyjne "+mb.l+" ("+mb.code+") +"+mb.price.toFixed(2)+" z\u0142");
+        }
+      }
     }
     lines.push(JZ_LABELS[jt]+" "+wCm+"\xd7"+lCm+"cm \u2192 "+res.price+" z\u0142");
     // strefy
