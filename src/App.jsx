@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
+import ReactDOM from 'react-dom';
 import { sbApi } from './lib/supabase.js';
 import { signOut } from './lib/auth.js';
 import {
@@ -1201,53 +1202,55 @@ export function App(p){
           disabled:offlineMode,
           style:{border:"1.5px solid rgba(124,58,237,0.25)",background:offlineMode?"var(--bd3)":"rgba(124,58,237,0.08)",cursor:offlineMode?"not-allowed":"pointer",padding:"6px 11px",borderRadius:10,color:offlineMode?"var(--t3)":"var(--violet)",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:5,flexShrink:0,opacity:offlineMode?0.4:1}
         },"\uD83E\uDD16 AI"):null,
-        // Theme picker
-        ce("div",{style:{position:"relative",flexShrink:0},ref:function(el){window._themeBtn=el;}},
+        // Theme picker — portal żeby uciec z backdropFilter stacking context topbara
+        ce("div",{style:{position:"relative",flexShrink:0}},
           ce("button",{
             id:"theme-picker-btn",
             onClick:function(){setThemePickerOpen(function(o){return !o;});},
-            title:"Motyw kolorystyczny",
+            title:"Wersja kolorystyczna",
             style:{border:"1.5px solid var(--bd2)",background:themePickerOpen?"var(--violet-l)":"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t2)",fontSize:14,display:"flex",alignItems:"center",flexShrink:0,transition:"all .15s"}
           },"\uD83C\uDFA8"),
-          themePickerOpen?ce(React.Fragment,null,
-            ce("div",{
-              onClick:function(){setThemePickerOpen(false);},
-              style:{position:"fixed",inset:0,zIndex:19998}
-            }),
-            ce("div",{
-              style:{position:"fixed",top:function(){var b=document.getElementById("theme-picker-btn");return b?b.getBoundingClientRect().bottom+8:72;}(),right:16,zIndex:19999,
-                background:"rgba(255,255,255,0.96)",border:"1.5px solid var(--bd2)",borderRadius:18,
-                padding:"12px",boxShadow:"0 16px 48px rgba(0,0,0,0.22)",
-                backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",
-                display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,width:240}
-            },
-              ce("div",{style:{gridColumn:"1/-1",fontSize:10,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--t3)",marginBottom:4,paddingLeft:2}},"Motyw kolorystyczny"),
-              Object.values(THEMES).map(function(th){
-                var active=currentThemeId===th.id;
-                return ce("button",{
-                  key:th.id,
-                  onClick:function(){
-                    applyTheme(th.id);
-                    setCurrentThemeId(th.id);
-                    setThemePickerOpen(false);
-                  },
-                  style:{
-                    border:"2px solid "+(active?"var(--violet)":"rgba(0,0,0,0.08)"),
-                    borderRadius:12,padding:"12px 8px",cursor:"pointer",
-                    background:active?"var(--violet-l)":"rgba(255,255,255,0.6)",
-                    display:"flex",flexDirection:"column",alignItems:"center",gap:8,
-                    transition:"all .15s"
-                  }
-                },
-                  ce("div",{style:{display:"flex",gap:5}},
-                    th.preview.map(function(c,i){
-                      return ce("div",{key:i,style:{width:16,height:16,borderRadius:"50%",background:c,boxShadow:"0 1px 4px rgba(0,0,0,0.20)"}});
-                    })
-                  ),
-                  ce("span",{style:{fontSize:12,fontWeight:active?700:500,color:active?"var(--violet)":"#444",letterSpacing:"0.01em"}},th.name)
-                );
-              })
-            )
+          themePickerOpen?ReactDOM.createPortal(
+            ce(React.Fragment,null,
+              ce("div",{
+                onClick:function(){setThemePickerOpen(false);},
+                style:{position:"fixed",inset:0,zIndex:29998,background:"transparent"}
+              }),
+              ce("div",{
+                style:{position:"fixed",zIndex:29999,
+                  top:function(){var b=document.getElementById("theme-picker-btn");return b?(b.getBoundingClientRect().bottom+8)+"px":"72px";}(),
+                  right:"16px",
+                  background:"#fff",border:"1px solid rgba(0,0,0,0.10)",borderRadius:16,
+                  padding:"14px",boxShadow:"0 20px 60px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
+                  width:248}
+              },
+                ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"#9ca3af",marginBottom:10,paddingLeft:2}},"Wersja kolorystyczna"),
+                ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+                  Object.values(THEMES).map(function(th){
+                    var active=currentThemeId===th.id;
+                    return ce("button",{
+                      key:th.id,
+                      onClick:function(){applyTheme(th.id);setCurrentThemeId(th.id);setThemePickerOpen(false);},
+                      style:{
+                        border:"2px solid "+(active?"#6366f1":"rgba(0,0,0,0.08)"),
+                        borderRadius:12,padding:"12px 10px",cursor:"pointer",
+                        background:active?"rgba(99,102,241,0.06)":"rgba(249,250,251,0.8)",
+                        display:"flex",flexDirection:"column",alignItems:"center",gap:8,
+                        transition:"all .15s",outline:"none"
+                      }
+                    },
+                      ce("div",{style:{display:"flex",gap:5}},
+                        th.preview.map(function(c,i){
+                          return ce("div",{key:i,style:{width:16,height:16,borderRadius:"50%",background:c,boxShadow:"0 1px 3px rgba(0,0,0,0.15)"}});
+                        })
+                      ),
+                      ce("span",{style:{fontSize:12,fontWeight:active?700:500,color:active?"#4f46e5":"#374151"}},th.name)
+                    );
+                  })
+                )
+              )
+            ),
+            document.body
           ):null
         ),
         // Logout
