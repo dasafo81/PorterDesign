@@ -132,7 +132,7 @@ async function queryInvoices(baseUrl, accessToken, subjectType, dateFrom, dateTo
     all = all.concat(items);
     const hasMore = d.hasMore === true || items.length === pageSize;
     if (!hasMore || items.length === 0) break;
-    pageOffset += pageSize;
+    pageOffset += 1; // pageOffset to numer strony, nie przesuniecie rekordu
   }
   return all;
 }
