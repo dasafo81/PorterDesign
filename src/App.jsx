@@ -1204,6 +1204,7 @@ export function App(p){
         // Theme picker
         ce("div",{style:{position:"relative",flexShrink:0},ref:function(el){window._themeBtn=el;}},
           ce("button",{
+            id:"theme-picker-btn",
             onClick:function(){setThemePickerOpen(function(o){return !o;});},
             title:"Motyw kolorystyczny",
             style:{border:"1.5px solid var(--bd2)",background:themePickerOpen?"var(--violet-l)":"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t2)",fontSize:14,display:"flex",alignItems:"center",flexShrink:0,transition:"all .15s"}
@@ -1211,12 +1212,12 @@ export function App(p){
           themePickerOpen?ce(React.Fragment,null,
             ce("div",{
               onClick:function(){setThemePickerOpen(false);},
-              style:{position:"fixed",inset:0,zIndex:8888}
+              style:{position:"fixed",inset:0,zIndex:19998}
             }),
             ce("div",{
-              style:{position:"fixed",top:70,right:16,zIndex:8889,
-                background:"rgba(255,255,255,0.92)",border:"1.5px solid var(--bd2)",borderRadius:18,
-                padding:"12px",boxShadow:"0 16px 48px rgba(0,0,0,0.18)",
+              style:{position:"fixed",top:function(){var b=document.getElementById("theme-picker-btn");return b?b.getBoundingClientRect().bottom+8:72;}(),right:16,zIndex:19999,
+                background:"rgba(255,255,255,0.96)",border:"1.5px solid var(--bd2)",borderRadius:18,
+                padding:"12px",boxShadow:"0 16px 48px rgba(0,0,0,0.22)",
                 backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",
                 display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,width:240}
             },
