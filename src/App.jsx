@@ -1202,49 +1202,51 @@ export function App(p){
           style:{border:"1.5px solid rgba(124,58,237,0.25)",background:offlineMode?"var(--bd3)":"rgba(124,58,237,0.08)",cursor:offlineMode?"not-allowed":"pointer",padding:"6px 11px",borderRadius:10,color:offlineMode?"var(--t3)":"var(--violet)",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:5,flexShrink:0,opacity:offlineMode?0.4:1}
         },"\uD83E\uDD16 AI"):null,
         // Theme picker
-        ce("div",{style:{position:"relative",flexShrink:0}},
+        ce("div",{style:{position:"relative",flexShrink:0},ref:function(el){window._themeBtn=el;}},
           ce("button",{
             onClick:function(){setThemePickerOpen(function(o){return !o;});},
             title:"Motyw kolorystyczny",
-            style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t2)",fontSize:14,display:"flex",alignItems:"center",gap:4,flexShrink:0,transition:"all .15s"}
+            style:{border:"1.5px solid var(--bd2)",background:themePickerOpen?"var(--violet-l)":"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t2)",fontSize:14,display:"flex",alignItems:"center",flexShrink:0,transition:"all .15s"}
           },"\uD83C\uDFA8"),
-          themePickerOpen?ce("div",{
-            style:{position:"absolute",top:"calc(100% + 8px)",right:0,zIndex:9999,
-              background:"var(--bg2)",border:"1.5px solid var(--bd2)",borderRadius:16,
-              padding:"10px",boxShadow:"0 12px 40px rgba(0,0,0,0.18)",
-              backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",
-              display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,width:220}
-          },
-            Object.values(THEMES).map(function(th){
-              var active=currentThemeId===th.id;
-              return ce("button",{
-                key:th.id,
-                onClick:function(){
-                  applyTheme(th.id);
-                  setCurrentThemeId(th.id);
-                  setThemePickerOpen(false);
-                },
-                style:{
-                  border:"2px solid "+(active?"var(--violet)":"var(--bd2)"),
-                  borderRadius:12,padding:"10px 8px",cursor:"pointer",
-                  background:active?"var(--violet-l)":"var(--bg3)",
-                  display:"flex",flexDirection:"column",alignItems:"center",gap:6,
-                  transition:"all .15s"
-                }
-              },
-                ce("div",{style:{display:"flex",gap:4}},
-                  th.preview.map(function(c,i){
-                    return ce("div",{key:i,style:{width:14,height:14,borderRadius:"50%",background:c,boxShadow:"0 1px 3px rgba(0,0,0,0.18)"}});
-                  })
-                ),
-                ce("span",{style:{fontSize:11,fontWeight:active?700:500,color:"var(--t1)",letterSpacing:"0.01em"}},th.name)
-              );
-            }),
-            // Close on outside click overlay
+          themePickerOpen?ce(React.Fragment,null,
             ce("div",{
               onClick:function(){setThemePickerOpen(false);},
-              style:{position:"fixed",inset:0,zIndex:-1}
-            })
+              style:{position:"fixed",inset:0,zIndex:8888}
+            }),
+            ce("div",{
+              style:{position:"fixed",top:70,right:16,zIndex:8889,
+                background:"rgba(255,255,255,0.92)",border:"1.5px solid var(--bd2)",borderRadius:18,
+                padding:"12px",boxShadow:"0 16px 48px rgba(0,0,0,0.18)",
+                backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",
+                display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,width:240}
+            },
+              ce("div",{style:{gridColumn:"1/-1",fontSize:10,fontWeight:700,letterSpacing:"0.16em",textTransform:"uppercase",color:"var(--t3)",marginBottom:4,paddingLeft:2}},"Motyw kolorystyczny"),
+              Object.values(THEMES).map(function(th){
+                var active=currentThemeId===th.id;
+                return ce("button",{
+                  key:th.id,
+                  onClick:function(){
+                    applyTheme(th.id);
+                    setCurrentThemeId(th.id);
+                    setThemePickerOpen(false);
+                  },
+                  style:{
+                    border:"2px solid "+(active?"var(--violet)":"rgba(0,0,0,0.08)"),
+                    borderRadius:12,padding:"12px 8px",cursor:"pointer",
+                    background:active?"var(--violet-l)":"rgba(255,255,255,0.6)",
+                    display:"flex",flexDirection:"column",alignItems:"center",gap:8,
+                    transition:"all .15s"
+                  }
+                },
+                  ce("div",{style:{display:"flex",gap:5}},
+                    th.preview.map(function(c,i){
+                      return ce("div",{key:i,style:{width:16,height:16,borderRadius:"50%",background:c,boxShadow:"0 1px 4px rgba(0,0,0,0.20)"}});
+                    })
+                  ),
+                  ce("span",{style:{fontSize:12,fontWeight:active?700:500,color:active?"var(--violet)":"#444",letterSpacing:"0.01em"}},th.name)
+                );
+              })
+            )
           ):null
         ),
         // Logout
