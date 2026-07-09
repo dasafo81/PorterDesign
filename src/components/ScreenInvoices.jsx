@@ -819,16 +819,16 @@ function KsefTokenPanel(){
 // ── STATUS BADGE ────────────────────────────────────────────────────────────
 function StatusBadge(p){
   var cfg={
-    draft:    {label:"Szkic",     bg:"var(--bg2)",   color:"var(--t3)"},
-    issued:   {label:"Wystawiona",bg:"#dbeafe",      color:"#1e40af"},
-    received: {label:"Otrzymana", bg:"#d1fae5",      color:"#065f46"},
-    sent:     {label:"Wysłana",   bg:"#ede9fe",      color:"#5b21b6"},
-    cancelled:{label:"Anulowana", bg:"#fef2f2",      color:"#b91c1c"},
+    draft:    {label:"Szkic",     bg:"var(--bg2)",   color:"var(--t3)", desc:"Faktura utworzona, jeszcze nie wystawiona — brak numeru, nie poszła do klienta ani do KSeF."},
+    issued:   {label:"Wystawiona",bg:"#dbeafe",      color:"#1e40af",   desc:"Faktura sprzedażowa z nadanym numerem — gotowa do wysłania klientowi i/lub do KSeF."},
+    received: {label:"Otrzymana", bg:"#d1fae5",      color:"#065f46",   desc:"Faktura zakupowa (kosztowa) — odebrana od kontrahenta / zsynchronizowana z KSeF."},
+    sent:     {label:"Wysłana",   bg:"#ede9fe",      color:"#5b21b6",   desc:"Faktura wysłana do KSeF, oczekuje na potwierdzenie."},
+    cancelled:{label:"Anulowana", bg:"#fef2f2",      color:"#b91c1c",   desc:"Faktura anulowana / cofnięta."},
   };
   var c=cfg[p.status]||cfg.draft;
-  return ce("span",{style:{
+  return ce("span",{title:c.desc,style:{
     fontSize:10,fontWeight:700,borderRadius:20,padding:"2px 8px",
-    background:c.bg,color:c.color,whiteSpace:"nowrap"
+    background:c.bg,color:c.color,whiteSpace:"nowrap",cursor:"help"
   }},c.label);
 }
 
@@ -952,12 +952,25 @@ function InvoiceList(p){
       // Wiersze
       list.map(function(inv){
         var ps=payStatus(inv);
+        var isOverdue=ps.label==="Przeterminowana";
         var cb=function(checked,onToggle){
           return ce("div",{style:{textAlign:"center"}},
             ce("input",{type:"checkbox",checked:!!checked,
               onClick:function(e){e.stopPropagation();},
               onChange:function(e){onToggle(e.target.checked);},
               style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}})
+          );
+        };
+        // Checkbox "Zapłacono": po zaznaczeniu wizualnie się wyszarza (jak "Zatwierdzono" dla KSeF)
+        // i pod spodem pokazuje aktualny status płatności (Zapłacona/Częściowa/Przeterminowana/Oczekuje).
+        var paidCb=function(){
+          var isPaid=!!inv.paid;
+          return ce("div",{style:{textAlign:"center"}},
+            ce("input",{type:"checkbox",checked:isPaid,
+              onClick:function(e){e.stopPropagation();},
+              onChange:function(e){p.onTogglePaid&&p.onTogglePaid(inv,e.target.checked);},
+              style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)",opacity:isPaid?0.55:1}}),
+            ce("div",{style:{fontSize:9,fontWeight:700,marginTop:2,color:ps.color}},ps.label)
           );
         };
         var isPurchase=inv.doc_type==="zakup";
@@ -967,13 +980,14 @@ function InvoiceList(p){
         var contragentName=isPurchase?(snap.name||inv.buyer_name||"—"):(inv.buyer_name||"—");
         var contragentNip=isPurchase?(snap.nip||inv.buyer_nip||""):(inv.buyer_nip||"");
         var isBusy=p.viewBusyId===inv.id;
+        var rowBg=isOverdue?"#fef2f2":"var(--bg2)";
         return ce("div",{key:inv.id,
           onClick:function(){ if(isBusy)return; (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv); },
           style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 36px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
-            background:"var(--bg2)",width:"100%",opacity:isBusy?0.6:1},
-          onMouseEnter:function(e){e.currentTarget.style.background="var(--bg3||var(--bg))";},
-          onMouseLeave:function(e){e.currentTarget.style.background="var(--bg2)";}
+            background:rowBg,width:"100%",opacity:isBusy?0.6:1},
+          onMouseEnter:function(e){e.currentTarget.style.background=isOverdue?"#fee2e2":"var(--bg3||var(--bg))";},
+          onMouseLeave:function(e){e.currentTarget.style.background=rowBg;}
         },
           ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--violet)"}},
             inv.number||ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},"(szkic)")),
@@ -983,19 +997,22 @@ function InvoiceList(p){
             contragentNip&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},"NIP: "+contragentNip)
           ),
           ce("div",{style:{fontSize:12,textAlign:"right",color:"var(--t2)"}},fmtDate(inv.issue_date)),
-          ce("div",{style:{fontSize:12,textAlign:"right",color:inv.due_date&&inv.due_date<todayISO()&&!inv.paid?"#b91c1c":"var(--t2)"}},fmtDate(inv.due_date)),
+          ce("div",{style:{fontSize:12,fontWeight:isOverdue?700:400,textAlign:"right",color:isOverdue?"#b91c1c":"var(--t2)"}},fmtDate(inv.due_date)),
           ce("div",{style:{textAlign:"right"}},
             ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},fmtMoney(inv.total_gross)),
             ce("div",{style:{fontSize:10,color:"var(--t3)"}},"netto "+fmtMoney(inv.total_net))
           ),
-          cb(inv.paid,function(v){p.onTogglePaid&&p.onTogglePaid(inv,v);}),
+          paidCb(),
           inv.ksef_number
             ? ce("div",{style:{textAlign:"center"},title:"Zatwierdzone automatycznie przez nadanie numeru KSeF"},
                 ce("input",{type:"checkbox",checked:true,disabled:true,
                   onClick:function(e){e.stopPropagation();},
                   style:{width:16,height:16,accentColor:"var(--violet)",opacity:0.6,cursor:"not-allowed"}}))
             : cb(inv.approved,function(v){p.onToggleApproved&&p.onToggleApproved(inv,v);}),
-          ce("div",{style:{textAlign:"center"}},ce(StatusBadge,{status:inv.status})),
+          ce("div",{style:{textAlign:"center"}},
+            ce(StatusBadge,{status:inv.status}),
+            isOverdue&&ce("div",{style:{fontSize:9,fontWeight:700,color:"#b91c1c",marginTop:3}},"⚠ termin minął")
+          ),
           ce("div",{style:{textAlign:"right"}},
             ce("button",{
               onClick:function(e){e.stopPropagation();if(confirm("Usunąć fakturę?"))p.onDelete(inv.id);},
