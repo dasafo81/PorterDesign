@@ -891,6 +891,13 @@ function InvoiceList(p){
           setSyncErr("\u26A0\uFE0F "+allErrs.length+" faktur pomini\u0119to z b\u0142\u0119dem. Przyk\u0142ad: "
             +(allErrs[0].ksefNum||"?")+" \u2014 "+(allErrs[0].err||"nieznany b\u0142\u0105d")
             +(allErrs.length>1?" (i "+(allErrs.length-1)+" wi\u0119cej, zobacz logi Edge Function w Supabase)":""));
+        } else {
+          // Kontrola spojnosci: ile faktur z KSeF nie trafilo do zadnego koszyka.
+          var fetchedTotal=((r.incoming&&r.incoming.fetched)||0)+((r.outgoing&&r.outgoing.fetched)||0);
+          var accounted=inCount+outCount+repaired+skipCount+remaining;
+          if(fetchedTotal-accounted>5){
+            setSyncErr("\u26A0\uFE0F "+(fetchedTotal-accounted)+" faktur z KSeF nie zosta\u0142o rozliczonych (brak numeru KSeF w metadanych?). Sprawd\u017a logi Edge Function.");
+          }
         }
         p.onSynced&&p.onSynced();
       })
