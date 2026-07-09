@@ -1,5 +1,5 @@
 {
-  "buildCommand": "rm -rf node_modules/.vite && npm run build && cp register.html dist/register.html && cp landing.html dist/landing.html && cp privacy.html dist/privacy.html && cp terms.html dist/terms.html",
+  "buildCommand": "rm -rf node_modules/.vite && npm run build && cp register.html dist/register.html && cp landing.html dist/landing.html && cp privacy.html dist/privacy.html && cp terms.html dist/terms.html && cp logo-mark-512.png dist/logo-mark-512.png && cp logo-mark-192.png dist/logo-mark-192.png",
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
@@ -25,6 +25,42 @@
     }
   ],
   "headers": [
+    {
+      "source": "/terms",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/privacy",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/landing",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/landing.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
     {
       "source": "/",
       "headers": [
