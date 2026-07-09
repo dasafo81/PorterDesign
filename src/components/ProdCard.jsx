@@ -10,7 +10,7 @@ import {
   IMG_ROLETA_PRINT, IMG_ROLETA_RELAX, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
-  JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, KARNISZ_SUPPLIERS, KN,
+  JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, JZ_PROWADZENIE_BOCZNE, JZ_MOCOWANIA_BEZINW, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -797,6 +797,50 @@ export function ProdCard(p){
           ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}}),
           (par.wCm&&par.wCm>=60)?ce(Chip,{key:"ts",label:"Dodatkowa tasiemka +46,43 z\u0142",active:c.tasiemka==="tak",onClick:function(){tc("tasiemka");}}):null
         ]})
+      ),
+      // ── PROWADZENIE BOCZNE ───────────────────────────────────────────
+      ce("div",{style:{marginTop:16}},
+        ce(Fld,{label:"PROWADZENIE BOCZNE (opcjonalnie)"},
+          ce("select",{
+            value:c.jzProwBoczne||"nie",
+            onChange:function(ev){
+              var v=ev.target.value;
+              p.onChange(mg(prod,{c:mg(c,{jzProwBoczne:v,jzMocBezinw:v==="bezinwazyjne"?c.jzMocBezinw:null})}));
+            },
+            style:IST
+          },
+            JZ_PROWADZENIE_BOCZNE.map(function(pb){
+              return ce("option",{key:pb.v,value:pb.v},
+                pb.l+(pb.price>0?" (+"+pb.price.toFixed(2)+" z\u0142)":"")
+              );
+            })
+          )
+        ),
+        c.jzProwBoczne==="bezinwazyjne"?ce(Fld,{label:"MOCOWANIA BEZINWAZYJNE"},
+          ce("select",{
+            value:c.jzMocBezinw||"brak",
+            onChange:function(ev){sc("jzMocBezinw",ev.target.value);},
+            style:IST
+          },
+            JZ_MOCOWANIA_BEZINW.map(function(mb){
+              return ce("option",{key:mb.v,value:mb.v},
+                mb.l+(mb.code?"    ----"+mb.code+"-":"")+(mb.price>0?" (+"+mb.price.toFixed(2)+" z\u0142)":"")
+              );
+            })
+          )
+        ):null
+      ),
+      // ── STRONA STEROWANIA ────────────────────────────────────────────
+      ce("div",{style:{marginTop:16}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA STEROWANIA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          ["Lewo","Prawo"].map(function(str){
+            var isA=c.jzStrona===str||(str==="Lewo"&&!c.jzStrona);
+            return ce("button",{key:str,onClick:function(){sc("jzStrona",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"#fff":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+str:str
+            );
+          })
+        )
       ),
       // ── TRYB STEROWANIA ─────────────────────────────────────────────
       ce("div",{style:{marginTop:16}},
