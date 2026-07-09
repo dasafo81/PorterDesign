@@ -223,8 +223,11 @@ export const sbApi = {
   // Pobierz config (branding) wlasnego tenanta - RLS policy own_tenant pozwala
   // userowi czytac tylko swoj rekord z tabeli tenants.
   getMyTenant: function(){
-    return sbFetch("GET","tenants?select=id,name,config,trial_ends_at,subscription_status,plan&limit=1").then(function(rows){
-      return rows&&rows[0]?rows[0]:null;
+    return sbFetch("GET","tenants?select=id,name,config,trial_ends_at,subscription_status,plan,is_demo&limit=1").then(function(rows){
+      var t=rows&&rows[0]?rows[0]:null;
+      // Flaga trybu demo - czytana przez guardy (KSeF, mail) w tym module
+      try{if(typeof window!=="undefined")window.PD_IS_DEMO=!!(t&&t.is_demo);}catch(e){}
+      return t;
     });
   },
 
@@ -510,6 +513,7 @@ export const ksefApi = {
   },
   // Wyślij fakturę sprzedażową do KSeF 2.0
   sendInvoice: function(invoiceId, accessToken, baseUrl) {
+    if(typeof window!=="undefined"&&window.PD_IS_DEMO)return Promise.reject(new Error("Tryb demo \u2014 wysy\u0142ka do KSeF jest symulowana"));
     return ksefFetch("POST", "/api/ksef/send", { invoiceId: invoiceId, accessToken: accessToken, baseUrl: baseUrl });
   },
   checkStatus: function(invoiceId, accessToken, baseUrl) {
@@ -558,6 +562,7 @@ export const adminApi = {
 // Maile przy rejestracji (welcome) są wysyłane server-side z api/admin/*.
 
 function mailFetch(template, to, data) {
+  if(typeof window!=="undefined"&&window.PD_IS_DEMO)return Promise.reject(new Error("Tryb demo \u2014 wysy\u0142ka maili jest symulowana"));
   var userTok = getUserToken();
   return fetch('/api/mail/send', {
     method: 'POST',
