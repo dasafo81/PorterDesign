@@ -97,6 +97,60 @@
   @media (max-width: 600px) {
     .ksef-banner { font-size: 11px; padding: 8px 0.8rem; }
   }
+
+  /* Feature showcase rows (alternating) */
+  .feat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 3.2rem; align-items: center; max-width: 1100px; margin: 0 auto; padding: 3.2rem 2rem; }
+  .feat-row.reverse .feat-visual { order: -1; }
+  .feat-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--wsp); margin-bottom: 0.7rem; }
+  .feat-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; font-weight: 700; color: var(--ink); margin-bottom: 0.9rem; line-height: 1.25; }
+  .feat-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
+  .app-shot { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 1.3rem; box-shadow: 0 24px 60px rgba(28,43,50,0.09); }
+  .app-shot-bar { display: flex; gap: 6px; margin-bottom: 1.1rem; }
+  .app-shot-bar span { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .app-shot-bar span:nth-child(1) { background: #fc5f5a; }
+  .app-shot-bar span:nth-child(2) { background: #fdbc40; }
+  .app-shot-bar span:nth-child(3) { background: #33c748; }
+
+  /* CRM Kanban mini */
+  .kanban-mini { display: flex; gap: 10px; }
+  .kanban-col { flex: 1; background: var(--wsp-bg); border-radius: 10px; padding: 10px; min-width: 0; }
+  .kanban-col-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink3); font-weight: 600; margin-bottom: 8px; }
+  .kanban-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 8px 9px; font-size: 11px; color: var(--ink); margin-bottom: 8px; line-height: 1.4; font-weight: 500; }
+  .kanban-card span { display: block; font-size: 9.5px; color: var(--ink3); margin-top: 2px; font-weight: 400; }
+
+  /* Calendar mini */
+  .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .cal-head-title { font-size: 13px; font-weight: 600; color: var(--ink); font-family: 'Cormorant Garamond', serif; }
+  .google-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; background: #f1f3f4; color: #5f6368; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-day { aspect-ratio: 1; border-radius: 6px; background: var(--wsp-bg); font-size: 9.5px; color: var(--ink3); display: flex; align-items: flex-start; justify-content: flex-end; padding: 4px; position: relative; }
+  .cal-day.has-event { background: #e8eef1; color: var(--wsp-dark); font-weight: 700; }
+  .cal-day .dot { position: absolute; bottom: 4px; left: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--wsp-dark); }
+  .cal-legend { margin-top: 10px; font-size: 10.5px; color: var(--ink3); }
+  .cal-legend b { color: var(--ink2); font-weight: 500; }
+
+  /* Invoice / KSeF mini */
+  .invoice-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; background: white; }
+  .invoice-row:last-child { margin-bottom: 0; }
+  .invoice-name { font-size: 12px; font-weight: 500; color: var(--ink); }
+  .invoice-sub { font-size: 10px; color: var(--ink3); margin-top: 2px; }
+  .ksef-badge { font-size: 9px; background: #e6f4ea; color: #2e7d32; padding: 2px 8px; border-radius: 20px; font-weight: 600; letter-spacing: 0.02em; }
+  .invoice-amount { font-size: 14px; font-weight: 700; color: var(--wsp-dark); font-family: 'Cormorant Garamond', serif; text-align: right; }
+
+  /* Warehouse mini */
+  .wh-search { display: flex; align-items: center; gap: 8px; background: var(--wsp-bg); border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--ink3); margin-bottom: 10px; }
+  .wh-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 11.5px; }
+  .wh-row:last-child { border-bottom: none; }
+  .wh-name { color: var(--ink); font-weight: 500; }
+  .wh-sub { font-size: 10px; color: var(--ink3); margin-top: 1px; }
+  .wh-stock { font-size: 10.5px; font-weight: 600; padding: 2px 9px; border-radius: 20px; }
+  .wh-stock.ok { background: #e6f4ea; color: #2e7d32; }
+  .wh-stock.low { background: #fdecea; color: #c0392b; }
+
+  @media (max-width: 800px) {
+    .feat-row { grid-template-columns: 1fr; padding: 2.2rem 1.5rem; }
+    .feat-row.reverse .feat-visual { order: 0; }
+  }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
   .success-msg { display: none; text-align: center; padding: 2rem; color: var(--wsp-dark); font-size: 15px; line-height: 1.7; }
@@ -230,18 +284,130 @@
 <section class="features-bg" id="funkcje">
   <div class="section-inner">
     <p class="section-label">Możliwości</p>
-    <h2 class="section-title">Wszystko czego potrzebujesz<br>w jednym miejscu</h2>
-    <p class="section-sub">Zamiast wyceny w Excelu, osobnego CRM, kalendarza, poczty, programu do faktur i zeszytu magazynowego — jedno konto, zaprojektowane specjalnie dla studiów dekoracji okien.</p>
+    <h2 class="section-title">Zamiast sześciu narzędzi<br>— jedno miejsce pracy</h2>
+    <p class="section-sub">Wyceny, CRM, kalendarz, faktury z KSeF i magazyn — zaprojektowane specjalnie dla studiów dekoracji okien.</p>
+  </div>
+
+  <!-- Row 1: CRM Kanban -->
+  <div class="feat-row">
+    <div class="feat-text">
+      <p class="feat-eyebrow">CRM · Kanban</p>
+      <h3>Każde zlecenie widoczne na jednej tablicy</h3>
+      <p>Etapy dopasowane do branży: pomiar → wycena → zamówienie → szycie → montaż. Przeciągasz kartę, status aktualizuje się u całego zespołu. Historia klientki, notatki i załączniki w jednym miejscu.</p>
+    </div>
+    <div class="feat-visual">
+      <div class="app-shot">
+        <div class="app-shot-bar"><span></span><span></span><span></span></div>
+        <div class="kanban-mini">
+          <div class="kanban-col">
+            <div class="kanban-col-title">Wycena wysłana</div>
+            <div class="kanban-card">Anna Kowalska<span>zasłony + roleta rzymska</span></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-title">Zamówienie</div>
+            <div class="kanban-card">Studio Novak<span>karnisze elektryczne</span></div>
+          </div>
+          <div class="kanban-col">
+            <div class="kanban-col-title">Montaż</div>
+            <div class="kanban-card">M. Wiśniewska<span>żaluzje drewniane</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2 (reverse): Kalendarz + Google -->
+  <div class="feat-row reverse">
+    <div class="feat-text">
+      <p class="feat-eyebrow">Kalendarz · Google Calendar</p>
+      <h3>Terminy montaży zawsze aktualne</h3>
+      <p>Po połączeniu własnego konta Google terminy pomiarów i montaży trafiają bezpośrednio do kalendarza ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM, bez przełączania aplikacji.</p>
+    </div>
+    <div class="feat-visual">
+      <div class="app-shot">
+        <div class="app-shot-bar"><span></span><span></span><span></span></div>
+        <div class="cal-head">
+          <span class="cal-head-title">Lipiec 2026</span>
+          <span class="google-chip">🔗 Połączono z Google</span>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-day">1</div><div class="cal-day">2</div><div class="cal-day has-event">3<span class="dot"></span></div><div class="cal-day">4</div><div class="cal-day">5</div><div class="cal-day">6</div><div class="cal-day">7</div>
+          <div class="cal-day">8</div><div class="cal-day has-event">9<span class="dot"></span></div><div class="cal-day">10</div><div class="cal-day">11</div><div class="cal-day has-event">12<span class="dot"></span></div><div class="cal-day">13</div><div class="cal-day">14</div>
+        </div>
+        <p class="cal-legend"><b>3 lipca</b> — montaż, ul. Kwiatowa · <b>9 lipca</b> — pomiar, Studio Novak</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Faktury KSeF -->
+  <div class="feat-row">
+    <div class="feat-text">
+      <p class="feat-eyebrow">Faktury · KSeF</p>
+      <h3>Faktury wychodzą prosto do Krajowego Systemu e-Faktur</h3>
+      <p>Automatyczna numeracja, obsługa VAT, faktury B2B i B2C. Wysyłasz i śledzisz status w KSeF bez osobnego programu do fakturowania.</p>
+    </div>
+    <div class="feat-visual">
+      <div class="app-shot">
+        <div class="app-shot-bar"><span></span><span></span><span></span></div>
+        <div class="invoice-row">
+          <div>
+            <div class="invoice-name">FV 2026/07/0012</div>
+            <div class="invoice-sub">Studio Novak · <span class="ksef-badge">wysłano do KSeF</span></div>
+          </div>
+          <div class="invoice-amount">14 200 zł</div>
+        </div>
+        <div class="invoice-row">
+          <div>
+            <div class="invoice-name">FV 2026/07/0011</div>
+            <div class="invoice-sub">A. Kowalska · <span class="ksef-badge">wysłano do KSeF</span></div>
+          </div>
+          <div class="invoice-amount">8 640 zł</div>
+        </div>
+        <div class="invoice-row">
+          <div>
+            <div class="invoice-name">FV 2026/07/0010</div>
+            <div class="invoice-sub">M. Wiśniewska · <span class="ksef-badge">wysłano do KSeF</span></div>
+          </div>
+          <div class="invoice-amount">3 980 zł</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 4 (reverse): Magazyn -->
+  <div class="feat-row reverse">
+    <div class="feat-text">
+      <p class="feat-eyebrow">Magazyn · Katalog</p>
+      <h3>Stany magazynowe zawsze pod ręką</h3>
+      <p>Śledzisz stany tkanin, akcesoriów i ścinki szyn (KS, DS, Slim, Prestige) z filtrowaniem po typie i kolorze. Wyszukiwarka podpowiada dostępność w sekundę.</p>
+    </div>
+    <div class="feat-visual">
+      <div class="app-shot">
+        <div class="app-shot-bar"><span></span><span></span><span></span></div>
+        <div class="wh-search">🔍 szyna KS biała</div>
+        <div class="wh-row">
+          <div><div class="wh-name">Szyna KS 200cm, biała</div><div class="wh-sub">akcesoria · szyny</div></div>
+          <span class="wh-stock ok">12 szt.</span>
+        </div>
+        <div class="wh-row">
+          <div><div class="wh-name">Tkanina lniana, ecru</div><div class="wh-sub">tkaniny · zasłony</div></div>
+          <span class="wh-stock low">2 mb</span>
+        </div>
+        <div class="wh-row">
+          <div><div class="wh-name">Ścinek Prestige, srebrny</div><div class="wh-sub">akcesoria · karnisze</div></div>
+          <span class="wh-stock ok">7 szt.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-inner" style="margin-top: 1rem;">
     <div class="features-grid">
-      <div class="feat-card"><div class="feat-icon">📐</div><h3>Wyceny pokój po pokoju</h3><p>Zasłony, rolety, żaluzje, karnisze, automatyka — konfigurujesz każde okno osobno. Cena brutto z marżą wyliczana automatycznie. Warianty A/B do porównania dla klientki.</p></div>
-      <div class="feat-card"><div class="feat-icon">✂️</div><h3>Zlecenia szycia i zamówienia szyn</h3><p>Jednym kliknięciem generujesz zlecenie szycia dla krawcowej, zamówienie tkanin oraz zamówienie karniszy — ze wszystkimi wymiarami i specyfikacją.</p></div>
-      <div class="feat-card"><div class="feat-icon">🗂️</div><h3>CRM z tablicą kanban</h3><p>Wizualna tablica prowadzi każde zlecenie od pierwszego kontaktu po obsługę posprzedażową. Dwa terminy montażu, historia klientki, notatki i załączniki.</p></div>
-      <div class="feat-card"><div class="feat-icon">💰</div><h3>Faktury KSeF</h3><p>Wystawiasz faktury sprzedaży i zakupu zgodnie z KSeF. Automatyczna numeracja, obsługa VAT, wysyłka do Krajowego Systemu e-Faktur.</p></div>
-      <div class="feat-card"><div class="feat-icon">📦</div><h3>Magazyn i ścinki szyn</h3><p>Śledzisz stany magazynowe tkanin i akcesoriów. Dedykowany moduł do zarządzania ścinkami szyn (KS, DS, Slim, Prestige) z filtrowaniem po typie i kolorze.</p></div>
-      <div class="feat-card"><div class="feat-icon">📅</div><h3>Kalendarz i integracja Google</h3><p>Po połączeniu własnego konta Google Calendar terminy pomiarów i montaży trafiają bezpośrednio do kalendarza ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM, bez przełączania aplikacji.</p></div>
-      <div class="feat-card"><div class="feat-icon">📧</div><h3>Poczta — Outlook i Gmail</h3><p>Wysyłasz oferty PDF przez swoje konto pocztowe. Historia korespondencji widoczna przy każdym kliencie bez przełączania okien.</p></div>
-      <div class="feat-card"><div class="feat-icon">📄</div><h3>Dokumenty PDF jednym kliknięciem</h3><p>Oferta dla klientki, zlecenie szycia, zamówienie tkanin, zamówienie karniszy — gotowe dokumenty z logo studia w kilka sekund.</p></div>
-      <div class="feat-card"><div class="feat-icon">✅</div><h3>Zadania dla całego zespołu</h3><p>Moduł zadań z kategoriami, priorytetami i przypisaniem do osoby. Synchronizacja z Google Calendar. Nic się nie gubi.</p></div>
+      <div class="feat-card"><div class="feat-icon">📐</div><h3>Wyceny pokój po pokoju</h3><p>Zasłony, rolety, żaluzje, karnisze, automatyka — konfigurujesz każde okno osobno. Cena brutto z marżą wyliczana automatycznie.</p></div>
+      <div class="feat-card"><div class="feat-icon">✂️</div><h3>Zlecenia szycia i zamówienia</h3><p>Jednym kliknięciem generujesz zlecenie szycia dla krawcowej, zamówienie tkanin oraz zamówienie karniszy.</p></div>
+      <div class="feat-card"><div class="feat-icon">📧</div><h3>Poczta — Outlook i Gmail</h3><p>Wysyłasz oferty PDF przez swoje konto pocztowe. Historia korespondencji widoczna przy każdym kliencie.</p></div>
+      <div class="feat-card"><div class="feat-icon">📄</div><h3>Dokumenty PDF jednym kliknięciem</h3><p>Oferta, zlecenie szycia, zamówienie tkanin, zamówienie karniszy — gotowe dokumenty z logo studia.</p></div>
+      <div class="feat-card"><div class="feat-icon">✅</div><h3>Zadania dla całego zespołu</h3><p>Moduł zadań z kategoriami, priorytetami i przypisaniem do osoby. Nic się nie gubi.</p></div>
     </div>
   </div>
 </section>
