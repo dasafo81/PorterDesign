@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
-import ReactDOM from 'react-dom';
 import { sbApi } from './lib/supabase.js';
 import { signOut } from './lib/auth.js';
 import {
@@ -24,7 +23,6 @@ import { ScreenTasks } from './components/ScreenTasks.jsx';
 import { ScreenAdmin } from './components/ScreenAdmin.jsx';
 import { ScreenInvoices } from './components/ScreenInvoices.jsx';
 import { ScreenWarehouse } from './components/ScreenWarehouse.jsx';
-import { THEMES, applyTheme, loadSavedTheme, getCurrentThemeId } from './lib/themes.js';
 const ce = React.createElement;
 
 
@@ -34,10 +32,7 @@ export function App(p){
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
   // Super-admin flaga z JWT — pokazuje zakladke Admin tylko gdy is_super_admin: true
   var sIsSuper=useState(false),isSuperAdmin=sIsSuper[0],setIsSuperAdmin=sIsSuper[1];
-  var sThemePicker=useState(false),themePickerOpen=sThemePicker[0],setThemePickerOpen=sThemePicker[1];
-  var sCurrentTheme=useState(getCurrentThemeId),currentThemeId=sCurrentTheme[0],setCurrentThemeId=sCurrentTheme[1];
   React.useEffect(function(){
-    loadSavedTheme();
     try{
       var raw=localStorage.getItem("sb_session");
       if(!raw)return;
@@ -1202,57 +1197,6 @@ export function App(p){
           disabled:offlineMode,
           style:{border:"1.5px solid rgba(124,58,237,0.25)",background:offlineMode?"var(--bd3)":"rgba(124,58,237,0.08)",cursor:offlineMode?"not-allowed":"pointer",padding:"6px 11px",borderRadius:10,color:offlineMode?"var(--t3)":"var(--violet)",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:5,flexShrink:0,opacity:offlineMode?0.4:1}
         },"\uD83E\uDD16 AI"):null,
-        // Theme picker — portal żeby uciec z backdropFilter stacking context topbara
-        ce("div",{style:{position:"relative",flexShrink:0}},
-          ce("button",{
-            id:"theme-picker-btn",
-            onClick:function(){setThemePickerOpen(function(o){return !o;});},
-            title:"Wersja kolorystyczna",
-            style:{border:"1.5px solid var(--bd2)",background:themePickerOpen?"var(--violet-l)":"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t2)",fontSize:14,display:"flex",alignItems:"center",flexShrink:0,transition:"all .15s"}
-          },"\uD83C\uDFA8"),
-          themePickerOpen?ReactDOM.createPortal(
-            ce(React.Fragment,null,
-              ce("div",{
-                onClick:function(){setThemePickerOpen(false);},
-                style:{position:"fixed",inset:0,zIndex:29998,background:"transparent"}
-              }),
-              ce("div",{
-                style:{position:"fixed",zIndex:29999,
-                  top:function(){var b=document.getElementById("theme-picker-btn");return b?(b.getBoundingClientRect().bottom+8)+"px":"72px";}(),
-                  right:"16px",
-                  background:"#fff",border:"1px solid rgba(0,0,0,0.10)",borderRadius:16,
-                  padding:"14px",boxShadow:"0 20px 60px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.08)",
-                  width:248}
-              },
-                ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase",color:"#9ca3af",marginBottom:10,paddingLeft:2}},"Wersja kolorystyczna"),
-                ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-                  Object.values(THEMES).map(function(th){
-                    var active=currentThemeId===th.id;
-                    return ce("button",{
-                      key:th.id,
-                      onClick:function(){applyTheme(th.id);setCurrentThemeId(th.id);setThemePickerOpen(false);},
-                      style:{
-                        border:"2px solid "+(active?"#6366f1":"rgba(0,0,0,0.08)"),
-                        borderRadius:12,padding:"12px 10px",cursor:"pointer",
-                        background:active?"rgba(99,102,241,0.06)":"rgba(249,250,251,0.8)",
-                        display:"flex",flexDirection:"column",alignItems:"center",gap:8,
-                        transition:"all .15s",outline:"none"
-                      }
-                    },
-                      ce("div",{style:{display:"flex",gap:5}},
-                        th.preview.map(function(c,i){
-                          return ce("div",{key:i,style:{width:16,height:16,borderRadius:"50%",background:c,boxShadow:"0 1px 3px rgba(0,0,0,0.15)"}});
-                        })
-                      ),
-                      ce("span",{style:{fontSize:12,fontWeight:active?700:500,color:active?"#4f46e5":"#374151"}},th.name)
-                    );
-                  })
-                )
-              )
-            ),
-            document.body
-          ):null
-        ),
         // Logout
         ce("button",{
           onClick:function(){signOut().finally(function(){onLogout();});},
