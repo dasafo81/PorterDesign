@@ -204,9 +204,9 @@ export function App(p){
     });
   }
 
-  function addClient(name,addr,phone,email){
-    sbApi.addClient(name,addr,phone,email).then(function(data){
-      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+  function addClient(name,addr,phone,email,postal,city){
+    sbApi.addClient(name,addr,phone,email,postal,city).then(function(data){
+      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,postal:postal||"",city:city||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
       setClients(function(cs){return [newCl].concat(cs);});
       setCurClientId(newCl.id);
       setScreen("rooms");
@@ -232,6 +232,8 @@ export function App(p){
     var payload={
       name:(cl.name||"")+" (kopia)",
       addr:cl.addr||"",
+      postal:cl.postal||"",
+      city:cl.city||"",
       phone:cl.phone||"",
       email:cl.email||"",
       rooms:copiedRooms,
