@@ -198,7 +198,12 @@ async function saveInvoices(headers, baseUrl, accessToken, tenantId, service, do
     if (!ksefNum) continue;
     try {
       const xml = await fetchInvoiceXml(baseUrl, accessToken, ksefNum);
-      const parsed = xml ? parseFA(xml) : {};
+      // Brak XML (blad sieci / KSeF chwilowo niedostepne) nie moze skutkowac zapisem "pustej"
+      // faktury ani nadpisaniem juz poprawnie zapisanej: parseFA(null) dawalo {} i dalej
+      // leciało do PATCH/POST z pustymi buyer_*/total_* oraz saveInvoiceItems([]) kasowal
+      // istniejace pozycje bez wstawienia nowych. Stad zgloszenia "brak pozycji / danych nabywcy".
+      if (!xml) { errors.push({ksefNum, err:'Nie udalo sie pobrac XML faktury z KSeF \u2014 pominieto zapis (sprobuj zsynchronizowac ponownie)'}); continue; }
+      const parsed = parseFA(xml);
       const isIncoming = docType==='zakup';
 
       const ck = await fetch(`${SB_URL}/rest/v1/invoices?ksef_number=eq.${encodeURIComponent(ksefNum)}&tenant_id=eq.${tenantId}&select=id`,{headers:sbH});
