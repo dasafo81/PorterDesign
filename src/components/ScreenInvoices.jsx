@@ -881,8 +881,10 @@ function InvoiceList(p){
         var outErrs=(r.outgoing&&r.outgoing.errors)||[];
         var allErrs=inErrs.concat(outErrs);
         var skipCount=((r.incoming&&r.incoming.skipped)||0)+((r.outgoing&&r.outgoing.skipped)||0);
+        var remaining=r.remaining||0;
         setSyncMsg("\u2713 Pobrano z KSeF: "+((r.incoming&&r.incoming.fetched)||0)+" zakupowych, "+((r.outgoing&&r.outgoing.fetched)||0)+" sprzeda\u017cowych. Nowych/zaktualizowanych: "+(inCount+outCount)+"."
-          +(skipCount>0?" Pomini\u0119to (ju\u017c kompletne): "+skipCount+".":""));
+          +(skipCount>0?" Pomini\u0119to (ju\u017c kompletne): "+skipCount+".":"")
+          +(remaining>0?" \u23F3 Pozosta\u0142o "+remaining+" \u2014 kliknij \"Pobierz z KSeF\" jeszcze raz, aby doko\u0144czy\u0107.":""));
         if(allErrs.length>0){
           setSyncErr("\u26A0\uFE0F "+allErrs.length+" faktur pomini\u0119to z b\u0142\u0119dem. Przyk\u0142ad: "
             +(allErrs[0].ksefNum||"?")+" \u2014 "+(allErrs[0].err||"nieznany b\u0142\u0105d")
