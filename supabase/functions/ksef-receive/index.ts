@@ -261,24 +261,27 @@ async function loadExisting(tenantId: string, sbH: Record<string, string>) {
   const xmlPresent = new Set<string>();   // ksef_number
   const itemsPresent = new Set<string>(); // invoice_id
 
-  const rAll = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&select=id,ksef_number`, { headers: sbH });
-  if (rAll.ok) {
-    for (const row of await rAll.json()) {
-      if (row.ksef_number) idByKsef.set(row.ksef_number, row.id);
-    }
+  // Kazde z tych zapytan MUSI sie udac. Wczesniej blad byl polykany (`if (r.ok)` bez `else`),
+  // przez co zbiory wychodzily puste => nic nie bylo pomijane ani naprawiane, a kazdy sync
+  // od nowa odpytywal KSeF o wszystkie faktury.
+  const rAll = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&select=id,ksef_number&limit=10000`, { headers: sbH });
+  if (!rAll.ok) throw new Error("loadExisting/invoices HTTP " + rAll.status + ": " + (await rAll.text()).slice(0, 200));
+  for (const row of await rAll.json()) {
+    if (row.ksef_number) idByKsef.set(row.ksef_number, row.id);
   }
-  const rDone = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&xml_payload=not.is.null&select=ksef_number`, { headers: sbH });
-  if (rDone.ok) {
-    for (const row of await rDone.json()) {
-      if (row.ksef_number) xmlPresent.add(row.ksef_number);
-    }
+
+  const rDone = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&xml_payload=not.is.null&select=ksef_number&limit=10000`, { headers: sbH });
+  if (!rDone.ok) throw new Error("loadExisting/xml HTTP " + rDone.status + ": " + (await rDone.text()).slice(0, 200));
+  for (const row of await rDone.json()) {
+    if (row.ksef_number) xmlPresent.add(row.ksef_number);
   }
-  const rItems = await fetch(`${SB_URL}/rest/v1/invoice_items?tenant_id=eq.${tenantId}&select=invoice_id`, { headers: sbH });
-  if (rItems.ok) {
-    for (const row of await rItems.json()) {
-      if (row.invoice_id) itemsPresent.add(row.invoice_id);
-    }
+
+  const rItems = await fetch(`${SB_URL}/rest/v1/invoice_items?tenant_id=eq.${tenantId}&select=invoice_id&limit=50000`, { headers: sbH });
+  if (!rItems.ok) throw new Error("loadExisting/items HTTP " + rItems.status + ": " + (await rItems.text()).slice(0, 200));
+  for (const row of await rItems.json()) {
+    if (row.invoice_id) itemsPresent.add(row.invoice_id);
   }
+
   return { idByKsef, xmlPresent, itemsPresent };
 }
 
@@ -371,17 +374,18 @@ async function saveInvoices(
       let invoiceId: string | null = null;
       if (ex) {
         invoiceId = ex;
-        await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, { method: "PATCH", headers: sbH, body: JSON.stringify(record) });
+        const up = await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, { method: "PATCH", headers: sbH, body: JSON.stringify(record) });
+        if (!up.ok) throw new Error("PATCH invoices HTTP " + up.status + ": " + (await up.text()).slice(0, 200));
       } else {
         const ins = await fetch(`${SB_URL}/rest/v1/invoices`, { method: "POST", headers: sbH, body: JSON.stringify(record) });
-        const insRows = ins.ok ? await ins.json() : [];
+        if (!ins.ok) throw new Error("POST invoices HTTP " + ins.status + ": " + (await ins.text()).slice(0, 200));
+        const insRows = await ins.json();
         invoiceId = insRows?.[0]?.id || null;
-        if (invoiceId) existing.idByKsef.set(ksefNum, invoiceId);
+        if (!invoiceId) throw new Error("POST invoices nie zwrocil id");
+        existing.idByKsef.set(ksefNum, invoiceId);
       }
-      if (invoiceId) {
-        await saveInvoiceItems(invoiceId, parseItems(xml), sbH, tenantId);
-        existing.itemsPresent.add(invoiceId);
-      }
+      await saveInvoiceItems(invoiceId, parseItems(xml), sbH, tenantId);
+      existing.itemsPresent.add(invoiceId);
       existing.xmlPresent.add(ksefNum);
       saved++;
     } catch (e) {
