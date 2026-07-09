@@ -237,21 +237,29 @@ async function queryMetadata(
   return all;
 }
 
-async function saveInvoiceItems(invoiceId: string, items: Record<string, unknown>[], sbH: Record<string, string>) {
+async function saveInvoiceItems(invoiceId: string, items: Record<string, unknown>[], sbH: Record<string, string>, tenantId: string) {
   await fetch(`${SB_URL}/rest/v1/invoice_items?invoice_id=eq.${invoiceId}`, { method: "DELETE", headers: sbH });
   if (!items.length) return;
-  await fetch(`${SB_URL}/rest/v1/invoice_items`, {
+  // tenant_id MUSI byc podany jawnie: kolumna ma `not null default (auth.jwt()->'app_metadata'->>'tenant_id')`,
+  // a Edge Function laczy sie przez service_role, ktorego JWT nie ma app_metadata.tenant_id => default = NULL
+  // => naruszenie NOT NULL i cichy blad zapisu (faktury zapisywaly sie bez ani jednej pozycji).
+  const r = await fetch(`${SB_URL}/rest/v1/invoice_items`, {
     method: "POST", headers: sbH,
-    body: JSON.stringify(items.map((it) => ({ ...it, invoice_id: invoiceId }))),
+    body: JSON.stringify(items.map((it) => ({ ...it, invoice_id: invoiceId, tenant_id: tenantId }))),
   });
+  if (!r.ok) {
+    throw new Error("zapis pozycji nie powiodl sie: HTTP " + r.status + " " + (await r.text().catch(() => "")).slice(0, 200));
+  }
 }
 
-// Jednorazowo wczytuje mape ksef_number -> id oraz zbior numerow ktore maja juz XML.
+// Jednorazowo wczytuje mape ksef_number -> id, zbior numerow ktore maja juz XML oraz
+// zbior id faktur ktore maja juz pozycje. "Kompletna" faktura = ma XML *i* pozycje.
 // Wczesniej robilismy to per faktura, a `select=id,xml_payload` sciagalo caly XML (dziesiatki kB)
 // tylko po to, zeby sprawdzic czy jest niepusty — 58 takich zapytan zabijalo czas wykonania.
 async function loadExisting(tenantId: string, sbH: Record<string, string>) {
   const idByKsef = new Map<string, string>();
-  const completeKsef = new Set<string>();
+  const xmlPresent = new Set<string>();   // ksef_number
+  const itemsPresent = new Set<string>(); // invoice_id
 
   const rAll = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&select=id,ksef_number`, { headers: sbH });
   if (rAll.ok) {
@@ -262,20 +270,36 @@ async function loadExisting(tenantId: string, sbH: Record<string, string>) {
   const rDone = await fetch(`${SB_URL}/rest/v1/invoices?tenant_id=eq.${tenantId}&xml_payload=not.is.null&select=ksef_number`, { headers: sbH });
   if (rDone.ok) {
     for (const row of await rDone.json()) {
-      if (row.ksef_number) completeKsef.add(row.ksef_number);
+      if (row.ksef_number) xmlPresent.add(row.ksef_number);
     }
   }
-  return { idByKsef, completeKsef };
+  const rItems = await fetch(`${SB_URL}/rest/v1/invoice_items?tenant_id=eq.${tenantId}&select=invoice_id`, { headers: sbH });
+  if (rItems.ok) {
+    for (const row of await rItems.json()) {
+      if (row.invoice_id) itemsPresent.add(row.invoice_id);
+    }
+  }
+  return { idByKsef, xmlPresent, itemsPresent };
+}
+
+// Pobiera zapisany wczesniej XML z bazy (bez odpytywania KSeF) — do naprawy faktur,
+// ktore maja XML, ale nie maja pozycji (skutek wczesniejszego cichego bledu zapisu).
+async function loadStoredXml(invoiceId: string, sbH: Record<string, string>): Promise<string | null> {
+  const r = await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}&select=xml_payload`, { headers: sbH });
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return rows?.[0]?.xml_payload || null;
 }
 
 async function saveInvoices(
   metaHeaders: Record<string, unknown>[],
   baseUrl: string, accessToken: string, tenantId: string, service: string, docType: string,
   deadlineAt: number,
-  existing: { idByKsef: Map<string, string>; completeKsef: Set<string> }
-): Promise<{ saved: number; skipped: number; remaining: number; errors: unknown[] }> {
+  existing: { idByKsef: Map<string, string>; xmlPresent: Set<string>; itemsPresent: Set<string> }
+): Promise<{ saved: number; repaired: number; skipped: number; remaining: number; errors: unknown[] }> {
   const sbH = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=representation" };
   let saved = 0;
+  let repaired = 0;
   let skipped = 0;
   let remaining = 0;
   const errors: unknown[] = [];
@@ -285,8 +309,29 @@ async function saveInvoices(
     const ksefNum = String(meta.ksefNumber || meta.ksefReferenceNumber || "");
     if (!ksefNum) continue;
 
-    // Faktura ma juz pobrany XML — nie odpytujemy KSeF ponownie (sync wznawialny).
-    if (existing.completeKsef.has(ksefNum)) { skipped++; continue; }
+    const existingId = existing.idByKsef.get(ksefNum);
+
+    // Kompletna = ma XML *i* ma pozycje. Wtedy nic nie robimy (sync wznawialny).
+    if (existing.xmlPresent.has(ksefNum) && existingId && existing.itemsPresent.has(existingId)) {
+      skipped++; continue;
+    }
+
+    // Naprawa: XML jest juz w bazie, ale pozycji brak (skutek cichego bledu zapisu tenant_id).
+    // Odtwarzamy pozycje z zapisanego XML — bez odpytywania KSeF, wiec bez throttle i szybko.
+    if (existing.xmlPresent.has(ksefNum) && existingId) {
+      try {
+        const storedXml = await loadStoredXml(existingId, sbH);
+        if (storedXml) {
+          await saveInvoiceItems(existingId, parseItems(storedXml), sbH, tenantId);
+          existing.itemsPresent.add(existingId);
+          repaired++;
+          continue;
+        }
+      } catch (e) {
+        errors.push({ ksefNum, err: "naprawa pozycji: " + (e instanceof Error ? e.message : String(e)) });
+        continue;
+      }
+    }
 
     // Budzet czasu: Edge Function ma twardy limit (~150 s) i po jego przekroczeniu gateway
     // zwraca 504, gubiac caly postep. Konczymy wczesniej i zwracamy ile zostalo — kolejne
@@ -333,14 +378,17 @@ async function saveInvoices(
         invoiceId = insRows?.[0]?.id || null;
         if (invoiceId) existing.idByKsef.set(ksefNum, invoiceId);
       }
-      if (invoiceId) await saveInvoiceItems(invoiceId, parseItems(xml), sbH);
-      existing.completeKsef.add(ksefNum);
+      if (invoiceId) {
+        await saveInvoiceItems(invoiceId, parseItems(xml), sbH, tenantId);
+        existing.itemsPresent.add(invoiceId);
+      }
+      existing.xmlPresent.add(ksefNum);
       saved++;
     } catch (e) {
       errors.push({ ksefNum, err: e instanceof Error ? e.message : String(e) });
     }
   }
-  return { saved, skipped, remaining, errors };
+  return { saved, repaired, skipped, remaining, errors };
 }
 
 Deno.serve(async (req: Request) => {
@@ -378,16 +426,18 @@ Deno.serve(async (req: Request) => {
 
     // UWAGA: sekwencyjnie, nie Promise.all — rownolegle wywolania podwajaly tempo zapytan
     // do KSeF i omijaly wspolny throttle (limit 8 zad./s => HTTP 429).
-    const empty = { saved: 0, skipped: 0, remaining: 0, errors: [] as unknown[] };
+    const empty = { saved: 0, repaired: 0, skipped: 0, remaining: 0, errors: [] as unknown[] };
     const inRes  = inH.length  ? await saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, "zakup", deadlineAt, existing) : empty;
     const outRes = outH.length ? await saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, "vat",   deadlineAt, existing) : empty;
 
     const remaining = inRes.remaining + outRes.remaining;
+    const repaired = inRes.repaired + outRes.repaired;
     return jsonRes({
       ok: true,
       remaining,
-      incoming: { fetched: inH.length,  saved: inRes.saved,  skipped: inRes.skipped,  errors: inRes.errors.length  ? inRes.errors  : undefined },
-      outgoing: { fetched: outH.length, saved: outRes.saved, skipped: outRes.skipped, errors: outRes.errors.length ? outRes.errors : undefined },
+      repaired,
+      incoming: { fetched: inH.length,  saved: inRes.saved,  repaired: inRes.repaired,  skipped: inRes.skipped,  errors: inRes.errors.length  ? inRes.errors  : undefined },
+      outgoing: { fetched: outH.length, saved: outRes.saved, repaired: outRes.repaired, skipped: outRes.skipped, errors: outRes.errors.length ? outRes.errors : undefined },
     });
   } catch (e) {
     return jsonRes({ error: e instanceof Error ? e.message : String(e) }, 502);
