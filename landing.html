@@ -41,22 +41,6 @@
   .badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 100px; background: var(--wsp-bg); border: 1px solid var(--wsp-light); font-size: 12px; color: var(--wsp-dark); font-weight: 500; }
   .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wsp); animation: pulse 2s infinite; }
   .mockup-wrap { max-width: 900px; margin: 5rem auto 0; padding: 0 1.5rem; opacity: 0; animation: fadeUp .9s .8s forwards; }
-  .mockup-frame { background: var(--wsp-bg); border: 1.5px solid var(--border); border-radius: 20px; padding: 2rem 1.5rem; }
-  .mockup-bar { display: flex; gap: 6px; margin-bottom: 1.5rem; }
-  .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .mockup-dot:nth-child(1) { background: #fc5f5a; }
-  .mockup-dot:nth-child(2) { background: #fdbc40; }
-  .mockup-dot:nth-child(3) { background: #33c748; }
-  .mockup-inner { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 1.5rem; display: grid; grid-template-columns: 200px 1fr; gap: 1.5rem; min-height: 280px; }
-  .mockup-sidebar { border-right: 1px solid var(--border); padding-right: 1.5rem; }
-  .mockup-nav-item { padding: 9px 12px; border-radius: 8px; font-size: 12px; margin-bottom: 4px; color: var(--ink2); display: flex; align-items: center; gap: 8px; }
-  .mockup-nav-item.active { background: var(--wsp-bg); color: var(--wsp-dark); font-weight: 500; }
-  .mockup-nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--wsp); }
-  .mockup-content-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink3); margin-bottom: 1rem; font-weight: 500; }
-  .mockup-card { background: var(--wsp-bg); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-  .mockup-card-name { font-size: 13px; font-weight: 500; color: var(--ink); }
-  .mockup-card-sub { font-size: 11px; color: var(--ink3); margin-top: 2px; }
-  .mockup-card-price { font-size: 14px; font-weight: 600; color: var(--wsp-dark); font-family: 'Cormorant Garamond', serif; }
   section { padding: 6rem 2rem; }
   .section-inner { max-width: 1100px; margin: 0 auto; }
   .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.26em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1rem; text-align: center; }
@@ -106,48 +90,49 @@
   .feat-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--wsp); margin-bottom: 0.7rem; }
   .feat-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; font-weight: 700; color: var(--ink); margin-bottom: 0.9rem; line-height: 1.25; }
   .feat-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
-  .app-shot { background: white; border: 1px solid var(--border); border-radius: 16px; padding: 1.3rem; box-shadow: 0 24px 60px rgba(28,43,50,0.09); }
-  .app-shot-bar { display: flex; gap: 6px; margin-bottom: 1.1rem; }
-  .app-shot-bar span { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
-  .app-shot-bar span:nth-child(1) { background: #fc5f5a; }
-  .app-shot-bar span:nth-child(2) { background: #fdbc40; }
-  .app-shot-bar span:nth-child(3) { background: #33c748; }
+  .app-frame { background: linear-gradient(135deg, #eae6fb 0%, #ddf0ea 100%); border-radius: 18px; padding: 1.1rem; box-shadow: 0 24px 60px rgba(60,45,120,0.14); }
+  .app-topnav { display: flex; gap: 4px; background: rgba(255,255,255,0.6); border-radius: 12px; padding: 5px; margin-bottom: 12px; }
+  .app-tab { flex: 1; text-align: center; padding: 6px 2px; border-radius: 8px; font-size: 8.5px; color: #5b567e; font-weight: 600; }
+  .app-tab .ic { display: block; font-size: 12px; margin-bottom: 1px; }
+  .app-tab.active { background: white; border: 1.3px solid #24244d; color: #24244d; box-shadow: 0 2px 6px rgba(60,40,120,0.1); }
+  .app-panel { background: rgba(255,255,255,0.55); border-radius: 12px; padding: 12px; }
 
   /* CRM Kanban mini */
-  .kanban-mini { display: flex; gap: 10px; }
-  .kanban-col { flex: 1; background: var(--wsp-bg); border-radius: 10px; padding: 10px; min-width: 0; }
-  .kanban-col-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink3); font-weight: 600; margin-bottom: 8px; }
-  .kanban-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 8px 9px; font-size: 11px; color: var(--ink); margin-bottom: 8px; line-height: 1.4; font-weight: 500; }
-  .kanban-card span { display: block; font-size: 9.5px; color: var(--ink3); margin-top: 2px; font-weight: 400; }
+  .kanban-mini { display: flex; gap: 8px; }
+  .kanban-col { flex: 1; min-width: 0; }
+  .kanban-col-title { display: flex; align-items: center; gap: 5px; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.04em; color: #5b567e; font-weight: 700; margin-bottom: 7px; }
+  .kanban-col-title .kdot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .kanban-card { background: white; border-left: 3px solid transparent; border-radius: 6px; padding: 7px 8px; font-size: 10px; color: #2e2b52; margin-bottom: 7px; line-height: 1.4; font-weight: 600; box-shadow: 0 1px 3px rgba(60,45,120,0.08); }
+  .kanban-card span { display: block; font-size: 9.5px; color: #7c78a0; margin-top: 1px; font-weight: 500; }
 
   /* Calendar mini */
-  .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .cal-head-title { font-size: 13px; font-weight: 600; color: var(--ink); font-family: 'Cormorant Garamond', serif; }
-  .google-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; background: #f1f3f4; color: #5f6368; padding: 4px 10px; border-radius: 20px; font-weight: 500; }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .cal-day { aspect-ratio: 1; border-radius: 6px; background: var(--wsp-bg); font-size: 9.5px; color: var(--ink3); display: flex; align-items: flex-start; justify-content: flex-end; padding: 4px; position: relative; }
-  .cal-day.has-event { background: #e8eef1; color: var(--wsp-dark); font-weight: 700; }
-  .cal-day .dot { position: absolute; bottom: 4px; left: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--wsp-dark); }
-  .cal-legend { margin-top: 10px; font-size: 10.5px; color: var(--ink3); }
-  .cal-legend b { color: var(--ink2); font-weight: 500; }
+  .cal-google-banner { display: flex; align-items: center; gap: 6px; background: white; border-radius: 8px; padding: 7px 10px; font-size: 9.5px; color: #1f8a55; font-weight: 600; margin-bottom: 10px; }
+  .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .cal-head-title { font-size: 12px; font-weight: 700; color: #24244d; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-day { aspect-ratio: 1; border-radius: 5px; background: rgba(255,255,255,0.5); font-size: 8.5px; color: #a09cc0; display: flex; align-items: flex-start; justify-content: flex-end; padding: 3px; position: relative; }
+  .cal-day.has-event { background: white; color: #4a3fb0; font-weight: 700; }
+  .cal-day .dot { position: absolute; bottom: 3px; left: 3px; width: 4px; height: 4px; border-radius: 50%; background: #6d5bd0; }
+  .cal-legend { margin-top: 9px; font-size: 9.5px; color: #5b567e; }
+  .cal-legend b { color: #2e2b52; font-weight: 600; }
 
   /* Invoice / KSeF mini */
-  .invoice-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; background: white; }
+  .invoice-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 11px; border-radius: 8px; margin-bottom: 7px; background: white; box-shadow: 0 1px 3px rgba(60,45,120,0.08); }
   .invoice-row:last-child { margin-bottom: 0; }
-  .invoice-name { font-size: 12px; font-weight: 500; color: var(--ink); }
-  .invoice-sub { font-size: 10px; color: var(--ink3); margin-top: 2px; }
-  .ksef-badge { font-size: 9px; background: #e6f4ea; color: #2e7d32; padding: 2px 8px; border-radius: 20px; font-weight: 600; letter-spacing: 0.02em; }
-  .invoice-amount { font-size: 14px; font-weight: 700; color: var(--wsp-dark); font-family: 'Cormorant Garamond', serif; text-align: right; }
+  .invoice-name { font-size: 11px; font-weight: 700; color: #2e2b52; }
+  .invoice-sub { font-size: 9.5px; color: #7c78a0; margin-top: 2px; }
+  .ksef-badge { font-size: 8.5px; background: #e3f5ec; color: #1f8a55; padding: 2px 7px; border-radius: 20px; font-weight: 700; letter-spacing: 0.02em; }
+  .invoice-amount { font-size: 13px; font-weight: 700; color: #24244d; text-align: right; }
 
   /* Warehouse mini */
-  .wh-search { display: flex; align-items: center; gap: 8px; background: var(--wsp-bg); border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--ink3); margin-bottom: 10px; }
-  .wh-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 11.5px; }
-  .wh-row:last-child { border-bottom: none; }
-  .wh-name { color: var(--ink); font-weight: 500; }
-  .wh-sub { font-size: 10px; color: var(--ink3); margin-top: 1px; }
-  .wh-stock { font-size: 10.5px; font-weight: 600; padding: 2px 9px; border-radius: 20px; }
-  .wh-stock.ok { background: #e6f4ea; color: #2e7d32; }
-  .wh-stock.low { background: #fdecea; color: #c0392b; }
+  .wh-search { display: flex; align-items: center; gap: 7px; background: white; border-radius: 7px; padding: 7px 11px; font-size: 10px; color: #7c78a0; margin-bottom: 9px; }
+  .wh-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: white; border-radius: 8px; margin-bottom: 6px; font-size: 10.5px; box-shadow: 0 1px 3px rgba(60,45,120,0.06); }
+  .wh-row:last-child { margin-bottom: 0; }
+  .wh-name { color: #2e2b52; font-weight: 700; }
+  .wh-sub { font-size: 9px; color: #7c78a0; margin-top: 1px; }
+  .wh-stock { font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .wh-stock.ok { background: #e3f5ec; color: #1f8a55; }
+  .wh-stock.low { background: #fbe7e7; color: #c0392b; }
 
   @media (max-width: 800px) {
     .feat-row { grid-template-columns: 1fr; padding: 2.2rem 1.5rem; }
@@ -161,8 +146,7 @@
   .success-msg strong { display: block; font-size: 1.8rem; font-family: 'Cormorant Garamond', serif; margin-bottom: .5rem; }
   @media (max-width: 600px) {
     nav { padding: 1rem 1.2rem; }
-    .mockup-inner { grid-template-columns: 1fr; }
-    .mockup-sidebar { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 1rem; }
+    .kanban-mini { flex-direction: column; }
   }
 </style>
 </head>
@@ -194,75 +178,37 @@
 </section>
 
 <div class="mockup-wrap">
-  <div class="mockup-frame">
-    <div class="mockup-bar">
-      <div class="mockup-dot"></div><div class="mockup-dot"></div><div class="mockup-dot"></div>
+  <div class="app-frame">
+    <div class="app-topnav">
+      <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
+      <div class="app-tab active"><span class="ic">📈</span>CRM</div>
+      <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
+      <div class="app-tab"><span class="ic">✉️</span>Mail</div>
+      <div class="app-tab"><span class="ic">✅</span>Zadania</div>
+      <div class="app-tab"><span class="ic">💰</span>Faktury</div>
+      <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
     </div>
-    <div style="background:#f0f4f6;border-radius:12px;border:1px solid var(--border);overflow:hidden;">
-      <!-- APP MOCKUP -->
-      <div style="display:grid;grid-template-columns:200px 1fr;min-height:380px;font-family:'DM Sans',sans-serif;">
-        <!-- Sidebar -->
-        <div style="background:#1c2b32;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px;">
-          <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#8aa0ac;margin-bottom:0.8rem;padding-left:10px;">Menu</div>
-          <div style="padding:9px 12px;border-radius:8px;background:rgba(132,156,166,0.2);color:#ccd9de;font-size:12px;font-weight:500;display:flex;align-items:center;gap:8px;"><span>📐</span> Wyceny</div>
-          <div style="padding:9px 12px;border-radius:8px;color:#8aa0ac;font-size:12px;display:flex;align-items:center;gap:8px;"><span>🗂️</span> CRM</div>
-          <div style="padding:9px 12px;border-radius:8px;color:#8aa0ac;font-size:12px;display:flex;align-items:center;gap:8px;"><span>📅</span> Kalendarz</div>
-          <div style="padding:9px 12px;border-radius:8px;color:#8aa0ac;font-size:12px;display:flex;align-items:center;gap:8px;"><span>✉️</span> Mail</div>
-          <div style="padding:9px 12px;border-radius:8px;color:#8aa0ac;font-size:12px;display:flex;align-items:center;gap:8px;"><span>✅</span> Zadania</div>
-          <div style="padding:9px 12px;border-radius:8px;color:#8aa0ac;font-size:12px;display:flex;align-items:center;gap:8px;"><span>💰</span> Faktury</div>
-          <div style="padding:9px 12px;border-radius:8px;color:#8aa0ac;font-size:12px;display:flex;align-items:center;gap:8px;"><span>📦</span> Magazyn</div>
+    <div class="app-panel">
+      <div class="kanban-mini">
+        <div class="kanban-col">
+          <div class="kanban-col-title"><span class="kdot" style="background:#6f5cf0"></span>Zapytanie · 3</div>
+          <div class="kanban-card" style="border-left-color:#6f5cf0">K. Sobolewska<span>2 450 zł</span></div>
+          <div class="kanban-card" style="border-left-color:#6f5cf0">Dom &amp; Styl<span>18 900 zł</span></div>
         </div>
-        <!-- Main content -->
-        <div style="padding:1.5rem;background:white;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;">
-            <div>
-              <div style="font-size:18px;font-weight:600;color:#1c2b32;font-family:'Cormorant Garamond',serif;">Wyceny</div>
-              <div style="font-size:11px;color:#8aa0ac;margin-top:1px;">3 aktywne wyceny</div>
-            </div>
-            <div style="padding:8px 16px;border-radius:8px;background:#1c2b32;color:white;font-size:12px;font-weight:500;">+ Nowa wycena</div>
-          </div>
-          <!-- Quote cards -->
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div style="border:1px solid #dde5e8;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#f4f7f8;">
-              <div>
-                <div style="font-size:13px;font-weight:500;color:#1c2b32;">Anna Kowalska</div>
-                <div style="font-size:11px;color:#8aa0ac;margin-top:2px;">Salon + sypialnia · zasłony lniane, roleta rzymska</div>
-                <div style="display:flex;gap:6px;margin-top:6px;">
-                  <span style="font-size:10px;background:#e8eef1;color:#5d7a87;padding:2px 8px;border-radius:20px;font-weight:500;">oferta wysłana</span>
-                </div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:16px;font-weight:700;color:#5d7a87;font-family:'Cormorant Garamond',serif;">8 640 zł</div>
-                <div style="font-size:10px;color:#8aa0ac;margin-top:2px;">brutto</div>
-              </div>
-            </div>
-            <div style="border:1px solid #dde5e8;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:13px;font-weight:500;color:#1c2b32;">Studio Wnętrz Novak</div>
-                <div style="font-size:11px;color:#8aa0ac;margin-top:2px;">Apartament · karnisze elektryczne Prestige</div>
-                <div style="display:flex;gap:6px;margin-top:6px;">
-                  <span style="font-size:10px;background:#fff7e6;color:#b07d2e;padding:2px 8px;border-radius:20px;font-weight:500;">w realizacji</span>
-                </div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:16px;font-weight:700;color:#5d7a87;font-family:'Cormorant Garamond',serif;">14 200 zł</div>
-                <div style="font-size:10px;color:#8aa0ac;margin-top:2px;">brutto</div>
-              </div>
-            </div>
-            <div style="border:1px solid #dde5e8;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:13px;font-weight:500;color:#1c2b32;">Maria Wiśniewska</div>
-                <div style="font-size:11px;color:#8aa0ac;margin-top:2px;">Salon · żaluzje drewniane, szyna KS</div>
-                <div style="display:flex;gap:6px;margin-top:6px;">
-                  <span style="font-size:10px;background:#e6f4ea;color:#2e7d32;padding:2px 8px;border-radius:20px;font-weight:500;">zamówiono</span>
-                </div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:16px;font-weight:700;color:#5d7a87;font-family:'Cormorant Garamond',serif;">3 980 zł</div>
-                <div style="font-size:10px;color:#8aa0ac;margin-top:2px;">brutto</div>
-              </div>
-            </div>
-          </div>
+        <div class="kanban-col">
+          <div class="kanban-col-title"><span class="kdot" style="background:#4a7fe0"></span>Wycena · 2</div>
+          <div class="kanban-card" style="border-left-color:#4a7fe0">M. Adamczyk<span>7 640 zł</span></div>
+          <div class="kanban-card" style="border-left-color:#4a7fe0">R. Górecka<span>11 200 zł</span></div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-title"><span class="kdot" style="background:#3fae6a"></span>Realizacja · 2</div>
+          <div class="kanban-card" style="border-left-color:#3fae6a">P. Kamińska<span>9 380 zł</span></div>
+          <div class="kanban-card" style="border-left-color:#3fae6a">Studio Bella<span>14 950 zł</span></div>
+        </div>
+        <div class="kanban-col">
+          <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
+          <div class="kanban-card" style="border-left-color:#e8703a">J. Nowicka<span>5 120 zł</span></div>
+          <div class="kanban-card" style="border-left-color:#e8703a">T. Wysocki<span>21 300 zł</span></div>
         </div>
       </div>
     </div>
@@ -290,28 +236,40 @@
     <p class="section-sub">Wyceny, CRM, kalendarz, faktury z KSeF i magazyn — zaprojektowane specjalnie dla studiów dekoracji okien.</p>
   </div>
 
-  <!-- Row 1: CRM Kanban -->
+  <!-- Row 1: Zadania zespołu -->
   <div class="feat-row">
     <div class="feat-text">
-      <p class="feat-eyebrow">CRM · Kanban</p>
-      <h3>Każde zlecenie widoczne na jednej tablicy</h3>
-      <p>Etapy dopasowane do branży: pomiar → wycena → zamówienie → szycie → montaż. Przeciągasz kartę, status aktualizuje się u całego zespołu. Historia klientki, notatki i załączniki w jednym miejscu.</p>
+      <p class="feat-eyebrow">Zadania · Zespół</p>
+      <h3>Każdy w zespole wie, co ma dziś zrobić</h3>
+      <p>Zadania podzielone na kategorie (montaż, marketing, dział legalny, sprzedaż...) i przypisane do osoby. Widok "Pilne" pokazuje, co wymaga uwagi już dziś — nic nie ginie w wiadomościach.</p>
     </div>
     <div class="feat-visual">
-      <div class="app-shot">
-        <div class="app-shot-bar"><span></span><span></span><span></span></div>
-        <div class="kanban-mini">
-          <div class="kanban-col">
-            <div class="kanban-col-title">Wycena wysłana</div>
-            <div class="kanban-card">Anna Kowalska<span>zasłony + roleta rzymska</span></div>
-          </div>
-          <div class="kanban-col">
-            <div class="kanban-col-title">Zamówienie</div>
-            <div class="kanban-card">Studio Novak<span>karnisze elektryczne</span></div>
-          </div>
-          <div class="kanban-col">
-            <div class="kanban-col-title">Montaż</div>
-            <div class="kanban-card">M. Wiśniewska<span>żaluzje drewniane</span></div>
+      <div class="app-frame">
+        <div class="app-topnav">
+          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
+          <div class="app-tab"><span class="ic">📈</span>CRM</div>
+          <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
+          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
+          <div class="app-tab active"><span class="ic">✅</span>Zadania</div>
+          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
+          <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
+        </div>
+        <div class="app-panel">
+          <div class="kanban-mini">
+            <div class="kanban-col">
+              <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
+              <div class="kanban-card" style="border-left-color:#e8703a">Szablon zlecenia<span>Damian</span></div>
+              <div class="kanban-card" style="border-left-color:#e8703a">Grafik ekipy — lipiec<span>Damian</span></div>
+            </div>
+            <div class="kanban-col">
+              <div class="kanban-col-title"><span class="kdot" style="background:#6f5cf0"></span>Marketing · 1</div>
+              <div class="kanban-card" style="border-left-color:#6f5cf0">4 posty na tydzień<span>27 lip · Paulina</span></div>
+            </div>
+            <div class="kanban-col">
+              <div class="kanban-col-title"><span class="kdot" style="background:#c0392b"></span>Pilne · 2</div>
+              <div class="kanban-card" style="border-left-color:#c0392b">Warunki reklamacji<span>Damian</span></div>
+              <div class="kanban-card" style="border-left-color:#c0392b">Umowa — dostawca<span>26 lip · Damian</span></div>
+            </div>
           </div>
         </div>
       </div>
@@ -323,20 +281,30 @@
     <div class="feat-text">
       <p class="feat-eyebrow">Kalendarz · Google Calendar</p>
       <h3>Terminy montaży zawsze aktualne</h3>
-      <p>Po połączeniu własnego konta Google terminy pomiarów i montaży trafiają bezpośrednio do kalendarza ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM, bez przełączania aplikacji.</p>
+      <p>Po połączeniu własnego konta Google terminy pomiarów i montaży trafiają bezpośrednio do kalendarza — osobno dla każdej ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM, bez przełączania aplikacji.</p>
     </div>
     <div class="feat-visual">
-      <div class="app-shot">
-        <div class="app-shot-bar"><span></span><span></span><span></span></div>
-        <div class="cal-head">
-          <span class="cal-head-title">Lipiec 2026</span>
-          <span class="google-chip">🔗 Połączono z Google</span>
+      <div class="app-frame">
+        <div class="app-topnav">
+          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
+          <div class="app-tab"><span class="ic">📈</span>CRM</div>
+          <div class="app-tab active"><span class="ic">📅</span>Kalen.</div>
+          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
+          <div class="app-tab"><span class="ic">✅</span>Zadania</div>
+          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
+          <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
         </div>
-        <div class="cal-grid">
-          <div class="cal-day">1</div><div class="cal-day">2</div><div class="cal-day has-event">3<span class="dot"></span></div><div class="cal-day">4</div><div class="cal-day">5</div><div class="cal-day">6</div><div class="cal-day">7</div>
-          <div class="cal-day">8</div><div class="cal-day has-event">9<span class="dot"></span></div><div class="cal-day">10</div><div class="cal-day">11</div><div class="cal-day has-event">12<span class="dot"></span></div><div class="cal-day">13</div><div class="cal-day">14</div>
+        <div class="app-panel">
+          <div class="cal-google-banner">✓ Połączono z Google Calendar</div>
+          <div class="cal-head">
+            <span class="cal-head-title">Lipiec 2026</span>
+          </div>
+          <div class="cal-grid">
+            <div class="cal-day">1</div><div class="cal-day">2</div><div class="cal-day has-event">3<span class="dot"></span></div><div class="cal-day">4</div><div class="cal-day">5</div><div class="cal-day">6</div><div class="cal-day">7</div>
+            <div class="cal-day">8</div><div class="cal-day has-event">9<span class="dot"></span></div><div class="cal-day">10</div><div class="cal-day">11</div><div class="cal-day has-event">12<span class="dot"></span></div><div class="cal-day">13</div><div class="cal-day">14</div>
+          </div>
+          <p class="cal-legend"><b>3 lipca</b> — montaż, ul. Polna · <b>9 lipca</b> — pomiar, K. Sobolewska</p>
         </div>
-        <p class="cal-legend"><b>3 lipca</b> — montaż, ul. Kwiatowa · <b>9 lipca</b> — pomiar, Studio Novak</p>
       </div>
     </div>
   </div>
@@ -346,58 +314,78 @@
     <div class="feat-text">
       <p class="feat-eyebrow">Faktury · KSeF</p>
       <h3>Faktury wychodzą prosto do Krajowego Systemu e-Faktur</h3>
-      <p>Automatyczna numeracja, obsługa VAT, faktury B2B i B2C. Wysyłasz i śledzisz status w KSeF bez osobnego programu do fakturowania.</p>
+      <p>Automatyczna numeracja, obsługa VAT, faktury sprzedażowe i zakupowe w jednym miejscu. Wysyłasz i śledzisz status w KSeF bez osobnego programu do fakturowania.</p>
     </div>
     <div class="feat-visual">
-      <div class="app-shot">
-        <div class="app-shot-bar"><span></span><span></span><span></span></div>
-        <div class="invoice-row">
-          <div>
-            <div class="invoice-name">FV 2026/07/0012</div>
-            <div class="invoice-sub">Studio Novak · <span class="ksef-badge">wysłano do KSeF</span></div>
-          </div>
-          <div class="invoice-amount">14 200 zł</div>
+      <div class="app-frame">
+        <div class="app-topnav">
+          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
+          <div class="app-tab"><span class="ic">📈</span>CRM</div>
+          <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
+          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
+          <div class="app-tab"><span class="ic">✅</span>Zadania</div>
+          <div class="app-tab active"><span class="ic">💰</span>Faktury</div>
+          <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
         </div>
-        <div class="invoice-row">
-          <div>
-            <div class="invoice-name">FV 2026/07/0011</div>
-            <div class="invoice-sub">A. Kowalska · <span class="ksef-badge">wysłano do KSeF</span></div>
+        <div class="app-panel">
+          <div class="invoice-row">
+            <div>
+              <div class="invoice-name">FV 12/07/2026</div>
+              <div class="invoice-sub">K. Sobolewska · <span class="ksef-badge">wystawiona</span></div>
+            </div>
+            <div class="invoice-amount">7 640 zł</div>
           </div>
-          <div class="invoice-amount">8 640 zł</div>
-        </div>
-        <div class="invoice-row">
-          <div>
-            <div class="invoice-name">FV 2026/07/0010</div>
-            <div class="invoice-sub">M. Wiśniewska · <span class="ksef-badge">wysłano do KSeF</span></div>
+          <div class="invoice-row">
+            <div>
+              <div class="invoice-name">FV 11/07/2026</div>
+              <div class="invoice-sub">Dom &amp; Styl Sp. z o.o. · <span class="ksef-badge">wystawiona</span></div>
+            </div>
+            <div class="invoice-amount">18 900 zł</div>
           </div>
-          <div class="invoice-amount">3 980 zł</div>
+          <div class="invoice-row">
+            <div>
+              <div class="invoice-name">FV 10/07/2026</div>
+              <div class="invoice-sub">M. Adamczyk · <span class="ksef-badge">wystawiona</span></div>
+            </div>
+            <div class="invoice-amount">3 250 zł</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Row 4 (reverse): Magazyn -->
+  <!-- Row 4 (reverse): Katalog / Magazyn -->
   <div class="feat-row reverse">
     <div class="feat-text">
       <p class="feat-eyebrow">Magazyn · Katalog</p>
-      <h3>Stany magazynowe zawsze pod ręką</h3>
-      <p>Śledzisz stany tkanin, akcesoriów i ścinki szyn (KS, DS, Slim, Prestige) z filtrowaniem po typie i kolorze. Wyszukiwarka podpowiada dostępność w sekundę.</p>
+      <h3>Setki pozycji cennikowych w jednej wyszukiwarce</h3>
+      <p>Katalog tkanin, akcesoriów i ścinków szyn z cenami producentów. Ostrzeżenie, gdy brakuje kluczowych parametrów (np. wysokości tkaniny), zanim trafi to do wyceny klientki.</p>
     </div>
     <div class="feat-visual">
-      <div class="app-shot">
-        <div class="app-shot-bar"><span></span><span></span><span></span></div>
-        <div class="wh-search">🔍 szyna KS biała</div>
-        <div class="wh-row">
-          <div><div class="wh-name">Szyna KS 200cm, biała</div><div class="wh-sub">akcesoria · szyny</div></div>
-          <span class="wh-stock ok">12 szt.</span>
+      <div class="app-frame">
+        <div class="app-topnav">
+          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
+          <div class="app-tab"><span class="ic">📈</span>CRM</div>
+          <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
+          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
+          <div class="app-tab"><span class="ic">✅</span>Zadania</div>
+          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
+          <div class="app-tab active"><span class="ic">📦</span>Magazyn</div>
         </div>
-        <div class="wh-row">
-          <div><div class="wh-name">Tkanina lniana, ecru</div><div class="wh-sub">tkaniny · zasłony</div></div>
-          <span class="wh-stock low">2 mb</span>
-        </div>
-        <div class="wh-row">
-          <div><div class="wh-name">Ścinek Prestige, srebrny</div><div class="wh-sub">akcesoria · karnisze</div></div>
-          <span class="wh-stock ok">7 szt.</span>
+        <div class="app-panel">
+          <div class="wh-search">🔍 Szukaj produktu, producenta...</div>
+          <div class="wh-row">
+            <div><div class="wh-name">1310</div><div class="wh-sub">Margo Textil · 300 cm</div></div>
+            <span class="wh-stock ok">160 zł/mb</span>
+          </div>
+          <div class="wh-row">
+            <div><div class="wh-name">34200</div><div class="wh-sub">Sama Tekstil · ⚠ brak wysokości</div></div>
+            <span class="wh-stock low">150 zł/mb</span>
+          </div>
+          <div class="wh-row">
+            <div><div class="wh-name">Aisha</div><div class="wh-sub">Margo Textil · 290 cm</div></div>
+            <span class="wh-stock ok">180 zł/mb</span>
+          </div>
         </div>
       </div>
     </div>
@@ -409,7 +397,6 @@
       <div class="feat-card"><div class="feat-icon">✂️</div><h3>Zlecenia szycia i zamówienia</h3><p>Jednym kliknięciem generujesz zlecenie szycia dla krawcowej, zamówienie tkanin oraz zamówienie karniszy.</p></div>
       <div class="feat-card"><div class="feat-icon">📧</div><h3>Poczta — Outlook i Gmail</h3><p>Wysyłasz oferty PDF przez swoje konto pocztowe. Historia korespondencji widoczna przy każdym kliencie.</p></div>
       <div class="feat-card"><div class="feat-icon">📄</div><h3>Dokumenty PDF jednym kliknięciem</h3><p>Oferta, zlecenie szycia, zamówienie tkanin, zamówienie karniszy — gotowe dokumenty z logo studia.</p></div>
-      <div class="feat-card"><div class="feat-icon">✅</div><h3>Zadania dla całego zespołu</h3><p>Moduł zadań z kategoriami, priorytetami i przypisaniem do osoby. Nic się nie gubi.</p></div>
     </div>
   </div>
 </section>
