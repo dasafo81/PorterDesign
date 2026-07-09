@@ -1,7 +1,8 @@
 // supabase/functions/ksef-receive/index.ts
-// KSeF 2.0 — pobieranie faktur z metadanych (bez XML per faktura)
-// Pola metadanych: ksefNumber, invoiceNumber, issueDate, grossAmount, netAmount,
-//   vatAmount, currency, seller{nip,name}, buyer{identifier{value},name}
+// KSeF 2.0 — pobieranie faktur: metadane (lista) + pełny XML per faktura
+// (numer, daty, kwoty, strony, pozycje) — wcześniej ta funkcja zapisywała
+// wyłącznie dane z /invoices/query/metadata, co dawało faktury bez pozycji
+// (invoice_items), bez adresu kontrahenta i bez terminu płatności (zawsze null).
 
 const SB_URL = Deno.env.get("SB_URL") || "https://rkcidwusjzvfwxszotnb.supabase.co";
 
@@ -26,7 +27,142 @@ async function verifyUser(req: Request) {
   const u = await r.json();
   const tid = u?.app_metadata?.tenant_id;
   if (!tid) return { ok: false, status: 403, message: "no tenant_id" };
-  return { ok: true, tenantId: tid, service: SVC };
+  return { ok: true, tenantId: tid as string, service: SVC as string };
+}
+
+// ── XML helpers (regex — bez zewnętrznego parsera, spójne z api/ksef/receive.js) ──
+function xmlVal(xml: string, tag: string): string {
+  const m = xml.match(new RegExp("<(?:[\\w]+:)?" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?" + tag + ">", "i"));
+  return m ? m[1].trim() : "";
+}
+function xmlBlock(xml: string, tag: string): string {
+  const m = xml.match(new RegExp("<(?:[\\w]+:)?" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?" + tag + ">", "i"));
+  return m ? m[0] : "";
+}
+function xmlAll(xml: string, tag: string): string[] {
+  const re = new RegExp("<(?:[\\w]+:)?" + tag + "(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w]+:)?" + tag + ">", "gi");
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) out.push(m[0]);
+  return out;
+}
+function numVal(s: unknown): number { return parseFloat(String(s || "").replace(",", ".")) || 0; }
+
+// Doda N dni do daty YYYY-MM-DD, zwraca YYYY-MM-DD (lub null jesli data bazowa niepoprawna)
+function addDays(dateStr: string, days: number): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + "T00:00:00Z");
+  if (isNaN(d.getTime())) return null;
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Termin płatności — Platnosc→TerminPlatnosci→Termin (data) lub →Dni (liczba dni od wystawienia).
+// WAŻNE: wczesniejsza wersja zwracała literalny string "14 dni" zamiast wyliczonej daty, co przy
+// zapisie do kolumny typu `date` w Postgresie powodowało blad i porzucenie calego rekordu.
+function parseDueDate(xml: string, fa: string, issueDate: string): string | null {
+  const platnosc = xmlBlock(fa, "Platnosc") || xmlBlock(xml, "Platnosc");
+  if (platnosc) {
+    const tpBlock = xmlBlock(platnosc, "TerminPlatnosci");
+    const termin = tpBlock ? (xmlVal(tpBlock, "Termin") || xmlVal(tpBlock, "Dni")) : "";
+    if (termin) {
+      if (/^\d{4}-\d{2}-\d{2}/.test(termin)) return termin.slice(0, 10);
+      if (/^\d+$/.test(termin)) return addDays(issueDate, parseInt(termin, 10));
+      return null;
+    }
+    const dz = xmlVal(platnosc, "DataZaplaty");
+    if (dz && /^\d{4}-\d{2}-\d{2}/.test(dz)) return dz.slice(0, 10);
+  }
+  const raw = xmlVal(fa, "DataZaplaty") || xmlVal(fa, "TerminPlatnosci") || "";
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  if (/^\d+$/.test(raw)) return addDays(issueDate, parseInt(raw, 10));
+  return null;
+}
+
+interface Party {
+  nip: string; name: string; address: string; addrLine2: string;
+  postal: string; city: string; email: string; phone: string;
+}
+function parseParty(block: string): Party {
+  return {
+    nip: xmlVal(block, "NIP"),
+    name: xmlVal(block, "PelnaNazwa") || xmlVal(block, "Nazwa"),
+    address: xmlVal(block, "AdresL1") || [xmlVal(block, "Ulica"), xmlVal(block, "NrDomu"), xmlVal(block, "NrLokalu")].filter(Boolean).join(" "),
+    addrLine2: xmlVal(block, "AdresL2") || [xmlVal(block, "KodPocztowy"), xmlVal(block, "Miejscowosc")].filter(Boolean).join(" "),
+    postal: xmlVal(block, "KodPocztowy"),
+    city: xmlVal(block, "Miejscowosc"),
+    email: xmlVal(block, "Email"),
+    phone: xmlVal(block, "Telefon"),
+  };
+}
+
+function parseFA(xml: string) {
+  const fa = xmlBlock(xml, "Fa");
+  const p1 = xmlBlock(xml, "Podmiot1"); // sprzedawca na fakturze
+  const p2 = xmlBlock(xml, "Podmiot2"); // nabywca na fakturze
+  const seller = parseParty(p1);
+  const buyer = parseParty(p2);
+  const platnoscB = xmlBlock(fa, "Platnosc") || xmlBlock(xml, "Platnosc");
+  const rachunek = platnoscB ? xmlBlock(platnoscB, "RachunekBankowy") : "";
+  const bank = rachunek ? (xmlVal(rachunek, "NrRB") || xmlVal(rachunek, "IBAN") || "") : "";
+  const issueDate = xmlVal(xml, "P_1");
+
+  return {
+    number: xmlVal(xml, "P_2") || xmlVal(xml, "NrFaKSeF"),
+    issue_date: issueDate,
+    sale_date: xmlVal(xml, "P_1M") || issueDate,
+    due_date: parseDueDate(xml, fa, issueDate),
+    total_gross: +(xmlVal(xml, "P_15") || 0),
+    total_net: +(xmlVal(xml, "P_13_Razem") || 0),
+    total_vat: +(xmlVal(xml, "P_14_Razem") || 0),
+    currency: xmlVal(xml, "KodWaluty") || "PLN",
+    notes: xmlVal(xml, "P_Opis"),
+    seller_party: seller, buyer_party: buyer, bank,
+  };
+}
+
+// Pozycje faktury (FaWiersz, lub starszy wariant Wiersz)
+function parseItems(xml: string) {
+  let blocks = xmlAll(xml, "FaWiersz");
+  if (blocks.length === 0) blocks = xmlAll(xml, "Wiersz");
+
+  return blocks.map((w, i) => {
+    const netP = numVal(xmlVal(w, "P_9A"));
+    const vatRraw = xmlVal(w, "P_12");
+    const vatNum = (vatRraw === "zw" || vatRraw === "np") ? -1 : numVal(vatRraw);
+    const qty = numVal(xmlVal(w, "P_8B") || "1");
+    const netV = numVal(xmlVal(w, "P_11")) || +(netP * qty).toFixed(2);
+    const vatV = vatNum === -1 ? 0 : +(netV * (vatNum / 100)).toFixed(2);
+    const grossV = +(netV + vatV).toFixed(2);
+    return {
+      position: i + 1,
+      name: xmlVal(w, "P_7") || ("Pozycja " + (i + 1)),
+      pkwiu: xmlVal(w, "PKWiU") || xmlVal(w, "P_2A") || "",
+      unit: xmlVal(w, "P_8A") || "szt",
+      quantity: qty || 1,
+      unit_net: netP,
+      vat_rate: vatNum,
+      line_net: netV,
+      line_vat: vatV,
+      line_gross: grossV,
+    };
+  });
+}
+
+async function fetchInvoiceXml(baseUrl: string, accessToken: string, ksefNumber: string): Promise<string | null> {
+  const r = await fetch(`${baseUrl}/invoices/ksef/${ksefNumber}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/xml, text/xml, */*" },
+  });
+  if (!r.ok) return null;
+  const ct = r.headers.get("content-type") || "";
+  if (ct.includes("json")) {
+    const d = await r.json();
+    if (d.invoiceData) {
+      try { return decodeURIComponent(escape(atob(d.invoiceData))); } catch { return d.invoiceData; }
+    }
+    return null;
+  }
+  return await r.text();
 }
 
 async function queryMetadata(
@@ -36,89 +172,92 @@ async function queryMetadata(
     subjectType: subjectType === "subject1" ? "Subject1" : "Subject2",
     dateRange: { from: from + "T00:00:00.000Z", to: to + "T23:59:59.999Z", dateType: "Issue" },
   };
-  const r = await fetch(`${baseUrl}/invoices/query/metadata?pageOffset=0&pageSize=100`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(filters),
-  });
-  if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + ": " + (await r.text()).slice(0, 300));
-  const d = await r.json();
-  return (d.invoices || d.items || d.invoiceMetadataList || []) as Record<string, unknown>[];
+  let all: Record<string, unknown>[] = [];
+  let pageOffset = 0;
+  const pageSize = 100;
+  for (let page = 0; page < 50; page++) { // bezpiecznik: max 5000 faktur na zakres
+    const r = await fetch(`${baseUrl}/invoices/query/metadata?pageOffset=${pageOffset}&pageSize=${pageSize}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(filters),
+    });
+    if (!r.ok) throw new Error("KSeF query/metadata HTTP " + r.status + ": " + (await r.text()).slice(0, 300));
+    const d = await r.json();
+    const items = (d.invoices || d.items || d.invoiceMetadataList || []) as Record<string, unknown>[];
+    all = all.concat(items);
+    const hasMore = d.hasMore === true || items.length === pageSize;
+    if (!hasMore || items.length === 0) break;
+    pageOffset += pageSize;
+  }
+  return all;
 }
 
-function metaToRecord(
-  meta: Record<string, unknown>, docType: string, tenantId: string
-): Record<string, unknown> {
-  const isIncoming = docType === "zakup";
-  // Kontrahent: dla kosztowych = seller, dla sprzedażowych = buyer
-  const party = isIncoming
-    ? (meta.seller as Record<string, unknown> || {})
-    : (meta.buyer as Record<string, unknown> || {});
-  const buyerName  = String(party.name || "");
-  const buyerNip   = String(
-    party.nip ||
-    (party.identifier as Record<string,unknown>)?.value ||
-    ""
-  );
-
-  return {
-    tenant_id:   tenantId,
-    doc_type:    docType,
-    status:      isIncoming ? "received" : "issued",
-    ksef_status: "confirmed",
-    ksef_number: String(meta.ksefNumber || ""),
-    ksef_mode:   "online",
-    number:      String(meta.invoiceNumber || meta.ksefNumber || ""),
-    issue_date:  String(meta.issueDate || "").slice(0, 10) || null,
-    sale_date:   String(meta.issueDate || "").slice(0, 10) || null,
-    due_date:    null,
-    total_net:   Number(meta.netAmount  || 0),
-    total_vat:   Number(meta.vatAmount  || 0),
-    total_gross: Number(meta.grossAmount || 0),
-    currency:    String(meta.currency || "PLN"),
-    notes:       "",
-    buyer_name:  buyerName,
-    buyer_nip:   buyerNip,
-    xml_payload: null,
-    updated_at:  new Date().toISOString(),
-  };
+async function saveInvoiceItems(invoiceId: string, items: Record<string, unknown>[], sbH: Record<string, string>) {
+  await fetch(`${SB_URL}/rest/v1/invoice_items?invoice_id=eq.${invoiceId}`, { method: "DELETE", headers: sbH });
+  if (!items.length) return;
+  await fetch(`${SB_URL}/rest/v1/invoice_items`, {
+    method: "POST", headers: sbH,
+    body: JSON.stringify(items.map((it) => ({ ...it, invoice_id: invoiceId }))),
+  });
 }
 
 async function saveInvoices(
-  headers: Record<string, unknown>[],
-  tenantId: string,
-  service: string,
-  docType: string
+  metaHeaders: Record<string, unknown>[],
+  baseUrl: string, accessToken: string, tenantId: string, service: string, docType: string
 ): Promise<{ saved: number; errors: unknown[] }> {
-  const sbH = {
-    apikey: service,
-    Authorization: `Bearer ${service}`,
-    "Content-Type": "application/json",
-    Prefer: "return=minimal",
-  };
+  const sbH = { apikey: service, Authorization: `Bearer ${service}`, "Content-Type": "application/json", Prefer: "return=representation" };
   let saved = 0;
   const errors: unknown[] = [];
+  const isIncoming = docType === "zakup";
 
-  for (const meta of headers) {
-    const ksefNum = String(meta.ksefNumber || "");
+  for (const meta of metaHeaders) {
+    const ksefNum = String(meta.ksefNumber || meta.ksefReferenceNumber || "");
     if (!ksefNum) continue;
     try {
-      const record = metaToRecord(meta, docType, tenantId);
-      // Sprawdź czy istnieje
+      const xml = await fetchInvoiceXml(baseUrl, accessToken, ksefNum);
+      // Brak XML (blad sieci / KSeF chwilowo niedostepne) nie moze skutkowac zapisem "pustej"
+      // faktury ani nadpisaniem juz poprawnie zapisanej (brak pozycji, brak danych kontrahenta,
+      // brak terminu platnosci) — pomijamy, sync mozna powtorzyc pozniej.
+      if (!xml) { errors.push({ ksefNum, err: "brak XML z KSeF — pominieto" }); continue; }
+      const parsed = parseFA(xml);
+
       const ck = await fetch(
         `${SB_URL}/rest/v1/invoices?ksef_number=eq.${encodeURIComponent(ksefNum)}&tenant_id=eq.${tenantId}&select=id`,
         { headers: sbH }
       );
       const ex = ck.ok ? await ck.json() : [];
+
+      // Dla faktur zakupowych prawdziwy sprzedawca (kontrahent zewnętrzny) trzymamy w seller_snapshot,
+      // a buyer_* = my (Porter Design) — spójnie z api/ksef/receive.js i logiką PDF.
+      const sellerSnapshot = isIncoming ? {
+        name: parsed.seller_party.name || "", nip: parsed.seller_party.nip || "",
+        address: parsed.seller_party.address || "", postal: "", city: parsed.seller_party.addrLine2 || "",
+        bank: parsed.bank || "", email: parsed.seller_party.email || "", phone: parsed.seller_party.phone || "",
+      } : {};
+      const buyerParty = isIncoming ? parsed.seller_party : parsed.buyer_party;
+
+      const record = {
+        tenant_id: tenantId, doc_type: docType, status: isIncoming ? "received" : "issued",
+        ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
+        number: parsed.number || ksefNum,
+        issue_date: parsed.issue_date || null, sale_date: parsed.sale_date || null, due_date: parsed.due_date || null,
+        total_net: parsed.total_net || 0, total_vat: parsed.total_vat || 0, total_gross: parsed.total_gross || 0,
+        currency: parsed.currency || "PLN", notes: parsed.notes || "",
+        buyer_name: buyerParty.name || "", buyer_nip: buyerParty.nip || "",
+        buyer_address: buyerParty.address || "", buyer_postal: "", buyer_city: buyerParty.addrLine2 || "",
+        seller_snapshot: sellerSnapshot, xml_payload: xml, updated_at: new Date().toISOString(),
+      };
+
+      let invoiceId: string | null = null;
       if (ex?.length > 0) {
-        await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${ex[0].id}`, {
-          method: "PATCH", headers: sbH, body: JSON.stringify(record),
-        });
+        invoiceId = ex[0].id;
+        await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${invoiceId}`, { method: "PATCH", headers: sbH, body: JSON.stringify(record) });
       } else {
-        await fetch(`${SB_URL}/rest/v1/invoices`, {
-          method: "POST", headers: sbH, body: JSON.stringify(record),
-        });
+        const ins = await fetch(`${SB_URL}/rest/v1/invoices`, { method: "POST", headers: sbH, body: JSON.stringify(record) });
+        const insRows = ins.ok ? await ins.json() : [];
+        invoiceId = insRows?.[0]?.id || null;
       }
+      if (invoiceId) await saveInvoiceItems(invoiceId, parseItems(xml), sbH);
       saved++;
     } catch (e) {
       errors.push({ ksefNum, err: e instanceof Error ? e.message : String(e) });
@@ -148,12 +287,12 @@ Deno.serve(async (req: Request) => {
   try {
     let inH: Record<string, unknown>[] = [];
     let outH: Record<string, unknown>[] = [];
-    if (dir === "incoming" || dir === "all") inH  = await queryMetadata(baseUrl, String(accessToken), "subject2", from, to);
-    if (dir === "outgoing" || dir === "all") outH = await queryMetadata(baseUrl, String(accessToken), "subject1", from, to);
+    if (dir === "incoming" || dir === "all") inH  = await queryMetadata(baseUrl as string, accessToken as string, "subject2", from, to);
+    if (dir === "outgoing" || dir === "all") outH = await queryMetadata(baseUrl as string, accessToken as string, "subject1", from, to);
 
     const [inRes, outRes] = await Promise.all([
-      inH.length  ? saveInvoices(inH,  auth.tenantId!, auth.service!, "zakup") : Promise.resolve({ saved: 0, errors: [] }),
-      outH.length ? saveInvoices(outH, auth.tenantId!, auth.service!, "vat")   : Promise.resolve({ saved: 0, errors: [] }),
+      inH.length  ? saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, "zakup") : Promise.resolve({ saved: 0, errors: [] }),
+      outH.length ? saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, "vat")   : Promise.resolve({ saved: 0, errors: [] }),
     ]);
 
     return jsonRes({
