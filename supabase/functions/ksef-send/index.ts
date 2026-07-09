@@ -116,7 +116,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   </Podmiot2>
   <Fa>
     <KodWaluty>PLN</KodWaluty>
-    <P_1>${isoDate(inv.issue_date)}</P_1><P_1M>${isoDate(inv.sale_date||inv.issue_date)}</P_1M>
+    <P_1>${isoDate(inv.issue_date)}</P_1><P_6>${isoDate(inv.sale_date||inv.issue_date)}</P_6>
     <P_2>${escXml(inv.number||"")}</P_2>${stawki}
     <P_15>${totalGross}</P_15>
     <Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19N>1</P_19N></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
