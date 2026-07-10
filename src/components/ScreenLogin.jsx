@@ -131,12 +131,12 @@ export function ScreenLogin(p) {
       // Błąd
       err ? ce('div', {
         style: {
-          color: '#ef4444',
+          color: 'var(--red)',
           fontSize: 13,
           marginBottom: 12,
           padding: '10px 14px',
-          background: 'rgba(239,68,68,0.08)',
-          border: '1px solid rgba(239,68,68,0.2)',
+          background: 'var(--red-l)',
+          border: '1px solid var(--red-border)',
           borderRadius: 8,
           lineHeight: 1.4
         }
