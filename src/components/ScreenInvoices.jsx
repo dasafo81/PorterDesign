@@ -1024,15 +1024,21 @@ function InvoiceList(p){
               style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}})
           );
         };
-        // Checkbox "Zapłacono": po zaznaczeniu wizualnie się wyszarza (jak "Zatwierdzono" dla KSeF)
-        // i pod spodem pokazuje aktualny status płatności (Zapłacona/Częściowa/Przeterminowana/Oczekuje).
+        // Checkbox "Zapłacono": stan checkboxa liczymy z tego samego źródła co etykieta (ps.label),
+        // a nie osobno z inv.paid — inaczej faktury płatne gotówką (payStatus ma regułę
+        // "gotówka"+issued => zawsze "Zapłacona") pokazywały pustą kratkę mimo etykiety "Zapłacona".
+        // Dla takich faktur checkbox jest zablokowany (wyszarzony, jak "Zatwierdzono" dla KSeF),
+        // bo odznaczenie i tak nie zmieniłoby etykiety — reguła gotówkowa ją nadpisuje.
         var paidCb=function(){
-          var isPaid=!!inv.paid;
+          var forcedPaid=inv.payment_method==="gotówka"&&inv.status==="issued";
+          var isPaid=forcedPaid||ps.label==="Zapłacona";
           return ce("div",{style:{textAlign:"center"}},
             ce("input",{type:"checkbox",checked:isPaid,
+              disabled:forcedPaid,
+              title:forcedPaid?"Płatność gotówką — uznawana za zapłaconą automatycznie po wystawieniu":undefined,
               onClick:function(e){e.stopPropagation();},
               onChange:function(e){p.onTogglePaid&&p.onTogglePaid(inv,e.target.checked);},
-              style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)",opacity:isPaid?0.55:1}}),
+              style:{width:16,height:16,cursor:forcedPaid?"not-allowed":"pointer",accentColor:"var(--violet)",opacity:isPaid?0.55:1}}),
             ce("div",{style:{fontSize:9,fontWeight:700,marginTop:2,color:ps.color}},ps.label)
           );
         };
