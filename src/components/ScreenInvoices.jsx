@@ -1015,7 +1015,7 @@ function InvoiceList(p){
     // Tabela
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 36px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
         ["Numer","Typ","Kontrahent","Data","Termin pł.","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=6?"center":"right")}},h);
         })
@@ -1061,7 +1061,7 @@ function InvoiceList(p){
         var rowBg=isOverdue?"#fef2f2":"var(--bg2)";
         return ce("div",{key:inv.id,
           onClick:function(){ if(isBusy)return; (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv); },
-          style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 36px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
             background:rowBg,width:"100%",opacity:isBusy?0.6:1},
           onMouseEnter:function(e){e.currentTarget.style.background=isOverdue?"#fee2e2":"var(--bg3||var(--bg))";},
@@ -1091,7 +1091,15 @@ function InvoiceList(p){
             ce(StatusBadge,{status:inv.status,paid:ps.label==="Zapłacona"}),
             isOverdue&&ce("div",{style:{fontSize:9,fontWeight:700,color:"#b91c1c",marginTop:3}},"⚠ termin minął")
           ),
-          ce("div",{style:{textAlign:"right"}},
+          ce("div",{style:{textAlign:"right",display:"flex",gap:2,justifyContent:"flex-end"}},
+            // Duplikuj — wystawia od razu nową fakturę (nowy numer, dzisiejsza data)
+            // z przepisanym nabywcą i pozycjami tej faktury. Otwiera edytor, więc
+            // przed zapisem można jeszcze coś poprawić.
+            ce("button",{
+              onClick:function(e){e.stopPropagation();p.onDuplicate&&p.onDuplicate(inv);},
+              title:"Wystaw taką samą fakturę (nowy numer)",
+              style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px"}
+            },"\uD83D\uDCCB"),
             ce("button",{
               onClick:function(e){e.stopPropagation();if(confirm("Usunąć fakturę?"))p.onDelete(inv.id);},
               style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px"}
@@ -1615,6 +1623,36 @@ export function ScreenInvoices(p){
       })
       .catch(function(e){ alert("B\u0142\u0105d usuwania: "+e.message); });
   }
+  // Duplikuj fakturę: pobiera pełny rekord (z pozycjami), zdejmuje id/numer/status/daty/
+  // dane KSeF i otwiera edytor tak jak dla nowej faktury — InvoiceEditor rozpozna brak
+  // id jako isNew i przy zapisie nada świeży numer oraz dzisiejsze daty (issue/sale/due),
+  // a resztę (nabywca, pozycje, forma płatności) przepisze 1:1 z oryginału.
+  function onDuplicate(inv){
+    setViewBusyId(inv.id);
+    sbApi.getInvoice(inv.id)
+      .then(function(full){
+        var src=full||inv;
+        var itemsCopy=(src.invoice_items||[]).map(function(it){
+          return {
+            position:it.position, name:it.name, quantity:it.quantity,
+            unit:it.unit, unit_net:it.unit_net, vat_rate:it.vat_rate,
+            line_net:it.line_net, line_vat:it.line_vat, line_gross:it.line_gross,
+            pkwiu:it.pkwiu||""
+          };
+        });
+        setEditInv({
+          doc_type:src.doc_type, payment_method:src.payment_method, kasowa:src.kasowa,
+          notes:src.notes, client_id:src.client_id, deal_id:src.deal_id,
+          buyer_name:src.buyer_name, buyer_nip:src.buyer_nip,
+          buyer_address:src.buyer_address, buyer_postal:src.buyer_postal,
+          buyer_city:src.buyer_city, buyer_email:src.buyer_email,
+          invoice_items:itemsCopy
+        });
+        setView("editor");
+      })
+      .catch(function(e){ alert("B\u0142\u0105d wczytywania faktury do duplikacji: "+(e.message||e)); })
+      .finally(function(){ setViewBusyId(null); });
+  }
 
   // Brak ustawień — banner informacyjny
   var settingsEmpty=!settings||!settings.seller_name;
@@ -1632,7 +1670,7 @@ export function ScreenInvoices(p){
       ),
       ce(InvoiceList,{
         invoices:invoices, viewBusyId:viewBusyId,
-        onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete,
+        onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete, onDuplicate:onDuplicate,
         onSynced:function(){ sbApi.getInvoices().then(function(data){ setInvoices(data||[]); }); },
         onTogglePaid:function(inv,val){
           // Zaznaczenie jako zapłacona ustawia paid_amount na pełną kwotę brutto; odznaczenie zeruje.
