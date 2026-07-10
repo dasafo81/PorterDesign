@@ -831,11 +831,13 @@ function StatusBadge(p){
     cancelled:{label:"Anulowana", bg:"#fef2f2",      color:"#b91c1c",   desc:"Faktura anulowana / cofnięta."},
   };
   var c=cfg[p.status]||cfg.draft;
-  // Faktura wystawiona i opłacona (checkbox "Zapłacono"/payStatus) — pokazujemy to w samym
-  // statusie zamiast trzymać "Wystawiona" bezterminowo. Nie zmieniamy przy tym inv.status
-  // w bazie (steruje routingiem/KSeF) — to wyłącznie nadpisanie etykiety w tym miejscu.
-  if(p.status==="issued"&&p.paid){
-    c={label:"Zapłacona",bg:"#d1fae5",color:"#065f46",desc:"Faktura wystawiona i opłacona."};
+  // Faktura opłacona (checkbox "Zapłacono"/payStatus) — pokazujemy to w samym statusie
+  // niezależnie od stanu dokumentu (issued=sprzedażowa, received=zakupowa itd.).
+  // Nasycony ciemny zielony na bialym tekscie, zeby wyraznie odroznic od jasnego
+  // mintu "Otrzymana" (Paulina zglaszala ze bledly sie ze soba w liscie).
+  // inv.status w bazie zostaje bez zmian — to wylacznie nadpisanie etykiety w tym miejscu.
+  if(p.paid&&p.status!=="draft"&&p.status!=="cancelled"){
+    c={label:"Zapłacona",bg:"#059669",color:"#fff",desc:"Faktura opłacona."};
   }
   return ce("span",{title:c.desc,style:{
     fontSize:10,fontWeight:700,borderRadius:20,padding:"2px 8px",
@@ -937,8 +939,8 @@ function InvoiceList(p){
   },{zakup:0,sprzedaz:0});
 
   var payStatus=function(inv){
-    if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"#065f46"};
-    if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"#065f46"};
+    if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"#059669"};
+    if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"#059669"};
     if(inv.payment_status==="partial")return {label:"Częściowa",color:"#854d0e"};
     if(inv.status==="issued"&&inv.due_date&&inv.due_date<todayISO()) return {label:"Przeterminowana",color:"#b91c1c"};
     return {label:"Oczekuje",color:"var(--t3)"};
@@ -1030,21 +1032,22 @@ function InvoiceList(p){
               style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}})
           );
         };
-        // Checkbox "Zapłacono": stan checkboxa liczymy z tego samego źródła co etykieta (ps.label),
-        // a nie osobno z inv.paid — inaczej faktury płatne gotówką (payStatus ma regułę
-        // "gotówka"+issued => zawsze "Zapłacona") pokazywały pustą kratkę mimo etykiety "Zapłacona".
-        // Dla takich faktur checkbox jest zablokowany (wyszarzony, jak "Zatwierdzono" dla KSeF),
-        // bo odznaczenie i tak nie zmieniłoby etykiety — reguła gotówkowa ją nadpisuje.
+        // Checkbox "Zapłacono": stan liczymy z payStatus (nie z inv.paid osobno) — inaczej
+        // gotówkowe faktury pokazywaly pusta kratke mimo etykiety "Zaplacona".
+        // Zaplacone sa zablokowane i wyszarzone niezaleznie od zrodla (gotowka/reczne odhaczenie/KSeF),
+        // zeby wyglad byl spojny. Cofniecie robi sie z edytora faktury.
         var paidCb=function(){
           var forcedPaid=inv.payment_method==="gotówka"&&inv.status==="issued";
           var isPaid=forcedPaid||ps.label==="Zapłacona";
+          var lockedByCash=forcedPaid;
           return ce("div",{style:{textAlign:"center"}},
             ce("input",{type:"checkbox",checked:isPaid,
-              disabled:forcedPaid,
-              title:forcedPaid?"Płatność gotówką — uznawana za zapłaconą automatycznie po wystawieniu":undefined,
+              disabled:isPaid,
+              title:lockedByCash?"Płatność gotówką — uznawana za zapłaconą automatycznie po wystawieniu"
+                    :isPaid?"Faktura oznaczona jako zapłacona — cofnij w edytorze faktury":undefined,
               onClick:function(e){e.stopPropagation();},
               onChange:function(e){p.onTogglePaid&&p.onTogglePaid(inv,e.target.checked);},
-              style:{width:16,height:16,cursor:forcedPaid?"not-allowed":"pointer",accentColor:"var(--violet)",opacity:isPaid?0.55:1}}),
+              style:{width:16,height:16,cursor:isPaid?"not-allowed":"pointer",accentColor:"var(--violet)",opacity:isPaid?0.55:1}}),
             ce("div",{style:{fontSize:9,fontWeight:700,marginTop:2,color:ps.color}},ps.label)
           );
         };
