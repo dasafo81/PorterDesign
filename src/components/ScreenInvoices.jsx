@@ -1566,11 +1566,14 @@ export function ScreenInvoices(p){
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete,
         onSynced:function(){ sbApi.getInvoices().then(function(data){ setInvoices(data||[]); }); },
         onTogglePaid:function(inv,val){
-          // Zaznaczenie jako zapłacona ustawia paid_amount na pełną kwotę brutto; odznaczenie zeruje
+          // Zaznaczenie jako zapłacona ustawia paid_amount na pełną kwotę brutto; odznaczenie zeruje.
+          // payment_status musi iść razem z paid, inaczej etykieta statusu (payStatus) pokazuje
+          // "Oczekuje" mimo zaznaczonego checkboxa — payStatus() czyta payment_status, nie paid.
           var newAmount=val?(+(inv.total_gross)||0):0;
-          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:val,paid_amount:newAmount}):x;});});
-          sbApi.updateInvoice(inv.id,{paid:val,paid_amount:newAmount}).catch(function(){
-            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:!val,paid_amount:inv.paid_amount||0}):x;});});
+          var newStatus=val?"paid":"unpaid";
+          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:val,paid_amount:newAmount,payment_status:newStatus}):x;});});
+          sbApi.updateInvoice(inv.id,{paid:val,paid_amount:newAmount,payment_status:newStatus}).catch(function(){
+            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:!val,paid_amount:inv.paid_amount||0,payment_status:inv.payment_status||"unpaid"}):x;});});
           });
         },
         onToggleApproved:function(inv,val){
