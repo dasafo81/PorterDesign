@@ -69,6 +69,13 @@ export function App(p){
       else{localStorage.setItem("pd_theme",t);document.documentElement.setAttribute("data-theme",t);}
     }catch(e){}
   }
+  // Bezpiecznik: --t1/--t2/--t3 (kolor tekstu) sa uzywane globalnie we wszystkich ekranach,
+  // ale tla ekranow poza chrome App.jsx nadal maja twardo wpisane jasne rgba(...) — wiec dopoki
+  // nie przejdziemy calego katalogu components/, ciemny/kawowy daja jasny tekst na jasnym tle.
+  // Wymuszamy powrot do jasnego dla kazdego kto zdazyl juz zapisac dark/beige w localStorage.
+  React.useEffect(function(){
+    if(theme!=="light")setTheme("light");
+  },[]);
   // Blokada dostepu: trial wygasl bez konwersji na plan platny, albo subskrypcja anulowana.
   // Demo, super-admin oraz stan przed pierwszym fetchem (billing===null) nigdy nie sa blokowane.
   var trialExpired=!!(billing&&billing.status==="trialing"&&billing.trialEndsAt&&new Date(billing.trialEndsAt).getTime()<Date.now());
@@ -1224,13 +1231,14 @@ export function App(p){
       ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
         // Motyw: jasny / ciemny / bezowy
         ce("div",{style:{display:"flex",alignItems:"center",gap:2,background:"var(--bd3)",borderRadius:10,padding:2,flexShrink:0}},
-          [{id:"light",icon:"\u2600\uFE0F",title:"Jasny"},{id:"dark",icon:"\uD83C\uDF19",title:"Ciemny"},{id:"beige",icon:"\u2615",title:"Be\u017cowy"}].map(function(th){
+          [{id:"light",icon:"\u2600\uFE0F",title:"Jasny"},{id:"dark",icon:"\uD83C\uDF19",title:"Ciemny (wkr\u00f3tce — w trakcie dopracowywania)"},{id:"beige",icon:"\u2615",title:"Kawowy (wkr\u00f3tce — w trakcie dopracowywania)"}].map(function(th){
             var thActive=theme===th.id;
-            return ce("button",{key:th.id,onClick:function(){setTheme(th.id);},title:th.title,
-              style:{border:"none",cursor:"pointer",padding:"4px 7px",borderRadius:8,fontSize:13,lineHeight:1,
+            var thDisabled=th.id!=="light";
+            return ce("button",{key:th.id,onClick:function(){if(!thDisabled)setTheme(th.id);},title:th.title,disabled:thDisabled,
+              style:{border:"none",cursor:thDisabled?"not-allowed":"pointer",padding:"4px 7px",borderRadius:8,fontSize:13,lineHeight:1,
                 background:thActive?"var(--panel-active-bg)":"transparent",
                 boxShadow:thActive?"0 1px 4px var(--violet-l)":"none",
-                opacity:thActive?1:0.55,transition:"all .15s"}
+                opacity:thDisabled?0.3:(thActive?1:0.55),transition:"all .15s"}
             },th.icon);
           })
         ),
