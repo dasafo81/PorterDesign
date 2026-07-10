@@ -29,7 +29,7 @@ export function ModalClient(p){
       ce("input",{type:"tel",value:phone,onChange:function(ev){setPhone(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Telefon",style:INP}),
       ce("input",{type:"email",value:email,onChange:function(ev){setEmail(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"E-mail",style:Object.assign({},INP,{marginBottom:14})}),
       ce("div",{style:{display:"flex",gap:10,marginTop:4}},
-        ce("button",{onClick:submit,style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"DODAJ"),
+        ce("button",{onClick:submit,style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"DODAJ"),
         ce("button",{onClick:p.onClose,style:{padding:"8px 14px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"Anuluj")
       )
     )
