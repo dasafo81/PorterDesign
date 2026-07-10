@@ -1211,7 +1211,7 @@ export function App(p){
   return ce("div",{style:{padding:"1.2rem",maxWidth:"100%",margin:"0 auto",background:"transparent",minHeight:"100vh",position:"relative",transition:"background 0.3s"}},
     offlineMode?ce("div",{style:{position:"fixed",bottom:20,right:20,fontSize:10,fontWeight:700,letterSpacing:"0.10em",color:"rgba(245,158,11,0.28)",pointerEvents:"none",zIndex:1,textTransform:"uppercase"}},"Tryb offline"):null,
     // Save status
-    saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"#dc2626":"var(--t2)",color:"#fff",fontSize:12,padding:"6px 20px",borderRadius:"0 0 12px 12px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 4px 16px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuj\u0119...":saveStatus==="ok"?"\u2713 Zapisano":"\u26a0 B\u0142\u0105d zapisu"):null,
+    saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"var(--red)":"var(--t2)",color:"#fff",fontSize:12,padding:"6px 20px",borderRadius:"0 0 12px 12px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 4px 16px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuj\u0119...":saveStatus==="ok"?"\u2713 Zapisano":"\u26a0 B\u0142\u0105d zapisu"):null,
     // Topbar (always visible)
     ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",padding:"10px 14px",borderRadius:18,background:"var(--panel-bg)",border:"1.5px solid var(--panel-border)",boxShadow:"var(--glass-shadow)",backdropFilter:"blur(22px)",WebkitBackdropFilter:"blur(22px)"}},
       appMode==="wyceniarka"&&screen!=="home"
@@ -1237,14 +1237,14 @@ export function App(p){
         // Offline toggle
         ce("div",{onClick:function(){setOfflineMode(function(prev){return !prev;});},style:{
           display:"flex",alignItems:"center",gap:7,cursor:"pointer",
-          border:"1.5px solid "+(offlineMode?"#f59e0b":"#059669"),
+          border:"1.5px solid "+(offlineMode?"var(--amber)":"var(--gr)"),
           background:offlineMode?"var(--amber-l)":"var(--grl)",
           padding:"5px 10px",borderRadius:10,transition:"all .2s",userSelect:"none"
         }},
-          ce("div",{style:{width:30,height:15,borderRadius:10,background:offlineMode?"#f59e0b":"#059669",position:"relative",transition:"all .2s"}},
+          ce("div",{style:{width:30,height:15,borderRadius:10,background:offlineMode?"var(--amber)":"var(--gr)",position:"relative",transition:"all .2s"}},
             ce("div",{style:{width:11,height:11,borderRadius:"50%",background:"#fff",position:"absolute",top:2,left:offlineMode?17:2,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,0.18)"}})
           ),
-          ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",color:offlineMode?"#f59e0b":"#059669"}},offlineMode?"OFFLINE":"ONLINE")
+          ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",color:offlineMode?"var(--amber)":"var(--gr)"}},offlineMode?"OFFLINE":"ONLINE")
         ),
         // AI
         appMode==="wyceniarka"?ce("button",{
