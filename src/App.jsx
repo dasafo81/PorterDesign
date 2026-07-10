@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
-import { sbApi } from './lib/supabase.js';
+import { sbApi, stripeApi } from './lib/supabase.js';
 import { signOut } from './lib/auth.js';
 import {
   FABRICS, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
@@ -45,14 +45,21 @@ export function App(p){
   // Branding tenanta - wczytany raz po starcie, fallback Porter Design jesli config pusty
   var sTenantCfg=useState(null),tenantConfig=sTenantCfg[0],setTenantConfig=sTenantCfg[1];
   var sIsDemo=useState(false),isDemo=sIsDemo[0],setIsDemo=sIsDemo[1];
+  // Status subskrypcji tenanta (billing gate) — null dopoki nie wczytany z API (nie blokujemy przed pierwszym fetchem)
+  var sBilling=useState(null),billing=sBilling[0],setBilling=sBilling[1];
   React.useEffect(function(){
     sbApi.getMyTenant().then(function(t){
       if(t&&t.config)setTenantConfig(t.config);
       if(t&&t.is_demo)setIsDemo(true);
+      if(t)setBilling({status:t.subscription_status||"trialing",trialEndsAt:t.trial_ends_at||null});
     }).catch(function(){});
   },[]);
   var brandName=(tenantConfig&&tenantConfig.brand_name)||"Porter Design";
   var brandLogo=(tenantConfig&&tenantConfig.logo_url)||LOGO_SRC;
+  // Blokada dostepu: trial wygasl bez konwersji na plan platny, albo subskrypcja anulowana.
+  // Demo, super-admin oraz stan przed pierwszym fetchem (billing===null) nigdy nie sa blokowane.
+  var trialExpired=!!(billing&&billing.status==="trialing"&&billing.trialEndsAt&&new Date(billing.trialEndsAt).getTime()<Date.now());
+  var billingBlocked=!isDemo&&!isSuperAdmin&&!!billing&&(billing.status==="canceled"||trialExpired);
   // GCal token – żyje na poziomie App żeby przeżywać przełączanie zakładek
   var sGcalTok=useState(function(){
     try{var t=localStorage.getItem("pd_gcal_token");var e=localStorage.getItem("pd_gcal_token_exp");if(t&&e&&Date.now()<Number(e))return t;}catch(x){}return null;
@@ -1178,6 +1185,16 @@ export function App(p){
     );
   }
 
+  if(billingBlocked){
+    return ce(ScreenBillingGate,{
+      status:billing.status,
+      trialEndsAt:billing.trialEndsAt,
+      brandName:brandName,
+      brandLogo:brandLogo,
+      onLogout:function(){signOut().finally(function(){onLogout();});}
+    });
+  }
+
   return ce("div",{style:{padding:"1.2rem",maxWidth:"100%",margin:"0 auto",background:"transparent",minHeight:"100vh",position:"relative",transition:"background 0.3s"}},
     offlineMode?ce("div",{style:{position:"fixed",bottom:20,right:20,fontSize:10,fontWeight:700,letterSpacing:"0.10em",color:"rgba(245,158,11,0.28)",pointerEvents:"none",zIndex:1,textTransform:"uppercase"}},"Tryb offline"):null,
     // Save status
@@ -1289,6 +1306,52 @@ export function App(p){
       onConfirm:function(){confirmDelete.onConfirm();setConfirmDelete(null);},
       onClose:function(){setConfirmDelete(null);}
     }):null
+  );
+}
+
+// ── Ekran blokady dostepu (trial wygasl / subskrypcja anulowana) ───────────
+// Zastepuje caly render App gdy billingBlocked===true. Demo i super-admin
+// omijaja ten ekran (patrz warunek billingBlocked w App).
+function ScreenBillingGate(p){
+  var status=p.status,trialEndsAt=p.trialEndsAt,brandName=p.brandName,brandLogo=p.brandLogo,onLogout=p.onLogout;
+  var sBusy=useState(null),busyPlan=sBusy[0],setBusyPlan=sBusy[1];
+  var sErr=useState(""),err=sErr[0],setErr=sErr[1];
+  var isCanceled=status==="canceled";
+  var title=isCanceled?"Subskrypcja zosta\u0142a anulowana":"Tw\u00f3j okres pr\u00f3bny si\u0119 sko\u0144czy\u0142";
+  var sub=isCanceled
+    ?"Aby dalej korzysta\u0107 z aplikacji, wybierz plan poni\u017cej."
+    :"Okres pr\u00f3bny zako\u0144czy\u0142 si\u0119"+(trialEndsAt?" "+new Date(trialEndsAt).toLocaleDateString("pl-PL"):"")+". Wybierz plan, aby zachowa\u0107 dost\u0119p do wszystkich danych.";
+  var plans=[
+    {id:"start",label:"Start",price:"149 z\u0142/mc"},
+    {id:"studio",label:"Studio",price:"279 z\u0142/mc"},
+    {id:"pro",label:"Pro",price:"449 z\u0142/mc"}
+  ];
+  function pick(planId){
+    if(busyPlan)return;
+    setErr("");setBusyPlan(planId);
+    stripeApi.createCheckoutSession(planId).then(function(url){
+      window.location.href=url;
+    }).catch(function(e){
+      setErr(e.message||"B\u0142\u0105d tworzenia sesji p\u0142atno\u015bci.");
+      setBusyPlan(null);
+    });
+  }
+  return ce("div",{style:{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
+    ce("div",{style:{maxWidth:520,width:"100%",background:"rgba(255,255,255,0.85)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:20,border:"1.5px solid rgba(255,255,255,0.78)",boxShadow:"0 8px 32px rgba(99,102,241,0.14)",padding:"32px 28px",textAlign:"center"}},
+      ce("img",{src:brandLogo,alt:"logo",style:{height:26,opacity:0.9,marginBottom:14}}),
+      ce("h2",{style:{fontSize:20,fontWeight:700,color:"var(--t1)",margin:"0 0 8px"}},title),
+      ce("p",{style:{fontSize:13.5,color:"var(--t3)",lineHeight:1.6,margin:"0 0 22px"}},sub),
+      err?ce("div",{style:{fontSize:12,color:"#dc2626",marginBottom:14}},err):null,
+      ce("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:18}},
+        plans.map(function(pl){
+          var busy=busyPlan===pl.id;
+          return ce("button",{key:pl.id,disabled:!!busyPlan,onClick:function(){pick(pl.id);},
+            style:{padding:"13px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:busy?"var(--bg2)":"#fff",cursor:busyPlan?"not-allowed":"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:14,fontWeight:600,color:"var(--t1)",opacity:busyPlan&&!busy?0.5:1,transition:"all .15s"}
+          },ce("span",null,pl.label),ce("span",{style:{color:"var(--violet)"}},busy?"\u2026":pl.price));
+        })
+      ),
+      ce("button",{onClick:onLogout,style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:12,textDecoration:"underline"}},"Wyloguj si\u0119")
+    )
   );
 }
 
