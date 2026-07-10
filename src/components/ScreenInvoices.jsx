@@ -831,6 +831,12 @@ function StatusBadge(p){
     cancelled:{label:"Anulowana", bg:"#fef2f2",      color:"#b91c1c",   desc:"Faktura anulowana / cofnięta."},
   };
   var c=cfg[p.status]||cfg.draft;
+  // Faktura wystawiona i opłacona (checkbox "Zapłacono"/payStatus) — pokazujemy to w samym
+  // statusie zamiast trzymać "Wystawiona" bezterminowo. Nie zmieniamy przy tym inv.status
+  // w bazie (steruje routingiem/KSeF) — to wyłącznie nadpisanie etykiety w tym miejscu.
+  if(p.status==="issued"&&p.paid){
+    c={label:"Zapłacona",bg:"#d1fae5",color:"#065f46",desc:"Faktura wystawiona i opłacona."};
+  }
   return ce("span",{title:c.desc,style:{
     fontSize:10,fontWeight:700,borderRadius:20,padding:"2px 8px",
     background:c.bg,color:c.color,whiteSpace:"nowrap",cursor:"help"
@@ -1079,7 +1085,7 @@ function InvoiceList(p){
                   style:{width:16,height:16,accentColor:"var(--violet)",opacity:0.6,cursor:"not-allowed"}}))
             : cb(inv.approved,function(v){p.onToggleApproved&&p.onToggleApproved(inv,v);}),
           ce("div",{style:{textAlign:"center"}},
-            ce(StatusBadge,{status:inv.status}),
+            ce(StatusBadge,{status:inv.status,paid:ps.label==="Zapłacona"}),
             isOverdue&&ce("div",{style:{fontSize:9,fontWeight:700,color:"#b91c1c",marginTop:3}},"⚠ termin minął")
           ),
           ce("div",{style:{textAlign:"right"}},
