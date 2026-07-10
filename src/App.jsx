@@ -1273,8 +1273,8 @@ export function App(p){
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
         {id:"kalendarz", label:"Kalen.",icon:"\uD83D\uDCC5"},
-        {id:"mail",      label:"Mail",  icon:"\u2709"},
-        {id:"zadania",   label:"Zadania",icon:"\u2713"},
+        {id:"mail",      label:"Mail",  icon:"\u2709\ufe0f"},
+        {id:"zadania",   label:"Zadania",icon:"\u2705"},
         {id:"faktury",   label:"Faktury", icon:"\uD83D\uDCB0"},
         {id:"magazyn",   label:"Magazyn", icon:"\uD83D\uDCE6"}
       ].concat(isSuperAdmin?[{id:"admin",label:"Admin",icon:"\u2699"}]:[]).map(function(tab){
