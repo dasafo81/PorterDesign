@@ -1161,15 +1161,20 @@ function fmtAddr(street, postal, city){
 // ── OFICJALNY KOD QR KSeF (Kod I / OFFLINE) ────────────────────────────────
 // Zgodnie ze specyfikacja KSeF 2.0 (github.com/CIRFMF/ksef-api/blob/main/kody-qr.md):
 //   https://qr[-test].ksef.mf.gov.pl/invoice/{NIP}/{DD-MM-YYYY}/{SHA256_XML_Base64Url}
+// Hash bierzemy z kolumny inv.ksef_invoice_hash zapisanej przez ksef-send w chwili
+// wysylki (Base64URL bez padding, gotowy do URL). NIE liczymy hasha z xml_payload,
+// bo sync z KSeF (ksef-receive) potrafi go nadpisac canonical XML-em o innym hashu.
 // Warunek pojawienia sie QR na fakturze:
 //   - status w KSeF: confirmed (mamy numer KSeF)
-//   - mamy pelny xml_payload (bez niego nie ma hasha)
+//   - mamy zapisany hash z chwili wysylki (ksef_invoice_hash)
 //   - dokument sprzedazowy wystawiony przez nas (nie zakupowa/EKO/proforma)
-// W innych przypadkach: brak QR (Damian: "nic - pusto").
+// Dla faktur wystawionych PRZED dodaniem kolumny ksef_invoice_hash (migracja 0012):
+// hash bedzie null i QR sie nie pokaze — lepiej brak QR niz falszywy odrzucany
+// przez skanery KSeF. Nowe faktury dostana QR automatycznie.
 async function buildKsefQrUrl(inv, settings){
   if(!inv||inv.ksef_status!=="confirmed") return null;
   if(!inv.ksef_number) return null;
-  if(!inv.xml_payload) return null;
+  if(!inv.ksef_invoice_hash) return null;
   if(inv.doc_type==="zakup"||inv.doc_type==="eko"||inv.doc_type==="proforma") return null;
 
   // NIP sprzedawcy: seller_snapshot (zapisywany przy wysylce/sync) lub settings sprzedawcy
@@ -1183,21 +1188,10 @@ async function buildKsefQrUrl(inv, settings){
   if(!mDate) return null;
   var ddmmyyyy=mDate[3]+"-"+mDate[2]+"-"+mDate[1];
 
-  // SHA-256 z pelnego XML -> Base64URL (bez paddingu, '+'->'-', '/'->'_')
-  try {
-    var buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(inv.xml_payload));
-    var bytes=new Uint8Array(buf);
-    var bin="";
-    for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
-    var b64=btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-
-    // Srodowisko: z invoice_settings.ksef_env (per-tenant). Domyslnie prod.
-    var env=(settings&&settings.ksef_env==="test")?"test":"prod";
-    var host=env==="test"?"qr-test.ksef.mf.gov.pl":"qr.ksef.mf.gov.pl";
-    return "https://"+host+"/invoice/"+nip+"/"+ddmmyyyy+"/"+b64;
-  } catch(e){
-    return null;
-  }
+  // Srodowisko: z invoice_settings.ksef_env (per-tenant). Domyslnie prod.
+  var env=(settings&&settings.ksef_env==="test")?"test":"prod";
+  var host=env==="test"?"qr-test.ksef.mf.gov.pl":"qr.ksef.mf.gov.pl";
+  return "https://"+host+"/invoice/"+nip+"/"+ddmmyyyy+"/"+inv.ksef_invoice_hash;
 }
 
 function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
@@ -1403,7 +1397,7 @@ function InvoiceDetailView(p){
       if(!cancelled) setKsefQrUrl(url);
     });
     return function(){ cancelled=true; };
-  },[currentInv.id,currentInv.ksef_status,currentInv.ksef_number,currentInv.xml_payload,currentInv.doc_type,currentInv.issue_date]);
+  },[currentInv.id,currentInv.ksef_status,currentInv.ksef_number,currentInv.ksef_invoice_hash,currentInv.doc_type,currentInv.issue_date]);
 
   var isIssued=currentInv.status==="issued";
   var isEko=currentInv.doc_type==="eko";
