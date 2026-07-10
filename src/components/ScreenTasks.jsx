@@ -171,7 +171,7 @@ function SubtaskRow(p) {
         display: "flex", alignItems: "center", justifyContent: "center",
         cursor: "pointer", flexShrink: 0, transition: "all .15s"
       }
-    }, sub.done ? ce("span", { style: { color: "#fff", fontSize: 9, fontWeight: 700 } }, "✓") : null),
+    }, sub.done ? ce("span", { style: { color: "var(--bg)", fontSize: 9, fontWeight: 700 } }, "✓") : null),
 
     editing
       ? ce(QuickInput, {
@@ -252,7 +252,7 @@ function TaskCard(p) {
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: "pointer", transition: "all .15s"
         }
-      }, task.done ? ce("span", { style: { color: "#fff", fontSize: 9, fontWeight: 700 } }, "✓") : null),
+      }, task.done ? ce("span", { style: { color: "var(--bg)", fontSize: 9, fontWeight: 700 } }, "✓") : null),
 
       // title
       ce("div", { style: { flex: 1, minWidth: 0 } },
@@ -714,14 +714,14 @@ export function ScreenTasks(p) {
             if (activeCat === "__overview__") { setActiveCat(targetCat); }
             openAdd(targetCat, "damian");
           },
-          style: { padding: "9px 16px", borderRadius: 11, border: "none", background: "var(--t1)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" } },
+          style: { padding: "9px 16px", borderRadius: 11, border: "none", background: "var(--t1)", color: "var(--bg)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" } },
           ce("span", null, "+"), "Nowe zadanie")
       )
     ),
 
     // error banner
     error
-      ? ce("div", { style: { background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 10, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "#b45309" } }, "⚠ " + error)
+      ? ce("div", { style: { background: "var(--amber-l)", border: "1px solid var(--amber)", borderRadius: 10, padding: "8px 12px", marginBottom: 12, fontSize: 11, color: "var(--amber)" } }, "⚠ " + error)
       : null,
 
     // ── HUB GRID ──
