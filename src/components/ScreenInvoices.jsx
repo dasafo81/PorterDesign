@@ -858,6 +858,7 @@ function KsefBadge(p){
 function InvoiceList(p){
   var [search,setSearch]=useState("");
   var [filterDocType,setFilterDocType]=useState("all");
+  var [groupFilter,setGroupFilter]=useState("all"); // all | zakup | sprzedaz — filtr z kafelków
   var [syncOpen,setSyncOpen]=useState(false);
   var [syncing,setSyncing]=useState(false);
   var [syncMsg,setSyncMsg]=useState(null);
@@ -911,6 +912,8 @@ function InvoiceList(p){
   }
 
   var list=(p.invoices||[]).filter(function(inv){
+    if(groupFilter==="zakup"&&inv.doc_type!=="zakup") return false;
+    if(groupFilter==="sprzedaz"&&inv.doc_type==="zakup") return false;
     if(filterDocType!=="all"&&inv.doc_type!==filterDocType) return false;
     if(search){
       var q=search.toLowerCase();
@@ -921,6 +924,12 @@ function InvoiceList(p){
     return true;
   });
 
+  // Liczniki do kafelków Zakup / Sprzedaż (liczone z pełnej listy, nie z `list` po filtrach)
+  var docTypeCounts=(p.invoices||[]).reduce(function(acc,inv){
+    if(inv.doc_type==="zakup") acc.zakup++; else acc.sprzedaz++;
+    return acc;
+  },{zakup:0,sprzedaz:0});
+
   var payStatus=function(inv){
     if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"#065f46"};
     if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"#065f46"};
@@ -930,6 +939,34 @@ function InvoiceList(p){
   };
 
   return ce("div",null,
+    // Kafelki Zakup / Sprzedaż
+    ce("div",{style:{display:"flex",gap:10,marginBottom:14}},
+      ce("div",{
+        onClick:function(){setGroupFilter(groupFilter==="sprzedaz"?"all":"sprzedaz");},
+        style:{
+          flex:1,cursor:"pointer",padding:"14px 18px",borderRadius:14,
+          border:groupFilter==="sprzedaz"?"2px solid var(--violet)":"1px solid var(--bd2)",
+          background:groupFilter==="sprzedaz"?"rgba(124,58,237,0.08)":"var(--bg2)",
+          transition:"all .15s"
+        }
+      },
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"\uD83D\uDCB0 Sprzeda\u017c"),
+        ce("div",{style:{fontSize:24,fontWeight:800,color:"var(--t2)",marginTop:4}},docTypeCounts.sprzedaz)
+      ),
+      ce("div",{
+        onClick:function(){setGroupFilter(groupFilter==="zakup"?"all":"zakup");},
+        style:{
+          flex:1,cursor:"pointer",padding:"14px 18px",borderRadius:14,
+          border:groupFilter==="zakup"?"2px solid var(--violet)":"1px solid var(--bd2)",
+          background:groupFilter==="zakup"?"rgba(124,58,237,0.08)":"var(--bg2)",
+          transition:"all .15s"
+        }
+      },
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"\uD83D\uDCE5 Zakup"),
+        ce("div",{style:{fontSize:24,fontWeight:800,color:"var(--t2)",marginTop:4}},docTypeCounts.zakup)
+      )
+    ),
+
     // Toolbar
     ce("div",{style:{display:"flex",gap:10,marginBottom:syncOpen?10:16,flexWrap:"wrap",alignItems:"center"}},
       ce("input",{style:Object.assign({},inp,{maxWidth:260,flex:1}),
