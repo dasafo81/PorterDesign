@@ -12,7 +12,8 @@
       --gr:#059669;--grl:rgba(5,150,105,0.10);--grd:#047857;--grm:rgba(5,150,105,0.30);
       --wb:#f0f8ff;--wbd:#818cf8;--wt:#3730a3;
       --gold:#b45309;
-      --violet:#7c3aed;--violet-l:rgba(124,58,237,0.12);
+      --violet:#7c3aed;--violet-l:rgba(124,58,237,0.12);--violet-border:rgba(124,58,237,0.25);
+      --amber-l:rgba(245,158,11,0.08);
       --teal:#0d9488;--teal-l:rgba(13,148,136,0.12);
       --pink:#db2777;--pink-l:rgba(219,39,119,0.10);
       --section-gap:24px;--field-gap:12px;--card-radius:18px;
@@ -21,17 +22,74 @@
       --glass-border:rgba(255,255,255,0.80);
       --glass-shadow:0 8px 32px rgba(99,102,241,0.13), 0 1.5px 0 rgba(255,255,255,0.80) inset;
       --spring:cubic-bezier(0.34,1.4,0.64,1);
-    }
-    body{
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-      color:var(--t1);min-height:100vh;
-      background:
+      /* Chrome (topbar/zakladki) — osobne tokeny bo maja inna baze opacity niz --bg2/--bg3 */
+      --panel-bg:rgba(255,255,255,0.50);
+      --panel-border:rgba(255,255,255,0.75);
+      --panel-active-bg:rgba(255,255,255,0.90);
+      --body-bg:
         radial-gradient(ellipse at 15% 20%, rgba(167,139,250,0.45) 0%, transparent 50%),
         radial-gradient(ellipse at 85% 10%, rgba(94,234,212,0.30) 0%, transparent 45%),
         radial-gradient(ellipse at 70% 80%, rgba(196,181,253,0.35) 0%, transparent 50%),
         radial-gradient(ellipse at 10% 85%, rgba(110,231,183,0.25) 0%, transparent 45%),
         linear-gradient(160deg, #e0d9f7 0%, #d4eaf5 50%, #ddf4ed 100%);
+    }
+    /* ── Motyw ciemny ─────────────────────────────────────────────────────── */
+    [data-theme="dark"]{
+      --bg:#0f0e1a;
+      --bg2:rgba(30,27,75,0.55);
+      --bg3:rgba(30,27,75,0.35);
+      --bd1:rgba(167,139,250,0.35);
+      --bd2:rgba(167,139,250,0.22);
+      --bd3:rgba(167,139,250,0.13);
+      --t1:#ede9fe;--t2:#b4b4d9;--t3:#8583ab;
+      --grl:rgba(5,150,105,0.22);
+      --violet-l:rgba(124,58,237,0.24);--violet-border:rgba(167,139,250,0.40);
+      --amber-l:rgba(245,158,11,0.16);
+      --teal-l:rgba(13,148,136,0.22);
+      --pink-l:rgba(219,39,119,0.22);
+      --glass-bg:rgba(30,27,75,0.55);
+      --glass-border:rgba(167,139,250,0.25);
+      --glass-shadow:0 8px 32px rgba(0,0,0,0.45), 0 1.5px 0 rgba(255,255,255,0.06) inset;
+      --panel-bg:rgba(24,22,58,0.60);
+      --panel-border:rgba(167,139,250,0.22);
+      --panel-active-bg:rgba(62,53,122,0.70);
+      --body-bg:
+        radial-gradient(ellipse at 15% 20%, rgba(124,58,237,0.28) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, rgba(13,148,136,0.20) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 80%, rgba(124,58,237,0.16) 0%, transparent 50%),
+        radial-gradient(ellipse at 10% 85%, rgba(13,148,136,0.12) 0%, transparent 45%),
+        linear-gradient(160deg, #14122a 0%, #100f1f 50%, #0d1a17 100%);
+    }
+    /* ── Motyw bezowy ─────────────────────────────────────────────────────── */
+    [data-theme="beige"]{
+      --bg:#f2e9dc;
+      --bg2:rgba(255,250,240,0.65);
+      --bg3:rgba(255,250,240,0.40);
+      --bd1:rgba(180,131,66,0.30);
+      --bd2:rgba(180,131,66,0.18);
+      --bd3:rgba(180,131,66,0.09);
+      --t1:#4a3624;--t2:#8a6f56;--t3:#b8a58c;
+      --violet-border:rgba(124,58,237,0.22);
+      --amber-l:rgba(245,158,11,0.10);
+      --glass-bg:rgba(255,250,240,0.58);
+      --glass-border:rgba(255,250,240,0.85);
+      --glass-shadow:0 8px 32px rgba(180,131,66,0.16), 0 1.5px 0 rgba(255,255,255,0.70) inset;
+      --panel-bg:rgba(255,250,240,0.55);
+      --panel-border:rgba(212,163,115,0.32);
+      --panel-active-bg:rgba(255,253,247,0.92);
+      --body-bg:
+        radial-gradient(ellipse at 15% 20%, rgba(212,163,115,0.35) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, rgba(230,200,150,0.30) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 80%, rgba(196,150,100,0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 10% 85%, rgba(220,190,150,0.20) 0%, transparent 45%),
+        linear-gradient(160deg, #f5ecdf 0%, #f0e4d0 50%, #ede0c8 100%);
+    }
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      color:var(--t1);min-height:100vh;
+      background:var(--body-bg);
       background-attachment:fixed;
+      transition:background 0.25s ease;
     }
     #root{max-width:100%;margin:0 auto;background:transparent;min-height:100vh;display:flex;flex-direction:column;}
     .app-inner{padding:1rem;flex:1;}
@@ -39,9 +97,9 @@
     .footer{text-align:center;padding:1.5rem 1rem 2rem;font-size:9px;color:var(--t3);letter-spacing:0.16em;text-transform:uppercase;margin-top:auto;opacity:0.5;}
     .glass{background:var(--glass-bg);border:1.5px solid var(--glass-border);box-shadow:var(--glass-shadow);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);}
     .glass-panel{
-      background:rgba(255,255,255,0.52);
-      border:1.5px solid rgba(255,255,255,0.75);
-      box-shadow:0 4px 24px rgba(99,102,241,0.10), 0 1px 0 rgba(255,255,255,0.80) inset;
+      background:var(--glass-bg);
+      border:1.5px solid var(--glass-border);
+      box-shadow:var(--glass-shadow);
       backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
       border-radius:18px;
     }
