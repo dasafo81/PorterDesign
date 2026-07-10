@@ -304,7 +304,7 @@ export function ModalSewing(p){
               key:i,
               style:{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:8,
                 border:'1.5px solid '+(isSel?'var(--t1)':isUsed?'var(--bd3)':'var(--bd2)'),
-                background:isUsed?'var(--bg3)':isSel?'rgba(26,26,24,0.04)':'var(--bg)',
+                background:isUsed?'var(--bg3)':isSel?'var(--bd3)':'var(--bg)',
                 cursor:isUsed?'not-allowed':'pointer',opacity:isUsed?0.45:1,transition:'all .12s'}
             },
               ce('input',{type:'checkbox',checked:isSel,disabled:isUsed,
