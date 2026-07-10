@@ -2,6 +2,16 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8"/>
+  <script>
+    // Ustawia data-theme na <html> PRZED pierwszym malowaniem strony,
+    // zeby przy starcie nie mrugnal domyslny (jasny) motyw przed przelaczeniem na zapisany.
+    (function(){
+      try{
+        var t=localStorage.getItem("pd_theme");
+        if(t==="dark"||t==="beige")document.documentElement.setAttribute("data-theme",t);
+      }catch(e){}
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <meta name="theme-color" content="#1a1a2e"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -18,7 +28,7 @@
     </div>
     <div style="text-align:center;padding:0.8rem 1rem 1.4rem;font-size:8px;color:var(--t3);letter-spacing:0.18em;text-transform:uppercase;border-top:0.5px solid var(--bd3);opacity:0.6;margin-top:auto;">
       Created by Porter Design &nbsp;·&nbsp;
-      <span id="app-version" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Historia zmian">v1.3.3</span>
+      <span id="app-version" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="Historia zmian">v1.3.4</span>
     </div>
   </div>
 
@@ -33,6 +43,14 @@
 
   <script>
     var CHANGELOG = [
+      {
+        version: "v1.3.4",
+        date: "2026-07-10",
+        items: [
+          "Przelacznik motywu: jasny / ciemny / bezowy (na razie: chrome aplikacji — topbar, zakladki, tlo; ekrany wewnetrzne w trakcie konwersji)",
+          "Ekran blokady dostepu po wygasnieciu okresu probnego / anulowaniu subskrypcji, z wyborem planu"
+        ]
+      },
       {
         version: "v1.3.3",
         date: "2026-06-01",
