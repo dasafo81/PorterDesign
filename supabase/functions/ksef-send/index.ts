@@ -251,6 +251,11 @@ Deno.serve(async (req: Request) => {
     const invoiceHashB64   = await sha256b64(xmlBytes);
     const encryptedHashB64 = await sha256b64(encryptedXml);
     const encryptedContent = bufToB64(encryptedXml.buffer);
+    // Ten sam hash co invoiceHashB64, ale w Base64URL bez padding — do URLa QR (Kod I MF).
+    // Zapisujemy juz przekonwertowany, zeby frontend nie musial nic o nim wiedziec:
+    // czyta ksef_invoice_hash i wkleja bezposrednio do URLa weryfikacyjnego.
+    const invoiceHashB64Url = invoiceHashB64
+      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
     // 6. Wyślij fakturę
     const sendR = await fetch(`${baseUrl}/sessions/online/${encodeURIComponent(sessionRef)}/invoices`, {
@@ -295,6 +300,7 @@ Deno.serve(async (req: Request) => {
         ksef_sent_at: new Date().toISOString(),
         ksef_error: null,
         xml_payload: xml,
+        ksef_invoice_hash: invoiceHashB64Url,
       }),
     });
 
