@@ -89,7 +89,7 @@ export function ModalRoom(p){
         ce("button",{
           onClick:submit,
           disabled:!canSubmit,
-          style:{flex:1,padding:"9px",borderRadius:7,border:"none",background:canSubmit?"var(--t1)":"var(--bd1)",color:"#fff",fontSize:12,fontWeight:600,cursor:canSubmit?"pointer":"default",letterSpacing:"0.04em"}
+          style:{flex:1,padding:"9px",borderRadius:7,border:"none",background:canSubmit?"var(--t1)":"var(--bd1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:canSubmit?"pointer":"default",letterSpacing:"0.04em"}
         },"DODAJ"),
         ce("button",{onClick:p.onClose,style:{padding:"9px 16px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"Anuluj")
       )
@@ -157,7 +157,7 @@ export function ModalWindow(p){
         ce("button",{
           onClick:submit,
           disabled:!canSubmit,
-          style:{flex:1,padding:"9px",borderRadius:7,border:"none",background:canSubmit?"var(--t1)":"var(--bd1)",color:"#fff",fontSize:12,fontWeight:600,cursor:canSubmit?"pointer":"default",letterSpacing:"0.04em"}
+          style:{flex:1,padding:"9px",borderRadius:7,border:"none",background:canSubmit?"var(--t1)":"var(--bd1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:canSubmit?"pointer":"default",letterSpacing:"0.04em"}
         },"DODAJ"),
         ce("button",{onClick:p.onClose,style:{padding:"9px 16px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"Anuluj")
       )
@@ -184,14 +184,14 @@ export function ModalConfirmDelete(p){
         ce("strong",{style:{color:"var(--t1)"}},"\u201e"+p.label+"\u201d"),
         "?",
         ce("br",null),
-        ce("span",{style:{color:"#b91c1c",fontWeight:600}},subtitles[p.itemType]),
+        ce("span",{style:{color:"var(--red)",fontWeight:600}},subtitles[p.itemType]),
         ce("br",null),
-        ce("span",{style:{color:"#b91c1c",fontWeight:600}},"Tej operacji nie można cofnąć.")
+        ce("span",{style:{color:"var(--red)",fontWeight:600}},"Tej operacji nie można cofnąć.")
       ),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         ce("button",{
           onClick:p.onConfirm,
-          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#b91c1c",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
+          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"var(--red)",color:"var(--bg)",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
         },"Tak, usuń bezpowrotnie"),
         ce("button",{
           onClick:p.onClose,
@@ -215,12 +215,12 @@ export function ModalConfirmRemove(p){
         ce("strong",{style:{color:"var(--t1)"}},"\u201e"+p.prodLabel+"\u201d"),
         "?",
         ce("br",null),
-        ce("span",{style:{color:"#b91c1c",fontWeight:600}},"Wszystkie wpisane dane zostaną bezpowrotnie usunięte.")
+        ce("span",{style:{color:"var(--red)",fontWeight:600}},"Wszystkie wpisane dane zostaną bezpowrotnie usunięte.")
       ),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         ce("button",{
           onClick:function(){p.onConfirm();p.onClose();},
-          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#b91c1c",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
+          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"var(--red)",color:"var(--bg)",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
         },"Tak, usuń produkt"),
         ce("button",{
           onClick:p.onClose,
@@ -246,12 +246,12 @@ export function ModalConfirmTypeChange(p){
         ce("strong",{style:{color:"var(--t1)"}},"\u201e"+p.toLabel+"\u201d"),
         "?",
         ce("br",null),
-        ce("span",{style:{color:"#b91c1c",fontWeight:600}},"Wszystkie wpisane dane zostaną bezpowrotnie usunięte.")
+        ce("span",{style:{color:"var(--red)",fontWeight:600}},"Wszystkie wpisane dane zostaną bezpowrotnie usunięte.")
       ),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
         ce("button",{
           onClick:function(){p.onConfirm();p.onClose();},
-          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#b91c1c",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
+          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"var(--red)",color:"var(--bg)",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
         },"Tak, zmień i wyczyść dane"),
         ce("button",{
           onClick:p.onClose,
@@ -270,7 +270,7 @@ export function ModalSimple(p){
       ce("div",{style:{fontSize:13,fontWeight:600,marginBottom:12,color:"var(--t1)",letterSpacing:"0.02em"}},p.title),
       ce("input",{autoFocus:true,value:name,onChange:function(ev){setName(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:p.placeholder,style:{width:"100%",padding:"7px 10px",fontSize:13,border:"0.5px solid var(--bd2)",borderRadius:7,marginBottom:12,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block"}}),
       ce("div",{style:{display:"flex",gap:8}},
-        ce("button",{onClick:submit,style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"DODAJ"),
+        ce("button",{onClick:submit,style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em"}},"DODAJ"),
         ce("button",{onClick:p.onClose,style:{padding:"8px 14px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"Anuluj")
       )
     )
