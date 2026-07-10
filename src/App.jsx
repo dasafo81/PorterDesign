@@ -69,6 +69,13 @@ export function App(p){
       else{localStorage.setItem("pd_theme",t);document.documentElement.setAttribute("data-theme",t);}
     }catch(e){}
   }
+  // Niektore miejsca w kodzie doklejaja alpha jako sufiks hex (np. kolor+"22") do gradientow/cieni —
+  // takich stringow nie da sie zbudowac z var(--x), wiec dla tych miejsc trzymamy realny hex zalezny od `theme`.
+  var THEME_HEX=(theme==="dark")
+    ?{violet:"#9d8cd6",gr:"#7fc4a1",red:"#e29a9a"}
+    :(theme==="beige")
+      ?{violet:"#8a5a34",gr:"#6b4a30",red:"#8a4a34"}
+      :{violet:"#7c3aed",gr:"#059669",red:"#dc2626"};
   // Bezpiecznik: --t1/--t2/--t3 (kolor tekstu) sa uzywane globalnie we wszystkich ekranach,
   // ale tla ekranow poza chrome App.jsx nadal maja twardo wpisane jasne rgba(...) — wiec dopoki
   // nie przejdziemy calego katalogu components/, ciemny/kawowy daja jasny tekst na jasnym tle.
@@ -484,9 +491,9 @@ export function App(p){
     } else {
 
     var STATUS_CFG={
-      nowe:        {label:"Aktywne",     color:"#7c3aed", bg:"rgba(124,58,237,0.12)",  dot:"#7c3aed"},
-      zrealizowane:{label:"Zrealizowane",color:"#059669", bg:"rgba(5,150,105,0.12)",   dot:"#059669"},
-      odrzucone:   {label:"Odrzucone",   color:"#dc2626", bg:"rgba(220,38,38,0.10)",   dot:"#dc2626"}
+      nowe:        {label:"Aktywne",     color:THEME_HEX.violet, bg:THEME_HEX.violet+"1F",  dot:THEME_HEX.violet},
+      zrealizowane:{label:"Zrealizowane",color:THEME_HEX.gr,     bg:THEME_HEX.gr+"1F",      dot:THEME_HEX.gr},
+      odrzucone:   {label:"Odrzucone",   color:THEME_HEX.red,    bg:THEME_HEX.red+"1A",     dot:THEME_HEX.red}
     };
 
     // ── Aggregate stats ──
@@ -588,9 +595,9 @@ export function App(p){
     var cl_odrz=filtered.filter(function(cl){return cl.status==="odrzucone";});
 
     var TAB_LIST=[
-      {sid:"nowe",       list:cl_nowe,  label:"Aktywne",      icon:"\u26A1",color:"#7c3aed"},
-      {sid:"zrealizowane",list:cl_zreal,label:"Zrealizowane",  icon:"\u2714",color:"#059669"},
-      {sid:"odrzucone",  list:cl_odrz,  label:"Odrzucone",     icon:"\u2715",color:"#dc2626"}
+      {sid:"nowe",       list:cl_nowe,  label:"Aktywne",      icon:"\u26A1",color:THEME_HEX.violet},
+      {sid:"zrealizowane",list:cl_zreal,label:"Zrealizowane",  icon:"\u2714",color:THEME_HEX.gr},
+      {sid:"odrzucone",  list:cl_odrz,  label:"Odrzucone",     icon:"\u2715",color:THEME_HEX.red}
     ];
     var activeTab=q?"nowe":homeTab;
     var activeList=q?filtered:(TAB_LIST.find(function(t){return t.sid===activeTab;})||TAB_LIST[0]).list;
@@ -603,16 +610,16 @@ export function App(p){
       // ── Hero Banner ──
       ce("div",{className:"hero-banner",style:{marginBottom:20,padding:"24px 24px 20px"}},
         // Orbs
-        ce("div",{className:"holo-orb",style:{width:120,height:120,background:"radial-gradient(#a78bfa,#7c3aed)",top:-30,right:60,animationDelay:"0s"}}),
-        ce("div",{className:"holo-orb",style:{width:80,height:80,background:"radial-gradient(#5eead4,#0d9488)",bottom:-10,right:20,animationDelay:"2.5s"}}),
-        ce("div",{className:"holo-orb",style:{width:60,height:60,background:"radial-gradient(#fbbf24,#d97706)",top:10,right:180,animationDelay:"1.5s"}}),
+        ce("div",{className:"holo-orb",style:{width:120,height:120,background:"var(--orb-1)",top:-30,right:60,animationDelay:"0s"}}),
+        ce("div",{className:"holo-orb",style:{width:80,height:80,background:"var(--orb-2)",bottom:-10,right:20,animationDelay:"2.5s"}}),
+        ce("div",{className:"holo-orb",style:{width:60,height:60,background:"var(--orb-3)",top:10,right:180,animationDelay:"1.5s"}}),
         // Content
         ce("div",{style:{position:"relative",zIndex:1}},
-          ce("div",{style:{fontSize:11,color:"rgba(199,210,254,0.8)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}},dateStr),
+          ce("div",{style:{fontSize:11,color:"var(--hero-text-1)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}},dateStr),
           ce("div",{style:{fontSize:28,fontWeight:900,color:"#fff",lineHeight:1.15,marginBottom:4}},
             "Porter Design"
           ),
-          ce("div",{style:{fontSize:13,color:"rgba(199,210,254,0.75)",marginBottom:20}},"Panel sprzeda\u017cy i wycen"),
+          ce("div",{style:{fontSize:13,color:"var(--hero-text-2)",marginBottom:20}},"Panel sprzeda\u017cy i wycen"),
           // Stat row
           ce("div",{style:{display:"flex",gap:12,flexWrap:"wrap"}},
             ce("div",{style:{
@@ -620,24 +627,24 @@ export function App(p){
               border:"1px solid rgba(255,255,255,0.22)",borderRadius:14,
               padding:"12px 18px",minWidth:110
             }},
-              ce("div",{style:{fontSize:10,color:"rgba(199,210,254,0.7)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Łączna wartość"),
+              ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Łączna wartość"),
               ce("div",{style:{fontSize:22,fontWeight:800,color:"#fff"}},formatPLN(totalValue)+" z\u0142")
             ),
             ce("div",{style:{
-              background:"rgba(167,139,250,0.18)",backdropFilter:"blur(12px)",
-              border:"1px solid rgba(167,139,250,0.30)",borderRadius:14,
+              background:"var(--hero-stat-a-bg)",backdropFilter:"blur(12px)",
+              border:"1px solid var(--hero-stat-a-border)",borderRadius:14,
               padding:"12px 18px",minWidth:110
             }},
-              ce("div",{style:{fontSize:10,color:"rgba(199,210,254,0.7)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Aktywne"),
-              ce("div",{style:{fontSize:22,fontWeight:800,color:"#c4b5fd"}},(cl_nowe_all.length)+" klient\xf3w")
+              ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Aktywne"),
+              ce("div",{style:{fontSize:22,fontWeight:800,color:"var(--hero-stat-a-text)"}},(cl_nowe_all.length)+" klient\xf3w")
             ),
             ce("div",{style:{
-              background:"rgba(94,234,212,0.12)",backdropFilter:"blur(12px)",
-              border:"1px solid rgba(94,234,212,0.25)",borderRadius:14,
+              background:"var(--hero-stat-b-bg)",backdropFilter:"blur(12px)",
+              border:"1px solid var(--hero-stat-b-border)",borderRadius:14,
               padding:"12px 18px",minWidth:110
             }},
-              ce("div",{style:{fontSize:10,color:"rgba(199,210,254,0.7)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Zrealizowane"),
-              ce("div",{style:{fontSize:22,fontWeight:800,color:"#5eead4"}},(cl_zreal_all.length)+" klient\xf3w")
+              ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Zrealizowane"),
+              ce("div",{style:{fontSize:22,fontWeight:800,color:"var(--hero-stat-b-text)"}},(cl_zreal_all.length)+" klient\xf3w")
             )
           )
         )
