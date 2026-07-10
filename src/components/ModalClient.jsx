@@ -20,7 +20,7 @@ export function ModalClient(p){
     ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"2rem",width:"min(380px, 92vw)",border:"1px solid var(--bd2)",boxShadow:"0 12px 40px rgba(0,0,0,0.15)"}},
       ce("div",{style:{fontSize:13,fontWeight:600,marginBottom:12,color:"var(--t1)",letterSpacing:"0.02em"}},"Nowy klient"),
       ce("input",{autoFocus:true,value:name,onChange:function(ev){setName(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Imi\u0119 i nazwisko *",style:Object.assign({},INP,{fontSize:17,minHeight:56})}),
-      ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:-4,marginBottom:12,lineHeight:1.4}},"Dane adresowe przydadz\u0105 si\u0119 do wystawienia faktury \u2014 mo\u017cesz je uzupe\u0142ni\u0107 teraz albo p\u00f3\u017aniej."),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:-4,marginBottom:12,lineHeight:1.4}},"Dane adresowe i kontaktowe s\u0105 wykorzystywane przy wystawianiu faktur. Uzupe\u0142nienie nie jest obowi\u0105zkowe \u2014 mo\u017cna to zrobi\u0107 w dowolnym momencie."),
       ce("input",{value:addr,onChange:function(ev){setAddr(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Ulica i numer",style:INP}),
       ce("div",{style:{display:"grid",gridTemplateColumns:"110px 1fr",gap:8,marginBottom:10}},
         ce("input",{value:postal,onChange:function(ev){setPostal(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"00-000",style:Object.assign({},INP,{marginBottom:0})}),
