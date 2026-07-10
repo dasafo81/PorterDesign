@@ -1158,7 +1158,49 @@ function fmtAddr(street, postal, city){
   return lines.join('<br>');
 }
 
-function buildInvoicePDFHtml(inv,settings){
+// ── OFICJALNY KOD QR KSeF (Kod I / OFFLINE) ────────────────────────────────
+// Zgodnie ze specyfikacja KSeF 2.0 (github.com/CIRFMF/ksef-api/blob/main/kody-qr.md):
+//   https://qr[-test].ksef.mf.gov.pl/invoice/{NIP}/{DD-MM-YYYY}/{SHA256_XML_Base64Url}
+// Warunek pojawienia sie QR na fakturze:
+//   - status w KSeF: confirmed (mamy numer KSeF)
+//   - mamy pelny xml_payload (bez niego nie ma hasha)
+//   - dokument sprzedazowy wystawiony przez nas (nie zakupowa/EKO/proforma)
+// W innych przypadkach: brak QR (Damian: "nic - pusto").
+async function buildKsefQrUrl(inv, settings){
+  if(!inv||inv.ksef_status!=="confirmed") return null;
+  if(!inv.ksef_number) return null;
+  if(!inv.xml_payload) return null;
+  if(inv.doc_type==="zakup"||inv.doc_type==="eko"||inv.doc_type==="proforma") return null;
+
+  // NIP sprzedawcy: seller_snapshot (zapisywany przy wysylce/sync) lub settings sprzedawcy
+  var snap=inv.seller_snapshot||{};
+  var nip=(snap.nip||(settings&&settings.seller_nip)||"").replace(/[\s\-]/g,"");
+  if(!/^\d{10}$/.test(nip)) return null;
+
+  // Data wystawienia YYYY-MM-DD -> DD-MM-YYYY (format wymagany przez MF)
+  var iso=(inv.issue_date||"").slice(0,10);
+  var mDate=iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!mDate) return null;
+  var ddmmyyyy=mDate[3]+"-"+mDate[2]+"-"+mDate[1];
+
+  // SHA-256 z pelnego XML -> Base64URL (bez paddingu, '+'->'-', '/'->'_')
+  try {
+    var buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(inv.xml_payload));
+    var bytes=new Uint8Array(buf);
+    var bin="";
+    for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+    var b64=btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+
+    // Srodowisko: z invoice_settings.ksef_env (per-tenant). Domyslnie prod.
+    var env=(settings&&settings.ksef_env==="test")?"test":"prod";
+    var host=env==="test"?"qr-test.ksef.mf.gov.pl":"qr.ksef.mf.gov.pl";
+    return "https://"+host+"/invoice/"+nip+"/"+ddmmyyyy+"/"+b64;
+  } catch(e){
+    return null;
+  }
+}
+
+function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
   var s=settings||{};
   var items=inv.invoice_items||[];
   var isZakup=inv.doc_type==="zakup";
@@ -1231,12 +1273,15 @@ function buildInvoicePDFHtml(inv,settings){
   var gross=+(inv.total_gross||0);
   var remaining=gross-paid;
 
-  // Kod QR faktury \u2014 prosty QR weryfikacyjny (numer, NIP sprzedawcy, kwota, nr KSeF jesli jest).
-  // UWAGA: to NIE jest oficjalny kryptograficzny "Kod QR I/II" wg specyfikacji KSeF (ten wymaga
-  // podpisu XAdES/hasha XML) \u2014 to praktyczny kod do szybkiej weryfikacji danych faktury.
-  var qrPayload="Faktura "+(inv.number||"")+" | NIP: "+(partyTop.nip||"")+" | Brutto: "+fmtM(gross)+" PLN"
-    +(inv.ksef_number?(" | KSeF: "+inv.ksef_number):"");
-  var qrUrl="https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=0&data="+encodeURIComponent(qrPayload);
+  // Oficjalny Kod QR I (KSeF) — obrazek generowany tylko gdy z zewnatrz przyjdzie
+  // gotowy URL weryfikacji (buildKsefQrUrl w InvoiceDetailView, useEffect).
+  // Poprzednia wersja generowala pseudo-QR z sklejonym tekstem (numer|NIP|brutto|KSeF) —
+  // to nie jest oficjalny format MF, wiec skanery KSeF go nie weryfikowaly.
+  // Gdy brak URLa (draft, zakupowa, EKO, proforma, nie wyslana) — QR znika calkowicie.
+  var qrUrl=null;
+  if(ksefQrUrl){
+    qrUrl="https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=0&data="+encodeURIComponent(ksefQrUrl);
+  }
 
   var rowsHtml=items.map(function(it,i){
     var rate=it.vat_rate;
@@ -1322,7 +1367,11 @@ function buildInvoicePDFHtml(inv,settings){
     +"<td>"+fmtM(inv.total_vat)+"</td><td>"+fmtM(inv.total_gross)+"</td></tr></tfoot>"
     +"</table>"
     +"<div class='totals'>"
-    +"<div class='qr-box'><img src='"+qrUrl+"' alt='Kod QR faktury'><div class='qr-label'>Weryfikacja faktury</div></div>"
+    +(qrUrl
+      ? "<div class='qr-box'><img src='"+qrUrl+"' alt='Kod QR faktury KSeF'><div class='qr-label'>Weryfikacja KSeF</div>"
+        +(inv.ksef_number?"<div class='qr-label' style='margin-top:1px'>"+String(inv.ksef_number)+"</div>":"")
+        +"</div>"
+      : "<div></div>")
     +"<table>"
     +"<tr><td>\u0141\u0105cznie:</td><td>"+fmtM(gross)+" PLN</td></tr>"
     +"<tr class='grand'><td>Do zap\u0142aty:</td><td>"+fmtM(remaining)+" PLN</td></tr>"
@@ -1344,6 +1393,17 @@ function InvoiceDetailView(p){
   var [ksefMsg,setKsefMsg]=useState(null);
   var [ksefErr,setKsefErr]=useState(null);
   var [currentInv,setCurrentInv]=useState(p.invoice||{});
+  // Oficjalny URL weryfikacji KSeF (Kod QR I). Liczony async z SHA-256 XML-a przy zmianie
+  // faktury/statusu. Gdy faktura sie nie kwalifikuje (nie confirmed, brak xml, zakupowa/EKO/proforma)
+  // helper zwraca null i QR znika z widoku i PDF-a.
+  var [ksefQrUrl,setKsefQrUrl]=useState(null);
+  useEffect(function(){
+    var cancelled=false;
+    buildKsefQrUrl(currentInv,p.settings||{}).then(function(url){
+      if(!cancelled) setKsefQrUrl(url);
+    });
+    return function(){ cancelled=true; };
+  },[currentInv.id,currentInv.ksef_status,currentInv.ksef_number,currentInv.xml_payload,currentInv.doc_type,currentInv.issue_date]);
 
   var isIssued=currentInv.status==="issued";
   var isEko=currentInv.doc_type==="eko";
@@ -1383,7 +1443,7 @@ function InvoiceDetailView(p){
   }
 
   function openPDF(){
-    var html=buildInvoicePDFHtml(currentInv,p.settings||{});
+    var html=buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl);
     var w=window.open("","_blank");
     if(!w){alert("Zablokowano popup. Zezw\u00f3l na wyskakuj\u0105ce okna.");return;}
     w.document.write(html);
@@ -1443,7 +1503,7 @@ function InvoiceDetailView(p){
         textTransform:"uppercase",padding:"14px 18px 0"}},"Podgl\u0105d"),
       ce("iframe",{
         title:"Podgl\u0105d faktury",
-        srcDoc:buildInvoicePDFHtml(currentInv,p.settings||{}),
+        srcDoc:buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl),
         style:{width:"100%",height:640,border:"none",marginTop:10}
       })
     ),
