@@ -13,7 +13,8 @@
       --wb:#f0f8ff;--wbd:#818cf8;--wt:#3730a3;
       --gold:#b45309;
       --violet:#7c3aed;--violet-l:rgba(124,58,237,0.12);--violet-border:rgba(124,58,237,0.25);
-      --amber-l:rgba(245,158,11,0.08);
+      --amber:#f59e0b;--amber-l:rgba(245,158,11,0.08);
+      --red:#dc2626;--red-l:rgba(220,38,38,0.10);
       --teal:#0d9488;--teal-l:rgba(13,148,136,0.12);
       --pink:#db2777;--pink-l:rgba(219,39,119,0.10);
       --section-gap:24px;--field-gap:12px;--card-radius:18px;
@@ -35,54 +36,59 @@
     }
     /* ── Motyw ciemny ─────────────────────────────────────────────────────── */
     [data-theme="dark"]{
-      --bg:#0f0e1a;
-      --bg2:rgba(30,27,75,0.55);
-      --bg3:rgba(30,27,75,0.35);
-      --bd1:rgba(167,139,250,0.35);
-      --bd2:rgba(167,139,250,0.22);
-      --bd3:rgba(167,139,250,0.13);
-      --t1:#ede9fe;--t2:#b4b4d9;--t3:#8583ab;
-      --grl:rgba(5,150,105,0.22);
-      --violet-l:rgba(124,58,237,0.24);--violet-border:rgba(167,139,250,0.40);
-      --amber-l:rgba(245,158,11,0.16);
-      --teal-l:rgba(13,148,136,0.22);
-      --pink-l:rgba(219,39,119,0.22);
-      --glass-bg:rgba(30,27,75,0.55);
-      --glass-border:rgba(167,139,250,0.25);
-      --glass-shadow:0 8px 32px rgba(0,0,0,0.45), 0 1.5px 0 rgba(255,255,255,0.06) inset;
-      --panel-bg:rgba(24,22,58,0.60);
-      --panel-border:rgba(167,139,250,0.22);
-      --panel-active-bg:rgba(62,53,122,0.70);
+      --bg:#1a1720;
+      --bg2:rgba(34,31,46,0.55);
+      --bg3:rgba(34,31,46,0.34);
+      --bd1:rgba(154,135,209,0.30);
+      --bd2:rgba(154,135,209,0.18);
+      --bd3:rgba(154,135,209,0.10);
+      --t1:#d8d3e8;--t2:#9691ab;--t3:#6b6780;
+      --gr:#7fc4a1;--grl:rgba(77,138,106,0.18);--grd:#5a9c7c;--grm:rgba(77,138,106,0.30);
+      --violet:#9d8cd6;--violet-l:rgba(157,140,214,0.18);--violet-border:rgba(157,140,214,0.32);
+      --amber:#d9a463;--amber-l:rgba(217,164,99,0.14);
+      --red:#e29a9a;--red-l:rgba(199,90,90,0.18);
+      --teal:#4a9691;--teal-l:rgba(74,150,145,0.18);
+      --pink:#c77a9e;--pink-l:rgba(199,122,158,0.18);
+      --glass-bg:rgba(34,31,46,0.60);
+      --glass-border:rgba(154,135,209,0.20);
+      --glass-shadow:0 8px 28px rgba(0,0,0,0.5), 0 1.5px 0 rgba(255,255,255,0.05) inset;
+      --panel-bg:rgba(34,31,46,0.75);
+      --panel-border:rgba(154,135,209,0.18);
+      --panel-active-bg:rgba(70,62,96,0.75);
       --body-bg:
-        radial-gradient(ellipse at 15% 20%, rgba(124,58,237,0.28) 0%, transparent 50%),
-        radial-gradient(ellipse at 85% 10%, rgba(13,148,136,0.20) 0%, transparent 45%),
-        radial-gradient(ellipse at 70% 80%, rgba(124,58,237,0.16) 0%, transparent 50%),
-        radial-gradient(ellipse at 10% 85%, rgba(13,148,136,0.12) 0%, transparent 45%),
-        linear-gradient(160deg, #14122a 0%, #100f1f 50%, #0d1a17 100%);
+        radial-gradient(ellipse at 15% 20%, rgba(157,140,214,0.14) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, rgba(74,150,145,0.10) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 80%, rgba(157,140,214,0.10) 0%, transparent 50%),
+        radial-gradient(ellipse at 10% 85%, rgba(74,150,145,0.08) 0%, transparent 45%),
+        linear-gradient(160deg, #1a1720 0%, #151319 50%, #101519 100%);
     }
-    /* ── Motyw bezowy ─────────────────────────────────────────────────────── */
+    /* ── Motyw kawowy (monochromatyczny — bez fioletu/tealu/roznu, same beze i brazy) ── */
     [data-theme="beige"]{
-      --bg:#f2e9dc;
-      --bg2:rgba(255,250,240,0.65);
-      --bg3:rgba(255,250,240,0.40);
-      --bd1:rgba(180,131,66,0.30);
-      --bd2:rgba(180,131,66,0.18);
-      --bd3:rgba(180,131,66,0.09);
-      --t1:#4a3624;--t2:#8a6f56;--t3:#b8a58c;
-      --violet-border:rgba(124,58,237,0.22);
-      --amber-l:rgba(245,158,11,0.10);
-      --glass-bg:rgba(255,250,240,0.58);
-      --glass-border:rgba(255,250,240,0.85);
-      --glass-shadow:0 8px 32px rgba(180,131,66,0.16), 0 1.5px 0 rgba(255,255,255,0.70) inset;
-      --panel-bg:rgba(255,250,240,0.55);
-      --panel-border:rgba(212,163,115,0.32);
-      --panel-active-bg:rgba(255,253,247,0.92);
+      --bg:#ede1d1;
+      --bg2:rgba(250,244,232,0.65);
+      --bg3:rgba(250,244,232,0.40);
+      --bd1:rgba(150,114,74,0.28);
+      --bd2:rgba(150,114,74,0.16);
+      --bd3:rgba(150,114,74,0.08);
+      --t1:#4a3728;--t2:#83694f;--t3:#b39e85;
+      --gr:#6b4a30;--grl:rgba(107,74,48,0.14);--grd:#4a3320;--grm:rgba(107,74,48,0.24);
+      --violet:#8a5a34;--violet-l:rgba(138,90,52,0.14);--violet-border:rgba(138,90,52,0.28);
+      --amber:#ab7f4f;--amber-l:rgba(171,127,79,0.10);
+      --red:#8a4a34;--red-l:rgba(156,90,70,0.16);
+      --teal:#7c6a52;--teal-l:rgba(124,106,82,0.14);
+      --pink:#9c6b52;--pink-l:rgba(156,107,82,0.12);
+      --glass-bg:rgba(250,244,232,0.60);
+      --glass-border:rgba(250,244,232,0.85);
+      --glass-shadow:0 8px 28px rgba(150,114,74,0.16), 0 1.5px 0 rgba(255,255,255,0.70) inset;
+      --panel-bg:rgba(250,244,232,0.70);
+      --panel-border:rgba(197,163,122,0.30);
+      --panel-active-bg:rgba(253,249,242,0.95);
       --body-bg:
-        radial-gradient(ellipse at 15% 20%, rgba(212,163,115,0.35) 0%, transparent 50%),
-        radial-gradient(ellipse at 85% 10%, rgba(230,200,150,0.30) 0%, transparent 45%),
-        radial-gradient(ellipse at 70% 80%, rgba(196,150,100,0.25) 0%, transparent 50%),
-        radial-gradient(ellipse at 10% 85%, rgba(220,190,150,0.20) 0%, transparent 45%),
-        linear-gradient(160deg, #f5ecdf 0%, #f0e4d0 50%, #ede0c8 100%);
+        radial-gradient(ellipse at 15% 20%, rgba(197,163,122,0.30) 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, rgba(214,190,157,0.25) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 80%, rgba(180,148,108,0.20) 0%, transparent 50%),
+        radial-gradient(ellipse at 10% 85%, rgba(214,190,157,0.18) 0%, transparent 45%),
+        linear-gradient(160deg, #f2e8d8 0%, #ecdfc8 50%, #e6d6ba 100%);
     }
     body{
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
