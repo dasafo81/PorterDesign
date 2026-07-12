@@ -507,7 +507,7 @@ function buildBaseCatalog() {
       items: FABRICS.map(function(f) {
         return { baseKey: "tkaniny::" + f.name, name: f.name, price: fx("tkaniny", f.brutto),
           unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null,
-          zakup: f.zakup != null ? f.zakup : null };
+          zakup: f.zakup != null ? f.zakup : null, sklad: f.sklad || "" };
       }) },
     { id: "silniki_shadow", label: "Silniki \u2014 Roleta Shadow", icon: "\u2699\uFE0F",
       items: RS_MOTORS.map(function(m) {
@@ -578,13 +578,14 @@ function mergeCatalog(baseGroups, rows) {
         meta:     o && o.meta != null      ? o.meta      : it.meta,
         heightCm: o && o.height_cm != null ? o.height_cm : it.heightCm,
         zakup:    o && o.purchase_price != null ? o.purchase_price : it.zakup,
+        sklad:    o && o.composition != null ? o.composition : it.sklad,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
     (customByGroup[g.id] || []).forEach(function(c) {
       items.push({ rowId: c.id, baseKey: null, groupId: g.id, isBase: false, overridden: false,
         name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
-        zakup: c.purchase_price });
+        zakup: c.purchase_price, sklad: c.composition || "" });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
@@ -606,12 +607,14 @@ function ModalCatalogItem(p) {
   var sM = useState(it.meta || "");                           var meta = sM[0];   var setMeta = sM[1];
   var sH = useState(it.heightCm != null ? String(it.heightCm) : ""); var height = sH[0]; var setHeight = sH[1];
   var sZ = useState(it.zakup != null ? String(it.zakup) : "");  var zakup = sZ[0]; var setZakup = sZ[1];
+  var sK = useState(it.sklad || "");                            var sklad = sK[0]; var setSklad = sK[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
 
   function num(v) { return v === "" ? null : parseFloat(String(v).replace(",", ".")); }
   function body() {
     return { group_id: grp, name: name.trim(), price: num(price), unit: unit.trim() || "z\u0142",
-      meta: meta.trim() || null, height_cm: num(height), purchase_price: num(zakup) };
+      meta: meta.trim() || null, height_cm: num(height), purchase_price: num(zakup),
+      composition: sklad.trim() || null };
   }
   function save() {
     if (!name.trim()) return;
@@ -666,6 +669,10 @@ function ModalCatalogItem(p) {
       ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Cena zakupu"),
         ce("input", { value: zakup, onChange: function(e) { setZakup(e.target.value); }, placeholder: "np. 93", style: inp })
+      ),
+      ce("div", { style: { marginBottom: 12 } },
+        ce("div", { style: lbl }, "Sk\u0142ad"),
+        ce("input", { value: sklad, onChange: function(e) { setSklad(e.target.value); }, placeholder: "np. 100% PES", style: inp })
       ),
       ce("div", { style: { marginBottom: 20 } },
         ce("div", { style: lbl }, "Producent / opis (inne)"),
@@ -774,7 +781,7 @@ function TabCatalog(p) {
                   !it.isBase && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "var(--violet)", background: "rgba(124,58,237,0.10)", borderRadius: 6, padding: "1px 5px" } }, "w\u0142asny"),
                   it.overridden && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#0369a1", background: "rgba(3,105,161,0.10)", borderRadius: 6, padding: "1px 5px" } }, "edyt.")
                 ),
-                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail].filter(Boolean).join(" \u00B7 ") || "\u2014"),
+                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" } },
