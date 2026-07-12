@@ -15,7 +15,14 @@ function Root() {
   useEffect(function(){
     if(!loggedIn)return;
     var timer=setInterval(function(){refreshSession();},30*60*1000);
-    return function(){clearInterval(timer);};
+    // setInterval bywa spowalniany/wstrzymywany w kartach w tle, więc token
+    // mógł wygasnąć zanim ktoś wrócił do karty — odśwież też przy powrocie.
+    function onVisible(){ if(document.visibilityState==="visible") refreshSession(); }
+    document.addEventListener("visibilitychange", onVisible);
+    return function(){
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   },[loggedIn]);
 
   if (!loggedIn) {
