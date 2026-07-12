@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
+  FABRICS, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
   KD_AKCESORIA, RS_MASKS
 } from '../constants/data.js';
@@ -490,7 +490,7 @@ function TabWarehouse(p) {
 // a RS_MOTORS/RS_REMOTES/RRZ_*_ACC/KD_AKCESORIA/FABRICS silnik bierze wprost —
 // dlatego domyślnie 1 (parytet z wyceniarką). Zmień per grupa jeśli lista jest hurtowa.
 var CATALOG_FACTOR = {
-  tkaniny: 1, silniki_shadow: 1, sterowanie_shadow: 1, silniki_karnisz: 1,
+  tkaniny: 1, tapety: 1, silniki_shadow: 1, sterowanie_shadow: 1, silniki_karnisz: 1,
   piloty_karnisz: 1, prestige: 1, acc_somfy: 1, acc_premium: 1, uchwyty_kd: 1, maskownice: 1
 };
 function fx(gid, price) {
@@ -508,6 +508,12 @@ function buildBaseCatalog() {
         return { baseKey: "tkaniny::" + f.name, name: f.name, price: fx("tkaniny", f.brutto),
           unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null,
           zakup: f.zakup != null ? f.zakup : null, sklad: f.sklad || "" };
+      }) },
+    { id: "tapety", label: "Tapety", icon: "\uD83C\uDFA8",
+      items: TAPETY.map(function(t) {
+        return { baseKey: "tapety::" + t.name, name: t.name, price: fx("tapety", t.brutto),
+          unit: "z\u0142/" + t.jm, meta: t.kolekcja || "", heightCm: null,
+          zakup: t.zakup != null ? t.zakup : null, sklad: "" };
       }) },
     { id: "silniki_shadow", label: "Silniki \u2014 Roleta Shadow", icon: "\u2699\uFE0F",
       items: RS_MOTORS.map(function(m) {
