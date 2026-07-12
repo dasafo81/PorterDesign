@@ -409,7 +409,7 @@ export const FABRICS =[
   {name:"Leda",brutto:90,prod:"DEKOMA",width:null},
   {name:"Lia",brutto:192,prod:"FIBERO G.ROJEK",width:310},
   {name:"Linda",brutto:100,prod:"SAMA TEKSTIL",width:300},
-  {name:"Linea",brutto:160,prod:"DEKOMA",width:295},
+  {name:"Linea",brutto:158,prod:"DEKOMA",width:295,zakup:72},
   {name:"Linen Dimout",brutto:180,prod:"SAMA TEKSTIL",width:310},
   {name:"Lino",brutto:120,prod:"VV design",width:300},
   {name:"Liso Dimout",brutto:150,prod:"VV design",width:300},
@@ -579,7 +579,7 @@ export const FABRICS =[
   {name:"Solar Dimout",brutto:148,prod:"Ridex",width:315},
   {name:"Solidarity",brutto:90,prod:"Ridex",width:300},
   {name:"Soraya",brutto:100,prod:"VV design",width:330},
-  {name:"Spring",brutto:150,prod:"DEKOMA",width:null},
+  {name:"Spring",brutto:120,prod:"DEKOMA",width:300,zakup:48},
   {name:"Star",brutto:220,prod:"Spagnolo",width:290},
   {name:"Stefano",brutto:172,prod:"Spagnolo",width:300},
   {name:"Suave",brutto:110,prod:"MARGO TEXTIL",width:140},
@@ -589,9 +589,9 @@ export const FABRICS =[
   {name:"Tanini",brutto:160,prod:"OZLEM",width:300},
   {name:"Tailwind",brutto:220,prod:"Ridex",width:300},
   {name:"Tara",brutto:96,prod:"FIBERO G.ROJEK",width:320},
-  {name:"Terra",brutto:200,prod:"DEKOMA",width:300},
+  {name:"Terra",brutto:210,prod:"DEKOMA",width:320,zakup:89},
   {name:"Tasos",brutto:190,prod:"Spagnolo",width:300},
-  {name:"Tela",brutto:150,prod:"DEKOMA",width:null},
+  {name:"Tela",brutto:136,prod:"DEKOMA",width:305,zakup:57},
   {name:"Terrano Dim-Out",brutto:165,prod:"Spagnolo",width:280},
   {name:"Tina 30051",brutto:100,prod:"MARGO TEXTIL",width:320},
   {name:"Tino",brutto:90,prod:"FARGOTEX",width:null},
@@ -625,7 +625,28 @@ export const FABRICS =[
   {name:"Zadar",brutto:200,prod:"MARGO TEXTIL",width:null},
   {name:"Zante",brutto:195,prod:"Spagnolo",width:320},
   {name:"Zoom",brutto:366,prod:"Ridex",width:316},
-  {name:"Zora",brutto:40,prod:"KAMELEON.PRO",width:null}
+  {name:"Zora",brutto:40,prod:"KAMELEON.PRO",width:null},
+  // ── DEKOMA cennik 2026 (przelicz. EUR→PLN, kurs NBP tabela C sprzedaż 4,3638) ──
+  {name:"Abi",brutto:232,prod:"DEKOMA",width:330,zakup:93},
+  {name:"Charles",brutto:151,prod:"DEKOMA",width:140,zakup:61},
+  {name:"Edit",brutto:251,prod:"DEKOMA",width:325,zakup:101},
+  {name:"Elara",brutto:144,prod:"DEKOMA",width:290,zakup:61},
+  {name:"Fix",brutto:103,prod:"DEKOMA",width:140,zakup:41},
+  {name:"Fumo",brutto:72,prod:"DEKOMA",width:305,zakup:33},
+  {name:"George",brutto:158,prod:"DEKOMA",width:142,zakup:63},
+  {name:"Gert",brutto:224,prod:"DEKOMA",width:145,zakup:89},
+  {name:"Marmellata",brutto:115,prod:"DEKOMA",width:140,zakup:48},
+  {name:"Massi",brutto:168,prod:"DEKOMA",width:140,zakup:71},
+  {name:"Melor",brutto:200,prod:"DEKOMA",width:147,zakup:82},
+  {name:"Pedro",brutto:207,prod:"DEKOMA",width:140,zakup:83},
+  {name:"Petrus",brutto:86,prod:"DEKOMA",width:145,zakup:36},
+  {name:"Puro",brutto:119,prod:"DEKOMA",width:300,zakup:48},
+  {name:"Scot",brutto:142,prod:"DEKOMA",width:140,zakup:57},
+  {name:"Scot Fr",brutto:183,prod:"DEKOMA",width:140,zakup:73},
+  {name:"Severin",brutto:186,prod:"DEKOMA",width:142,zakup:74},
+  {name:"Teide",brutto:267,prod:"DEKOMA",width:302,zakup:117},
+  {name:"Underground",brutto:374,prod:"DEKOMA",width:145,zakup:152},
+  {name:"Wool",brutto:305,prod:"DEKOMA",width:145,zakup:117}
 ];
 
 // ── Nadpisania tkanin z Katalogu (Magazyn → Katalog) ───────────────────
@@ -650,7 +671,8 @@ export function getFabricEffective(name){
     name: name,
     brutto: (ov && ov.price!=null) ? ov.price : (base?base.brutto:null),
     width:  (ov && ov.height_cm!=null) ? ov.height_cm : (base?base.width:null),
-    prod:   (ov && ov.meta) ? ov.meta : (base?base.prod:"-")
+    prod:   (ov && ov.meta) ? ov.meta : (base?base.prod:"-"),
+    zakup:  (ov && ov.purchase_price!=null) ? ov.purchase_price : (base?base.zakup:null)
   };
 }
 
