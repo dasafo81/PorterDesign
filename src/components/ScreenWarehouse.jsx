@@ -705,6 +705,7 @@ function TabCatalog(p) {
   var s1 = useState("");    var search = s1[0];  var setSearch = s1[1];
   var s2 = useState(false); var onlyNoH = s2[0]; var setOnlyNoH = s2[1];
   var s3 = useState(null);  var editItem = s3[0]; var setEditItem = s3[1];
+  var s4 = useState("all"); var activeCat = s4[0]; var setActiveCat = s4[1];
 
   function reload() {
     setLoading(true);
@@ -731,14 +732,20 @@ function TabCatalog(p) {
   var fabG = groups.find(function(gr) { return gr.id === "tkaniny"; });
   var noHeightCount = fabG ? fabG.items.filter(function(it) { return it.warn; }).length : 0;
 
-  var rendered = groups.map(function(gr) {
-    var items = gr.items.filter(function(it) {
-      if (onlyNoH && !it.warn) return false;
-      if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
-      return true;
-    });
-    return { group: gr, items: items };
-  }).filter(function(x) { return x.items.length > 0; });
+  var catTabs = [{ id: "all", label: "Wszystkie", icon: "\uD83D\uDCC1" }].concat(
+    groups.map(function(gr) { return { id: gr.id, label: gr.label, icon: gr.icon }; })
+  );
+
+  var rendered = groups
+    .filter(function(gr) { return activeCat === "all" || gr.id === activeCat; })
+    .map(function(gr) {
+      var items = gr.items.filter(function(it) {
+        if (onlyNoH && !it.warn) return false;
+        if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
+        return true;
+      });
+      return { group: gr, items: items };
+    }).filter(function(x) { return x.items.length > 0; });
 
   return ce("div", null,
     ce("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 10 } },
@@ -750,6 +757,17 @@ function TabCatalog(p) {
       ce("button", { onClick: function() { setEditItem({ groupId: "inne" }); },
         style: btn({ padding: "10px 18px", background: "var(--violet)", color: "#fff", display: "flex", alignItems: "center", gap: 6 }) },
         ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj produkt")
+    ),
+
+    ce("div", { style: { display: "flex", gap: 6, marginBottom: 12, overflowX: "auto", paddingBottom: 4 } },
+      catTabs.map(function(c) {
+        var count = c.id === "all" ? totalItems : (groups.find(function(gr) { return gr.id === c.id; }) || { items: [] }).items.length;
+        var active = activeCat === c.id;
+        return ce("button", { key: c.id, onClick: function() { setActiveCat(c.id); },
+          style: { padding: "7px 14px", borderRadius: 10, border: "1.5px solid " + (active ? "var(--violet)" : "var(--bd2)"), background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t3)", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer", whiteSpace: "nowrap", display: "flex", gap: 5, alignItems: "center" } },
+          ce("span", null, c.icon), ce("span", null, c.label),
+          ce("span", { style: { background: active ? "rgba(124,58,237,0.15)" : "var(--bd2)", borderRadius: 20, padding: "1px 7px", fontSize: 11, fontWeight: 700 } }, count));
+      })
     ),
 
     ce("div", { style: { display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" } },
