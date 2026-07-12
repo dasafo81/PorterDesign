@@ -1326,7 +1326,7 @@ function DealCard(cp){
   var cl=clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
   var name=cl?cl.name:"(nieznany)";
   var baseTotal=cl?clientTotal2(cl):0;
-  var montazRate=cl?(parseFloat(cl.montaz)||0):0;
+  var montazRate=cl?((parseFloat(cl.install_fee)||0)/100):0;
   var total=montazRate>0?roundTo10(baseTotal*(1+montazRate)):baseTotal;
   var hasVisit=deal.visit_date; var hasDelivery=deal.delivery_date;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
