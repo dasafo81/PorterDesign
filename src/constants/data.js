@@ -998,7 +998,35 @@ export const FABRICS =[
   {name:"Yildiz Saten",brutto:78,prod:"SAMA TEKSTIL",width:300,zakup:39,sklad:"100% PES"},
   {name:"Yumos",brutto:194,prod:"SAMA TEKSTIL",width:280,zakup:97,sklad:"100% PES"},
   {name:"Zeus",brutto:276,prod:"SAMA TEKSTIL",width:300,zakup:138,sklad:"100% PES"},
-  {name:"Zumrut",brutto:114,prod:"SAMA TEKSTIL",width:280,zakup:57,sklad:"100% PES"}
+  {name:"Zumrut",brutto:114,prod:"SAMA TEKSTIL",width:280,zakup:57,sklad:"100% PES"},
+  // ── COSMONOVA cennik B2B/B2C 2026 ──
+  {name:"Opera Cosmonova",brutto:170,prod:"Cosmonova",width:320,zakup:75.99,sklad:"100% PES"},
+  {name:"Costa New",brutto:94,prod:"Cosmonova",width:280,zakup:41.86,sklad:"65% PES, 35% CO"},
+  {name:"Albero",brutto:305,prod:"Cosmonova",width:300,zakup:136.32,sklad:"100% PES RECYCLED"},
+  {name:"Dalla",brutto:96,prod:"Cosmonova",width:330,zakup:42.78,sklad:"100% PES"},
+  {name:"Doppio",brutto:217,prod:"Cosmonova",width:295,zakup:96.91,sklad:"100% PES"},
+  {name:"Erba",brutto:313,prod:"Cosmonova",width:300,zakup:139.98,sklad:"86% PES RECYCLED, 14% PES"},
+  {name:"Eva",brutto:203,prod:"Cosmonova",width:315,zakup:90.77,sklad:"63% VIS, 37% PES"},
+  {name:"Giada",brutto:98,prod:"Cosmonova",width:140,zakup:43.89,sklad:"80% PES, 20% CO"},
+  {name:"Gina",brutto:96,prod:"Cosmonova",width:140,zakup:42.73,sklad:"49% PES, 32% CO, 10% LI, 9% VIS"},
+  {name:"Lipari",brutto:164,prod:"Cosmonova",width:138,zakup:73.25,sklad:"46% PES, 33% CO, 21% LI"},
+  {name:"Lerida",brutto:210,prod:"Cosmonova",width:330,zakup:93.69,sklad:"100% PES"},
+  {name:"Leon Cosmonova",brutto:189,prod:"Cosmonova",width:330,zakup:84.3,sklad:"100% PES"},
+  {name:"Linero",brutto:69,prod:"Cosmonova",width:300,zakup:31.06,sklad:"100% PES"},
+  {name:"Lugo",brutto:189,prod:"Cosmonova",width:330,zakup:84.3,sklad:"100% PES"},
+  {name:"Mist New",brutto:100,prod:"Cosmonova",width:315,zakup:44.86,sklad:"100% PES"},
+  {name:"Moana",brutto:242,prod:"Cosmonova",width:305,zakup:108.43,sklad:"80% PES, 20% CO"},
+  {name:"Molveno",brutto:271,prod:"Cosmonova",width:300,zakup:120.99,sklad:"82% WO, 18% PAA"},
+  {name:"Museo",brutto:216,prod:"Cosmonova",width:300,zakup:96.79,sklad:"100% PES"},
+  {name:"Rhyme",brutto:193,prod:"Cosmonova",width:302,zakup:86.33,sklad:"100% PES"},
+  {name:"Royal",brutto:241,prod:"Cosmonova",width:295,zakup:107.92,sklad:"100% PES"},
+  {name:"St-Moritz",brutto:307,prod:"Cosmonova",width:142,zakup:137.23,sklad:"77% VIS, 14% CO, 9% PES"},
+  {name:"Tino Cosmonova",brutto:78,prod:"Cosmonova",width:320,zakup:34.84,sklad:"100% PES"},
+  {name:"Tutto",brutto:86,prod:"Cosmonova",width:320,zakup:38.49,sklad:"100% PES"},
+  {name:"Twinkle",brutto:286,prod:"Cosmonova",width:298,zakup:127.71,sklad:"50% LI, 30% PES, 19% VIS, 1% PA"},
+  {name:"Velurio",brutto:230,prod:"Cosmonova",width:280,zakup:102.72,sklad:"100% PES"},
+  {name:"Vivara",brutto:370,prod:"Cosmonova",width:287,zakup:165.23,sklad:"100% LI"},
+  {name:"Zenith",brutto:328,prod:"Cosmonova",width:290,zakup:146.81,sklad:"49% VIS, 49% PES, 2% PA"}
 ];
 
 // ── Nadpisania tkanin z Katalogu (Magazyn → Katalog) ───────────────────
