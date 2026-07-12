@@ -506,7 +506,8 @@ function buildBaseCatalog() {
     { id: "tkaniny", label: "Tkaniny", icon: "\uD83E\uDDF5", tracksHeight: true,
       items: FABRICS.map(function(f) {
         return { baseKey: "tkaniny::" + f.name, name: f.name, price: fx("tkaniny", f.brutto),
-          unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null };
+          unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null,
+          zakup: f.zakup != null ? f.zakup : null };
       }) },
     { id: "silniki_shadow", label: "Silniki \u2014 Roleta Shadow", icon: "\u2699\uFE0F",
       items: RS_MOTORS.map(function(m) {
@@ -576,12 +577,14 @@ function mergeCatalog(baseGroups, rows) {
         unit:     o && o.unit              ? o.unit      : it.unit,
         meta:     o && o.meta != null      ? o.meta      : it.meta,
         heightCm: o && o.height_cm != null ? o.height_cm : it.heightCm,
+        zakup:    o && o.purchase_price != null ? o.purchase_price : it.zakup,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
     (customByGroup[g.id] || []).forEach(function(c) {
       items.push({ rowId: c.id, baseKey: null, groupId: g.id, isBase: false, overridden: false,
-        name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm });
+        name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
+        zakup: c.purchase_price });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
@@ -602,12 +605,13 @@ function ModalCatalogItem(p) {
   var sU = useState(it.unit || "z\u0142");                    var unit = sU[0];   var setUnit = sU[1];
   var sM = useState(it.meta || "");                           var meta = sM[0];   var setMeta = sM[1];
   var sH = useState(it.heightCm != null ? String(it.heightCm) : ""); var height = sH[0]; var setHeight = sH[1];
+  var sZ = useState(it.zakup != null ? String(it.zakup) : "");  var zakup = sZ[0]; var setZakup = sZ[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
 
   function num(v) { return v === "" ? null : parseFloat(String(v).replace(",", ".")); }
   function body() {
     return { group_id: grp, name: name.trim(), price: num(price), unit: unit.trim() || "z\u0142",
-      meta: meta.trim() || null, height_cm: num(height) };
+      meta: meta.trim() || null, height_cm: num(height), purchase_price: num(zakup) };
   }
   function save() {
     if (!name.trim()) return;
@@ -658,6 +662,10 @@ function ModalCatalogItem(p) {
       ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Wysoko\u015b\u0107 / parametr (cm)"),
         ce("input", { value: height, onChange: function(e) { setHeight(e.target.value); }, placeholder: "np. 300", style: inp })
+      ),
+      ce("div", { style: { marginBottom: 12 } },
+        ce("div", { style: lbl }, "Cena zakupu"),
+        ce("input", { value: zakup, onChange: function(e) { setZakup(e.target.value); }, placeholder: "np. 93", style: inp })
       ),
       ce("div", { style: { marginBottom: 20 } },
         ce("div", { style: lbl }, "Producent / opis (inne)"),
@@ -770,6 +778,7 @@ function TabCatalog(p) {
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" } },
+                it.zakup != null && ce("div", { style: { fontSize: 10, color: "var(--t3)" } }, "zakup " + fmtPrice(it.zakup) + " z\u0142"),
                 ce("div", { style: { fontSize: 14, fontWeight: 800, color: "var(--violet)" } }, fmtPrice(it.price) + " " + (it.unit || "z\u0142")),
                 !it.isBase && ce("button", { onClick: function(e) { e.stopPropagation(); handleDelete(it); },
                   title: "Usu\u0144", style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 13, opacity: 0.5, padding: "0 2px" } }, "\uD83D\uDDD1")
