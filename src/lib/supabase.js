@@ -35,11 +35,18 @@ function sbFetchRaw(method, path, body, tokenOverride){
 
 // Wrapper z auto-odswiezeniem JWT: jesli Supabase zwroci PGRST303 (JWT expired),
 // odswiez sesje przez refresh_token i powtorz zapytanie raz z nowym tokenem.
+// Jesli refresh_token tez wygasl (odswiezenie sie nie uda), czyscimy martwa
+// sesje i przeladowujemy strone - main.jsx pokaze wtedy ekran logowania
+// zamiast zostawiac surowy blad "JWT expired" w UI.
 function sbFetch(method, path, body){
   return sbFetchRaw(method, path, body).catch(function(e){
     if(e.message&&e.message.indexOf("PGRST303")!==-1){
       return refreshSession().then(function(s){
-        if(!s||!s.access_token) throw e;
+        if(!s||!s.access_token){
+          localStorage.removeItem("sb_session");
+          window.location.reload();
+          throw e;
+        }
         return sbFetchRaw(method, path, body, s.access_token);
       });
     }
