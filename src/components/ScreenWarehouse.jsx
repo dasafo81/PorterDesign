@@ -759,14 +759,14 @@ function TabCatalog(p) {
         ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj produkt")
     ),
 
-    ce("div", { style: { display: "flex", gap: 6, marginBottom: 12, overflowX: "auto", paddingBottom: 4 } },
+    ce("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 } },
       catTabs.map(function(c) {
         var count = c.id === "all" ? totalItems : (groups.find(function(gr) { return gr.id === c.id; }) || { items: [] }).items.length;
         var active = activeCat === c.id;
         return ce("button", { key: c.id, onClick: function() { setActiveCat(c.id); },
-          style: { padding: "7px 14px", borderRadius: 10, border: "1.5px solid " + (active ? "var(--violet)" : "var(--bd2)"), background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t3)", fontSize: 12, fontWeight: active ? 700 : 400, cursor: "pointer", whiteSpace: "nowrap", display: "flex", gap: 5, alignItems: "center" } },
-          ce("span", null, c.icon), ce("span", null, c.label),
-          ce("span", { style: { background: active ? "rgba(124,58,237,0.15)" : "var(--bd2)", borderRadius: 20, padding: "1px 7px", fontSize: 11, fontWeight: 700 } }, count));
+          style: { padding: "14px 20px", borderRadius: 14, border: "1.5px solid " + (active ? "var(--violet)" : "var(--bd2)"), background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t3)", fontSize: 15, fontWeight: active ? 700 : 500, cursor: "pointer", display: "flex", gap: 9, alignItems: "center" } },
+          ce("span", { style: { fontSize: 20 } }, c.icon), ce("span", null, c.label),
+          ce("span", { style: { background: active ? "rgba(124,58,237,0.15)" : "var(--bd2)", borderRadius: 20, padding: "2px 9px", fontSize: 12, fontWeight: 700 } }, count));
       })
     ),
 
