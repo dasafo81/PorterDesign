@@ -43,6 +43,12 @@ var btnDanger = {
   borderRadius:9, padding:"9px 14px", fontSize:13, cursor:"pointer", fontWeight:500
 };
 
+// Kierunek faktury (sprzedaż/zakup) jest niezależny od typu dokumentu (vat/proforma/eko itd.) —
+// pozwala to na faktury kosztowe będące jednocześnie np. EKO lub proformą.
+// Fallback do starego modelu (doc_type==="zakup") dla rekordów sprzed dodania kolumny `direction`.
+function invDirection(inv){
+  return (inv&&inv.direction) || (inv&&inv.doc_type==="zakup" ? "zakup" : "sprzedaz");
+}
 function fmtVat(r){ return r===-1?"zw":(r+"% VAT"); }
 function fmtMoney(v){ return (+(v||0)).toFixed(2).replace(".",",")+" zł"; }
 function fmtDate(d){ if(!d)return "—"; var p=d.split("-"); return p[2]+"."+p[1]+"."+p[0]; }
@@ -176,6 +182,11 @@ function InvoiceEditor(p){
   var today=todayISO();
   var initInv=p.invoice||{};
   var [docType,setDocType]=useState(initInv.doc_type||"vat");
+  // Kierunek: sprzedażowa (domyślnie) lub zakupowa (faktura kosztowa od dostawcy).
+  // Niezależny od docType — faktura zakupowa też może być np. EKO albo proformą.
+  var [direction,setDirection]=useState(initInv.direction||(initInv.doc_type==="zakup"?"zakup":"sprzedaz"));
+  // Dla faktur zakupowych numer nadaje dostawca — wpisujemy go ręcznie, nie generujemy własnej numeracji.
+  var [purchaseNumber,setPurchaseNumber]=useState(direction==="zakup"?(initInv.number||""):"");
   var [issueDate,setIssueDate]=useState(initInv.issue_date||today);
   var [saleDate,setSaleDate]=useState(initInv.sale_date||today);
   var [dueDate,setDueDate]=useState(initInv.due_date||addDays(today,defaultDays));
@@ -299,7 +310,8 @@ function InvoiceEditor(p){
   var totalGross=totalsPerRate.reduce(function(a,r){return a+r.gross;},0);
 
   function validate(){
-    if(!buyerName.trim()) return "Brak nazwy nabywcy";
+    if(!buyerName.trim()) return direction==="zakup"?"Brak nazwy sprzedawcy (kontrahenta)":"Brak nazwy nabywcy";
+    if(direction==="zakup"&&!purchaseNumber.trim()) return "Podaj numer faktury nadany przez dostawcę";
     if(items.length===0) return "Brak pozycji";
     if(items.some(function(it){return !it.name.trim();})) return "Każda pozycja musi mieć nazwę";
     return null;
@@ -310,31 +322,48 @@ function InvoiceEditor(p){
     if(vErr){setErr(vErr);return;}
     setBusy(true); setErr(null);
 
+    var isZakupDir=direction==="zakup";
+
     var header={
-      doc_type:docType,
+      doc_type:docType, direction:direction,
       issue_date:issueDate, sale_date:saleDate, due_date:dueDate,
       payment_method:payMethod, kasowa:kasowa,
-      client_id:clientId, deal_id:dealId,
-      buyer_name:buyerName, buyer_nip:buyerNip,
-      buyer_address:buyerAddr, buyer_postal:buyerPostal,
-      buyer_city:buyerCity, buyer_email:buyerEmail,
+      client_id:isZakupDir?null:clientId, deal_id:isZakupDir?null:dealId,
+      // Dla faktur zakupowych my (Porter Design) jesteśmy nabywcą — buyer_* wypełniamy
+      // danymi sprzedawcy z Ustawień, a prawdziwy kontrahent (wpisany w formularzu w polach
+      // "Nabywca") ląduje w seller_snapshot. Zgodne z konwencją synchronizacji KSeF/PDF.
+      buyer_name: isZakupDir?(settings.seller_name||""):buyerName,
+      buyer_nip:  isZakupDir?(settings.seller_nip||""):buyerNip,
+      buyer_address: isZakupDir?(settings.seller_address||""):buyerAddr,
+      buyer_postal:  isZakupDir?(settings.seller_postal||""):buyerPostal,
+      buyer_city:    isZakupDir?(settings.seller_city||""):buyerCity,
+      buyer_email:   isZakupDir?(settings.seller_email||""):buyerEmail,
       notes:notes,
       total_net:totalNet, total_vat:totalVat, total_gross:totalGross,
-      seller_snapshot:{
-        name:settings.seller_name||"", nip:settings.seller_nip||"",
-        address:settings.seller_address||"", postal:settings.seller_postal||"",
-        city:settings.seller_city||"", email:settings.seller_email||"",
-        phone:settings.seller_phone||"", bank:settings.seller_bank||""
-      }
+      seller_snapshot: isZakupDir
+        ? {name:buyerName, nip:buyerNip, address:buyerAddr, postal:buyerPostal, city:buyerCity, email:buyerEmail, phone:"", bank:""}
+        : {
+          name:settings.seller_name||"", nip:settings.seller_nip||"",
+          address:settings.seller_address||"", postal:settings.seller_postal||"",
+          city:settings.seller_city||"", email:settings.seller_email||"",
+          phone:settings.seller_phone||"", bank:settings.seller_bank||""
+        }
     };
+    if(isZakupDir) header.number=purchaseNumber.trim();
 
     var prom;
     if(isNew){
-      // "draft" tu jest tylko przejściowe — chwilę niżej, zaraz po zapisaniu pozycji,
-      // nadajemy numer i przestawiamy na "issued". Opcja ręcznego "Wystaw fakturę" jako
-      // osobny krok została usunięta: każda nowa faktura (niezależnie od typu dokumentu)
-      // jest wystawiana od razu przy zapisie, tak jak dotychczas działo się to tylko dla EKO.
-      prom=sbApi.addInvoice(Object.assign({status:"draft"},header));
+      if(isZakupDir){
+        // Faktura kosztowa: numer nadaje dostawca, nie generujemy własnej numeracji —
+        // zapisujemy od razu jako "received" (odebrana/zarejestrowana), tak jak faktury z sync KSeF.
+        prom=sbApi.addInvoice(Object.assign({status:"received"},header));
+      } else {
+        // "draft" tu jest tylko przejściowe — chwilę niżej, zaraz po zapisaniu pozycji,
+        // nadajemy numer i przestawiamy na "issued". Opcja ręcznego "Wystaw fakturę" jako
+        // osobny krok została usunięta: każda nowa faktura (niezależnie od typu dokumentu)
+        // jest wystawiana od razu przy zapisie, tak jak dotychczas działo się to tylko dla EKO.
+        prom=sbApi.addInvoice(Object.assign({status:"draft"},header));
+      }
     } else {
       prom=sbApi.updateInvoice(p.invoice.id,header).then(function(){return {id:p.invoice.id};});
     }
@@ -354,7 +383,7 @@ function InvoiceEditor(p){
         };
       });
       return sbApi.replaceInvoiceItems(invId,itemsToSave).then(function(){
-        if(isNew){
+        if(isNew&&!isZakupDir){
           var period2=periodKey(settings.numbering_reset||"monthly",issueDate||todayISO());
           return sbApi.nextInvoiceNumber(docType,period2).then(function(nr){
             var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
@@ -398,9 +427,17 @@ function InvoiceEditor(p){
     // ── SEKCJA: Rodzaj / daty ──
     ce("div",{style:card},
       ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83D\uDCC4 Dokument"),
+      fldRow("Kierunek",
+        ce("select",{style:inp,value:direction,onChange:function(e){setDirection(e.target.value);}},
+          ce("option",{value:"sprzedaz"},"\uD83D\uDCE4 Sprzeda\u017cowa (wystawiamy)"),
+          ce("option",{value:"zakup"},"\uD83D\uDCE5 Zakupowa / kosztowa (od dostawcy)"))),
       fldRow("Typ dokumentu",
         ce("select",{style:inp,value:docType,onChange:function(e){setDocType(e.target.value);}},
           DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);}))),
+      direction==="zakup"&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:4,marginBottom:10}},
+        "\uD83D\uDCE5 Faktura kosztowa — rejestrujemy dokument otrzymany od dostawcy. Numer nadaje dostawca (wpisz poni\u017cej), nie generujemy w\u0142asnej numeracji."),
+      direction==="zakup"&&fldRow("Numer faktury",
+        ce("input",{style:inp,value:purchaseNumber,placeholder:"Np. FV/123/2026 (numer od dostawcy)",onChange:function(e){setPurchaseNumber(e.target.value);}})),
       docType==="eko"&&ce("div",{style:{background:"var(--grl)",border:"1px solid var(--gr)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--gr)",marginTop:4}},
         "🟢 Dokument EKO — 0% VAT, wydatki gotówkowe, wystawiany od razu (bez KSeF). Stawka VAT zostanie wyzerowana przy zapisie."),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}},
@@ -418,10 +455,11 @@ function InvoiceEditor(p){
             "Metoda kasowa")))
     ),
 
-    // ── SEKCJA: Nabywca ──
+    // ── SEKCJA: Nabywca / Sprzedawca (zależnie od kierunku) ──
     ce("div",{style:card},
-      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83C\uDFE2 Nabywca"),
-      ce("div",{style:{marginBottom:14,position:"relative"}},
+      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},
+        direction==="zakup"?"\uD83D\uDE9A Sprzedawca (dostawca)":"\uD83C\uDFE2 Nabywca"),
+      direction!=="zakup"&&ce("div",{style:{marginBottom:14,position:"relative"}},
         ce("span",{style:label},"Klient z CRM (opcjonalnie)"),
         ce("div",{style:{display:"flex",gap:8}},
           ce("input",{style:Object.assign({},inp,{flex:1}),
@@ -453,7 +491,7 @@ function InvoiceEditor(p){
       ),
       ce("div",{style:{display:"flex",gap:8,marginBottom:10}},
         ce("div",{style:{flex:1}},
-          ce("span",{style:label},"NIP nabywcy"),
+          ce("span",{style:label},direction==="zakup"?"NIP sprzedawcy":"NIP nabywcy"),
           ce("input",{style:inp,value:buyerNip,placeholder:"0000000000",
             onChange:function(e){setBuyerNip(e.target.value);},
             onKeyDown:function(e){if(e.key==="Enter")lookupNip();}})),
@@ -462,7 +500,7 @@ function InvoiceEditor(p){
           style:Object.assign({},btnSecondary,{alignSelf:"flex-end",whiteSpace:"nowrap"})
         },nipLoading?"\u23F3 Szukam...":"\uD83D\uDD0D Pobierz z GUS")
       ),
-      fldRow("Nazwa",ce("input",{style:inp,value:buyerName,placeholder:"Pełna nazwa firmy / imię nazwisko",onChange:function(e){setBuyerName(e.target.value);}})),
+      fldRow("Nazwa",ce("input",{style:inp,value:buyerName,placeholder:direction==="zakup"?"Pełna nazwa dostawcy":"Pełna nazwa firmy / imię nazwisko",onChange:function(e){setBuyerName(e.target.value);}})),
       fldRow("Adres",ce("input",{style:inp,value:buyerAddr,placeholder:"ul. Kwiatowa 1",onChange:function(e){setBuyerAddr(e.target.value);}})),
       ce("div",{style:{display:"grid",gridTemplateColumns:"120px 1fr",gap:10,marginBottom:10,marginLeft:"150px"}},
         ce("input",{style:inp,value:buyerPostal,placeholder:"00-000",onChange:function(e){setBuyerPostal(e.target.value);}}),
@@ -528,7 +566,7 @@ function InvoiceEditor(p){
     ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}},
       ce("button",{onClick:p.onClose,style:btnSecondary,disabled:busy},"Anuluj"),
       ce("button",{onClick:function(){save();},style:btnPrimary,disabled:busy},
-        busy?"\u23F3 Zapisuję...":(isNew?"\u2705 Wystaw fakturę":"\uD83D\uDCBE Zapisz zmiany"))
+        busy?"\u23F3 Zapisuję...":(isNew?(direction==="zakup"?"\u2705 Zapisz fakturę kosztową":"\u2705 Wystaw fakturę"):"\uD83D\uDCBE Zapisz zmiany"))
     )
   );
 }
@@ -920,8 +958,8 @@ function InvoiceList(p){
   }
 
   var list=(p.invoices||[]).filter(function(inv){
-    if(groupFilter==="zakup"&&inv.doc_type!=="zakup") return false;
-    if(groupFilter==="sprzedaz"&&inv.doc_type==="zakup") return false;
+    if(groupFilter==="zakup"&&invDirection(inv)!=="zakup") return false;
+    if(groupFilter==="sprzedaz"&&invDirection(inv)==="zakup") return false;
     if(filterDocType!=="all"&&inv.doc_type!==filterDocType) return false;
     if(search){
       var q=search.toLowerCase();
@@ -934,7 +972,7 @@ function InvoiceList(p){
 
   // Liczniki do kafelków Zakup / Sprzedaż (liczone z pełnej listy, nie z `list` po filtrach)
   var docTypeCounts=(p.invoices||[]).reduce(function(acc,inv){
-    if(inv.doc_type==="zakup") acc.zakup++; else acc.sprzedaz++;
+    if(invDirection(inv)==="zakup") acc.zakup++; else acc.sprzedaz++;
     return acc;
   },{zakup:0,sprzedaz:0});
 
@@ -1051,8 +1089,13 @@ function InvoiceList(p){
             ce("div",{style:{fontSize:9,fontWeight:700,marginTop:2,color:ps.color}},ps.label)
           );
         };
-        var isPurchase=inv.doc_type==="zakup";
-        var dirLabel=isPurchase?"📥 Zakupowa":(inv.doc_type==="proforma"?"📄 Proforma":inv.doc_type==="eko"?"🟢 EKO":"📤 Sprzedażowa");
+        var isPurchase=invDirection(inv)==="zakup";
+        var purchaseSubtype=(inv.doc_type&&inv.doc_type!=="zakup")
+          ?(DOC_TYPES.find(function(d){return d.id===inv.doc_type;})||{}).label
+          :null;
+        var dirLabel=isPurchase
+          ?("📥 Zakupowa"+(purchaseSubtype?" ("+purchaseSubtype+")":""))
+          :(inv.doc_type==="proforma"?"📄 Proforma":inv.doc_type==="eko"?"🟢 EKO":"📤 Sprzedażowa");
         var snap=inv.seller_snapshot||{};
         // Fallback do buyer_* dla starych rekordów sprzed wprowadzenia seller_snapshot przy synchronizacji
         var contragentName=isPurchase?(snap.name||inv.buyer_name||"—"):(inv.buyer_name||"—");
@@ -1183,7 +1226,7 @@ async function buildKsefQrUrl(inv, settings){
   if(!inv||inv.ksef_status!=="confirmed") return null;
   if(!inv.ksef_number) return null;
   if(!inv.ksef_invoice_hash) return null;
-  if(inv.doc_type==="zakup"||inv.doc_type==="eko"||inv.doc_type==="proforma") return null;
+  if(invDirection(inv)==="zakup"||inv.doc_type==="eko"||inv.doc_type==="proforma") return null;
 
   // NIP sprzedawcy: seller_snapshot (zapisywany przy wysylce/sync) lub settings sprzedawcy
   var snap=inv.seller_snapshot||{};
@@ -1205,11 +1248,14 @@ async function buildKsefQrUrl(inv, settings){
 function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
   var s=settings||{};
   var items=inv.invoice_items||[];
-  var isZakup=inv.doc_type==="zakup";
+  var isZakup=invDirection(inv)==="zakup";
   var snap=inv.seller_snapshot||{};
   var fmtM=function(v){return (+(v||0)).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});};
   var fmtD=function(d){if(!d)return "\u2014";var p=d.split("-");return p[2]+"."+p[1]+"."+p[0];};
   var docLabel={vat:"Faktura",zakup:"Faktura zakupowa",proforma:"Faktura Proforma",zaliczka:"Faktura Zaliczkowa",korekta:"Faktura Koryguj\u0105ca",eko:"Dokument EKO"}[inv.doc_type]||"Faktura";
+  // Kierunek zakupowy z innym niż "zakup" typem dokumentu (np. EKO/proforma wpisane ręcznie
+  // jako koszt) — dopisujemy adnotację, bo sama etykieta typu tego nie pokazuje.
+  if(isZakup&&inv.doc_type!=="zakup") docLabel+=" (zakupowa)";
 
   // Sprzedawca/Nabywca: dla faktur zakupowych to my (Porter Design) jeste\u015bmy nabywc\u0105,
   // a kontrahent zewn\u0119trzny (zapisany w seller_snapshot przy synchronizacji z KSeF) jest sprzedawc\u0105.
@@ -1641,7 +1687,7 @@ export function ScreenInvoices(p){
           };
         });
         setEditInv({
-          doc_type:src.doc_type, payment_method:src.payment_method, kasowa:src.kasowa,
+          doc_type:src.doc_type, direction:invDirection(src), payment_method:src.payment_method, kasowa:src.kasowa,
           notes:src.notes, client_id:src.client_id, deal_id:src.deal_id,
           buyer_name:src.buyer_name, buyer_nip:src.buyer_nip,
           buyer_address:src.buyer_address, buyer_postal:src.buyer_postal,
