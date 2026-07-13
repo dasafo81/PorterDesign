@@ -21,26 +21,26 @@
     padding: 1.2rem 2.5rem; background: rgba(255,255,255,0.92);
     backdrop-filter: blur(12px); border-bottom: 1px solid rgba(132,156,166,0.15);
   }
-  .nav-logo { display: flex; align-items: center; gap: 10px; font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
-  .nav-logo img { height: 34px; width: 34px; object-fit: contain; }
+  .nav-logo { display: flex; align-items: center; gap: 12px; font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
+  .nav-logo img { height: 46px; width: 46px; object-fit: contain; }
   .nav-logo span { color: var(--ink3); font-weight: 400; font-style: italic; }
   .nav-cta { padding: 10px 22px; border-radius: 8px; background: var(--wsp); color: white; font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-decoration: none; border: none; cursor: pointer; transition: background .2s; }
   .nav-cta:hover { background: var(--wsp-dark); }
-  .hero { display: flex; align-items: center; justify-content: center; padding: 6.5rem 2rem 4rem; background: linear-gradient(160deg, #eee9fc 0%, #f6f3fd 34%, #e7f4ef 100%); text-align: center; position: relative; overflow: hidden; }
+  .hero { display: flex; align-items: center; justify-content: center; padding: 7.5rem 2.5rem 5rem; background: linear-gradient(160deg, #eee9fc 0%, #f6f3fd 34%, #e7f4ef 100%); position: relative; overflow: hidden; }
   .hero::before { content: ""; position: absolute; top: -180px; left: 50%; transform: translateX(-50%); width: 900px; height: 500px; background: radial-gradient(ellipse at center, rgba(111,92,240,0.14) 0%, transparent 65%); pointer-events: none; }
-  .hero > div { position: relative; z-index: 1; }
+  .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 3.5rem; align-items: center; max-width: 1320px; width: 100%; margin: 0 auto; text-align: left; }
   .hero-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.28em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1.4rem; opacity: 0; animation: fadeUp .6s .1s forwards; }
-  .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.8rem, 7vw, 5.2rem); font-weight: 700; line-height: 1.08; letter-spacing: -0.01em; color: var(--ink); max-width: 820px; margin: 0 auto 1.5rem; opacity: 0; animation: fadeUp .7s .2s forwards; }
+  .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.6rem, 4.2vw, 4rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; color: var(--ink); margin: 0 0 1.3rem; opacity: 0; animation: fadeUp .7s .2s forwards; }
   .hero h1 em { background: linear-gradient(105deg, #6f5cf0 20%, #2fa876 90%); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; }
-  .stats-band { display: flex; justify-content: center; gap: 0; max-width: 860px; margin: 3rem auto 0; background: rgba(255,255,255,0.65); backdrop-filter: blur(8px); border: 1px solid rgba(111,92,240,0.15); border-radius: 16px; overflow: hidden; opacity: 0; animation: fadeUp .8s .9s forwards; }
-  .stat { flex: 1; padding: 1.4rem 1rem; text-align: center; }
+  .stats-band { display: flex; justify-content: flex-start; gap: 0; margin: 2.6rem 0 0; background: rgba(255,255,255,0.65); backdrop-filter: blur(8px); border: 1px solid rgba(111,92,240,0.15); border-radius: 16px; overflow: hidden; opacity: 0; animation: fadeUp .8s .9s forwards; }
+  .stat { flex: 1; padding: 1.2rem 1rem; text-align: center; }
   .stat + .stat { border-left: 1px solid rgba(111,92,240,0.12); }
-  .stat-num { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.9rem, 4vw, 2.6rem); font-weight: 700; color: #24244d; line-height: 1; }
+  .stat-num { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.7rem, 2.6vw, 2.2rem); font-weight: 700; color: #24244d; line-height: 1; }
   .stat-num b { background: linear-gradient(105deg, #6f5cf0, #2fa876); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .stat-label { font-size: 11.5px; color: var(--ink2); margin-top: 6px; letter-spacing: 0.03em; }
+  .stat-label { font-size: 11px; color: var(--ink2); margin-top: 6px; letter-spacing: 0.03em; }
   @media (max-width: 640px) { .stats-band { flex-direction: column; } .stat + .stat { border-left: none; border-top: 1px solid rgba(111,92,240,0.12); } }
-  .hero-sub { font-size: clamp(1rem, 2.5vw, 1.15rem); color: var(--ink2); line-height: 1.7; max-width: 600px; margin: 0 auto 2rem; font-weight: 300; opacity: 0; animation: fadeUp .7s .35s forwards; }
-  .hero-actions { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; opacity: 0; animation: fadeUp .7s .5s forwards; }
+  .hero-sub { font-size: clamp(1rem, 1.4vw, 1.1rem); color: var(--ink2); line-height: 1.7; max-width: 480px; margin: 0 0 2rem; font-weight: 300; opacity: 0; animation: fadeUp .7s .35s forwards; }
+  .hero-actions { display: flex; gap: 14px; justify-content: flex-start; flex-wrap: wrap; opacity: 0; animation: fadeUp .7s .5s forwards; }
   .btn-primary { padding: 16px 36px; border-radius: 10px; background: var(--ink); color: white; font-size: 14px; font-weight: 500; letter-spacing: 0.06em; text-decoration: none; text-transform: uppercase; transition: background .2s, transform .15s; display: inline-block; }
   .btn-primary:hover { background: var(--wsp-dark); transform: translateY(-1px); }
   .btn-secondary { padding: 16px 36px; border-radius: 10px; border: 1.5px solid var(--border); color: var(--ink2); font-size: 14px; font-weight: 400; letter-spacing: 0.04em; text-decoration: none; background: transparent; transition: border-color .2s, color .2s; display: inline-block; }
@@ -48,7 +48,15 @@
   .hero-badge { margin-top: 1.6rem; opacity: 0; animation: fadeUp .7s .65s forwards; }
   .badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 100px; background: var(--wsp-bg); border: 1px solid var(--wsp-light); font-size: 12px; color: var(--wsp-dark); font-weight: 500; }
   .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wsp); animation: pulse 2s infinite; }
-  .mockup-wrap { max-width: 980px; margin: 2.8rem auto 0; padding: 0 1.5rem; opacity: 0; animation: fadeUp .9s .8s forwards; position: relative; z-index: 1; }
+  .hero-visual { position: relative; z-index: 1; opacity: 0; animation: fadeUp .9s .5s forwards; }
+  .mockup-wrap { max-width: 100%; }
+  .hero-visual .trust-line { margin: 1.1rem 0 0; max-width: 100%; }
+  @media (max-width: 980px) {
+    .hero-grid { grid-template-columns: 1fr; text-align: center; }
+    .hero-sub { max-width: 600px; margin: 0 auto 2rem; }
+    .hero-actions, .stats-band { justify-content: center; }
+    .hero-visual { margin-top: 2.5rem; }
+  }
   section { padding: 6rem 2rem; }
   .section-inner { max-width: 1100px; margin: 0 auto; }
   .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.26em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1rem; text-align: center; }
@@ -229,65 +237,69 @@
 </nav>
 
 <section class="hero">
-  <div>
-    <p class="hero-eyebrow">Oprogramowanie dla studia dekoracji okien</p>
-    <h1>Całe studio dekoracji okien<br><em>w jednej aplikacji.</em></h1>
-    <p class="hero-sub">Wyceny, CRM, kalendarz, poczta, faktury z KSeF i magazyn — stworzone przez dekoratorów dla dekoratorów. Skróć czas obsługi zlecenia o ponad 60%.</p>
-    <div class="hero-actions">
-      <a href="/register" class="btn-primary">Wypróbuj za darmo (3 dni)</a>
-      <a href="#funkcje" class="btn-secondary">Zobacz możliwości</a>
-    </div>
-    <p style="margin-top:1rem;font-size:13px;color:var(--ink3)">Wolisz zobaczyć demo na żywo? <a href="#kontakt" style="color:var(--wsp-dark);text-decoration:underline">Umów rozmowę</a></p>
-    <div class="hero-badge">
-      <span class="badge-pill">
-        <span class="badge-dot"></span>
-        Dedykowane dla branży dekoracji okien
-      </span>
-    </div>
-    <p class="trust-line"><strong>Stworzona przez specjalistów dla specjalistów.</strong> Testowana miesiącami na realnych zleceniach dla klientów premium — każde pole w tej aplikacji ma powód.</p>
+  <div class="hero-grid">
+    <div class="hero-text">
+      <p class="hero-eyebrow">Oprogramowanie dla studia dekoracji okien</p>
+      <h1>Całe studio dekoracji okien<br><em>w jednej aplikacji.</em></h1>
+      <p class="hero-sub">Wyceny, CRM, kalendarz, poczta, faktury z KSeF i magazyn — stworzone przez dekoratorów dla dekoratorów. Skróć czas obsługi zlecenia o ponad 60%.</p>
+      <div class="hero-actions">
+        <a href="/register" class="btn-primary">Wypróbuj za darmo (3 dni)</a>
+        <a href="#funkcje" class="btn-secondary">Zobacz możliwości</a>
+      </div>
+      <p style="margin-top:1rem;font-size:13px;color:var(--ink3)">Wolisz zobaczyć demo na żywo? <a href="#kontakt" style="color:var(--wsp-dark);text-decoration:underline">Umów rozmowę</a></p>
+      <div class="hero-badge">
+        <span class="badge-pill">
+          <span class="badge-dot"></span>
+          Dedykowane dla branży dekoracji okien
+        </span>
+      </div>
 
-    <div class="stats-band">
-      <div class="stat"><div class="stat-num"><b>−60%</b></div><div class="stat-label">czasu obsługi zlecenia</div></div>
-      <div class="stat"><div class="stat-num"><b>7 w 1</b></div><div class="stat-label">modułów w jednej aplikacji</div></div>
-      <div class="stat"><div class="stat-num"><b>KSeF</b></div><div class="stat-label">gotowy przed kwietniem 2026</div></div>
+      <div class="stats-band">
+        <div class="stat"><div class="stat-num"><b>−60%</b></div><div class="stat-label">czasu obsługi zlecenia</div></div>
+        <div class="stat"><div class="stat-num"><b>7 w 1</b></div><div class="stat-label">modułów w jednej aplikacji</div></div>
+        <div class="stat"><div class="stat-num"><b>KSeF</b></div><div class="stat-label">gotowy przed kwietniem 2026</div></div>
+      </div>
     </div>
 
-    <div class="mockup-wrap">
-      <div class="app-frame">
-        <div class="app-topnav">
-          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
-          <div class="app-tab active"><span class="ic">📈</span>CRM</div>
-          <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
-          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
-          <div class="app-tab"><span class="ic">✅</span>Zadania</div>
-          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
-          <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
-        </div>
-        <div class="app-panel">
-          <div class="kanban-mini">
-            <div class="kanban-col">
-              <div class="kanban-col-title"><span class="kdot" style="background:#6f5cf0"></span>Zapytanie · 3</div>
-              <div class="kanban-card" style="border-left-color:#6f5cf0">K. Sobolewska<span>2 450 zł</span></div>
-              <div class="kanban-card" style="border-left-color:#6f5cf0">Dom &amp; Styl<span>18 900 zł</span></div>
-            </div>
-            <div class="kanban-col">
-              <div class="kanban-col-title"><span class="kdot" style="background:#4a7fe0"></span>Wycena · 2</div>
-              <div class="kanban-card" style="border-left-color:#4a7fe0">M. Adamczyk<span>7 640 zł</span></div>
-              <div class="kanban-card" style="border-left-color:#4a7fe0">R. Górecka<span>11 200 zł</span></div>
-            </div>
-            <div class="kanban-col">
-              <div class="kanban-col-title"><span class="kdot" style="background:#3fae6a"></span>Realizacja · 2</div>
-              <div class="kanban-card" style="border-left-color:#3fae6a">P. Kamińska<span>9 380 zł</span></div>
-              <div class="kanban-card" style="border-left-color:#3fae6a">Studio Bella<span>14 950 zł</span></div>
-            </div>
-            <div class="kanban-col">
-              <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
-              <div class="kanban-card" style="border-left-color:#e8703a">J. Nowicka<span>5 120 zł</span></div>
-              <div class="kanban-card" style="border-left-color:#e8703a">T. Wysocki<span>21 300 zł</span></div>
+    <div class="hero-visual">
+      <div class="mockup-wrap">
+        <div class="app-frame">
+          <div class="app-topnav">
+            <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
+            <div class="app-tab active"><span class="ic">📈</span>CRM</div>
+            <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
+            <div class="app-tab"><span class="ic">✉️</span>Mail</div>
+            <div class="app-tab"><span class="ic">✅</span>Zadania</div>
+            <div class="app-tab"><span class="ic">💰</span>Faktury</div>
+            <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
+          </div>
+          <div class="app-panel">
+            <div class="kanban-mini">
+              <div class="kanban-col">
+                <div class="kanban-col-title"><span class="kdot" style="background:#6f5cf0"></span>Zapytanie · 3</div>
+                <div class="kanban-card" style="border-left-color:#6f5cf0">K. Sobolewska<span>2 450 zł</span></div>
+                <div class="kanban-card" style="border-left-color:#6f5cf0">Dom &amp; Styl<span>18 900 zł</span></div>
+              </div>
+              <div class="kanban-col">
+                <div class="kanban-col-title"><span class="kdot" style="background:#4a7fe0"></span>Wycena · 2</div>
+                <div class="kanban-card" style="border-left-color:#4a7fe0">M. Adamczyk<span>7 640 zł</span></div>
+                <div class="kanban-card" style="border-left-color:#4a7fe0">R. Górecka<span>11 200 zł</span></div>
+              </div>
+              <div class="kanban-col">
+                <div class="kanban-col-title"><span class="kdot" style="background:#3fae6a"></span>Realizacja · 2</div>
+                <div class="kanban-card" style="border-left-color:#3fae6a">P. Kamińska<span>9 380 zł</span></div>
+                <div class="kanban-card" style="border-left-color:#3fae6a">Studio Bella<span>14 950 zł</span></div>
+              </div>
+              <div class="kanban-col">
+                <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
+                <div class="kanban-card" style="border-left-color:#e8703a">J. Nowicka<span>5 120 zł</span></div>
+                <div class="kanban-card" style="border-left-color:#e8703a">T. Wysocki<span>21 300 zł</span></div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+      <p class="trust-line"><strong>Stworzona przez specjalistów dla specjalistów.</strong> Testowana miesiącami na realnych zleceniach dla klientów premium — każde pole w tej aplikacji ma powód.</p>
     </div>
   </div>
 </section>
