@@ -50,7 +50,7 @@ export function generateFabricOrderPDF(client,opts){
         r.fabName,
         r.kolor||"-",
         (r.metry||0).toFixed(2).replace(".",",")+" mb",
-        r.room+" / "+r.win+(r.note?(" ["+r.note+"]"):"")
+        r.room+" / "+r.win
       ];
     });
     var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
