@@ -706,6 +706,7 @@ function TabCatalog(p) {
   var s2 = useState(false); var onlyNoH = s2[0]; var setOnlyNoH = s2[1];
   var s3 = useState(null);  var editItem = s3[0]; var setEditItem = s3[1];
   var s4 = useState("all"); var activeCat = s4[0]; var setActiveCat = s4[1];
+  var s4b = useState(null); var activeMeta = s4b[0]; var setActiveMeta = s4b[1];
 
   function reload() {
     setLoading(true);
@@ -736,11 +737,18 @@ function TabCatalog(p) {
     groups.map(function(gr) { return { id: gr.id, label: gr.label, icon: gr.icon }; })
   );
 
+  // ── Producenci w aktywnej kategorii (kafelki podrzędne po wejściu np. w Tkaniny) ──
+  var activeGroupForMeta = activeCat !== "all" ? groups.find(function(gr) { return gr.id === activeCat; }) : null;
+  var producers = activeGroupForMeta
+    ? Array.from(new Set(activeGroupForMeta.items.map(function(it) { return it.meta; }).filter(Boolean))).sort()
+    : [];
+
   var rendered = groups
     .filter(function(gr) { return activeCat === "all" || gr.id === activeCat; })
     .map(function(gr) {
       var items = gr.items.filter(function(it) {
         if (onlyNoH && !it.warn) return false;
+        if (activeMeta && it.meta !== activeMeta) return false;
         if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
         return true;
       });
@@ -759,14 +767,27 @@ function TabCatalog(p) {
         ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj produkt")
     ),
 
-    ce("div", { style: { display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 18 } },
+    ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10, marginBottom: 18 } },
       catTabs.map(function(c) {
         var count = c.id === "all" ? totalItems : (groups.find(function(gr) { return gr.id === c.id; }) || { items: [] }).items.length;
         var active = activeCat === c.id;
-        return ce("button", { key: c.id, onClick: function() { setActiveCat(c.id); },
-          style: { padding: "14px 20px", borderRadius: 14, border: "1.5px solid " + (active ? "var(--violet)" : "var(--bd2)"), background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t3)", fontSize: 15, fontWeight: active ? 700 : 500, cursor: "pointer", display: "flex", gap: 9, alignItems: "center" } },
-          ce("span", { style: { fontSize: 20 } }, c.icon), ce("span", null, c.label),
-          ce("span", { style: { background: active ? "rgba(124,58,237,0.15)" : "var(--bd2)", borderRadius: 20, padding: "2px 9px", fontSize: 12, fontWeight: 700 } }, count));
+        return ce("button", { key: c.id, onClick: function() { setActiveCat(c.id); setActiveMeta(null); },
+          style: { padding: "14px 16px", borderRadius: 14, border: "1.5px solid " + (active ? "var(--violet)" : "var(--bd2)"), background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t3)", fontSize: 14, fontWeight: active ? 700 : 500, cursor: "pointer", display: "flex", gap: 9, alignItems: "center", width: "100%", boxSizing: "border-box" } },
+          ce("span", { style: { fontSize: 20, flexShrink: 0 } }, c.icon),
+          ce("span", { style: { flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.label),
+          ce("span", { style: { background: active ? "rgba(124,58,237,0.15)" : "var(--bd2)", borderRadius: 20, padding: "2px 9px", fontSize: 12, fontWeight: 700, flexShrink: 0 } }, count));
+      })
+    ),
+
+    producers.length > 1 && ce("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 } },
+      ce("button", { onClick: function() { setActiveMeta(null); },
+        style: { padding: "8px 14px", borderRadius: 20, border: "1.5px solid " + (!activeMeta ? "var(--violet)" : "var(--bd2)"), background: !activeMeta ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: !activeMeta ? "var(--violet)" : "var(--t3)", fontSize: 12.5, fontWeight: !activeMeta ? 700 : 500, cursor: "pointer" } },
+        "Wszyscy producenci"),
+      producers.map(function(prod) {
+        var act = activeMeta === prod;
+        return ce("button", { key: prod, onClick: function() { setActiveMeta(prod); },
+          style: { padding: "8px 14px", borderRadius: 20, border: "1.5px solid " + (act ? "var(--violet)" : "var(--bd2)"), background: act ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: act ? "var(--violet)" : "var(--t3)", fontSize: 12.5, fontWeight: act ? 700 : 500, cursor: "pointer" } },
+          prod);
       })
     ),
 
