@@ -166,8 +166,8 @@
   .pdf-pipeline-wrap { text-align: center; max-width: 1000px; margin: 0 auto; }
   .pdf-pipeline-title { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; color: white; margin-bottom: 0.5rem; }
   .pdf-pipeline-sub { font-size: 14px; color: rgba(255,255,255,0.65); margin-bottom: 2rem; font-weight: 300; }
-  .pdf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .pdf-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 1.1rem 0.8rem; text-align: center; transition: transform .2s, background .2s; backdrop-filter: blur(6px); }
+  .pdf-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .pdf-card { flex: 1 1 150px; max-width: 170px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 1.1rem 0.8rem; text-align: center; transition: transform .2s, background .2s; backdrop-filter: blur(6px); }
   .pdf-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.08); }
   .pdf-card-icon { font-size: 1.7rem; margin-bottom: 0.5rem; }
   .pdf-card-name { font-size: 12px; color: white; font-weight: 500; line-height: 1.3; }  .app-topnav { display: flex; gap: 4px; background: rgba(255,255,255,0.6); border-radius: 12px; padding: 5px; margin-bottom: 12px; }
