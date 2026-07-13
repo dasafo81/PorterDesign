@@ -43,7 +43,42 @@ export function clientTotal2(cl){
       sum+=sorted[0].val;
     });
   });
-  return comm>0?roundTo10(sum*(1+comm/100)):roundTo10(sum);
+  return comm>0?sum*(1+comm/100):sum;
+}
+
+// Rozbicie wyceny na pomieszczenia — do podglądu w karcie deala.
+// Zwraca surowe (niezaokrąglone) sumy; zaokrąglanie ma miejsce raz, na końcu,
+// tak samo jak w PDF (pdf.js), żeby wartości w Kanbanie / karcie deala / PDF się zgadzały.
+function dealQuoteBreakdown(cl){
+  if(!cl||!cl.rooms)return {rooms:[],total:0};
+  var comm=parseFloat(cl.commission)||0;
+  var rooms=[];
+  (cl.rooms||[]).forEach(function(r){
+    var wins=r.windows||[];
+    var groups={};
+    var roomSum=0;
+    wins.forEach(function(w){
+      var wVal=(w.products||[]).reduce(function(c,p){
+        var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
+        return c+(p.mp!=null?p.mp:(calc(pfc).total||0));
+      },0);
+      if(w.variantGroup){
+        if(!groups[w.variantGroup])groups[w.variantGroup]=[];
+        groups[w.variantGroup].push({w:w,val:wVal});
+      } else {
+        roomSum+=wVal;
+      }
+    });
+    Object.keys(groups).forEach(function(gid){
+      var sorted=groups[gid].slice().sort(function(a,b){return(a.w.variantLabel||"").localeCompare(b.w.variantLabel||"");});
+      roomSum+=sorted[0].val;
+    });
+    if(roomSum>0){
+      rooms.push({name:r.name||"Pomieszczenie",total:comm>0?roomSum*(1+comm/100):roomSum});
+    }
+  });
+  var total=rooms.reduce(function(a,x){return a+x.total;},0);
+  return {rooms:rooms,total:total};
 }
 
 export function fmtDate(iso){
@@ -104,7 +139,11 @@ export function ModalDeal(p){
   var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant"];
 
   var clientName=cl?cl.name:"(brak klienta)";
-  var clientTotal=cl&&cl.rooms?(cl.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c2,pr){var pfc=(pr.type==="zaslona"||pr.type==="firana")?mg(pr,{panels:getPanelsForProd(pr)}):pr;return c2+(pr.mp!=null?pr.mp:calc(pfc).total||0);},0);},0);},0):0;
+  var quoteBreak=dealQuoteBreakdown(cl);
+  var montazRateD=cl?((parseFloat(cl.install_fee)||0)/100):0;
+  var quoteBezMontazu=roundTo10(quoteBreak.total);
+  var quoteMontazVal=montazRateD>0?roundTo10(quoteBreak.total*montazRateD):0;
+  var clientTotal=roundTo10(montazRateD>0?quoteBreak.total*(1+montazRateD):quoteBreak.total);
 
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
@@ -311,6 +350,31 @@ export function ModalDeal(p){
       ),
 
       ce("div",{style:{padding:"18px 20px 24px"}},
+
+        quoteBreak.rooms.length>0?ce(SectionCard,{icon:"📋",title:"Podgląd wyceny"},
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
+            quoteBreak.rooms.map(function(rm,i){
+              return ce("div",{key:i,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--t2)"}},
+                ce("span",null,rm.name),
+                ce("span",{style:{fontWeight:600,color:"var(--t1)"}},roundTo10(rm.total).toLocaleString("pl-PL")+" zł")
+              );
+            })
+          ),
+          ce("div",{style:{borderTop:"1px solid var(--bd2)",paddingTop:8,display:"flex",flexDirection:"column",gap:4}},
+            montazRateD>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Bez montażu"),
+              ce("span",null,quoteBezMontazu.toLocaleString("pl-PL")+" zł")
+            ):null,
+            montazRateD>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Montaż ("+Math.round(montazRateD*100)+"%)"),
+              ce("span",null,quoteMontazVal.toLocaleString("pl-PL")+" zł")
+            ):null,
+            ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"var(--t1)"}},
+              ce("span",null,montazRateD>0?"Łącznie z montażem":"Łącznie"),
+              ce("span",null,clientTotal.toLocaleString("pl-PL")+" zł")
+            )
+          )
+        ):null,
 
         ce(SectionCard,{icon:"📅",title:"Spotkanie",done:visitDone},
           ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
@@ -1327,7 +1391,7 @@ function DealCard(cp){
   var name=cl?cl.name:"(nieznany)";
   var baseTotal=cl?clientTotal2(cl):0;
   var montazRate=cl?((parseFloat(cl.install_fee)||0)/100):0;
-  var total=montazRate>0?roundTo10(baseTotal*(1+montazRate)):baseTotal;
+  var total=roundTo10(montazRate>0?baseTotal*(1+montazRate):baseTotal);
   var hasVisit=deal.visit_date; var hasDelivery=deal.delivery_date;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
