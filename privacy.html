@@ -104,6 +104,15 @@
   </ul>
   <div class="callout">
     <p><strong>Sposób przetwarzania danych z Google.</strong> Token dostępu Google przechowywany jest wyłącznie w przeglądarce użytkownika (localStorage). Zawartość kalendarza (nazwy wydarzeń, terminy, opisy) jest pobierana bezpośrednio z API Google do przeglądarki i wyświetlana użytkownikowi — nie jest kopiowana ani przechowywana na naszych serwerach. Użytkownik może w każdej chwili odłączyć konto Google w Aplikacji (co usuwa token) oraz cofnąć zgodę bezpośrednio w ustawieniach swojego konta Google pod adresem <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>.</p>
+    <p><strong>Techniczne i organizacyjne środki ochrony danych wrażliwych (dane z Google Calendar).</strong> W odniesieniu do danych uzyskiwanych za pośrednictwem OAuth Google stosujemy następujące zabezpieczenia:</p>
+    <ul>
+      <li>komunikacja z API Google odbywa się wyłącznie przez szyfrowane połączenie HTTPS/TLS 1.2+;</li>
+      <li>token dostępu jest krótkotrwały (wygasa automatycznie po ok. 1 godzinie) i nigdy nie opuszcza przeglądarki użytkownika — nie jest przesyłany ani zapisywany na naszych serwerach ani w bazie danych;</li>
+      <li>treść kalendarza (wydarzenia, terminy, opisy) jest przetwarzana wyłącznie lokalnie w przeglądarce zalogowanego użytkownika — Usługodawca nie ma technicznej możliwości wglądu w te dane ani nie przechowuje ich kopii;</li>
+      <li>dostęp do własnego konta w Aplikacji zabezpieczony jest uwierzytelnianiem oraz mechanizmem Row Level Security (RLS) na poziomie bazy danych, izolującym dane każdego użytkownika (najemcy) od pozostałych;</li>
+      <li>pracownicy i współpracownicy Usługodawcy nie mają dostępu do danych kalendarza użytkownika, z wyjątkiem sytuacji wyraźnej zgody użytkownika (np. w celu diagnozy zgłoszonego problemu) lub obowiązku wynikającego z przepisów prawa;</li>
+      <li>w przypadku naruszenia ochrony danych osobowych Usługodawca dopełni obowiązków informacyjnych wobec Prezesa UODO oraz osób, których dane dotyczą, zgodnie z art. 33–34 RODO.</li>
+    </ul>
   </div>
   <p><strong>Zgodność z Google API Services User Data Policy.</strong> Wykorzystanie i przekazywanie danych otrzymanych z Google API przez Aplikację Asystent Dekoracji odbywa się zgodnie z <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, w tym z wymaganiami <em>Limited Use</em>. W szczególności:</p>
   <ul>
