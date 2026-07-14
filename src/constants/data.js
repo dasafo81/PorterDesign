@@ -115,6 +115,64 @@ export const JZ_AL50_COLORS =[
   {v:"black",               l:"Black",               code:"K-0240",    maxWidth:570, surchargePct:0} // zweryfikuj
 ];
 
+// Kolory Bamboo 50mm (Sun & Shade, kolekcja BAMBUS) — limit szerokości (cm)
+// Kody odczytane ze zdjęcia karty kolorów niskiej rozdzielczości — do weryfikacji
+export const JZ_BA50_COLORS =[
+  {v:"white",       l:"White",       code:"BK50_WHT", maxWidth:300, surchargePct:0}, // zweryfikuj kod
+  {v:"pearl_white", l:"Pearl White", code:"BK50_PWH", maxWidth:300, surchargePct:0}, // zweryfikuj kod
+  {v:"maple",       l:"Maple",       code:"BK50_MAP", maxWidth:240, surchargePct:0},
+  {v:"beech",       l:"Beech",       code:"BK50_BEC", maxWidth:240, surchargePct:0}, // zweryfikuj kod
+  {v:"light_oak",   l:"Light Oak",   code:"BK50_LOA", maxWidth:240, surchargePct:0}, // zweryfikuj kod
+  {v:"oak",         l:"Oak",         code:"BK50_OAK", maxWidth:240, surchargePct:0},
+  {v:"smoke_grey",  l:"Smoke Grey",  code:"BK50_SGR", maxWidth:240, surchargePct:0}, // zweryfikuj kod
+  {v:"taupe",       l:"Taupe",       code:"BK50_TAU", maxWidth:240, surchargePct:0},
+  {v:"chestnut",    l:"Chestnut",    code:"BK50_CHE", maxWidth:240, surchargePct:0},
+  {v:"limestone",   l:"Limestone",   code:"BK50_LIM", maxWidth:240, surchargePct:0},
+  {v:"cloud",       l:"Cloud",       code:"BK50_CLD", maxWidth:240, surchargePct:0}, // zweryfikuj kod
+  {v:"dark_grey",   l:"Dark Grey",   code:"BK50_DGR", maxWidth:240, surchargePct:0}, // zweryfikuj kod
+  {v:"wenge",       l:"Wenge",       code:"BK50_WEN", maxWidth:300, surchargePct:0}, // zweryfikuj kod
+  {v:"antracite",   l:"Antracite",   code:"BK50_ATR", maxWidth:300, surchargePct:0}, // zweryfikuj kod
+  {v:"black",       l:"Black",       code:"BK50_BLK", maxWidth:360, surchargePct:0}
+];
+
+// Kolory Basswood 50mm / Drewno (Sun & Shade, kolekcja DREWNO) — limit szerokości (cm)
+export const JZ_BS50_COLORS =[
+  {v:"white",         l:"White",         code:"C5020",  maxWidth:360, surchargePct:0},
+  {v:"pearl_white",   l:"Pearl White",   code:"PU5031", maxWidth:360, surchargePct:0},
+  {v:"sand",          l:"Sand",          code:"PU5033", maxWidth:360, surchargePct:0},
+  {v:"limestone",     l:"Limestone",     code:"PU5034", maxWidth:360, surchargePct:0},
+  {v:"cloud",         l:"Cloud",         code:"PU5035", maxWidth:360, surchargePct:0},
+  {v:"dark_grey",     l:"Dark Grey",     code:"PU5038", maxWidth:360, surchargePct:0},
+  {v:"antracite",     l:"Antracite",     code:"PU5037", maxWidth:360, surchargePct:0},
+  {v:"black",         l:"Black",         code:"C5021",  maxWidth:360, surchargePct:0},
+  {v:"off_white",     l:"Off White",     code:"C5030",  maxWidth:360, surchargePct:0},
+  {v:"shell",         l:"Shell",         code:"PU5032", maxWidth:300, surchargePct:0},
+  {v:"royal_clay",    l:"Royal Clay",    code:"PU5039", maxWidth:270, surchargePct:0},
+  {v:"taupe",         l:"Taupe",         code:"PU5036", maxWidth:360, surchargePct:0},
+  {v:"dark_chocolate",l:"Dark Chocolate",code:"PU5040", maxWidth:270, surchargePct:0},
+  {v:"black_coffee",  l:"Black Coffee",  code:"PU5041", maxWidth:300, surchargePct:0},
+  {v:"marble",        l:"Marble",        code:"RN5051", maxWidth:300, surchargePct:0},
+  {v:"stone_ash",     l:"Stone Ash",     code:"RN5052", maxWidth:300, surchargePct:0},
+  {v:"grey_shadow",   l:"Grey Shadow",   code:"RN5053", maxWidth:300, surchargePct:0},
+  {v:"stone_white",   l:"Stone White",   code:"RN5054", maxWidth:270, surchargePct:0},
+  {v:"light_greige",  l:"Light Greige",  code:"RN5055", maxWidth:300, surchargePct:0},
+  {v:"dark_greige",   l:"Dark Greige",   code:"RN5056", maxWidth:300, surchargePct:0},
+  {v:"stone_grey",    l:"Stone Grey",    code:"RN5057", maxWidth:270, surchargePct:0},
+  {v:"cacao_bean",    l:"Cacao Bean",    code:"RN5058", maxWidth:300, surchargePct:0},
+  {v:"natural",       l:"Natural",       code:"C5010",  maxWidth:270, surchargePct:0},
+  {v:"beech",         l:"Beech",         code:"D5011",  maxWidth:270, surchargePct:0},
+  {v:"maple",         l:"Maple",         code:"C5011",  maxWidth:270, surchargePct:0},
+  {v:"pecan",         l:"Pecan",         code:"D5013",  maxWidth:270, surchargePct:0},
+  {v:"cherry",        l:"Cherry",        code:"D5025",  maxWidth:270, surchargePct:0},
+  {v:"light_oak",     l:"Light Oak",     code:"D5012",  maxWidth:270, surchargePct:0},
+  {v:"smoke_grey",    l:"Smoke Grey",    code:"C5026",  maxWidth:270, surchargePct:0},
+  {v:"tiger_eye",     l:"Tiger Eye",     code:"C5027",  maxWidth:270, surchargePct:0},
+  {v:"oak",           l:"Oak",           code:"D5014",  maxWidth:270, surchargePct:0},
+  {v:"walnut",        l:"Walnut",        code:"C5015",  maxWidth:300, surchargePct:0},
+  {v:"wenge",         l:"Wenge",         code:"C5022",  maxWidth:300, surchargePct:0},
+  {v:"vanilla",       l:"Vanilla",       code:"C5016",  maxWidth:270, surchargePct:0}
+];
+
 // ── SILNIKI DO ŻALUZJI ────────────────────────────────────────────────────
 export const JZALUZJA_MOTORS = [
   {id:"somfy_sonesse2_40_r1_zigbee", label:"Somfy Sonesse2 40 R1 Zigbee 9/12 UN",       tech:"Zigbee 3.0", nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1848.30},
@@ -2660,9 +2718,10 @@ export function calc(p){
     var wCm=par.wCm||0,lCm=par.lCm||0;
     var jt=c.jt||"al25";
     if(!wCm||!lCm)return{total:0,lines:[],warn:null};
+    var jzColorList=jt.indexOf("al")===0?JZ_AL50_COLORS:jt==="ba50"?JZ_BA50_COLORS:jt==="bs50"?JZ_BS50_COLORS:null;
     var al50Color=null;
-    if(jt==="al50"&&c.jzColor){
-      al50Color=JZ_AL50_COLORS.find(function(col){return col.v===c.jzColor;});
+    if(jzColorList&&c.jzColor){
+      al50Color=jzColorList.find(function(col){return col.v===c.jzColor;});
       if(al50Color&&wCm>al50Color.maxWidth)return{total:0,lines:[],warn:"Szerokość "+wCm+"cm niedostępna dla koloru "+al50Color.l+" (maks. "+al50Color.maxWidth+" cm)."};
     }
     var res=jzLookup(jt,wCm,lCm);
