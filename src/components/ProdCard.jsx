@@ -10,7 +10,7 @@ import {
   IMG_ROLETA_PRINT, IMG_ROLETA_RELAX, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
-  JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, KARNISZ_SUPPLIERS, KN,
+  JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, JZ_BA50_COLORS, JZ_BS50_COLORS, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -771,27 +771,32 @@ export function ProdCard(p){
           return ce(Chip,{key:sv,label:jzSizeLabels[sv],active:curJt===sv,onClick:function(){sc("jt",sv);}});
         })})
       ),
-      (curJt==="al50")?ce("div",{style:{marginBottom:10}},
-        ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"KOLOR (SUNSET)"),
-        ce("select",{
-          value:c.jzColor||"",
-          onChange:function(ev){sc("jzColor",ev.target.value||null);},
-          style:IST
-        },
-          ce("option",{value:""},"Wybierz kolor..."),
-          JZ_AL50_COLORS.map(function(col){
-            return ce("option",{key:col.v,value:col.v},
-              col.l+" ("+col.code+", maks. "+col.maxWidth+"cm"+(col.surchargePct>0?", +"+col.surchargePct+"%":"")+")"
-            );
-          })
-        ),
-        (function(){
-          var selCol=JZ_AL50_COLORS.find(function(col){return col.v===c.jzColor;});
-          return (selCol&&par.wCm&&par.wCm>selCol.maxWidth)?ce("div",{style:{fontSize:12,color:"var(--red)",marginTop:4}},
-            "\u26a0\ufe0f Szeroko\u015b\u0107 "+par.wCm+"cm przekracza limit dla tego koloru (maks. "+selCol.maxWidth+"cm)."
-          ):null;
-        })()
-      ):null,
+      (function(){
+        var jzColorList=curMat==="al"?JZ_AL50_COLORS:curJt==="ba50"?JZ_BA50_COLORS:curJt==="bs50"?JZ_BS50_COLORS:null;
+        if(!jzColorList)return null;
+        var jzColorTitle=curMat==="al"?"KOLOR (SUNSET)":"KOLOR";
+        return ce("div",{style:{marginBottom:10}},
+          ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},jzColorTitle),
+          ce("select",{
+            value:c.jzColor||"",
+            onChange:function(ev){sc("jzColor",ev.target.value||null);},
+            style:IST
+          },
+            ce("option",{value:""},"Wybierz kolor..."),
+            jzColorList.map(function(col){
+              return ce("option",{key:col.v,value:col.v},
+                col.l+" ("+col.code+", maks. "+col.maxWidth+"cm"+(col.surchargePct>0?", +"+col.surchargePct+"%":"")+")"
+              );
+            })
+          ),
+          (function(){
+            var selCol=jzColorList.find(function(col){return col.v===c.jzColor;});
+            return (selCol&&par.wCm&&par.wCm>selCol.maxWidth)?ce("div",{style:{fontSize:12,color:"var(--red)",marginTop:4}},
+              "\u26a0\ufe0f Szeroko\u015b\u0107 "+par.wCm+"cm przekracza limit dla tego koloru (maks. "+selCol.maxWidth+"cm)."
+            ):null;
+          })()
+        );
+      })(),
       ce("div",{style:{marginTop:8}},
         ce(Chips,{items:[
           ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}}),
