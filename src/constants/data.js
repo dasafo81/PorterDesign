@@ -118,20 +118,20 @@ export const JZ_AL50_COLORS =[
 // Kolory Bamboo 50mm (Sun & Shade, kolekcja BAMBUS) — limit szerokości (cm)
 // Kody odczytane ze zdjęcia karty kolorów niskiej rozdzielczości — do weryfikacji
 export const JZ_BA50_COLORS =[
-  {v:"white",       l:"White",       code:"BK50_WHT", maxWidth:300, surchargePct:0}, // zweryfikuj kod
-  {v:"pearl_white", l:"Pearl White", code:"BK50_PWH", maxWidth:300, surchargePct:0}, // zweryfikuj kod
+  {v:"white",       l:"White",       code:"BK50_WHT", maxWidth:300, surchargePct:0},
+  {v:"pearl_white", l:"Pearl White", code:"BK50_PWH", maxWidth:300, surchargePct:0},
   {v:"maple",       l:"Maple",       code:"BK50_MAP", maxWidth:240, surchargePct:0},
-  {v:"beech",       l:"Beech",       code:"BK50_BEC", maxWidth:240, surchargePct:0}, // zweryfikuj kod
-  {v:"light_oak",   l:"Light Oak",   code:"BK50_LOA", maxWidth:240, surchargePct:0}, // zweryfikuj kod
+  {v:"beech",       l:"Beech",       code:"BK50_BEC", maxWidth:240, surchargePct:0},
+  {v:"light_oak",   l:"Light Oak",   code:"BK50_LOA", maxWidth:240, surchargePct:0},
   {v:"oak",         l:"Oak",         code:"BK50_OAK", maxWidth:240, surchargePct:0},
-  {v:"smoke_grey",  l:"Smoke Grey",  code:"BK50_SGR", maxWidth:240, surchargePct:0}, // zweryfikuj kod
+  {v:"smoke_grey",  l:"Smoke Grey",  code:"BK50_SGR", maxWidth:240, surchargePct:0},
   {v:"taupe",       l:"Taupe",       code:"BK50_TAU", maxWidth:240, surchargePct:0},
   {v:"chestnut",    l:"Chestnut",    code:"BK50_CHE", maxWidth:240, surchargePct:0},
   {v:"limestone",   l:"Limestone",   code:"BK50_LIM", maxWidth:240, surchargePct:0},
-  {v:"cloud",       l:"Cloud",       code:"BK50_CLD", maxWidth:240, surchargePct:0}, // zweryfikuj kod
-  {v:"dark_grey",   l:"Dark Grey",   code:"BK50_DGR", maxWidth:240, surchargePct:0}, // zweryfikuj kod
-  {v:"wenge",       l:"Wenge",       code:"BK50_WEN", maxWidth:300, surchargePct:0}, // zweryfikuj kod
-  {v:"antracite",   l:"Antracite",   code:"BK50_ATR", maxWidth:300, surchargePct:0}, // zweryfikuj kod
+  {v:"cloud",       l:"Cloud",       code:"BK50_CLD", maxWidth:240, surchargePct:0},
+  {v:"dark_grey",   l:"Dark Grey",   code:"BK50_DGR", maxWidth:240, surchargePct:0},
+  {v:"wenge",       l:"Wenge",       code:"BK50_WEN", maxWidth:300, surchargePct:0},
+  {v:"antracite",   l:"Antracite",   code:"BK50_ATR", maxWidth:300, surchargePct:0},
   {v:"black",       l:"Black",       code:"BK50_BLK", maxWidth:360, surchargePct:0}
 ];
 
