@@ -1308,7 +1308,9 @@ export function App(p){
           }
         })
       : appMode==="mail"
-        ? ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId})
+        ? ce("div",{style:{height:"calc(100vh - 190px)",overflow:"hidden"}},
+            ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId})
+          )
       : appMode==="kalendarz"
         ? ce(CRMKalendarz,{deals:[],clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
       : appMode==="zadania"
