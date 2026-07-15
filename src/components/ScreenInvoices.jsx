@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sbApi, ksefApi } from '../lib/supabase.js';
+import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 const ce = React.createElement;
 
 // ── Stałe ──────────────────────────────────────────────────────────────────
@@ -1440,6 +1441,9 @@ function InvoiceDetailView(p){
   var [ksefBusy,setKsefBusy]=useState(false);
   var [ksefMsg,setKsefMsg]=useState(null);
   var [ksefErr,setKsefErr]=useState(null);
+  var [mailBusy,setMailBusy]=useState(false);
+  var [mailMsg,setMailMsg]=useState(null);
+  var [mailErr,setMailErr]=useState(null);
   var [currentInv,setCurrentInv]=useState(p.invoice||{});
   // Oficjalny URL weryfikacji KSeF (Kod QR I). Liczony async z SHA-256 XML-a przy zmianie
   // faktury/statusu. Gdy faktura sie nie kwalifikuje (nie confirmed, brak xml, zakupowa/EKO/proforma)
@@ -1497,6 +1501,54 @@ function InvoiceDetailView(p){
     w.document.write(html);
     w.document.close();
     setTimeout(function(){w.print();},600);
+  }
+
+  // Wysyła fakturę mailem bezpośrednio z aplikacji, przez podłączoną skrzynkę Outlook (Microsoft Graph).
+  // Wymaga wcześniejszego zalogowania w zakładce Poczta — tu tylko odświeżamy token w tle (silent).
+  function sendInvoiceEmail(){
+    if(!currentInv.buyer_email) return;
+    setMailBusy(true); setMailErr(null); setMailMsg(null);
+    msalGetActiveAccount().then(function(acc){
+      if(!acc){
+        var e=new Error("Zaloguj si\u0119 do poczty (zak\u0142adka Poczta), a potem spr\u00f3buj ponownie.");
+        e.code="MS_NO_ACCOUNT"; throw e;
+      }
+      return msalGetToken();
+    }).then(function(token){
+      var html=buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl);
+      var b64=btoa(unescape(encodeURIComponent(html)));
+      var fileName="Faktura-"+(currentInv.number||"dokument").replace(/[^\w-]+/g,"_")+".html";
+      var bodyText="Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
+        +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
+        +".\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design";
+      var message={
+        subject:"Faktura "+(currentInv.number||""),
+        body:{contentType:"Text",content:bodyText},
+        toRecipients:[{emailAddress:{address:currentInv.buyer_email}}],
+        attachments:[{
+          "@odata.type":"#microsoft.graph.fileAttachment",
+          name:fileName,
+          contentType:"text/html",
+          contentBytes:b64
+        }]
+      };
+      return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+        method:"POST",
+        headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        body:JSON.stringify({message:message,saveToSentItems:true})
+      });
+    }).then(function(r){
+      if(!r.ok){
+        return r.json().catch(function(){return{};}).then(function(e){
+          throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ki ("+r.status+")");
+        });
+      }
+      setMailMsg("\u2705 Faktura wys\u0142ana na "+currentInv.buyer_email);
+    }).catch(function(e){
+      if(e&&e.code==="MS_NO_ACCOUNT") setMailErr(e.message);
+      else if(e&&e.code==="MS_INTERACTION_REQUIRED") setMailErr("Sesja poczty wygas\u0142a \u2014 zaloguj si\u0119 ponownie w zak\u0142adce Poczta.");
+      else setMailErr(e.message||"Nieznany b\u0142\u0105d wysy\u0142ki");
+    }).finally(function(){ setMailBusy(false); });
   }
 
   function sendToKsef(){
@@ -1577,8 +1629,20 @@ function InvoiceDetailView(p){
           style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
             padding:"14px 18px",borderRadius:10,border:"1px solid var(--bd2)",
             background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:13,fontWeight:500}},
-          "\uD83D\uDCE7 Otw\u00f3rz w poczcie")
+          "\uD83D\uDCE7 Otw\u00f3rz w poczcie"),
+        currentInv.buyer_email&&ce("button",{
+          onClick:sendInvoiceEmail,
+          disabled:mailBusy,
+          style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+            padding:"14px 18px",borderRadius:10,border:"1px solid var(--violet)",
+            background:mailBusy?"var(--bg2)":"var(--bg)",color:"var(--violet)",
+            cursor:mailBusy?"not-allowed":"pointer",fontSize:13,fontWeight:600}},
+          mailBusy?"\u23F3 Wysy\u0142am...":"\uD83D\uDCE4 Wy\u015blij mailem")
       ),
+      mailMsg&&ce("div",{style:{marginBottom:10,padding:"8px 12px",background:"var(--grl)",
+        borderRadius:8,fontSize:12,color:"var(--gr)"}},mailMsg),
+      mailErr&&ce("div",{style:{marginBottom:10,padding:"8px 12px",background:"var(--red-l)",
+        borderRadius:8,fontSize:12,color:"var(--red)"}},"\u26A0\uFE0F "+mailErr),
       ce("div",{style:{height:1,background:"var(--bd2)",margin:"14px 0"}}),
       // KSeF (ukryty dla dok. EKO)
       !isEko&&ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}},
