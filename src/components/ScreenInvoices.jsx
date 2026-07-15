@@ -901,14 +901,34 @@ function KsefBadge(p){
   }},c.label);
 }
 
-// ── PODSUMOWANIE BIEŻĄCEGO MIESIĄCA ─────────────────────────────────────────
-// Graficzny skrót dla bieżącego miesiąca (wg issue_date): ile faktur sprzedażowych
-// i kosztowych, kwoty brutto obu stron, bilans oraz zapłacone/oczekujące.
+// ── PODSUMOWANIE MIESIĄCA ────────────────────────────────────────────────────
+// Graficzny skrót dla wybranego miesiąca (wg issue_date, domyślnie bieżący,
+// przełączany strzałkami ‹ ›): ile faktur sprzedażowych i kosztowych, kwoty
+// brutto obu stron, bilans oraz zapłacone/oczekujące. Drugi tryb widoku
+// (przełącznik "Wg typu dokumentu") rozbija ten sam miesiąc na vat/proforma/
+// zaliczka/korekta/eko/zakup, z opcją sortowania wg kwoty lub liczby faktur.
 // Liczone z pełnej listy faktur (p.invoices), pomija draft/cancelled (jeszcze
 // nienadane/nieaktualne kwoty nie powinny zniekształcać podsumowania miesiąca).
+var TYPE_COLORS={vat:"var(--violet)",proforma:"var(--teal)",zaliczka:"var(--amber)",
+  korekta:"var(--pink)",eko:"var(--grd)",zakup:"var(--red)"};
+function docTypeLabel(id){
+  var found=DOC_TYPES.find(function(d){return d.id===id;});
+  if(found) return found.label;
+  if(id==="zakup") return "Zakupowa (stary model)";
+  return id||"Nieznany typ";
+}
+function monthKeyFromOffset(offset){
+  var d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+offset);
+  return d.toISOString().slice(0,7);
+}
+
 function InvoiceMonthSummary(p){
   var invoices=p.invoices||[];
-  var curMonth=todayISO().slice(0,7); // "2026-07"
+  var [monthOffset,setMonthOffset]=useState(0);   // 0 = bieżący miesiąc, -1 poprzedni, itd.
+  var [viewMode,setViewMode]=useState("kierunek"); // kierunek | typ
+  var [sortBy,setSortBy]=useState("kwota");        // kwota | liczba — tylko dla widoku "typ"
+
+  var curMonth=monthKeyFromOffset(monthOffset);
   var monthInvoices=invoices.filter(function(inv){
     return (inv.issue_date||"").slice(0,7)===curMonth
       && inv.status!=="draft" && inv.status!=="cancelled";
@@ -925,8 +945,22 @@ function InvoiceMonthSummary(p){
   var maxSum=Math.max(sellSum,buySum,1);
   var monthLabel=new Date(curMonth+"-01").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
 
-  function Bar(label,value,color,icon){
-    var pct=Math.max(value>0?2:0,Math.round(value/maxSum*100));
+  // Rozbicie miesiąca wg typu dokumentu (vat/proforma/zaliczka/korekta/eko/zakup)
+  var typeMap={};
+  monthInvoices.forEach(function(inv){
+    var key=inv.doc_type||"vat";
+    if(!typeMap[key]) typeMap[key]={key:key,count:0,sum:0};
+    typeMap[key].count++;
+    typeMap[key].sum+=(+inv.total_gross||0);
+  });
+  var typeList=Object.values(typeMap).sort(function(a,b){
+    return sortBy==="liczba" ? (b.count-a.count) : (b.sum-a.sum);
+  });
+  var maxTypeSum=Math.max.apply(null,typeList.map(function(t){return t.sum;}).concat([1]));
+
+  function Bar(label,value,color,icon,maxOverride){
+    var m=maxOverride||maxSum;
+    var pct=Math.max(value>0?2:0,Math.round(value/m*100));
     return ce("div",{style:{marginBottom:10}},
       ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)",marginBottom:4}},
         ce("span",null,icon+" "+label),
@@ -938,13 +972,54 @@ function InvoiceMonthSummary(p){
     );
   }
 
+  var navBtn={border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",
+    borderRadius:8,width:26,height:26,cursor:"pointer",fontSize:14,lineHeight:1,padding:0};
+  var toggleBtn=function(active){return {
+    border:"1px solid var(--bd2)",borderRadius:8,padding:"5px 10px",fontSize:11,fontWeight:600,
+    cursor:"pointer",background:active?"var(--violet)":"var(--bg)",color:active?"#fff":"var(--t2)"
+  };};
+
   return ce("div",{style:Object.assign({},card,{marginBottom:14})},
-    ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:6}},
-      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"\uD83D\uDCCA Podsumowanie: "+monthLabel),
-      ce("div",{style:{fontSize:11,color:"var(--t3)"}},sell.length+" sprzeda\u017cowych \u00B7 "+buy.length+" kosztowych")
+    ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
+      ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        ce("button",{onClick:function(){setMonthOffset(monthOffset-1);},style:navBtn,title:"Poprzedni miesi\u0105c"},"\u2039"),
+        ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",minWidth:150,textAlign:"center"}},
+          "\uD83D\uDCCA "+monthLabel),
+        ce("button",{onClick:function(){setMonthOffset(Math.min(0,monthOffset+1));},
+          disabled:monthOffset>=0,
+          style:Object.assign({},navBtn,monthOffset>=0?{opacity:0.35,cursor:"default"}:{}),title:"Nast\u0119pny miesi\u0105c"},"\u203A"),
+        monthOffset!==0?ce("button",{onClick:function(){setMonthOffset(0);},
+          style:{border:"none",background:"none",color:"var(--violet)",fontSize:11,cursor:"pointer",fontWeight:600}},"dzi\u015b"):null
+      ),
+      ce("div",{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
+        ce("button",{onClick:function(){setViewMode("kierunek");},style:toggleBtn(viewMode==="kierunek")},"Kierunek"),
+        ce("button",{onClick:function(){setViewMode("typ");},style:toggleBtn(viewMode==="typ")},"Wg typu dokumentu"),
+        viewMode==="typ"?ce("select",{
+          value:sortBy,onChange:function(e){setSortBy(e.target.value);},
+          style:{fontSize:11,padding:"5px 8px",borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)"}
+        },
+          ce("option",{value:"kwota"},"Sortuj: kwota"),
+          ce("option",{value:"liczba"},"Sortuj: liczba faktur")
+        ):null
+      )
     ),
-    Bar("Sprzeda\u017c (brutto)",sellSum,"var(--violet)","\uD83D\uDCB0"),
-    Bar("Koszty (brutto)",buySum,"var(--red)","\uD83D\uDCE5"),
+
+    viewMode==="kierunek"
+      ? ce(React.Fragment,null,
+          ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:8}},sell.length+" sprzeda\u017cowych \u00B7 "+buy.length+" kosztowych"),
+          Bar("Sprzeda\u017c (brutto)",sellSum,"var(--violet)","\uD83D\uDCB0"),
+          Bar("Koszty (brutto)",buySum,"var(--red)","\uD83D\uDCE5")
+        )
+      : ce(React.Fragment,null,
+          typeList.length===0
+            ? ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"6px 0"}},"Brak faktur w tym miesi\u0105cu.")
+            : typeList.map(function(t){
+                return ce("div",{key:t.key},
+                  Bar(docTypeLabel(t.key)+" ("+t.count+")",t.sum,typeColorOf(t.key),"\u25AA",maxTypeSum)
+                );
+              })
+        ),
+
     ce("div",{style:{display:"flex",gap:20,marginTop:10,paddingTop:10,borderTop:"1px solid var(--bd2)",flexWrap:"wrap"}},
       ce("div",null,
         ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Bilans"),
@@ -961,6 +1036,7 @@ function InvoiceMonthSummary(p){
     )
   );
 }
+function typeColorOf(id){ return TYPE_COLORS[id]||"var(--t3)"; }
 
 // ── LISTA FAKTUR ────────────────────────────────────────────────────────────
 function InvoiceList(p){
