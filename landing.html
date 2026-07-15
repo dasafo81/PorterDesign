@@ -26,9 +26,6 @@
   .nav-logo span { color: var(--ink3); font-weight: 400; font-style: italic; }
   .nav-cta { padding: 10px 22px; border-radius: 8px; background: var(--wsp); color: white; font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-decoration: none; border: none; cursor: pointer; transition: background .2s; }
   .nav-cta:hover { background: var(--wsp-dark); }
-  .nav-actions { display: flex; align-items: center; gap: 1.2rem; }
-  .nav-login { font-size: 13px; font-weight: 500; color: var(--ink2); text-decoration: none; letter-spacing: 0.02em; transition: color .2s; }
-  .nav-login:hover { color: var(--wsp-dark); }
   .hero { display: flex; align-items: center; justify-content: center; padding: 7.5rem 2.5rem 5rem; background: linear-gradient(160deg, #eee9fc 0%, #f6f3fd 34%, #e7f4ef 100%); position: relative; overflow: hidden; }
   .hero::before { content: ""; position: absolute; top: -180px; left: 50%; transform: translateX(-50%); width: 900px; height: 500px; background: radial-gradient(ellipse at center, rgba(111,92,240,0.14) 0%, transparent 65%); pointer-events: none; }
   .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 3.5rem; align-items: center; max-width: 1320px; width: 100%; margin: 0 auto; text-align: left; }
@@ -241,10 +238,7 @@
 <div class="ksef-banner">📄 Fakturę z KSeF wystawiasz tam, gdzie prowadzisz zlecenie — bez przełączania się na inny program → <a href="#funkcje">zobacz</a></div>
 <nav>
   <a class="nav-logo" href="#"><img src="/logo-mark-192.png" alt="Asystent Dekoracji — logo">Asystent <span>Dekoracji</span></a>
-  <div class="nav-actions">
-    <a class="nav-login" href="/app">Zaloguj się</a>
-    <a class="nav-cta" href="/register">Wypróbuj za darmo</a>
-  </div>
+  <a class="nav-cta" href="/register">Wypróbuj za darmo</a>
 </nav>
 
 <section class="hero">
