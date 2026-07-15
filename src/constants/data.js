@@ -173,6 +173,114 @@ export const JZ_BS50_COLORS =[
   {v:"vanilla",       l:"Vanilla",       code:"C5016",  maxWidth:270, surchargePct:0}
 ];
 
+// Kolory tasiemek (drabinki) do żaluzji — szerokość tasiemki [mm] i dostępność wg grubości lameli
+// z35/z50/z65 = dostępność dla Żaluzje 35/50/65mm (true/false), lub liczba = dopłata % do ceny bazowej żaluzji
+export const JZ_TASIEMKA_COLORS =[
+  {v:"white_10", l:"White", width:10, code:"B100", z35:true, z50:true, z65:false},
+  {v:"snow_10", l:"Snow", width:10, code:"11-0601", z35:true, z50:true, z65:false},
+  {v:"ivory_10", l:"Ivory", width:10, code:"11-0701", z35:true, z50:true, z65:false},
+  {v:"beige_10", l:"Beige", width:10, code:"12-0304", z35:true, z50:true, z65:false},
+  {v:"mocca_10", l:"Mocca", width:10, code:"K3520", z35:true, z50:true, z65:false},
+  {v:"sand_10", l:"Sand", width:10, code:"B323", z35:true, z50:true, z65:false},
+  {v:"dark_beige_10", l:"Dark beige", width:10, code:"B302", z35:true, z50:true, z65:false},
+  {v:"linen_10", l:"Linen", width:10, code:"16-1105", z35:true, z50:true, z65:false},
+  {v:"taupe_10", l:"Taupe", width:10, code:"16-1406", z35:true, z50:true, z65:false},
+  {v:"light_chocolate_10", l:"Light chocolate", width:10, code:"B336", z35:true, z50:true, z65:false},
+  {v:"chocolate_10", l:"Chocolate", width:10, code:"B334", z35:true, z50:true, z65:false},
+  {v:"rhino_10", l:"Rhino", width:10, code:"18-1306", z35:true, z50:true, z65:false},
+  {v:"walnut_10", l:"Walnut", width:10, code:"19-1116", z35:true, z50:true, z65:false},
+  {v:"cacao_10", l:"Cacao", width:10, code:"B378", z35:true, z50:true, z65:false},
+  {v:"wenge_10", l:"Wenge", width:10, code:"B376", z35:true, z50:true, z65:false},
+  {v:"light_grey_10", l:"Light grey", width:10, code:"16-0000", z35:true, z50:true, z65:false},
+  {v:"dark_grey_10", l:"Dark grey", width:10, code:"18-0601", z35:true, z50:true, z65:false},
+  {v:"antracite_10", l:"Antracite", width:10, code:"B377", z35:true, z50:true, z65:false},
+  {v:"black_10", l:"Black", width:10, code:"19-0303", z35:true, z50:true, z65:false},
+  {v:"white_25", l:"White", width:25, code:"B100", z35:true, z50:true, z65:true},
+  {v:"snow_25", l:"Snow", width:25, code:"11-0601", z35:true, z50:true, z65:true},
+  {v:"ivory_25", l:"Ivory", width:25, code:"11-0701", z35:true, z50:true, z65:true},
+  {v:"beige_25", l:"Beige", width:25, code:"12-0304", z35:true, z50:true, z65:true},
+  {v:"mocca_25", l:"Mocca", width:25, code:"14-1118", z35:true, z50:true, z65:true},
+  {v:"sand_25", l:"Sand", width:25, code:"B323", z35:true, z50:true, z65:true},
+  {v:"dark_beige_25", l:"Dark beige", width:25, code:"B302", z35:true, z50:true, z65:true},
+  {v:"linen_25", l:"Linen", width:25, code:"16-1105", z35:true, z50:true, z65:true},
+  {v:"taupe_25", l:"Taupe", width:25, code:"16-1406", z35:true, z50:true, z65:true},
+  {v:"light_olive_25", l:"Light olive", width:25, code:"B322", z35:true, z50:true, z65:true},
+  {v:"olive_25", l:"Olive", width:25, code:"B504", z35:true, z50:true, z65:true},
+  {v:"light_blue_25", l:"Light blue", width:25, code:"B652", z35:true, z50:true, z65:true},
+  {v:"light_violet_25", l:"Light violet", width:25, code:"B627", z35:true, z50:true, z65:true},
+  {v:"violet_25", l:"Violet", width:25, code:"B751", z35:true, z50:true, z65:true},
+  {v:"terracota_25", l:"Terracota", width:25, code:"B271", z35:true, z50:true, z65:true},
+  {v:"light_chocolate_25", l:"Light chocolate", width:25, code:"B336", z35:true, z50:true, z65:true},
+  {v:"chocolate_25", l:"Chocolate", width:25, code:"B334", z35:true, z50:true, z65:true},
+  {v:"rhino_25", l:"Rhino", width:25, code:"18-1306", z35:true, z50:true, z65:true},
+  {v:"walnut_25", l:"Walnut", width:25, code:"19-1116", z35:true, z50:true, z65:true},
+  {v:"coffee_25", l:"Coffee", width:25, code:"19-0814", z35:true, z50:true, z65:true},
+  {v:"cacao_25", l:"Cacao", width:25, code:"B378", z35:true, z50:true, z65:true},
+  {v:"wenge_25", l:"Wenge", width:25, code:"B376", z35:true, z50:true, z65:true},
+  {v:"light_grey_25", l:"Light grey", width:25, code:"16-0000", z35:true, z50:true, z65:true},
+  {v:"dark_grey_25", l:"Dark grey", width:25, code:"18-0601", z35:true, z50:true, z65:true},
+  {v:"antracite_25", l:"Antracite", width:25, code:"B377", z35:true, z50:true, z65:true},
+  {v:"black_25", l:"Black", width:25, code:"19-0303", z35:true, z50:true, z65:true},
+  {v:"sassafras_25", l:"Sassafras", width:25, code:"005", z35:false, z50:true, z65:false},
+  {v:"light_green_25", l:"Light green", width:25, code:"B517", z35:false, z50:true, z65:false},
+  {v:"green_25", l:"Green", width:25, code:"013", z35:false, z50:true, z65:false},
+  {v:"blue_25", l:"Blue", width:25, code:"014", z35:false, z50:true, z65:false},
+  {v:"indigo_25", l:"Indigo", width:25, code:"B661", z35:false, z50:true, z65:false},
+  {v:"dark_red_25", l:"Dark red", width:25, code:"B293", z35:false, z50:true, z65:false},
+  {v:"parsimmon_25", l:"Parsimmon", width:25, code:"010", z35:false, z50:true, z65:false},
+  {v:"brown_25", l:"Brown", width:25, code:"11", z35:false, z50:true, z65:false},
+  {v:"white_38", l:"White", width:38, code:"B100", z35:false, z50:true, z65:true},
+  {v:"snow_38", l:"Snow", width:38, code:"11-0601", z35:false, z50:true, z65:true},
+  {v:"ivory_38", l:"Ivory", width:38, code:"11-0701", z35:false, z50:true, z65:true},
+  {v:"beige_38", l:"Beige", width:38, code:"12-0304", z35:false, z50:true, z65:true},
+  {v:"mocca_38", l:"Mocca", width:38, code:"14-1118", z35:false, z50:true, z65:true},
+  {v:"sand_38", l:"Sand", width:38, code:"B323", z35:false, z50:true, z65:true},
+  {v:"dark_beige_38", l:"Dark beige", width:38, code:"B302", z35:false, z50:true, z65:true},
+  {v:"linen_38", l:"Linen", width:38, code:"16-1105", z35:false, z50:true, z65:true},
+  {v:"taupe_38", l:"Taupe", width:38, code:"16-1406", z35:false, z50:true, z65:true},
+  {v:"light_olive_38", l:"Light olive", width:38, code:"B322", z35:false, z50:true, z65:true},
+  {v:"olive_38", l:"Olive", width:38, code:"B504", z35:false, z50:true, z65:true},
+  {v:"light_blue_38", l:"Light blue", width:38, code:"B652", z35:false, z50:true, z65:true},
+  {v:"light_violet_38", l:"Light violet", width:38, code:"B627", z35:false, z50:true, z65:true},
+  {v:"violet_38", l:"Violet", width:38, code:"B751", z35:false, z50:true, z65:true},
+  {v:"terracota_38", l:"Terracota", width:38, code:"B271", z35:false, z50:true, z65:true},
+  {v:"light_chocolate_38", l:"Light chocolate", width:38, code:"B336", z35:false, z50:true, z65:true},
+  {v:"chocolate_38", l:"Chocolate", width:38, code:"B334", z35:false, z50:true, z65:true},
+  {v:"rhino_38", l:"Rhino", width:38, code:"18-1306", z35:false, z50:true, z65:true},
+  {v:"walnut_38", l:"Walnut", width:38, code:"19-1116", z35:false, z50:true, z65:true},
+  {v:"coffee_38", l:"Coffee", width:38, code:"19-0814", z35:false, z50:true, z65:true},
+  {v:"cacao_38", l:"Cacao", width:38, code:"B378", z35:false, z50:true, z65:true},
+  {v:"wenge_38", l:"Wenge", width:38, code:"B376", z35:false, z50:true, z65:true},
+  {v:"light_grey_38", l:"Light grey", width:38, code:"16-0000", z35:false, z50:true, z65:true},
+  {v:"dark_grey_38", l:"Dark grey", width:38, code:"18-0601", z35:false, z50:true, z65:true},
+  {v:"antracite_38", l:"Antracite", width:38, code:"B377", z35:false, z50:true, z65:true},
+  {v:"black_38", l:"Black", width:38, code:"19-0303", z35:false, z50:true, z65:true},
+  {v:"green_38", l:"Green", width:38, code:"50-38.GR", z35:false, z50:true, z65:false},
+  {v:"white_herring_grey_38", l:"White herring grey", width:38, code:"100", z35:false, z50:true, z65:false},
+  {v:"white_herring_beige_38", l:"White herring beige", width:38, code:"101", z35:false, z50:true, z65:false},
+  {v:"white_herring_black_38", l:"White herring black", width:38, code:"102", z35:false, z50:true, z65:false},
+  {v:"black_herring_white_38", l:"Black herring white", width:38, code:"110", z35:false, z50:true, z65:false},
+  {v:"black_herring_silver_38", l:"Black herring silver", width:38, code:"111", z35:false, z50:true, z65:false},
+  {v:"impresion_beis_38", l:"Impresion beis", width:38, code:"ES563", z35:false, z50:10, z65:false},
+  {v:"impresion_gris_38", l:"Impresion gris", width:38, code:"ES558", z35:false, z50:10, z65:false},
+  {v:"puntada_blanca_38", l:"Puntada blanca", width:38, code:"ES557", z35:false, z50:10, z65:false},
+  {v:"lineas_rojas_38", l:"Lineas rojas", width:38, code:"ES574", z35:false, z50:10, z65:false},
+  {v:"lineas_grises_38", l:"Lineas grises", width:38, code:"ES571", z35:false, z50:10, z65:false},
+  {v:"lineas_negras_38", l:"Lineas negras", width:38, code:"ES573", z35:false, z50:10, z65:false},
+  {v:"silky_grisclaro_38", l:"Silky grisclaro", width:38, code:"ES515", z35:false, z50:10, z65:false},
+  {v:"oak_crepe_38", l:"Oak crepe", width:38, code:"OA-CR", z35:false, z50:10, z65:false},
+  {v:"mist_crepe_38", l:"Mist crepe", width:38, code:"MI-CR", z35:false, z50:10, z65:false},
+  {v:"ash_crepe_38", l:"Ash crepe", width:38, code:"AS-CR", z35:false, z50:10, z65:false}
+];
+
+// Mapuje typ żaluzji (jt) na kolumnę dostępności tasiemki
+export function jzTasWidthGroup(jt){
+  if(jt==="al35"||jt==="ba35"||jt==="bs35")return "z35";
+  if(jt==="al50"||jt==="ba50"||jt==="bs50")return "z50";
+  if(jt==="ba65"||jt==="bs65")return "z65";
+  return null;
+}
+
 // ── SILNIKI DO ŻALUZJI ────────────────────────────────────────────────────
 export const JZALUZJA_MOTORS = [
   {id:"somfy_sonesse2_40_r1_zigbee", label:"Somfy Sonesse2 40 R1 Zigbee 9/12 UN",       tech:"Zigbee 3.0", nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1848.30},
@@ -2727,6 +2835,7 @@ export function calc(p){
     var res=jzLookup(jt,wCm,lCm);
     if(!res)return{total:0,lines:[],warn:"Wymiary poza zakresem cennika."};
     total=res.price;
+    var jzBaseZ=total;
     if(al50Color&&al50Color.surchargePct>0){
       var sur=+(total*al50Color.surchargePct/100).toFixed(2);
       total+=sur;
@@ -2741,7 +2850,19 @@ export function calc(p){
     if(c.tasiemka==="tak"){
       var tDop=46.43;
       if(wCm<60){warn=(warn?warn+" | ":"")+"Tasiemka niedostępna dla szer. < 60 cm.";c.tasiemka=undefined;}
-      else{total+=tDop;lines.push("Dodatkowa tasiemka +"+tDop.toFixed(2)+" z\u0142");}
+      else{
+        total+=tDop;
+        lines.push("Dodatkowa tasiemka +"+tDop.toFixed(2)+" z\u0142");
+        var tGroup=jzTasWidthGroup(jt);
+        if(c.tasiemkaColor&&tGroup){
+          var tasCol=JZ_TASIEMKA_COLORS.find(function(col){return col.v===c.tasiemkaColor;});
+          if(tasCol&&tasCol[tGroup]===10){
+            var tSur=+(jzBaseZ*10/100).toFixed(2);
+            total+=tSur;
+            lines.push("Dopłata kolor tasiemki "+tasCol.l+" +10% → +"+tSur.toFixed(2)+" z\u0142");
+          }
+        }
+      }
     }
     lines.push(JZ_LABELS[jt]+" "+wCm+"\xd7"+lCm+"cm \u2192 "+res.price+" z\u0142");
     // strefy
