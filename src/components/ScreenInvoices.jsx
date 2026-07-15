@@ -901,6 +901,67 @@ function KsefBadge(p){
   }},c.label);
 }
 
+// ── PODSUMOWANIE BIEŻĄCEGO MIESIĄCA ─────────────────────────────────────────
+// Graficzny skrót dla bieżącego miesiąca (wg issue_date): ile faktur sprzedażowych
+// i kosztowych, kwoty brutto obu stron, bilans oraz zapłacone/oczekujące.
+// Liczone z pełnej listy faktur (p.invoices), pomija draft/cancelled (jeszcze
+// nienadane/nieaktualne kwoty nie powinny zniekształcać podsumowania miesiąca).
+function InvoiceMonthSummary(p){
+  var invoices=p.invoices||[];
+  var curMonth=todayISO().slice(0,7); // "2026-07"
+  var monthInvoices=invoices.filter(function(inv){
+    return (inv.issue_date||"").slice(0,7)===curMonth
+      && inv.status!=="draft" && inv.status!=="cancelled";
+  });
+  var sell=monthInvoices.filter(function(inv){return invDirection(inv)!=="zakup";});
+  var buy =monthInvoices.filter(function(inv){return invDirection(inv)==="zakup";});
+  var sellSum=sell.reduce(function(a,inv){return a+(+inv.total_gross||0);},0);
+  var buySum =buy.reduce(function(a,inv){return a+(+inv.total_gross||0);},0);
+  var paidSum=sell.reduce(function(a,inv){
+    var paid=inv.payment_status==="paid"||(inv.payment_method==="gotówka"&&inv.status==="issued");
+    return a+(paid?(+inv.total_gross||0):0);
+  },0);
+  var unpaidSum=Math.max(0,sellSum-paidSum);
+  var maxSum=Math.max(sellSum,buySum,1);
+  var monthLabel=new Date(curMonth+"-01").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
+
+  function Bar(label,value,color,icon){
+    var pct=Math.max(value>0?2:0,Math.round(value/maxSum*100));
+    return ce("div",{style:{marginBottom:10}},
+      ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)",marginBottom:4}},
+        ce("span",null,icon+" "+label),
+        ce("span",{style:{fontWeight:700,color:"var(--t1)"}},fmtMoney(value))
+      ),
+      ce("div",{style:{height:10,borderRadius:6,background:"var(--bd3)",overflow:"hidden"}},
+        ce("div",{style:{height:"100%",width:pct+"%",borderRadius:6,background:color,transition:"width .3s"}})
+      )
+    );
+  }
+
+  return ce("div",{style:Object.assign({},card,{marginBottom:14})},
+    ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:6}},
+      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"\uD83D\uDCCA Podsumowanie: "+monthLabel),
+      ce("div",{style:{fontSize:11,color:"var(--t3)"}},sell.length+" sprzeda\u017cowych \u00B7 "+buy.length+" kosztowych")
+    ),
+    Bar("Sprzeda\u017c (brutto)",sellSum,"var(--violet)","\uD83D\uDCB0"),
+    Bar("Koszty (brutto)",buySum,"var(--red)","\uD83D\uDCE5"),
+    ce("div",{style:{display:"flex",gap:20,marginTop:10,paddingTop:10,borderTop:"1px solid var(--bd2)",flexWrap:"wrap"}},
+      ce("div",null,
+        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Bilans"),
+        ce("div",{style:{fontSize:16,fontWeight:800,color:(sellSum-buySum)>=0?"var(--grd)":"var(--red)"}},fmtMoney(sellSum-buySum))
+      ),
+      ce("div",null,
+        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Zap\u0142acone"),
+        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--grd)"}},fmtMoney(paidSum))
+      ),
+      ce("div",null,
+        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Oczekuj\u0105ce"),
+        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--amber)"}},fmtMoney(unpaidSum))
+      )
+    )
+  );
+}
+
 // ── LISTA FAKTUR ────────────────────────────────────────────────────────────
 function InvoiceList(p){
   var [search,setSearch]=useState("");
@@ -986,6 +1047,8 @@ function InvoiceList(p){
   };
 
   return ce("div",null,
+    // Graficzne podsumowanie bieżącego miesiąca (liczby + kwoty sprzedaż/koszt)
+    ce(InvoiceMonthSummary,{invoices:p.invoices||[]}),
     // Kafelki Zakup / Sprzedaż
     ce("div",{style:{display:"flex",gap:10,marginBottom:14}},
       ce("div",{
