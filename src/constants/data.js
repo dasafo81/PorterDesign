@@ -2848,11 +2848,8 @@ export function calc(p){
       lines.push("Monta\u017c bezinwazyjny +"+bDop.toFixed(2)+" z\u0142");
     }
     if(c.tasiemka==="tak"){
-      var tDop=46.43;
       if(wCm<60){warn=(warn?warn+" | ":"")+"Tasiemka niedostępna dla szer. < 60 cm.";c.tasiemka=undefined;}
       else{
-        total+=tDop;
-        lines.push("Dodatkowa tasiemka +"+tDop.toFixed(2)+" z\u0142");
         var tGroup=jzTasWidthGroup(jt);
         if(c.tasiemkaColor&&tGroup){
           var tasCol=JZ_TASIEMKA_COLORS.find(function(col){return col.v===c.tasiemkaColor;});
