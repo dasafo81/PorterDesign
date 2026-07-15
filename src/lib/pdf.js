@@ -169,12 +169,27 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
           subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");
         }
         var key=p.type==="inny"?(p.innyNazwa||"Inne"):(p.type==="zaluzja"?(subtypeLabel+"__"+p.id):(subtypeLabel||p.type));
-        if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
+        if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[],fabrics:[],notes:[]};typeOrder.push(key);}
         typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
         if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
+        // Tkanina + kolor (zasłony, firany, rolety rzymskie — w tym Duo: warstwa 1 i 2)
+        if(p.type==="zaslona"||p.type==="firana"||p.type==="roleta"){
+          var pc0=p.c||{};
+          var fabDesc=p.fabName||p.fabManName||null;
+          if(fabDesc){
+            var fi=fabDesc+(pc0.kolor?" \u00b7 "+pc0.kolor:"");
+            if(typeData[key].fabrics.indexOf(fi)<0)typeData[key].fabrics.push(fi);
+          }
+          if(pc0.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
+            var fi2=(p.fab2Name||p.fab2ManName)+(pc0.kolor2?" \u00b7 "+pc0.kolor2:"");
+            if(typeData[key].fabrics.indexOf(fi2)<0)typeData[key].fabrics.push(fi2);
+          }
+        }
+        if(p.note){if(typeData[key].notes.indexOf(p.note)<0)typeData[key].notes.push(p.note);}
         total+=t;
       });
     });
+    function esc(s){return String(s).replace(/</g,"&lt;");}
     var rows="";var items=[];
     typeOrder.forEach(function(key){
       var d=typeData[key];
@@ -183,7 +198,9 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var isKpl=(d.type==="zaslona"||d.type==="firana");
       var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek");
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
-      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
+      var fabExtra=d.fabrics.length>0?"<br><span style=\"font-size:9px;color:#888;\">"+esc(d.fabrics.join(", "))+"</span>":"";
+      var noteExtra=d.notes.length>0?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+esc(d.notes.join("; "))+"</span>":"";
+      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+fabExtra+noteExtra;
       items.push({label:labelHTML,total:d.total});
       rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
@@ -323,11 +340,26 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       else if(p.type==="prestige_square")subtypeLabel="Karnisz Prestige SQUARE";
       else if(p.type==="karnisz_dek")subtypeLabel="Karnisz dekoracyjny";
       var key=p.type==="inny"?(p.innyNazwa||"Inne"):(p.type==="zaluzja"?(subtypeLabel+"__"+p.id):(subtypeLabel||p.type));
-      if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
+      if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[],fabrics:[],notes:[]};typeOrder.push(key);}
       typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
       if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
+      // Tkanina + kolor (zasłony, firany, rolety rzymskie — w tym Duo: warstwa 1 i 2)
+      if(p.type==="zaslona"||p.type==="firana"||p.type==="roleta"){
+        var pc0=p.c||{};
+        var fabDesc=p.fabName||p.fabManName||null;
+        if(fabDesc){
+          var fi=fabDesc+(pc0.kolor?" \u00b7 "+pc0.kolor:"");
+          if(typeData[key].fabrics.indexOf(fi)<0)typeData[key].fabrics.push(fi);
+        }
+        if(pc0.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
+          var fi2=(p.fab2Name||p.fab2ManName)+(pc0.kolor2?" \u00b7 "+pc0.kolor2:"");
+          if(typeData[key].fabrics.indexOf(fi2)<0)typeData[key].fabrics.push(fi2);
+        }
+      }
+      if(p.note){if(typeData[key].notes.indexOf(p.note)<0)typeData[key].notes.push(p.note);}
       total+=t;
     });});
+    function esc(s){return String(s).replace(/</g,"&lt;");}
     var rows="";var items=[];
     typeOrder.forEach(function(key){var d=typeData[key];
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
@@ -335,7 +367,9 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       var isKpl=d.type==="zaslona"||d.type==="firana";
       var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek";
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
-      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
+      var fabExtra=d.fabrics.length>0?"<br><span style=\"font-size:9px;color:#888;\">"+esc(d.fabrics.join(", "))+"</span>":"";
+      var noteExtra=d.notes.length>0?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+esc(d.notes.join("; "))+"</span>":"";
+      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+fabExtra+noteExtra;
       items.push({label:labelHTML,total:d.total});
       rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td>"
            +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
