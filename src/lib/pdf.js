@@ -6,7 +6,7 @@ import {
   BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES,
   SELLER, buildFabricRows, buildSewingRows, calc,
   getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
-  openPDFWindow, pdfStyles, roundTo10
+  openPDFWindow, pdfStyles, productDetailText, roundTo10
 } from '../constants/data.js';
 
 export function generateFabricOrderPDF(client,opts){
@@ -172,19 +172,9 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
         if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[],fabrics:[],notes:[]};typeOrder.push(key);}
         typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
         if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
-        // Tkanina + kolor (zasłony, firany, rolety rzymskie — w tym Duo: warstwa 1 i 2)
-        if(p.type==="zaslona"||p.type==="firana"||p.type==="roleta"){
-          var pc0=p.c||{};
-          var fabDesc=p.fabName||p.fabManName||null;
-          if(fabDesc){
-            var fi=fabDesc+(pc0.kolor?" \u00b7 "+pc0.kolor:"");
-            if(typeData[key].fabrics.indexOf(fi)<0)typeData[key].fabrics.push(fi);
-          }
-          if(pc0.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
-            var fi2=(p.fab2Name||p.fab2ManName)+(pc0.kolor2?" \u00b7 "+pc0.kolor2:"");
-            if(typeData[key].fabrics.indexOf(fi2)<0)typeData[key].fabrics.push(fi2);
-          }
-        }
+        // Tkanina, kolor, kolor lameli, kolor karnisza — szczegóły produktu
+        var detail=productDetailText(p);
+        if(detail&&typeData[key].fabrics.indexOf(detail)<0)typeData[key].fabrics.push(detail);
         if(p.note){if(typeData[key].notes.indexOf(p.note)<0)typeData[key].notes.push(p.note);}
         total+=t;
       });
@@ -343,19 +333,9 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[],fabrics:[],notes:[]};typeOrder.push(key);}
       typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
       if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
-      // Tkanina + kolor (zasłony, firany, rolety rzymskie — w tym Duo: warstwa 1 i 2)
-      if(p.type==="zaslona"||p.type==="firana"||p.type==="roleta"){
-        var pc0=p.c||{};
-        var fabDesc=p.fabName||p.fabManName||null;
-        if(fabDesc){
-          var fi=fabDesc+(pc0.kolor?" \u00b7 "+pc0.kolor:"");
-          if(typeData[key].fabrics.indexOf(fi)<0)typeData[key].fabrics.push(fi);
-        }
-        if(pc0.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
-          var fi2=(p.fab2Name||p.fab2ManName)+(pc0.kolor2?" \u00b7 "+pc0.kolor2:"");
-          if(typeData[key].fabrics.indexOf(fi2)<0)typeData[key].fabrics.push(fi2);
-        }
-      }
+      // Tkanina, kolor, kolor lameli, kolor karnisza — szczegóły produktu
+      var detail=productDetailText(p);
+      if(detail&&typeData[key].fabrics.indexOf(detail)<0)typeData[key].fabrics.push(detail);
       if(p.note){if(typeData[key].notes.indexOf(p.note)<0)typeData[key].notes.push(p.note);}
       total+=t;
     });});
