@@ -2992,6 +2992,7 @@ export function getPDFOfferNumber(client){
 
 export function buildOfferRows(client){
   // Returns [{lp, name, qty, unit, cenaJedn, total}]
+  function escOffer(s){return String(s).replace(/</g,"&lt;");}
   var rows=[];var lp=1;
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
@@ -3001,7 +3002,15 @@ export function buildOfferRows(client){
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
-        var desc=prodLabel+(p.fabName?" \u00b7 "+p.fabName:"")+" — "+r.name+" / "+w.name;
+        var pc=p.c||{};
+        // Tkanina + kolor (zasłony, firany, rolety rzymskie — w tym Duo: warstwa 1 i 2)
+        var fabDesc=(p.type==="zaslona"||p.type==="firana"||p.type==="roleta")?(p.fabName||p.fabManName||null):null;
+        var fabColorPart=fabDesc?(" \u00b7 "+fabDesc+(pc.kolor?" ("+pc.kolor+")":"")):"";
+        if(fabDesc&&pc.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
+          fabColorPart+=" / "+(p.fab2Name||p.fab2ManName)+(pc.kolor2?" ("+pc.kolor2+")":"");
+        }
+        var desc=prodLabel+fabColorPart+" — "+r.name+" / "+w.name
+          +(p.note?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+escOffer(p.note)+"</span>":"");
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
         rows.push({lp:lp++,name:desc,qty:1,unit:isKurtain?"kpl.":"szt.",cenaJedn:total,total:total});
       });
