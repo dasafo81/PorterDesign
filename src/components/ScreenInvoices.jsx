@@ -1444,6 +1444,9 @@ function InvoiceDetailView(p){
   var [mailBusy,setMailBusy]=useState(false);
   var [mailMsg,setMailMsg]=useState(null);
   var [mailErr,setMailErr]=useState(null);
+  var [mailModalOpen,setMailModalOpen]=useState(false);
+  var [mailSubject,setMailSubject]=useState("");
+  var [mailBodyText,setMailBodyText]=useState("");
   var [currentInv,setCurrentInv]=useState(p.invoice||{});
   // Oficjalny URL weryfikacji KSeF (Kod QR I). Liczony async z SHA-256 XML-a przy zmianie
   // faktury/statusu. Gdy faktura sie nie kwalifikuje (nie confirmed, brak xml, zakupowa/EKO/proforma)
@@ -1503,6 +1506,17 @@ function InvoiceDetailView(p){
     setTimeout(function(){w.print();},600);
   }
 
+  // Otwiera okno z podglądem/edycją treści maila przed wysyłką.
+  function openMailModal(){
+    if(!currentInv.buyer_email) return;
+    setMailErr(null); setMailMsg(null);
+    setMailSubject("Faktura "+(currentInv.number||""));
+    setMailBodyText("Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
+      +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
+      +".\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design");
+    setMailModalOpen(true);
+  }
+
   // Wysyła fakturę mailem bezpośrednio z aplikacji, przez podłączoną skrzynkę Outlook (Microsoft Graph).
   // Wymaga wcześniejszego zalogowania w zakładce Poczta — tu tylko odświeżamy token w tle (silent).
   function sendInvoiceEmail(){
@@ -1518,12 +1532,9 @@ function InvoiceDetailView(p){
       var html=buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl);
       var b64=btoa(unescape(encodeURIComponent(html)));
       var fileName="Faktura-"+(currentInv.number||"dokument").replace(/[^\w-]+/g,"_")+".html";
-      var bodyText="Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
-        +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
-        +".\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design";
       var message={
-        subject:"Faktura "+(currentInv.number||""),
-        body:{contentType:"Text",content:bodyText},
+        subject:mailSubject||("Faktura "+(currentInv.number||"")),
+        body:{contentType:"Text",content:mailBodyText||""},
         toRecipients:[{emailAddress:{address:currentInv.buyer_email}}],
         attachments:[{
           "@odata.type":"#microsoft.graph.fileAttachment",
@@ -1543,6 +1554,7 @@ function InvoiceDetailView(p){
           throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ki ("+r.status+")");
         });
       }
+      setMailModalOpen(false);
       setMailMsg("\u2705 Faktura wys\u0142ana na "+currentInv.buyer_email);
     }).catch(function(e){
       if(e&&e.code==="MS_NO_ACCOUNT") setMailErr(e.message);
@@ -1631,7 +1643,7 @@ function InvoiceDetailView(p){
             background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:13,fontWeight:500}},
           "\uD83D\uDCE7 Otw\u00f3rz w poczcie"),
         currentInv.buyer_email&&ce("button",{
-          onClick:sendInvoiceEmail,
+          onClick:openMailModal,
           disabled:mailBusy,
           style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
             padding:"14px 18px",borderRadius:10,border:"1px solid var(--violet)",
@@ -1669,6 +1681,40 @@ function InvoiceDetailView(p){
         borderRadius:8,fontSize:12,color:"var(--gr)"}},ksefMsg),
       ksefErr&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"var(--red-l)",
         borderRadius:8,fontSize:12,color:"var(--red)"}},"\u26A0\uFE0F "+ksefErr)
+    ),
+    // Modal: podgląd / edycja treści maila przed wysyłką faktury
+    mailModalOpen&&ce("div",{
+      onClick:function(){ if(!mailBusy) setMailModalOpen(false); },
+      style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:200,
+        background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}
+    },
+      ce("div",{
+        onClick:function(e){ e.stopPropagation(); },
+        style:{background:"var(--bg)",borderRadius:16,padding:22,width:"100%",maxWidth:520,
+          maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}
+      },
+        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:4}},
+          "\uD83D\uDCE4 Wy\u015blij faktur\u0119 mailem"),
+        ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16}},
+          "Do: "+currentInv.buyer_email),
+        ce("label",{style:label},"Temat"),
+        ce("input",{value:mailSubject,onChange:function(e){setMailSubject(e.target.value);},
+          style:Object.assign({},inp,{marginBottom:14})}),
+        ce("label",{style:label},"Tre\u015b\u0107"),
+        ce("textarea",{value:mailBodyText,onChange:function(e){setMailBodyText(e.target.value);},
+          style:Object.assign({},inp,{minHeight:160,resize:"vertical",marginBottom:6})}),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:16}},
+          "Za\u0142\u0105cznik: podgl\u0105d faktury (HTML \u2014 odbiorca zapisze jako PDF przez Ctrl+P)."),
+        mailErr&&ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--red-l)",
+          borderRadius:8,fontSize:12,color:"var(--red)"}},"\u26A0\uFE0F "+mailErr),
+        ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+          ce("button",{onClick:function(){setMailModalOpen(false);},disabled:mailBusy,
+            style:btnSecondary},"Anuluj"),
+          ce("button",{onClick:sendInvoiceEmail,disabled:mailBusy||!mailSubject.trim(),
+            style:Object.assign({},btnPrimary,mailBusy?{opacity:0.6,cursor:"not-allowed"}:{})},
+            mailBusy?"\u23F3 Wysy\u0142am...":"\uD83D\uDCE4 Wy\u015blij")
+        )
+      )
     )
   );
 }
