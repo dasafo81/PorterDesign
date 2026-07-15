@@ -926,7 +926,6 @@ function InvoiceMonthSummary(p){
   var invoices=p.invoices||[];
   var [monthOffset,setMonthOffset]=useState(0);   // 0 = bieżący miesiąc, -1 poprzedni, itd.
   var [viewMode,setViewMode]=useState("kierunek"); // kierunek | typ
-  var [sortBy,setSortBy]=useState("kwota");        // kwota | liczba — tylko dla widoku "typ"
 
   var curMonth=monthKeyFromOffset(monthOffset);
   var monthInvoices=invoices.filter(function(inv){
@@ -954,7 +953,7 @@ function InvoiceMonthSummary(p){
     typeMap[key].sum+=(+inv.total_gross||0);
   });
   var typeList=Object.values(typeMap).sort(function(a,b){
-    return sortBy==="liczba" ? (b.count-a.count) : (b.sum-a.sum);
+    return b.sum-a.sum; // zawsze wg kwoty malejąco — przy 3-4 pozycjach osobne sortowanie zbędne
   });
   var maxTypeSum=Math.max.apply(null,typeList.map(function(t){return t.sum;}).concat([1]));
 
@@ -992,15 +991,8 @@ function InvoiceMonthSummary(p){
           style:{border:"none",background:"none",color:"var(--violet)",fontSize:11,cursor:"pointer",fontWeight:600}},"dzi\u015b"):null
       ),
       ce("div",{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
-        ce("button",{onClick:function(){setViewMode("kierunek");},style:toggleBtn(viewMode==="kierunek")},"Kierunek"),
-        ce("button",{onClick:function(){setViewMode("typ");},style:toggleBtn(viewMode==="typ")},"Wg typu dokumentu"),
-        viewMode==="typ"?ce("select",{
-          value:sortBy,onChange:function(e){setSortBy(e.target.value);},
-          style:{fontSize:11,padding:"5px 8px",borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)"}
-        },
-          ce("option",{value:"kwota"},"Sortuj: kwota"),
-          ce("option",{value:"liczba"},"Sortuj: liczba faktur")
-        ):null
+        ce("button",{onClick:function(){setViewMode("kierunek");},style:toggleBtn(viewMode==="kierunek")},"Sprzeda\u017c / Koszty"),
+        ce("button",{onClick:function(){setViewMode("typ");},style:toggleBtn(viewMode==="typ")},"Wg typu dokumentu")
       )
     ),
 
