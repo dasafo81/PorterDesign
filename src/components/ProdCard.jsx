@@ -801,7 +801,7 @@ export function ProdCard(p){
       ce("div",{style:{marginTop:8}},
         ce(Chips,{items:[
           ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}}),
-          (par.wCm&&par.wCm>=60)?ce(Chip,{key:"ts",label:"Dodatkowa tasiemka +46,43 z\u0142",active:c.tasiemka==="tak",onClick:function(){tc("tasiemka");}}):null
+          (par.wCm&&par.wCm>=60)?ce(Chip,{key:"ts",label:"Tasiemka",active:c.tasiemka==="tak",onClick:function(){tc("tasiemka");}}):null
         ]})
       ),
       (function(){
