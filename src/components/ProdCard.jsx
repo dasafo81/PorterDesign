@@ -772,7 +772,7 @@ export function ProdCard(p){
         })})
       ),
       (function(){
-        var jzColorList=curMat==="al"?JZ_AL50_COLORS:curJt==="ba50"?JZ_BA50_COLORS:curJt==="bs50"?JZ_BS50_COLORS:null;
+        var jzColorList=curMat==="al"?JZ_AL50_COLORS:curMat==="ba"?JZ_BA50_COLORS:curMat==="bs"?JZ_BS50_COLORS:null;
         if(!jzColorList)return null;
         var jzColorTitle=curMat==="al"?"KOLOR (SUNSET)":"KOLOR";
         return ce("div",{style:{marginBottom:10}},
