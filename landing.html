@@ -49,7 +49,12 @@
   .badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 100px; background: var(--wsp-bg); border: 1px solid var(--wsp-light); font-size: 12px; color: var(--wsp-dark); font-weight: 500; }
   .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wsp); animation: pulse 2s infinite; }
   .hero-visual { position: relative; z-index: 1; opacity: 0; animation: fadeUp .9s .5s forwards; }
-  .mockup-wrap { max-width: 100%; }
+  .hero-stack { position: relative; max-width: 380px; margin: 0 auto; padding: 34px 0 0 34px; }
+  .hero-stack .pricing-mockup { width: 100%; }
+  .hero-stack .pm-body { padding: 14px 16px; }
+  .hero-stack .stack-back { position: absolute; top: 0; left: 0; z-index: 1; transform: rotate(-7deg); opacity: 0.85; filter: saturate(0.85); box-shadow: 0 20px 50px rgba(20,15,50,0.25); }
+  .hero-stack .stack-front { position: relative; z-index: 2; transform: rotate(2deg); box-shadow: 0 40px 90px rgba(20,15,50,0.35); }
+  @media (max-width: 640px) { .hero-stack { max-width: 300px; padding: 26px 0 0 26px; } }
   .hero-visual .trust-line { margin: 1.1rem 0 0; max-width: 100%; }
   @media (max-width: 980px) {
     .hero-grid { grid-template-columns: 1fr; text-align: center; }
@@ -262,39 +267,51 @@
     </div>
 
     <div class="hero-visual">
-      <div class="mockup-wrap">
-        <div class="app-frame">
-          <div class="app-topnav">
-            <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
-            <div class="app-tab active"><span class="ic">📈</span>CRM</div>
-            <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
-            <div class="app-tab"><span class="ic">✉️</span>Mail</div>
-            <div class="app-tab"><span class="ic">✅</span>Zadania</div>
-            <div class="app-tab"><span class="ic">💰</span>Faktury</div>
-            <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
+      <div class="hero-stack">
+        <div class="pricing-mockup stack-back">
+          <div class="pm-bar">
+            <span>Karnisz elektryczny</span>
+            <span class="pm-bar-ctrl">— △ ▽ ✕</span>
           </div>
-          <div class="app-panel">
-            <div class="kanban-mini">
-              <div class="kanban-col">
-                <div class="kanban-col-title"><span class="kdot" style="background:#6f5cf0"></span>Zapytanie · 3</div>
-                <div class="kanban-card" style="border-left-color:#6f5cf0">K. Sobolewska<span>2 450 zł</span></div>
-                <div class="kanban-card" style="border-left-color:#6f5cf0">Dom &amp; Styl<span>18 900 zł</span></div>
+          <div class="pm-body">
+            <div class="pm-label">Typ produktu</div>
+            <div class="pm-type-row">
+              <span class="pm-type">Zasłona</span>
+              <span class="pm-type">Roleta duo</span>
+              <span class="pm-type">Żaluzje</span>
+              <span class="pm-type active">Karnisz elektr.</span>
+            </div>
+            <div class="pm-section"><div class="pm-section-num">1</div><div class="pm-section-title">Silnik i pilot</div></div>
+            <div class="pm-fabric">
+              <div>
+                <div class="pm-fabric-name">Somfy Glydea</div>
+                <div class="pm-fabric-sub">+ pilot 1-kanałowy</div>
               </div>
-              <div class="kanban-col">
-                <div class="kanban-col-title"><span class="kdot" style="background:#4a7fe0"></span>Wycena · 2</div>
-                <div class="kanban-card" style="border-left-color:#4a7fe0">M. Adamczyk<span>7 640 zł</span></div>
-                <div class="kanban-card" style="border-left-color:#4a7fe0">R. Górecka<span>11 200 zł</span></div>
+              <div class="pm-fabric-price">2 268 zł</div>
+            </div>
+          </div>
+        </div>
+        <div class="pricing-mockup stack-front">
+          <div class="pm-bar">
+            <span>Zasłona</span>
+            <span class="pm-bar-ctrl">— △ ▽ ✕</span>
+          </div>
+          <div class="pm-body">
+            <div class="pm-label">Wymiary</div>
+            <div class="pm-inputs">
+              <div class="pm-input"><div class="pm-input-label">Szerokość</div><div class="pm-input-value"><span class="u">cm</span>200</div></div>
+              <div class="pm-input"><div class="pm-input-label">Wysokość</div><div class="pm-input-value"><span class="u">cm</span>270</div></div>
+            </div>
+            <div class="pm-fabric">
+              <div>
+                <div class="pm-fabric-name">Aisha · Ivory</div>
+                <div class="pm-fabric-sub">Margo Textil · 290 cm</div>
               </div>
-              <div class="kanban-col">
-                <div class="kanban-col-title"><span class="kdot" style="background:#3fae6a"></span>Realizacja · 2</div>
-                <div class="kanban-card" style="border-left-color:#3fae6a">P. Kamińska<span>9 380 zł</span></div>
-                <div class="kanban-card" style="border-left-color:#3fae6a">Studio Bella<span>14 950 zł</span></div>
-              </div>
-              <div class="kanban-col">
-                <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
-                <div class="kanban-card" style="border-left-color:#e8703a">J. Nowicka<span>5 120 zł</span></div>
-                <div class="kanban-card" style="border-left-color:#e8703a">T. Wysocki<span>21 300 zł</span></div>
-              </div>
+              <div class="pm-fabric-price">180 zł/mb</div>
+            </div>
+            <div class="pm-result">
+              <div class="pm-result-label">Cena brutto</div>
+              <div class="pm-result-value"><b>2 340 zł</b></div>
             </div>
           </div>
         </div>
@@ -333,7 +350,7 @@
     <div class="pricing-showcase">
       <div class="pricing-products">
         <h3>9 rodzajów produktów.<br>Pełna logika wyceniania każdego.</h3>
-        <p>Każdy produkt ma własną logikę liczenia — zasłony i firany po metrze bieżącym tkaniny, żaluzje i rolety po powierzchni okna, karnisze elektryczne z doborem silnika, pilota i centralki. Do wyboru katalog 841 tkanin od 13 dostawców (od 30 do 480 zł/mb) i ponad 1200 wzorów tapet — bez przepisywania cenników do Excela.</p>
+        <p>Zasłony szyte tradycyjnie i na pasach, firany, rolety zwykłe i duo, żaluzje w kilku systemach — każdy produkt ma własną logikę liczenia. Dowolne wymiary, a system sam ostrzega, gdy przekraczasz limit dla wybranego koloru czy tkaniny. Do tego karnisze elektryczne z doborem silnika, pilota i akcesoriów, szeroki katalog tkanin i tapet — i wiele więcej.</p>
         <div class="product-pills">
           <span class="product-pill">Zasłona</span>
           <span class="product-pill">Firana</span>
