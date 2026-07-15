@@ -49,17 +49,31 @@
   .badge-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 100px; background: var(--wsp-bg); border: 1px solid var(--wsp-light); font-size: 12px; color: var(--wsp-dark); font-weight: 500; }
   .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--wsp); animation: pulse 2s infinite; }
   .hero-visual { position: relative; z-index: 1; opacity: 0; animation: fadeUp .9s .5s forwards; }
-  .hero-stack { position: relative; max-width: 400px; height: 430px; margin: 0 auto; }
-  .hero-stack .pricing-mockup { position: absolute; width: 250px; }
-  .hero-stack .pm-body { padding: 13px 15px; }
-  .hero-stack .pm-type { font-size: 9.5px; padding: 5px 9px; }
-  .hero-stack .card-1 { top: 0; left: 0; z-index: 1; transform: rotate(-11deg); opacity: 0.72; filter: saturate(0.8); box-shadow: 0 16px 40px rgba(20,15,50,0.18); }
-  .hero-stack .card-2 { top: 62px; left: 66px; z-index: 2; transform: rotate(-2deg); opacity: 0.94; box-shadow: 0 26px 60px rgba(20,15,50,0.26); }
-  .hero-stack .card-3 { top: 124px; left: 132px; z-index: 3; transform: rotate(6deg); box-shadow: 0 40px 90px rgba(20,15,50,0.4); }
+  .hero-stack { position: relative; max-width: 480px; height: 560px; margin: 0 auto; }
+  .hero-stack .pricing-mockup { position: absolute; width: 300px; }
+  .hero-stack .pm-body { padding: 15px 17px; }
+  .hero-stack .pm-type { font-size: 10px; padding: 5px 9px; }
+  .hero-stack .card-1 { top: 0; left: 0; z-index: 1; transform: rotate(-5deg); opacity: 0.9; box-shadow: 0 20px 50px rgba(20,15,50,0.2); }
+  .hero-stack .card-2 { top: 168px; left: 40px; z-index: 2; transform: rotate(1deg); opacity: 0.96; box-shadow: 0 26px 60px rgba(20,15,50,0.26); }
+  .hero-stack .card-3 { top: 340px; left: 80px; z-index: 3; transform: rotate(4deg); box-shadow: 0 40px 90px rgba(20,15,50,0.4); }
   .pm-swatch-row { display: flex; gap: 8px; }
   .pm-swatch { width: 32px; height: 32px; border-radius: 8px; border: 2px solid transparent; }
   .pm-swatch.active { border-color: #24244d; }
-  @media (max-width: 640px) { .hero-stack { max-width: 300px; height: 400px; } .hero-stack .pricing-mockup { width: 220px; } .hero-stack .card-2 { top: 56px; left: 46px; } .hero-stack .card-3 { top: 112px; left: 92px; } }
+  .pm-fold-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; }
+  .pm-fold-thumb { border-radius: 7px; overflow: hidden; border: 2px solid transparent; background: white; }
+  .pm-fold-thumb.active { border-color: #24244d; }
+  .pm-fold-img { height: 34px; }
+  .pm-fold-img.fold-a, .pm-fold-img.fold-1 { background: repeating-linear-gradient(90deg, #d9cba8 0 5px, #c2b18a 5px 10px); }
+  .pm-fold-img.fold-2 { background: repeating-linear-gradient(90deg, #d9cba8 0 4px, #b39d72 4px 6px, #c2b18a 6px 10px); }
+  .pm-fold-img.fold-3 { background: repeating-linear-gradient(90deg, #d9cba8 0 10px, #a68c60 10px 12px); }
+  .pm-fold-img.fold-w { background: repeating-radial-gradient(ellipse at 0 120%, #d9cba8 0 6px, #c2b18a 6px 12px); }
+  .pm-fold-img.fold-t { background: repeating-linear-gradient(90deg, #d9cba8 0 3px, #b39d72 3px 5px); }
+  .pm-fold-label { font-size: 9px; text-align: center; padding: 4px 2px; color: #24244d; font-weight: 600; }
+  .pm-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 11px; color: #4a4670; }
+  .pm-check input { width: 15px; height: 15px; }
+  .pm-select { background: white; border: 1px solid rgba(60,45,120,0.15); border-radius: 8px; padding: 9px 11px; font-size: 11.5px; color: #6b6690; display: flex; justify-content: space-between; align-items: center; }
+  .pm-badge { display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 100px; background: rgba(63,174,106,0.12); border: 1px solid rgba(63,174,106,0.3); color: #1f7a48; font-size: 10.5px; font-weight: 700; }
+  @media (max-width: 640px) { .hero-stack { max-width: 320px; height: 620px; } .hero-stack .pricing-mockup { width: 250px; } .hero-stack .card-1 { top: 0; left: 0; } .hero-stack .card-2 { top: 200px; left: 20px; } .hero-stack .card-3 { top: 400px; left: 40px; } }
   .hero-visual .trust-line { margin: 1.1rem 0 0; max-width: 100%; }
   @media (max-width: 980px) {
     .hero-grid { grid-template-columns: 1fr; text-align: center; }
@@ -280,16 +294,16 @@
           </div>
           <div class="pm-body">
             <div class="pm-label">Wybierz model zasłony</div>
-            <div class="pm-type-row">
-              <span class="pm-type active">Fałda</span>
-              <span class="pm-type">Zasłona Wave</span>
-              <span class="pm-type">Taśma marszcząca</span>
+            <div class="pm-fold-grid">
+              <div class="pm-fold-thumb active"><div class="pm-fold-img fold-a"></div><div class="pm-fold-label">Fałda</div></div>
+              <div class="pm-fold-thumb"><div class="pm-fold-img fold-w"></div><div class="pm-fold-label">Wave</div></div>
+              <div class="pm-fold-thumb"><div class="pm-fold-img fold-t"></div><div class="pm-fold-label">Taśma</div></div>
             </div>
             <div class="pm-label" style="margin-top:12px">Wybierz rodzaj fałdy</div>
-            <div class="pm-type-row">
-              <span class="pm-type">Flex Pojedynczy</span>
-              <span class="pm-type active">Flex Podwójny</span>
-              <span class="pm-type">Studio</span>
+            <div class="pm-fold-grid">
+              <div class="pm-fold-thumb"><div class="pm-fold-img fold-1"></div><div class="pm-fold-label">Flex Poj.</div></div>
+              <div class="pm-fold-thumb active"><div class="pm-fold-img fold-2"></div><div class="pm-fold-label">Flex Podw.</div></div>
+              <div class="pm-fold-thumb"><div class="pm-fold-img fold-3"></div><div class="pm-fold-label">Studio</div></div>
             </div>
           </div>
         </div>
@@ -304,36 +318,33 @@
               <span class="pm-type">Manual</span>
               <span class="pm-type active">Półautomatyczny</span>
               <span class="pm-type">Elektryk</span>
+              <span class="pm-type">Bez mech.</span>
             </div>
-            <div class="pm-label" style="margin-top:12px">Kolor łańcuszka</div>
+            <label class="pm-check"><input type="checkbox" disabled=""/> + Boczki / maskownice (+50 zł)</label>
+            <div class="pm-label" style="margin-top:10px">Kolor łańcuszka</div>
             <div class="pm-swatch-row">
               <div class="pm-swatch active" style="background:linear-gradient(135deg,#f2efe8,#d8d4ca)"></div>
               <div class="pm-swatch" style="background:linear-gradient(135deg,#b9b9bd,#84848a)"></div>
             </div>
+            <div class="pm-label" style="margin-top:10px">Strona sterowania</div>
+            <div class="pm-type-row"><span class="pm-type active">Lewo</span><span class="pm-type">Prawo</span></div>
           </div>
         </div>
         <div class="pricing-mockup card-3">
           <div class="pm-bar">
-            <span>Zasłona</span>
+            <span>Karnisz elektryczny</span>
             <span class="pm-bar-ctrl">— △ ▽ ✕</span>
           </div>
           <div class="pm-body">
-            <div class="pm-label">Wymiary</div>
-            <div class="pm-inputs">
-              <div class="pm-input"><div class="pm-input-label">Szerokość</div><div class="pm-input-value"><span class="u">cm</span>200</div></div>
-              <div class="pm-input"><div class="pm-input-label">Wysokość</div><div class="pm-input-value"><span class="u">cm</span>270</div></div>
-            </div>
-            <div class="pm-fabric">
-              <div>
-                <div class="pm-fabric-name">Aisha · Ivory</div>
-                <div class="pm-fabric-sub">Margo Textil · 290 cm</div>
-              </div>
-              <div class="pm-fabric-price">180 zł/mb</div>
-            </div>
-            <div class="pm-result">
-              <div class="pm-result-label">Cena brutto</div>
-              <div class="pm-result-value"><b>2 340 zł</b></div>
-            </div>
+            <div class="pm-label">Kolor</div>
+            <div class="pm-select">Wybierz kolor... <span>⌄</span></div>
+            <div class="pm-badge">✓ Montaż bezinwazyjny</div>
+            <div class="pm-label" style="margin-top:10px">Sterowanie</div>
+            <div class="pm-type-row"><span class="pm-type">🔧 Manual</span><span class="pm-type active">⚡ Automatyka</span></div>
+            <div class="pm-label" style="margin-top:10px">Silnik</div>
+            <div class="pm-select">-- wybierz silnik -- <span>⌄</span></div>
+            <div class="pm-label" style="margin-top:10px">Pilot / akcesoria</div>
+            <div class="pm-select">-- brak / wybierz pilot -- <span>⌄</span></div>
           </div>
         </div>
       </div>
