@@ -2718,7 +2718,7 @@ export function calc(p){
     var wCm=par.wCm||0,lCm=par.lCm||0;
     var jt=c.jt||"al25";
     if(!wCm||!lCm)return{total:0,lines:[],warn:null};
-    var jzColorList=jt.indexOf("al")===0?JZ_AL50_COLORS:jt==="ba50"?JZ_BA50_COLORS:jt==="bs50"?JZ_BS50_COLORS:null;
+    var jzColorList=jt.indexOf("al")===0?JZ_AL50_COLORS:jt.indexOf("ba")===0?JZ_BA50_COLORS:jt.indexOf("bs")===0?JZ_BS50_COLORS:null;
     var al50Color=null;
     if(jzColorList&&c.jzColor){
       al50Color=jzColorList.find(function(col){return col.v===c.jzColor;});
