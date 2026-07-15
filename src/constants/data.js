@@ -2990,6 +2990,40 @@ export function getPDFOfferNumber(client){
   return "OF-"+y+m+d+"-"+slug;
 }
 
+// Zwraca czytelny opis szczegółów produktu (tkanina/kolor/kolor lameli/kolor karnisza)
+// używany we wszystkich PDF-ach ofertowych (Wycena PDF, Wycena Uproszczona, Oferta).
+export function productDetailText(p){
+  var pc=p.c||{};
+  var parts=[];
+  // Tkanina + kolor: zasłony, firany, rolety rzymskie (w tym Duo — obie warstwy)
+  if(p.type==="zaslona"||p.type==="firana"||p.type==="roleta"){
+    var fab=p.fabName||p.fabManName||null;
+    if(fab)parts.push(fab+(pc.kolor?" ("+pc.kolor+")":""));
+    if(pc.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
+      parts.push((p.fab2Name||p.fab2ManName)+(pc.kolor2?" ("+pc.kolor2+")":""));
+    }
+  }
+  // Żaluzje: kolor lameli
+  if(p.type==="zaluzja"){
+    var jt=pc.jt||"al25";
+    var list=jt.indexOf("al")===0?JZ_AL50_COLORS:jt==="ba50"?JZ_BA50_COLORS:jt==="bs50"?JZ_BS50_COLORS:null;
+    if(list&&pc.jzColor){
+      var cObj=list.find(function(c){return c.v===pc.jzColor;});
+      if(cObj)parts.push("kolor lameli: "+cObj.l);
+    }
+  }
+  // Karnisz dekoracyjny: kolor
+  if(p.type==="karnisz_dek"&&p.kdKolor){
+    var kd=KD_KOLORY.find(function(k){return k.id===p.kdKolor;});
+    if(kd)parts.push("kolor: "+kd.label);
+  }
+  // Roleta rzymska: kolor łańcuszka (jeśli metalowy)
+  if(p.type==="roleta"&&pc.lancuszek==="metalowy"&&pc.kolorLancuszka){
+    parts.push("\u0142a\u0144cuszek: "+pc.kolorLancuszka);
+  }
+  return parts.join(" / ");
+}
+
 export function buildOfferRows(client){
   // Returns [{lp, name, qty, unit, cenaJedn, total}]
   function escOffer(s){return String(s).replace(/</g,"&lt;");}
@@ -3002,14 +3036,8 @@ export function buildOfferRows(client){
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
-        var pc=p.c||{};
-        // Tkanina + kolor (zasłony, firany, rolety rzymskie — w tym Duo: warstwa 1 i 2)
-        var fabDesc=(p.type==="zaslona"||p.type==="firana"||p.type==="roleta")?(p.fabName||p.fabManName||null):null;
-        var fabColorPart=fabDesc?(" \u00b7 "+fabDesc+(pc.kolor?" ("+pc.kolor+")":"")):"";
-        if(fabDesc&&pc.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
-          fabColorPart+=" / "+(p.fab2Name||p.fab2ManName)+(pc.kolor2?" ("+pc.kolor2+")":"");
-        }
-        var desc=prodLabel+fabColorPart+" — "+r.name+" / "+w.name
+        var detail=productDetailText(p);
+        var desc=prodLabel+(detail?" \u00b7 "+detail:"")+" — "+r.name+" / "+w.name
           +(p.note?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+escOffer(p.note)+"</span>":"");
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
         rows.push({lp:lp++,name:desc,qty:1,unit:isKurtain?"kpl.":"szt.",cenaJedn:total,total:total});
