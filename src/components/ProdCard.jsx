@@ -10,7 +10,8 @@ import {
   IMG_ROLETA_PRINT, IMG_ROLETA_RELAX, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
-  JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, JZ_BA50_COLORS, JZ_BS50_COLORS, KARNISZ_SUPPLIERS, KN,
+  JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, JZ_BA50_COLORS, JZ_BS50_COLORS,
+  JZ_TASIEMKA_COLORS, jzTasWidthGroup, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -803,6 +804,29 @@ export function ProdCard(p){
           (par.wCm&&par.wCm>=60)?ce(Chip,{key:"ts",label:"Dodatkowa tasiemka +46,43 z\u0142",active:c.tasiemka==="tak",onClick:function(){tc("tasiemka");}}):null
         ]})
       ),
+      (function(){
+        if(c.tasiemka!=="tak")return null;
+        var tGroup=jzTasWidthGroup(curJt);
+        if(!tGroup)return null;
+        var tasOptions=JZ_TASIEMKA_COLORS.filter(function(col){return col[tGroup];});
+        if(!tasOptions.length)return null;
+        return ce("div",{style:{marginTop:10}},
+          ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"KOLOR TASIEMKI"),
+          ce("select",{
+            value:c.tasiemkaColor||"",
+            onChange:function(ev){sc("tasiemkaColor",ev.target.value||null);},
+            style:IST
+          },
+            ce("option",{value:""},"Wybierz kolor..."),
+            tasOptions.map(function(col){
+              var pct=col[tGroup];
+              return ce("option",{key:col.v,value:col.v},
+                col.l+" ("+col.code+", "+col.width+"mm"+(pct===10?", +10%":"")+")"
+              );
+            })
+          )
+        );
+      })(),
       // ── STRONA STEROWANIA ────────────────────────────────────────────
       ce("div",{style:{marginTop:16}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA STEROWANIA"),
