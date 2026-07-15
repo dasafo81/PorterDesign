@@ -6,7 +6,7 @@ import {
   BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES,
   SELLER, buildFabricRows, buildSewingRows, calc,
   getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
-  openPDFWindow, pdfStyles, productDetailText, roundTo10
+  openPDFWindow, pdfStyles, roundTo10
 } from '../constants/data.js';
 
 export function generateFabricOrderPDF(client,opts){
@@ -169,17 +169,12 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
           subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");
         }
         var key=p.type==="inny"?(p.innyNazwa||"Inne"):(p.type==="zaluzja"?(subtypeLabel+"__"+p.id):(subtypeLabel||p.type));
-        if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[],fabrics:[],notes:[]};typeOrder.push(key);}
+        if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
         typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
         if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
-        // Tkanina, kolor, kolor lameli, kolor karnisza — szczegóły produktu
-        var detail=productDetailText(p);
-        if(detail&&typeData[key].fabrics.indexOf(detail)<0)typeData[key].fabrics.push(detail);
-        if(p.note){if(typeData[key].notes.indexOf(p.note)<0)typeData[key].notes.push(p.note);}
         total+=t;
       });
     });
-    function esc(s){return String(s).replace(/</g,"&lt;");}
     var rows="";var items=[];
     typeOrder.forEach(function(key){
       var d=typeData[key];
@@ -188,9 +183,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var isKpl=(d.type==="zaslona"||d.type==="firana");
       var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek");
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
-      var fabExtra=d.fabrics.length>0?"<br><span style=\"font-size:9px;color:#888;\">"+esc(d.fabrics.join(", "))+"</span>":"";
-      var noteExtra=d.notes.length>0?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+esc(d.notes.join("; "))+"</span>":"";
-      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+fabExtra+noteExtra;
+      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
       items.push({label:labelHTML,total:d.total});
       rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
     });
@@ -330,16 +323,11 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       else if(p.type==="prestige_square")subtypeLabel="Karnisz Prestige SQUARE";
       else if(p.type==="karnisz_dek")subtypeLabel="Karnisz dekoracyjny";
       var key=p.type==="inny"?(p.innyNazwa||"Inne"):(p.type==="zaluzja"?(subtypeLabel+"__"+p.id):(subtypeLabel||p.type));
-      if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[],fabrics:[],notes:[]};typeOrder.push(key);}
+      if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
       typeData[key].count+=(p.par&&p.par.qty?p.par.qty:1);typeData[key].total+=t;
       if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
-      // Tkanina, kolor, kolor lameli, kolor karnisza — szczegóły produktu
-      var detail=productDetailText(p);
-      if(detail&&typeData[key].fabrics.indexOf(detail)<0)typeData[key].fabrics.push(detail);
-      if(p.note){if(typeData[key].notes.indexOf(p.note)<0)typeData[key].notes.push(p.note);}
       total+=t;
     });});
-    function esc(s){return String(s).replace(/</g,"&lt;");}
     var rows="";var items=[];
     typeOrder.forEach(function(key){var d=typeData[key];
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
@@ -347,9 +335,7 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       var isKpl=d.type==="zaslona"||d.type==="firana";
       var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek";
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
-      var fabExtra=d.fabrics.length>0?"<br><span style=\"font-size:9px;color:#888;\">"+esc(d.fabrics.join(", "))+"</span>":"";
-      var noteExtra=d.notes.length>0?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+esc(d.notes.join("; "))+"</span>":"";
-      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra+fabExtra+noteExtra;
+      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
       items.push({label:labelHTML,total:d.total});
       rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td>"
            +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
