@@ -2414,7 +2414,30 @@ export const TAPETY =[
   {name:"A59519",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
   {name:"A59520",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
   {name:"A59521",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
-  {name:"A59522",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66}
+  {name:"A59522",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
+  // \u2500\u2500 LART cennik tkanin zas\u0142onowych (tylko pozycje z r\u0119cznie wpisan\u0105 cen\u0105 sprzeda\u017cy) \u2500\u2500
+  // brutto = cena r\u0119czna (sprzeda\u017cy), zakup = cena kuponowa, belkowa = cena belkowa (informacyjna)
+  {name:"DIMOUT BO UNI",brutto:100,prod:"LART",width:280,zakup:42.5,belkowa:31.9},
+  {name:"WAVE",brutto:100,prod:"LART",width:300,zakup:34.9,belkowa:27.9},
+  {name:"SUMI",brutto:150,prod:"LART",width:280,zakup:39.9,belkowa:29.9},
+  {name:"ROFE",brutto:150,prod:"LART",width:300,zakup:39.7,belkowa:29.8},
+  {name:"DIMOUT 310",brutto:160,prod:"LART",width:280,zakup:54,belkowa:42.6},
+  {name:"BLOW",brutto:120,prod:"LART",width:300,zakup:36.9,belkowa:21.3},
+  // \u2500\u2500 CAPTURE (Kolekcja Vadain) \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
+  {name:"Aurora",brutto:220,prod:"Capture",width:300,zakup:123,sklad:"80% RPET, 12% PES, 8% LI"},
+  {name:"Euphoria",brutto:250,prod:"Capture",width:300,zakup:135,sklad:"58% CO, 42% PES"},
+  {name:"Explore",brutto:240,prod:"Capture",width:300,zakup:131,sklad:"57% RPET, 23% PES, 17% PAN, 3% PA"},
+  {name:"Fame",brutto:210,prod:"Capture",width:300,zakup:116,sklad:"100% PES"},
+  {name:"Glaze",brutto:160,prod:"Capture",width:303,zakup:85,sklad:"100% RPET"},
+  {name:"Halo",brutto:210,prod:"Capture",width:300,zakup:116,sklad:"59% PES, 38% VI, 3% LI"},
+  {name:"Lucente",brutto:210,prod:"Capture",width:290,zakup:122,sklad:"90% PES, 10% OT"},
+  {name:"Lumi\u00e8re",brutto:180,prod:"Capture",width:300,zakup:100,sklad:"66% PES, 34% CO"},
+  {name:"Moire",brutto:160,prod:"Capture",width:300,zakup:92,sklad:"80% RPET, 20% PES"},
+  {name:"Rumour",brutto:130,prod:"Capture",width:320,zakup:71,sklad:"100% PES"},
+  {name:"Sign",brutto:160,prod:"Capture",width:300,zakup:91,sklad:"100% PES"},
+  {name:"Thread",brutto:110,prod:"Capture",width:317,zakup:66,sklad:"55% RPET, 45% PES"},
+  {name:"Tomorrow",brutto:170,prod:"Capture",width:298,zakup:90,sklad:"100% PES"},
+  {name:"Ultimate",brutto:180,prod:"Capture",width:300,zakup:97,sklad:"100% RPET"}
 ];
 
 // ── Nadpisania tkanin z Katalogu (Magazyn → Katalog) ───────────────────
@@ -2441,7 +2464,8 @@ export function getFabricEffective(name){
     width:  (ov && ov.height_cm!=null) ? ov.height_cm : (base?base.width:null),
     prod:   (ov && ov.meta) ? ov.meta : (base?base.prod:"-"),
     zakup:  (ov && ov.purchase_price!=null) ? ov.purchase_price : (base?base.zakup:null),
-    sklad:  (ov && ov.composition) ? ov.composition : (base?base.sklad:null)
+    sklad:  (ov && ov.composition) ? ov.composition : (base?base.sklad:null),
+    belkowa:(ov && ov.belka_price!=null) ? ov.belka_price : (base?base.belkowa:null)
   };
 }
 
