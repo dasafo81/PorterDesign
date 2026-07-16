@@ -379,7 +379,10 @@ async function saveInvoices(
 
   for (const meta of metaHeaders) {
     const ksefNum = String(meta.ksefNumber || meta.ksefReferenceNumber || "");
-    if (!ksefNum) continue;
+    if (!ksefNum) {
+      errors.push({ ksefNum: "(brak)", err: "metadane bez ksefNumber/ksefReferenceNumber — pominieto: " + JSON.stringify(meta).slice(0, 200) });
+      continue;
+    }
 
     const existingId = existing.idByKsef.get(ksefNum);
 
@@ -443,6 +446,7 @@ async function saveInvoices(
 
       const record = {
         tenant_id: tenantId, doc_type: docType, status: isIncoming ? "received" : "issued",
+        direction: isIncoming ? "zakup" : "sprzedaz",
         ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
         number: parsed.number || ksefNum,
         issue_date: asDate(parsed.issue_date, "issue_date", ksefNum) || asDate(metaIssue, "meta.issueDate", ksefNum),
