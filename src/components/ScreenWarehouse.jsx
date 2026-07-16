@@ -117,28 +117,25 @@ function ItemCard(p) {
   var item = p.item;
   var badge = stockBadge(item);
   var cat = CATEGORIES.find(function(c) { return c.id === item.category; }) || { icon: "\uD83D\uDCE6" };
-  return ce("div", { style: { background: "var(--bg2)", border: "1.5px solid var(--bd2)", borderRadius: 14, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8 } },
-    ce("div", { style: { display: "flex", alignItems: "flex-start", gap: 10 } },
-      ce("span", { style: { fontSize: 22, lineHeight: 1, marginTop: 2 } }, cat.icon),
-      ce("div", { style: { flex: 1, minWidth: 0 } },
-        ce("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, item.name),
-        ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } },
-          [item.color, item.supplier].filter(Boolean).join(" \u00B7 "))
-      ),
-      ce("div", { style: { background: badge.bg, color: badge.color, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700 } }, badge.label)
+  var subline = [item.color, item.supplier, item.location].filter(Boolean).join(" \u00B7 ");
+  return ce("div", { style: { display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: "var(--bg2)", border: "1.5px solid var(--bd2)", borderRadius: 10 }, title: item.notes || undefined },
+    ce("span", { style: { fontSize: 18, flexShrink: 0 } }, cat.icon),
+    ce("div", { style: { flex: "1 1 200px", minWidth: 0 } },
+      ce("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, item.name),
+      subline && ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, subline)
     ),
-    ce("div", { style: { display: "flex", alignItems: "center", gap: 8 } },
-      ce("div", { style: { flex: 1, display: "flex", alignItems: "baseline", gap: 4 } },
-        ce("span", { style: { fontSize: 24, fontWeight: 800, color: badge.color } }, item.quantity),
-        ce("span", { style: { fontSize: 12, color: "var(--t3)" } }, item.unit || "szt")
-      ),
-      ce("button", { onClick: function() { p.onAdjust(item, -1); }, style: { border: "1.5px solid var(--bd2)", background: "var(--bg)", color: "var(--t2)", borderRadius: 8, width: 30, height: 30, cursor: "pointer", fontSize: 16, fontWeight: 700 } }, "\u2212"),
-      ce("button", { onClick: function() { p.onAdjust(item, +1); }, style: { border: "1.5px solid var(--bd2)", background: "var(--bg)", color: "var(--t2)", borderRadius: 8, width: 30, height: 30, cursor: "pointer", fontSize: 16, fontWeight: 700 } }, "+"),
-      ce("button", { onClick: function() { p.onEdit(item); }, style: { border: "1.5px solid var(--bd2)", background: "var(--bg)", color: "var(--t3)", borderRadius: 8, width: 30, height: 30, cursor: "pointer", fontSize: 14 } }, "\u270F\uFE0F"),
-      ce("button", { onClick: function() { p.onDelete(item); }, style: { border: "1.5px solid rgba(220,38,38,0.3)", background: "rgba(220,38,38,0.06)", color: "#dc2626", borderRadius: 8, width: 30, height: 30, cursor: "pointer", fontSize: 13 } }, "\uD83D\uDDD1")
+    ce("div", { style: { background: badge.bg, color: badge.color, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, flexShrink: 0 } }, badge.label),
+    ce("div", { style: { display: "flex", alignItems: "baseline", gap: 4, minWidth: 64, justifyContent: "flex-end", flexShrink: 0 } },
+      ce("span", { style: { fontSize: 18, fontWeight: 800, color: badge.color } }, item.quantity),
+      ce("span", { style: { fontSize: 11, color: "var(--t3)" } }, item.unit || "szt")
     ),
-    (item.location || item.notes) && ce("div", { style: { fontSize: 11, color: "var(--t3)", borderTop: "1px solid var(--bd3)", paddingTop: 6 } },
-      [item.location && "\uD83D\uDCCC " + item.location, item.notes && "\uD83D\uDCAC " + item.notes].filter(Boolean).join("  "))
+    ce("div", { style: { display: "flex", gap: 5, flexShrink: 0 } },
+      ce("button", { onClick: function() { p.onAdjust(item, -1); }, style: { border: "1.5px solid var(--bd2)", background: "var(--bg)", color: "var(--t2)", borderRadius: 7, width: 26, height: 26, cursor: "pointer", fontSize: 14, fontWeight: 700 } }, "\u2212"),
+      ce("button", { onClick: function() { p.onAdjust(item, +1); }, style: { border: "1.5px solid var(--bd2)", background: "var(--bg)", color: "var(--t2)", borderRadius: 7, width: 26, height: 26, cursor: "pointer", fontSize: 14, fontWeight: 700 } }, "+"),
+      ce("button", { onClick: function() { p.onDuplicate(item); }, title: "Kopiuj pozycj\u0119", style: { border: "1.5px solid var(--bd2)", background: "var(--bg)", color: "var(--t3)", borderRadius: 7, width: 26, height: 26, cursor: "pointer", fontSize: 13 } }, "⧉"),
+      ce("button", { onClick: function() { p.onEdit(item); }, style: { border: "1.5px solid var(--bd2)", background: "var(--bg)", color: "var(--t3)", borderRadius: 7, width: 26, height: 26, cursor: "pointer", fontSize: 13 } }, "\u270F\uFE0F"),
+      ce("button", { onClick: function() { p.onDelete(item); }, style: { border: "1.5px solid rgba(220,38,38,0.3)", background: "rgba(220,38,38,0.06)", color: "#dc2626", borderRadius: 7, width: 26, height: 26, cursor: "pointer", fontSize: 12 } }, "\uD83D\uDDD1")
+    )
   );
 }
 
@@ -419,6 +416,14 @@ function TabWarehouse(p) {
       .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
   }
 
+  function handleDuplicate(item) {
+    var copy = Object.assign({}, item);
+    delete copy.id;
+    delete copy.created_at;
+    delete copy.updated_at;
+    setEditItem(copy);
+  }
+
   var lowCount = items.filter(function(x) { return stockBadge(x).label !== "OK"; }).length;
 
   var allCats = [{ id: "all", label: "Wszystko", icon: "\uD83D\uDCE6" }].concat(CATEGORIES);
@@ -471,9 +476,9 @@ function TabWarehouse(p) {
       ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 6 } }, !search && activeCat === "all" ? "Kliknij + Dodaj pozycj\u0119" : "Zmie\u0144 filtry")
     ),
 
-    !loading && filtered.length > 0 && ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 } },
+    !loading && filtered.length > 0 && ce("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
       filtered.map(function(item) {
-        return ce(ItemCard, { key: item.id, item: item, onEdit: function(it) { setEditItem(it); }, onDelete: handleDelete, onAdjust: handleAdjust });
+        return ce(ItemCard, { key: item.id, item: item, onEdit: function(it) { setEditItem(it); }, onDelete: handleDelete, onAdjust: handleAdjust, onDuplicate: handleDuplicate });
       })
     ),
 
