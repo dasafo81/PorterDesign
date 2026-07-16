@@ -483,7 +483,7 @@ function TabWarehouse(p) {
     ),
 
     editItem !== null && ce(ModalItem, {
-      item: editItem && editItem.id ? editItem : null,
+      item: editItem,
       onSave: function() { setEditItem(null); reload(); },
       onClose: function() { setEditItem(null); }
     })
