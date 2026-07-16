@@ -507,7 +507,8 @@ function buildBaseCatalog() {
       items: FABRICS.map(function(f) {
         return { baseKey: "tkaniny::" + f.name, name: f.name, price: fx("tkaniny", f.brutto),
           unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null,
-          zakup: f.zakup != null ? f.zakup : null, sklad: f.sklad || "" };
+          zakup: f.zakup != null ? f.zakup : null, sklad: f.sklad || "",
+          belkowa: f.belkowa != null ? f.belkowa : null };
       }) },
     { id: "tapety", label: "Tapety", icon: "\uD83C\uDFA8",
       items: TAPETY.map(function(t) {
@@ -585,13 +586,14 @@ function mergeCatalog(baseGroups, rows) {
         heightCm: o && o.height_cm != null ? o.height_cm : it.heightCm,
         zakup:    o && o.purchase_price != null ? o.purchase_price : it.zakup,
         sklad:    o && o.composition != null ? o.composition : it.sklad,
+        belkowa:  o && o.belka_price != null ? o.belka_price : it.belkowa,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
     (customByGroup[g.id] || []).forEach(function(c) {
       items.push({ rowId: c.id, baseKey: null, groupId: g.id, isBase: false, overridden: false,
         name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
-        zakup: c.purchase_price, sklad: c.composition || "" });
+        zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
@@ -613,6 +615,7 @@ function ModalCatalogItem(p) {
   var sM = useState(it.meta || "");                           var meta = sM[0];   var setMeta = sM[1];
   var sH = useState(it.heightCm != null ? String(it.heightCm) : ""); var height = sH[0]; var setHeight = sH[1];
   var sZ = useState(it.zakup != null ? String(it.zakup) : "");  var zakup = sZ[0]; var setZakup = sZ[1];
+  var sBk = useState(it.belkowa != null ? String(it.belkowa) : ""); var belkowa = sBk[0]; var setBelkowa = sBk[1];
   var sK = useState(it.sklad || "");                            var sklad = sK[0]; var setSklad = sK[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
 
@@ -620,7 +623,7 @@ function ModalCatalogItem(p) {
   function body() {
     return { group_id: grp, name: name.trim(), price: num(price), unit: unit.trim() || "z\u0142",
       meta: meta.trim() || null, height_cm: num(height), purchase_price: num(zakup),
-      composition: sklad.trim() || null };
+      belka_price: num(belkowa), composition: sklad.trim() || null };
   }
   function save() {
     if (!name.trim()) return;
@@ -672,9 +675,13 @@ function ModalCatalogItem(p) {
         ce("div", { style: lbl }, "Wysoko\u015b\u0107 / parametr (cm)"),
         ce("input", { value: height, onChange: function(e) { setHeight(e.target.value); }, placeholder: "np. 300", style: inp })
       ),
-      ce("div", { style: { marginBottom: 12 } },
-        ce("div", { style: lbl }, "Cena zakupu"),
-        ce("input", { value: zakup, onChange: function(e) { setZakup(e.target.value); }, placeholder: "np. 93", style: inp })
+      ce("div", { style: { display: "flex", gap: 10, marginBottom: 12 } },
+        ce("div", { style: { flex: 1 } },
+          ce("div", { style: lbl }, "Cena zakupu"),
+          ce("input", { value: zakup, onChange: function(e) { setZakup(e.target.value); }, placeholder: "np. 93", style: inp })),
+        ce("div", { style: { flex: 1 } },
+          ce("div", { style: lbl }, "Cena belkowa"),
+          ce("input", { value: belkowa, onChange: function(e) { setBelkowa(e.target.value); }, placeholder: "np. 42.6", style: inp }))
       ),
       ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Sk\u0142ad"),
@@ -830,6 +837,7 @@ function TabCatalog(p) {
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" } },
+                it.belkowa != null && ce("div", { style: { fontSize: 10, color: "var(--t3)" } }, "belka " + fmtPrice(it.belkowa) + " z\u0142"),
                 it.zakup != null && ce("div", { style: { fontSize: 10, color: "var(--t3)" } }, "zakup " + fmtPrice(it.zakup) + " z\u0142"),
                 ce("div", { style: { fontSize: 14, fontWeight: 800, color: "var(--violet)" } }, fmtPrice(it.price) + " " + (it.unit || "z\u0142")),
                 !it.isBase && ce("button", { onClick: function(e) { e.stopPropagation(); handleDelete(it); },
