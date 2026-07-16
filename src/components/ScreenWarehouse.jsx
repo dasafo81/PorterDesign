@@ -34,9 +34,9 @@ function ModalItem(p) {
   var isNew = !p.item || !p.item.id;
   var def = p.item || {};
   var s1 = useState(def.name || "");           var name = s1[0]; var setName = s1[1];
-  var s2 = useState(def.category || "tkanina"); var cat = s2[0]; var setCat = s2[1];
-  var s3 = useState(String(def.quantity != null ? def.quantity : "0")); var qty = s3[0]; var setQty = s3[1];
-  var s4 = useState(def.unit || "mb");          var unit = s4[0]; var setUnit = s4[1];
+  var s2 = useState(def.category || "mechanizm"); var cat = s2[0]; var setCat = s2[1];
+  var s3 = useState(def.quantity != null ? String(def.quantity) : ""); var qty = s3[0]; var setQty = s3[1];
+  var s4 = useState(def.unit || "szt");          var unit = s4[0]; var setUnit = s4[1];
   var s5 = useState(def.color || "");           var color = s5[0]; var setColor = s5[1];
   var s6 = useState(def.supplier || "");        var supplier = s6[0]; var setSupplier = s6[1];
   var s7 = useState(def.location || "");        var location = s7[0]; var setLocation = s7[1];
@@ -81,7 +81,7 @@ function ModalItem(p) {
       ce("div", { style: { display: "flex", gap: 10, marginBottom: 12 } },
         ce("div", { style: { flex: 2 } },
           ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Ilo\u015B\u0107"),
-          ce("input", { type: "number", min: "0", step: cat === "tkanina" ? "0.5" : "1", value: qty, onChange: function(e) { setQty(e.target.value); }, style: inp })
+          ce("input", { type: "number", min: "0", step: cat === "tkanina" ? "0.5" : "1", value: qty, placeholder: "0", onChange: function(e) { setQty(e.target.value); }, style: inp })
         ),
         ce("div", { style: { flex: 1 } },
           ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Jednostka"),
