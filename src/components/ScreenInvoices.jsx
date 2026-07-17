@@ -324,7 +324,9 @@ function InvoiceEditor(p){
 
   function validate(){
     if(!buyerName.trim()) return direction==="zakup"?"Brak nazwy sprzedawcy (kontrahenta)":"Brak nazwy nabywcy";
-    if(direction==="zakup"&&!purchaseNumber.trim()) return "Podaj numer faktury nadany przez dostawcę";
+    // EKO (niezależnie od kierunku) ma własną, automatyczną numerację (EKO/nr/MM) —
+    // nie wymagamy numeru od dostawcy, bo to nie jest prawdziwa faktura zewnętrzna.
+    if(direction==="zakup"&&docType!=="eko"&&!purchaseNumber.trim()) return "Podaj numer faktury nadany przez dostawcę";
     if(items.length===0) return "Brak pozycji";
     if(items.some(function(it){return !it.name.trim();})) return "Każda pozycja musi mieć nazwę";
     return null;
@@ -362,20 +364,25 @@ function InvoiceEditor(p){
           phone:settings.seller_phone||"", bank:settings.seller_bank||""
         }
     };
-    if(isZakupDir) header.number=purchaseNumber.trim();
+    if(isZakupDir&&docType!=="eko") header.number=purchaseNumber.trim();
 
     var prom;
+    // EKO ma zawsze własną automatyczną numerację (EKO/nr/MM), niezależnie od kierunku —
+    // to wewnętrzny dokument gotówkowy, który nigdy nie wychodzi poza aplikację (brak KSeF),
+    // więc numerujemy go sami, tak jak dokumenty sprzedażowe, a nie jak realną fakturę od dostawcy.
+    var isRealPurchaseDoc=isZakupDir&&docType!=="eko";
     if(isNew){
-      if(isZakupDir){
+      if(isRealPurchaseDoc){
         // Faktura kosztowa: numer nadaje dostawca, nie generujemy własnej numeracji —
         // zapisujemy od razu jako "received" (odebrana/zarejestrowana), tak jak faktury z sync KSeF.
         prom=sbApi.addInvoice(Object.assign({status:"received"},header));
       } else {
-        // "draft" tu jest tylko przejściowe — chwilę niżej, zaraz po zapisaniu pozycji,
-        // nadajemy numer i przestawiamy na "issued". Opcja ręcznego "Wystaw fakturę" jako
-        // osobny krok została usunięta: każda nowa faktura (niezależnie od typu dokumentu)
-        // jest wystawiana od razu przy zapisie, tak jak dotychczas działo się to tylko dla EKO.
-        prom=sbApi.addInvoice(Object.assign({status:"draft"},header));
+        // "draft"/"received" tu jest tylko przejściowe — chwilę niżej, zaraz po zapisaniu
+        // pozycji, nadajemy numer (dla EKO-zakupowych status zostaje "received", patrz niżej).
+        // Opcja ręcznego "Wystaw fakturę" jako osobny krok została usunięta: każda nowa
+        // faktura (niezależnie od typu dokumentu) jest wystawiana od razu przy zapisie,
+        // tak jak dotychczas działo się to tylko dla EKO.
+        prom=sbApi.addInvoice(Object.assign({status:isZakupDir?"received":"draft"},header));
       }
     } else {
       prom=sbApi.updateInvoice(p.invoice.id,header).then(function(){return {id:p.invoice.id};});
@@ -397,14 +404,21 @@ function InvoiceEditor(p){
         };
       });
       return sbApi.replaceInvoiceItems(invId,itemsToSave).then(function(){
-        if(isNew&&!isZakupDir){
+        if(isNew&&!isRealPurchaseDoc){
           var period2=periodKey(settings.numbering_reset||"monthly",issueDate||todayISO());
           return sbApi.nextInvoiceNumber(docType,period2).then(function(nr){
             var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
-            var rawNum=formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
-            var num=docType==="eko"?("EKO/"+rawNum):rawNum;
-            return sbApi.updateInvoice(invId,{status:"issued",number:num}).then(function(){
-              return Object.assign({},inv,{id:invId,status:"issued",number:num});
+            // EKO ma własny, uproszczony format (EKO/nr/MM) — niezależny od numeracji
+            // sprzedażowej/KSeF (settings.numbering_format) i nigdy nie zawiera roku,
+            // zgodnie z życzeniem: EKO/1/07.
+            var num=docType==="eko"
+              ? formatNumber("EKO/{nr}/{MM}",nrNum,issueDate||todayISO())
+              : formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
+            // EKO zakupowe zostaje "received" (to nie jest dokument wystawiony klientowi),
+            // sprzedażowe (w tym EKO-sprzedażowe) przechodzi w "issued" jak dotychczas.
+            var patch=isZakupDir?{number:num}:{status:"issued",number:num};
+            return sbApi.updateInvoice(invId,patch).then(function(){
+              return Object.assign({},inv,{id:invId,number:num},isZakupDir?{}:{status:"issued"});
             });
           });
         }
@@ -448,12 +462,14 @@ function InvoiceEditor(p){
       fldRow("Typ dokumentu",
         ce("select",{style:inp,value:docType,onChange:function(e){setDocType(e.target.value);}},
           DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);}))),
-      direction==="zakup"&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:4,marginBottom:10}},
+      direction==="zakup"&&docType!=="eko"&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:4,marginBottom:10}},
         "\uD83D\uDCE5 Faktura kosztowa — rejestrujemy dokument otrzymany od dostawcy. Numer nadaje dostawca (wpisz poni\u017cej), nie generujemy w\u0142asnej numeracji."),
-      direction==="zakup"&&fldRow("Numer faktury",
+      direction==="zakup"&&docType!=="eko"&&fldRow("Numer faktury",
         ce("input",{style:inp,value:purchaseNumber,placeholder:"Np. FV/123/2026 (numer od dostawcy)",onChange:function(e){setPurchaseNumber(e.target.value);}})),
       docType==="eko"&&ce("div",{style:{background:"var(--grl)",border:"1px solid var(--gr)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--gr)",marginTop:4}},
-        "🟢 Dokument EKO — 0% VAT, wydatki gotówkowe, wystawiany od razu (bez KSeF). Stawka VAT zostanie wyzerowana przy zapisie."),
+        direction==="zakup"
+          ? "🟢 Dokument EKO (kosztowy) — 0% VAT, wewnętrzny wydatek gotówkowy. Numer nadajemy sami (EKO/nr/miesiąc), nigdy nie wychodzi poza aplikację (bez KSeF)."
+          : "🟢 Dokument EKO — 0% VAT, wydatki gotówkowe, wystawiany od razu (bez KSeF). Numer własny (EKO/nr/miesiąc)."),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}},
         ce("div",null,ce("span",{style:label},"Data wystawienia"),ce("input",{style:inp,type:"date",value:issueDate,onChange:function(e){setIssueDate(e.target.value);}})),
         ce("div",null,ce("span",{style:label},"Data sprzedaży"),ce("input",{style:inp,type:"date",value:saleDate,onChange:function(e){setSaleDate(e.target.value);}})),
