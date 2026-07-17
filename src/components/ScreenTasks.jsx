@@ -305,7 +305,7 @@ function TaskCard(p) {
         : null,
       subtasks.length > 0
         ? ce("span", { onClick: function() { setExpanded(!expanded); }, style: { fontSize: 10, color: "var(--t3)", cursor: "pointer" } }, (expanded ? "▾ " : "▸ ") + doneCount + "/" + subtasks.length)
-        : null
+        : ce("span", { onClick: function() { setExpanded(true); setAddingSub(true); }, style: { fontSize: 10, color: "var(--t3)", cursor: "pointer" } }, "+ podzadanie")
     ),
 
     // ── progress bar ──
