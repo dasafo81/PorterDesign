@@ -2479,6 +2479,7 @@ export const PROD_TYPES =[
   {id:"prestige_round",label:"Karnisz Prestige",icon:"⚡"},
   {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
   {id:"karnisz_dek",label:"Karnisz dekoracyjny",icon:"📏"},
+  {id:"plisa",label:"Plisa okienna",icon:"🪟"},
   {id:"inny",label:"Inny",icon:"📦"}
 ];
 
@@ -2743,6 +2744,79 @@ export function rsSuppLookup(tbl,wCm){
 // ── END ROLETA SHADOW DATA ────────────────────────────────────────────────────
 
 
+// ── PLISA OKIENNA ────────────────────────────────────────────────────────────
+// Cennik III Grupy Cenowej wg wymiaru (szerokość × wysokość w mm).
+// Szerokości: 400..1300 co 100 mm
+export const PLISA_WIDTHS =[400,500,600,700,800,900,1000,1100,1200,1300];
+// Wysokości: 800..2500 co 100 mm
+export const PLISA_HEIGHTS=[800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300,2400,2500];
+
+// Wiersze = wysokość (kolejność jak PLISA_HEIGHTS), kolumny = szerokość (kolejność jak PLISA_WIDTHS)
+export const PLISA_III =[
+  [151,173,193,212,230,250,269,297,315,334],
+  [160,183,201,223,245,264,285,313,335,357],
+  [165,189,213,236,258,281,302,333,355,378],
+  [172,198,223,247,272,297,321,351,375,399],
+  [179,208,235,259,284,309,336,370,396,423],
+  [186,216,243,272,299,326,353,389,416,444],
+  [193,224,254,283,312,341,370,409,437,467],
+  [198,234,264,297,326,357,388,427,457,488],
+  [208,241,275,307,340,371,406,446,477,511],
+  [214,250,284,320,352,388,422,464,499,532],
+  [220,259,297,329,366,402,438,482,519,555],
+  [227,267,304,342,380,417,455,501,539,577],
+  [235,276,315,353,394,434,473,521,559,599],
+  [240,284,326,366,409,448,489,539,580,620],
+  [249,294,335,378,422,464,506,557,600,643],
+  [256,302,347,390,435,478,524,577,620,665],
+  [262,309,357,402,448,496,540,594,640,687],
+  [269,321,366,414,462,510,557,614,660,708]
+];
+
+// Dopłata za osprzęt w kolorach drewnopodobnych — zależna wyłącznie od szerokości (mm)
+export const PLISA_OSPRZET_DOPLATA ={400:13,500:16,600:18,700:20,800:24,900:27,1000:30,1100:32,1200:34,1300:37};
+
+// Kolory osprzętu — standardowe (bez dopłaty) i drewnopodobne (z dopłatą wg PLISA_OSPRZET_DOPLATA)
+export const PLISA_OSPRZET_KOLORY =[
+  {v:"bialy",          l:"Biały",          drewno:false},
+  {v:"antracyt_mat",   l:"Antracyt Mat",   drewno:false},
+  {v:"czarny_mat",     l:"Czarny Mat",     drewno:false},
+  {v:"srebrny",        l:"Srebrny",        drewno:false},
+  {v:"dab_bagienny",   l:"Dąb Bagienny",   drewno:true},
+  {v:"mahon",          l:"Mahoń",          drewno:true},
+  {v:"orzech",         l:"Orzech",         drewno:true},
+  {v:"sosna",          l:"Sosna",          drewno:true},
+  {v:"winchester",     l:"Winchester",     drewno:true},
+  {v:"zloty_dab",      l:"Złoty Dąb",      drewno:true},
+  {v:"mahoniowy_braz", l:"Mahoniowy Brąz", drewno:true}
+];
+
+// Tkaniny plisowane — kolekcje z listą kolorów/kodów (bez wpływu na cenę — cena wynika wyłącznie
+// z wymiaru wg PLISA_III, Grupa III). Wybór ma charakter informacyjny na wycenie/zamówieniu.
+export const PLISA_FABRICS =[
+  {name:"Binomio",         colors:["AD11","AD12","AD13","AD14","AD15","AD16","AD101","AD102","AD103","AD104","AD105","AD106","AD317"]},
+  {name:"Binomio Blackout",colors:["AD301","AD302","AD303","AD304","AD305","AD306","AD307","AD308","AD309","AD310","AD311","AD312","AD313","AD314","AD315","AD316","AD318","AD319","AD320","AD321"]},
+  {name:"Binomio Stoffa",  colors:["AD201","AD202","AD203","AD204","AD205","AD206"]},
+  {name:"Linea",           colors:["ADP1","ADP2","ADP3","ADP4"]},
+  {name:"Linea Blackout",  colors:["ADP301","ADP302","ADP303","ADP304"]},
+  {name:"Aura",            colors:["AD521","AD522","AD523","AD524","AD525","AD526"]},
+  {name:"Sintra Plain",    colors:["PP151","PP152","PP153","PP154","PP155","PP156","PP157","PP158","PP159","PP160","PP161","PP162","PP163","PP164","PP165","PP166"]},
+  {name:"Sogno Blackout",  colors:["PBO201","PBO202","PBO203","PBO204","PBO205","PBO206","PBO207","PBO208"]}
+];
+
+// Lookup: najbliższa większa/równa szerokość I wysokość (mm) — poza zakresem = null (ostrzeżenie w calc())
+export function plisaLookup(wMm,hMm){
+  var wi=PLISA_WIDTHS.findIndex(function(w){return w>=wMm;});
+  if(wi<0)return null;
+  var hi=PLISA_HEIGHTS.findIndex(function(h){return h>=hMm;});
+  if(hi<0)return null;
+  var row=PLISA_III[hi];
+  if(!row||row[wi]==null)return null;
+  return {price:row[wi], widthUsed:PLISA_WIDTHS[wi], heightUsed:PLISA_HEIGHTS[hi]};
+}
+// ── END PLISA OKIENNA ────────────────────────────────────────────────────────
+
+
 export const RRZ_WIDTHS = [90,120,150,180,210,240,270,300,330,360,390,420,450,480];
 
 export const RRZ_SOMFY = {
@@ -3005,6 +3079,25 @@ export function calc(p){
     total=(baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*60).toFixed(2)))*qty;
     lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
     if(c.km==="sciana")warn="\u015acienny \u2014 dolicz uchwyty \u015bcienne.";
+  }else if(p.type==="plisa"){
+    var wMm=par.wMm||0,hMm=par.hMm||0;
+    if(!wMm||!hMm)return{total:0,lines:[],warn:null};
+    var plRes=plisaLookup(wMm,hMm);
+    if(!plRes)return{total:0,lines:[],warn:"Wymiary poza zakresem cennika (maks. 1300\xd72500 mm)."};
+    total=plRes.price;
+    var plColl=PLISA_FABRICS.find(function(f){return f.name===c.plKolekcja;});
+    var plFabLabel=plColl?(plColl.name+(c.plKolorKod?" "+c.plKolorKod:"")):(c.plKolekcjaManual?c.plKolekcjaManual+(c.plKolorManual?" "+c.plKolorManual:""):null);
+    lines.push("Plisa okienna (Gr.III) "+plRes.widthUsed+"\xd7"+plRes.heightUsed+"mm \u2192 "+plRes.price+" z\u0142");
+    if(plFabLabel)lines.push("Tkanina: "+plFabLabel);
+    var plOspCol=PLISA_OSPRZET_KOLORY.find(function(k){return k.v===c.plKolorOsprzetu;});
+    if(plOspCol){
+      lines.push("Kolor osprz\u0119tu: "+plOspCol.l);
+      if(plOspCol.drewno){
+        var plDop=lookup(wMm,PLISA_OSPRZET_DOPLATA).p;
+        total+=plDop;
+        lines.push("+ Dop\u0142ata osprz\u0119t drewnopodobny +"+plDop+" z\u0142");
+      }
+    }
   }else if(p.type==="karnisz"){
     var lenK=par.len||0,pt=par.pt||0,arc=par.arc||0,qty=par.qty||1;
     if(!lenK)return{total:0,lines:[],warn:null};
