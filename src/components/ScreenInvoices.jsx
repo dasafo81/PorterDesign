@@ -305,7 +305,19 @@ function InvoiceEditor(p){
     setItems(function(prev){return prev.filter(function(_,i){return i!==idx;}).map(function(it,i){return Object.assign({},it,{position:i+1});});});
   }
 
-  var totalsPerRate=calcTotals(items);
+  // Dla EKO VAT jest zawsze 0% — liczymy sumy z pozycji już "wyzerowanych", tak samo
+  // jak są potem zapisywane do invoice_items. Wcześniej totalsPerRate liczyło się z
+  // surowych items (z oryginalną stawką VAT wybraną w wierszu), a dopiero zapis do bazy
+  // zerował VAT na poziomie invoice_items — to rozjeżdżało wyświetlaną sumę (i zapisywane
+  // invoices.total_vat/total_gross) z rzeczywistymi kwotami na pozycjach, zawyżając
+  // total_gross o VAT, którego faktycznie nie ma.
+  var effItems=docType==="eko"
+    ? items.map(function(it){
+        var net=+(it.line_net)||0;
+        return Object.assign({},it,{vat_rate:0,line_vat:0,line_gross:net});
+      })
+    : items;
+  var totalsPerRate=calcTotals(effItems);
   var totalNet=totalsPerRate.reduce(function(a,r){return a+r.net;},0);
   var totalVat=totalsPerRate.reduce(function(a,r){return a+r.vat;},0);
   var totalGross=totalsPerRate.reduce(function(a,r){return a+r.gross;},0);
@@ -371,14 +383,15 @@ function InvoiceEditor(p){
 
     prom.then(function(inv){
       var invId=inv.id||inv[0]&&inv[0].id;
-      var itemsToSave=items.map(function(it,i){
-        var effVat=docType==="eko"?0:+(it.vat_rate);
+      // effItems (policzone wyżej) ma VAT już wyzerowany dla EKO — jedno źródło prawdy
+      // zarówno dla sumy pokazywanej na ekranie, jak i dla zapisu (bez rozjazdu jak wcześniej).
+      var itemsToSave=effItems.map(function(it,i){
         var effNet=+(it.line_net)||0;
-        var effVatAmt=docType==="eko"?0:+(it.line_vat)||0;
+        var effVatAmt=+(it.line_vat)||0;
         return {
           position:i+1, name:it.name, quantity:+(it.quantity)||1,
           unit:it.unit||"szt", unit_net:+(it.unit_net)||0,
-          vat_rate:effVat, line_net:effNet,
+          vat_rate:+(it.vat_rate), line_net:effNet,
           line_vat:effVatAmt, line_gross:effNet+effVatAmt,
           pkwiu:it.pkwiu||""
         };
