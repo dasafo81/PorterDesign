@@ -93,9 +93,10 @@ var CATEGORIES = {
   logistyka:   { label: "Logistyka Zamówienia", color: "#2563eb", icon: "📦" },
   finanse:     { label: "Finanse / Księgowość", color: "#0d9488", icon: "📊" },
   reklamacje:  { label: "Reklamacje",          color: "#dc2626", icon: "⚠️" },
-  strona:      { label: "Strona internetowa",  color: "#0ea5e9", icon: "🌐" }
+  strona:      { label: "Strona internetowa",  color: "#0ea5e9", icon: "🌐" },
+  posprzedaz:  { label: "Obsługa posprzedażowa", color: "#8b5cf6", icon: "🤝" }
 };
-var CAT_ORDER = ["montaz", "aplikacja", "marketing", "legal", "sprzedaz", "logistyka", "finanse", "reklamacje", "strona"];
+var CAT_ORDER = ["montaz", "aplikacja", "marketing", "legal", "sprzedaz", "logistyka", "finanse", "reklamacje", "strona", "posprzedaz"];
 var NONE_CAT = { label: "Pozostałe", color: "#a0a0c0", icon: "📌" };
 
 function catIdOf(task) {
