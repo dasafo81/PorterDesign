@@ -92,9 +92,10 @@ var CATEGORIES = {
   sprzedaz:    { label: "Sprzedaż",            color: "#059669", icon: "💰" },
   logistyka:   { label: "Logistyka Zamówienia", color: "#2563eb", icon: "📦" },
   finanse:     { label: "Finanse / Księgowość", color: "#0d9488", icon: "📊" },
-  reklamacje:  { label: "Reklamacje",          color: "#dc2626", icon: "⚠️" }
+  reklamacje:  { label: "Reklamacje",          color: "#dc2626", icon: "⚠️" },
+  strona:      { label: "Strona internetowa",  color: "#0ea5e9", icon: "🌐" }
 };
-var CAT_ORDER = ["montaz", "aplikacja", "marketing", "legal", "sprzedaz", "logistyka", "finanse", "reklamacje"];
+var CAT_ORDER = ["montaz", "aplikacja", "marketing", "legal", "sprzedaz", "logistyka", "finanse", "reklamacje", "strona"];
 var NONE_CAT = { label: "Pozostałe", color: "#a0a0c0", icon: "📌" };
 
 function catIdOf(task) {
