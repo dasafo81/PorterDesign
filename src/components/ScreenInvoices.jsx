@@ -151,10 +151,14 @@ function ItemRow(p){
       value:(it.unit_gross==null||it.unit_gross===""||+(it.unit_gross)===0)?"":(typeof it.unit_gross==="string"?it.unit_gross:+(+(it.unit_gross)).toFixed(2)),
       inputMode:"decimal", placeholder:"0,00",
       onChange:function(e){upd("unit_gross",e.target.value.replace(",","."));}}),
-    // VAT
-    ce("select",{style:inpSm, value:it.vat_rate,
-      onChange:function(e){upd("vat_rate",+(e.target.value));}},
-      VAT_RATES.map(function(r){return ce("option",{key:r,value:r},fmtVat(r));})),
+    // VAT — zablokowany na 0% dla EKO (dokument gotówkowy bez rozbicia netto/brutto,
+    // patrz p.vatLocked z rodzica), żeby nie dało się przypadkiem wybrać innej stawki
+    // i wygenerować sztuczny rozjazd netto/brutto.
+    p.vatLocked
+      ? ce("div",{style:Object.assign({},inpSm,{textAlign:"center",color:"var(--t3)",background:"var(--bd3)"})},"0% (EKO)")
+      : ce("select",{style:inpSm, value:it.vat_rate,
+          onChange:function(e){upd("vat_rate",+(e.target.value));}},
+          VAT_RATES.map(function(r){return ce("option",{key:r,value:r},fmtVat(r));})),
     // Netto razem
     ce("div",{style:{fontSize:12,textAlign:"right",color:"var(--t2)"}},fmtMoney(it.line_net)),
     // Brutto razem
@@ -175,8 +179,14 @@ function InvoiceEditor(p){
   var defaultDays=+(settings.default_payment_days)||14;
 
   function freshItem(){
-    var n=calcLine(0,1,defaultVat);
-    return Object.assign({name:"",quantity:1,unit:settings.default_unit||"szt",unit_net:0,vat_rate:defaultVat},n,{position:1,pkwiu:""});
+    // Dla EKO nie ma rozróżnienia netto/brutto — to jeden dokument gotówkowy na jedną
+    // kwotę. Zerowanie VAT już przy tworzeniu pozycji (a nie dopiero przy zapisie)
+    // eliminuje możliwość rozjazdu netto/brutto, bo calcLine z vat_rate=0 zawsze daje
+    // line_gross===line_net, niezależnie od tego, w które pole (netto czy brutto)
+    // ktoś wpisze kwotę.
+    var vr=docType==="eko"?0:defaultVat;
+    var n=calcLine(0,1,vr);
+    return Object.assign({name:"",quantity:1,unit:settings.default_unit||"szt",unit_net:0,vat_rate:vr},n,{position:1,pkwiu:""});
   }
 
   // Inicjalizacja stanu nagłówka
@@ -211,6 +221,26 @@ function InvoiceEditor(p){
   );
   var [busy,setBusy]=useState(false);
   var [err,setErr]=useState(null);
+
+  // Gdy ktoś przełącza "Typ dokumentu" na EKO już po dodaniu pozycji (z inną stawką
+  // VAT), zerujemy VAT na wszystkich pozycjach zachowując kwotę BRUTTO jako prawdziwą
+  // (to realna gotówka, którą ktoś wpłacił/wypłacił) — a nie netto, które przy 23%
+  // VAT byłoby tylko sztucznym, pomniejszonym wyliczeniem.
+  useEffect(function(){
+    if(docType!=="eko") return;
+    setItems(function(prev){
+      var changed=false;
+      var next=prev.map(function(it){
+        if(+(it.vat_rate)===0) return it;
+        changed=true;
+        var g=+(it.line_gross)||0;
+        var q=+(it.quantity)||1;
+        var perUnit=+(g/q).toFixed(4);
+        return Object.assign({},it,{vat_rate:0,unit_net:perUnit,unit_gross:perUnit,line_net:g,line_vat:0,line_gross:g});
+      });
+      return changed?next:prev;
+    });
+  },[docType]);
 
   // GUS/NIP lookup — najpierw prawdziwe API GUS (REGON BIR przez /api/gus, pełna nazwa
   // i adres także dla JDG), a dopiero w razie błędu fallback na Białą Listę VAT.
@@ -550,7 +580,7 @@ function InvoiceEditor(p){
       ),
 
       items.map(function(it,i){
-        return ce(ItemRow,{key:i,item:it,idx:i,onChange:updateItem,onRemove:removeItem});
+        return ce(ItemRow,{key:i,item:it,idx:i,onChange:updateItem,onRemove:removeItem,vatLocked:docType==="eko"});
       }),
 
       ce("button",{onClick:addItem,
