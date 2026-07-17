@@ -25,6 +25,7 @@ import {
   PRESTIGE_ROUND, PRESTIGE_ROUND_TANDEM, PRESTIGE_ROUND_W60, PRESTIGE_ROUND_W80,
   PRESTIGE_SQUARE, PRESTIGE_SQUARE_TANDEM, PRESTIGE_SQUARE_W60, PRESTIGE_SQUARE_W80,
   PRESTIGE_WIDTHS,
+  PLISA_FABRICS, PLISA_OSPRZET_KOLORY,
   calc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup
 } from '../constants/data.js';
@@ -154,7 +155,7 @@ export function ProdCard(p){
 
   function hasProdData(pr){
     return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||
-      (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len))||
+      (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm))||
       (pr.c&&Object.keys(pr.c).length>1)||
       (pr.kdSzyny&&pr.kdSzyny.length>0)||
       (pr.kdAkc&&Object.keys(pr.kdAkc).length>0)||
@@ -1654,6 +1655,42 @@ export function ProdCard(p){
               checked?ce("input",{type:"text",inputMode:"numeric",value:qty,onChange:function(ev){var na=mg(kdAkc,{});na[a.id]=Number(ev.target.value)||1;p.onChange(mg(prod,{kdAkc:na}));},style:Object.assign({},IST,{textAlign:"center",padding:"4px 8px"})}):null
             );
           })
+        )
+      )
+    );
+  }else if(prod.type==="plisa"){
+    // ── PLISA OKIENNA FORM ───────────────────────────────────────────
+    var PLISA_MANUAL="__manual__";
+    var plKolekcja=c.plKolekcja||"";
+    var plIsManual=plKolekcja===PLISA_MANUAL;
+    var plColl=PLISA_FABRICS.find(function(f){return f.name===plKolekcja;});
+    form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"SZEROKO\u015a\u0106 (mm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wMm||"",onChange:function(ev){sp("wMm",ev.target.value);},placeholder:"np. 900",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 (mm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hMm||"",onChange:function(ev){sp("hMm",ev.target.value);},placeholder:"np. 1400",style:IST}))
+      ),
+      ce(Fld,{label:"TKANINA"},
+        ce("select",{value:plKolekcja,onChange:function(ev){var v=ev.target.value;p.onChange(mg(prod,{c:mg(c,{plKolekcja:v,plKolorKod:null})}));},style:Object.assign({},IST,{width:"100%"})},
+          ce("option",{value:""},"-- wybierz kolekcj\u0119 --"),
+          PLISA_FABRICS.map(function(f){return ce("option",{key:f.name,value:f.name},f.name);}),
+          ce("option",{value:PLISA_MANUAL},"Inna (wpisz r\u0119cznie)")
+        )
+      ),
+      plIsManual?ce(Fld,{label:"NAZWA TKANINY (r\u0119cznie)"},
+        ce("input",{type:"text",value:c.plKolekcjaManual||"",onChange:function(ev){sc("plKolekcjaManual",ev.target.value);},placeholder:"np. kolekcja spoza cennika",style:IST})
+      ):null,
+      ce(Fld,{label:"KOLOR"},
+        plIsManual
+          ?ce("input",{type:"text",value:c.plKolorManual||"",onChange:function(ev){sc("plKolorManual",ev.target.value);},placeholder:"np. Grafit",style:IST})
+          :ce("select",{value:c.plKolorKod||"",onChange:function(ev){sc("plKolorKod",ev.target.value);},disabled:!plColl,style:Object.assign({},IST,{width:"100%"})},
+              ce("option",{value:""},plColl?"-- wybierz kolor --":"najpierw wybierz tkanin\u0119"),
+              (plColl?plColl.colors:[]).map(function(code){return ce("option",{key:code,value:code},code);})
+            )
+      ),
+      ce(Fld,{label:"KOLOR OSPRZ\u0118TU"},
+        ce("select",{value:c.plKolorOsprzetu||"",onChange:function(ev){sc("plKolorOsprzetu",ev.target.value);},style:Object.assign({},IST,{width:"100%"})},
+          ce("option",{value:""},"-- wybierz kolor --"),
+          PLISA_OSPRZET_KOLORY.map(function(k){return ce("option",{key:k.v,value:k.v},k.l+(k.drewno?" (drewnopodobny)":""));})
         )
       )
     );
