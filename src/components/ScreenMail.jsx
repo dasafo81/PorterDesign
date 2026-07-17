@@ -467,15 +467,15 @@ function MailList(p){
               ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}},
                 ce("span",{style:{display:"flex",alignItems:"center",gap:6,minWidth:0,maxWidth:"72%"}},
                   unread?ce("span",{style:{width:8,height:8,borderRadius:"50%",background:"var(--violet)",flexShrink:0,boxShadow:"0 0 0 2px var(--violet-l)"}}):null,
-                  ce("span",{style:{fontSize:13,fontWeight:unread?800:(selectedInThread?700:500),color:unread?"var(--t1)":"var(--t2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                  ce("span",{style:{fontSize:13,fontWeight:unread?800:(selectedInThread?700:500),color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
                     nm,
                     t.count>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,marginLeft:6}},"("+t.count+")"):null
                   )
                 ),
                 ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},fmtMailDate(m.date))
               ),
-              ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":(unread?"var(--t1)":"var(--t3)"),fontWeight:unread?700:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
-              ce("div",{style:{fontSize:11,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview),
+              ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t1)",fontWeight:unread?700:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
+              ce("div",{style:{fontSize:11,color:"var(--t2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview),
               (m.attachments&&m.attachments.length>0)?ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:4}},
                 "\uD83D\uDCCE ",m.attachments.length," za\u0142."
               ):null
