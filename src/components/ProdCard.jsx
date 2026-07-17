@@ -25,7 +25,7 @@ import {
   PRESTIGE_ROUND, PRESTIGE_ROUND_TANDEM, PRESTIGE_ROUND_W60, PRESTIGE_ROUND_W80,
   PRESTIGE_SQUARE, PRESTIGE_SQUARE_TANDEM, PRESTIGE_SQUARE_W60, PRESTIGE_SQUARE_W80,
   PRESTIGE_WIDTHS,
-  PLISA_FABRICS, PLISA_OSPRZET_KOLORY,
+  PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES,
   calc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup
 } from '../constants/data.js';
@@ -1682,10 +1682,26 @@ export function ProdCard(p){
       ce(Fld,{label:"KOLOR"},
         plIsManual
           ?ce("input",{type:"text",value:c.plKolorManual||"",onChange:function(ev){sc("plKolorManual",ev.target.value);},placeholder:"np. Grafit",style:IST})
-          :ce("select",{value:c.plKolorKod||"",onChange:function(ev){sc("plKolorKod",ev.target.value);},disabled:!plColl,style:Object.assign({},IST,{width:"100%"})},
-              ce("option",{value:""},plColl?"-- wybierz kolor --":"najpierw wybierz tkanin\u0119"),
-              (plColl?plColl.colors:[]).map(function(code){return ce("option",{key:code,value:code},code);})
-            )
+          :(!plColl
+              ?ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"10px 0"}},"najpierw wybierz tkanin\u0119")
+              :ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(84px,1fr))",gap:10,maxWidth:640}},
+                  plColl.colors.map(function(code){
+                    var isA=c.plKolorKod===code;
+                    var img=PLISA_FABRIC_IMAGES[code];
+                    return ce("button",{
+                      key:code,
+                      onClick:function(){sc("plKolorKod",code);},
+                      style:{padding:img?"0 0 6px":"10px 6px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",overflow:"hidden",transition:"all .18s"}
+                    },
+                      img?ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
+                        ce("img",{src:img,alt:code,style:{width:"100%",height:60,objectFit:"cover",display:"block",borderRadius:"8px 8px 0 0"}}),
+                        isA?ce("div",{style:{position:"absolute",top:4,left:4,width:18,height:18,borderRadius:"50%",background:"var(--t1)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--bg)",fontSize:10,fontWeight:700}},"\u2713"):null
+                      ):null,
+                      ce("span",{style:{fontSize:11,fontWeight:isA?700:400,color:"var(--t1)",marginTop:img?6:0,lineHeight:1.2,textAlign:"center"}},code)
+                    );
+                  })
+                )
+          )
       ),
       ce(Fld,{label:"KOLOR OSPRZ\u0118TU"},
         ce("select",{value:c.plKolorOsprzetu||"",onChange:function(ev){sc("plKolorOsprzetu",ev.target.value);},style:Object.assign({},IST,{width:"100%"})},
