@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Umowa powierzenia przetwarzania danych (DPA) — Asystent Dekoracji</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;0,800;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1c2b32; --ink2: #4a6070; --ink3: #8aa0ac;
+    --wsp: #849ca6; --wsp-dark: #5d7a87; --wsp-light: #ccd9de;
+    --wsp-bg: #f4f7f8; --wsp-bg2: #e8eef1; --white: #ffffff; --border: #dde5e8;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--white); }
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2.5rem; background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(12px); border-bottom: 1px solid rgba(132,156,166,0.15);
+  }
+  .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
+  .nav-logo span { color: var(--ink3); font-weight: 400; font-style: italic; }
+  .nav-cta { padding: 10px 22px; border-radius: 8px; background: var(--wsp); color: white; font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-decoration: none; }
+  .nav-cta:hover { background: var(--wsp-dark); }
+  main { max-width: 780px; margin: 0 auto; padding: 4rem 2rem 6rem; }
+  .doc-label { font-size: 11px; font-weight: 500; letter-spacing: 0.26em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1rem; }
+  h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.2rem, 5vw, 3.4rem); font-weight: 700; line-height: 1.15; color: var(--ink); margin-bottom: 0.5rem; }
+  .doc-meta { font-size: 13px; color: var(--ink3); margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 600; color: var(--ink); margin: 2.5rem 0 0.9rem; }
+  h3 { font-size: 15px; font-weight: 500; color: var(--ink); margin: 1.4rem 0 0.5rem; }
+  p, li { font-size: 15px; color: var(--ink2); line-height: 1.75; margin-bottom: 0.9rem; font-weight: 300; }
+  ul, ol { padding-left: 1.4rem; margin-bottom: 0.9rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--wsp-dark); text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { color: var(--ink); }
+  strong { color: var(--ink); font-weight: 500; }
+  .callout { background: var(--wsp-bg); border-left: 3px solid var(--wsp); border-radius: 8px; padding: 1.2rem 1.4rem; margin: 1.5rem 0; }
+  .callout p { margin-bottom: 0; font-size: 14px; }
+  .fill { background: var(--wsp-bg2); border-bottom: 1px solid var(--wsp); padding: 1px 6px; border-radius: 3px; font-weight: 400; color: var(--wsp-dark); }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.4rem; font-size: 14px; }
+  th, td { text-align: left; padding: 0.7rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--ink2); font-weight: 300; line-height: 1.6; }
+  th { font-weight: 500; color: var(--ink); background: var(--wsp-bg); font-size: 13px; }
+  .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3rem; }
+  .sig-box { border-top: 1px solid var(--ink3); padding-top: 0.6rem; font-size: 12px; color: var(--ink3); }
+  @media (max-width: 600px) { .sig-grid { grid-template-columns: 1fr; } }
+  footer { padding: 2rem; border-top: 1px solid var(--border); text-align: center; font-size: 11px; color: var(--ink3); letter-spacing: 0.14em; text-transform: uppercase; }
+  footer a { color: var(--ink3); text-decoration: none; margin: 0 12px; }
+  footer a:hover { color: var(--wsp-dark); }
+  @media print { nav, footer, .noprint { display: none; } main { padding: 0; max-width: 100%; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">Asystent <span>Dekoracji</span></a>
+  <a class="nav-cta" href="mailto:kontakt@asystentdekoracji.pl">Kontakt</a>
+</nav>
+
+<main>
+  <div class="doc-label">Dokumenty</div>
+  <h1>Umowa powierzenia przetwarzania danych osobowych</h1>
+  <div class="doc-meta">Wzór (DPA) · Wersja 1.0 · Stanowi załącznik do <a href="/terms">Regulaminu</a> świadczenia usług drogą elektroniczną</div>
+
+  <div class="callout noprint">
+    <p><strong>Jak zawrzeć tę umowę.</strong> Zgodnie z art. 28 ust. 9 RODO umowa powierzenia wymaga formy pisemnej, w tym elektronicznej. Umowa zostaje zawarta z chwilą akceptacji jej treści przez Administratora w procesie rejestracji albo zakupu Abonamentu, bez konieczności składania podpisów odręcznych. Na żądanie Administratora Przetwarzający udostępni egzemplarz do podpisu.</p>
+  </div>
+
+  <h2>Strony</h2>
+  <p><strong>Administrator</strong> (Powierzający) — podmiot korzystający z Aplikacji na podstawie Regulaminu:</p>
+  <p>
+    Nazwa: <span class="fill">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><br>
+    NIP: <span class="fill">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>&nbsp;&nbsp;
+    Adres: <span class="fill">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><br>
+    Adres e-mail konta w Aplikacji: <span class="fill">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+  </p>
+
+  <p><strong>Przetwarzający</strong> (Procesor):</p>
+  <p>
+    <strong>PD Porter Design Paulina Porter</strong><br>
+    ul. Jacka Woronieckiego 6c lok. 2, 05-220 Zielonka<br>
+    NIP: 812-18-03-400 · REGON: 141713073<br>
+    Kontakt w sprawach ochrony danych: <a href="mailto:kontakt@asystentdekoracji.pl">kontakt@asystentdekoracji.pl</a>
+  </p>
+
+  <h2>§ 1. Definicje</h2>
+  <ol>
+    <li><strong>RODO</strong> — rozporządzenie Parlamentu Europejskiego i Rady (UE) 2016/679 z 27 kwietnia 2016 r. o ochronie danych osobowych.</li>
+    <li><strong>Aplikacja</strong> — oprogramowanie „Asystent Dekoracji" udostępniane w modelu SaaS pod adresem asystentdekoracji.pl.</li>
+    <li><strong>Regulamin</strong> — regulamin świadczenia usług drogą elektroniczną dostępny pod adresem <a href="/terms">asystentdekoracji.pl/terms</a>, stanowiący umowę główną w rozumieniu art. 28 ust. 3 RODO.</li>
+    <li><strong>Dane Powierzone</strong> — dane osobowe, które Administrator wprowadza do Aplikacji lub które są w niej generowane w wyniku korzystania przez niego z Aplikacji, w zakresie określonym w Załączniku nr 1.</li>
+    <li><strong>Podprocesor</strong> — podmiot, któremu Przetwarzający powierza dalsze przetwarzanie Danych Powierzonych zgodnie z § 6.</li>
+    <li>Pozostałe pojęcia pisane wielką literą mają znaczenie nadane im w RODO lub w Regulaminie.</li>
+  </ol>
+
+  <h2>§ 2. Przedmiot, cel i charakter przetwarzania</h2>
+  <ol>
+    <li>Administrator powierza Przetwarzającemu przetwarzanie Danych Powierzonych, a Przetwarzający zobowiązuje się je przetwarzać wyłącznie na zasadach określonych w niniejszej umowie.</li>
+    <li><strong>Cel przetwarzania:</strong> świadczenie na rzecz Administratora usługi dostępu do Aplikacji zgodnie z Regulaminem — w szczególności umożliwienie mu prowadzenia wycen, obsługi klienta (CRM), zleceń, kalendarza, magazynu, korespondencji i fakturowania.</li>
+    <li><strong>Charakter przetwarzania:</strong> przechowywanie, utrwalanie, organizowanie, porządkowanie, odczytywanie, modyfikowanie, usuwanie oraz udostępnianie Danych Powierzonych w zakresie niezbędnym do działania Aplikacji, przy użyciu systemów teleinformatycznych.</li>
+    <li><strong>Czas przetwarzania:</strong> przez okres obowiązywania Regulaminu, z zastrzeżeniem § 13.</li>
+    <li>Rodzaj Danych Powierzonych oraz kategorie osób, których dane dotyczą, określa <strong>Załącznik nr 1</strong>.</li>
+    <li>Przetwarzający nie ustala celów ani sposobów przetwarzania Danych Powierzonych i nie wykorzystuje ich do własnych celów, w szczególności nie wykorzystuje ich do celów marketingowych, do trenowania modeli uczenia maszynowego ani nie tworzy na ich podstawie profili.</li>
+  </ol>
+
+  <h2>§ 3. Obowiązki Przetwarzającego</h2>
+  <p>Przetwarzający zobowiązuje się do:</p>
+  <ol>
+    <li>przetwarzania Danych Powierzonych <strong>wyłącznie na udokumentowane polecenie</strong> Administratora — za takie polecenie uznaje się treść niniejszej umowy, Regulaminu oraz każdą czynność wykonaną przez Administratora lub upoważnionego przez niego użytkownika w interfejsie Aplikacji; dotyczy to również przekazywania danych do państwa trzeciego, chyba że obowiązek taki nakłada na Przetwarzającego prawo Unii lub prawo polskie (w takim przypadku Przetwarzający informuje Administratora o tym obowiązku przed rozpoczęciem przetwarzania, o ile prawo tego nie zakazuje);</li>
+    <li><strong>niezwłocznego poinformowania</strong> Administratora, jeżeli w ocenie Przetwarzającego wydane polecenie stanowi naruszenie RODO lub innych przepisów o ochronie danych (art. 28 ust. 3 zd. ostatnie RODO);</li>
+    <li>zapewnienia, by osoby upoważnione do przetwarzania Danych Powierzonych <strong>zobowiązały się do zachowania poufności</strong> lub podlegały ustawowemu obowiązkowi zachowania tajemnicy, oraz by dostęp do danych miały wyłącznie w zakresie niezbędnym do wykonywania powierzonych zadań;</li>
+    <li>prowadzenia <strong>rejestru kategorii czynności przetwarzania</strong> dokonywanych w imieniu Administratora (art. 30 ust. 2 RODO);</li>
+    <li>wdrożenia i utrzymywania środków technicznych i organizacyjnych, o których mowa w § 4;</li>
+    <li>udostępnienia Administratorowi wszelkich informacji niezbędnych do wykazania spełnienia obowiązków wynikających z art. 28 RODO oraz umożliwienia audytów na zasadach z § 8;</li>
+    <li>niezwłocznego przekazania Administratorowi każdego żądania osoby, której dane dotyczą, oraz każdego wystąpienia organu nadzorczego dotyczącego Danych Powierzonych — Przetwarzający samodzielnie nie odpowiada na takie żądania, chyba że Administrator poleci mu inaczej.</li>
+  </ol>
+
+  <h2>§ 4. Bezpieczeństwo przetwarzania</h2>
+  <ol>
+    <li>Przetwarzający wdraża środki techniczne i organizacyjne zapewniające stopień bezpieczeństwa odpowiadający ryzyku, zgodnie z art. 32 RODO. Wykaz aktualnych środków stanowi <strong>Załącznik nr 2</strong>.</li>
+    <li>Przetwarzający może aktualizować środki wskazane w Załączniku nr 2, pod warunkiem że poziom bezpieczeństwa nie ulegnie obniżeniu.</li>
+    <li>Administrator oświadcza, że zapoznał się z Załącznikiem nr 2 i uznaje opisane środki za odpowiednie w odniesieniu do Danych Powierzonych.</li>
+  </ol>
+
+  <h2>§ 5. Pomoc Administratorowi</h2>
+  <ol>
+    <li>Przetwarzający — biorąc pod uwagę charakter przetwarzania — pomaga Administratorowi, w miarę możliwości, poprzez odpowiednie środki techniczne i organizacyjne wywiązać się z obowiązku odpowiadania na żądania osób, których dane dotyczą, w zakresie praw z rozdziału III RODO (dostęp, sprostowanie, usunięcie, ograniczenie, przenoszenie, sprzeciw).</li>
+    <li>Funkcje Aplikacji umożliwiające Administratorowi samodzielne wyszukanie, zmianę, eksport i usunięcie danych konkretnej osoby uznaje się za wystarczającą formę pomocy, o której mowa w ust. 1.</li>
+    <li>Przetwarzający pomaga Administratorowi wywiązać się z obowiązków określonych w art. 32–36 RODO (bezpieczeństwo, zgłaszanie naruszeń, ocena skutków dla ochrony danych, uprzednie konsultacje), uwzględniając charakter przetwarzania i dostępne mu informacje.</li>
+    <li>Pomoc, o której mowa w ust. 1 i 3, świadczona jest w ramach Abonamentu. Jeżeli żądania Administratora wykraczają rażąco poza standardowy zakres — w szczególności wymagają prac programistycznych lub analitycznych przekraczających 4 godziny w miesiącu — Przetwarzający może uzależnić ich wykonanie od uzgodnienia dodatkowego wynagrodzenia.</li>
+  </ol>
+
+  <h2>§ 6. Podpowierzenie (dalsze powierzenie)</h2>
+  <ol>
+    <li>Administrator udziela Przetwarzającemu <strong>ogólnej zgody</strong> na korzystanie z Podprocesorów, w rozumieniu art. 28 ust. 2 RODO.</li>
+    <li>Aktualna lista Podprocesorów stanowi <strong>Załącznik nr 3</strong>.</li>
+    <li>Przetwarzający informuje Administratora o zamierzonej zmianie dotyczącej dodania lub zastąpienia Podprocesora — drogą elektroniczną na adres e-mail przypisany do Konta — z co najmniej <strong>30-dniowym wyprzedzeniem</strong>.</li>
+    <li>Administrator może wnieść uzasadniony sprzeciw wobec zmiany w terminie 14 dni od otrzymania informacji. W razie sprzeciwu strony podejmą w dobrej wierze próbę uzgodnienia rozwiązania. Jeżeli nie będzie ono możliwe, Administrator ma prawo wypowiedzieć Regulamin ze skutkiem na dzień poprzedzający wprowadzenie zmiany, z prawem do zwrotu opłat za niewykorzystany okres rozliczeniowy.</li>
+    <li>Przetwarzający nakłada na każdego Podprocesora — na mocy umowy lub innego aktu prawnego — obowiązki w zakresie ochrony danych <strong>nie mniej rygorystyczne</strong> niż określone w niniejszej umowie, w szczególności obowiązek zapewnienia wystarczających gwarancji wdrożenia środków z art. 32 RODO.</li>
+    <li>Przetwarzający ponosi wobec Administratora <strong>pełną odpowiedzialność</strong> za wywiązanie się przez Podprocesora z jego obowiązków (art. 28 ust. 4 RODO).</li>
+    <li>Usługi zewnętrzne, które Administrator samodzielnie łączy ze swoim kontem (Google Calendar, Microsoft Outlook), a także Krajowy System e-Faktur oraz Główny Urząd Statystyczny, <strong>nie są Podprocesorami</strong> Przetwarzającego — Administrator korzysta z nich na podstawie własnej relacji z tymi podmiotami, a Przetwarzający jedynie technicznie umożliwia połączenie na jego wyraźne polecenie.</li>
+  </ol>
+
+  <h2>§ 7. Naruszenia ochrony danych</h2>
+  <ol>
+    <li>Przetwarzający zgłasza Administratorowi każde naruszenie ochrony Danych Powierzonych <strong>bez zbędnej zwłoki, nie później niż w ciągu 48 godzin</strong> od jego stwierdzenia — na adres e-mail przypisany do Konta.</li>
+    <li>Zgłoszenie zawiera, w miarę dostępnych informacji: opis charakteru naruszenia, kategorie i przybliżoną liczbę osób oraz wpisów, których dotyczy, opis możliwych konsekwencji, opis zastosowanych lub proponowanych środków zaradczych oraz dane kontaktowe do uzyskania dalszych informacji. Jeżeli podanie wszystkich informacji jednocześnie nie jest możliwe, Przetwarzający przekazuje je sukcesywnie, bez zbędnej zwłoki.</li>
+    <li>Zgłoszenie naruszenia organowi nadzorczemu (art. 33 RODO) oraz zawiadomienie osób, których dane dotyczą (art. 34 RODO), pozostaje <strong>obowiązkiem Administratora</strong>. Przetwarzający nie dokonuje tych czynności w jego imieniu, chyba że strony uzgodnią inaczej na piśmie.</li>
+    <li>Przetwarzający dokumentuje naruszenia i udostępnia Administratorowi dokumentację na żądanie.</li>
+  </ol>
+
+  <h2>§ 8. Prawo kontroli i audyt</h2>
+  <ol>
+    <li>Administrator ma prawo do przeprowadzenia audytu, w tym inspekcji, w zakresie przetwarzania Danych Powierzonych (art. 28 ust. 3 lit. h RODO).</li>
+    <li>Audyt odbywa się nie częściej niż <strong>raz w roku kalendarzowym</strong>, po zawiadomieniu Przetwarzającego z co najmniej 30-dniowym wyprzedzeniem, w dni robocze w godzinach 9:00–17:00, w sposób nieutrudniający nieproporcjonalnie bieżącej działalności Przetwarzającego. Ograniczenie częstotliwości nie obowiązuje, jeżeli audyt jest następstwem stwierdzonego naruszenia ochrony Danych Powierzonych albo żądania organu nadzorczego.</li>
+    <li>Osoby przeprowadzające audyt zobowiązane są do zachowania poufności i nie mogą być podmiotami konkurencyjnymi wobec Przetwarzającego.</li>
+    <li>W pierwszej kolejności Przetwarzający może wywiązać się z obowiązku z ust. 1 poprzez przekazanie dokumentacji: wypełnionego kwestionariusza bezpieczeństwa, opisu środków z Załącznika nr 2 oraz certyfikatów i raportów swoich Podprocesorów. Inspekcja na miejscu przysługuje Administratorowi, jeżeli dokumentacja ta okaże się niewystarczająca.</li>
+    <li>Koszty audytu ponosi Administrator, z wyjątkiem sytuacji, w której audyt wykaże istotne naruszenie niniejszej umowy przez Przetwarzającego — wówczas koszty ponosi Przetwarzający.</li>
+  </ol>
+
+  <h2>§ 9. Przekazywanie danych poza EOG</h2>
+  <ol>
+    <li>Dane Powierzone są przechowywane na serwerach zlokalizowanych na terenie Unii Europejskiej.</li>
+    <li>Niektórzy Podprocesorzy wskazani w Załączniku nr 3 mają siedzibę poza EOG lub mogą uzyskiwać dostęp do danych spoza EOG (w szczególności w ramach wsparcia technicznego). W takich przypadkach przekazanie odbywa się na podstawie <strong>standardowych klauzul umownych</strong> zatwierdzonych decyzją wykonawczą Komisji Europejskiej 2021/914 lub innego mechanizmu przewidzianego w rozdziale V RODO (np. decyzji stwierdzającej odpowiedni stopień ochrony).</li>
+    <li>Przetwarzający udostępni Administratorowi na żądanie informację o podstawie prawnej transferu dla każdego Podprocesora.</li>
+  </ol>
+
+  <h2>§ 10. Obowiązki i oświadczenia Administratora</h2>
+  <ol>
+    <li>Administrator oświadcza, że jest administratorem Danych Powierzonych i że posiada ważną podstawę prawną ich przetwarzania oraz powierzenia ich Przetwarzającemu.</li>
+    <li>Administrator odpowiada za wykonanie obowiązku informacyjnego (art. 13–14 RODO) wobec osób, których Dane Powierzone dotyczą.</li>
+    <li>Administrator zobowiązuje się <strong>nie wprowadzać do Aplikacji danych szczególnych kategorii</strong> (art. 9 RODO — m.in. dane o zdrowiu, poglądach politycznych, przekonaniach religijnych, danych biometrycznych, orientacji seksualnej) ani danych dotyczących wyroków skazujących i naruszeń prawa (art. 10 RODO). Aplikacja nie jest przystosowana do przetwarzania takich danych. Wprowadzenie ich odbywa się na wyłączne ryzyko Administratora.</li>
+    <li>Administrator odpowiada za zarządzanie kontami użytkowników w ramach swojego konta, w tym za nadawanie i odbieranie dostępu oraz za nieudostępnianie danych logowania osobom nieuprawnionym.</li>
+    <li>Administrator zobowiązuje się utrzymywać aktualny adres e-mail przypisany do Konta — na ten adres kierowane są zawiadomienia z § 6 ust. 3 i § 7 ust. 1.</li>
+  </ol>
+
+  <h2>§ 11. Odpowiedzialność</h2>
+  <ol>
+    <li>Każda ze stron odpowiada za szkody spowodowane przetwarzaniem naruszającym RODO na zasadach określonych w art. 82 RODO.</li>
+    <li>Odpowiedzialność Przetwarzającego wobec Administratora z tytułu niniejszej umowy ograniczona jest do wysokości Abonamentu zapłaconego przez Administratora w okresie 12 miesięcy poprzedzających zdarzenie wywołujące szkodę — zgodnie z § 6 ust. 3 Regulaminu. Ograniczenie nie dotyczy szkód wyrządzonych umyślnie ani przypadków, w których wyłączenie lub ograniczenie odpowiedzialności jest niedopuszczalne z mocy bezwzględnie obowiązujących przepisów prawa.</li>
+    <li>Ograniczenie z ust. 2 <strong>nie wpływa</strong> na odpowiedzialność stron wobec osób, których dane dotyczą, ani wobec organu nadzorczego — odpowiedzialność ta wynika bezpośrednio z RODO i nie może zostać zmodyfikowana umową.</li>
+    <li>Jeżeli jedna ze stron zapłaci pełne odszkodowanie za szkodę, przysługuje jej roszczenie regresowe wobec drugiej strony w części odpowiadającej jej odpowiedzialności (art. 82 ust. 5 RODO).</li>
+  </ol>
+
+  <h2>§ 12. Poufność</h2>
+  <ol>
+    <li>Przetwarzający zobowiązuje się zachować w tajemnicy Dane Powierzone oraz sposoby ich zabezpieczenia, zarówno w okresie obowiązywania umowy, jak i bezterminowo po jej ustaniu.</li>
+    <li>Obowiązek z ust. 1 nie dotyczy informacji, które są publicznie dostępne bez naruszenia niniejszej umowy, albo których ujawnienia wymaga bezwzględnie obowiązujący przepis prawa lub orzeczenie właściwego organu.</li>
+  </ol>
+
+  <h2>§ 13. Czas obowiązywania i zakończenie</h2>
+  <ol>
+    <li>Umowa zostaje zawarta na czas obowiązywania Regulaminu i wygasa z chwilą jego rozwiązania lub wygaśnięcia.</li>
+    <li>Po zakończeniu świadczenia usług Przetwarzający — zależnie od decyzji Administratora — zwraca Dane Powierzone albo je usuwa, w tym usuwa istniejące kopie, chyba że prawo Unii lub prawo polskie nakazuje ich dalsze przechowywanie (art. 28 ust. 3 lit. g RODO).</li>
+    <li>Administrator ma <strong>30 dni</strong> od dnia rozwiązania umowy na samodzielne wyeksportowanie Danych Powierzonych z Aplikacji — zgodnie z § 10 ust. 3 Regulaminu. Brak dyspozycji Administratora w tym terminie uznaje się za polecenie usunięcia danych.</li>
+    <li>Usunięcie danych z kopii zapasowych następuje wraz z upływem cyklu rotacji kopii, nie później niż <strong>90 dni</strong> od usunięcia danych z systemów produkcyjnych. Do tego czasu dane w kopiach zapasowych podlegają wyłącznie przechowywaniu i pozostają objęte niniejszą umową.</li>
+    <li>Na żądanie Administratora Przetwarzający wystawi pisemne potwierdzenie usunięcia Danych Powierzonych.</li>
+  </ol>
+
+  <h2>§ 14. Postanowienia końcowe</h2>
+  <ol>
+    <li>Niniejsza umowa stanowi integralną część Regulaminu. W razie sprzeczności między niniejszą umową a Regulaminem — w zakresie ochrony danych osobowych — <strong>pierwszeństwo ma niniejsza umowa</strong>.</li>
+    <li>Zmiana niniejszej umowy następuje w trybie właściwym dla zmiany Regulaminu (§ 11 Regulaminu), z zastrzeżeniem § 6 ust. 3–4 w zakresie zmiany Podprocesorów.</li>
+    <li>Nieważność któregokolwiek postanowienia nie wpływa na ważność pozostałych. W miejsce postanowienia nieważnego stosuje się postanowienie najbliższe celowi gospodarczemu postanowienia nieważnego.</li>
+    <li>W sprawach nieuregulowanych stosuje się RODO, ustawę z 10 maja 2018 r. o ochronie danych osobowych oraz Kodeks cywilny.</li>
+    <li>Spory rozstrzyga sąd właściwy dla siedziby Przetwarzającego.</li>
+  </ol>
+
+  <h2>Załącznik nr 1 — Szczegóły przetwarzania</h2>
+
+  <h3>Kategorie osób, których dane dotyczą</h3>
+  <ul>
+    <li>Klienci Administratora — osoby fizyczne oraz osoby fizyczne prowadzące działalność gospodarczą,</li>
+    <li>osoby reprezentujące kontrahentów Administratora (pracownicy, przedstawiciele, osoby kontaktowe),</li>
+    <li>potencjalni klienci Administratora (leady, osoby zapytujące o wycenę),</li>
+    <li>dostawcy, szwalnie, montażyści i inni współpracownicy Administratora,</li>
+    <li>użytkownicy konta Administratora (jego pracownicy i współpracownicy).</li>
+  </ul>
+
+  <h3>Rodzaj (zakres) Danych Powierzonych</h3>
+  <table>
+    <tr><th>Kategoria</th><th>Przykładowe dane</th></tr>
+    <tr><td>Dane identyfikacyjne i kontaktowe</td><td>imię, nazwisko, nazwa firmy, adres e-mail, numer telefonu, adres korespondencyjny, adres montażu</td></tr>
+    <tr><td>Dane firmowe</td><td>NIP, REGON, adres siedziby</td></tr>
+    <tr><td>Dane handlowe</td><td>wyceny, wymiary okien, wybrane produkty i tkaniny, kwoty, marże, historia zamówień, etap w lejku CRM, notatki</td></tr>
+    <tr><td>Dane rozliczeniowe</td><td>faktury, numery KSeF, numery rachunków bankowych, terminy i statusy płatności</td></tr>
+    <tr><td>Dane organizacyjne</td><td>terminy pomiarów i montaży, zadania, zlecenia szycia i zamówienia tkanin</td></tr>
+    <tr><td>Korespondencja</td><td>treść wiadomości e-mail wysyłanych do klientów z poziomu Aplikacji oraz szablony wiadomości</td></tr>
+    <tr><td>Dane kont użytkowników</td><td>adres e-mail, zaszyfrowane hasło, rola i uprawnienia, dane sesji</td></tr>
+  </table>
+  <p><strong>Dane szczególnych kategorii:</strong> nie są przetwarzane — patrz § 10 ust. 3.</p>
+
+  <h3>Czynności przetwarzania</h3>
+  <p>Zbieranie, utrwalanie, organizowanie, porządkowanie, przechowywanie, adaptowanie, modyfikowanie, pobieranie, przeglądanie, wykorzystywanie, ujawnianie poprzez przesłanie (wysyłka ofert PDF, faktur, zamówień), dopasowywanie, ograniczanie, usuwanie i niszczenie — w zakresie funkcji Aplikacji uruchamianych przez Administratora.</p>
+
+  <h3>Czas trwania</h3>
+  <p>Okres obowiązywania Regulaminu, powiększony o okresy retencji określone w § 13 ust. 3–4.</p>
+
+  <h2>Załącznik nr 2 — Środki techniczne i organizacyjne (art. 32 RODO)</h2>
+
+  <h3>Kontrola dostępu</h3>
+  <ul>
+    <li>Dostęp do konta wymaga uwierzytelnienia (adres e-mail i hasło), hasła przechowywane wyłącznie w postaci skrótu kryptograficznego.</li>
+    <li><strong>Izolacja danych na poziomie bazy danych</strong> — mechanizm Row Level Security (RLS) w PostgreSQL zapewnia, że zapytanie użytkownika może zwrócić wyłącznie rekordy przypisane do jego konta (najemcy). Reguła egzekwowana jest po stronie silnika bazy danych, niezależnie od kodu aplikacji.</li>
+    <li>Model uprawnień oparty na rolach (administrator konta / użytkownik).</li>
+    <li>Dostęp personelu Przetwarzającego do danych produkcyjnych ograniczony do niezbędnego minimum i wyłącznie w celu diagnozy zgłoszonego problemu lub wykonania obowiązku prawnego.</li>
+  </ul>
+
+  <h3>Szyfrowanie</h3>
+  <ul>
+    <li>Cała komunikacja z Aplikacją i jej interfejsami wyłącznie przez HTTPS/TLS 1.2 lub wyższy.</li>
+    <li>Szyfrowanie danych w spoczynku na poziomie infrastruktury bazodanowej.</li>
+    <li>Token autoryzacyjny KSeF przechowywany w bazie w postaci zaszyfrowanej.</li>
+    <li>Tokeny integracji Google i Microsoft nie są przechowywane na serwerach Przetwarzającego — pozostają wyłącznie w przeglądarce użytkownika i wygasają automatycznie.</li>
+  </ul>
+
+  <h3>Ciągłość działania</h3>
+  <ul>
+    <li>Automatyczne kopie zapasowe bazy danych wykonywane przez dostawcę infrastruktury (Supabase), z możliwością odtworzenia stanu.</li>
+    <li>Rozproszona infrastruktura hostingowa (Vercel) z automatycznym przywracaniem usługi.</li>
+    <li>Możliwość samodzielnego eksportu danych przez Administratora z poziomu Aplikacji.</li>
+  </ul>
+
+  <h3>Bezpieczeństwo przetwarzania</h3>
+  <ul>
+    <li>Rozdzielenie środowisk: dane produkcyjne oddzielone od środowiska demonstracyjnego i testowego.</li>
+    <li>Operacje uprzywilejowane (administracyjne) wykonywane wyłącznie przez dedykowane funkcje serwerowe, z weryfikacją uprawnień; klucze serwisowe nigdy nie są udostępniane po stronie przeglądarki.</li>
+    <li>Weryfikacja podpisów kryptograficznych przy odbiorze zdarzeń od operatora płatności.</li>
+    <li>Walidacja i kontrola typów danych przed zapisem do bazy.</li>
+    <li>Logi techniczne przechowywane do 90 dni.</li>
+  </ul>
+
+  <h3>Środki organizacyjne</h3>
+  <ul>
+    <li>Zobowiązania do zachowania poufności dla wszystkich osób mających dostęp do danych.</li>
+    <li>Rejestr kategorii czynności przetwarzania (art. 30 ust. 2 RODO).</li>
+    <li>Procedura obsługi naruszeń ochrony danych zgodna z § 7.</li>
+    <li>Weryfikacja gwarancji dostawców przed dopuszczeniem ich jako Podprocesorów.</li>
+  </ul>
+
+  <h2>Załącznik nr 3 — Lista Podprocesorów</h2>
+  <p>Stan na dzień <span class="fill">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>. Aktualna lista dostępna na żądanie pod adresem kontakt@asystentdekoracji.pl.</p>
+  <table>
+    <tr><th>Podprocesor</th><th>Zakres usługi</th><th>Lokalizacja przetwarzania</th><th>Podstawa transferu</th></tr>
+    <tr>
+      <td><strong>Supabase Inc.</strong><br>970 Toa Payoh North, Singapur / USA</td>
+      <td>Baza danych, uwierzytelnianie, przechowywanie plików</td>
+      <td>UE (region produkcyjny); wsparcie techniczne — możliwy dostęp spoza EOG</td>
+      <td>Standardowe klauzule umowne (SCC)</td>
+    </tr>
+    <tr>
+      <td><strong>Vercel Inc.</strong><br>USA</td>
+      <td>Hosting Aplikacji i funkcji serwerowych</td>
+      <td>UE (region wykonywania funkcji); możliwy dostęp spoza EOG</td>
+      <td>Standardowe klauzule umowne (SCC) / DPF</td>
+    </tr>
+    <tr>
+      <td><strong>Resend (Plus Five Five, Inc.)</strong><br>USA</td>
+      <td>Wysyłka wiadomości transakcyjnych e-mail</td>
+      <td>USA</td>
+      <td>Standardowe klauzule umowne (SCC)</td>
+    </tr>
+    <tr>
+      <td><strong>Stripe Payments Europe, Ltd.</strong><br>Irlandia</td>
+      <td>Obsługa płatności za Abonament Administratora</td>
+      <td>UE / USA</td>
+      <td>Odrębny administrator w zakresie danych płatniczych; SCC</td>
+    </tr>
+  </table>
+  <p><strong>Nie są Podprocesorami</strong> (patrz § 6 ust. 7): Google LLC (Google Calendar), Microsoft Corporation (Outlook), Ministerstwo Finansów RP (KSeF), Główny Urząd Statystyczny (BIR 1.1).</p>
+
+  <div class="sig-grid noprint">
+    <div class="sig-box">Administrator — data i podpis</div>
+    <div class="sig-box">Przetwarzający — data i podpis</div>
+  </div>
+</main>
+
+<footer>
+  <a href="/">Strona główna</a> ·
+  <a href="/privacy">Polityka prywatności</a> ·
+  <a href="/terms">Regulamin</a> ·
+  <a href="mailto:kontakt@asystentdekoracji.pl">Kontakt</a>
+  <div style="margin-top:1rem;">Asystent Dekoracji &copy; 2026</div>
+</footer>
+
+</body>
+</html>
