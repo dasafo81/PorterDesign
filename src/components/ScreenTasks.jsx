@@ -91,7 +91,7 @@ var CATEGORIES = {
   legal:       { label: "Dział Legalny",       color: "#64748b", icon: "⚖️" },
   sprzedaz:    { label: "Sprzedaż",            color: "#059669", icon: "💰" },
   logistyka:   { label: "Logistyka Zamówienia", color: "#2563eb", icon: "📦" },
-  finanse:     { label: "Finanse",             color: "#0d9488", icon: "📊" },
+  finanse:     { label: "Finanse / Księgowość", color: "#0d9488", icon: "📊" },
   reklamacje:  { label: "Reklamacje",          color: "#dc2626", icon: "⚠️" }
 };
 var CAT_ORDER = ["montaz", "aplikacja", "marketing", "legal", "sprzedaz", "logistyka", "finanse", "reklamacje"];
