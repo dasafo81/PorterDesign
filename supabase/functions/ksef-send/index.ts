@@ -54,8 +54,8 @@ async function sha256b64(data: Uint8Array): Promise<string> {
 // deno-lint-ignore no-explicit-any
 function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings: Record<string,any>): string {
   const s = inv.seller_snapshot || {};
-  const sellerNip = (s.nip || settings.seller_nip || "").replace(/[\s-]/g, "");
-  const buyerNip  = (inv.buyer_nip || "").replace(/[\s-]/g, "");
+  const sellerNip = (s.nip || settings.seller_nip || "").replace(/[\s-]/g, "").replace(/^PL/i, "");
+  const buyerNip  = (inv.buyer_nip || "").replace(/[\s-]/g, "").replace(/^PL/i, "");
   const vatGroups: Record<string,{net:number;vat:number}> = {};
   for (const it of (items||[])) {
     const k = String(it.vat_rate);
