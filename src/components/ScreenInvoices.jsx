@@ -151,8 +151,10 @@ function ItemRow(p){
       value:(it.unit_net==null||it.unit_net===""||+(it.unit_net)===0)?"":(typeof it.unit_net==="string"?it.unit_net:+(+(it.unit_net)).toFixed(2)),
       inputMode:"decimal", placeholder:"0,00",
       onChange:function(e){upd("unit_net",e.target.value.replace(",","."));}}),
-    // Cena brutto — bez type:number (brak strzalek), puste zamiast 0
-    ce("input",{style:Object.assign({},inpSm,{textAlign:"right",background:"var(--bd3)"}),
+    // Cena brutto — bez type:number (brak strzalek), puste zamiast 0. Bez szarego tła:
+    // to pole w pełni edytowalne (wpisanie tu przelicza netto), szare tło sugerowało
+    // pole tylko do odczytu i myliło przy wpisywaniu kwoty brutto.
+    ce("input",{style:Object.assign({},inpSm,{textAlign:"right"}),
       value:(it.unit_gross==null||it.unit_gross===""||+(it.unit_gross)===0)?"":(typeof it.unit_gross==="string"?it.unit_gross:+(+(it.unit_gross)).toFixed(2)),
       inputMode:"decimal", placeholder:"0,00",
       onChange:function(e){upd("unit_gross",e.target.value.replace(",","."));}}),
