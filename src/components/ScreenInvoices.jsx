@@ -1158,7 +1158,14 @@ function InvoiceList(p){
   var list=(p.invoices||[]).filter(function(inv){
     if(groupFilter==="zakup"&&invDirection(inv)!=="zakup") return false;
     if(groupFilter==="sprzedaz"&&invDirection(inv)==="zakup") return false;
-    if(filterDocType!=="all"&&inv.doc_type!==filterDocType) return false;
+    // "vat"/"zakup" w tym filtrze oznaczają kierunek (Sprzedażowa/Zakupowa), nie sam
+    // doc_type — doc_type i direction są niezależne (faktura zakupowa może być zwykłą
+    // Fakturą VAT, EKO albo proformą). Bez tego rozróżnienia filtr "Sprzedażowa" łapał
+    // też faktury zakupowe z doc_type="vat", a "Zakupowa" (stary model doc_type==="zakup")
+    // nie łapał w ogóle nowych faktur zakupowych typu VAT/proforma/EKO.
+    if(filterDocType==="vat"&&(inv.doc_type!=="vat"||invDirection(inv)==="zakup")) return false;
+    if(filterDocType==="zakup"&&invDirection(inv)!=="zakup") return false;
+    if(filterDocType!=="all"&&filterDocType!=="vat"&&filterDocType!=="zakup"&&inv.doc_type!==filterDocType) return false;
     if(search){
       var q=search.toLowerCase();
       return (inv.number&&inv.number.toLowerCase().includes(q))
