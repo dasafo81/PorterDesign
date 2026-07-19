@@ -3,6 +3,8 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10 } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
+import { msalGetToken, msalGetActiveAccount } from '../msal.js';
+import { fillTemplate } from './ScreenMail.jsx';
 const ce = React.createElement;
 
 
@@ -128,6 +130,14 @@ export function ModalDeal(p){
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
   var sgcd=useState(null),gcalDraft=sgcd[0],setGcalDraft=sgcd[1];
+  // Szablony maili "Opinia - swobodna" / "Instrukcja prania i czyszczenia" oraz stan modala wysyłki
+  var smt=useState(null),mailTpls=smt[0],setMailTpls=smt[1];
+  var smk=useState(null),mailKind=smk[0],setMailKind=smk[1]; // "opinia" | "instrukcja" | null
+  var smb=useState(false),mailBusy=smb[0],setMailBusy=smb[1];
+  var sme=useState(null),mailErr=sme[0],setMailErr=sme[1];
+  var smm=useState(null),mailMsg=smm[0],setMailMsg=smm[1];
+  var smsub=useState(""),mailSubject=smsub[0],setMailSubject=smsub[1];
+  var smbod=useState(""),mailBodyText=smbod[0],setMailBodyText=smbod[1];
 
   var SEWING_HOUSES_OPT=[
     "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
@@ -148,6 +158,18 @@ export function ModalDeal(p){
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
   },[d.id]);
+
+  // Szablony maili "Opinia - swobodna" i "Instrukcja prania i czyszczenia" — do wysyłki z karty deala,
+  // analogicznie do wysyłki faktury z modułu Faktury.
+  React.useEffect(function(){
+    sbApi.getMailTemplates().then(function(rows){
+      var byLabel=function(lbl){return (rows||[]).find(function(r){return (r.label||"").trim()===lbl;})||null;};
+      setMailTpls({
+        opinia:byLabel("Opinia - swobodna"),
+        instrukcja:byLabel("Instrukcja prania i czyszczenia")
+      });
+    }).catch(function(){setMailTpls({opinia:null,instrukcja:null});});
+  },[]);
 
   function save(){
     setBusy(true);
@@ -202,6 +224,62 @@ export function ModalDeal(p){
       setAttachments(function(a){return a.concat([att]);});
       setUploading(false);
     }).catch(function(e){alert("Błąd uploadu: "+e.message);setUploading(false);});
+  }
+
+  // Otwiera modal z podglądem/edycją treści maila wg szablonu z bazy (Opinia / Instrukcja prania)
+  function openMailTplModal(kind){
+    if(!cl||!cl.email)return;
+    var tpl=mailTpls&&mailTpls[kind];
+    if(!tpl){
+      alert("Brak szablonu \""+(kind==="opinia"?"Opinia - swobodna":"Instrukcja prania i czyszczenia")+"\" w bazie (zakładka Mail → Szablony).");
+      return;
+    }
+    setMailErr(null);setMailMsg(null);
+    var filled=fillTemplate({subject:tpl.subject||"",body:tpl.body||""},cl);
+    setMailSubject(filled.subject);
+    setMailBodyText(filled.body);
+    setMailKind(kind);
+  }
+
+  // Wysyła mail (opinia / instrukcja prania) bezpośrednio z aplikacji przez podłączoną skrzynkę Outlook
+  // (Microsoft Graph), analogicznie do wysyłki faktury w module Faktury. Wymaga wcześniejszego
+  // zalogowania w zakładce Poczta — tu tylko odświeżamy token w tle (silent).
+  function sendTplEmail(){
+    if(!cl||!cl.email||!mailKind)return;
+    setMailBusy(true);setMailErr(null);setMailMsg(null);
+    msalGetActiveAccount().then(function(acc){
+      if(!acc){
+        var e=new Error("Zaloguj si\u0119 do poczty (zak\u0142adka Poczta), a potem spr\u00f3buj ponownie.");
+        e.code="MS_NO_ACCOUNT"; throw e;
+      }
+      return msalGetToken();
+    }).then(function(token){
+      var isHtml=/<[a-z][\s\S]*>/i.test(mailBodyText||"");
+      var message={
+        subject:mailSubject||"",
+        body:{contentType:isHtml?"HTML":"Text",content:mailBodyText||""},
+        toRecipients:[{emailAddress:{address:cl.email}}]
+      };
+      return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+        method:"POST",
+        headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        body:JSON.stringify({message:message,saveToSentItems:true})
+      });
+    }).then(function(r){
+      if(!r.ok){
+        return r.json().catch(function(){return{};}).then(function(e){
+          throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ki ("+r.status+")");
+        });
+      }
+      if(mailKind==="opinia")setReviewSent(true);
+      else if(mailKind==="instrukcja")setWashingSent(true);
+      setMailMsg("\u2705 Wiadomo\u015b\u0107 wys\u0142ana na "+cl.email);
+      setMailKind(null);
+    }).catch(function(e){
+      if(e&&e.code==="MS_NO_ACCOUNT")setMailErr(e.message);
+      else if(e&&e.code==="MS_INTERACTION_REQUIRED")setMailErr("Sesja poczty wygas\u0142a \u2014 zaloguj si\u0119 ponownie w zak\u0142adce Poczta.");
+      else setMailErr((e&&e.message)||"B\u0142\u0105d wysy\u0142ki");
+    }).finally(function(){setMailBusy(false);});
   }
 
   function addToGcal(title,dateStr,calIdOvr,onSave){
@@ -284,23 +362,28 @@ export function ModalDeal(p){
 
   function CheckRow(rp){
     return ce("div",{
-      onClick:function(){rp.onChange(!rp.checked);},
-      style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"10px 12px",borderRadius:9,
+      style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:9,
         background:rp.checked?"rgba(124,58,237,0.08)":"transparent",
         border:"1px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
         transition:"all .15s",userSelect:"none"}
     },
-      ce("div",{style:{
-        width:20,height:20,borderRadius:5,flexShrink:0,
-        background:rp.checked?"var(--t1)":"transparent",
-        border:"1.5px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
-        display:"flex",alignItems:"center",justifyContent:"center",
-        transition:"all .15s"
-      }},rp.checked?ce("span",{style:{color:"#fff",fontSize:13,lineHeight:1}},"✓"):null),
-      ce("div",null,
-        ce("div",{style:{fontSize:13,fontWeight:rp.checked?600:400,color:"var(--t1)"}},(rp.checked?"✅ ":"")+rp.label),
-        rp.sublabel?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},rp.sublabel):null
-      )
+      ce("div",{
+        onClick:function(){rp.onChange(!rp.checked);},
+        style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",flex:1,minWidth:0}
+      },
+        ce("div",{style:{
+          width:20,height:20,borderRadius:5,flexShrink:0,
+          background:rp.checked?"var(--t1)":"transparent",
+          border:"1.5px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
+          display:"flex",alignItems:"center",justifyContent:"center",
+          transition:"all .15s"
+        }},rp.checked?ce("span",{style:{color:"#fff",fontSize:13,lineHeight:1}},"✓"):null),
+        ce("div",null,
+          ce("div",{style:{fontSize:13,fontWeight:rp.checked?600:400,color:"var(--t1)"}},(rp.checked?"✅ ":"")+rp.label),
+          rp.sublabel?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},rp.sublabel):null
+        )
+      ),
+      rp.action||null
     );
   }
 
@@ -466,8 +549,22 @@ export function ModalDeal(p){
         ),
 
         ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent&&washingSent},
-          ce(CheckRow,{checked:reviewSent,onChange:setReviewSent,label:"Wysłano prośbę o opinię",sublabel:"Google / Facebook / referencja"}),
-          ce(CheckRow,{checked:washingSent,onChange:setWashingSent,label:"Wysłano instrukcję prania",sublabel:"Pielęgnacja i konserwacja tkanin"}),
+          ce(CheckRow,{
+            checked:reviewSent,onChange:setReviewSent,label:"Wysłano prośbę o opinię",sublabel:"Google / Facebook / referencja",
+            action:cl&&cl.email?ce("button",{
+              onClick:function(ev){ev.stopPropagation();openMailTplModal("opinia");},
+              title:"Wyślij prośbę o opinię mailem",
+              style:{flexShrink:0,padding:"6px 10px",borderRadius:8,border:"1px solid var(--violet, #7c3aed)",background:"var(--bg)",color:"var(--violet, #7c3aed)",cursor:"pointer",fontSize:11,fontWeight:600}
+            },"✉ Wyślij"):null
+          }),
+          ce(CheckRow,{
+            checked:washingSent,onChange:setWashingSent,label:"Wysłano instrukcję prania",sublabel:"Pielęgnacja i konserwacja tkanin",
+            action:cl&&cl.email?ce("button",{
+              onClick:function(ev){ev.stopPropagation();openMailTplModal("instrukcja");},
+              title:"Wyślij instrukcję prania i czyszczenia mailem",
+              style:{flexShrink:0,padding:"6px 10px",borderRadius:8,border:"1px solid var(--violet, #7c3aed)",background:"var(--bg)",color:"var(--violet, #7c3aed)",cursor:"pointer",fontSize:11,fontWeight:600}
+            },"✉ Wyślij"):null
+          }),
           ce(CheckRow,{checked:invoiceSent,onChange:setInvoiceSent,label:"Wysłano fakturę (FV)",sublabel:"Dokument księgowy do klienta"})
         ),
 
@@ -503,6 +600,45 @@ export function ModalDeal(p){
 
       )
     )
+    ,
+
+    // Modal: wysyłka maila (Opinia / Instrukcja prania) wg szablonu z bazy — analogicznie do wysyłki faktury w module Faktury
+    mailKind?ce("div",{
+      onClick:function(){if(!mailBusy)setMailKind(null);},
+      style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:3200,
+        background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}
+    },
+      ce("div",{
+        onClick:function(ev){ev.stopPropagation();},
+        style:{background:"var(--bg)",borderRadius:16,padding:22,width:"100%",maxWidth:520,
+          maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}
+      },
+        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:4}},
+          "📤 "+(mailKind==="opinia"?"Wyślij prośbę o opinię":"Wyślij instrukcję prania i czyszczenia")
+        ),
+        ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16}},
+          "Do: "+((cl&&cl.email)||"")
+        ),
+        ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"Temat"),
+        ce("input",{value:mailSubject,onChange:function(ev){setMailSubject(ev.target.value);},
+          style:Object.assign({},INP,{marginBottom:14})}),
+        ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"Treść"),
+        ce("textarea",{value:mailBodyText,onChange:function(ev){setMailBodyText(ev.target.value);},
+          style:Object.assign({},INP,{minHeight:200,resize:"vertical",marginBottom:14,fontFamily:"inherit",lineHeight:1.6})}),
+        mailMsg?ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--grl, rgba(16,185,129,0.12))",
+          borderRadius:8,fontSize:12,color:"var(--gr, #059669)"}},mailMsg):null,
+        mailErr?ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--red-l, rgba(239,68,68,0.12))",
+          borderRadius:8,fontSize:12,color:"var(--red, #dc2626)"}},"⚠️ "+mailErr):null,
+        ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+          ce("button",{onClick:function(){setMailKind(null);},disabled:mailBusy,
+            style:{padding:"10px 18px",borderRadius:9,border:"1px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:13,cursor:"pointer"}},"Anuluj"),
+          ce("button",{onClick:sendTplEmail,disabled:mailBusy||!mailSubject.trim(),
+            style:{padding:"10px 18px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",fontSize:13,fontWeight:700,cursor:mailBusy?"not-allowed":"pointer",opacity:mailBusy?0.6:1}},
+            mailBusy?"⏳ Wysyłam...":"📤 Wyślij")
+        )
+      )
+    ):null
+
     ,
 
     gcalDraft?ce("div",{
