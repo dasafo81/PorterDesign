@@ -143,9 +143,14 @@ function ItemRow(p){
     ce("select",{style:inpSm, value:it.unit||"szt",
       onChange:function(e){upd("unit",e.target.value);}},
       UNITS.map(function(u){return ce("option",{key:u,value:u},u);})),
-    // Cena netto
-    ce("input",{style:Object.assign({},inpSm,{textAlign:"right"}), value:it.unit_net, type:"number", min:0, step:0.01,
-      onChange:function(e){upd("unit_net",e.target.value);}}),
+    // Cena netto — bez type:number (jak Cena brutto): natywne pole number odrzuca
+    // przecinek jako separator dziesiętny (szczególnie z klawiatury numerycznej na
+    // telefonie/tablecie, gdzie przecinek jest domyślny w PL), więc wpisanie kwoty
+    // w formacie "1350,00" efektywnie zerowało wartość — stąd 0 zł po zapisie.
+    ce("input",{style:Object.assign({},inpSm,{textAlign:"right"}),
+      value:(it.unit_net==null||it.unit_net===""||+(it.unit_net)===0)?"":(typeof it.unit_net==="string"?it.unit_net:+(+(it.unit_net)).toFixed(2)),
+      inputMode:"decimal", placeholder:"0,00",
+      onChange:function(e){upd("unit_net",e.target.value.replace(",","."));}}),
     // Cena brutto — bez type:number (brak strzalek), puste zamiast 0
     ce("input",{style:Object.assign({},inpSm,{textAlign:"right",background:"var(--bd3)"}),
       value:(it.unit_gross==null||it.unit_gross===""||+(it.unit_gross)===0)?"":(typeof it.unit_gross==="string"?it.unit_gross:+(+(it.unit_gross)).toFixed(2)),
