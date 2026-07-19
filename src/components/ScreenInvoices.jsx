@@ -1164,7 +1164,7 @@ function InvoiceList(p){
     // też faktury zakupowe z doc_type="vat", a "Zakupowa" (stary model doc_type==="zakup")
     // nie łapał w ogóle nowych faktur zakupowych typu VAT/proforma/EKO.
     if(filterDocType==="vat"&&(inv.doc_type!=="vat"||invDirection(inv)==="zakup")) return false;
-    if(filterDocType==="zakup"&&invDirection(inv)!=="zakup") return false;
+    if(filterDocType==="zakup"&&(invDirection(inv)!=="zakup"||inv.doc_type==="eko")) return false;
     if(filterDocType!=="all"&&filterDocType!=="vat"&&filterDocType!=="zakup"&&inv.doc_type!==filterDocType) return false;
     if(search){
       var q=search.toLowerCase();
