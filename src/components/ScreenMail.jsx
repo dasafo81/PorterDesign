@@ -2223,7 +2223,17 @@ export function ScreenMail(p){
   var accountEmail=msAccount?(msAccount.username||"paulina@porterdesign.pl"):"paulina@porterdesign.pl";
 
   var composerPanel=ce("div",{style:{flex:1,display:"flex",flexDirection:"column",overflowY:"auto",gap:0}},
-    ce("div",{style:Object.assign({},LSML,{marginBottom:12})},"Nowa wiadomo\u015b\u0107"),
+    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:10}},
+      ce("div",{style:LSML},"Nowa wiadomo\u015b\u0107"),
+      ce("button",{onClick:handleSend,disabled:!toEmail||!subject||bodyEmpty||sending,
+        style:Object.assign({},BPRIM,{padding:"8px 18px",fontSize:13,flexShrink:0,
+          background:justSent?"#059669":sending?"var(--bd2)":"var(--t1)",
+          transition:"background .3s",
+          opacity:(!toEmail||!subject||bodyEmpty||sending)?0.6:1,
+          cursor:(!toEmail||!subject||bodyEmpty||sending)?"default":"pointer"})},
+        sending?"\u2026 Wysy\u0142anie":justSent?"\u2713 Wys\u0142ano!":"\uD83D\uDCEC Wy\u015blij"
+      )
+    ),
     sendError?ce("div",{style:{marginBottom:10,padding:"10px 12px",background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:9,fontSize:12,color:"var(--red)",display:"flex",alignItems:"center",gap:8}},ce("span",{style:{fontSize:16}},"\u26a0\ufe0f"),ce("span",{style:{flex:1}},sendError),ce("button",{onClick:function(){setSendError(null);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--red)",fontSize:16}},"\u00d7")):null,
     ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Szablon"),
