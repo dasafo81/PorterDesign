@@ -2226,13 +2226,6 @@ export function ScreenMail(p){
     ce("div",{style:Object.assign({},LSML,{marginBottom:12})},"Nowa wiadomo\u015b\u0107"),
     sendError?ce("div",{style:{marginBottom:10,padding:"10px 12px",background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:9,fontSize:12,color:"var(--red)",display:"flex",alignItems:"center",gap:8}},ce("span",{style:{fontSize:16}},"\u26a0\ufe0f"),ce("span",{style:{flex:1}},sendError),ce("button",{onClick:function(){setSendError(null);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--red)",fontSize:16}},"\u00d7")):null,
     ce("div",{style:{marginBottom:10}},
-      ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Klient"),
-      ce("select",{value:selClientId||"",onChange:function(e){setSelClientId(e.target.value||null);},style:Object.assign({},INP,{appearance:"none",WebkitAppearance:"none"})},
-        ce("option",{value:""},"— wybierz klienta —"),
-        clients.map(function(cl){return ce("option",{key:cl.id,value:String(cl.id)},cl.name+(cl.email?" ("+cl.email+")":""));})
-      )
-    ),
-    ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Szablon"),
       ce("div",{style:{display:"flex",gap:5,flexWrap:"wrap"}},
         activeTemplates.map(function(tpl){
