@@ -124,6 +124,18 @@ function parseFA(xml: string) {
   const bank = rachunek ? (xmlVal(rachunek, "NrRB") || xmlVal(rachunek, "IBAN") || "") : "";
   const issueDate = xmlVal(xml, "P_1");
 
+  // total_net/total_vat: NIE czytamy P_13_Razem/P_14_Razem — takie tagi nie istnieją
+  // w schemacie FA(3) (kwoty netto/VAT są tam rozbite per stawka: P_13_1/P_14_1 (23%),
+  // P_13_2/P_14_2 (8%), P_13_3/P_14_3 (5%), P_13_6_1 (0%), P_13_7 (zw), nigdy jako jedna
+  // suma). xmlVal(xml,"P_13_Razem") zawsze zwracał "" → 0, więc KAŻDA synchronizacja
+  // z KSeF zerowała total_net/total_vat zapisanej faktury, mimo że total_gross (z P_15,
+  // które realnie istnieje) zostawał poprawny. Liczymy sumy z rzeczywistych pozycji
+  // (parseItems już poprawnie czyta P_11/P_9A/P_12 per wiersz — na tym samym opiera się
+  // zapis invoice_items chwilę niżej w handlerze).
+  const faItems = parseItems(xml);
+  const totalNetFromItems = +(faItems.reduce(function(s, it) { return s + (it.line_net || 0); }, 0)).toFixed(2);
+  const totalVatFromItems = +(faItems.reduce(function(s, it) { return s + (it.line_vat || 0); }, 0)).toFixed(2);
+
   return {
     number: xmlVal(xml, "P_2") || xmlVal(xml, "NrFaKSeF"),
     issue_date: issueDate,
@@ -134,8 +146,8 @@ function parseFA(xml: string) {
     sale_date: xmlVal(xml, "P_6") || xmlVal(xml, "P_6_Od") || issueDate,
     due_date: parseDueDate(xml, fa, issueDate),
     total_gross: +(xmlVal(xml, "P_15") || 0),
-    total_net: +(xmlVal(xml, "P_13_Razem") || 0),
-    total_vat: +(xmlVal(xml, "P_14_Razem") || 0),
+    total_net: totalNetFromItems,
+    total_vat: totalVatFromItems,
     currency: xmlVal(xml, "KodWaluty") || "PLN",
     notes: xmlVal(xml, "P_Opis"),
     seller_party: seller, buyer_party: buyer, bank,
