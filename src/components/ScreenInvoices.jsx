@@ -204,12 +204,14 @@ function InvoiceEditor(p){
   var [payMethod,setPayMethod]=useState(initInv.payment_method||settings.default_payment_method||"przelew");
   var [kasowa,setKasowa]=useState(!!(initInv.kasowa));
   var [notes,setNotes]=useState(initInv.notes||"");
-  var [buyerName,setBuyerName]=useState(initInv.buyer_name||"");
-  var [buyerNip,setBuyerNip]=useState(initInv.buyer_nip||"");
-  var [buyerAddr,setBuyerAddr]=useState(initInv.buyer_address||"");
-  var [buyerPostal,setBuyerPostal]=useState(initInv.buyer_postal||"");
-  var [buyerCity,setBuyerCity]=useState(initInv.buyer_city||"");
-  var [buyerEmail,setBuyerEmail]=useState(initInv.buyer_email||"");
+  var initSnap=initInv.seller_snapshot||{};
+  var initContractor=(direction==="zakup"&&(initSnap.name||initSnap.nip))?initSnap:null;
+  var [buyerName,setBuyerName]=useState(initContractor?(initContractor.name||""):(initInv.buyer_name||""));
+  var [buyerNip,setBuyerNip]=useState(initContractor?(initContractor.nip||""):(initInv.buyer_nip||""));
+  var [buyerAddr,setBuyerAddr]=useState(initContractor?(initContractor.address||""):(initInv.buyer_address||""));
+  var [buyerPostal,setBuyerPostal]=useState(initContractor?(initContractor.postal||""):(initInv.buyer_postal||""));
+  var [buyerCity,setBuyerCity]=useState(initContractor?(initContractor.city||""):(initInv.buyer_city||""));
+  var [buyerEmail,setBuyerEmail]=useState(initContractor?(initContractor.email||""):(initInv.buyer_email||""));
   var [clientId,setClientId]=useState(initInv.client_id||null);
   var [dealId,setDealId]=useState(initInv.deal_id||null);
   var [clientSearch,setClientSearch]=useState("");
@@ -1946,7 +1948,19 @@ export function ScreenInvoices(p){
     setEditInv(null);
     setView("editor");
   }
-  function openEdit(inv){ setEditInv(inv); setView("editor"); }
+  // Pobiera pełny rekord (z invoice_items) przed otwarciem edytora — wiersz z listy
+  // (sbApi.getInvoices()) NIE zawiera pozycji, więc bez tego edytor startowałby z pustą
+  // listą pozycji i zapis zastąpiłby prawdziwe pozycje jedną pustą (zerując sumy faktury).
+  function openEdit(inv){
+    setViewBusyId(inv.id);
+    sbApi.getInvoice(inv.id)
+      .then(function(full){
+        setEditInv(full||inv);
+        setView("editor");
+      })
+      .catch(function(e){ alert("B\u0142\u0105d wczytywania faktury do edycji: "+(e.message||e)); })
+      .finally(function(){ setViewBusyId(null); });
+  }
   function openSettings(){ setView("settings"); }
 
   function onSaved(result){
@@ -1992,6 +2006,7 @@ export function ScreenInvoices(p){
           buyer_name:src.buyer_name, buyer_nip:src.buyer_nip,
           buyer_address:src.buyer_address, buyer_postal:src.buyer_postal,
           buyer_city:src.buyer_city, buyer_email:src.buyer_email,
+          seller_snapshot:src.seller_snapshot,
           invoice_items:itemsCopy
         });
         setView("editor");
