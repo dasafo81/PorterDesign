@@ -138,6 +138,7 @@ export function ModalDeal(p){
   var smm=useState(null),mailMsg=smm[0],setMailMsg=smm[1];
   var smsub=useState(""),mailSubject=smsub[0],setMailSubject=smsub[1];
   var smbod=useState(""),mailBodyText=smbod[0],setMailBodyText=smbod[1];
+  var smto=useState(""),mailTo=smto[0],setMailTo=smto[1];
   var smatt=useState([]),mailAttachments=smatt[0],setMailAttachments=smatt[1];
 
   var SEWING_HOUSES_OPT=[
@@ -229,7 +230,7 @@ export function ModalDeal(p){
 
   // Otwiera modal z podglądem/edycją treści maila wg szablonu z bazy (Opinia / Instrukcja prania)
   function openMailTplModal(kind){
-    if(!cl||!cl.email)return;
+    if(!cl)return;
     var tpl=mailTpls&&mailTpls[kind];
     if(!tpl){
       alert("Brak szablonu \""+(kind==="opinia"?"Opinia - swobodna":"Instrukcja prania i czyszczenia")+"\" w bazie (zakładka Mail → Szablony).");
@@ -239,6 +240,7 @@ export function ModalDeal(p){
     var filled=fillTemplate({subject:tpl.subject||"",body:tpl.body||""},cl);
     setMailSubject(filled.subject);
     setMailBodyText(filled.body);
+    setMailTo(cl.email||"");
     // Domyślne załączniki = pliki stałe przypięte do szablonu (Storage) — użytkownik może je usunąć / dodać własne
     var tplFiles=(tpl.template_files||[]).map(function(f,idx){
       return {id:"tplf_"+idx+"_"+Date.now(),name:f.name,size:f.size||null,type:"template",url:f.url};
@@ -294,7 +296,9 @@ export function ModalDeal(p){
   // (Microsoft Graph), analogicznie do wysyłki faktury w module Faktury. Wymaga wcześniejszego
   // zalogowania w zakładce Poczta — tu tylko odświeżamy token w tle (silent).
   function sendTplEmail(){
-    if(!cl||!cl.email||!mailKind)return;
+    if(!mailKind)return;
+    var toList=String(mailTo||"").split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean);
+    if(!toList.length){setMailErr("Podaj adres e-mail odbiorcy.");return;}
     setMailBusy(true);setMailErr(null);setMailMsg(null);
     var tokenRef=null;
     msalGetActiveAccount().then(function(acc){
@@ -311,7 +315,7 @@ export function ModalDeal(p){
       var message={
         subject:mailSubject||"",
         body:{contentType:isHtml?"HTML":"Text",content:mailBodyText||""},
-        toRecipients:[{emailAddress:{address:cl.email}}]
+        toRecipients:toList.map(function(addr){return {emailAddress:{address:addr}};})
       };
       if(graphAtts&&graphAtts.length)message.attachments=graphAtts;
       return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
@@ -327,7 +331,7 @@ export function ModalDeal(p){
       }
       if(mailKind==="opinia")setReviewSent(true);
       else if(mailKind==="instrukcja")setWashingSent(true);
-      setMailMsg("\u2705 Wiadomo\u015b\u0107 wys\u0142ana na "+cl.email);
+      setMailMsg("\u2705 Wiadomo\u015b\u0107 wys\u0142ana na "+toList.join(", "));
       setMailKind(null);
     }).catch(function(e){
       if(e&&e.code==="MS_NO_ACCOUNT")setMailErr(e.message);
@@ -605,7 +609,7 @@ export function ModalDeal(p){
         ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent&&washingSent},
           ce(CheckRow,{
             checked:reviewSent,onChange:setReviewSent,label:"Wysłano prośbę o opinię",sublabel:"Google / Facebook / referencja",
-            action:cl&&cl.email?ce("button",{
+            action:cl?ce("button",{
               onClick:function(ev){ev.stopPropagation();openMailTplModal("opinia");},
               title:"Wyślij prośbę o opinię mailem",
               style:{flexShrink:0,padding:"6px 10px",borderRadius:8,border:"1px solid var(--violet, #7c3aed)",background:"var(--bg)",color:"var(--violet, #7c3aed)",cursor:"pointer",fontSize:11,fontWeight:600}
@@ -613,7 +617,7 @@ export function ModalDeal(p){
           }),
           ce(CheckRow,{
             checked:washingSent,onChange:setWashingSent,label:"Wysłano instrukcję prania",sublabel:"Pielęgnacja i konserwacja tkanin",
-            action:cl&&cl.email?ce("button",{
+            action:cl?ce("button",{
               onClick:function(ev){ev.stopPropagation();openMailTplModal("instrukcja");},
               title:"Wyślij instrukcję prania i czyszczenia mailem",
               style:{flexShrink:0,padding:"6px 10px",borderRadius:8,border:"1px solid var(--violet, #7c3aed)",background:"var(--bg)",color:"var(--violet, #7c3aed)",cursor:"pointer",fontSize:11,fontWeight:600}
@@ -660,51 +664,85 @@ export function ModalDeal(p){
     mailKind?ce("div",{
       onClick:function(){if(!mailBusy)setMailKind(null);},
       style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:3200,
-        background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}
+        background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}
     },
       ce("div",{
         onClick:function(ev){ev.stopPropagation();},
-        style:{background:"var(--bg)",borderRadius:16,padding:22,width:"100%",maxWidth:520,
-          maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}
+        style:{background:"var(--bg)",borderRadius:18,width:"100%",maxWidth:560,
+          maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}
       },
-        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:4}},
-          "📤 "+(mailKind==="opinia"?"Wyślij prośbę o opinię":"Wyślij instrukcję prania i czyszczenia")
-        ),
-        ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16}},
-          "Do: "+((cl&&cl.email)||"")
-        ),
-        ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"Temat"),
-        ce("input",{value:mailSubject,onChange:function(ev){setMailSubject(ev.target.value);},
-          style:Object.assign({},INP,{marginBottom:14})}),
-        ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"Treść"),
-        ce("textarea",{value:mailBodyText,onChange:function(ev){setMailBodyText(ev.target.value);},
-          style:Object.assign({},INP,{minHeight:200,resize:"vertical",marginBottom:14,fontFamily:"inherit",lineHeight:1.6})}),
-        ce("div",{style:{marginBottom:14}},
-          ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",textTransform:"uppercase",marginBottom:6}},"Załączniki"),
-          mailAttachments.length===0?ce("div",{style:{fontSize:12,color:"var(--t3)",fontStyle:"italic",marginBottom:8}},"Brak załączników"):null,
-          mailAttachments.map(function(a){
-            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"6px 10px",borderRadius:8,background:"var(--bg2, #f4f4f2)"}},
-              ce("span",{style:{fontSize:13}},a.type==="upload"?"📎":"📄"),
-              ce("span",{style:{flex:1,fontSize:12,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.name),
-              a.size?ce("span",{style:{fontSize:11,color:"var(--t3)",flexShrink:0}},Math.round(a.size/1024)+" KB"):null,
-              ce("button",{onClick:function(){removeMailAttachment(a.id);},style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}},"×")
-            );
-          }),
-          ce("label",{style:{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:8,border:"1px dashed var(--bd2)",cursor:"pointer",fontSize:12,color:"var(--t2)"}},
-            ce("input",{type:"file",style:{display:"none"},onChange:function(ev){var f=ev.target.files&&ev.target.files[0];if(f)addManualAttachment(f);ev.target.value="";}}),
-            "⬆ Dodaj załącznik"
-          )
-        ),
-        mailMsg?ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--grl, rgba(16,185,129,0.12))",
-          borderRadius:8,fontSize:12,color:"var(--gr, #059669)"}},mailMsg):null,
-        mailErr?ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--red-l, rgba(239,68,68,0.12))",
-          borderRadius:8,fontSize:12,color:"var(--red, #dc2626)"}},"⚠️ "+mailErr):null,
-        ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
+        // Nagłówek
+        ce("div",{style:{
+          display:"flex",alignItems:"center",gap:12,padding:"18px 22px",
+          borderBottom:"1px solid var(--bd2)",position:"sticky",top:0,background:"var(--bg)",
+          borderRadius:"18px 18px 0 0",zIndex:1
+        }},
+          ce("div",{style:{
+            width:38,height:38,borderRadius:10,flexShrink:0,fontSize:18,
+            background:"rgba(124,58,237,0.12)",display:"flex",alignItems:"center",justifyContent:"center"
+          }},"📤"),
+          ce("div",{style:{flex:1,minWidth:0}},
+            ce("div",{style:{fontSize:15,fontWeight:800,color:"var(--t1)"}},
+              mailKind==="opinia"?"Prośba o opinię":"Instrukcja prania i czyszczenia"
+            ),
+            ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:1}},"Wysyłka przez Outlooka (Microsoft Graph)")
+          ),
           ce("button",{onClick:function(){setMailKind(null);},disabled:mailBusy,
-            style:{padding:"10px 18px",borderRadius:9,border:"1px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:13,cursor:"pointer"}},"Anuluj"),
-          ce("button",{onClick:sendTplEmail,disabled:mailBusy||!mailSubject.trim(),
-            style:{padding:"10px 18px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",fontSize:13,fontWeight:700,cursor:mailBusy?"not-allowed":"pointer",opacity:mailBusy?0.6:1}},
-            mailBusy?"⏳ Wysyłam...":"📤 Wyślij")
+            style:{border:"none",background:"var(--bg2, #f1f1ee)",color:"var(--t2)",borderRadius:8,
+              width:30,height:30,fontSize:16,cursor:mailBusy?"not-allowed":"pointer",flexShrink:0,lineHeight:1}
+          },"×")
+        ),
+        // Treść
+        ce("div",{style:{padding:"18px 22px 22px",display:"flex",flexDirection:"column",gap:14}},
+          ce("div",null,
+            ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Do"),
+            ce("input",{value:mailTo,onChange:function(ev){setMailTo(ev.target.value);},
+              placeholder:"adres@email.pl, drugi@email.pl",style:INP}),
+            ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5}},
+              "Możesz dodać kilka adresów oddzielając przecinkiem — np. mąż/żona klientki")
+          ),
+          ce("div",null,
+            ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Temat"),
+            ce("input",{value:mailSubject,onChange:function(ev){setMailSubject(ev.target.value);},style:INP})
+          ),
+          ce("div",null,
+            ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Treść"),
+            ce("textarea",{value:mailBodyText,onChange:function(ev){setMailBodyText(ev.target.value);},
+              style:Object.assign({},INP,{minHeight:200,resize:"vertical",fontFamily:"inherit",lineHeight:1.6})})
+          ),
+          ce("div",null,
+            ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Załączniki"),
+            mailAttachments.length===0?ce("div",{style:{fontSize:12,color:"var(--t3)",fontStyle:"italic",marginBottom:8}},"Brak załączników"):null,
+            ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:8}},
+              mailAttachments.map(function(a){
+                return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
+                  borderRadius:9,background:"var(--bg2, #f4f4f2)",border:"1px solid var(--bd2)"}},
+                  ce("span",{style:{fontSize:14}},a.type==="upload"?"📎":"📄"),
+                  ce("span",{style:{flex:1,fontSize:12,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.name),
+                  a.size?ce("span",{style:{fontSize:11,color:"var(--t3)",flexShrink:0}},Math.round(a.size/1024)+" KB"):null,
+                  ce("button",{onClick:function(){removeMailAttachment(a.id);},
+                    style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:15,padding:"2px 4px",flexShrink:0}},"×")
+                );
+              })
+            ),
+            ce("label",{style:{display:"inline-flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:9,
+              border:"1px dashed var(--bd2)",cursor:"pointer",fontSize:12,color:"var(--t2)",fontWeight:600}},
+              ce("input",{type:"file",style:{display:"none"},onChange:function(ev){var f=ev.target.files&&ev.target.files[0];if(f)addManualAttachment(f);ev.target.value="";}}),
+              "⬆ Dodaj załącznik"
+            )
+          ),
+          mailMsg?ce("div",{style:{padding:"10px 14px",background:"var(--grl, rgba(16,185,129,0.12))",
+            borderRadius:9,fontSize:13,color:"var(--gr, #059669)"}},mailMsg):null,
+          mailErr?ce("div",{style:{padding:"10px 14px",background:"var(--red-l, rgba(239,68,68,0.12))",
+            borderRadius:9,fontSize:13,color:"var(--red, #dc2626)"}},"⚠️ "+mailErr):null,
+          ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:6,borderTop:"1px solid var(--bd2)"}},
+            ce("button",{onClick:function(){setMailKind(null);},disabled:mailBusy,
+              style:{padding:"11px 20px",borderRadius:10,border:"1px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:13,fontWeight:600,cursor:mailBusy?"not-allowed":"pointer"}},"Anuluj"),
+            ce("button",{onClick:sendTplEmail,disabled:mailBusy||!mailSubject.trim()||!mailTo.trim(),
+              style:{padding:"11px 22px",borderRadius:10,border:"none",background:"var(--t1)",color:"#fff",fontSize:13,fontWeight:700,
+                cursor:(mailBusy||!mailSubject.trim()||!mailTo.trim())?"not-allowed":"pointer",opacity:(mailBusy||!mailSubject.trim()||!mailTo.trim())?0.6:1}},
+              mailBusy?"⏳ Wysyłam...":"📤 Wyślij")
+          )
         )
       )
     ):null
