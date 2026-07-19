@@ -138,6 +138,7 @@ export function ModalDeal(p){
   var smm=useState(null),mailMsg=smm[0],setMailMsg=smm[1];
   var smsub=useState(""),mailSubject=smsub[0],setMailSubject=smsub[1];
   var smbod=useState(""),mailBodyText=smbod[0],setMailBodyText=smbod[1];
+  var smatt=useState([]),mailAttachments=smatt[0],setMailAttachments=smatt[1];
 
   var SEWING_HOUSES_OPT=[
     "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
@@ -238,7 +239,55 @@ export function ModalDeal(p){
     var filled=fillTemplate({subject:tpl.subject||"",body:tpl.body||""},cl);
     setMailSubject(filled.subject);
     setMailBodyText(filled.body);
+    // Domyślne załączniki = pliki stałe przypięte do szablonu (Storage) — użytkownik może je usunąć / dodać własne
+    var tplFiles=(tpl.template_files||[]).map(function(f,idx){
+      return {id:"tplf_"+idx+"_"+Date.now(),name:f.name,size:f.size||null,type:"template",url:f.url};
+    });
+    setMailAttachments(tplFiles);
     setMailKind(kind);
+  }
+
+  // Dodaje plik wybrany ręcznie przez użytkownika (wysyłany bezpośrednio z File, bez uploadu do Storage)
+  function addManualAttachment(file){
+    if(!file)return;
+    setMailAttachments(function(prev){return prev.concat([{id:"up_"+Date.now(),name:file.name,size:file.size,type:"upload",file:file}]);});
+  }
+  function removeMailAttachment(attId){
+    setMailAttachments(function(prev){return prev.filter(function(a){return a.id!==attId;});});
+  }
+
+  // Zamienia listę załączników modala (template/upload) na format Microsoft Graph fileAttachment.
+  // Pliki szablonu pobiera z Storage (URL), pliki dodane ręcznie czyta bezpośrednio z obiektu File.
+  function buildGraphAttachments(list){
+    var proms=(list||[]).map(function(att){
+      if(att.type==="upload"&&att.file){
+        return att.file.arrayBuffer().then(function(ab){
+          var bytes=new Uint8Array(ab),binary="";
+          for(var i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
+          return {"@odata.type":"#microsoft.graph.fileAttachment",name:att.name,
+            contentType:att.file.type||"application/octet-stream",contentBytes:btoa(binary)};
+        }).catch(function(){return null;});
+      }
+      if(att.type==="template"&&att.url){
+        return fetch(att.url).then(function(r){
+          if(!r.ok)throw new Error("Nie mo\u017cna pobra\u0107 za\u0142\u0105cznika: "+att.name);
+          var ct=r.headers.get("content-type")||"application/octet-stream";
+          return r.blob().then(function(blob){
+            return new Promise(function(resolve,reject){
+              var reader=new FileReader();
+              reader.onloadend=function(){
+                var b64=String(reader.result).split(",")[1]||"";
+                resolve({"@odata.type":"#microsoft.graph.fileAttachment",name:att.name,contentType:ct,contentBytes:b64});
+              };
+              reader.onerror=function(){reject(new Error("B\u0142\u0105d odczytu: "+att.name));};
+              reader.readAsDataURL(blob);
+            });
+          });
+        }).catch(function(e){console.error("Template file fetch error:",e);return null;}); // best-effort — nie blokuj wysyłki
+      }
+      return Promise.resolve(null);
+    });
+    return Promise.all(proms).then(function(arr){return arr.filter(Boolean);});
   }
 
   // Wysyła mail (opinia / instrukcja prania) bezpośrednio z aplikacji przez podłączoną skrzynkę Outlook
@@ -247,6 +296,7 @@ export function ModalDeal(p){
   function sendTplEmail(){
     if(!cl||!cl.email||!mailKind)return;
     setMailBusy(true);setMailErr(null);setMailMsg(null);
+    var tokenRef=null;
     msalGetActiveAccount().then(function(acc){
       if(!acc){
         var e=new Error("Zaloguj si\u0119 do poczty (zak\u0142adka Poczta), a potem spr\u00f3buj ponownie.");
@@ -254,15 +304,19 @@ export function ModalDeal(p){
       }
       return msalGetToken();
     }).then(function(token){
+      tokenRef=token;
+      return buildGraphAttachments(mailAttachments);
+    }).then(function(graphAtts){
       var isHtml=/<[a-z][\s\S]*>/i.test(mailBodyText||"");
       var message={
         subject:mailSubject||"",
         body:{contentType:isHtml?"HTML":"Text",content:mailBodyText||""},
         toRecipients:[{emailAddress:{address:cl.email}}]
       };
+      if(graphAtts&&graphAtts.length)message.attachments=graphAtts;
       return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
         method:"POST",
-        headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+        headers:{"Authorization":"Bearer "+tokenRef,"Content-Type":"application/json"},
         body:JSON.stringify({message:message,saveToSentItems:true})
       });
     }).then(function(r){
@@ -625,6 +679,22 @@ export function ModalDeal(p){
         ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"Treść"),
         ce("textarea",{value:mailBodyText,onChange:function(ev){setMailBodyText(ev.target.value);},
           style:Object.assign({},INP,{minHeight:200,resize:"vertical",marginBottom:14,fontFamily:"inherit",lineHeight:1.6})}),
+        ce("div",{style:{marginBottom:14}},
+          ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",textTransform:"uppercase",marginBottom:6}},"Załączniki"),
+          mailAttachments.length===0?ce("div",{style:{fontSize:12,color:"var(--t3)",fontStyle:"italic",marginBottom:8}},"Brak załączników"):null,
+          mailAttachments.map(function(a){
+            return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:8,marginBottom:6,padding:"6px 10px",borderRadius:8,background:"var(--bg2, #f4f4f2)"}},
+              ce("span",{style:{fontSize:13}},a.type==="upload"?"📎":"📄"),
+              ce("span",{style:{flex:1,fontSize:12,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.name),
+              a.size?ce("span",{style:{fontSize:11,color:"var(--t3)",flexShrink:0}},Math.round(a.size/1024)+" KB"):null,
+              ce("button",{onClick:function(){removeMailAttachment(a.id);},style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}},"×")
+            );
+          }),
+          ce("label",{style:{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:8,border:"1px dashed var(--bd2)",cursor:"pointer",fontSize:12,color:"var(--t2)"}},
+            ce("input",{type:"file",style:{display:"none"},onChange:function(ev){var f=ev.target.files&&ev.target.files[0];if(f)addManualAttachment(f);ev.target.value="";}}),
+            "⬆ Dodaj załącznik"
+          )
+        ),
         mailMsg?ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--grl, rgba(16,185,129,0.12))",
           borderRadius:8,fontSize:12,color:"var(--gr, #059669)"}},mailMsg):null,
         mailErr?ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--red-l, rgba(239,68,68,0.12))",
