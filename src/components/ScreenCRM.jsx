@@ -165,7 +165,9 @@ export function ModalDeal(p){
   // analogicznie do wysyłki faktury z modułu Faktury.
   React.useEffect(function(){
     sbApi.getMailTemplates().then(function(rows){
-      var byLabel=function(lbl){return (rows||[]).find(function(r){return (r.label||"").trim()===lbl;})||null;};
+      // Normalizacja: małe litery, pojedyncze spacje, wszystkie warianty myślnika (-, –, —) ujednolicone na "-"
+      var norm=function(s){return String(s||"").trim().toLowerCase().replace(/[\u2010-\u2015]/g,"-").replace(/\s+/g," ");};
+      var byLabel=function(lbl){var n=norm(lbl);return (rows||[]).find(function(r){return norm(r.label)===n;})||null;};
       setMailTpls({
         opinia:byLabel("Opinia - swobodna"),
         instrukcja:byLabel("Instrukcja prania i czyszczenia")
