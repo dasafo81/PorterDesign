@@ -378,15 +378,16 @@ export function ModalDeal(p){
     if(endDt<=startDt)endDt=new Date(startDt.getTime()+60*60*1000);
     function fmtLocal(dt){return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate())+"T"+pad(dt.getHours())+":"+pad(dt.getMinutes())+":00";}
     var clData=cl||null;
+    var clAddr=clData?[clData.addr,[clData.postal,clData.city].filter(Boolean).join(" ")].filter(Boolean).join(", "):"";
     var descParts=[];
     if(clData&&clData.name)descParts.push("Klient: "+clData.name);
-    if(clData&&clData.address)descParts.push("Adres: "+clData.address);
+    if(clAddr)descParts.push("Adres: "+clAddr);
     if(clData&&clData.phone)descParts.push("Tel: "+clData.phone);
     if(dft.note)descParts.push(dft.note);
     var eventBody={
       summary:dft.title+(clData?" — "+clData.name:""),
       description:descParts.join("\n"),
-      location:clData&&clData.address?clData.address:undefined,
+      location:clAddr||undefined,
       start:{dateTime:fmtLocal(startDt),timeZone:tz},
       end:{dateTime:fmtLocal(endDt),timeZone:tz}
     };
@@ -961,8 +962,9 @@ export function CRMKalendarz(p){
     // Jeśli to montaż i deal ma przypisany kalendarz montażysty -> użyj go
     var clData=(p.clients||[]).find(function(c){return ev.deal&&String(c.id)===String(ev.deal.client_id);})||null;
     var targetCalId = "primary";
+    var clAddr=clData?[clData.addr,[clData.postal,clData.city].filter(Boolean).join(" ")].filter(Boolean).join(", "):"";
     var descParts=["Klient: "+ev.client];
-    if(clData&&clData.address)descParts.push("Adres: "+clData.address);
+    if(clAddr)descParts.push("Adres: "+clAddr);
     if(clData&&clData.phone)descParts.push("Tel: "+clData.phone);
     if(ev.deal&&ev.deal.title)descParts.push("Deal: "+ev.deal.title);
     
@@ -980,7 +982,7 @@ export function CRMKalendarz(p){
     var body={
       summary:ev.label+" \u2014 "+ev.client,
       description:descParts.join(" | "),
-      location:clData&&clData.address?clData.address:undefined,
+      location:clAddr||undefined,
       start:{dateTime:d.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(d.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
