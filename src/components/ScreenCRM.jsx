@@ -166,7 +166,7 @@ export function ModalDeal(p){
   React.useEffect(function(){
     sbApi.getMailTemplates().then(function(rows){
       // Normalizacja: małe litery, pojedyncze spacje, wszystkie warianty myślnika (-, –, —) ujednolicone na "-"
-      var norm=function(s){return String(s||"").trim().toLowerCase().replace(/[\u2010-\u2015]/g,"-").replace(/\s+/g," ");};
+      var norm=function(s){return String(s||"").trim().toLowerCase().replace(/[\u2010-\u2015]/g,"-").replace(/\s*-\s*/g," - ").replace(/\s+/g," ").trim();};
       var byLabel=function(lbl){var n=norm(lbl);return (rows||[]).find(function(r){return norm(r.label)===n;})||null;};
       setMailTpls({
         opinia:byLabel("Opinia - swobodna"),
