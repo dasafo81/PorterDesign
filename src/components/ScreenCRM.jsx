@@ -4,7 +4,7 @@ import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10 } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
-import { fillTemplate } from './ScreenMail.jsx';
+import { fillTemplate, RichTextEditor } from './ScreenMail.jsx';
 const ce = React.createElement;
 
 
@@ -707,10 +707,10 @@ export function ModalDeal(p){
             ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Temat"),
             ce("input",{value:mailSubject,onChange:function(ev){setMailSubject(ev.target.value);},style:INP})
           ),
-          ce("div",null,
+          ce("div",{style:{display:"flex",flexDirection:"column",flex:1,minHeight:0}},
             ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Treść"),
-            ce("textarea",{value:mailBodyText,onChange:function(ev){setMailBodyText(ev.target.value);},
-              style:Object.assign({},INP,{minHeight:200,resize:"vertical",fontFamily:"inherit",lineHeight:1.6})})
+            ce(RichTextEditor,{value:mailBodyText,onChange:setMailBodyText,minHeight:200,bg:"var(--bg2)",
+              placeholder:"Wpisz treść wiadomości…"})
           ),
           ce("div",null,
             ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Załączniki"),
