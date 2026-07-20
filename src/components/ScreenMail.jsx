@@ -1367,7 +1367,7 @@ function DraftsView(p){
 // Synchronizujemy props.value → DOM tylko gdy faktycznie się różni od bieżącego
 // innerHTML (np. wczytanie szablonu, draftu). W innym przypadku zostawiamy
 // edytor w spokoju, żeby nie tracić cursor position.
-function RichTextEditor(p){
+export function RichTextEditor(p){
   var ur=React.useRef, us=React.useState, ue=React.useEffect;
   var ref=ur(null);
   var sFocus=us(false),focused=sFocus[0],setFocused=sFocus[1];
