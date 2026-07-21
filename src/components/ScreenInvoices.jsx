@@ -535,7 +535,9 @@ function InvoiceEditor(p){
             value:clientSearch,
             placeholder:"Szukaj klienta po imieniu i nazwisku...",
             onChange:function(e){setClientSearch(e.target.value);setClientDropOpen(true);if(!e.target.value)clearClient();},
-            onFocus:function(){setClientDropOpen(true);}}),
+            onFocus:function(){setClientDropOpen(true);},
+            onBlur:function(){setTimeout(function(){setClientDropOpen(false);},150);},
+            onKeyDown:function(e){if(e.key==="Escape")setClientDropOpen(false);}}),
           clientId&&ce("button",{onClick:clearClient,type:"button",
             style:Object.assign({},btnSecondary,{padding:"8px 12px"})},"\u00D7")
         ),
