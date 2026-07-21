@@ -60,7 +60,7 @@ export async function msalGetToken() {
     return result.accessToken;
   } catch (e) {
     // Silent refresh nie zadziałał — odróżniamy interakcję wymaganą od innych błędów
-    if (e && (e.name === "InteractionRequiredAuthError" || e.errorCode === "interaction_required" || e.errorCode === "consent_required" || e.errorCode === "login_required")) {
+    if (e && (e.name === "InteractionRequiredAuthError" || e.errorCode === "interaction_required" || e.errorCode === "consent_required" || e.errorCode === "login_required" || e.errorCode === "timed_out" || e.errorCode === "monitor_window_timeout")) {
       // Sygnalizujemy wywołującemu, że trzeba interakcji — niech UI zdecyduje
       var err = new Error("MS_INTERACTION_REQUIRED");
       err.code = "MS_INTERACTION_REQUIRED";
