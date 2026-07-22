@@ -1757,7 +1757,7 @@ function KanbanBoard(kp){
 
 
 export function ScreenCRM(p){
-  // p: clients, setScreen, setAppMode, setCurClientId
+  // p: clients, setScreen, setAppMode, setCurClientId, pushModeReturn
   // gcalToken/setGcalToken/gsiReady przekazywane z App
   var gcalToken=p.gcalToken||null, setGcalToken=p.setGcalToken||function(){}, gsiReady=!!p.gsiReady;
   var sDeals=useState(null),deals=sDeals[0],setDeals=sDeals[1];
@@ -1841,6 +1841,7 @@ export function ScreenCRM(p){
   }
 
   function goToClient(clientId){
+    p.pushModeReturn&&p.pushModeReturn();
     p.setCurClientId(clientId);
     p.setScreen("rooms");
     p.setAppMode("wyceniarka");
@@ -1849,6 +1850,7 @@ export function ScreenCRM(p){
   // Skrot z karty deala prosto do ekranu "Podsumowanie" danego klienta
   // (bez przechodzenia przez karte klienta / liste pomieszczen).
   function goToClientSummary(clientId){
+    p.pushModeReturn&&p.pushModeReturn();
     p.setCurClientId(clientId);
     p.setScreen("sum");
     p.setAppMode("wyceniarka");
