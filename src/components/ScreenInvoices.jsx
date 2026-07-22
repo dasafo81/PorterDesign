@@ -209,7 +209,15 @@ function InvoiceEditor(p){
   var [saleDate,setSaleDate]=useState(initInv.sale_date||today);
   var [dueDate,setDueDate]=useState(initInv.due_date||addDays(today,defaultDays));
   var [payMethod,setPayMethod]=useState(initInv.payment_method||settings.default_payment_method||"przelew");
-  var [kasowa,setKasowa]=useState(!!(initInv.kasowa));
+  // Metoda kasowa: dla NOWEJ faktury domyslna wartosc bierzemy z ustawien tenanta
+  // (invoice_settings.kasowa_default). PD Porter Design rozlicza sie metoda kasowa,
+  // wiec kazda faktura sprzedazowa musi miec te adnotacje — inaczej robi sie
+  // rozjazd miedzy PDF-em a FA(3) (Adnotacje/P_16), zglaszany przez ksiegowa.
+  // Dokumenty EKO i faktury zakupowe (dokument dostawcy) sa z tego wylaczone.
+  // Dla istniejacej faktury zostaje to, co zapisano przy jej wystawieniu.
+  var [kasowa,setKasowa]=useState(isNew
+    ? (!!settings.kasowa_default && direction!=="zakup" && docType!=="eko")
+    : !!(initInv.kasowa));
   var [notes,setNotes]=useState(initInv.notes||"");
   var initSnap=initInv.seller_snapshot||{};
   var initContractor=(direction==="zakup"&&(initSnap.name||initSnap.nip))?initSnap:null;
@@ -709,7 +717,14 @@ function InvoiceSettings(p){
           PAYMENT_METHODS.map(function(m){return ce("option",{key:m,value:m},m);}))),
       row("Domyślna jednostka miary",
         ce("select",{style:inp,value:form.default_unit||"szt",onChange:function(e){upd("default_unit",e.target.value);}},
-          UNITS.map(function(u){return ce("option",{key:u,value:u},u);})))
+          UNITS.map(function(u){return ce("option",{key:u,value:u},u);}))),
+      row("Metoda kasowa",
+        ce("label",{style:{display:"flex",alignItems:"center",gap:8,fontSize:13,color:"var(--t2)",cursor:"pointer",userSelect:"none"}},
+          ce("input",{type:"checkbox",checked:!!form.kasowa_default,
+            onChange:function(e){upd("kasowa_default",e.target.checked);},
+            style:{width:15,height:15,cursor:"pointer"}}),
+          "Zaznaczaj domyślnie na nowych fakturach"),
+        "Dla małych podatników rozliczających VAT metodą kasową. Trafia do FA(3) jako Adnotacje/P_16 = 1 i na PDF jako napis „Metoda Kasowa”. Nigdy nie jest duplikowana w dodatkowym opisie faktury.")
     ),
 
     ce(KsefTokenPanel,null),
