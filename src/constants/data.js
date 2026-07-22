@@ -3564,19 +3564,11 @@ export function pdfStyles(){
   </style>`;
 }
 
-export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
+function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
   montaz=montaz||0;
-  comm=comm||0;
   offerNotes=offerNotes||"";
-  var rows=buildOfferRows(client);
-  if(!rows.length)return null;
-  if(comm>0){
-    rows=rows.map(function(r){
-      var newTotal=roundTo10(r.total*(1+comm));
-      return Object.assign({},r,{total:newTotal,cenaJedn:newTotal});
-    });
-  }
-  var total=rows.reduce(function(a,r){return a+r.total;},0);
+  if(!rows||!rows.length)return null;
+  var total=rows.reduce(function(a,r){return a+(+r.total||0);},0);
   var now=new Date();
   var dateStr=now.toLocaleDateString("pl-PL");
   var validStr=(((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*3600*1000)).toLocaleDateString("pl-PL");
@@ -3584,7 +3576,7 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
 
   var tableRows=rows.map(function(r){
     return [r.name,r.qty+" "+r.unit,
-      r.total.toFixed(2).replace(".",",")+" zł"
+      (+r.total||0).toFixed(2).replace(".",",")+" zł"
     ];
   });
   tableRows.push(["<strong>Razem</strong>","",
@@ -3627,10 +3619,35 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
   return html;
 }
 
+export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
+  comm=comm||0;
+  var rows=buildOfferRows(client);
+  if(!rows.length)return null;
+  if(comm>0){
+    rows=rows.map(function(r){
+      var newTotal=roundTo10(r.total*(1+comm));
+      return Object.assign({},r,{total:newTotal,cenaJedn:newTotal});
+    });
+  }
+  return _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil);
+}
+
+// Wariant przyjmujący już gotowe (i ewentualnie ręcznie doedytowane na ekranie
+// podglądu) wiersze — używany przez ekran "Wycena szczegółowa — podgląd".
+export function buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil){
+  return _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil);
+}
+
 export function generateOfferPDF(client,comm,montaz){
   var offerNotes=window.prompt("Uwagi do oferty (opcjonalne):","") || "";
   if(offerNotes===null)return;
   var html=buildOfferPDFHtml(client,comm,montaz,offerNotes);
+  if(!html){alert("Brak wycenionych produktów.");return;}
+  openPDFWindow(html, getPDFOfferNumber(client));
+}
+
+export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUntil){
+  var html=buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil);
   if(!html){alert("Brak wycenionych produktów.");return;}
   openPDFWindow(html, getPDFOfferNumber(client));
 }
