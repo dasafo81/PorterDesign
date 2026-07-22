@@ -3575,13 +3575,17 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
   var offerNo=getPDFOfferNumber(client);
 
   var tableRows=rows.map(function(r){
-    return [r.name,r.qty+" "+r.unit,
+    return [r.qtyUnit||((r.qty!=null?r.qty:1)+" "+(r.unit||"")), r.name,
       (+r.total||0).toFixed(2).replace(".",",")+" zł"
     ];
   });
-  tableRows.push(["<strong>Razem</strong>","",
+  tableRows.push(["","<strong>Razem</strong>",
     "<strong>"+total.toFixed(2).replace(".",",")+" zł</strong>"
   ]);
+
+  var userNotesHTML=offerNotes
+    ?'<div class="notes"><strong>Uwagi:</strong><br>'+String(offerNotes).replace(/</g,"&lt;").replace(/\n/g,"<br>")+'</div>'
+    :'';
 
   var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Wycena szczegółowa ${offerNo}</title>${pdfStyles()}</head><body>
   <div class="header">
@@ -3598,8 +3602,9 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
       <p><strong>${client.name}</strong><br>${client.addr||""}</p>
     </div>
   </div>
-  ${makeTableHTML(["Produkt","Ilość","Cena brutto"],tableRows,"Specyfikacja wyceny",['65%','15%','20%'])}
+  ${makeTableHTML(["Ilość","Produkt","Cena brutto"],tableRows,"Specyfikacja wyceny",['15%','65%','20%'])}
   <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
+  ${userNotesHTML}
   <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
   <div class="sign-block">
     <div class="sign">Osoba uprawniona do wystawienia<br><strong>Paulina Porter</strong></div>
@@ -3609,7 +3614,6 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
   </body></html>`;
   var montazVal=montaz>0?roundTo10(total*montaz):0;
   var totalWithMontaz=montazVal>0?roundTo10(total+montazVal):total;
-  if(offerNotes) html=html.replace('<div class="notes">Niniejszy dokument nie jest fakturą','<div class="notes">'+offerNotes+'<br><br>Niniejszy dokument nie jest fakturą');
   if(montazVal>0){
     var montazBreakdown='<div style="margin:4mm 0 3mm;padding:10px 14px;background:#eeece9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Monta\u017c dekoracji okiennych ('+Math.round(montaz*100)+'%):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div>'
       +'<div style="margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#555;font-weight:600;">\u0141\u0105cznie bez monta\u017cu:</span><span style="font-size:14px;font-weight:700;color:#555;">'+total.toFixed(2).replace(".",",")+' z\u0142</span></div>';
