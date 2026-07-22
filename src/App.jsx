@@ -469,7 +469,16 @@ export function App(p){
     if((screen==="windows"||screen==="detail")&&curRoom){parts.push(sep(2));parts.push(cr(curRoom.name,screen==="detail"?function(){setScreen("windows");}:null));}
     if(screen==="detail"&&curWin){parts.push(sep(3));parts.push(cr(curWin.name,null));}
     if(screen==="sum"){parts.push(sep(4));parts.push(cr("Podsumowanie",null));}
-    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",marginBottom:0,paddingBottom:0,borderBottom:"none"}},parts);
+    // Szybki skrót do podsumowania z dowolnego ekranu klienta (rooms/windows/detail),
+    // zeby nie trzeba bylo wracac przez "rooms" zeby tam kliknac "Podsumowanie".
+    // Na "detail" najpierw zapisujemy biezace okno (jak przycisk "Zapisz okno"),
+    // zeby nie zgubic niezapisanych zmian w produktach.
+    var quickSum=(curClient&&screen!=="home"&&screen!=="sum")
+      ?ce("button",{key:"quicksum",onClick:function(){if(screen==="detail"&&curWin)saveWin();setScreen("sum");},
+          style:{marginLeft:"auto",padding:"4px 12px",borderRadius:20,border:"1px solid var(--bd2)",background:"var(--bg2)",color:"var(--t2)",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}
+        },"Podsumowanie \u2197")
+      :null;
+    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",marginBottom:0,paddingBottom:0,borderBottom:"none"}},parts.concat([quickSum]));
   }
 
   var content=null;
