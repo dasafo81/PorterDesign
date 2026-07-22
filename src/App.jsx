@@ -6,7 +6,7 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
   buildFabricRows, buildOfferRows, buildSewingRows, calc,
-  formatPLN, generateKarniszOrderPDF, generateOfferPDF, generateRailsInstallPDF,
+  formatPLN, generateKarniszOrderPDF, generateOfferPDF, generateOfferPDFFromRows, generateRailsInstallPDF,
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
@@ -108,6 +108,9 @@ export function App(p){
   var s14b=useState(false),showEmailModal=s14b[0],setShowEmailModal=s14b[1];
   var s14s=useState(false),showSimplifiedModal=s14s[0],setShowSimplifiedModal=s14s[1];
   var s14m=useState(""),montazInput=s14m[0],setMontazInput=s14m[1];
+  var sOfferRows=useState([]),offerPreviewRows=sOfferRows[0],setOfferPreviewRows=sOfferRows[1];
+  var sOfferNotes=useState(""),offerNotes=sOfferNotes[0],setOfferNotes=sOfferNotes[1];
+  var sOfferValid=useState(""),offerValidUntil=sOfferValid[0],setOfferValidUntil=sOfferValid[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
@@ -1090,6 +1093,20 @@ export function App(p){
   else if(screen==="sum"&&curClient){
     var comm=(+commissionInput||0)/100;
     function withComm(price){return comm>0?roundTo10(price*(1+comm)):roundTo10(price);}
+    function openOfferPreview(){
+      var rows=buildOfferRows(curClient);
+      if(!rows.length){alert("Brak wycenionych produktów.");return;}
+      if(comm>0){
+        rows=rows.map(function(r){
+          var newTotal=roundTo10(r.total*(1+comm));
+          return mg(r,{total:newTotal,cenaJedn:newTotal});
+        });
+      }
+      setOfferPreviewRows(rows);
+      setOfferNotes("");
+      setOfferValidUntil(new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10));
+      setScreen("offerPreview");
+    }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
     // ── variant-aware room rendering ──
@@ -1203,13 +1220,68 @@ export function App(p){
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
-        ce("button",{onClick:function(){generateOfferPDF(curClient,comm,(+montazInput||0)/100);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena szczegółowa"),
+        ce("button",{onClick:function(){openOfferPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena szczegółowa"),
         ce("button",{onClick:function(){setShowSimplifiedModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
         ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:function(){setShowFabricModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){generateKarniszOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
         ce("button",{onClick:function(){generateRailsInstallPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#6b5b8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD29 Szyny do monta\u017cu"),
         ce("button",{onClick:function(){setShowSewingModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
+      )
+    );
+  }
+  else if(screen==="offerPreview"&&curClient){
+    var previewTotal=offerPreviewRows.reduce(function(a,r){return a+(+r.total||0);},0);
+    var previewMontazPct=(+montazInput||0)/100;
+    var previewMontazVal=previewMontazPct>0?roundTo10(previewTotal*previewMontazPct):0;
+
+    content=ce(Fragment,null,
+      ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCC4 Wycena szczegółowa \u2014 podgląd przed wygenerowaniem"),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
+        (commissionInput&&(+commissionInput)>0?"Ceny poniżej uwzględniają już polecenie +"+commissionInput+"%. ":"")
+        +"Możesz ręcznie zmienić cenę każdej pozycji, treść uwag oraz datę ważności \u2014 dopiero stąd generujesz PDF."
+      ),
+      offerPreviewRows.length===0
+        ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak pozycji do wyceny.")
+        :offerPreviewRows.map(function(r,i){
+          return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,border:"1px solid var(--bd3)"}},
+            ce("div",{style:{flex:1,minWidth:0,fontSize:13,color:"var(--t1)",lineHeight:1.4},dangerouslySetInnerHTML:{__html:r.name+" \u00b7 "+r.qty+" "+r.unit}}),
+            ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+              ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){
+                var v=ev.target.value;
+                setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{total:v,cenaJedn:v}):x;});});
+              },style:{width:110,padding:"8px 10px",fontSize:14,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
+              ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł")
+            )
+          );
+        }),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:16}},
+        ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"\uD83D\uDCDD Uwagi do wyceny"),
+        ce("textarea",{value:offerNotes,onChange:function(ev){setOfferNotes(ev.target.value);},placeholder:"np. cena obejmuje montaż w ciągu 4 tygodni od wpłaty zaliczki...",rows:3,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
+      ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}},
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDCC5 Ważne do"),
+        ce("input",{type:"date",value:offerValidUntil,onChange:function(ev){setOfferValidUntil(ev.target.value);},style:{padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}})
+      ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}},
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Montaż (%)"),
+        ce("input",{type:"text",inputMode:"numeric",min:0,max:100,step:1,value:montazInput,onChange:function(ev){var v=ev.target.value;setMontazInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:v});});},placeholder:"np. 10",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+"%"):null
+      ),
+      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16}},
+        previewMontazVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--bg)",opacity:0.7}},ce("span",null,"Bez montażu"),ce("span",null,roundTo10(previewTotal)+" zł")):null,
+        ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+          ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},previewMontazVal>0?"\u0141\u0105cznie z montażem":"\u0141\u0105cznie"),
+          ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(previewTotal+previewMontazVal)+" zł")
+        )
+      ),
+      ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+        Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:function(){
+          var vu=offerValidUntil?new Date(offerValidUntil):null;
+          generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazPct,offerNotes,vu);
+          setScreen("sum");
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
       )
     );
   }
