@@ -487,8 +487,15 @@ export function ModalDeal(p){
           clientTotal>0?ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.9)",fontWeight:700}},
             clientTotal.toLocaleString("pl-PL")+" zł"
           ):null,
-          ce("button",{onClick:p.onGoToClient,style:{marginLeft:"auto",background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600}},
-            "→ Karta klienta"
+          ce("div",{style:{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}},
+            ce("button",{onClick:p.onGoToClient,style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
+              "→ Karta klienta"
+            ),
+            // Wyrazisty (bialy, pelny) przycisk — glowne CTA karty deala, zeby bylo
+            // od razu widac skrot do wyceny bez szukania w tle nagłówka.
+            ce("button",{onClick:p.onGoToSummary,style:{background:"#fff",border:"none",borderRadius:8,color:"var(--t1)",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}},
+              "\uD83D\uDCCB Podsumowanie →"
+            )
           )
         )
       ),
@@ -1839,6 +1846,14 @@ export function ScreenCRM(p){
     p.setAppMode("wyceniarka");
   }
 
+  // Skrot z karty deala prosto do ekranu "Podsumowanie" danego klienta
+  // (bez przechodzenia przez karte klienta / liste pomieszczen).
+  function goToClientSummary(clientId){
+    p.setCurClientId(clientId);
+    p.setScreen("sum");
+    p.setAppMode("wyceniarka");
+  }
+
   if(loadingDeals){
     return ce("div",{style:{textAlign:"center",padding:"3rem",color:"var(--t3)",fontSize:13}},"Ładowanie CRM...");
   }
@@ -1882,7 +1897,8 @@ export function ScreenCRM(p){
       onSave:function(data){onDealSave(modalDeal.id,data);},
       onDelete:function(){onDealDelete(modalDeal.id);},
       onClose:function(){setModalDeal(null);},
-      onGoToClient:function(){goToClient(modalDeal.client_id);}
+      onGoToClient:function(){goToClient(modalDeal.client_id);},
+      onGoToSummary:function(){goToClientSummary(modalDeal.client_id);}
     }):null
   );
 }
