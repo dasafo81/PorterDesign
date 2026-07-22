@@ -3587,7 +3587,16 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
     ?'<div class="notes"><strong>Uwagi:</strong><br>'+String(offerNotes).replace(/</g,"&lt;").replace(/\n/g,"<br>")+'</div>'
     :'';
 
-  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Wycena szczegółowa ${offerNo}</title>${pdfStyles()}</head><body>
+  var extraStyles=`
+    body{font-size:13px;}
+    table{font-size:12px;border-collapse:collapse!important;border:1.5px solid #999!important;}
+    caption{font-size:11px;}
+    th{font-size:10px;padding:5px 8px;border:1px solid #999!important;background:#ebebeb!important;}
+    td{padding:5px 8px;font-size:12px;line-height:1.5;border:1px solid #bbb!important;vertical-align:top;}
+    tr:nth-child(even) td{background:#fafaf8;}
+  `;
+
+  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Wycena szczegółowa ${offerNo}</title>${pdfStyles().replace('</style>',extraStyles+'</style>')}</head><body>
   <div class="header">
     <div><img src="${LOGO_PDF_G}" style="height:50px;width:auto;" alt="Porter Design"/></div>
     <div style="text-align:right"><div style="font-size:20px;font-weight:700">Wycena szczegółowa nr ${offerNo}</div>
