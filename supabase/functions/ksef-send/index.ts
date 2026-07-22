@@ -96,6 +96,16 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   }).join("");
   const payMap: Record<string,string> = {"przelew":"6","gotówka":"1","karta":"5","BLIK":"5"};
   const payCode = payMap[inv.payment_method||""]||"6";
+  // ── Metoda kasowa ─────────────────────────────────────────────────────────
+  // W FA(3) jedynym poprawnym miejscem na te adnotacje jest Adnotacje/P_16
+  // (1 = tak, 2 = nie). Duplikowanie jej jako wolny tekst w <DodatkowyOpis>
+  // dawalo sprzecznosc "P_16 = 2. Nie" + opis "Metoda Kasowa" — zgloszenie
+  // ksiegowej (VIP Account, 2026-07-22). Flaga per faktura (invoices.kasowa)
+  // ustawiana jest z invoice_settings.kasowa_default przy tworzeniu faktury.
+  const p16 = (inv.kasowa === true || inv.kasowa === "true") ? "1" : "2";
+  // Z Uwag wycinamy fraze "metoda kasowa" — recznie wpisana notatka nie moze
+  // odtworzyc tej samej sprzecznosci w DodatkowyOpis.
+  const opis = String(inv.notes || "").replace(/metoda\s+kasowa/gi, "").replace(/\s{2,}/g, " ").trim();
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/" xmlns:etd="http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/01/05/eD/DefinicjeTypy/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Naglowek>
@@ -120,9 +130,9 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     <P_2>${escXml(inv.number||"")}</P_2>
     <P_6>${isoDate(inv.sale_date||inv.issue_date)}</P_6>${stawki}
     <P_15>${totalGross}</P_15>
-    <Adnotacje><P_16>2</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19N>1</P_19N></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
+    <Adnotacje><P_16>${p16}</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19N>1</P_19N></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
     <RodzajFaktury>VAT</RodzajFaktury>
-    ${inv.notes?`<DodatkowyOpis><Klucz>Uwagi</Klucz><Wartosc>${escXml(String(inv.notes).slice(0,512))}</Wartosc></DodatkowyOpis>`:""}
+    ${opis?`<DodatkowyOpis><Klucz>Uwagi</Klucz><Wartosc>${escXml(opis.slice(0,512))}</Wartosc></DodatkowyOpis>`:""}
     ${pozycje}
     <Platnosc>
       ${inv.due_date?`<TerminPlatnosci><Termin>${isoDate(inv.due_date)}</Termin></TerminPlatnosci>`:""}
