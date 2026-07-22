@@ -109,6 +109,7 @@ export function App(p){
   var s14s=useState(false),showSimplifiedModal=s14s[0],setShowSimplifiedModal=s14s[1];
   var s14m=useState(""),montazInput=s14m[0],setMontazInput=s14m[1];
   var sOfferRows=useState([]),offerPreviewRows=sOfferRows[0],setOfferPreviewRows=sOfferRows[1];
+  var sOfferBase=useState([]),offerBaseRows=sOfferBase[0],setOfferBaseRows=sOfferBase[1];
   var sOfferNotes=useState(""),offerNotes=sOfferNotes[0],setOfferNotes=sOfferNotes[1];
   var sOfferValid=useState(""),offerValidUntil=sOfferValid[0],setOfferValidUntil=sOfferValid[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
@@ -126,6 +127,13 @@ export function App(p){
   function wt(w){return(w.products||[]).reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);}
   function rt(r){return(r.windows||[]).reduce(function(a,w){return a+wt(w);},0);}
   function clientTotal(cl){return(cl.rooms||[]).reduce(function(a,r){return a+rt(r);},0);}
+  function stripHtml(s){return String(s||"").replace(/<br\s*\/?>/gi," ").replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim();}
+  function applyOfferComm(baseRows,commVal){
+    return baseRows.map(function(r){
+      var t=commVal>0?roundTo10(r.total*(1+commVal)):r.total;
+      return mg(r,{total:t,cenaJedn:t,qtyUnit:r.qty+" "+r.unit,name:stripHtml(r.name)});
+    });
+  }
   function hasWinData(w){return !!(w.products&&w.products.length>0);}
   function hasRoomData(r){return !!(r.windows&&r.windows.some(function(w){return hasWinData(w);}));}
   function hasClientData(cl){return !!(cl.rooms&&cl.rooms.some(function(r){return hasRoomData(r)||r.windows&&r.windows.length>0;}));}
@@ -1094,15 +1102,10 @@ export function App(p){
     var comm=(+commissionInput||0)/100;
     function withComm(price){return comm>0?roundTo10(price*(1+comm)):roundTo10(price);}
     function openOfferPreview(){
-      var rows=buildOfferRows(curClient);
-      if(!rows.length){alert("Brak wycenionych produktów.");return;}
-      if(comm>0){
-        rows=rows.map(function(r){
-          var newTotal=roundTo10(r.total*(1+comm));
-          return mg(r,{total:newTotal,cenaJedn:newTotal});
-        });
-      }
-      setOfferPreviewRows(rows);
+      var baseRows=buildOfferRows(curClient);
+      if(!baseRows.length){alert("Brak wycenionych produktów.");return;}
+      setOfferBaseRows(baseRows);
+      setOfferPreviewRows(applyOfferComm(baseRows,comm));
       setOfferNotes("");
       setOfferValidUntil(new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10));
       setScreen("offerPreview");
@@ -1234,18 +1237,28 @@ export function App(p){
     var previewTotal=offerPreviewRows.reduce(function(a,r){return a+(+r.total||0);},0);
     var previewMontazPct=(+montazInput||0)/100;
     var previewMontazVal=previewMontazPct>0?roundTo10(previewTotal*previewMontazPct):0;
+    function recalcOfferPricesFromCommission(){
+      var c=(+commissionInput||0)/100;
+      setOfferPreviewRows(applyOfferComm(offerBaseRows,c));
+    }
 
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCC4 Wycena szczegółowa \u2014 podgląd przed wygenerowaniem"),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
-        (commissionInput&&(+commissionInput)>0?"Ceny poniżej uwzględniają już polecenie +"+commissionInput+"%. ":"")
-        +"Możesz ręcznie zmienić cenę każdej pozycji, treść uwag oraz datę ważności \u2014 dopiero stąd generujesz PDF."
+        "Każde pole poniżej jest edytowalne \u2014 ilość, nazwa produktu, cena, uwagi, ważność oferty i monta\u017c. Dopiero st\u0105d generujesz PDF."
       ),
       offerPreviewRows.length===0
         ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak pozycji do wyceny.")
         :offerPreviewRows.map(function(r,i){
-          return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,border:"1px solid var(--bd3)"}},
-            ce("div",{style:{flex:1,minWidth:0,fontSize:13,color:"var(--t1)",lineHeight:1.4},dangerouslySetInnerHTML:{__html:r.name+" \u00b7 "+r.qty+" "+r.unit}}),
+          return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",border:"1px solid var(--bd3)"}},
+            ce("input",{type:"text",value:r.qtyUnit,onChange:function(ev){
+              var v=ev.target.value;
+              setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{qtyUnit:v}):x;});});
+            },placeholder:"Ilość",style:{width:76,padding:"8px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}}),
+            ce("input",{type:"text",value:r.name,onChange:function(ev){
+              var v=ev.target.value;
+              setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{name:v}):x;});});
+            },placeholder:"Produkt",style:{flex:1,minWidth:180,padding:"8px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}}),
             ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
               ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){
                 var v=ev.target.value;
@@ -1262,6 +1275,11 @@ export function App(p){
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}},
         ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDCC5 Ważne do"),
         ce("input",{type:"date",value:offerValidUntil,onChange:function(ev){setOfferValidUntil(ev.target.value);},style:{padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}})
+      ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83E\uDD1D Prowizja / polecenie (%)"),
+        ce("input",{type:"text",inputMode:"numeric",min:0,max:100,step:1,value:commissionInput,onChange:function(ev){var v=ev.target.value;setCommissionInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{commission:v});});},placeholder:"np. 7",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        ce("button",{onClick:recalcOfferPricesFromCommission,style:{padding:"8px 14px",borderRadius:8,border:"1.5px solid var(--bd2)",background:"var(--bg)",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},"\uD83D\uDD04 Przelicz ceny")
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}},
         ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Montaż (%)"),
