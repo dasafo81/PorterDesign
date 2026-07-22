@@ -3577,31 +3577,24 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
     });
   }
   var total=rows.reduce(function(a,r){return a+r.total;},0);
-  var netto=total/1.23;var vat=total-netto;
   var now=new Date();
   var dateStr=now.toLocaleDateString("pl-PL");
   var validStr=(((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*3600*1000)).toLocaleDateString("pl-PL");
   var offerNo=getPDFOfferNumber(client);
 
   var tableRows=rows.map(function(r){
-    return [r.lp,r.name,r.qty,r.unit,
-      r.cenaJedn.toFixed(2).replace(".",",")+" zł",
-      (r.total/1.23).toFixed(2).replace(".",",")+" zł",
-      "23%",
-      (r.total-r.total/1.23).toFixed(2).replace(".",",")+" zł",
+    return [r.name,r.qty+" "+r.unit,
       r.total.toFixed(2).replace(".",",")+" zł"
     ];
   });
-  tableRows.push(["","","","","<strong>Suma:</strong>",
-    netto.toFixed(2).replace(".",",")+" zł","23%",
-    vat.toFixed(2).replace(".",",")+" zł",
+  tableRows.push(["<strong>Razem</strong>","",
     "<strong>"+total.toFixed(2).replace(".",",")+" zł</strong>"
   ]);
 
-  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>${offerNo}</title>${pdfStyles()}</head><body>
-  <div style="margin-bottom:6mm;line-height:0;"><img src="${BANNER_PDF_G}" style="width:100%;height:auto;display:block;" alt=""/></div>
-  <div style="display:flex;justify-content:flex-end;align-items:center;margin-bottom:6mm;padding-bottom:5mm;border-bottom:0.5px solid #c8c8c4;">
-    <div style="text-align:right"><div style="font-size:18px;font-weight:700">Oferta nr ${offerNo}</div>
+  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Wycena szczegółowa ${offerNo}</title>${pdfStyles()}</head><body>
+  <div class="header">
+    <div><img src="${LOGO_PDF_G}" style="height:50px;width:auto;" alt="Porter Design"/></div>
+    <div style="text-align:right"><div style="font-size:20px;font-weight:700">Wycena szczegółowa nr ${offerNo}</div>
       <div style="font-size:9px;color:#6b6b66;margin-top:4px">Data wystawienia: ${dateStr} &nbsp;|&nbsp; Ważne do: ${validStr}</div>
     </div>
   </div>
@@ -3613,7 +3606,7 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
       <p><strong>${client.name}</strong><br>${client.addr||""}</p>
     </div>
   </div>
-  ${makeTableHTML(["Lp.","Nazwa produktu / usługi","Ilość","Jedn.","Cena jedn. brutto","Wartość netto","Stawka VAT","Wartość VAT","Wartość brutto"],tableRows,"Pozycje")}
+  ${makeTableHTML(["Produkt","Ilość","Cena brutto"],tableRows,"Specyfikacja wyceny",['65%','15%','20%'])}
   <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
   <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
   <div class="sign-block">
