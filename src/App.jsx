@@ -5,7 +5,7 @@ import {
   FABRICS, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
-  buildFabricRows, buildOfferRows, buildSewingRows, calc,
+  buildFabricRows, buildOfferDetailRows, buildSewingRows, calc,
   formatPLN, generateKarniszOrderPDF, generateOfferPDF, generateOfferPDFFromRows, generateRailsInstallPDF,
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
@@ -1102,7 +1102,7 @@ export function App(p){
     var comm=(+commissionInput||0)/100;
     function withComm(price){return comm>0?roundTo10(price*(1+comm)):roundTo10(price);}
     function openOfferPreview(){
-      var baseRows=buildOfferRows(curClient);
+      var baseRows=buildOfferDetailRows(curClient);
       if(!baseRows.length){alert("Brak wycenionych produktów.");return;}
       setOfferBaseRows(baseRows);
       setOfferPreviewRows(applyOfferComm(baseRows,comm));
@@ -1241,30 +1241,50 @@ export function App(p){
       var c=(+commissionInput||0)/100;
       setOfferPreviewRows(applyOfferComm(offerBaseRows,c));
     }
+    function setRowField(i,key,v){
+      setOfferPreviewRows(function(prev){return prev.map(function(x,xi){
+        if(xi!==i)return x;
+        var patch={};patch[key]=v;
+        return mg(x,patch);
+      });});
+    }
+    function rowFieldInput(i,key,placeholder,width){
+      return ce("input",{type:"text",value:offerPreviewRows[i][key]||"",onChange:function(ev){setRowField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
+    }
 
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCC4 Wycena szczegółowa \u2014 podgląd przed wygenerowaniem"),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
-        "Każde pole poniżej jest edytowalne \u2014 ilość, nazwa produktu, cena, uwagi, ważność oferty i monta\u017c. Dopiero st\u0105d generujesz PDF."
+        "Każde pole poniżej jest edytowalne \u2014 ilość, produkt, model szycia, tkanina/kolor, producent, szeroko\u015b\u0107, wysoko\u015b\u0107, podzia\u0142, cena, uwagi, ważność oferty i monta\u017c. Dopiero st\u0105d generujesz PDF."
       ),
       offerPreviewRows.length===0
         ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak pozycji do wyceny.")
         :offerPreviewRows.map(function(r,i){
-          return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",border:"1px solid var(--bd3)"}},
-            ce("input",{type:"text",value:r.qtyUnit,onChange:function(ev){
-              var v=ev.target.value;
-              setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{qtyUnit:v}):x;});});
-            },placeholder:"Ilość",style:{width:76,padding:"8px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}}),
-            ce("input",{type:"text",value:r.name,onChange:function(ev){
-              var v=ev.target.value;
-              setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{name:v}):x;});});
-            },placeholder:"Produkt",style:{flex:1,minWidth:180,padding:"8px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}}),
-            ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
-              ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){
+          return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,border:"1px solid var(--bd3)"}},
+            ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}},
+              ce("input",{type:"text",value:r.qtyUnit,onChange:function(ev){
                 var v=ev.target.value;
-                setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{total:v,cenaJedn:v}):x;});});
-              },style:{width:110,padding:"8px 10px",fontSize:14,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
-              ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł")
+                setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{qtyUnit:v}):x;});});
+              },placeholder:"Ilość",style:{width:76,padding:"8px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}}),
+              ce("input",{type:"text",value:r.name,onChange:function(ev){
+                var v=ev.target.value;
+                setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{name:v}):x;});});
+              },placeholder:"Produkt",style:{flex:1,minWidth:180,padding:"8px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}}),
+              ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+                ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){
+                  var v=ev.target.value;
+                  setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{total:v,cenaJedn:v}):x;});});
+                },style:{width:110,padding:"8px 10px",fontSize:14,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
+                ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł")
+              )
+            ),
+            ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
+              rowFieldInput(i,"modelSzycia","Model szycia",120),
+              rowFieldInput(i,"tkaninaKolor","Tkanina / Kolor",170),
+              rowFieldInput(i,"producent","Producent",110),
+              rowFieldInput(i,"szerokosc","Szerokość",90),
+              rowFieldInput(i,"wysokosc","Wysokość",90),
+              rowFieldInput(i,"podzial","Podział",110)
             )
           );
         }),
