@@ -3300,6 +3300,75 @@ export function buildOfferRows(client){
   return rows;
 }
 
+// Wiersze "Wyceny szczegółowej" — jak buildOfferRows (wszystkie typy produktów),
+// ale z dodatkowymi kolumnami technicznymi analogicznymi do zlecenia szycia
+// (Model szycia / Tkanina i Kolor / Producent / Szerokość / Wysokość / Podział).
+// Nazwa produktu NIE zawiera uwag (p.note) — te idą wyłącznie do wspólnego pola
+// "Uwagi do wyceny" na dole dokumentu, nie do opisu pozycji.
+export function buildOfferDetailRows(client){
+  var rows=[];
+  (client.rooms||[]).forEach(function(r){
+    (r.windows||[]).forEach(function(w){
+      (w.products||[]).forEach(function(p){
+        var pc=p.c||{},par=p.par||{};
+        var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
+        var total=p.mp!=null?p.mp:(calc(pfc).total||0);
+        if(!total)return;
+        var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
+        var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
+        var isKurtain=(p.type==="zaslona"||p.type==="firana");
+        var name=prodLabel+" — "+r.name+" / "+w.name;
+
+        var modelSzycia="-",tkaninaKolor="-",producent="-",szerokosc="-",wysokosc="-",podzial="-";
+
+        if(isKurtain){
+          var sz;
+          if(pc.model==="wave"||pc.sz==="wave"){sz="Wave";}
+          else if(pc.model==="falda"){
+            var foldMap={pojedyncza:"Flex I",podwojna:"Flex II",potrojna:"Flex III",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
+            sz=pc.foldType?foldMap[pc.foldType]||("Fa\u0142da "+pc.foldType):"Fa\u0142da";
+          } else if(pc.model==="tasma"){sz=pc.typMarszczenia||"Smok";}
+          else{sz="Flex";}
+          var mars=pc.mars?(Math.round(+pc.mars*100))+"%":"150%";
+          modelSzycia=sz+" "+mars;
+          var fabObj=p.fabName?FABRICS.find(function(f){return f.name===p.fabName;}):null;
+          tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
+          producent=fabObj?fabObj.prod:"-";
+          szerokosc=par.wCm?(par.wCm+" cm"):"-";
+          wysokosc=par.hCm?(par.hCm+" cm"):"-";
+          var split=pc.split||"unequal";
+          if(split==="left")podzial="Lewa";
+          else if(split==="right")podzial="Prawa";
+          else if(split==="equal"){var tw=par.wCm||0;podzial="Kurtyna "+Math.floor(tw/2)+" + "+Math.ceil(tw/2)+" cm";}
+          else podzial=(pc.leftW||0)+"cm + "+(pc.rightW||0)+"cm";
+        } else if(p.type==="roleta"){
+          var rModelMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
+          modelSzycia=rModelMap[pc.rModel]||pc.rModel||"-";
+          var fabObjR=p.fabName?FABRICS.find(function(f){return f.name===p.fabName;}):null;
+          tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
+          producent=fabObjR?fabObjR.prod:"-";
+          szerokosc=par.wCm?(par.wCm+" cm"):"-";
+          wysokosc=par.hCm?(par.hCm+" cm"):"-";
+        } else if(p.type==="szyna"||p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"){
+          szerokosc=par.len?(par.len+" cm"):"-";
+          producent=p.karniszSupplier||"-";
+        }
+
+        rows.push({
+          room:r.name,win:w.name,
+          qty:1,unit:isKurtain?"kpl.":"szt.",
+          name:name,
+          modelSzycia:modelSzycia,tkaninaKolor:tkaninaKolor,producent:producent,
+          szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,
+          total:total,cenaJedn:total
+        });
+      });
+    });
+  });
+  return rows;
+}
+
+
 export function buildFabricRows(client){
   // One row per window: {prod, fabName, kolor, width, metry, room, win, note}
   // Obsługuje: zaslona, firana, roleta (w tym Duo)
@@ -3575,11 +3644,19 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
   var offerNo=getPDFOfferNumber(client);
 
   var tableRows=rows.map(function(r){
-    return [r.qtyUnit||((r.qty!=null?r.qty:1)+" "+(r.unit||"")), r.name,
+    return [
+      r.qtyUnit||((r.qty!=null?r.qty:1)+" "+(r.unit||"")),
+      r.name,
+      r.modelSzycia||"-",
+      r.tkaninaKolor||"-",
+      r.producent||"-",
+      r.szerokosc||"-",
+      r.wysokosc||"-",
+      r.podzial||"-",
       (+r.total||0).toFixed(2).replace(".",",")+" zł"
     ];
   });
-  tableRows.push(["","<strong>Razem</strong>",
+  tableRows.push(["","<strong>Razem</strong>","","","","","","",
     "<strong>"+total.toFixed(2).replace(".",",")+" zł</strong>"
   ]);
 
@@ -3596,7 +3673,7 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
     tr:nth-child(even) td{background:#fafaf8;}
   `;
 
-  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Wycena szczegółowa ${offerNo}</title>${pdfStyles().replace('</style>',extraStyles+'</style>')}</head><body>
+  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Wycena szczegółowa ${offerNo}</title>${pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;').replace('</style>',extraStyles+'</style>')}</head><body>
   <div class="header">
     <div><img src="${LOGO_PDF_G}" style="height:50px;width:auto;" alt="Porter Design"/></div>
     <div style="text-align:right"><div style="font-size:20px;font-weight:700">Wycena szczegółowa nr ${offerNo}</div>
@@ -3611,7 +3688,7 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
       <p><strong>${client.name}</strong><br>${client.addr||""}</p>
     </div>
   </div>
-  ${makeTableHTML(["Ilość","Produkt","Cena brutto"],tableRows,"Specyfikacja wyceny",['15%','65%','20%'])}
+  ${makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor","Producent","Szerokość","Wysokość","Podział","Cena brutto"],tableRows,"Specyfikacja wyceny",['6%','23%','10%','14%','10%','8%','8%','10%','11%'])}
   <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
   ${userNotesHTML}
   <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
@@ -3634,7 +3711,7 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
 
 export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
   comm=comm||0;
-  var rows=buildOfferRows(client);
+  var rows=buildOfferDetailRows(client);
   if(!rows.length)return null;
   if(comm>0){
     rows=rows.map(function(r){
@@ -3656,13 +3733,13 @@ export function generateOfferPDF(client,comm,montaz){
   if(offerNotes===null)return;
   var html=buildOfferPDFHtml(client,comm,montaz,offerNotes);
   if(!html){alert("Brak wycenionych produktów.");return;}
-  openPDFWindow(html, getPDFOfferNumber(client));
+  openPDFWindow(html, getPDFOfferNumber(client),{landscape:true});
 }
 
 export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUntil){
   var html=buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil);
   if(!html){alert("Brak wycenionych produktów.");return;}
-  openPDFWindow(html, getPDFOfferNumber(client));
+  openPDFWindow(html, getPDFOfferNumber(client),{landscape:true});
 }
 
 // ── Suppliers for karnisze / szyny ─────────────────────────────────────────
