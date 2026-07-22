@@ -475,8 +475,8 @@ export function App(p){
     // zeby nie zgubic niezapisanych zmian w produktach.
     var quickSum=(curClient&&screen!=="home"&&screen!=="sum")
       ?ce("button",{key:"quicksum",onClick:function(){if(screen==="detail"&&curWin)saveWin();setScreen("sum");},
-          style:{marginLeft:"auto",padding:"4px 12px",borderRadius:20,border:"1px solid var(--bd2)",background:"var(--bg2)",color:"var(--t2)",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}
-        },"Podsumowanie \u2197")
+          style:{marginLeft:"auto",padding:"7px 16px",borderRadius:20,border:"none",background:"var(--violet)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"0 2px 8px var(--violet-l)"}
+        },"\uD83D\uDCCB Podsumowanie \u2197")
       :null;
     return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",marginBottom:0,paddingBottom:0,borderBottom:"none"}},parts.concat([quickSum]));
   }
