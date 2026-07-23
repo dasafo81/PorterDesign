@@ -18,7 +18,7 @@ import {
   buildSewingRows, calc, getPanelsForProd, jzLookup,
   mg, roundTo10
 } from '../constants/data.js';
-import { generateFabricOrderPDF, generateClientEmail,
+import { generateFabricOrderPDF, getFabricOrderSuppliers, generateClientEmail,
 
 
   generateSewingOrderPDF, generateSewingOrderPDFFromRows
@@ -394,13 +394,25 @@ export function ModalFabricOrder(p){
   var ss=useState(SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
   var cs=useState(''),customHouse=cs[0],setCustomHouse=cs[1];
   var ns=useState(''),notes=ns[0],setNotes=ns[1];
+  // Lista dostawcow liczona raz przy otwarciu modala
+  var sl=useState(function(){return getFabricOrderSuppliers(p.client);}),sups=sl[0];
+  var ds=useState([]),doneSups=ds[0],setDoneSups=ds[1];
+  var multi=sups.length>1;
 
   var INP={padding:'12px 14px',fontSize:15,border:'1.5px solid var(--bd2)',borderRadius:10,background:'var(--bg)',color:'var(--t1)',width:'100%',boxSizing:'border-box',outline:'none'};
 
+  function houseVal(){return selHouse==='__custom__'?customHouse:selHouse;}
+
   function generate(){
-    var house=selHouse==='__custom__'?customHouse:selHouse;
-    generateFabricOrderPDF(p.client,{sewingHouse:house,notes:notes});
+    generateFabricOrderPDF(p.client,{sewingHouse:houseVal(),notes:notes});
     p.onClose();
+  }
+
+  // Jeden klik = jedno okno popup — przegladarka blokuje kolejne okna otwarte
+  // bez interakcji uzytkownika, wiec przy kilku dostawcach generujemy pojedynczo.
+  function genFor(sup){
+    generateFabricOrderPDF(p.client,{sewingHouse:houseVal(),notes:notes,supplier:sup});
+    setDoneSups(function(prev){return prev.indexOf(sup)>=0?prev:prev.concat([sup]);});
   }
 
   return ce('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:'1rem'}},
@@ -422,9 +434,27 @@ export function ModalFabricOrder(p){
         ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:8}},'UWAGI DO ZLECENIA'),
         ce('textarea',{value:notes,onChange:function(ev){setNotes(ev.target.value);},placeholder:'Wpisz uwagi do zamówienia tkaniny...',rows:4,style:Object.assign({},INP,{resize:'vertical',lineHeight:1.6,minHeight:100})})
       ),
+      multi?ce('div',null,
+        ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:6}},'DOSTAWCY \u2014 OSOBNY PDF DLA KA\u017bDEGO'),
+        ce('div',{style:{fontSize:12,color:'var(--t3)',marginBottom:10,lineHeight:1.5}},'Przegl\u0105darka blokuje otwieranie kilku okien naraz \u2014 kliknij kolejno ka\u017cdego dostawc\u0119.'),
+        ce('div',{style:{display:'flex',flexDirection:'column',gap:8}},
+          sups.map(function(s){
+            var done=doneSups.indexOf(s.sup)>=0;
+            return ce('button',{key:s.sup,onClick:function(){genFor(s.sup);},
+              style:{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'13px 16px',borderRadius:12,
+                border:'1.5px solid '+(done?'var(--bd2)':'var(--t2)'),
+                background:done?'transparent':'var(--t2)',
+                color:done?'var(--t2)':'#fff',fontSize:14,fontWeight:600,cursor:'pointer',textAlign:'left'}},
+              ce('span',null,(done?'\u2713':'\uD83E\uDDF5')+' '+s.sup),
+              ce('span',{style:{marginLeft:'auto',fontSize:12,fontWeight:500,opacity:0.85}},
+                s.metry.toFixed(2).replace('.',',')+' mb \u00b7 '+s.count+' poz.')
+            );
+          })
+        )
+      ):null,
       ce('div',{style:{display:'flex',gap:10,marginTop:4}},
-        ce('button',{onClick:generate,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t2)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83E\uDDF5 Generuj PDF'),
-        ce('button',{onClick:p.onClose,style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')
+        multi?null:ce('button',{onClick:generate,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t2)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83E\uDDF5 Generuj PDF'),
+        ce('button',{onClick:p.onClose,style:{flex:multi?1:'0 0 auto',padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},multi?'Zamknij':'Anuluj')
       )
     )
   );
