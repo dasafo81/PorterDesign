@@ -9,6 +9,21 @@ import {
   openPDFWindow, pdfStyles, roundTo10
 } from '../constants/data.js';
 
+// Lista dostawców tkanin dla klienta — do wygenerowania osobnego PDF na każdego.
+// Zwraca [{sup, count, metry}] posortowane alfabetycznie.
+export function getFabricOrderSuppliers(client){
+  var agg={};
+  (buildFabricRows(client)||[]).forEach(function(r){
+    if(!r.metry||r.metry<=0)return;
+    var key=r.prod||"Inny";
+    if(key==="-")key="Bez producenta";
+    if(!agg[key])agg[key]={sup:key,count:0,metry:0};
+    agg[key].count++;
+    agg[key].metry+=(r.metry||0);
+  });
+  return Object.keys(agg).sort().map(function(k){return agg[k];});
+}
+
 export function generateFabricOrderPDF(client,opts){
   opts=opts||{};
   var sewingHouse=opts.sewingHouse||"";
@@ -27,6 +42,8 @@ export function generateFabricOrderPDF(client,opts){
     bySupplier[key].push(r);
   });
   var suppliers=Object.keys(bySupplier).sort();
+  // opts.supplier → generujemy tylko jednego dostawcę (jedno okno = brak blokady popup)
+  if(opts.supplier)suppliers=suppliers.filter(function(s){return s===opts.supplier;});
   if(!suppliers.length){alert("Brak tkanin do zamówienia (brak metrażu lub producenta).");return;}
 
   // Build and open one PDF window per supplier
