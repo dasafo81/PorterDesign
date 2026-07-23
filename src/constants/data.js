@@ -3345,13 +3345,33 @@ export function buildOfferDetailRows(client){
           var rModelMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
           modelSzycia=rModelMap[pc.rModel]||pc.rModel||"-";
           var fabObjR=p.fabName?FABRICS.find(function(f){return f.name===p.fabName;}):null;
-          tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
+          var rLancuszekKolorMap={srebrny:"Srebrny",zloty:"Z\u0142oty",stare_zloto:"Stare z\u0142oto",antracyt:"Antracyt",miedz:"Mied\u017a"};
+          var rLancuszekLbl=pc.rSystem==="elektryk"?null
+            :(pc.lancuszek==="metalowy"
+              ?"\u0142a\u0144cuszek "+(rLancuszekKolorMap[pc.kolorLancuszka]||"srebrny").toLowerCase()
+              :"\u0142a\u0144cuszek bia\u0142y");
+          tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"")+(rLancuszekLbl?" / "+rLancuszekLbl:"");
           producent=fabObjR?fabObjR.prod:"-";
           szerokosc=par.wCm?(par.wCm+" cm"):"-";
           wysokosc=par.hCm?(par.hCm+" cm"):"-";
-        } else if(p.type==="szyna"||p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"){
+          podzial=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo")
+            :(pc.rModel==="duo"&&pc.rSystem==="manual"?"Obie strony":(pc.stronaObslugi||"Lewo"));
+        } else if(p.type==="szyna"){
+          modelSzycia=pc.ks==="wave"?"Wave":"Flex";
+          tkaninaKolor=pc.ks==="wave"?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):"-";
           szerokosc=par.len?(par.len+" cm"):"-";
           producent=p.karniszSupplier||"-";
+        } else if(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"){
+          szerokosc=par.len?(par.len+" cm"):"-";
+          producent=p.karniszSupplier||"-";
+        } else if(p.type==="plisa"){
+          var plColl=PLISA_FABRICS.find(function(f){return f.name===pc.plKolekcja;});
+          modelSzycia=plColl?plColl.name:(pc.plKolekcjaManual||"-");
+          var plKolorLbl=pc.plKolorKod||pc.plKolorManual||"-";
+          var plOspCol=PLISA_OSPRZET_KOLORY.find(function(k){return k.v===pc.plKolorOsprzetu;});
+          tkaninaKolor=plKolorLbl+(plOspCol?" / osprz\u0119t: "+plOspCol.l:"");
+          szerokosc=par.wMm?(Math.round(par.wMm/10)+" cm"):"-";
+          wysokosc=par.hMm?(Math.round(par.hMm/10)+" cm"):"-";
         }
 
         rows.push({
@@ -3688,7 +3708,7 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
       <p><strong>${client.name}</strong><br>${client.addr||""}</p>
     </div>
   </div>
-  ${makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor","Producent","Szerokość","Wysokość","Podział","Cena brutto"],tableRows,"Specyfikacja wyceny",['6%','23%','10%','14%','10%','8%','8%','10%','11%'])}
+  ${makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor / Osprzęt","Producent","Szerokość","Wysokość","Podział / Sterowanie","Cena brutto"],tableRows,"Specyfikacja wyceny",['6%','21%','10%','16%','9%','8%','8%','11%','11%'])}
   <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
   ${userNotesHTML}
   <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
