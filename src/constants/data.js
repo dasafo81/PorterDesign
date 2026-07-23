@@ -3663,22 +3663,34 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
   var validStr=(((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*3600*1000)).toLocaleDateString("pl-PL");
   var offerNo=getPDFOfferNumber(client);
 
-  var tableRows=rows.map(function(r){
-    return [
-      r.qtyUnit||((r.qty!=null?r.qty:1)+" "+(r.unit||"")),
-      r.name,
-      r.modelSzycia||"-",
-      r.tkaninaKolor||"-",
-      r.producent||"-",
-      r.szerokosc||"-",
-      r.wysokosc||"-",
-      r.podzial||"-",
-      (+r.total||0).toFixed(2).replace(".",",")+" zł"
-    ];
+  var roomGroups=[];
+  var roomIndex={};
+  rows.forEach(function(r){
+    var key=r.room||"Inne";
+    if(roomIndex[key]==null){roomIndex[key]=roomGroups.length;roomGroups.push({room:key,rows:[]});}
+    roomGroups[roomIndex[key]].rows.push(r);
   });
-  tableRows.push(["","<strong>Razem</strong>","","","","","","",
-    "<strong>"+total.toFixed(2).replace(".",",")+" zł</strong>"
-  ]);
+
+  var tablesHTML=roomGroups.map(function(g){
+    var gRows=g.rows.map(function(r){
+      return [
+        r.qtyUnit||((r.qty!=null?r.qty:1)+" "+(r.unit||"")),
+        r.name,
+        r.modelSzycia||"-",
+        r.tkaninaKolor||"-",
+        r.producent||"-",
+        r.szerokosc||"-",
+        r.wysokosc||"-",
+        r.podzial||"-",
+        (+r.total||0).toFixed(2).replace(".",",")+" zł"
+      ];
+    });
+    var gTotal=g.rows.reduce(function(a,r){return a+(+r.total||0);},0);
+    gRows.push(["","<strong>Razem: "+g.room+"</strong>","","","","","","",
+      "<strong>"+gTotal.toFixed(2).replace(".",",")+" zł</strong>"
+    ]);
+    return makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor / Osprzęt","Producent","Szerokość","Wysokość","Podział / Sterowanie","Cena brutto"],gRows,g.room,['6%','21%','10%','16%','9%','8%','8%','11%','11%']);
+  }).join("\n");
 
   var userNotesHTML=offerNotes
     ?'<div class="notes"><strong>Uwagi:</strong><br>'+String(offerNotes).replace(/</g,"&lt;").replace(/\n/g,"<br>")+'</div>'
@@ -3708,7 +3720,7 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
       <p><strong>${client.name}</strong><br>${client.addr||""}</p>
     </div>
   </div>
-  ${makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor / Osprzęt","Producent","Szerokość","Wysokość","Podział / Sterowanie","Cena brutto"],tableRows,"Specyfikacja wyceny",['6%','21%','10%','16%','9%','8%','8%','11%','11%'])}
+  ${tablesHTML}
   <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
   ${userNotesHTML}
   <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
