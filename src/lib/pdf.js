@@ -44,22 +44,60 @@ export function generateFabricOrderPDF(client,opts){
 
   suppliers.forEach(function(sup){
     var supRows=bySupplier[sup];
-    var tableRows=supRows.map(function(r){
+
+    // Agregacja po rodzaju tkaniny (tkanina + kolor) — metraż zamawiamy
+    // osobno dla każdej tkaniny, nie jako jedną sumę wszystkich razem.
+    var byFabric={};var fabKeys=[];
+    supRows.forEach(function(r){
+      var fk=(r.fabName||"-")+"||"+(r.kolor||"-");
+      if(!byFabric[fk]){
+        byFabric[fk]={fabName:r.fabName||"-",kolor:r.kolor||"-",width:r.width||null,metry:0,rows:[]};
+        fabKeys.push(fk);
+      }
+      var g=byFabric[fk];
+      g.metry+=(r.metry||0);
+      if(!g.width&&r.width)g.width=r.width;
+      g.rows.push(r);
+    });
+    fabKeys.sort(function(a,b){
+      return byFabric[a].fabName.localeCompare(byFabric[b].fabName,"pl")
+        ||byFabric[a].kolor.localeCompare(byFabric[b].kolor,"pl");
+    });
+
+    // Tabela 1 — właściwe zamówienie: jedna pozycja = jedna tkanina
+    var orderRows=fabKeys.map(function(fk){
+      var g=byFabric[fk];
       return [
-        "<strong>"+sup+"</strong>",
-        r.fabName,
-        r.kolor||"-",
-        (r.metry||0).toFixed(2).replace(".",",")+" mb",
-        r.room+" / "+r.win
+        "<strong>"+g.fabName+"</strong>",
+        g.kolor||"-",
+        g.width?(g.width+" cm"):"-",
+        "<strong>"+g.metry.toFixed(2).replace(".",",")+" mb</strong>",
+        g.rows.length+" szt."
       ];
     });
-    var totalMetry=supRows.reduce(function(a,r){return a+r.metry;},0);
-    tableRows.push(["<strong>RAZEM</strong>","","","<strong>"+totalMetry.toFixed(2).replace(".",",")+" mb</strong>",""]);
+    var orderTableHTML=makeTableHTML(
+      ["Tkanina","Kolor","Szer. tkaniny","Do zamówienia (mb)","Pozycji"],
+      orderRows,
+      "Zamówienie — metraż dla każdej tkaniny"
+    );
 
-    var tableHTML=makeTableHTML(
-      ["Producent","Tkanina","Kolor","Ilość (mb)","Przeznaczenie"],
-      tableRows,
-      "Pozycje do zamówienia"
+    // Tabela 2 — rozbicie pomocnicze: co i gdzie idzie
+    var detailRows=[];
+    fabKeys.forEach(function(fk){
+      var g=byFabric[fk];
+      g.rows.forEach(function(r){
+        detailRows.push([
+          g.fabName,
+          g.kolor||"-",
+          (r.metry||0).toFixed(2).replace(".",",")+" mb",
+          r.room+" / "+r.win
+        ]);
+      });
+    });
+    var tableHTML=orderTableHTML+makeTableHTML(
+      ["Tkanina","Kolor","Ilość (mb)","Przeznaczenie"],
+      detailRows,
+      "Rozbicie na pomieszczenia / okna"
     );
 
     var shipHTML=sewingHouse
