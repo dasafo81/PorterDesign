@@ -120,10 +120,6 @@ export function App(p){
   var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
   var sOffline=useState(false),offlineMode=sOffline[0],setOfflineMode=sOffline[1];
   var sShowOfflineModal=useState(false),showOfflineModal=sShowOfflineModal[0],setShowOfflineModal=sShowOfflineModal[1];
-  // Stos trybow (appMode) opuszczanych przy przelaczeniu zakladki/modulu -- pozwala
-  // globalnemu "Wstecz" wrocic dokladnie tam, skad user przyszedl (np. do CRM/Mail),
-  // zamiast zawsze na "Klienci". Uzupelnia to hierarchie WYCENIARKA_PARENT ponizej.
-  var sModeStack=useState([]),navModeStack=sModeStack[0],setNavModeStack=sModeStack[1];
 
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
@@ -289,27 +285,6 @@ export function App(p){
       setCurClientId(newCl.id);
       setScreen("rooms");
     }).catch(function(e){alert("B\u0142\u0105d kopiowania: "+e.message);});
-  }
-
-  // -- NAWIGACJA "WSTECZ" ---------------------------------------------------
-  // W obrebie wyceniarki "Wstecz" idzie o jeden poziom w gore wg stalej hierarchii
-  // (a nie zawsze na "home", jak wczesniej). Przy przejsciu miedzy modulami (zakladki
-  // gornego menu, skroty z CRM) korzysta z navModeStack, zeby wrocic do poprzedniego
-  // trybu zamiast zawsze do wyceniarki.
-  var WYCENIARKA_PARENT={rooms:"home",windows:"rooms",detail:"windows",sum:"rooms",offerPreview:"sum"};
-  function pushModeReturn(){
-    setNavModeStack(function(st){return st.concat([appMode]);});
-  }
-  function goBack(){
-    if(appMode==="wyceniarka"&&screen!=="home"){
-      setScreen(WYCENIARKA_PARENT[screen]||"home");
-      return;
-    }
-    setNavModeStack(function(st){
-      if(st.length===0){setAppMode("wyceniarka");setScreen("home");return st;}
-      setAppMode(st[st.length-1]);
-      return st.slice(0,-1);
-    });
   }
 
   function openClient(id){setCurClientId(id);setScreen("rooms");}
@@ -1305,11 +1280,11 @@ export function App(p){
             ),
             ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
               rowFieldInput(i,"modelSzycia","Model szycia",120),
-              rowFieldInput(i,"tkaninaKolor","Tkanina / Kolor",170),
+              rowFieldInput(i,"tkaninaKolor","Tkanina / Kolor / Osprzęt",190),
               rowFieldInput(i,"producent","Producent",110),
               rowFieldInput(i,"szerokosc","Szerokość",90),
               rowFieldInput(i,"wysokosc","Wysokość",90),
-              rowFieldInput(i,"podzial","Podział",110)
+              rowFieldInput(i,"podzial","Podział / Sterowanie",140)
             )
           );
         }),
@@ -1339,7 +1314,7 @@ export function App(p){
         )
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
-        Btn("\u2190 Wstecz",goBack,false),
+        Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
         ce("button",{onClick:function(){
           var vu=offerValidUntil?new Date(offerValidUntil):null;
           generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazPct,offerNotes,vu);
@@ -1365,8 +1340,8 @@ export function App(p){
     saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"var(--red)":"var(--t2)",color:"var(--bg)",fontSize:12,padding:"6px 20px",borderRadius:"0 0 12px 12px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 4px 16px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuj\u0119...":saveStatus==="ok"?"\u2713 Zapisano":"\u26a0 B\u0142\u0105d zapisu"):null,
     // Topbar (always visible)
     ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",padding:"10px 14px",borderRadius:18,background:"var(--panel-bg)",border:"1.5px solid var(--panel-border)",boxShadow:"var(--glass-shadow)",backdropFilter:"blur(22px)",WebkitBackdropFilter:"blur(22px)"}},
-      ((appMode==="wyceniarka"&&screen!=="home")||navModeStack.length>0)
-        ?ce("button",{onClick:goBack,style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
+      appMode==="wyceniarka"&&screen!=="home"
+        ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
         :ce("div",{style:{width:20}}),
       ce("div",{style:{display:"flex",alignItems:"center",gap:9}},
         ce("img",{src:brandLogo,alt:"logo",style:{height:22,opacity:0.9}}),
@@ -1424,7 +1399,7 @@ export function App(p){
       ].concat(isSuperAdmin?[{id:"admin",label:"Admin",icon:"\u2699"}]:[]).map(function(tab){
         var active=appMode===tab.id;
         return ce("button",{key:tab.id,
-          onClick:function(){if(!tab.soon&&tab.id!==appMode){pushModeReturn();setAppMode(tab.id);}},
+          onClick:function(){if(!tab.soon)setAppMode(tab.id);},
           className:"nav-tab"+(active?" active":""),
           style:{
             padding:"9px 0 8px",borderRadius:12,border:"none",
@@ -1445,7 +1420,7 @@ export function App(p){
     ),
     // Treść główna
     appMode==="crm"
-      ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,pushModeReturn:pushModeReturn,
+      ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,
           gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady,
           onClientStatusChange:function(clientId,status){
             setClients(function(cs){return cs.map(function(c){return String(c.id)===String(clientId)?Object.assign({},c,{status:status}):c;});});
