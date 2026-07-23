@@ -1260,7 +1260,15 @@ export function App(p){
       offerPreviewRows.length===0
         ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak pozycji do wyceny.")
         :offerPreviewRows.map(function(r,i){
-          return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,border:"1px solid var(--bd3)"}},
+          var prevRoom=i>0?offerPreviewRows[i-1].room:null;
+          var isNewRoom=r.room!==prevRoom;
+          var roomTotal=isNewRoom?offerPreviewRows.reduce(function(a,x){return x.room===r.room?a+(+x.total||0):a;},0):0;
+          return ce(Fragment,{key:i},
+            isNewRoom?ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",fontSize:13,fontWeight:700,color:"var(--t1)",margin:i===0?"0 0 6px":"18px 0 6px",paddingBottom:4,borderBottom:"1.5px solid var(--bd2)"}},
+              ce("span",null,"\uD83C\uDFE0 "+(r.room||"Inne")),
+              ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t3)"}},roundTo10(roomTotal)+" zł")
+            ):null,
+          ce("div",{style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,border:"1px solid var(--bd3)"}},
             ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}},
               ce("input",{type:"text",value:r.qtyUnit,onChange:function(ev){
                 var v=ev.target.value;
@@ -1286,6 +1294,7 @@ export function App(p){
               rowFieldInput(i,"wysokosc","Wysokość",90),
               rowFieldInput(i,"podzial","Podział / Sterowanie",140)
             )
+          )
           );
         }),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:16}},
