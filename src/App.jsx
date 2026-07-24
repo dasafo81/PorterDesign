@@ -10,7 +10,7 @@ import {
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
-  generateClientEmail, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection
+  generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection
 } from './lib/pdf.js';
 import { ModalClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
@@ -114,6 +114,10 @@ export function App(p){
   var sOfferValid=useState(""),offerValidUntil=sOfferValid[0],setOfferValidUntil=sOfferValid[1];
   var sKarniszRows=useState([]),karniszPreviewRows=sKarniszRows[0],setKarniszPreviewRows=sKarniszRows[1];
   var sRailsRows=useState([]),railsPreviewRows=sRailsRows[0],setRailsPreviewRows=sRailsRows[1];
+  var sFabricRows=useState([]),fabricPreviewRows=sFabricRows[0],setFabricPreviewRows=sFabricRows[1];
+  var sFabricHouse=useState("TRINITAS — ul. Składowa 9, 86-300 Grudziądz"),fabricSewingHouse=sFabricHouse[0],setFabricSewingHouse=sFabricHouse[1];
+  var sFabricHouseC=useState(""),fabricSewingHouseCustom=sFabricHouseC[0],setFabricSewingHouseCustom=sFabricHouseC[1];
+  var sFabricNotes=useState(""),fabricNotes=sFabricNotes[0],setFabricNotes=sFabricNotes[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
@@ -1124,6 +1128,18 @@ export function App(p){
       setRailsPreviewRows(rows);
       setScreen("railsPreview");
     }
+    function openFabricPreview(){
+      var rows=buildFabricRows(curClient).filter(function(r){return r.metry&&r.metry>0;});
+      if(!rows.length){alert("Brak tkanin do zamówienia (brak metrażu lub producenta).");return;}
+      var prepped=rows.map(function(r){
+        var prod=r.prod||"Inny";
+        if(prod==="-")prod="Bez producenta";
+        return mg(r,{prod:prod,roomWin:r.room+" / "+r.win});
+      });
+      setFabricPreviewRows(prepped);
+      setFabricNotes("");
+      setScreen("fabricPreview");
+    }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
     // ── variant-aware room rendering ──
@@ -1240,7 +1256,7 @@ export function App(p){
         ce("button",{onClick:function(){openOfferPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena szczegółowa"),
         ce("button",{onClick:function(){setShowSimplifiedModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
         ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
-        ce("button",{onClick:function(){setShowFabricModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
+        ce("button",{onClick:function(){openFabricPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){openKarniszPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
         ce("button",{onClick:function(){openRailsPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#6b5b8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD29 Szyny do monta\u017cu"),
         ce("button",{onClick:function(){setShowSewingModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
@@ -1444,6 +1460,74 @@ export function App(p){
           generateRailsInstallPDFFromRows(curClient,railsPreviewRows);
           setScreen("sum");
         },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
+      )
+    );
+  }
+  else if(screen==="fabricPreview"&&curClient){
+    var SEWING_HOUSES_LIST=[
+      "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
+      "LAURALES — ul. Kolegialna 35 lok.1, 09-402 Płock",
+      "MARCIN DEKOR — ul. Terespolska 75, 05-074 Halinów",
+      "NITECZKAMI — Troszyn Polski 38B, 09-530 Troszyn"
+    ];
+    function setFabricRowField(i,key,v){
+      setFabricPreviewRows(function(prev){return prev.map(function(x,xi){
+        if(xi!==i)return x;
+        var patch={};patch[key]=v;
+        return mg(x,patch);
+      });});
+    }
+    function fabricFieldInput(i,key,placeholder,width){
+      return ce("input",{type:"text",value:fabricPreviewRows[i][key]||"",onChange:function(ev){setFabricRowField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
+    }
+    function generateFabricForSupplier(sup){
+      var supRows=fabricPreviewRows.filter(function(r){return r.prod===sup;});
+      var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
+      generateFabricOrderPDFFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes});
+    }
+
+    content=ce(Fragment,null,
+      ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83E\uDDF5 Zamówienie tkaniny \u2014 podgląd przed wygenerowaniem"),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
+        "Każde pole poniżej jest edytowalne. Przeglądarka blokuje kilka okien naraz \u2014 generuj kolejno każdego dostawcę osobnym przyciskiem przy jego sekcji."
+      ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
+        ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"Szwalnia (opcjonalnie)"),
+        ce("select",{value:fabricSewingHouse,onChange:function(ev){setFabricSewingHouse(ev.target.value);},style:{width:"100%",padding:"8px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
+          SEWING_HOUSES_LIST.map(function(h,hi){return ce("option",{key:hi,value:h},h);}),
+          ce("option",{value:"__custom__"},"— Wpisz własne dane —")
+        ),
+        fabricSewingHouse==="__custom__"?ce("textarea",{value:fabricSewingHouseCustom,onChange:function(ev){setFabricSewingHouseCustom(ev.target.value);},placeholder:"Nazwa szwalni, kontakt, telefon...",rows:2,style:{width:"100%",marginTop:8,padding:"8px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}}):null
+      ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
+        ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"Uwagi do zlecenia"),
+        ce("textarea",{value:fabricNotes,onChange:function(ev){setFabricNotes(ev.target.value);},placeholder:"Wpisz uwagi do zamówienia tkaniny...",rows:3,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
+      ),
+      fabricPreviewRows.length===0
+        ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak tkanin do zamówienia.")
+        :fabricPreviewRows.map(function(r,i){
+          var prevProd=i>0?fabricPreviewRows[i-1].prod:null;
+          var isNewSup=r.prod!==prevProd;
+          var supTotal=isNewSup?fabricPreviewRows.reduce(function(a,x){return x.prod===r.prod?a+(+x.metry||0):a;},0):0;
+          return ce(Fragment,{key:i},
+            isNewSup?ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,margin:i===0?"0 0 8px":"20px 0 8px"}},
+              ce("div",null,
+                ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"\uD83E\uDDF5 "+r.prod),
+                ce("div",{style:{fontSize:11,color:"var(--t3)"}},supTotal.toFixed(2).replace(".",",")+" mb")
+              ),
+              ce("button",{onClick:function(){generateFabricForSupplier(r.prod);},style:{padding:"10px 16px",borderRadius:10,border:"none",background:"var(--t2)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}},"\uD83D\uDDA8\uFE0F Generuj dla "+r.prod)
+            ):null,
+            ce("div",{style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",border:"1px solid var(--bd3)"}},
+              fabricFieldInput(i,"fabName","Tkanina",160),
+              fabricFieldInput(i,"kolor","Kolor",110),
+              fabricFieldInput(i,"metry","Ilość (mb)",90),
+              fabricFieldInput(i,"roomWin","Przeznaczenie",180),
+              fabricFieldInput(i,"prod","Producent",150)
+            )
+          );
+        }),
+      ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}},
+        Btn("\u2190 Wstecz",function(){setScreen("sum");},false)
       )
     );
   }
