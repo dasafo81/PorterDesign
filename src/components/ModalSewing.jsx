@@ -371,15 +371,12 @@ export function ModalSewing(p){
         )
       )
     ):null,
-    ce('div',{style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:'1rem'}},
-    ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:'1.8rem',width:'min(560px,96vw)',border:'1px solid var(--bd2)',boxShadow:'0 16px 48px rgba(0,0,0,0.2)',maxHeight:'92vh',overflowY:'auto',display:'flex',flexDirection:'column',gap:16}},
-      ce('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}},
-        ce('div',{style:{fontSize:17,fontWeight:700,color:'var(--t1)'}},'✂️ Zlecenie szycia'),
-        ce('button',{onClick:p.onClose,style:{border:'none',background:'none',cursor:'pointer',fontSize:22,color:'var(--t3)',padding:'0 4px'}},'×')
-      ),
-      content
+    ce('div',{style:{display:'flex',flexDirection:'column',gap:16}},
+      ce('div',{style:{fontSize:15,fontWeight:700,color:'var(--t1)',marginBottom:4}},'✂️ Zlecenie szycia — podgląd przed wygenerowaniem'),
+      content,
+      mode==='choose'?ce('button',{onClick:p.onClose,style:{border:'none',background:'none',cursor:'pointer',fontSize:13,color:'var(--t2)',textAlign:'left',padding:0,marginTop:4}},'\u2190 Wstecz do podsumowania'):null
     )
-  ));
+  );
 }
 
 
