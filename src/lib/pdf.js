@@ -368,12 +368,12 @@ function roomBaseName(room){
   return n.replace(/ — Wariant [A-Z\.]+$/,'').replace(/ — Wariant [A-Z\.]+$/,'');
 }
 
-export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle,validUntil){
-  comm=comm||0;montaz=montaz||0;
-  if(!selection||!selection.length)return null;
-  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
-  var validDate=((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*60*60*1000);var validStr=validDate.toLocaleDateString("pl-PL");
-  var offerNo=getPDFOfferNumber(client);
+// Buduje strukturę danych (pokój -> okno -> pozycje) na podstawie selekcji
+// wariantów — bez renderowania HTML. Ta struktura jest tym, co pokazuje się
+// jako edytowalne na ekranie podglądu, zanim wygeneruje się PDF.
+export function buildSimplifiedRows(client,selection,comm){
+  comm=comm||0;
+  if(!selection||!selection.length)return [];
   function calcProd(p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return comm>0?base*(1+comm):base;}
   function sewingInfo(p){var c=p.c||{};var sz;if(c.sz==="wave"||c.model==="wave"){sz="Wave";}else if(c.model==="falda"){var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podwójny",potrojna:"Flex Potrójny",plaska:"Fałda Płaska",studio:"Fałda Studio"};sz=c.foldType?foldMap[c.foldType]||("Fałda "+c.foldType):"Fałda";}else if(c.model==="tasma"){sz=c.typMarszczenia||"Smok";}else{sz="Flex";}var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";return sz+" "+mars;}
   function buildWinRowsSel(windows){
@@ -395,45 +395,70 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
       if(p.type==="zaslona"||p.type==="firana"){var si=sewingInfo(p);if(typeData[key].sewings.indexOf(si)<0)typeData[key].sewings.push(si);}
       total+=t;
     });});
-    var rows="";var items=[];
+    var items=[];
     typeOrder.forEach(function(key){var d=typeData[key];
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
-      var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;\">("+d.sewings.join(", ")+")</span>":"";
+      var extra=d.sewings.length>0?" ("+d.sewings.join(", ")+")":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
       var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek";
-      var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
-      var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
-      items.push({label:labelHTML,total:d.total});
-      rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td>"
-           +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
+      var qtyTag=hasQty&&d.count>1?" ("+d.count+" szt.)":"";
+      var label=lbl+(isKpl?" (kpl.)":"")+qtyTag+extra;
+      items.push({label:label,total:d.total});
     });
-    return {rows:rows,total:total,items:items};
+    return {total:total,items:items};
   }
-  var roomSections="";var grandTotal=0;
+  var roomsData=[];
   selection.forEach(function(item){
     var room=item.room;var wins=item.windows;if(!wins||!wins.length)return;
-    var roomSec="";var roomTotal=0;
+    var winsData=[];var roomTotal=0;
     wins.forEach(function(w){var wr=buildWinRowsSel([w]);if(!wr.total)return;
-      var isV=!!w.variantGroup;var rb=isV?"#eeece9":"#f5ede0";var hc=isV?"#1a1a18":"#1a1a18";
+      var isV=!!w.variantGroup;
       var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(w.name||"Okno");
-      var winBody;
-      if(wr.items.length===1){
-        // Pojedynczy produkt — jeden wiersz (nazwa okna + produkt), bez powtórzonej sumy
-        winBody="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wLabel+"<br><span style=\"font-size:9px;font-weight:400;color:#888;\">"+wr.items[0].label+"</span></td>"
-               +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
-      }else{
-        var tRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wLabel+"</td>"
-                +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
-        winBody=wr.rows+tRow;
-      }
-      roomSec+="<table style=\"width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><colgroup><col><col style=\"width:30mm;\"></colgroup><tbody>"+winBody+"</tbody></table>";
-      roomTotal+=wr.total;});
-    if(!roomTotal)return;grandTotal+=roomTotal;
-    var rName=roomBaseName(room);
-    roomSections+="<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#1a1a18;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#f4f4f2;border-left:3px solid #1a1a18;margin-bottom:3mm;\">"+rName+"</div>"+roomSec+"</div>";
+      winsData.push({winId:w.id,label:wLabel,isVariant:isV,items:wr.items,total:wr.total});
+      roomTotal+=wr.total;
+    });
+    if(!roomTotal)return;
+    roomsData.push({roomId:room.id,name:roomBaseName(room),windows:winsData,total:roomTotal});
   });
+  return roomsData;
+}
+
+// Renderuje HTML "Wyceny uproszczonej" z już gotowej (ewentualnie ręcznie
+// doedytowanej na ekranie podglądu) struktury pokój -> okno -> pozycje.
+export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix){
+  montaz=montaz||0;
+  if(!roomsData||!roomsData.length)return null;
+  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
+  var validDate=((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*60*60*1000);var validStr=validDate.toLocaleDateString("pl-PL");
+  var offerNo=getPDFOfferNumber(client);
+  titleSuffix=titleSuffix||"";
+
+  var grandTotal=0;
+  var roomSections=roomsData.map(function(rd){
+    var winBodies=rd.windows.map(function(wd){
+      var rb=wd.isVariant?"#eeece9":"#f5ede0";var hc="#1a1a18";
+      var wTotal=(wd.items||[]).reduce(function(a,it){return a+(+it.total||0);},0);
+      var body;
+      if(wd.items.length===1){
+        body="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wd.label+"<br><span style=\"font-size:9px;font-weight:400;color:#888;\">"+wd.items[0].label+"</span></td>"
+            +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wTotal)+" z\u0142</td></tr>";
+      }else{
+        var rows=wd.items.map(function(it){
+          return "<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+it.label+"</td>"
+               +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(+it.total||0)+" z\u0142</td></tr>";
+        }).join("");
+        var totalRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wd.label+"</td>"
+                    +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wTotal)+" z\u0142</td></tr>";
+        body=rows+totalRow;
+      }
+      return "<table style=\"width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><colgroup><col><col style=\"width:30mm;\"></colgroup><tbody>"+body+"</tbody></table>";
+    }).join("");
+    var roomTotal=rd.windows.reduce(function(a,wd){return a+(wd.items||[]).reduce(function(b,it){return b+(+it.total||0);},0);},0);
+    grandTotal+=roomTotal;
+    return "<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#1a1a18;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#f4f4f2;border-left:3px solid #1a1a18;margin-bottom:3mm;\">"+rd.name+"</div>"+winBodies+"</div>";
+  }).join("");
   if(!grandTotal)return null;
-  var titleSuffix=setTitle?" \u2014 "+setTitle:"";
+
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u017c. Okiennych"+titleSuffix+"</title>"+pdfStyles()+"</head><body>"
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
@@ -451,6 +476,18 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
     +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
     +"</body></html>";
   return h;
+}
+
+export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil,titleSuffix){
+  var html=buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix);
+  if(!html){alert("Brak pozycji do wyceny.");return;}
+  openPDFWindow(html,(client.name||"")+" - Oferta"+(titleSuffix||""));
+}
+
+export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle,validUntil){
+  var roomsData=buildSimplifiedRows(client,selection,comm);
+  var titleSuffix=setTitle?" \u2014 "+setTitle:"";
+  return buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix);
 }
 
 
