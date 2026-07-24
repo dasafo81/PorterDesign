@@ -10,7 +10,7 @@ import {
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
-  generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDF, buildSimplifiedPDFFromSelection
+  buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows
 } from './lib/pdf.js';
 import { ModalClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
@@ -106,7 +106,6 @@ export function App(p){
   var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
   var s14b=useState(false),showEmailModal=s14b[0],setShowEmailModal=s14b[1];
-  var s14s=useState(false),showSimplifiedModal=s14s[0],setShowSimplifiedModal=s14s[1];
   var s14m=useState(""),montazInput=s14m[0],setMontazInput=s14m[1];
   var sOfferRows=useState([]),offerPreviewRows=sOfferRows[0],setOfferPreviewRows=sOfferRows[1];
   var sOfferBase=useState([]),offerBaseRows=sOfferBase[0],setOfferBaseRows=sOfferBase[1];
@@ -118,6 +117,10 @@ export function App(p){
   var sFabricHouse=useState("TRINITAS — ul. Składowa 9, 86-300 Grudziądz"),fabricSewingHouse=sFabricHouse[0],setFabricSewingHouse=sFabricHouse[1];
   var sFabricHouseC=useState(""),fabricSewingHouseCustom=sFabricHouseC[0],setFabricSewingHouseCustom=sFabricHouseC[1];
   var sFabricNotes=useState(""),fabricNotes=sFabricNotes[0],setFabricNotes=sFabricNotes[1];
+  var sSimplGroups=useState([]),simplRoomGroups=sSimplGroups[0],setSimplRoomGroups=sSimplGroups[1];
+  var sSimplSel=useState({}),simplSel=sSimplSel[0],setSimplSel=sSimplSel[1];
+  var sSimplValid=useState(""),simplValidUntil=sSimplValid[0],setSimplValidUntil=sSimplValid[1];
+  var sSimplRows=useState([]),simplEditableRows=sSimplRows[0],setSimplEditableRows=sSimplRows[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
@@ -139,6 +142,54 @@ export function App(p){
       var t=commVal>0?roundTo10(r.total*(1+commVal)):r.total;
       return mg(r,{total:t,cenaJedn:t,qtyUnit:r.qty+" "+r.unit,name:stripHtml(r.name)});
     });
+  }
+  function buildSimplifiedGroups(client){
+    var result=[];
+    var roomVariantMap={};var roomVariantOrder=[];var plainRooms=[];
+    (client.rooms||[]).forEach(function(room){
+      if(room.variantGroup){
+        if(!roomVariantMap[room.variantGroup]){roomVariantMap[room.variantGroup]=[];roomVariantOrder.push(room.variantGroup);}
+        roomVariantMap[room.variantGroup].push(room);
+      } else {plainRooms.push(room);}
+    });
+    roomVariantOrder.forEach(function(grpId){
+      var rooms=roomVariantMap[grpId].slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+      result.push({type:"roomVariant",grpId:grpId,rooms:rooms,baseName:rooms[0].variantBaseName||rooms[0].name});
+    });
+    plainRooms.forEach(function(room){
+      var wins=room.windows||[];var groups={};var order=[];
+      wins.forEach(function(w){var key=w.variantGroup||("solo_"+w.id);if(!groups[key]){groups[key]={isVariant:!!w.variantGroup,wins:[],baseName:w.variantBaseName||w.name};order.push(key);}groups[key].wins.push(w);});
+      if(order.length)result.push({type:"room",room:room,groups:groups,order:order});
+    });
+    return result;
+  }
+  function makeSimplInitSel(rgs){
+    var init={};
+    rgs.forEach(function(item){
+      if(item.type==="roomVariant"){init["rv__"+item.grpId]=item.rooms[0].id;}
+      else{var room=item.room;item.order.forEach(function(key){var g=item.groups[key];if(!g.isVariant){init[room.id+"__"+key]=true;}else{var sorted=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});init[room.id+"__"+key]=sorted[0].id;}});}
+    });
+    return init;
+  }
+  function computeSimplSelection(rgs,sel){
+    var selection=[];
+    rgs.forEach(function(item){
+      if(item.type==="roomVariant"){
+        var selRoomId=sel["rv__"+item.grpId];if(!selRoomId)return;
+        var chosenRoom=item.rooms.find(function(r){return r.id===selRoomId;});
+        if(chosenRoom&&(chosenRoom.windows||[]).length){selection.push({room:chosenRoom,windows:chosenRoom.windows});}
+      } else {
+        var room=item.room;var chosenWins=[];
+        item.order.forEach(function(key){
+          var selKey=room.id+"__"+key;var selVal=sel[selKey];if(!selVal&&selVal!==true)return;
+          var gWins=item.groups[key].wins;
+          var chosen=!item.groups[key].isVariant?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
+          if(chosen)chosenWins.push(chosen);
+        });
+        if(chosenWins.length)selection.push({room:room,windows:chosenWins});
+      }
+    });
+    return selection;
   }
   function hasWinData(w){return !!(w.products&&w.products.length>0);}
   function hasRoomData(r){return !!(r.windows&&r.windows.some(function(w){return hasWinData(w);}));}
@@ -207,6 +258,14 @@ export function App(p){
       }
     }
   },[screen,curRoomId,curClientId]);
+
+  // Przelicz edytowalne wiersze Wyceny Uproszczonej przy zmianie selekcji wariantów/prowizji
+  React.useEffect(function(){
+    if(!curClient)return;
+    if(!simplRoomGroups.length)return;
+    var c=(+commissionInput||0)/100;
+    setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(simplRoomGroups,simplSel),c));
+  },[simplSel,simplRoomGroups,commissionInput,curClient]);
 
   // Zapisz zmiany w Supabase z debounce
   function saveClientToSb(id, data){
@@ -1140,6 +1199,16 @@ export function App(p){
       setFabricNotes("");
       setScreen("fabricPreview");
     }
+    function openSimplifiedPreview(){
+      var groups=buildSimplifiedGroups(curClient);
+      if(!groups.length){alert("Brak pomieszczeń z produktami.");return;}
+      var initSel=makeSimplInitSel(groups);
+      setSimplRoomGroups(groups);
+      setSimplSel(initSel);
+      setSimplValidUntil("");
+      setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(groups,initSel),comm));
+      setScreen("simplifiedPreview");
+    }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
     // ── variant-aware room rendering ──
@@ -1254,7 +1323,7 @@ export function App(p){
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
         ce("button",{onClick:function(){openOfferPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena szczegółowa"),
-        ce("button",{onClick:function(){setShowSimplifiedModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
+        ce("button",{onClick:function(){openSimplifiedPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
         ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:function(){openFabricPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){openKarniszPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
@@ -1531,6 +1600,138 @@ export function App(p){
       )
     );
   }
+  else if(screen==="simplifiedPreview"&&curClient){
+    function setSimplKey(key,val){setSimplSel(function(s){var ns=Object.assign({},s);ns[key]=val;return ns;});}
+    function setSimplItemField(ri,wi,ii,key,v){
+      setSimplEditableRows(function(prev){
+        return prev.map(function(rd,rri){
+          if(rri!==ri)return rd;
+          return mg(rd,{windows:rd.windows.map(function(wd,wwi){
+            if(wwi!==wi)return wd;
+            return mg(wd,{items:wd.items.map(function(it,iii){
+              if(iii!==ii)return it;
+              var patch={};patch[key]=v;
+              return mg(it,patch);
+            })});
+          })});
+        });
+      });
+    }
+    function setSimplWinLabel(ri,wi,v){
+      setSimplEditableRows(function(prev){
+        return prev.map(function(rd,rri){
+          if(rri!==ri)return rd;
+          return mg(rd,{windows:rd.windows.map(function(wd,wwi){return wwi!==wi?wd:mg(wd,{label:v});})});
+        });
+      });
+    }
+    function simplPillStyle(active,color){
+      var c=color||"var(--gr)";
+      return {display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"1.5px solid "+(active?c:"var(--bd2)"),background:active?"color-mix(in srgb, "+c+" 18%, transparent)":"transparent",fontSize:13,color:active?c:"var(--t2)",fontWeight:active?600:400};
+    }
+    function doSimplGenerate(){
+      var vu=null;
+      if(simplValidUntil){var d=new Date(simplValidUntil+"T00:00:00");if(!isNaN(d))vu=d;}
+      generateSimplifiedPDFFromRows(curClient,simplEditableRows,(+montazInput||0)/100,vu,"");
+      setScreen("sum");
+    }
+    var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
+
+    content=ce(Fragment,null,
+      ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCCB Wycena Uproszczona \u2014 podgląd przed wygenerowaniem"),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
+        "Wybierz warianty pomieszczeń/okien poniżej, a dalej edytuj etykiety i ceny zagregowanych pozycji przed wygenerowaniem."
+      ),
+      simplRoomGroups.map(function(item){
+        if(item.type==="roomVariant"){
+          var selRoomId=simplSel["rv__"+item.grpId];
+          return ce("div",{key:"rv_"+item.grpId,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
+            ce("div",{style:{padding:"7px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase"}},item.baseName),
+            ce("div",{style:{padding:"10px 12px"}},
+              ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},"Wariant pomieszczenia:"),
+              ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                item.rooms.map(function(room){
+                  var isC=selRoomId===room.id;
+                  return ce("label",{key:room.id,style:simplPillStyle(isC,"var(--gr)")},
+                    ce("input",{type:"radio",name:"rv__"+item.grpId,checked:isC,onChange:function(){setSimplKey("rv__"+item.grpId,room.id);},style:{display:"none"}}),
+                    "Wariant "+(room.variantLabel||room.name)
+                  );
+                }),
+                ce("label",{style:simplPillStyle(selRoomId===false,"#c8956c")},
+                  ce("input",{type:"radio",name:"rv__"+item.grpId,checked:selRoomId===false,onChange:function(){setSimplKey("rv__"+item.grpId,false);},style:{display:"none"}}),
+                  "Wyklucz"
+                )
+              )
+            )
+          );
+        } else {
+          var room=item.room;
+          return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
+            ce("div",{style:{padding:"7px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase"}},room.name),
+            item.order.map(function(key,ki){
+              var g=item.groups[key];var selKey=room.id+"__"+key;var selVal=simplSel[selKey];
+              if(g.isVariant){
+                var sortedWins=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
+                return ce("div",{key:key,style:{padding:"10px 12px",borderTop:"1px solid var(--bd3)"}},
+                  ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},g.baseName+" \u2014 wariant:"),
+                  ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                    sortedWins.map(function(w){var isC=selVal===w.id;
+                      return ce("label",{key:w.id,style:simplPillStyle(isC,"var(--gr)")},
+                        ce("input",{type:"radio",name:selKey,checked:isC,onChange:function(){setSimplKey(selKey,w.id);},style:{display:"none"}}),
+                        "Wariant "+w.variantLabel
+                      );
+                    }),
+                    ce("label",{style:simplPillStyle(selVal===false,"#c8956c")},
+                      ce("input",{type:"radio",name:selKey,checked:selVal===false,onChange:function(){setSimplKey(selKey,false);},style:{display:"none"}}),
+                      "Wyklucz"
+                    )
+                  )
+                );
+              } else {
+                var soloWin=g.wins[0];var isChecked=selVal===true;
+                return ce("label",{key:key,style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderTop:ki===0?"none":"1px solid var(--bd3)",cursor:"pointer",userSelect:"none"}},
+                  ce("input",{type:"checkbox",checked:!!isChecked,onChange:function(ev){setSimplKey(selKey,ev.target.checked);},style:{width:15,height:15,cursor:"pointer",flexShrink:0}}),
+                  ce("span",{style:{fontSize:13,color:isChecked?"var(--t1)":"var(--t3)",fontWeight:isChecked?500:400}},soloWin.name||"Okno")
+                );
+              }
+            })
+          );
+        }
+      }),
+      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",margin:"20px 0 10px"}},"Pozycje do wyceny"),
+      simplEditableRows.length===0
+        ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak zaznaczonych pozycji.")
+        :simplEditableRows.map(function(rd,ri){
+          return ce("div",{key:rd.roomId||ri,style:{marginBottom:14}},
+            ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--t1)",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}},"\uD83C\uDFE0 "+rd.name),
+            rd.windows.map(function(wd,wi){
+              return ce("div",{key:wd.winId||wi,style:{padding:"10px 12px",background:"var(--bg2)",borderRadius:10,marginBottom:6,border:"1px solid var(--bd3)"}},
+                ce("input",{type:"text",value:wd.label,onChange:function(ev){setSimplWinLabel(ri,wi,ev.target.value);},style:{width:"100%",padding:"6px 8px",fontSize:12,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",marginBottom:6}}),
+                wd.items.map(function(it,ii){
+                  return ce("div",{key:ii,style:{display:"flex",alignItems:"center",gap:8,marginBottom:4}},
+                    ce("input",{type:"text",value:it.label,onChange:function(ev){setSimplItemField(ri,wi,ii,"label",ev.target.value);},style:{flex:1,padding:"6px 8px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}}),
+                    ce("input",{type:"text",inputMode:"decimal",value:it.total,onChange:function(ev){setSimplItemField(ri,wi,ii,"total",ev.target.value);},style:{width:90,padding:"6px 8px",fontSize:12,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
+                    ce("span",{style:{fontSize:11,color:"var(--t3)"}},"zł")
+                  );
+                })
+              );
+            })
+          );
+        }),
+      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,marginTop:16}},
+        ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},"\u0141\u0105cznie"),
+        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(simplGrandTotal)+" zł")
+      ),
+      ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:16}},
+        ce("label",{style:{fontSize:13,color:"var(--t2)"}},"Oferta ważna do:"),
+        ce("input",{type:"date",value:simplValidUntil,onChange:function(ev){setSimplValidUntil(ev.target.value);},title:"Puste = 30 dni od dziś",style:{padding:"8px 12px",borderRadius:8,border:"1px solid var(--bd2)",fontSize:13,color:"var(--t1)",background:"var(--bg)",fontFamily:"inherit"}})
+      ),
+      ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+        Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:doSimplGenerate,style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Generuj PDF")
+      )
+    );
+  }
 
   if(billingBlocked){
     return ce(ScreenBillingGate,{
@@ -1657,7 +1858,6 @@ export function App(p){
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showSewingModal?ce(ModalSewing,{client:curClient,onClose:function(){setShowSewingModal(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showSimplifiedModal?ce(ModalSimplifiedPDF,{client:curClient,comm:comm,montaz:(+montazInput||0)/100,onClose:function(){setShowSimplifiedModal(false);}}):null,
     showEmailModal?ce(ModalClientEmail,{client:curClient,onClose:function(){setShowEmailModal(false);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
@@ -2472,181 +2672,6 @@ function sortRoomsWithVariants(rooms){
 }
 
 // -- MODAL WYCENA UPROSZCZONA -- WYBOR OKIEN
-function ModalSimplifiedPDF(p){
-  var client=p.client||{};
-  var comm=p.comm||0;
-  var montaz=p.montaz||0;
-  var useState=React.useState;
-
-  function buildGroups(){
-    var result=[];
-    var roomVariantMap={};var roomVariantOrder=[];var plainRooms=[];
-    (client.rooms||[]).forEach(function(room){
-      if(room.variantGroup){
-        if(!roomVariantMap[room.variantGroup]){roomVariantMap[room.variantGroup]=[];roomVariantOrder.push(room.variantGroup);}
-        roomVariantMap[room.variantGroup].push(room);
-      } else {plainRooms.push(room);}
-    });
-    roomVariantOrder.forEach(function(grpId){
-      var rooms=roomVariantMap[grpId].slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
-      result.push({type:"roomVariant",grpId:grpId,rooms:rooms,baseName:rooms[0].variantBaseName||rooms[0].name});
-    });
-    plainRooms.forEach(function(room){
-      var wins=room.windows||[];var groups={};var order=[];
-      wins.forEach(function(w){var key=w.variantGroup||("solo_"+w.id);if(!groups[key]){groups[key]={isVariant:!!w.variantGroup,wins:[],baseName:w.variantBaseName||w.name};order.push(key);}groups[key].wins.push(w);});
-      if(order.length)result.push({type:"room",room:room,groups:groups,order:order});
-    });
-    return result;
-  }
-
-  function makeInitSel(rgs){
-    var init={};
-    rgs.forEach(function(item){
-      if(item.type==="roomVariant"){init["rv__"+item.grpId]=item.rooms[0].id;}
-      else{var room=item.room;item.order.forEach(function(key){var g=item.groups[key];if(!g.isVariant){init[room.id+"__"+key]=true;}else{var sorted=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});init[room.id+"__"+key]=sorted[0].id;}});}
-    });
-    return init;
-  }
-
-  var roomGroups=React.useMemo(function(){return buildGroups();},[client]);
-  var ss=useState(function(){return makeInitSel(buildGroups());});
-  var sel=ss[0],setSel2=ss[1];
-  var svu=useState("");var validUntil=svu[0],setValidUntil=svu[1];
-
-  function setKey(key,val){setSel2(function(s){var ns=Object.assign({},s);ns[key]=val;return ns;});}
-
-  function calcTotal(){
-    var total=0;
-    roomGroups.forEach(function(item){
-      if(item.type==="roomVariant"){
-        var selRoomId=sel["rv__"+item.grpId];if(!selRoomId)return;
-        var chosenRoom=item.rooms.find(function(r){return r.id===selRoomId;});if(!chosenRoom)return;
-        (chosenRoom.windows||[]).forEach(function(w){(w.products||[]).forEach(function(prod){var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;var base=prod.mp!=null?prod.mp:(calc(pfc).total||0);total+=(comm>0?base*(1+comm):base);});});
-      } else {
-        var room=item.room;
-        item.order.forEach(function(key){
-          var selKey=room.id+"__"+key;var selVal=sel[selKey];if(!selVal&&selVal!==true)return;
-          var gWins=item.groups[key].wins;
-          var chosen=!item.groups[key].isVariant?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
-          if(!chosen)return;
-          (chosen.products||[]).forEach(function(prod){var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;var base=prod.mp!=null?prod.mp:(calc(pfc).total||0);total+=(comm>0?base*(1+comm):base);});
-        });
-      }
-    });
-    return total;
-  }
-
-  function doGenerate(){
-    var selection=[];
-    roomGroups.forEach(function(item){
-      if(item.type==="roomVariant"){
-        var selRoomId=sel["rv__"+item.grpId];if(!selRoomId)return;
-        var chosenRoom=item.rooms.find(function(r){return r.id===selRoomId;});
-        if(chosenRoom&&(chosenRoom.windows||[]).length){selection.push({room:chosenRoom,windows:chosenRoom.windows});}
-      } else {
-        var room=item.room;var chosenWins=[];
-        item.order.forEach(function(key){
-          var selKey=room.id+"__"+key;var selVal=sel[selKey];if(!selVal&&selVal!==true)return;
-          var gWins=item.groups[key].wins;
-          var chosen=!item.groups[key].isVariant?(selVal===true?gWins[0]:null):gWins.find(function(w){return w.id===selVal;});
-          if(chosen)chosenWins.push(chosen);
-        });
-        if(chosenWins.length)selection.push({room:room,windows:chosenWins});
-      }
-    });
-    var _vu=null;
-    if(validUntil){var _d=new Date(validUntil+"T00:00:00");if(!isNaN(_d))_vu=_d;}
-    var h=buildSimplifiedPDFFromSelection(client,comm,montaz,selection,null,_vu);
-    if(!h){alert("Brak pozycji do wyceny.");return;}
-    openPDFWindow(h,(client.name||"")+" - Oferta");
-  }
-
-  function pillStyle(active,color){
-    var c=color||"var(--gr)";
-    return {display:"flex",alignItems:"center",gap:5,cursor:"pointer",padding:"5px 12px",borderRadius:20,border:"1.5px solid "+(active?c:"var(--bd2)"),background:active?"color-mix(in srgb, "+c+" 18%, transparent)":"transparent",fontSize:13,color:active?c:"var(--t2)",fontWeight:active?600:400};
-  }
-
-  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"16px"}},
-    ce("div",{style:{background:"var(--bg)",borderRadius:18,width:540,maxWidth:"100%",maxHeight:"90vh",display:"flex",flexDirection:"column",border:"1px solid var(--bd2)",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}},
-      ce("div",{style:{padding:"16px 20px 12px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}},
-        ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}}),
-        ce("button",{onClick:p.onClose,style:{border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t3)",lineHeight:1}},"\u00d7")
-      ),
-      ce("div",{style:{flex:1,overflowY:"auto",padding:"16px 20px"}},
-        roomGroups.map(function(item){
-          if(item.type==="roomVariant"){
-            var selRoomId=sel["rv__"+item.grpId];
-            return ce("div",{key:"rv_"+item.grpId,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
-              ce("div",{style:{padding:"7px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase"}},
-                item.baseName
-              ),
-              ce("div",{style:{padding:"10px 12px"}},
-                ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},"Wariant pomieszczenia:"),
-                ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                  item.rooms.map(function(room){
-                    var isC=selRoomId===room.id;
-                    return ce("label",{key:room.id,style:pillStyle(isC,"var(--gr)")},
-                      ce("input",{type:"radio",name:"rv__"+item.grpId,checked:isC,onChange:function(){setKey("rv__"+item.grpId,room.id);},style:{display:"none"}}),
-                      "Wariant "+(room.variantLabel||room.name)
-                    );
-                  }),
-                  ce("label",{style:pillStyle(selRoomId===false,"#c8956c")},
-                    ce("input",{type:"radio",name:"rv__"+item.grpId,checked:selRoomId===false,onChange:function(){setKey("rv__"+item.grpId,false);},style:{display:"none"}}),
-                    "Wyklucz"
-                  )
-                )
-              )
-            );
-          } else {
-            var room=item.room;
-            return ce("div",{key:room.id,style:{marginBottom:10,border:"1px solid var(--bd2)",borderRadius:10,overflow:"hidden"}},
-              ce("div",{style:{padding:"7px 12px",background:"var(--bg2)",fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.04em",textTransform:"uppercase"}},
-                room.name
-              ),
-              item.order.map(function(key,ki){
-                var g=item.groups[key];var selKey=room.id+"__"+key;var selVal=sel[selKey];
-                if(g.isVariant){
-                  var sortedWins=g.wins.slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
-                  return ce("div",{key:key,style:{padding:"10px 12px",borderTop:"1px solid var(--bd3)"}},
-                    ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:7,fontWeight:600}},g.baseName+" \u2014 wariant:"),
-                    ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
-                      sortedWins.map(function(w){var isC=selVal===w.id;
-                        return ce("label",{key:w.id,style:pillStyle(isC,"var(--gr)")},
-                          ce("input",{type:"radio",name:selKey,checked:isC,onChange:function(){setKey(selKey,w.id);},style:{display:"none"}}),
-                          "Wariant "+w.variantLabel
-                        );
-                      }),
-                      ce("label",{style:pillStyle(selVal===false,"#c8956c")},
-                        ce("input",{type:"radio",name:selKey,checked:selVal===false,onChange:function(){setKey(selKey,false);},style:{display:"none"}}),
-                        "Wyklucz"
-                      )
-                    )
-                  );
-                } else {
-                  var soloWin=g.wins[0];var isChecked=selVal===true;
-                  return ce("label",{key:key,style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderTop:ki===0?"none":"1px solid var(--bd3)",cursor:"pointer",userSelect:"none"}},
-                    ce("input",{type:"checkbox",checked:!!isChecked,onChange:function(ev){setKey(selKey,ev.target.checked);},style:{width:15,height:15,cursor:"pointer",flexShrink:0}}),
-                    ce("span",{style:{fontSize:13,color:isChecked?"var(--t1)":"var(--t3)",fontWeight:isChecked?500:400}},soloWin.name||"Okno")
-                  );
-                }
-              })
-            );
-          }
-        })
-      ),
-      ce("div",{style:{padding:"14px 20px",borderTop:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,gap:12}},
-        ce("div",{style:{fontSize:13,color:"var(--t2)"}},
-          "Suma: ",ce("span",{style:{fontWeight:700,color:"var(--gr)"}},roundTo10(calcTotal())+" z\u0142")
-        ),
-        ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
-          ce("label",{style:{fontSize:13,color:"var(--t2)",whiteSpace:"nowrap"}},"Oferta wa\u017cna do:"),
-          ce("input",{type:"date",value:validUntil,onChange:function(ev){setValidUntil(ev.target.value);},title:"Puste = 30 dni od dzi\u015b",style:{padding:"7px 10px",borderRadius:8,border:"1px solid var(--bd2)",fontSize:13,color:"var(--t1)",background:"var(--bg)",fontFamily:"inherit"}})
-        ),
-        ce("button",{onClick:doGenerate,style:{padding:"10px 22px",borderRadius:10,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},"\uD83D\uDCCB Generuj PDF")
-      )
-    )
-  );
-}
 
 export const CHANGELOG = [
     {
