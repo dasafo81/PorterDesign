@@ -101,7 +101,6 @@ export function App(p){
   var s6=useState(false),showClientModal=s6[0],setShowClientModal=s6[1];
   var s7=useState(false),showRoomModal=s7[0],setShowRoomModal=s7[1];
   var s8=useState(false),showWinModal=s8[0],setShowWinModal=s8[1];
-  var s11=useState(false),showSewingModal=s11[0],setShowSewingModal=s11[1];
   var s11b=useState(false),showFabricModal=s11b[0],setShowFabricModal=s11b[1];
   var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
@@ -1328,7 +1327,7 @@ export function App(p){
         ce("button",{onClick:function(){openFabricPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){openKarniszPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
         ce("button",{onClick:function(){openRailsPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#6b5b8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD29 Szyny do monta\u017cu"),
-        ce("button",{onClick:function(){setShowSewingModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
+        ce("button",{onClick:function(){setScreen("sewingPreview");},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
       )
     );
   }
@@ -1732,6 +1731,9 @@ export function App(p){
       )
     );
   }
+  else if(screen==="sewingPreview"&&curClient){
+    content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");}});
+  }
 
   if(billingBlocked){
     return ce(ScreenBillingGate,{
@@ -1856,7 +1858,6 @@ export function App(p){
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
-    showSewingModal?ce(ModalSewing,{client:curClient,onClose:function(){setShowSewingModal(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
     showEmailModal?ce(ModalClientEmail,{client:curClient,onClose:function(){setShowEmailModal(false);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
