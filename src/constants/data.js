@@ -3930,12 +3930,9 @@ export function generateKarniszOrderPDF(client){
 }
 
 // ── PDF: Szyny do montażu (lista dla montażysty) ────────────────────────────
-export function generateRailsInstallPDF(client){
-  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
-  // Collect all rails/rods grouped by room
-  var roomGroups=[];
+export function buildRailsRows(client){
+  var rows=[];
   (client.rooms||[]).forEach(function(room){
-    var items=[];
     (room.windows||[]).forEach(function(win){
       (win.products||[]).forEach(function(p){
         if(p.type!=="szyna"&&p.type!=="karnisz"&&p.type!=="prestige_round"&&p.type!=="prestige_square"&&p.type!=="karnisz_dek")return;
@@ -3956,25 +3953,34 @@ export function generateRailsInstallPDF(client){
         var len=par.len||0;
         var qty=par.qty||1;
         if(!len)return;
-        items.push({
-          win:win.name||"",
-          type:typLabel,
-          len:len,
-          qty:qty
-        });
+        rows.push({room:room.name||"",win:win.name||"",type:typLabel,len:len,qty:qty});
       });
     });
-    if(items.length) roomGroups.push({room:room.name||"",items:items});
   });
-  if(!roomGroups.length){alert("Brak szyn / karniszów do wydruku.");return;}
+  return rows;
+}
+
+// Buduje HTML "Szyny do montażu" z już gotowych (ewentualnie ręcznie
+// doedytowanych na ekranie podglądu) wierszy, pogrupowanych wg pomieszczeń.
+export function buildRailsInstallHtmlFromRows(client,rows){
+  if(!rows||!rows.length)return null;
+  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
+
+  var roomGroups=[];
+  var roomIndex={};
+  rows.forEach(function(r){
+    var key=r.room||"Inne";
+    if(roomIndex[key]==null){roomIndex[key]=roomGroups.length;roomGroups.push({room:key,items:[]});}
+    roomGroups[roomIndex[key]].items.push(r);
+  });
 
   var extraStyles="\n    body{font-size:13px;}\n    .room-header{background:#2c2c2a;color:#fff;padding:7px 12px;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;border-radius:4px;margin:5mm 0 2mm;}\n    table{width:100%;border-collapse:collapse;margin-bottom:3mm;}\n    th{background:#f2f2ef;font-size:11px;font-weight:700;padding:6px 10px;text-align:left;border-bottom:1.5px solid #c8c8c4;}\n    td{padding:6px 10px;font-size:12px;border-bottom:1px solid #e8e8e4;vertical-align:top;}\n    tr:last-child td{border-bottom:none;}\n    .len-cell{font-size:14px;font-weight:700;color:#1a1a18;}\n    .qty-badge{display:inline-block;background:#eeece9;color:#555;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px;}\n    .summary-box{margin-top:8mm;background:#f7f7f5;border:1px solid #c8c8c4;border-radius:6px;padding:8px 14px;font-size:11px;color:#555;}\n    .footer{margin-top:8mm;display:flex;justify-content:space-between;font-size:9px;color:#a8a8a4;border-top:0.5px solid #e0e0dc;padding-top:4mm;}\n  ";
 
   var roomSections="";
   var totalItems=0;
   roomGroups.forEach(function(rg){
-    var rows=rg.items.map(function(it){
-      var qtyStr=it.qty>1?'<span class="qty-badge">x'+it.qty+'</span>':"";
+    var trows=rg.items.map(function(it){
+      var qtyStr=(+it.qty||0)>1?'<span class="qty-badge">x'+it.qty+'</span>':"";
       return "<tr>"
         +"<td>"+rg.room+"</td>"
         +"<td>"+it.win+"</td>"
@@ -3984,10 +3990,10 @@ export function generateRailsInstallPDF(client){
     }).join("");
     totalItems+=rg.items.length;
     roomSections+='<div class="room-header">'+rg.room+'</div>'
-      +'<table><thead><tr><th>Pomieszczenie</th><th>Okno / miejsce</th><th>Rodzaj</th><th>D\u0142ugo\u015b\u0107</th></tr></thead><tbody>'+rows+"</tbody></table>";
+      +'<table><thead><tr><th>Pomieszczenie</th><th>Okno / miejsce</th><th>Rodzaj</th><th>D\u0142ugo\u015b\u0107</th></tr></thead><tbody>'+trows+"</tbody></table>";
   });
 
-  var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Szyny do monta\u017cu</title>'
+  return '<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Szyny do monta\u017cu</title>'
     +pdfStyles().replace('</style>',extraStyles+'</style>')
     +'</head><body>'
     +'<div class="header">'
@@ -4000,7 +4006,18 @@ export function generateRailsInstallPDF(client){
     +'<div class="summary-box">Pozycji szyn / karniszów: <strong>'+totalItems+'</strong></div>'
     +'<div class="footer"><span>'+SELLER.name+' \u2014 tylko do u\u017cytku wewn\u0119trznego</span><span>'+dateStr+'</span></div>'
     +'</body></html>';
+}
 
+export function generateRailsInstallPDFFromRows(client,rows){
+  var html=buildRailsInstallHtmlFromRows(client,rows);
+  if(!html){alert("Brak szyn / karniszów do wydruku.");return;}
+  openPDFWindow(html,'szyny-montaz');
+}
+
+export function generateRailsInstallPDF(client){
+  var rows=buildRailsRows(client);
+  var html=buildRailsInstallHtmlFromRows(client,rows);
+  if(!html){alert("Brak szyn / karniszów do wydruku.");return;}
   openPDFWindow(html,'szyny-montaz');
 }
 
