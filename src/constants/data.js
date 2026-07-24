@@ -3653,8 +3653,10 @@ export function pdfStyles(){
   </style>`;
 }
 
-function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
+function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,visitFee){
   montaz=montaz||0;
+  discount=(+discount>0)?roundTo10(+discount):0;
+  visitFee=(+visitFee>0)?roundTo10(+visitFee):0;
   offerNotes=offerNotes||"";
   if(!rows||!rows.length)return null;
   var total=rows.reduce(function(a,r){return a+(+r.total||0);},0);
@@ -3732,16 +3734,30 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil){
   </body></html>`;
   var montazVal=montaz>0?roundTo10(total*montaz):0;
   var totalWithMontaz=montazVal>0?roundTo10(total+montazVal):total;
+  var deduction=discount+visitFee;
+  var finalTotal=Math.max(0,roundTo10(totalWithMontaz-deduction));
+  var extraBreakdown='';
   if(montazVal>0){
-    var montazBreakdown='<div style="margin:4mm 0 3mm;padding:10px 14px;background:#eeece9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Monta\u017c dekoracji okiennych ('+Math.round(montaz*100)+'%):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div>'
+    extraBreakdown+='<div style="margin:4mm 0 3mm;padding:10px 14px;background:#eeece9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Monta\u017c dekoracji okiennych ('+Math.round(montaz*100)+'%):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div>'
       +'<div style="margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#555;font-weight:600;">\u0141\u0105cznie bez monta\u017cu:</span><span style="font-size:14px;font-weight:700;color:#555;">'+total.toFixed(2).replace(".",",")+' z\u0142</span></div>';
-    html=html.replace('<div class="sum-box">',montazBreakdown+'<div class="sum-box">');
-    html=html.replace('<span class="label">Do zapłaty</span><span class="amount">'+total.toFixed(2).replace(".",",")+' PLN</span>','<span class="label">\u0141\u0105cznie z monta\u017cem</span><span class="amount">'+totalWithMontaz.toFixed(2).replace(".",",")+' PLN</span>');
+  }
+  if(discount>0){
+    extraBreakdown+='<div style="margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Rabat:</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">\u2212'+discount.toFixed(2).replace(".",",")+' z\u0142</span></div>';
+  }
+  if(visitFee>0){
+    extraBreakdown+='<div style="margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Koszt wizyty (odliczony od zam\u00f3wienia):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">\u2212'+visitFee.toFixed(2).replace(".",",")+' z\u0142</span></div>';
+  }
+  if(extraBreakdown){
+    html=html.replace('<div class="sum-box">',extraBreakdown+'<div class="sum-box">');
+  }
+  if(montazVal>0||deduction>0){
+    var finalLabel=montazVal>0?'\u0141\u0105cznie z monta\u017cem':'\u0141\u0105cznie';
+    html=html.replace('<span class="label">Do zapłaty</span><span class="amount">'+total.toFixed(2).replace(".",",")+' PLN</span>','<span class="label">'+finalLabel+'</span><span class="amount">'+finalTotal.toFixed(2).replace(".",",")+' PLN</span>');
   }
   return html;
 }
 
-export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
+export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil,discount,visitFee){
   comm=comm||0;
   var rows=buildOfferDetailRows(client);
   if(!rows.length)return null;
@@ -3751,25 +3767,25 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil){
       return Object.assign({},r,{total:newTotal,cenaJedn:newTotal});
     });
   }
-  return _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil);
+  return _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,visitFee);
 }
 
 // Wariant przyjmujący już gotowe (i ewentualnie ręcznie doedytowane na ekranie
 // podglądu) wiersze — używany przez ekran "Wycena szczegółowa — podgląd".
-export function buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil){
-  return _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil);
+export function buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil,discount,visitFee){
+  return _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,visitFee);
 }
 
-export function generateOfferPDF(client,comm,montaz){
+export function generateOfferPDF(client,comm,montaz,discount,visitFee){
   var offerNotes=window.prompt("Uwagi do oferty (opcjonalne):","") || "";
   if(offerNotes===null)return;
-  var html=buildOfferPDFHtml(client,comm,montaz,offerNotes);
+  var html=buildOfferPDFHtml(client,comm,montaz,offerNotes,null,discount,visitFee);
   if(!html){alert("Brak wycenionych produktów.");return;}
   openPDFWindow(html, getPDFOfferNumber(client),{landscape:true});
 }
 
-export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUntil){
-  var html=buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil);
+export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUntil,discount,visitFee){
+  var html=buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil,discount,visitFee);
   if(!html){alert("Brak wycenionych produktów.");return;}
   openPDFWindow(html, getPDFOfferNumber(client),{landscape:true});
 }
