@@ -5,8 +5,8 @@ import {
   FABRICS, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
-  buildFabricRows, buildOfferDetailRows, buildSewingRows, calc,
-  formatPLN, generateKarniszOrderPDF, generateOfferPDF, generateOfferPDFFromRows, generateRailsInstallPDF,
+  buildFabricRows, buildKarniszRows, buildOfferDetailRows, buildSewingRows, calc,
+  formatPLN, generateKarniszOrderPDF, generateKarniszOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows, generateRailsInstallPDF,
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
@@ -112,6 +112,7 @@ export function App(p){
   var sOfferBase=useState([]),offerBaseRows=sOfferBase[0],setOfferBaseRows=sOfferBase[1];
   var sOfferNotes=useState(""),offerNotes=sOfferNotes[0],setOfferNotes=sOfferNotes[1];
   var sOfferValid=useState(""),offerValidUntil=sOfferValid[0],setOfferValidUntil=sOfferValid[1];
+  var sKarniszRows=useState([]),karniszPreviewRows=sKarniszRows[0],setKarniszPreviewRows=sKarniszRows[1];
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
@@ -1110,6 +1111,12 @@ export function App(p){
       setOfferValidUntil(new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10));
       setScreen("offerPreview");
     }
+    function openKarniszPreview(){
+      var rows=buildKarniszRows(curClient);
+      if(!rows.length){alert("Brak karniszów / szyn do zamówienia.");return;}
+      setKarniszPreviewRows(rows.map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||"marcin_dekor"});}));
+      setScreen("karniszPreview");
+    }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
     // ── variant-aware room rendering ──
@@ -1227,7 +1234,7 @@ export function App(p){
         ce("button",{onClick:function(){setShowSimplifiedModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
         ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:function(){setShowFabricModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
-        ce("button",{onClick:function(){generateKarniszOrderPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
+        ce("button",{onClick:function(){openKarniszPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
         ce("button",{onClick:function(){generateRailsInstallPDF(curClient);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#6b5b8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD29 Szyny do monta\u017cu"),
         ce("button",{onClick:function(){setShowSewingModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
       )
@@ -1327,6 +1334,66 @@ export function App(p){
         ce("button",{onClick:function(){
           var vu=offerValidUntil?new Date(offerValidUntil):null;
           generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazPct,offerNotes,vu);
+          setScreen("sum");
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
+      )
+    );
+  }
+  else if(screen==="karniszPreview"&&curClient){
+    var karniszTotal=karniszPreviewRows.reduce(function(a,r){return a+(+r.total||0);},0);
+    function setKarniszField(i,key,v){
+      setKarniszPreviewRows(function(prev){return prev.map(function(x,xi){
+        if(xi!==i)return x;
+        var patch={};patch[key]=v;
+        return mg(x,patch);
+      });});
+    }
+    function karniszFieldInput(i,key,placeholder,width){
+      return ce("input",{type:"text",value:karniszPreviewRows[i][key]||"",onChange:function(ev){setKarniszField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
+    }
+
+    content=ce(Fragment,null,
+      ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83E\uDE9D Zamówienie karniszy / szyn \u2014 podgląd przed wygenerowaniem"),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
+        "Każde pole poniżej jest edytowalne, w tym dostawca \u2014 dokument zostanie pogrupowany wg wybranych dostawców. Dopiero stąd generujesz PDF."
+      ),
+      karniszPreviewRows.length===0
+        ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak pozycji do zamówienia.")
+        :karniszPreviewRows.map(function(r,i){
+          return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,border:"1px solid var(--bd3)"}},
+            ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}},
+              karniszFieldInput(i,"roomWin","Pomieszczenie / okno",200),
+              karniszFieldInput(i,"type","Typ",180),
+              ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:"auto"}},
+                ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){setKarniszField(i,"total",ev.target.value);},style:{width:100,padding:"8px 10px",fontSize:14,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
+                ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł")
+              )
+            ),
+            ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
+              karniszFieldInput(i,"len","Długość (cm)",100),
+              karniszFieldInput(i,"qty","Ilość",70),
+              karniszFieldInput(i,"arc","Gięcie łuk (mb)",110),
+              karniszFieldInput(i,"arcDepth","Głęb. łuku (cm)",110),
+              karniszFieldInput(i,"pts","Gięcie pkt",90),
+              karniszFieldInput(i,"motorSide","Strona silnika",110),
+              karniszFieldInput(i,"motorType","Typ silnika",110)
+            ),
+            ce("div",{style:{display:"flex",alignItems:"center",gap:10}},
+              ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t2)"}},"Dostawca:"),
+              ce("select",{value:r.supplier,onChange:function(ev){setKarniszField(i,"supplier",ev.target.value);},style:{padding:"7px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
+                KARNISZ_SUPPLIERS.map(function(s){return ce("option",{key:s.key,value:s.key},s.label);})
+              )
+            )
+          );
+        }),
+      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+        ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},"\u0141\u0105cznie"),
+        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(karniszTotal)+" zł")
+      ),
+      ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+        Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:function(){
+          generateKarniszOrderPDFFromRows(curClient,karniszPreviewRows);
           setScreen("sum");
         },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
       )
