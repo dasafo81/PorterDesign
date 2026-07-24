@@ -3821,40 +3821,36 @@ export function buildKarniszRows(client){
   return rows;
 }
 
-export function generateKarniszOrderPDF(client){
-  var rows=buildKarniszRows(client);
-  if(!rows.length){alert("Brak karniszów / szyn do zamówienia.");return;}
+// Buduje HTML zamówienia karniszy/szyn z już gotowych (ewentualnie ręcznie
+// doedytowanych na ekranie podglądu) wierszy, pogrupowanych wg dostawcy.
+export function buildKarniszPDFHtmlFromRows(client,rows){
+  if(!rows||!rows.length)return null;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
-  // Collect rows without a supplier assigned
-  var pending=rows.filter(function(r){return !r.supplier;});
-
-  function proceedWithPDF(){
-    // Group by supplier
-    var bySupplier={};
-    KARNISZ_SUPPLIERS.forEach(function(s){bySupplier[s.key]=[];});
-    rows.forEach(function(r){
-      var key=(r.supplier&&bySupplier[r.supplier]!==undefined)?r.supplier:"marcin_dekor";
-      bySupplier[key].push(r);
-    });
+  var bySupplier={};
+  KARNISZ_SUPPLIERS.forEach(function(s){bySupplier[s.key]=[];});
+  rows.forEach(function(r){
+    var key=(r.supplier&&bySupplier[r.supplier]!==undefined)?r.supplier:"marcin_dekor";
+    bySupplier[key].push(r);
+  });
 
   var activeSups=KARNISZ_SUPPLIERS.filter(function(s){return bySupplier[s.key].length>0;});
-  if(!activeSups.length){alert("Brak pozycji.");return;}
+  if(!activeSups.length)return null;
 
   var supplierSections=activeSups.map(function(sup,si){
     var supRows=bySupplier[sup.key];
     var tableRows=supRows.map(function(r){
-      var motorDesc=r.motorSide?(r.motorSide.charAt(0).toUpperCase()+r.motorSide.slice(1))+(r.motorType?" / "+(r.motorType.charAt(0).toUpperCase()+r.motorType.slice(1)):""):"–";
+      var motorDesc=r.motorSide?(String(r.motorSide).charAt(0).toUpperCase()+String(r.motorSide).slice(1))+(r.motorType?" / "+(String(r.motorType).charAt(0).toUpperCase()+String(r.motorType).slice(1)):""):"–";
       return [
-        r.room+" / "+r.win,
+        r.roomWin||((r.room||"")+" / "+(r.win||"")),
         r.type,
         r.len?r.len+"cm":"-",
-        r.qty>1?r.qty+" szt.":"1 szt.",
+        (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
         r.arc?r.arc+" mb":"–",
         r.arcDepth?r.arcDepth+" cm":"–",
         r.pts?r.pts+" szt.":"–",
         motorDesc,
-        r.total>0?r.total.toFixed(2).replace(".",",")+" zł":"–"
+        (+r.total||0)>0?(+r.total).toFixed(2).replace(".",",")+" zł":"–"
       ];
     });
 
@@ -3871,15 +3867,32 @@ export function generateKarniszOrderPDF(client){
 
   var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n  ";
 
-  var html="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Zam\xf3wienie karnisz\xf3w \u2014 "+client.name+"</title>"+pdfStyles().replace("</style>",extraStyles+"</style>")+"</head><body>"
+  return "<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Zam\xf3wienie karnisz\xf3w \u2014 "+client.name+"</title>"+pdfStyles().replace("</style>",extraStyles+"</style>")+"</head><body>"
     +"<div class=\"header\"><div><div class=\"logo-text\">PORTER<br>DESIGN</div><div class=\"logo-sub\">Dekoracje okienne</div></div>"
     +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Zam\xf3wienie karnisz\xf3w / szyn</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Klient: <strong>"+client.name+"</strong> &nbsp;|&nbsp; Data: "+dateStr+" &nbsp;|&nbsp; Dostawc\xf3w: "+activeSups.length+"</div></div></div>"
     +supplierSections
     +"<div class=\"footer\" style=\"margin-top:8mm\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>Generowano: "+dateStr+"</span></div>"
     +"</body></html>";
+}
 
+export function generateKarniszOrderPDFFromRows(client,rows){
+  var html=buildKarniszPDFHtmlFromRows(client,rows);
+  if(!html){alert("Brak pozycji.");return;}
   openPDFWindow(html,"zamowienie-karnisz");
+}
+
+export function generateKarniszOrderPDF(client){
+  var rows=buildKarniszRows(client);
+  if(!rows.length){alert("Brak karniszów / szyn do zamówienia.");return;}
+
+  // Collect rows without a supplier assigned
+  var pending=rows.filter(function(r){return !r.supplier;});
+
+  function proceedWithPDF(){
+    var html=buildKarniszPDFHtmlFromRows(client,rows);
+    if(!html){alert("Brak pozycji.");return;}
+    openPDFWindow(html,"zamowienie-karnisz");
   } // end proceedWithPDF
 
   // If all rows already have suppliers, go straight to PDF
