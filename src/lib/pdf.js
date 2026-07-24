@@ -24,13 +24,125 @@ export function getFabricOrderSuppliers(client){
   return Object.keys(agg).sort().map(function(k){return agg[k];});
 }
 
-export function generateFabricOrderPDF(client,opts){
+// Buduje HTML zamówienia tkaniny dla JEDNEGO dostawcy z już gotowych
+// (ewentualnie ręcznie doedytowanych na ekranie podglądu) wierszy szczegółowych.
+// Agregacja po tkaninie/kolorze (tabela "Zamówienie") liczona jest na bieżąco
+// z tych wierszy, więc odzwierciedla wszystkie ręczne poprawki.
+export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
+  if(!rows||!rows.length)return null;
   opts=opts||{};
   var sewingHouse=opts.sewingHouse||"";
   var notes=opts.notes||"";
+  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
+
+  var extraStyles=`
+    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
+    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
+    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
+    .ship-block{background:#f7f7f5;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-top:5mm;}
+    .ship-block h4{font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:#6b6b66;margin:0 0 4px;}
+    .ship-block .ship-val{font-size:11px;color:#1a1a18;font-weight:600;white-space:pre-line;}
+    .notes-block{margin-top:4mm;font-size:10px;color:#3a3a38;}
+    .notes-block .lbl{font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-size:9px;color:#6b6b66;margin-bottom:3px;}
+    .notes-block .val{white-space:pre-line;line-height:1.5;}
+  `;
+
+  // Agregacja po rodzaju tkaniny (tkanina + kolor) — metraż zamawiamy
+  // osobno dla każdej tkaniny, nie jako jedną sumę wszystkich razem.
+  var byFabric={};var fabKeys=[];
+  rows.forEach(function(r){
+    var fk=(r.fabName||"-")+"||"+(r.kolor||"-");
+    if(!byFabric[fk]){
+      byFabric[fk]={fabName:r.fabName||"-",kolor:r.kolor||"-",width:r.width||null,metry:0,rows:[]};
+      fabKeys.push(fk);
+    }
+    var g=byFabric[fk];
+    g.metry+=(+r.metry||0);
+    if(!g.width&&r.width)g.width=r.width;
+    g.rows.push(r);
+  });
+  fabKeys.sort(function(a,b){
+    return byFabric[a].fabName.localeCompare(byFabric[b].fabName,"pl")
+      ||byFabric[a].kolor.localeCompare(byFabric[b].kolor,"pl");
+  });
+
+  // Tabela 1 — właściwe zamówienie: jedna pozycja = jedna tkanina
+  var orderRows=fabKeys.map(function(fk){
+    var g=byFabric[fk];
+    return [
+      "<strong>"+g.fabName+"</strong>",
+      g.kolor||"-",
+      g.width?(g.width+" cm"):"-",
+      "<strong>"+g.metry.toFixed(2).replace(".",",")+" mb</strong>",
+      g.rows.length+" szt."
+    ];
+  });
+  var orderTableHTML=makeTableHTML(
+    ["Tkanina","Kolor","Szer. tkaniny","Do zamówienia (mb)","Pozycji"],
+    orderRows,
+    "Zamówienie — metraż dla każdej tkaniny"
+  );
+
+  // Tabela 2 — rozbicie pomocnicze: co i gdzie idzie
+  var detailRows=[];
+  fabKeys.forEach(function(fk){
+    var g=byFabric[fk];
+    g.rows.forEach(function(r){
+      detailRows.push([
+        g.fabName,
+        g.kolor||"-",
+        (+r.metry||0).toFixed(2).replace(".",",")+" mb",
+        r.roomWin||((r.room||"")+" / "+(r.win||""))
+      ]);
+    });
+  });
+  var tableHTML=orderTableHTML+makeTableHTML(
+    ["Tkanina","Kolor","Ilość (mb)","Przeznaczenie"],
+    detailRows,
+    "Rozbicie na pomieszczenia / okna"
+  );
+
+  var shipHTML=sewingHouse
+    ? `<div class="ship-block"><h4>Wysyłka tkaniny — szwalnia</h4><div class="ship-val">${sewingHouse}</div></div>`
+    : "";
+  var notesHTML=notes
+    ? `<div class="notes-block"><div class="lbl">Uwagi do zlecenia</div><div class="val">${notes}</div></div>`
+    : "";
+
+  var bodySection=`
+    <div class="supplier-header">
+      <div class="supplier-name">${supplierLabel}</div>
+      <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
+      <div class="supplier-meta">Klient: <strong>${client.name}</strong>  |  Data: ${dateStr}</div>
+    </div>
+    ${tableHTML}
+    ${shipHTML}
+    ${notesHTML}
+    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________&nbsp;&nbsp;&nbsp; Forma płatności: _________________&nbsp;&nbsp;&nbsp; Podpis: _________________</div>
+    <div class="sign-block" style="margin-top:8mm">
+      <div class="sign">Zamawiający<br><strong>Paulina Porter</strong></div>
+      <div class="sign">Dostawca — potwierdzenie</div>
+    </div>`;
+
+  return '<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+supplierLabel+' — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
+    +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
+    +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
+    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Dostawca: <strong>'+supplierLabel+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
+    +bodySection
+    +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
+    +'</body></html>';
+}
+
+export function generateFabricOrderPDFFromRows(client,supplierLabel,rows,opts){
+  var html=buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts);
+  if(!html){alert("Brak tkanin do zamówienia.");return;}
+  openPDFWindow(html,'zamowienie-tkaniny-'+supplierLabel.replace(/\s+/g,'-').toLowerCase());
+}
+
+export function generateFabricOrderPDF(client,opts){
+  opts=opts||{};
   var rows=buildFabricRows(client);
   if(!rows.length){alert("Brak tkanin do zamówienia.");return;}
-  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
   // Group rows by supplier (skip manual fabrics with no meters)
   var bySupplier={};
@@ -46,108 +158,8 @@ export function generateFabricOrderPDF(client,opts){
   if(opts.supplier)suppliers=suppliers.filter(function(s){return s===opts.supplier;});
   if(!suppliers.length){alert("Brak tkanin do zamówienia (brak metrażu lub producenta).");return;}
 
-  // Build and open one PDF window per supplier
-  var extraStyles=`
-    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
-    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
-    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
-    .ship-block{background:#f7f7f5;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-top:5mm;}
-    .ship-block h4{font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:#6b6b66;margin:0 0 4px;}
-    .ship-block .ship-val{font-size:11px;color:#1a1a18;font-weight:600;white-space:pre-line;}
-    .notes-block{margin-top:4mm;font-size:10px;color:#3a3a38;}
-    .notes-block .lbl{font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-size:9px;color:#6b6b66;margin-bottom:3px;}
-    .notes-block .val{white-space:pre-line;line-height:1.5;}
-  `;
-
   suppliers.forEach(function(sup){
-    var supRows=bySupplier[sup];
-
-    // Agregacja po rodzaju tkaniny (tkanina + kolor) — metraż zamawiamy
-    // osobno dla każdej tkaniny, nie jako jedną sumę wszystkich razem.
-    var byFabric={};var fabKeys=[];
-    supRows.forEach(function(r){
-      var fk=(r.fabName||"-")+"||"+(r.kolor||"-");
-      if(!byFabric[fk]){
-        byFabric[fk]={fabName:r.fabName||"-",kolor:r.kolor||"-",width:r.width||null,metry:0,rows:[]};
-        fabKeys.push(fk);
-      }
-      var g=byFabric[fk];
-      g.metry+=(r.metry||0);
-      if(!g.width&&r.width)g.width=r.width;
-      g.rows.push(r);
-    });
-    fabKeys.sort(function(a,b){
-      return byFabric[a].fabName.localeCompare(byFabric[b].fabName,"pl")
-        ||byFabric[a].kolor.localeCompare(byFabric[b].kolor,"pl");
-    });
-
-    // Tabela 1 — właściwe zamówienie: jedna pozycja = jedna tkanina
-    var orderRows=fabKeys.map(function(fk){
-      var g=byFabric[fk];
-      return [
-        "<strong>"+g.fabName+"</strong>",
-        g.kolor||"-",
-        g.width?(g.width+" cm"):"-",
-        "<strong>"+g.metry.toFixed(2).replace(".",",")+" mb</strong>",
-        g.rows.length+" szt."
-      ];
-    });
-    var orderTableHTML=makeTableHTML(
-      ["Tkanina","Kolor","Szer. tkaniny","Do zamówienia (mb)","Pozycji"],
-      orderRows,
-      "Zamówienie — metraż dla każdej tkaniny"
-    );
-
-    // Tabela 2 — rozbicie pomocnicze: co i gdzie idzie
-    var detailRows=[];
-    fabKeys.forEach(function(fk){
-      var g=byFabric[fk];
-      g.rows.forEach(function(r){
-        detailRows.push([
-          g.fabName,
-          g.kolor||"-",
-          (r.metry||0).toFixed(2).replace(".",",")+" mb",
-          r.room+" / "+r.win
-        ]);
-      });
-    });
-    var tableHTML=orderTableHTML+makeTableHTML(
-      ["Tkanina","Kolor","Ilość (mb)","Przeznaczenie"],
-      detailRows,
-      "Rozbicie na pomieszczenia / okna"
-    );
-
-    var shipHTML=sewingHouse
-      ? `<div class="ship-block"><h4>Wysyłka tkaniny — szwalnia</h4><div class="ship-val">${sewingHouse}</div></div>`
-      : "";
-    var notesHTML=notes
-      ? `<div class="notes-block"><div class="lbl">Uwagi do zlecenia</div><div class="val">${notes}</div></div>`
-      : "";
-
-    var bodySection=`
-    <div class="supplier-header">
-      <div class="supplier-name">${sup}</div>
-      <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
-      <div class="supplier-meta">Klient: <strong>${client.name}</strong>  |  Data: ${dateStr}</div>
-    </div>
-    ${tableHTML}
-    ${shipHTML}
-    ${notesHTML}
-    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________&nbsp;&nbsp;&nbsp; Forma płatności: _________________&nbsp;&nbsp;&nbsp; Podpis: _________________</div>
-    <div class="sign-block" style="margin-top:8mm">
-      <div class="sign">Zamawiający<br><strong>Paulina Porter</strong></div>
-      <div class="sign">Dostawca — potwierdzenie</div>
-    </div>`;
-
-    var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+sup+' — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
-      +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
-      +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
-      +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Dostawca: <strong>'+sup+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
-      +bodySection
-      +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
-      +'</body></html>';
-
-    openPDFWindow(html,'zamowienie-tkaniny-'+sup.replace(/\s+/g,'-').toLowerCase());
+    generateFabricOrderPDFFromRows(client,sup,bySupplier[sup],opts);
   });
 }
 
