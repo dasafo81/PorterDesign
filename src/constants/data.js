@@ -3356,15 +3356,35 @@ export function buildOfferDetailRows(client){
           wysokosc=par.hCm?(par.hCm+" cm"):"-";
           podzial=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo")
             :(pc.rModel==="duo"&&pc.rSystem==="manual"?"Obie strony":(pc.stronaObslugi||"Lewo"));
+        } else if(p.type==="zaluzja"){
+          // Producent \u017caluzji jest zawsze ten sam \u2014 Sun & Shade
+          producent="Sun & Shade";
+          var jzT=pc.jt||"al25";
+          modelSzycia=JZ_LABELS[jzT]||jzT;
+          var jzList=jzT.indexOf("al")===0?JZ_AL50_COLORS:jzT.indexOf("ba")===0?JZ_BA50_COLORS:jzT.indexOf("bs")===0?JZ_BS50_COLORS:null;
+          var jzCol=(jzList&&pc.jzColor)?jzList.find(function(col){return col.v===pc.jzColor;}):null;
+          var jzParts=[];
+          if(jzCol)jzParts.push(jzCol.l+(jzCol.code?" ("+jzCol.code+")":""));
+          if(pc.tasiemka==="tak"){
+            var jzTas=pc.tasiemkaColor?JZ_TASIEMKA_COLORS.find(function(col){return col.v===pc.tasiemkaColor;}):null;
+            jzParts.push(jzTas?("tasiemka: "+jzTas.l+(jzTas.code?" ("+jzTas.code+")":"")):"tasiemka");
+          }
+          tkaninaKolor=jzParts.length?jzParts.join(" / "):"-";
+          szerokosc=par.wCm?(par.wCm+" cm"):"-";
+          wysokosc=par.lCm?(par.lCm+" cm"):"-";
+          podzial=pc.jzStrona||"Lewo";
         } else if(p.type==="szyna"){
           modelSzycia=pc.ks==="wave"?"Wave":"Flex";
           tkaninaKolor=pc.ks==="wave"?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):"-";
           szerokosc=par.len?(par.len+" cm"):"-";
-          producent=p.karniszSupplier||"-";
+          // Szyny KS \u2014 producent zawsze Forest
+          producent=p.karniszSupplier||"Forest";
         } else if(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"){
           szerokosc=par.len?(par.len+" cm"):"-";
           producent=p.karniszSupplier||"-";
         } else if(p.type==="plisa"){
+          // Plisy okienne \u2014 producent zawsze Hanarol
+          producent="Hanarol";
           var plColl=PLISA_FABRICS.find(function(f){return f.name===pc.plKolekcja;});
           modelSzycia=plColl?plColl.name:(pc.plKolekcjaManual||"-");
           var plKolorLbl=pc.plKolorKod||pc.plKolorManual||"-";
