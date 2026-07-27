@@ -450,13 +450,27 @@ async function saveInvoices(
       skipped++; continue;
     }
 
-    // Naprawa: XML jest juz w bazie, ale pozycji brak (skutek cichego bledu zapisu tenant_id).
-    // Odtwarzamy pozycje z zapisanego XML — bez odpytywania KSeF, wiec bez throttle i szybko.
+    // Naprawa: XML jest juz w bazie, ale pozycji brak (skutek cichego bledu zapisu tenant_id,
+    // lub zerowych pozycji sprzed poprawki wariantu brutto P_9B/P_11A). Odtwarzamy pozycje
+    // z zapisanego XML — bez odpytywania KSeF, wiec bez throttle i szybko. WAZNE: przeliczamy
+    // tez naglowek (total_net/total_vat/total_gross) z nowo odtworzonych pozycji — wczesniej
+    // ta sciezka aktualizowala tylko invoice_items, wiec naprawiona faktura miala poprawne
+    // pozycje, ale nadal zerowy naglowek (dokladnie ten objaw zgloszony 2026-07-27).
     if (existing.xmlPresent.has(ksefNum) && existingId) {
       try {
         const storedXml = await loadStoredXml(existingId, sbH);
         if (storedXml) {
-          await saveInvoiceItems(existingId, parseItems(storedXml), sbH, tenantId);
+          const repairedItems = parseItems(storedXml);
+          await saveInvoiceItems(existingId, repairedItems, sbH, tenantId);
+          const repairedNet = +(repairedItems.reduce((s, it) => s + (it.line_net || 0), 0)).toFixed(2);
+          const repairedVat = +(repairedItems.reduce((s, it) => s + (it.line_vat || 0), 0)).toFixed(2);
+          const repairedGross = +(repairedItems.reduce((s, it) => s + (it.line_gross || 0), 0)).toFixed(2);
+          if (repairedNet > 0 || repairedGross > 0) {
+            await fetch(`${SB_URL}/rest/v1/invoices?id=eq.${existingId}`, {
+              method: "PATCH", headers: sbH,
+              body: JSON.stringify({ total_net: repairedNet, total_vat: repairedVat, total_gross: repairedGross, updated_at: new Date().toISOString() }),
+            });
+          }
           existing.itemsPresent.add(existingId);
           repaired++;
           continue;
