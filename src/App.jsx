@@ -109,6 +109,7 @@ export function App(p){
   var sDiscEn=useState(false),discountEnabled=sDiscEn[0],setDiscountEnabled=sDiscEn[1];
   var sDiscAmt=useState(""),discountInput=sDiscAmt[0],setDiscountInput=sDiscAmt[1];
   var sVisitFee=useState(false),visitFeeEnabled=sVisitFee[0],setVisitFeeEnabled=sVisitFee[1];
+  var sVisitFeeAmt=useState(""),visitFeeInput=sVisitFeeAmt[0],setVisitFeeInput=sVisitFeeAmt[1];
   var sOfferRows=useState([]),offerPreviewRows=sOfferRows[0],setOfferPreviewRows=sOfferRows[1];
   var sOfferBase=useState([]),offerBaseRows=sOfferBase[0],setOfferBaseRows=sOfferBase[1];
   var sOfferNotes=useState(""),offerNotes=sOfferNotes[0],setOfferNotes=sOfferNotes[1];
@@ -1178,6 +1179,7 @@ export function App(p){
       setDiscountEnabled(false);
       setDiscountInput("");
       setVisitFeeEnabled(false);
+      setVisitFeeInput("");
       setScreen("offerPreview");
     }
     function openKarniszPreview(){
@@ -1342,7 +1344,7 @@ export function App(p){
     var previewMontazPct=(+montazInput||0)/100;
     var previewMontazVal=previewMontazPct>0?roundTo10(previewTotal*previewMontazPct):0;
     var previewDiscountVal=(discountEnabled&&(+discountInput)>0)?roundTo10(+discountInput):0;
-    var previewVisitFeeVal=visitFeeEnabled?250:0;
+    var previewVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
     var previewFinalTotal=Math.max(0,roundTo10(previewTotal+previewMontazVal-previewDiscountVal-previewVisitFeeVal));
     function recalcOfferPricesFromCommission(){
       var c=(+commissionInput||0)/100;
@@ -1433,9 +1435,11 @@ export function App(p){
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
           ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){setVisitFeeEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
-          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83D\uDE97 Koszt wizyty (250 zł)")
+          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83D\uDE97 Koszt wizyty")
         ),
-        visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zostanie odliczony od kosztu całkowitego"):null
+        visitFeeEnabled?ce("input",{type:"text",inputMode:"decimal",value:visitFeeInput,onChange:function(ev){setVisitFeeInput(ev.target.value);},placeholder:"kwota",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
+        visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł"):null,
+        visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)",flexBasis:"100%"}},"zostanie odliczony od kosztu całkowitego"):null
       ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16}},
         previewMontazVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--bg)",opacity:0.7}},ce("span",null,"Bez montażu"),ce("span",null,roundTo10(previewTotal)+" zł")):null,
