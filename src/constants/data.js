@@ -3290,7 +3290,7 @@ export function buildOfferRows(client){
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
         var detail=productDetailText(p);
-        var desc=prodLabel+(detail?" \u00b7 "+detail:"")+" — "+r.name+" / "+w.name
+        var desc=prodLabel+(detail?" \u00b7 "+detail:"")+" — "+r.name+(w.name?" / "+w.name:"")
           +(p.note?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+escOffer(p.note)+"</span>":"");
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
         rows.push({lp:lp++,name:desc,qty:1,unit:isKurtain?"kpl.":"szt.",cenaJedn:total,total:total});
@@ -3317,7 +3317,7 @@ export function buildOfferDetailRows(client){
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
-        var name=prodLabel+" — "+r.name+" / "+w.name;
+        var name=prodLabel+" — "+r.name+(w.name?" / "+w.name:"");
 
         var modelSzycia="-",tkaninaKolor="-",producent="-",szerokosc="-",wysokosc="-",podzial="-";
 
