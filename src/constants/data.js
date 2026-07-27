@@ -3317,7 +3317,8 @@ export function buildOfferDetailRows(client){
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
-        var name=prodLabel+" — "+r.name+(w.name?" / "+w.name:"");
+        var nameLoc=" — "+r.name+(w.name?" / "+w.name:"");
+        var name=prodLabel+nameLoc;
 
         var modelSzycia="-",tkaninaKolor="-",producent="-",szerokosc="-",wysokosc="-",podzial="-";
 
@@ -3397,13 +3398,29 @@ export function buildOfferDetailRows(client){
         rows.push({
           room:r.name,win:w.name,
           qty:1,unit:isKurtain?"kpl.":"szt.",
-          name:name,
+          name:name,_prodLabel:prodLabel,_nameLoc:nameLoc,
           modelSzycia:modelSzycia,tkaninaKolor:tkaninaKolor,producent:producent,
           szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,
           total:total,cenaJedn:total
         });
       });
     });
+  });
+
+  // Numerowanie powt\u00f3rze\u0144 \u2014 gdy kilka produkt\u00f3w tego samego typu trafia do tego samego
+  // pomieszczenia/okna (albo do okien bez nazwy), wiersze wygl\u0105da\u0142yby identycznie. Numer
+  // wstawiamy po etykiecie produktu ("\u017baluzje 1 \u2014 Gabinet"), analogicznie do chip\u00f3w na
+  // ekranie okna. Numerujemy wy\u0142\u0105cznie realne duplikaty \u2014 pojedyncze pozycje zostaj\u0105 bez numeru.
+  var nameCount={};
+  rows.forEach(function(x){nameCount[x.name]=(nameCount[x.name]||0)+1;});
+  var nameSeen={};
+  rows.forEach(function(x){
+    var key=x.name;
+    if(nameCount[key]>1){
+      nameSeen[key]=(nameSeen[key]||0)+1;
+      x.name=x._prodLabel+" "+nameSeen[key]+x._nameLoc;
+    }
+    delete x._prodLabel;delete x._nameLoc;
   });
   return rows;
 }
