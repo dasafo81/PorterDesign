@@ -1107,7 +1107,11 @@ function StatTile(tileLabel,stat,accent){
 function InvoiceList(p){
   var [tab,setTab]=useState("sprzedaz"); // sprzedaz | zakup
   var [search,setSearch]=useState("");
-  var [filterDocType,setFilterDocType]=useState("all");
+  // Wielokrotny wybór typu dokumentu (jak w Fakturowni: checkboxy zamiast jednego selecta) —
+  // domyślnie wszystkie zaznaczone (czyli brak filtrowania). Świadome odznaczenie wszystkiego
+  // pokazuje pustą listę — to zgodne z semantyką checkboxów, nie "zapomniany" filtr.
+  var [filterDocTypes,setFilterDocTypes]=useState(function(){return DOC_TYPES.map(function(d){return d.id;});});
+  var [typeFilterOpen,setTypeFilterOpen]=useState(false);
   var [periodPreset,setPeriodPreset]=useState("month"); // month | prevMonth | year | all | custom
   var [customFrom,setCustomFrom]=useState("");
   var [customTo,setCustomTo]=useState("");
@@ -1171,6 +1175,16 @@ function InvoiceList(p){
     if(periodPreset==="all") return null;
     if(periodPreset==="custom") return (customFrom||customTo)?{from:customFrom||"0000-01-01",to:customTo||"9999-12-31"}:null;
     if(periodPreset==="year") return {from:today.slice(0,4)+"-01-01",to:today.slice(0,4)+"-12-31"};
+    if(periodPreset==="quarter"||periodPreset==="prevQuarter"){
+      var qNow=new Date();
+      var qIndex=Math.floor(qNow.getMonth()/3);
+      var qYear=qNow.getFullYear();
+      if(periodPreset==="prevQuarter"){ qIndex--; if(qIndex<0){qIndex=3;qYear--;} }
+      var qStartMonth=qIndex*3;
+      var qStartDate=new Date(qYear,qStartMonth,1);
+      var qEndDate=new Date(qYear,qStartMonth+3,0);
+      return {from:qStartDate.toISOString().slice(0,10), to:qEndDate.toISOString().slice(0,10)};
+    }
     var base=new Date();
     if(periodPreset==="prevMonth") base.setMonth(base.getMonth()-1);
     var y=base.getFullYear(), m=base.getMonth();
@@ -1178,7 +1192,8 @@ function InvoiceList(p){
     var mm=String(m+1).padStart(2,"0");
     return {from:y+"-"+mm+"-01", to:y+"-"+mm+"-"+String(last).padStart(2,"0")};
   })();
-  var periodLabel={month:"bieżący miesiąc",prevMonth:"poprzedni miesiąc",year:"bieżący rok",all:"cały okres",custom:"zakres niestandardowy"}[periodPreset];
+  var periodLabel={month:"bieżący miesiąc",prevMonth:"poprzedni miesiąc",quarter:"bieżący kwartał",
+    prevQuarter:"poprzedni kwartał",year:"bieżący rok",all:"cały okres",custom:"zakres niestandardowy"}[periodPreset];
 
   // Faktury bieżącej zakładki (kierunek) — do kafelków stałych okresów, niezależnie od periodRange
   var tabInvoices=(p.invoices||[]).filter(function(inv){
@@ -1200,7 +1215,7 @@ function InvoiceList(p){
 
   var list=tabInvoices.filter(function(inv){
     if(periodRange && !((inv.issue_date||"")>=periodRange.from && (inv.issue_date||"")<=periodRange.to)) return false;
-    if(filterDocType!=="all"&&inv.doc_type!==filterDocType) return false;
+    if(filterDocTypes.indexOf(inv.doc_type||"vat")<0) return false;
     if(search){
       var q=search.toLowerCase();
       return (inv.number&&inv.number.toLowerCase().includes(q))
@@ -1209,6 +1224,22 @@ function InvoiceList(p){
     }
     return true;
   });
+
+  // Suma aktualnie wyświetlanej listy (po zastosowaniu okresu, typów i wyszukiwarki) —
+  // pokazywana jako podsumowanie pod tabelą, żeby od razu było widać łączną kwotę
+  // wybranej selekcji, bez ręcznego liczenia.
+  var listTotals=list.reduce(function(a,inv){
+    a.net+=(+inv.total_net||0); a.gross+=(+inv.total_gross||0); return a;
+  },{net:0,gross:0});
+  var allTypesSelected=filterDocTypes.length===DOC_TYPES.length;
+  function toggleDocType(id){
+    setFilterDocTypes(function(prev){
+      return prev.indexOf(id)>=0 ? prev.filter(function(x){return x!==id;}) : prev.concat([id]);
+    });
+  }
+  function toggleAllDocTypes(){
+    setFilterDocTypes(allTypesSelected?[]:DOC_TYPES.map(function(d){return d.id;}));
+  }
 
   // Rozbicie aktualnie wyświetlanej listy wg typu dokumentu — widać od razu,
   // ile w danym zestawie jest np. EKO, bez zgadywania czy jest wliczone.
@@ -1272,6 +1303,8 @@ function InvoiceList(p){
       ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}},"Okres listy:"),
       ce("button",{onClick:function(){setPeriodPreset("month");},style:presetBtn(periodPreset==="month")},"Ten miesiąc"),
       ce("button",{onClick:function(){setPeriodPreset("prevMonth");},style:presetBtn(periodPreset==="prevMonth")},"Poprzedni miesiąc"),
+      ce("button",{onClick:function(){setPeriodPreset("quarter");},style:presetBtn(periodPreset==="quarter")},"Ten kwartał"),
+      ce("button",{onClick:function(){setPeriodPreset("prevQuarter");},style:presetBtn(periodPreset==="prevQuarter")},"Poprzedni kwartał"),
       ce("button",{onClick:function(){setPeriodPreset("year");},style:presetBtn(periodPreset==="year")},"Ten rok"),
       ce("button",{onClick:function(){setPeriodPreset("all");},style:presetBtn(periodPreset==="all")},"Wszystko"),
       ce("input",{type:"date",style:Object.assign({},inpSm,{maxWidth:130}),value:customFrom,
@@ -1286,15 +1319,32 @@ function InvoiceList(p){
       ce("input",{style:Object.assign({},inp,{maxWidth:260,flex:1}),
         value:search,onChange:function(e){setSearch(e.target.value);},
         placeholder:"🔍 Szukaj po numerze, nabywcy, NIP..."}),
-      ce("select",{style:Object.assign({},inp,{maxWidth:200}),value:filterDocType,onChange:function(e){setFilterDocType(e.target.value);}},
-        ce("option",{value:"all"},"Wszystkie typy"),
-        DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);})),
+      ce("button",{onClick:function(){setTypeFilterOpen(!typeFilterOpen);},
+        style:Object.assign({},btnSecondary,typeFilterOpen?{borderColor:"var(--violet)",color:"var(--violet)"}:{})},
+        "🏷️ Typ dokumentu ("+filterDocTypes.length+"/"+DOC_TYPES.length+")"),
       ce("button",{onClick:function(){p.onNew&&p.onNew(tab);},style:btnPrimary},
         tab==="zakup"?"+ Nowy wydatek":"+ Nowa faktura"),
       ce("button",{onClick:p.onSettings,style:btnSecondary},"⚙️ Ustawienia"),
       ce("button",{onClick:function(){setSyncOpen(!syncOpen);},
         style:Object.assign({},btnSecondary,syncOpen?{borderColor:"var(--violet)",color:"var(--violet)"}:{})},
         "🔄 Synchronizuj z KSeF")
+    ),
+
+    // Panel wyboru typów dokumentu (rozwijany) — checkboxy zamiast jednego selecta,
+    // żeby np. podsumować tylko wybrane 3 typy naraz (jak w Fakturowni).
+    typeFilterOpen&&ce("div",{style:{marginBottom:16,background:"var(--bg2)",border:"1px solid var(--bd2)",
+      borderRadius:10,padding:"10px 12px",maxWidth:320}},
+      ce("label",{style:{display:"flex",alignItems:"center",gap:8,padding:"6px 4px",cursor:"pointer",
+        borderBottom:"1px solid var(--bd3)",marginBottom:4,fontWeight:700,fontSize:13,color:"var(--t1)"}},
+        ce("input",{type:"checkbox",checked:allTypesSelected,onChange:toggleAllDocTypes,
+          style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}}),
+        "wszystkie"),
+      DOC_TYPES.map(function(d){
+        return ce("label",{key:d.id,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 4px",cursor:"pointer",fontSize:13,color:"var(--t2)"}},
+          ce("input",{type:"checkbox",checked:filterDocTypes.indexOf(d.id)>=0,onChange:function(){toggleDocType(d.id);},
+            style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}}),
+          d.label);
+      })
     ),
 
     // Panel synchronizacji KSeF (rozwijany) — osobny zakres dat, tylko dla pobierania z KSeF
@@ -1323,14 +1373,14 @@ function InvoiceList(p){
 
     // Brak dokumentów
     list.length===0&&ce("div",{style:{textAlign:"center",padding:"40px 0",color:"var(--t3)",fontSize:14}},
-      search||filterDocType!=="all"?"Brak pasujących dokumentów w wybranym okresie.":"Brak dokumentów w wybranym okresie."),
+      search||!allTypesSelected?"Brak pasujących dokumentów w wybranym okresie.":"Brak dokumentów w wybranym okresie."),
 
     // Tabela
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
-        ["Numer","Typ","Kontrahent","Data","Termin pł.","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
-          return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=6?"center":"right")}},h);
+      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 64px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
+        ["Numer","Typ","Kontrahent","Data","Termin pł.","Płatność","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
+          return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=7?"center":"right")}},h);
         })
       ),
       // Wiersze
@@ -1374,7 +1424,7 @@ function InvoiceList(p){
         var rowBg=isOverdue?"var(--red-l)":"var(--bg2)";
         return ce("div",{key:inv.id,
           onClick:function(){ if(isBusy)return; (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv); },
-          style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
             background:rowBg,width:"100%",opacity:isBusy?0.6:1},
           onMouseEnter:function(e){e.currentTarget.style.background=isOverdue?"var(--red-border)":"var(--bg3)";},
@@ -1389,8 +1439,14 @@ function InvoiceList(p){
           ),
           ce("div",{style:{fontSize:12,textAlign:"right",color:"var(--t2)"}},fmtDate(inv.issue_date)),
           ce("div",{style:{fontSize:12,fontWeight:isOverdue?700:400,textAlign:"right",color:isOverdue?"var(--red)":"var(--t2)"}},fmtDate(inv.due_date)),
+          ce("div",{style:{fontSize:11,textAlign:"right",color:"var(--t2)",textTransform:"capitalize"}},inv.payment_method||"—"),
           ce("div",{style:{textAlign:"right"}},
-            ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},fmtMoney(inv.total_gross)),
+            // Kwota 0 zł jest podejrzana (prawdziwa faktura z pozycjami prawie nigdy nie jest
+            // zerowa) — oznaczamy wizualnie, żeby łatwo znaleźć taki rekord do sprawdzenia,
+            // zamiast przewijać całą listę w poszukiwaniu "0,00 zł".
+            (+inv.total_gross||0)===0
+              ? ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--amber)"},title:"Zerowa kwota — sprawdź pozycje faktury"},"⚠ "+fmtMoney(inv.total_gross))
+              : ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},fmtMoney(inv.total_gross)),
             ce("div",{style:{fontSize:10,color:"var(--t3)"}},"netto "+fmtMoney(inv.total_net))
           ),
           paidCb(),
@@ -1419,6 +1475,21 @@ function InvoiceList(p){
             },"🗑"))
         );
       })
+    ),
+
+    // Podsumowanie łącznej kwoty aktualnie wyświetlanej listy (po zastosowaniu
+    // okresu, wybranych typów dokumentu i wyszukiwarki) — widać od razu sumę
+    // wybranej selekcji, bez ręcznego liczenia.
+    list.length>0&&ce("div",{style:{display:"flex",justifyContent:"flex-end",gap:24,
+      marginTop:10,padding:"12px 18px",background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14}},
+      ce("div",{style:{textAlign:"right"}},
+        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Suma netto ("+list.length+" dok.)"),
+        ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t2)"}},fmtMoney(listTotals.net))
+      ),
+      ce("div",{style:{textAlign:"right"}},
+        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Suma brutto"),
+        ce("div",{style:{fontSize:18,fontWeight:800,color:"var(--violet)"}},fmtMoney(listTotals.gross))
+      )
     )
   );
 }
