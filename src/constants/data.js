@@ -2959,7 +2959,7 @@ export function calc(p){
     }
     // dopłaty
     if(c.bezinw==="tak"){
-      var bDop=100; // stawka ryczałtowa — zastępuje dawną kwotę zależną od materiału i Prowadzenie boczne
+      var bDop=120; // stawka ryczałtowa — zastępuje dawną kwotę zależną od materiału i Prowadzenie boczne
       total+=bDop;
       lines.push("Monta\u017c bezinwazyjny +"+bDop.toFixed(2)+" z\u0142");
     }
