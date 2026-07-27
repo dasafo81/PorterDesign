@@ -182,19 +182,38 @@ function parseFA(xml: string) {
   };
 }
 
-// Pozycje faktury (FaWiersz, lub starszy wariant Wiersz)
+// Pozycje faktury (FaWiersz, lub starszy wariant Wiersz). FA(3) dopuszcza dwa warianty
+// zapisu ceny w wierszu: netto (P_9A cena jedn., P_11 wartość) — najczęstszy — albo
+// brutto (P_9B cena jedn. brutto, P_11A wartość brutto, opcjonalnie P_11Vat kwota VAT) —
+// używany np. przez niektórych dostawców (zaobserwowane: faktura 24834/8005/2026, gdzie
+// P_9A/P_11 były puste, a realne kwoty siedziały w P_9B/P_11A/P_11Vat). Bez tego fallbacku
+// taka pozycja liczyła się jako 0 netto/brutto, mimo że wiersz faktycznie miał kwotę.
 function parseItems(xml: string) {
   let blocks = xmlAll(xml, "FaWiersz");
   if (blocks.length === 0) blocks = xmlAll(xml, "Wiersz");
 
   return blocks.map((w, i) => {
-    const netP = numVal(xmlVal(w, "P_9A"));
     const vatRraw = xmlVal(w, "P_12");
     const vatNum = (vatRraw === "zw" || vatRraw === "np") ? -1 : numVal(vatRraw);
     const qty = numVal(xmlVal(w, "P_8B") || "1");
-    const netV = numVal(xmlVal(w, "P_11")) || +(netP * qty).toFixed(2);
-    const vatV = vatNum === -1 ? 0 : +(netV * (vatNum / 100)).toFixed(2);
-    const grossV = +(netV + vatV).toFixed(2);
+
+    const hasNetSource = xmlVal(w, "P_9A") !== "" || xmlVal(w, "P_11") !== "";
+    let netP: number, netV: number, vatV: number, grossV: number;
+
+    if (hasNetSource) {
+      netP = numVal(xmlVal(w, "P_9A"));
+      netV = numVal(xmlVal(w, "P_11")) || +(netP * qty).toFixed(2);
+      vatV = vatNum === -1 ? 0 : +(netV * (vatNum / 100)).toFixed(2);
+      grossV = +(netV + vatV).toFixed(2);
+    } else {
+      const grossP = numVal(xmlVal(w, "P_9B"));
+      grossV = numVal(xmlVal(w, "P_11A")) || +(grossP * qty).toFixed(2);
+      const vatFromXml = numVal(xmlVal(w, "P_11Vat"));
+      vatV = vatNum === -1 ? 0 : (vatFromXml || +(grossV - grossV / (1 + vatNum / 100)).toFixed(2));
+      netV = +(grossV - vatV).toFixed(2);
+      netP = qty ? +(netV / qty).toFixed(4) : netV;
+    }
+
     return {
       position: i + 1,
       name: xmlVal(w, "P_7") || ("Pozycja " + (i + 1)),
