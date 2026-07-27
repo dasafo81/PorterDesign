@@ -1048,140 +1048,69 @@ function KsefBadge(p){
   }},c.label);
 }
 
-// ── PODSUMOWANIE MIESIĄCA ────────────────────────────────────────────────────
-// Graficzny skrót dla wybranego miesiąca (wg issue_date, domyślnie bieżący,
-// przełączany strzałkami ‹ ›): ile faktur sprzedażowych i kosztowych, kwoty
-// brutto obu stron, bilans oraz zapłacone/oczekujące. Drugi tryb widoku
-// (przełącznik "Wg typu dokumentu") rozbija ten sam miesiąc na vat/proforma/
-// zaliczka/korekta/eko/zakup, z opcją sortowania wg kwoty lub liczby faktur.
-// Liczone z pełnej listy faktur (p.invoices), pomija draft/cancelled (jeszcze
-// nienadane/nieaktualne kwoty nie powinny zniekształcać podsumowania miesiąca).
+// ── PODSUMOWANIE OKRESU (Przychody / Wydatki) ──────────────────────────────
+// Zastępuje dawny "InvoiceMonthSummary". Kluczowa różnica: kafelki stałych
+// okresów (dziś / 7 dni / miesiąc / rok) poniżej to czysta informacja —
+// zawsze liczą to samo, niezależnie od filtra listy — dokładnie jak w
+// Fakturowni. Wcześniej ten panel miał WŁASNY, niezależny wybór miesiąca
+// (strzałki ‹ ›), który w ogóle nie wpływał na listę faktur pod spodem —
+// stąd wrażenie, że "wybieram miesiąc, a lista pokazuje co innego" i że
+// liczniki się nie zgadzają (kafelki liczyły całą historię, panel — tylko
+// bieżący miesiąc). Teraz filtrowanie samej listy ma osobny, realnie
+// działający wybór okresu (patrz periodPreset w InvoiceList), a liczniki
+// zakładek Sprzedaż/Zakup liczą się z TEGO SAMEGO okresu co lista.
 var TYPE_COLORS={vat:"var(--violet)",proforma:"var(--teal)",zaliczka:"var(--amber)",
   korekta:"var(--pink)",eko:"var(--grd)",zakup:"var(--red)"};
+var TYPE_ICONS={vat:"📄",proforma:"🧾",zaliczka:"💳",korekta:"↩️",eko:"🟢"};
 function docTypeLabel(id){
   var found=DOC_TYPES.find(function(d){return d.id===id;});
   if(found) return found.label;
   if(id==="zakup") return "Zakupowa (stary model)";
   return id||"Nieznany typ";
 }
-function monthKeyFromOffset(offset){
-  var d=new Date(); d.setDate(1); d.setMonth(d.getMonth()+offset);
-  return d.toISOString().slice(0,7);
-}
-
-function InvoiceMonthSummary(p){
-  var invoices=p.invoices||[];
-  var [monthOffset,setMonthOffset]=useState(0);   // 0 = bieżący miesiąc, -1 poprzedni, itd.
-  var [viewMode,setViewMode]=useState("kierunek"); // kierunek | typ
-
-  var curMonth=monthKeyFromOffset(monthOffset);
-  var monthInvoices=invoices.filter(function(inv){
-    return (inv.issue_date||"").slice(0,7)===curMonth
-      && inv.status!=="draft" && inv.status!=="cancelled";
-  });
-  var sell=monthInvoices.filter(function(inv){return invDirection(inv)!=="zakup";});
-  var buy =monthInvoices.filter(function(inv){return invDirection(inv)==="zakup";});
-  var sellSum=sell.reduce(function(a,inv){return a+(+inv.total_gross||0);},0);
-  var buySum =buy.reduce(function(a,inv){return a+(+inv.total_gross||0);},0);
-  var paidSum=sell.reduce(function(a,inv){
-    var paid=inv.payment_status==="paid"||(inv.payment_method==="gotówka"&&inv.status==="issued");
-    return a+(paid?(+inv.total_gross||0):0);
-  },0);
-  var unpaidSum=Math.max(0,sellSum-paidSum);
-  var maxSum=Math.max(sellSum,buySum,1);
-  var monthLabel=new Date(curMonth+"-01").toLocaleDateString("pl-PL",{month:"long",year:"numeric"});
-
-  // Rozbicie miesiąca wg typu dokumentu (vat/proforma/zaliczka/korekta/eko/zakup)
-  var typeMap={};
-  monthInvoices.forEach(function(inv){
-    var key=inv.doc_type||"vat";
-    if(!typeMap[key]) typeMap[key]={key:key,count:0,sum:0};
-    typeMap[key].count++;
-    typeMap[key].sum+=(+inv.total_gross||0);
-  });
-  var typeList=Object.values(typeMap).sort(function(a,b){
-    return b.sum-a.sum; // zawsze wg kwoty malejąco — przy 3-4 pozycjach osobne sortowanie zbędne
-  });
-  var maxTypeSum=Math.max.apply(null,typeList.map(function(t){return t.sum;}).concat([1]));
-
-  function Bar(label,value,color,icon,maxOverride){
-    var m=maxOverride||maxSum;
-    var pct=Math.max(value>0?2:0,Math.round(value/m*100));
-    return ce("div",{style:{marginBottom:10}},
-      ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)",marginBottom:4}},
-        ce("span",null,icon+" "+label),
-        ce("span",{style:{fontWeight:700,color:"var(--t1)"}},fmtMoney(value))
-      ),
-      ce("div",{style:{height:10,borderRadius:6,background:"var(--bd3)",overflow:"hidden"}},
-        ce("div",{style:{height:"100%",width:pct+"%",borderRadius:6,background:color,transition:"width .3s"}})
-      )
-    );
-  }
-
-  var navBtn={border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",
-    borderRadius:8,width:26,height:26,cursor:"pointer",fontSize:14,lineHeight:1,padding:0};
-  var toggleBtn=function(active){return {
-    border:"1px solid var(--bd2)",borderRadius:8,padding:"5px 10px",fontSize:11,fontWeight:600,
-    cursor:"pointer",background:active?"var(--violet)":"var(--bg)",color:active?"#fff":"var(--t2)"
-  };};
-
-  return ce("div",{style:Object.assign({},card,{marginBottom:14})},
-    ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}},
-      ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
-        ce("button",{onClick:function(){setMonthOffset(monthOffset-1);},style:navBtn,title:"Poprzedni miesi\u0105c"},"\u2039"),
-        ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",minWidth:150,textAlign:"center"}},
-          "\uD83D\uDCCA "+monthLabel),
-        ce("button",{onClick:function(){setMonthOffset(Math.min(0,monthOffset+1));},
-          disabled:monthOffset>=0,
-          style:Object.assign({},navBtn,monthOffset>=0?{opacity:0.35,cursor:"default"}:{}),title:"Nast\u0119pny miesi\u0105c"},"\u203A"),
-        monthOffset!==0?ce("button",{onClick:function(){setMonthOffset(0);},
-          style:{border:"none",background:"none",color:"var(--violet)",fontSize:11,cursor:"pointer",fontWeight:600}},"dzi\u015b"):null
-      ),
-      ce("div",{style:{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}},
-        ce("button",{onClick:function(){setViewMode("kierunek");},style:toggleBtn(viewMode==="kierunek")},"Sprzeda\u017c / Koszty"),
-        ce("button",{onClick:function(){setViewMode("typ");},style:toggleBtn(viewMode==="typ")},"Wg typu dokumentu")
-      )
-    ),
-
-    viewMode==="kierunek"
-      ? ce(React.Fragment,null,
-          ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:8}},sell.length+" sprzeda\u017cowych \u00B7 "+buy.length+" kosztowych"),
-          Bar("Sprzeda\u017c (brutto)",sellSum,"var(--violet)","\uD83D\uDCB0"),
-          Bar("Koszty (brutto)",buySum,"var(--red)","\uD83D\uDCE5")
-        )
-      : ce(React.Fragment,null,
-          typeList.length===0
-            ? ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"6px 0"}},"Brak faktur w tym miesi\u0105cu.")
-            : typeList.map(function(t){
-                return ce("div",{key:t.key},
-                  Bar(docTypeLabel(t.key)+" ("+t.count+")",t.sum,typeColorOf(t.key),"\u25AA",maxTypeSum)
-                );
-              })
-        ),
-
-    ce("div",{style:{display:"flex",gap:20,marginTop:10,paddingTop:10,borderTop:"1px solid var(--bd2)",flexWrap:"wrap"}},
-      ce("div",null,
-        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Bilans"),
-        ce("div",{style:{fontSize:16,fontWeight:800,color:(sellSum-buySum)>=0?"var(--grd)":"var(--red)"}},fmtMoney(sellSum-buySum))
-      ),
-      ce("div",null,
-        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Zap\u0142acone"),
-        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--grd)"}},fmtMoney(paidSum))
-      ),
-      ce("div",null,
-        ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Oczekuj\u0105ce"),
-        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--amber)"}},fmtMoney(unpaidSum))
-      )
-    )
-  );
-}
 function typeColorOf(id){ return TYPE_COLORS[id]||"var(--t3)"; }
 
+// Sumy dla stałych okresów (dziś / ost. 7 dni / bieżący miesiąc / bieżący rok).
+// invoices tu wchodzące są już odfiltrowane wg kierunku (zakładka Sprzedaż/Zakup)
+// przez wywołującego. Pomija draft/cancelled — tak samo jak wcześniej.
+function periodStats(invoices){
+  var today=todayISO();
+  var weekAgo=addDays(today,-6);
+  var monthKey=today.slice(0,7);
+  var yearKey=today.slice(0,4);
+  var counted=invoices.filter(function(inv){return inv.status!=="draft"&&inv.status!=="cancelled";});
+  function bucket(pred){
+    var f=counted.filter(pred);
+    return {count:f.length,sum:f.reduce(function(a,inv){return a+(+inv.total_gross||0);},0)};
+  }
+  return {
+    today: bucket(function(inv){return inv.issue_date===today;}),
+    week:  bucket(function(inv){return (inv.issue_date||"")>=weekAgo;}),
+    month: bucket(function(inv){return (inv.issue_date||"").slice(0,7)===monthKey;}),
+    year:  bucket(function(inv){return (inv.issue_date||"").slice(0,4)===yearKey;})
+  };
+}
+function StatTile(tileLabel,stat,accent){
+  return ce("div",{style:Object.assign({},card,{flex:1,minWidth:120,marginBottom:0,textAlign:"center"})},
+    ce("div",{style:{fontSize:20,fontWeight:800,color:accent?"var(--violet)":"var(--t1)"}},fmtMoney(stat.sum)),
+    ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},tileLabel),
+    ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:1}},stat.count+" dok.")
+  );
+}
+
 // ── LISTA FAKTUR ────────────────────────────────────────────────────────────
+// Przebudowa na wzór Fakturowni: prawdziwe zakładki Przychody (sprzedaż) /
+// Wydatki (zakup) zamiast klikalnych kafelków-filtrów, oraz jeden, realnie
+// działający filtr okresu, który steruje jednocześnie licznikami zakładek
+// i wierszami tabeli poniżej (zamiast dwóch niezależnych, rozjeżdżających
+// się źródeł jak wcześniej).
 function InvoiceList(p){
+  var [tab,setTab]=useState("sprzedaz"); // sprzedaz | zakup
   var [search,setSearch]=useState("");
   var [filterDocType,setFilterDocType]=useState("all");
-  var [groupFilter,setGroupFilter]=useState("all"); // all | zakup | sprzedaz — filtr z kafelków
+  var [periodPreset,setPeriodPreset]=useState("month"); // month | prevMonth | year | all | custom
+  var [customFrom,setCustomFrom]=useState("");
+  var [customTo,setCustomTo]=useState("");
   var [syncOpen,setSyncOpen]=useState(false);
   var [syncing,setSyncing]=useState(false);
   var [syncMsg,setSyncMsg]=useState(null);
@@ -1212,39 +1141,66 @@ function InvoiceList(p){
         var skipCount=((r.incoming&&r.incoming.skipped)||0)+((r.outgoing&&r.outgoing.skipped)||0);
         var remaining=r.remaining||0;
         var repaired=r.repaired||0;
-        setSyncMsg("\u2713 Pobrano z KSeF: "+((r.incoming&&r.incoming.fetched)||0)+" zakupowych, "+((r.outgoing&&r.outgoing.fetched)||0)+" sprzeda\u017cowych. Nowych/zaktualizowanych: "+(inCount+outCount)+"."
-          +(repaired>0?" Uzupe\u0142niono pozycje: "+repaired+".":"")
-          +(skipCount>0?" Pomini\u0119to (ju\u017c kompletne): "+skipCount+".":"")
-          +(remaining>0?" \u23F3 Pozosta\u0142o "+remaining+" \u2014 kliknij \"Pobierz z KSeF\" jeszcze raz, aby doko\u0144czy\u0107.":""));
+        setSyncMsg("✓ Pobrano z KSeF: "+((r.incoming&&r.incoming.fetched)||0)+" zakupowych, "+((r.outgoing&&r.outgoing.fetched)||0)+" sprzedażowych. Nowych/zaktualizowanych: "+(inCount+outCount)+"."
+          +(repaired>0?" Uzupełniono pozycje: "+repaired+".":"")
+          +(skipCount>0?" Pominięto (już kompletne): "+skipCount+".":"")
+          +(remaining>0?" ⏳ Pozostało "+remaining+" — kliknij \"Pobierz z KSeF\" jeszcze raz, aby dokończyć.":""));
         if(allErrs.length>0){
-          setSyncErr("\u26A0\uFE0F "+allErrs.length+" faktur pomini\u0119to z b\u0142\u0119dem. Przyk\u0142ad: "
-            +(allErrs[0].ksefNum||"?")+" \u2014 "+(allErrs[0].err||"nieznany b\u0142\u0105d")
-            +(allErrs.length>1?" (i "+(allErrs.length-1)+" wi\u0119cej, zobacz logi Edge Function w Supabase)":""));
+          setSyncErr("⚠️ "+allErrs.length+" faktur pominięto z błędem. Przykład: "
+            +(allErrs[0].ksefNum||"?")+" — "+(allErrs[0].err||"nieznany błąd")
+            +(allErrs.length>1?" (i "+(allErrs.length-1)+" więcej, zobacz logi Edge Function w Supabase)":""));
         } else {
           // Kontrola spojnosci: ile faktur z KSeF nie trafilo do zadnego koszyka.
           var fetchedTotal=((r.incoming&&r.incoming.fetched)||0)+((r.outgoing&&r.outgoing.fetched)||0);
           var accounted=inCount+outCount+repaired+skipCount+remaining;
           if(fetchedTotal-accounted>5){
-            setSyncErr("\u26A0\uFE0F "+(fetchedTotal-accounted)+" faktur z KSeF nie zosta\u0142o rozliczonych (brak numeru KSeF w metadanych?). Sprawd\u017a logi Edge Function.");
+            setSyncErr("⚠️ "+(fetchedTotal-accounted)+" faktur z KSeF nie zostało rozliczonych (brak numeru KSeF w metadanych?). Sprawdź logi Edge Function.");
           }
         }
         p.onSynced&&p.onSynced();
       })
-      .catch(function(e){setSyncErr(e.message||"B\u0142\u0105d synchronizacji");})
+      .catch(function(e){setSyncErr(e.message||"Błąd synchronizacji");})
       .finally(function(){setSyncing(false);});
   }
 
-  var list=(p.invoices||[]).filter(function(inv){
-    if(groupFilter==="zakup"&&invDirection(inv)!=="zakup") return false;
-    if(groupFilter==="sprzedaz"&&invDirection(inv)==="zakup") return false;
-    // "vat"/"zakup" w tym filtrze oznaczają kierunek (Sprzedażowa/Zakupowa), nie sam
-    // doc_type — doc_type i direction są niezależne (faktura zakupowa może być zwykłą
-    // Fakturą VAT, EKO albo proformą). Bez tego rozróżnienia filtr "Sprzedażowa" łapał
-    // też faktury zakupowe z doc_type="vat", a "Zakupowa" (stary model doc_type==="zakup")
-    // nie łapał w ogóle nowych faktur zakupowych typu VAT/proforma/EKO.
-    if(filterDocType==="vat"&&(inv.doc_type!=="vat"||invDirection(inv)==="zakup")) return false;
-    if(filterDocType==="zakup"&&(invDirection(inv)!=="zakup"||inv.doc_type==="eko")) return false;
-    if(filterDocType!=="all"&&filterDocType!=="vat"&&filterDocType!=="zakup"&&inv.doc_type!==filterDocType) return false;
+  // ── Zakres dat wynikający z wybranego okresu ──────────────────────────────
+  // Jedyne miejsce decydujące, co pokazuje lista. periodPreset="all" wyłącza
+  // filtr (periodRange=null) — potrzebne np. do wyszukania starej faktury.
+  var today=todayISO();
+  var periodRange=(function(){
+    if(periodPreset==="all") return null;
+    if(periodPreset==="custom") return (customFrom||customTo)?{from:customFrom||"0000-01-01",to:customTo||"9999-12-31"}:null;
+    if(periodPreset==="year") return {from:today.slice(0,4)+"-01-01",to:today.slice(0,4)+"-12-31"};
+    var base=new Date();
+    if(periodPreset==="prevMonth") base.setMonth(base.getMonth()-1);
+    var y=base.getFullYear(), m=base.getMonth();
+    var last=new Date(y,m+1,0).getDate();
+    var mm=String(m+1).padStart(2,"0");
+    return {from:y+"-"+mm+"-01", to:y+"-"+mm+"-"+String(last).padStart(2,"0")};
+  })();
+  var periodLabel={month:"bieżący miesiąc",prevMonth:"poprzedni miesiąc",year:"bieżący rok",all:"cały okres",custom:"zakres niestandardowy"}[periodPreset];
+
+  // Faktury bieżącej zakładki (kierunek) — do kafelków stałych okresów, niezależnie od periodRange
+  var tabInvoices=(p.invoices||[]).filter(function(inv){
+    var dir=invDirection(inv);
+    return tab==="zakup"?dir==="zakup":dir!=="zakup";
+  });
+  var stats=periodStats(tabInvoices);
+
+  // Liczniki zakładek Sprzedaż/Zakup liczone z TEGO SAMEGO okresu co filtr listy —
+  // wcześniej liczyły zawsze całą historię, niezależnie od tego, co pokazywał
+  // panel podsumowania nad nimi, stąd rozjazd (np. "21" zamiast "17 w tym miesiącu").
+  var periodFilteredAll=(p.invoices||[]).filter(function(inv){
+    return !periodRange || ((inv.issue_date||"")>=periodRange.from && (inv.issue_date||"")<=periodRange.to);
+  });
+  var tabCounts=periodFilteredAll.reduce(function(acc,inv){
+    if(invDirection(inv)==="zakup") acc.zakup++; else acc.sprzedaz++;
+    return acc;
+  },{zakup:0,sprzedaz:0});
+
+  var list=tabInvoices.filter(function(inv){
+    if(periodRange && !((inv.issue_date||"")>=periodRange.from && (inv.issue_date||"")<=periodRange.to)) return false;
+    if(filterDocType!=="all"&&inv.doc_type!==filterDocType) return false;
     if(search){
       var q=search.toLowerCase();
       return (inv.number&&inv.number.toLowerCase().includes(q))
@@ -1254,11 +1210,17 @@ function InvoiceList(p){
     return true;
   });
 
-  // Liczniki do kafelków Zakup / Sprzedaż (liczone z pełnej listy, nie z `list` po filtrach)
-  var docTypeCounts=(p.invoices||[]).reduce(function(acc,inv){
-    if(invDirection(inv)==="zakup") acc.zakup++; else acc.sprzedaz++;
-    return acc;
-  },{zakup:0,sprzedaz:0});
+  // Rozbicie aktualnie wyświetlanej listy wg typu dokumentu — widać od razu,
+  // ile w danym zestawie jest np. EKO, bez zgadywania czy jest wliczone.
+  var typeBreakdown=(function(){
+    var m={};
+    list.forEach(function(inv){
+      var k=inv.doc_type||"vat";
+      m[k]=(m[k]||0)+1;
+    });
+    return Object.keys(m).map(function(k){return {key:k,count:m[k]};})
+      .sort(function(a,b){return b.count-a.count;});
+  })();
 
   var payStatus=function(inv){
     if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"var(--grd)"};
@@ -1268,56 +1230,74 @@ function InvoiceList(p){
     return {label:"Oczekuje",color:"var(--t3)"};
   };
 
+  var tabBtn=function(active){return {
+    flex:1,cursor:"pointer",padding:"14px 18px",borderRadius:14,border:"none",textAlign:"left",
+    background:active?"var(--bd3)":"var(--bg2)",
+    outline:active?"2px solid var(--violet)":"1px solid var(--bd2)",
+    outlineOffset:-1, transition:"all .15s", fontFamily:"inherit"
+  };};
+  var presetBtn=function(active){return {
+    border:"1px solid var(--bd2)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,
+    cursor:"pointer",background:active?"var(--violet)":"var(--bg)",color:active?"#fff":"var(--t2)"
+  };};
+
   return ce("div",null,
-    // Graficzne podsumowanie bieżącego miesiąca (liczby + kwoty sprzedaż/koszt)
-    ce(InvoiceMonthSummary,{invoices:p.invoices||[]}),
-    // Kafelki Zakup / Sprzedaż
-    ce("div",{style:{display:"flex",gap:10,marginBottom:14}},
-      ce("div",{
-        onClick:function(){setGroupFilter(groupFilter==="sprzedaz"?"all":"sprzedaz");},
-        style:{
-          flex:1,cursor:"pointer",padding:"14px 18px",borderRadius:14,
-          border:groupFilter==="sprzedaz"?"2px solid var(--violet)":"1px solid var(--bd2)",
-          background:groupFilter==="sprzedaz"?"var(--bd3)":"var(--bg2)",
-          transition:"all .15s"
-        }
-      },
-        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"\uD83D\uDCB0 Sprzeda\u017c"),
-        ce("div",{style:{fontSize:24,fontWeight:800,color:"var(--t2)",marginTop:4}},docTypeCounts.sprzedaz)
+
+    // ── Zakładki Przychody (Sprzedaż) / Wydatki (Zakup) ──────────────────────
+    ce("div",{style:{display:"flex",gap:10,marginBottom:6}},
+      ce("button",{onClick:function(){setTab("sprzedaz");},style:tabBtn(tab==="sprzedaz")},
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"💰 Przychody (sprzedaż)"),
+        ce("div",{style:{fontSize:24,fontWeight:800,color:"var(--t2)",marginTop:4}},tabCounts.sprzedaz)
       ),
-      ce("div",{
-        onClick:function(){setGroupFilter(groupFilter==="zakup"?"all":"zakup");},
-        style:{
-          flex:1,cursor:"pointer",padding:"14px 18px",borderRadius:14,
-          border:groupFilter==="zakup"?"2px solid var(--violet)":"1px solid var(--bd2)",
-          background:groupFilter==="zakup"?"var(--bd3)":"var(--bg2)",
-          transition:"all .15s"
-        }
-      },
-        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"\uD83D\uDCE5 Zakup"),
-        ce("div",{style:{fontSize:24,fontWeight:800,color:"var(--t2)",marginTop:4}},docTypeCounts.zakup)
+      ce("button",{onClick:function(){setTab("zakup");},style:tabBtn(tab==="zakup")},
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"📥 Wydatki (zakup)"),
+        ce("div",{style:{fontSize:24,fontWeight:800,color:"var(--t2)",marginTop:4}},tabCounts.zakup)
       )
+    ),
+    ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:14}},
+      "Liczby w zakładkach dotyczą okresu: "+periodLabel+"."),
+
+    // ── Kafelki stałych okresów (jak w Fakturowni: dziś / 7 dni / miesiąc / rok) ──
+    // Wyłącznie informacyjne — nie filtrują listy poniżej, więc zawsze pokazują
+    // to samo niezależnie od wybranego filtra okresu listy.
+    ce("div",{style:{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}},
+      StatTile("Dziś",stats.today),
+      StatTile("Ostatnie 7 dni",stats.week),
+      StatTile("Bieżący miesiąc",stats.month,true),
+      StatTile("Bieżący rok",stats.year)
+    ),
+
+    // ── Filtr okresu dla listy poniżej (realnie filtruje wiersze tabeli) ──────
+    ce("div",{style:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}},
+      ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}},"Okres listy:"),
+      ce("button",{onClick:function(){setPeriodPreset("month");},style:presetBtn(periodPreset==="month")},"Ten miesiąc"),
+      ce("button",{onClick:function(){setPeriodPreset("prevMonth");},style:presetBtn(periodPreset==="prevMonth")},"Poprzedni miesiąc"),
+      ce("button",{onClick:function(){setPeriodPreset("year");},style:presetBtn(periodPreset==="year")},"Ten rok"),
+      ce("button",{onClick:function(){setPeriodPreset("all");},style:presetBtn(periodPreset==="all")},"Wszystko"),
+      ce("input",{type:"date",style:Object.assign({},inpSm,{maxWidth:130}),value:customFrom,
+        onChange:function(e){setCustomFrom(e.target.value);setPeriodPreset("custom");}}),
+      ce("span",{style:{fontSize:12,color:"var(--t3)"}},"–"),
+      ce("input",{type:"date",style:Object.assign({},inpSm,{maxWidth:130}),value:customTo,
+        onChange:function(e){setCustomTo(e.target.value);setPeriodPreset("custom");}})
     ),
 
     // Toolbar
     ce("div",{style:{display:"flex",gap:10,marginBottom:syncOpen?10:16,flexWrap:"wrap",alignItems:"center"}},
       ce("input",{style:Object.assign({},inp,{maxWidth:260,flex:1}),
         value:search,onChange:function(e){setSearch(e.target.value);},
-        placeholder:"\uD83D\uDD0D Szukaj po numerze, nabywcy, NIP..."}),
-      ce("select",{style:Object.assign({},inp,{maxWidth:160}),value:filterDocType,onChange:function(e){setFilterDocType(e.target.value);}},
-        ce("option",{value:"all"},"Wszystkie"),
-        ce("option",{value:"vat"},"Sprzeda\u017cowa"),
-        ce("option",{value:"zakup"},"Zakupowa"),
-        ce("option",{value:"proforma"},"Pro forma"),
-        ce("option",{value:"eko"},"EKO (gotówkowe)")),
-      ce("button",{onClick:p.onNew,style:btnPrimary},"+ Nowa faktura"),
-      ce("button",{onClick:p.onSettings,style:btnSecondary},"\u2699\uFE0F Ustawienia"),
+        placeholder:"🔍 Szukaj po numerze, nabywcy, NIP..."}),
+      ce("select",{style:Object.assign({},inp,{maxWidth:200}),value:filterDocType,onChange:function(e){setFilterDocType(e.target.value);}},
+        ce("option",{value:"all"},"Wszystkie typy"),
+        DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);})),
+      ce("button",{onClick:function(){p.onNew&&p.onNew(tab);},style:btnPrimary},
+        tab==="zakup"?"+ Nowy wydatek":"+ Nowa faktura"),
+      ce("button",{onClick:p.onSettings,style:btnSecondary},"⚙️ Ustawienia"),
       ce("button",{onClick:function(){setSyncOpen(!syncOpen);},
         style:Object.assign({},btnSecondary,syncOpen?{borderColor:"var(--violet)",color:"var(--violet)"}:{})},
-        "\uD83D\uDD04 Synchronizuj z KSeF")
+        "🔄 Synchronizuj z KSeF")
     ),
 
-    // Panel synchronizacji KSeF (rozwijany)
+    // Panel synchronizacji KSeF (rozwijany) — osobny zakres dat, tylko dla pobierania z KSeF
     syncOpen&&ce("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"flex-end",
       background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,padding:"10px 12px"}},
       ce("div",null,ce("span",{style:label},"Od"),
@@ -1327,19 +1307,28 @@ function InvoiceList(p){
         ce("input",{type:"date",style:Object.assign({},inp,{maxWidth:140}),value:dateTo,
           onChange:function(e){setDateTo(e.target.value);}})),
       ce("button",{onClick:syncKsef,disabled:syncing,style:Object.assign({},btnPrimary,{alignSelf:"flex-end"})},
-        syncing?"\u23F3 Synchronizuj\u0119...":"\uD83D\uDD04 Pobierz z KSeF"),
-      syncErr&&ce("div",{style:{fontSize:12,color:"var(--red)"}},"\u26A0\uFE0F "+syncErr),
+        syncing?"⏳ Synchronizuję...":"🔄 Pobierz z KSeF"),
+      syncErr&&ce("div",{style:{fontSize:12,color:"var(--red)"}},"⚠️ "+syncErr),
       syncMsg&&ce("div",{style:{fontSize:12,color:"var(--gr)"}},syncMsg)
     ),
 
-    // Brak faktur
+    // Rozbicie bieżącej listy wg typu dokumentu (widoczne od razu, ile jest np. EKO)
+    list.length>0&&ce("div",{style:{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}},
+      typeBreakdown.map(function(t){
+        return ce("span",{key:t.key,style:{fontSize:11,fontWeight:600,color:typeColorOf(t.key),
+          background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:20,padding:"3px 10px"}},
+          (TYPE_ICONS[t.key]||"▪")+" "+docTypeLabel(t.key)+": "+t.count);
+      })
+    ),
+
+    // Brak dokumentów
     list.length===0&&ce("div",{style:{textAlign:"center",padding:"40px 0",color:"var(--t3)",fontSize:14}},
-      search||filterDocType!=="all"?"Brak pas\u0105j\u0105cych faktur":"Brak faktur \u2014 kliknij \"+ Nowa faktura\" aby wystawi\u0107 pierwsz\u0105."),
+      search||filterDocType!=="all"?"Brak pasujących dokumentów w wybranym okresie.":"Brak dokumentów w wybranym okresie."),
 
     // Tabela
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
         ["Numer","Typ","Kontrahent","Data","Termin pł.","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=6?"center":"right")}},h);
         })
@@ -1348,6 +1337,8 @@ function InvoiceList(p){
       list.map(function(inv){
         var ps=payStatus(inv);
         var isOverdue=ps.label==="Przeterminowana";
+        var isPurchase=tab==="zakup";
+        var typeLabelStr=(TYPE_ICONS[inv.doc_type]||"📄")+" "+docTypeLabel(inv.doc_type||"vat");
         var cb=function(checked,onToggle){
           return ce("div",{style:{textAlign:"center"}},
             ce("input",{type:"checkbox",checked:!!checked,
@@ -1375,13 +1366,6 @@ function InvoiceList(p){
             ce("div",{style:{fontSize:9,fontWeight:700,marginTop:2,color:ps.color}},ps.label)
           );
         };
-        var isPurchase=invDirection(inv)==="zakup";
-        var purchaseSubtype=(inv.doc_type&&inv.doc_type!=="zakup")
-          ?(DOC_TYPES.find(function(d){return d.id===inv.doc_type;})||{}).label
-          :null;
-        var dirLabel=isPurchase
-          ?("📥 Zakupowa"+(purchaseSubtype?" ("+purchaseSubtype+")":""))
-          :(inv.doc_type==="proforma"?"📄 Proforma":inv.doc_type==="eko"?"🟢 EKO":"📤 Sprzedażowa");
         var snap=inv.seller_snapshot||{};
         // Fallback do buyer_* dla starych rekordów sprzed wprowadzenia seller_snapshot przy synchronizacji
         var contragentName=isPurchase?(snap.name||inv.buyer_name||"—"):(inv.buyer_name||"—");
@@ -1390,7 +1374,7 @@ function InvoiceList(p){
         var rowBg=isOverdue?"var(--red-l)":"var(--bg2)";
         return ce("div",{key:inv.id,
           onClick:function(){ if(isBusy)return; (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv); },
-          style:{display:"grid",gridTemplateColumns:"110px 110px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
             background:rowBg,width:"100%",opacity:isBusy?0.6:1},
           onMouseEnter:function(e){e.currentTarget.style.background=isOverdue?"var(--red-border)":"var(--bg3)";},
@@ -1398,7 +1382,7 @@ function InvoiceList(p){
         },
           ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--violet)"}},
             inv.number||ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},"(szkic)")),
-          ce("div",{style:{fontSize:11,textAlign:"right",color:isPurchase?"var(--gold)":"var(--t2)",fontWeight:isPurchase?600:400}},dirLabel),
+          ce("div",{style:{fontSize:11,textAlign:"right",color:typeColorOf(inv.doc_type),fontWeight:600}},typeLabelStr),
           ce("div",null,
             ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},contragentName.slice(0,40)),
             contragentNip&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},"NIP: "+contragentNip)
@@ -1428,11 +1412,11 @@ function InvoiceList(p){
               onClick:function(e){e.stopPropagation();p.onDuplicate&&p.onDuplicate(inv);},
               title:"Wystaw taką samą fakturę (nowy numer)",
               style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px"}
-            },"\uD83D\uDCCB"),
+            },"📋"),
             ce("button",{
               onClick:function(e){e.stopPropagation();if(confirm("Usunąć fakturę?"))p.onDelete(inv.id);},
               style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px"}
-            },"\uD83D\uDDD1"))
+            },"🗑"))
         );
       })
     )
@@ -2032,13 +2016,16 @@ export function ScreenInvoices(p){
       });
   },[]);
 
-  function openNew(){
+  function openNew(dir){
     // Jeśli brak ustawień sprzedawcy — wymuś najpierw konfigurację
     if(!settings||!settings.seller_name){
       setView("settings");
       return;
     }
-    setEditInv(null);
+    // dir przychodzi z aktywnej zakładki listy (Przychody/Wydatki) — dzięki temu
+    // "+ Nowy wydatek" od razu otwiera edytor z direction="zakup", zamiast zawsze
+    // domyślnego "sprzedaz" wewnątrz InvoiceEditor.
+    setEditInv(dir==="zakup"?{direction:"zakup"}:null);
     setView("editor");
   }
   // Pobiera pełny rekord (z invoice_items) przed otwarciem edytora — wiersz z listy
