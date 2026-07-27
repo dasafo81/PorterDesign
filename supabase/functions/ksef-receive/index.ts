@@ -113,6 +113,27 @@ function parseParty(block: string): Party {
   };
 }
 
+// Forma płatności (Platnosc/FormaPlatnosci) — kody wg FA(3), zgodnie z mapowaniem
+// używanym już przy podglądzie faktur w ksef-invoice/index.ts.
+const PAY_METHOD_MAP: Record<string, string> = {
+  "1": "gotówka", "2": "przelew", "3": "karta", "4": "bon", "5": "czek",
+  "6": "kredyt", "7": "mobilna", "8": "skonto",
+};
+function parsePaymentMethod(platnoscB: string): string {
+  if (!platnoscB) return "przelew";
+  const raw = xmlVal(platnoscB, "FormaPlatnosci");
+  if (!raw) return "przelew";
+  return PAY_METHOD_MAP[raw] || raw.toLowerCase();
+}
+// Platnosc/Zaplacono: "1"=Tak, "2"=Nie (ta sama konwencja co pozostale flagi Adnotacje
+// w FA(3), np. P_17/P_18/P_19 — "2" jako domyslna odpowiedz przecząca). Dzięki temu
+// np. faktura za paliwo pobrana z KSeF, opłacona od razu przy zakupie, trafia na listę
+// z automatycznie odhaczonym "Zapłacono" zamiast wymagać ręcznego zaznaczenia.
+function parsePaidFlag(platnoscB: string): boolean {
+  if (!platnoscB) return false;
+  return xmlVal(platnoscB, "Zaplacono") === "1";
+}
+
 function parseFA(xml: string) {
   const fa = xmlBlock(xml, "Fa");
   const p1 = xmlBlock(xml, "Podmiot1"); // sprzedawca na fakturze
@@ -150,6 +171,8 @@ function parseFA(xml: string) {
     total_vat: totalVatFromItems,
     currency: xmlVal(xml, "KodWaluty") || "PLN",
     notes: xmlVal(xml, "P_Opis"),
+    payment_method: parsePaymentMethod(platnoscB),
+    paid: parsePaidFlag(platnoscB),
     seller_party: seller, buyer_party: buyer, bank,
   };
 }
@@ -456,7 +479,7 @@ async function saveInvoices(
       // nie przejdzie walidacji (lista faktur sortuje po issue_date, wiec null bylby bolesny).
       const metaIssue = String(meta.issueDate || "").slice(0, 10);
 
-      const record = {
+      const record: Record<string, unknown> = {
         tenant_id: tenantId, doc_type: docType, status: isIncoming ? "received" : "issued",
         direction: isIncoming ? "zakup" : "sprzedaz",
         ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
@@ -466,10 +489,19 @@ async function saveInvoices(
         due_date: asDate(parsed.due_date, "due_date", ksefNum),
         total_net: asNum(parsed.total_net), total_vat: asNum(parsed.total_vat), total_gross: asNum(parsed.total_gross),
         currency: parsed.currency || "PLN", notes: parsed.notes || "",
+        payment_method: parsed.payment_method || "przelew",
         buyer_name: buyerParty.name || "", buyer_nip: buyerParty.nip || "",
         buyer_address: buyerParty.address || "", buyer_postal: "", buyer_city: buyerParty.addrLine2 || "",
         seller_snapshot: sellerSnapshot, xml_payload: xml, updated_at: new Date().toISOString(),
       };
+      // Faktura ma w XML jawne "Zaplacono=1" (np. paragon-faktura za paliwo, opłacona od razu
+      // przy zakupie) — odhaczamy "Zapłacono" automatycznie. Gdy XML tego nie potwierdza,
+      // NIE nadpisujemy payment_status na "unpaid" przy każdym sync — to nadpisałoby ręczne
+      // odhaczenie zrobione wcześniej w aplikacji.
+      if (parsed.paid) {
+        record.payment_status = "paid";
+        record.paid_amount = asNum(parsed.total_gross);
+      }
 
       let invoiceId: string | null = null;
       if (ex) {
