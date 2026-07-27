@@ -149,10 +149,9 @@ function parseFA(xml: string) {
   // w schemacie FA(3) (kwoty netto/VAT są tam rozbite per stawka: P_13_1/P_14_1 (23%),
   // P_13_2/P_14_2 (8%), P_13_3/P_14_3 (5%), P_13_6_1 (0%), P_13_7 (zw), nigdy jako jedna
   // suma). xmlVal(xml,"P_13_Razem") zawsze zwracał "" → 0, więc KAŻDA synchronizacja
-  // z KSeF zerowała total_net/total_vat zapisanej faktury, mimo że total_gross (z P_15,
-  // które realnie istnieje) zostawał poprawny. Liczymy sumy z rzeczywistych pozycji
-  // (parseItems już poprawnie czyta P_11/P_9A/P_12 per wiersz — na tym samym opiera się
-  // zapis invoice_items chwilę niżej w handlerze).
+  // z KSeF zerowała total_net/total_vat zapisanej faktury. Liczymy sumy z rzeczywistych
+  // pozycji (parseItems już poprawnie czyta P_11/P_9A/P_12 per wiersz — na tym samym
+  // opiera się zapis invoice_items chwilę niżej w handlerze).
   const faItems = parseItems(xml);
   const totalNetFromItems = +(faItems.reduce(function(s, it) { return s + (it.line_net || 0); }, 0)).toFixed(2);
   const totalVatFromItems = +(faItems.reduce(function(s, it) { return s + (it.line_vat || 0); }, 0)).toFixed(2);
@@ -166,7 +165,13 @@ function parseFA(xml: string) {
     // Dla faktur okresowych P_6 moze byc zastapione przez OkresFa/P_6_Od.
     sale_date: xmlVal(xml, "P_6") || xmlVal(xml, "P_6_Od") || issueDate,
     due_date: parseDueDate(xml, fa, issueDate),
-    total_gross: +(xmlVal(xml, "P_15") || 0),
+    // Wczesniej: `+(xmlVal(xml, "P_15") || 0)` — surowa konwersja JS bez przejscia przez
+    // numVal(). Niektorzy dostawcy (KSeF) zapisuja P_15 z przecinkiem dziesietnym
+    // ("1234,56"); `+"1234,56"` daje NaN, a NaN przy zapisie do bazy zamienial sie w 0.
+    // Pozycje (P_9A/P_11/P_12) zawsze szly przez numVal (bezpieczny dla przecinka), wiec
+    // faktura zapisywala sie z poprawnymi invoice_items, ale zerowym naglowkiem total_gross
+    // — to bylo widoczne jako "faktury z kwota 0 zl mimo pozycji" (zgloszenie 2026-07-27).
+    total_gross: numVal(xmlVal(xml, "P_15")),
     total_net: totalNetFromItems,
     total_vat: totalVatFromItems,
     currency: xmlVal(xml, "KodWaluty") || "PLN",
