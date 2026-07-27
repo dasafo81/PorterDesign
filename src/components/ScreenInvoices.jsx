@@ -369,6 +369,55 @@ function InvoiceEditor(p){
   var totalVat=totalsPerRate.reduce(function(a,r){return a+r.vat;},0);
   var totalGross=totalsPerRate.reduce(function(a,r){return a+r.gross;},0);
 
+  // \u2500\u2500 Rabat kwotowy \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Rabat podawany jest jako kwota BRUTTO i rozk\u0142adany proporcjonalnie na wszystkie
+  // pozycje (obni\u017ca ceny jednostkowe). \u015awiadomie NIE dodajemy osobnej pozycji ujemnej:
+  // FA(3) dopuszcza warto\u015bci ujemne wy\u0142\u0105cznie dla faktur koryguj\u0105cych, wi\u0119c rabat jako
+  // osobny wiersz wywraca\u0142by walidacj\u0119 KSeF. Przy rozbiciu proporcjonalnym sumy
+  // netto/VAT/brutto, invoice_items, PDF i XML FA(3) zostaj\u0105 sp\u00f3jne bez zmian schematu.
+  var [discountInput,setDiscountInput]=useState("");
+  var discountVal=Math.max(0,+(String(discountInput).replace(",","."))||0);
+
+  function applyDiscount(){
+    if(items.length===0){setErr("Najpierw dodaj pozycje faktury");return;}
+    if(discountVal<=0){setErr("Podaj kwot\u0119 rabatu");return;}
+    var baseGross=+(items.reduce(function(a,it){return a+(+it.line_gross||0);},0).toFixed(2));
+    if(baseGross<=0){setErr("Pozycje faktury maj\u0105 zerow\u0105 warto\u015b\u0107");return;}
+    if(discountVal>=baseGross){setErr("Rabat nie mo\u017ce by\u0107 r\u00f3wny ani wi\u0119kszy ni\u017c warto\u015b\u0107 faktury");return;}
+    setErr(null);
+
+    var targetGross=+((baseGross-discountVal).toFixed(2));
+    var factor=targetGross/baseGross;
+
+    function reprice(it,newLineGross){
+      var q=+(it.quantity)||1;
+      var ug=+((newLineGross/q).toFixed(4));
+      var nums=calcLineFromGross(ug,q,it.vat_rate);
+      return Object.assign({},it,nums,{unit_gross:ug});
+    }
+
+    var next=items.map(function(it){
+      return reprice(it,+(((+it.line_gross||0)*factor).toFixed(2)));
+    });
+
+    // Korekta zaokr\u0105gle\u0144 \u2014 r\u00f3\u017cnic\u0119 groszow\u0105 dorzucamy do pozycji o najwi\u0119kszej warto\u015bci
+    var sumGross=+(next.reduce(function(a,it){return a+(+it.line_gross||0);},0).toFixed(2));
+    var diff=+((targetGross-sumGross).toFixed(2));
+    if(diff!==0&&next.length){
+      var bi=0;
+      next.forEach(function(it,i){if((+it.line_gross||0)>(+next[bi].line_gross||0))bi=i;});
+      next[bi]=reprice(next[bi],+(((+next[bi].line_gross||0)+diff).toFixed(2)));
+    }
+
+    setItems(next);
+    var noteLine="Uwzgl\u0119dniono rabat "+fmtMoney(discountVal)+" (ceny pozycji obni\u017cone proporcjonalnie).";
+    setNotes(function(prev){
+      if(prev&&prev.indexOf(noteLine)>=0)return prev;
+      return (prev?prev.replace(/\s*$/,"")+"\n":"")+noteLine;
+    });
+    setDiscountInput("");
+  }
+
   function validate(){
     if(!buyerName.trim()) return direction==="zakup"?"Brak nazwy sprzedawcy (kontrahenta)":"Brak nazwy nabywcy";
     // EKO (niezależnie od kierunku) ma własną, automatyczną numerację (EKO/nr/MM) —
@@ -605,6 +654,19 @@ function InvoiceEditor(p){
       ce("button",{onClick:addItem,
         style:Object.assign({},btnSecondary,{marginTop:10,fontSize:12})
       },"+ Dodaj pozycję"),
+
+      // Rabat kwotowy \u2014 obni\u017ca ceny pozycji proporcjonalnie (patrz applyDiscount)
+      ce("div",{style:{marginTop:14,paddingTop:12,borderTop:"1px dashed var(--bd2)",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
+        ce("span",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em"}},"\uD83C\uDFF7\uFE0F Rabat kwotowy"),
+        ce("input",{style:Object.assign({},inpSm,{width:110,textAlign:"right"}),value:discountInput,inputMode:"decimal",placeholder:"0,00",
+          onChange:function(e){setDiscountInput(e.target.value);}}),
+        ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł brutto"),
+        ce("button",{onClick:applyDiscount,disabled:discountVal<=0||items.length===0,
+          style:Object.assign({},btnSecondary,{fontSize:12,padding:"6px 14px"},(discountVal<=0||items.length===0)?{opacity:0.5,cursor:"not-allowed"}:{})},"Zastosuj"),
+        discountVal>0&&discountVal<totalGross
+          ?ce("span",{style:{fontSize:11,color:"var(--t3)"}},"po rabacie: "+fmtMoney(totalGross-discountVal))
+          :null
+      ),
 
       // Podsumowanie VAT per stawka
       ce("div",{style:{marginTop:16,borderTop:"1px solid var(--bd2)",paddingTop:12}},
