@@ -13,13 +13,13 @@ var DOC_TYPES = [
   {id:"eko",      label:"Dokument EKO (gotówkowy, 0% VAT)"},
 ];
 // Typy dostępne w FILTRZE listy — to NIE to samo co DOC_TYPES (lista wyboru w edytorze).
-// Synchronizacja z KSeF zapisuje faktury zakupowe z doc_type='zakup' (patrz saveInvoices
-// w supabase/functions/ksef-receive), a tego typu nie ma i nie powinno być w DOC_TYPES,
-// bo w edytorze kierunek zakup/sprzedaż jest osobnym polem (direction). Bez tej osobnej
-// listy filtr `filterDocTypes.indexOf(inv.doc_type)` odrzucał KAŻDĄ fakturę zakupową
-// z KSeF — nawet przy wszystkich zaznaczonych checkboxach — więc zsynchronizowane
-// faktury były w bazie, ale nigdy nie pojawiały się na liście Wydatków.
-var FILTER_DOC_TYPES = DOC_TYPES.concat([{id:"zakup", label:"Faktura zakupowa (z KSeF)"}]);
+// doc_type='zakup' to stary model, w którym kierunek faktury był zakodowany w typie
+// dokumentu. Migracja 0021 przepisała te rekordy na właściwy typ (vat/korekta/zaliczka)
+// + direction='zakup', a ksef-receive już takich nie tworzy. Zostawiamy tu ten wpis jako
+// siatkę bezpieczeństwa: gdyby gdziekolwiek został niezmigrowany rekord, filtr ma go
+// pokazać, a nie ukryć (wcześniej brak 'zakup' w tej liście ukrywał WSZYSTKIE faktury
+// zakupowe z KSeF — były w bazie, ale nigdy nie pojawiały się na liście Wydatków).
+var FILTER_DOC_TYPES = DOC_TYPES.concat([{id:"zakup", label:"Zakupowa (stary model)"}]);
 var PAYMENT_METHODS = ["przelew","gotówka","karta","BLIK"];
 var UNITS = ["szt","m","m²","mb","kpl","usługa","godz"];
 
