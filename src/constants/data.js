@@ -2776,6 +2776,24 @@ export const PLISA_IV =[
 // Dopłata za osprzęt w kolorach drewnopodobnych — zależna wyłącznie od szerokości (mm)
 export const PLISA_OSPRZET_DOPLATA ={400:13,500:16,600:18,700:20,800:24,900:27,1000:30,1100:32,1200:34,1300:37};
 
+// Dopłata za drabinkę podtrzymującą tkaninę — zależna od wysokości (mm) i pasma szerokości:
+// [do 400mm, od 400 do 700mm, od 700 do 1300mm]
+export const PLISA_DRABINKA_DOPLATA ={
+  800:[46,50,52], 900:[46,50,53], 1000:[47,51,54], 1100:[47,52,55], 1200:[49,52,56],
+  1300:[49,53,57], 1400:[49,53,57], 1500:[50,54,58], 1600:[50,55,60], 1700:[51,55,61],
+  1800:[51,56,62], 1900:[52,57,65], 2000:[52,57,65], 2100:[52,58,66], 2200:[53,58,67],
+  2300:[53,60,68], 2400:[54,61,69], 2500:[54,61,70]
+};
+export function plisaDrabinkaDoplata(wMm,hMm){
+  var hi=PLISA_HEIGHTS.findIndex(function(h){return h>=hMm;});
+  var hUsed=hi>=0?PLISA_HEIGHTS[hi]:PLISA_HEIGHTS[PLISA_HEIGHTS.length-1];
+  var row=PLISA_DRABINKA_DOPLATA[hUsed];
+  if(!row)return 0;
+  if(wMm<=400)return row[0];
+  if(wMm<=700)return row[1];
+  return row[2];
+}
+
 // Kolory osprzętu — standardowe (bez dopłaty) i drewnopodobne (z dopłatą wg PLISA_OSPRZET_DOPLATA)
 export const PLISA_OSPRZET_KOLORY =[
   {v:"bialy",          l:"Biały",          drewno:false},
@@ -3116,6 +3134,11 @@ export function calc(p){
         total+=plDop;
         lines.push("+ Dop\u0142ata osprz\u0119t drewnopodobny +"+plDop+" z\u0142");
       }
+    }
+    if(c.plDrabinka==="tak"){
+      var plDrab=plisaDrabinkaDoplata(wMm,hMm);
+      total+=plDrab;
+      lines.push("+ Drabinka podtrzymuj\u0105ca tkanin\u0119 +"+plDrab+" z\u0142");
     }
   }else if(p.type==="karnisz"){
     var lenK=par.len||0,pt=par.pt||0,arc=par.arc||0,qty=par.qty||1;
