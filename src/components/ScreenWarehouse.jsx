@@ -149,14 +149,18 @@ function ModalScrap(p) {
   var s4 = useState(false);         var customColor = s4[0]; var setCustomColor = s4[1];
   var s5 = useState(false);         var busy = s5[0]; var setBusy = s5[1];
   var s6 = useState(null);          var err = s6[0]; var setErr = s6[1];
+  var s7 = useState(1);             var qty = s7[0]; var setQty = s7[1];
 
   var COLORS = ["biała", "czarna", "off white", "inna"];
 
   function save() {
     var l = parseInt(len);
     if (!l || l < 1) { setErr("Podaj długość w cm"); return; }
+    var n = Math.max(1, parseInt(qty) || 1);
     setBusy(true); setErr(null);
-    sbApi.addRailScrap({ length_cm: l, rail_type: railType, color: color.trim(), notes: "" })
+    var rows = [];
+    for (var i = 0; i < n; i++) rows.push({ length_cm: l, rail_type: railType, color: color.trim(), notes: "" });
+    sbApi.addRailScraps(rows)
       .then(function() { p.onSave(); })
       .catch(function(e) { setErr(e.message || "Błąd zapisu"); setBusy(false); });
   }
@@ -186,6 +190,17 @@ function ModalScrap(p) {
         )
       ),
 
+      ce("div", { style: { marginBottom: 16 } },
+        ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Ilo\u015b\u0107 sztuk"),
+        ce("div", { style: { display: "flex", alignItems: "center", gap: 10 } },
+          ce("button", { onClick: function() { setQty(Math.max(1, (parseInt(qty) || 1) - 1)); },
+            style: { border: "1.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, fontWeight: 700 } }, "\u2212"),
+          ce("div", { style: { fontSize: 18, fontWeight: 800, minWidth: 32, textAlign: "center", color: "var(--t1)" } }, qty),
+          ce("button", { onClick: function() { setQty((parseInt(qty) || 1) + 1); },
+            style: { border: "1.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", fontSize: 16, fontWeight: 700 } }, "+")
+        )
+      ),
+
       ce("div", { style: { marginBottom: 22 } },
         ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Kolor"),
         ce("div", { style: { display: "flex", gap: 6, flexWrap: "wrap" } },
@@ -205,7 +220,7 @@ function ModalScrap(p) {
 
       ce("div", { style: { display: "flex", gap: 10 } },
         ce("button", { onClick: p.onClose, style: { flex: 1, padding: 12, borderRadius: 10, border: "1.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)", fontSize: 13, fontWeight: 600, cursor: "pointer" } }, "Anuluj"),
-        ce("button", { onClick: save, disabled: busy, style: { flex: 2, padding: 12, borderRadius: 10, border: "none", background: "var(--violet)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1 } }, busy ? "Dodaję..." : "+ Dodaj ścinkę")
+        ce("button", { onClick: save, disabled: busy, style: { flex: 2, padding: 12, borderRadius: 10, border: "none", background: "var(--violet)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1 } }, busy ? "Dodaję..." : ((parseInt(qty) || 1) > 1 ? "+ Dodaj " + (parseInt(qty) || 1) + " szt." : "+ Dodaj ścinkę"))
       )
     )
   );
@@ -294,7 +309,7 @@ function TabRails(p) {
     // Nagłówek
     ce("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 10 } },
       ce("div", null,
-        ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCCF \u015acinki szyn KS"),
+        ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCCF Szyny KS"),
         ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } }, filtered.length + " szt.")
       ),
       ce("button", { onClick: function() { setShowModal(true); },
@@ -869,7 +884,7 @@ export function ScreenWarehouse(p) {
   var tabs = [
     { id: "warehouse", label: "Magazyn", icon: "\uD83D\uDCE6" },
     { id: "catalog",   label: "Katalog", icon: "\uD83D\uDCD1" },
-    { id: "rails",     label: "Szyny KS \u2014 \u015bcinki", icon: "\uD83D\uDCCF" }
+    { id: "rails",     label: "Szyny KS", icon: "\uD83D\uDCCF" }
   ];
 
   return ce("div", { style: { padding: "0 4px" } },
