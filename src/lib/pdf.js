@@ -248,7 +248,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||pluralProd(d.type,d.count));
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=(d.type==="zaslona"||d.type==="firana");
-      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek");
+      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow");
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
       var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
       items.push({label:labelHTML,total:d.total});
@@ -400,7 +400,7 @@ export function buildSimplifiedRows(client,selection,comm){
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
       var extra=d.sewings.length>0?" ("+d.sewings.join(", ")+")":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
-      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek";
+      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow";
       var qtyTag=hasQty&&d.count>1?" ("+d.count+" szt.)":"";
       var label=lbl+(isKpl?" (kpl.)":"")+qtyTag+extra;
       items.push({label:label,total:d.total});
