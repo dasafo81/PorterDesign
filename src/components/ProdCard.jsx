@@ -1708,6 +1708,12 @@ export function ProdCard(p){
           ce("option",{value:""},"-- wybierz kolor --"),
           PLISA_OSPRZET_KOLORY.map(function(k){return ce("option",{key:k.v,value:k.v},k.l+(k.drewno?" (drewnopodobny)":""));})
         )
+      ),
+      ce("div",{style:{marginTop:12}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:c.plDrabinka==="tak",onChange:function(ev){sc("plDrabinka",ev.target.checked?"tak":null);}}),
+          "Drabinka podtrzymuj\u0105ca tkanin\u0119 (dop\u0142ata wg wymiaru)"
+        )
       )
     );
   }else if(prod.type==="inny"){
