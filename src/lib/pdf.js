@@ -438,19 +438,13 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
     var winBodies=rd.windows.map(function(wd){
       var rb=wd.isVariant?"#eeece9":"#f5ede0";var hc="#1a1a18";
       var wTotal=(wd.items||[]).reduce(function(a,it){return a+(+it.total||0);},0);
-      var body;
-      if(wd.items.length===1){
-        body="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wd.label+"<br><span style=\"font-size:9px;font-weight:400;color:#888;\">"+wd.items[0].label+"</span></td>"
-            +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wTotal)+" z\u0142</td></tr>";
-      }else{
-        var rows=wd.items.map(function(it){
-          return "<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+it.label+"</td>"
-               +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(+it.total||0)+" z\u0142</td></tr>";
-        }).join("");
-        var totalRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wd.label+"</td>"
-                    +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wTotal)+" z\u0142</td></tr>";
-        body=rows+totalRow;
-      }
+      var rows=wd.items.map(function(it){
+        return "<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+it.label+"</td>"
+             +"<td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(+it.total||0)+" z\u0142</td></tr>";
+      }).join("");
+      var totalRow="<tr style=\"background:"+rb+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+hc+"\">"+wd.label+"</td>"
+                  +"<td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+hc+"\">"+roundTo10(wTotal)+" z\u0142</td></tr>";
+      var body=rows+totalRow;
       return "<table style=\"width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><colgroup><col><col style=\"width:30mm;\"></colgroup><tbody>"+body+"</tbody></table>";
     }).join("");
     var roomTotal=rd.windows.reduce(function(a,wd){return a+(wd.items||[]).reduce(function(b,it){return b+(+it.total||0);},0);},0);
