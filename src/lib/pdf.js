@@ -413,7 +413,7 @@ export function buildSimplifiedRows(client,selection,comm){
     var winsData=[];var roomTotal=0;
     wins.forEach(function(w){var wr=buildWinRowsSel([w]);if(!wr.total)return;
       var isV=!!w.variantGroup;
-      var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(w.name||"Okno");
+      var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(w.name||"Razem");
       winsData.push({winId:w.id,label:wLabel,isVariant:isV,items:wr.items,total:wr.total});
       roomTotal+=wr.total;
     });
