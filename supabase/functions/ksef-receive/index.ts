@@ -48,6 +48,20 @@ function xmlAll(xml: string, tag: string): string[] {
 }
 function numVal(s: unknown): number { return parseFloat(String(s || "").replace(",", ".")) || 0; }
 
+// ── Typ dokumentu z metadanych KSeF ────────────────────────────────────────
+// KSeF podaje w metadanych `invoiceType`: Vat | Kor | Zal | Roz | Upr | KorZal | KorRoz.
+// Mapujemy to na nasza taksonomie doc_type (DOC_TYPES w ScreenInvoices.jsx), zamiast
+// wpisywac wszystkim 'zakup'/'vat' na sztywno. Dzieki temu korekta z KSeF jest u nas
+// korekta (widoczna w filtrze, nie udaje zwyklej faktury z ujemna kwota).
+// Fallback 'vat' — nieznany/brak typu traktujemy jak zwykla fakture, zeby nigdy nie
+// zgubic dokumentu przez nierozpoznany kod.
+function docTypeFromMeta(meta: Record<string, unknown>): string {
+  const t = String(meta.invoiceType || "").toLowerCase();
+  if (t.startsWith("kor")) return "korekta";   // Kor, KorZal, KorRoz
+  if (t === "zal") return "zaliczka";
+  return "vat";                                 // Vat, Roz, Upr, nieznane
+}
+
 // ── Twarda walidacja przed zapisem do bazy ─────────────────────────────────
 // Regexowy parser XML potrafi trafic w nieoczekiwany tag (np. wyciagnal "Zielonka"
 // do kolumny typu `date` => Postgres 22007 i porzucenie calej faktury). Do kolumn
@@ -430,7 +444,7 @@ async function loadStoredXml(invoiceId: string, sbH: Record<string, string>): Pr
 
 async function saveInvoices(
   metaHeaders: Record<string, unknown>[],
-  baseUrl: string, accessToken: string, tenantId: string, service: string, docType: string,
+  baseUrl: string, accessToken: string, tenantId: string, service: string, direction: string,
   deadlineAt: number,
   existing: { idByKsef: Map<string, string>; byNumber: Map<string, string>; xmlPresent: Set<string>; itemsPresent: Set<string> }
 ): Promise<{ saved: number; repaired: number; skipped: number; remaining: number; errors: unknown[] }> {
@@ -440,7 +454,12 @@ async function saveInvoices(
   let skipped = 0;
   let remaining = 0;
   const errors: unknown[] = [];
-  const isIncoming = docType === "zakup";
+  // Kierunek (zakup/sprzedaz) jest teraz przekazywany JAWNIE, a nie wnioskowany z doc_type.
+  // Wczesniej `isIncoming = docType === "zakup"` mieszalo dwa niezalezne pojecia: czym
+  // dokument JEST (faktura/korekta/zaliczka) z tym, w KTORA strone idzie. Skutek: kazda
+  // faktura zakupowa ladowala jako doc_type='zakup', przez co korekty zakupowe (KSeF
+  // invoiceType='Kor', kwoty ujemne) udawaly zwykle faktury i nie dalo sie ich odfiltrowac.
+  const isIncoming = direction === "zakup";
 
   for (const meta of metaHeaders) {
     const ksefNum = String(meta.ksefNumber || meta.ksefReferenceNumber || "");
@@ -500,13 +519,18 @@ async function saveInvoices(
       // brak terminu platnosci) — pomijamy, sync mozna powtorzyc pozniej.
       if (!xml) { errors.push({ ksefNum, err: diag || "brak XML z KSeF — pominieto" }); continue; }
       const parsed = parseFA(xml);
+      // Typ dokumentu wyliczany per faktura z metadanych KSeF (nie z kierunku) — patrz docTypeFromMeta.
+      const docType = docTypeFromMeta(meta);
 
       // Fallback: dopasowanie po ksef_number zawiodlo (np. lokalna faktura ma zapisany
       // numer sesji zamiast finalnego numeru KSeF — polling w ksef-send nie potwierdzil
       // go na czas). Probujemy po wlasnym numerze faktury (doc_type+number), zanim
       // zdecydujemy sie utworzyc nowy rekord — bez tego kazdy taki przypadek dawal duplikat.
+      // Sprawdzamy tez klucz ze starym doc_type='zakup': rekordy zsynchronizowane przed
+      // migracja 0021 maja go w bazie, wiec bez tego sync utworzylby ich duplikaty.
       if (!ex && parsed.number) {
-        const fallbackId = existing.byNumber.get(docType + "|" + parsed.number);
+        const fallbackId = existing.byNumber.get(docType + "|" + parsed.number)
+          || (isIncoming ? existing.byNumber.get("zakup|" + parsed.number) : undefined);
         if (fallbackId) ex = fallbackId;
       }
 
@@ -525,7 +549,7 @@ async function saveInvoices(
 
       const record: Record<string, unknown> = {
         tenant_id: tenantId, doc_type: docType, status: isIncoming ? "received" : "issued",
-        direction: isIncoming ? "zakup" : "sprzedaz",
+        direction: direction,
         ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
         number: parsed.number || ksefNum,
         issue_date: asDate(parsed.issue_date, "issue_date", ksefNum) || asDate(metaIssue, "meta.issueDate", ksefNum),
@@ -608,8 +632,8 @@ Deno.serve(async (req: Request) => {
     // UWAGA: sekwencyjnie, nie Promise.all — rownolegle wywolania podwajaly tempo zapytan
     // do KSeF i omijaly wspolny throttle (limit 8 zad./s => HTTP 429).
     const empty = { saved: 0, repaired: 0, skipped: 0, remaining: 0, errors: [] as unknown[] };
-    const inRes  = inH.length  ? await saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, "zakup", deadlineAt, existing) : empty;
-    const outRes = outH.length ? await saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, "vat",   deadlineAt, existing) : empty;
+    const inRes  = inH.length  ? await saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, "zakup",    deadlineAt, existing) : empty;
+    const outRes = outH.length ? await saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, "sprzedaz", deadlineAt, existing) : empty;
 
     const remaining = inRes.remaining + outRes.remaining;
     const repaired = inRes.repaired + outRes.repaired;
