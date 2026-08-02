@@ -599,6 +599,14 @@ Deno.serve(async (req: Request) => {
     if (dir === "incoming" || dir === "all") inH  = await queryMetadata(baseUrl as string, accessToken as string, "subject2", from, to);
     if (dir === "outgoing" || dir === "all") outH = await queryMetadata(baseUrl as string, accessToken as string, "subject1", from, to);
 
+    // DEBUG TYMCZASOWY (do usuniecia po diagnozie): zrzut surowych metadanych z KSeF
+    // do logow Edge Function — zeby ustalic czy brakujaca faktura w ogole jest w odpowiedzi
+    // KSeF (a ginie dopiero w naszym przetwarzaniu), czy KSeF jej nam w ogole nie zwraca
+    // (blad zapytania/kontekstu sesji). Sprawdzic w Supabase Dashboard -> Edge Functions ->
+    // ksef-receive -> Logs, szukajac "DEBUG" i NIP-u kontrahenta bez myslnikow (np. 5831932281).
+    console.log("DEBUG incoming count:", inH.length, JSON.stringify(inH));
+    console.log("DEBUG outgoing count:", outH.length, JSON.stringify(outH));
+
     // Budzet czasu na przetwarzanie faktur — zostawiamy margines przed twardym limitem
     // Edge Function (~150 s), zeby zdazyc zwrocic odpowiedz zamiast dostac 504 z gatewaya.
     const deadlineAt = startedAt + 95_000;
