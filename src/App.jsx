@@ -1734,15 +1734,19 @@ export function App(p){
           return ce("div",{key:rd.roomId||ri,style:{marginBottom:14}},
             ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--t1)",marginBottom:6,textTransform:"uppercase",letterSpacing:"0.04em"}},"\uD83C\uDFE0 "+rd.name),
             rd.windows.map(function(wd,wi){
+              var wdTotal=wd.items.reduce(function(a,it){return a+(+it.total||0);},0);
               return ce("div",{key:wd.winId||wi,style:{padding:"10px 12px",background:"var(--bg2)",borderRadius:10,marginBottom:6,border:"1px solid var(--bd3)"}},
-                ce("input",{type:"text",value:wd.label,onChange:function(ev){setSimplWinLabel(ri,wi,ev.target.value);},style:{width:"100%",padding:"6px 8px",fontSize:12,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",marginBottom:6}}),
                 wd.items.map(function(it,ii){
                   return ce("div",{key:ii,style:{display:"flex",alignItems:"center",gap:8,marginBottom:4}},
                     ce("input",{type:"text",value:it.label,onChange:function(ev){setSimplItemField(ri,wi,ii,"label",ev.target.value);},style:{flex:1,padding:"6px 8px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}}),
                     ce("input",{type:"text",inputMode:"decimal",value:it.total,onChange:function(ev){setSimplItemField(ri,wi,ii,"total",ev.target.value);},style:{width:90,padding:"6px 8px",fontSize:12,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
                     ce("span",{style:{fontSize:11,color:"var(--t3)"}},"zł")
                   );
-                })
+                }),
+                ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:8,paddingTop:8,borderTop:"1px dashed var(--bd2)"}},
+                  ce("input",{type:"text",value:wd.label,onChange:function(ev){setSimplWinLabel(ri,wi,ev.target.value);},style:{flex:1,padding:"6px 8px",fontSize:12,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}}),
+                  ce("span",{style:{fontSize:13,fontWeight:700,color:"var(--gr)",whiteSpace:"nowrap"}},roundTo10(wdTotal)+" zł")
+                )
               );
             })
           );
