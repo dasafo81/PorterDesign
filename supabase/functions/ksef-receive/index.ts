@@ -599,16 +599,6 @@ Deno.serve(async (req: Request) => {
     if (dir === "incoming" || dir === "all") inH  = await queryMetadata(baseUrl as string, accessToken as string, "subject2", from, to);
     if (dir === "outgoing" || dir === "all") outH = await queryMetadata(baseUrl as string, accessToken as string, "subject1", from, to);
 
-    // DEBUG TYMCZASOWY (do usuniecia po diagnozie): szukamy konkretnej brakujacej faktury
-    // (Margo Textil, nr 6966/26/H, wystawiona 2026-07-30) w surowej odpowiedzi KSeF —
-    // zeby ustalic czy KSeF w ogole nam ja zwraca (a ginie dopiero w naszym przetwarzaniu),
-    // czy KSeF jej nam nie zwraca wcale. Pelny JSON.stringify(inH) w poprzedniej wersji
-    // ucinal sie w logach Supabase przy 48 elementach — zawezone do jednej czytelnej linijki.
-    // Sprawdzic w Supabase Dashboard -> Edge Functions -> ksef-receive -> Logs, szukajac "DEBUG".
-    const debugTarget = inH.find((it) => JSON.stringify(it).includes("6966"));
-    console.log("DEBUG total incoming:", inH.length, "total outgoing:", outH.length);
-    console.log("DEBUG faktura 6966/26/H w odpowiedzi KSeF:", debugTarget ? JSON.stringify(debugTarget) : "BRAK w odpowiedzi KSeF (zapytanie jej nie zwraca)");
-
     // Budzet czasu na przetwarzanie faktur — zostawiamy margines przed twardym limitem
     // Edge Function (~150 s), zeby zdazyc zwrocic odpowiedz zamiast dostac 504 z gatewaya.
     const deadlineAt = startedAt + 95_000;
