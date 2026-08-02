@@ -1166,6 +1166,24 @@ export function ProdCard(p){
               ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"materia\u0142 80 z\u0142/mb + 50% do szycia")
             )
           )
+        ),
+        ce("div",{style:{marginTop:12}},
+          ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.rDachowe==="tak"?"var(--t1)":"var(--bd2)"),background:c.rDachowe==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
+            ce("input",{type:"checkbox",checked:c.rDachowe==="tak",onChange:function(ev){sc("rDachowe",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
+            ce("div",{},
+              ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Rolety rzymskie dachowe"),
+              ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"cena +320 z\u0142")
+            )
+          )
+        ),
+        ce("div",{style:{marginTop:12}},
+          ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.rBezinw==="tak"?"var(--t1)":"var(--bd2)"),background:c.rBezinw==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
+            ce("input",{type:"checkbox",checked:c.rBezinw==="tak",onChange:function(ev){sc("rBezinw",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
+            ce("div",{},
+              ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Monta\u017c bezinwazyjny"),
+              ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"cena +60 z\u0142")
+            )
+          )
         )
       ),
       // SEKCJA 2: Model rolety
