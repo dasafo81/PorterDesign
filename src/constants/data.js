@@ -3071,6 +3071,10 @@ export function calc(p){
     }
     // Maskownice/boczki
     if(c.rMask==="tak"){total+=50;lines.push("+ Boczki/maskownice +50 z\u0142");}
+    // Rolety rzymskie dachowe
+    if(c.rDachowe==="tak"){total+=320;lines.push("+ Rolety rzymskie dachowe +320 z\u0142");}
+    // Montaż bezinwazyjny
+    if(c.rBezinw==="tak"){total+=60;lines.push("+ Monta\u017c bezinwazyjny +60 z\u0142");}
   }else if(p.type==="shadow"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
     if(!wCm||!hCm)return{total:0,lines:[],warn:null};
@@ -3113,7 +3117,7 @@ export function calc(p){
     var baz;
     if(c.ks==="wave"){baz=parseFloat((lenMb*100).toFixed(2));}
     else baz=parseFloat((lenMb*80).toFixed(2));
-    total=(baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*60).toFixed(2)))*qty;
+    total=(baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*100).toFixed(2)))*qty;
     lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
     if(c.km==="sciana")warn="\u015acienny \u2014 dolicz uchwyty \u015bcienne.";
   }else if(p.type==="plisa"){
@@ -3145,7 +3149,7 @@ export function calc(p){
     if(!lenK)return{total:0,lines:[],warn:null};
     var st=c.km==="universal"?KUNIV:KSLIM;
     var rk=lookup(lenK,st);
-    total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+(KP[c.kc||"brak"]||0)+pt*210+arc*318)*qty;
+    total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+(KP[c.kc||"brak"]||0)+pt*250+arc*318)*qty;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
   }else if(p.type==="prestige_round"||p.type==="prestige_square"){
     var lenP=parseInt(par.len)||0,qty=par.qty||1;
