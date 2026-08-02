@@ -12,6 +12,14 @@ var DOC_TYPES = [
   {id:"korekta",  label:"Faktura Korygująca"},
   {id:"eko",      label:"Dokument EKO (gotówkowy, 0% VAT)"},
 ];
+// Typy dostępne w FILTRZE listy — to NIE to samo co DOC_TYPES (lista wyboru w edytorze).
+// Synchronizacja z KSeF zapisuje faktury zakupowe z doc_type='zakup' (patrz saveInvoices
+// w supabase/functions/ksef-receive), a tego typu nie ma i nie powinno być w DOC_TYPES,
+// bo w edytorze kierunek zakup/sprzedaż jest osobnym polem (direction). Bez tej osobnej
+// listy filtr `filterDocTypes.indexOf(inv.doc_type)` odrzucał KAŻDĄ fakturę zakupową
+// z KSeF — nawet przy wszystkich zaznaczonych checkboxach — więc zsynchronizowane
+// faktury były w bazie, ale nigdy nie pojawiały się na liście Wydatków.
+var FILTER_DOC_TYPES = DOC_TYPES.concat([{id:"zakup", label:"Faktura zakupowa (z KSeF)"}]);
 var PAYMENT_METHODS = ["przelew","gotówka","karta","BLIK"];
 var UNITS = ["szt","m","m²","mb","kpl","usługa","godz"];
 
@@ -1110,7 +1118,7 @@ function InvoiceList(p){
   // Wielokrotny wybór typu dokumentu (jak w Fakturowni: checkboxy zamiast jednego selecta) —
   // domyślnie wszystkie zaznaczone (czyli brak filtrowania). Świadome odznaczenie wszystkiego
   // pokazuje pustą listę — to zgodne z semantyką checkboxów, nie "zapomniany" filtr.
-  var [filterDocTypes,setFilterDocTypes]=useState(function(){return DOC_TYPES.map(function(d){return d.id;});});
+  var [filterDocTypes,setFilterDocTypes]=useState(function(){return FILTER_DOC_TYPES.map(function(d){return d.id;});});
   var [typeFilterOpen,setTypeFilterOpen]=useState(false);
   var [periodPreset,setPeriodPreset]=useState("month"); // month | prevMonth | year | all | custom
   var [customFrom,setCustomFrom]=useState("");
@@ -1231,14 +1239,14 @@ function InvoiceList(p){
   var listTotals=list.reduce(function(a,inv){
     a.net+=(+inv.total_net||0); a.gross+=(+inv.total_gross||0); return a;
   },{net:0,gross:0});
-  var allTypesSelected=filterDocTypes.length===DOC_TYPES.length;
+  var allTypesSelected=filterDocTypes.length===FILTER_DOC_TYPES.length;
   function toggleDocType(id){
     setFilterDocTypes(function(prev){
       return prev.indexOf(id)>=0 ? prev.filter(function(x){return x!==id;}) : prev.concat([id]);
     });
   }
   function toggleAllDocTypes(){
-    setFilterDocTypes(allTypesSelected?[]:DOC_TYPES.map(function(d){return d.id;}));
+    setFilterDocTypes(allTypesSelected?[]:FILTER_DOC_TYPES.map(function(d){return d.id;}));
   }
 
   // Rozbicie aktualnie wyświetlanej listy wg typu dokumentu — widać od razu,
@@ -1321,7 +1329,7 @@ function InvoiceList(p){
         placeholder:"🔍 Szukaj po numerze, nabywcy, NIP..."}),
       ce("button",{onClick:function(){setTypeFilterOpen(!typeFilterOpen);},
         style:Object.assign({},btnSecondary,typeFilterOpen?{borderColor:"var(--violet)",color:"var(--violet)"}:{})},
-        "🏷️ Typ dokumentu ("+filterDocTypes.length+"/"+DOC_TYPES.length+")"),
+        "🏷️ Typ dokumentu ("+filterDocTypes.length+"/"+FILTER_DOC_TYPES.length+")"),
       ce("button",{onClick:function(){p.onNew&&p.onNew(tab);},style:btnPrimary},
         tab==="zakup"?"+ Nowy wydatek":"+ Nowa faktura"),
       ce("button",{onClick:p.onSettings,style:btnSecondary},"⚙️ Ustawienia"),
@@ -1339,7 +1347,7 @@ function InvoiceList(p){
         ce("input",{type:"checkbox",checked:allTypesSelected,onChange:toggleAllDocTypes,
           style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}}),
         "wszystkie"),
-      DOC_TYPES.map(function(d){
+      FILTER_DOC_TYPES.map(function(d){
         return ce("label",{key:d.id,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 4px",cursor:"pointer",fontSize:13,color:"var(--t2)"}},
           ce("input",{type:"checkbox",checked:filterDocTypes.indexOf(d.id)>=0,onChange:function(){toggleDocType(d.id);},
             style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}}),
