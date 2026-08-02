@@ -2745,32 +2745,32 @@ export function rsSuppLookup(tbl,wCm){
 
 
 // ── PLISA OKIENNA ────────────────────────────────────────────────────────────
-// Cennik III Grupy Cenowej wg wymiaru (szerokość × wysokość w mm).
+// Cennik IV Grupy Cenowej wg wymiaru (szerokość × wysokość w mm).
 // Szerokości: 400..1300 co 100 mm
 export const PLISA_WIDTHS =[400,500,600,700,800,900,1000,1100,1200,1300];
 // Wysokości: 800..2500 co 100 mm
 export const PLISA_HEIGHTS=[800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800,1900,2000,2100,2200,2300,2400,2500];
 
 // Wiersze = wysokość (kolejność jak PLISA_HEIGHTS), kolumny = szerokość (kolejność jak PLISA_WIDTHS)
-export const PLISA_III =[
-  [151,173,193,212,230,250,269,297,315,334],
-  [160,183,201,223,245,264,285,313,335,357],
-  [165,189,213,236,258,281,302,333,355,378],
-  [172,198,223,247,272,297,321,351,375,399],
-  [179,208,235,259,284,309,336,370,396,423],
-  [186,216,243,272,299,326,353,389,416,444],
-  [193,224,254,283,312,341,370,409,437,467],
-  [198,234,264,297,326,357,388,427,457,488],
-  [208,241,275,307,340,371,406,446,477,511],
-  [214,250,284,320,352,388,422,464,499,532],
-  [220,259,297,329,366,402,438,482,519,555],
-  [227,267,304,342,380,417,455,501,539,577],
-  [235,276,315,353,394,434,473,521,559,599],
-  [240,284,326,366,409,448,489,539,580,620],
-  [249,294,335,378,422,464,506,557,600,643],
-  [256,302,347,390,435,478,524,577,620,665],
-  [262,309,357,402,448,496,540,594,640,687],
-  [269,321,366,414,462,510,557,614,660,708]
+export const PLISA_IV =[
+  [163,187,209,230,252,275,297,326,348,369],
+  [171,196,220,245,269,294,317,349,371,395],
+  [179,208,234,259,284,309,336,370,396,423],
+  [187,218,246,273,301,328,357,392,422,450],
+  [195,227,258,286,320,348,377,415,446,476],
+  [202,238,270,302,334,366,397,438,469,501],
+  [213,249,282,317,350,385,417,459,496,528],
+  [220,258,296,329,366,402,438,482,519,555],
+  [228,269,307,345,384,422,458,504,542,581],
+  [237,279,321,361,399,439,478,528,567,607],
+  [245,287,331,372,415,457,500,550,592,635],
+  [252,300,344,388,433,476,521,572,616,660],
+  [262,309,355,402,448,496,540,594,640,687],
+  [270,322,369,416,464,512,561,617,666,713],
+  [278,329,381,430,480,530,581,639,689,740],
+  [285,341,392,446,498,550,601,662,713,766],
+  [296,351,406,459,513,567,622,684,738,792],
+  [302,362,416,474,529,586,642,706,764,819]
 ];
 
 // Dopłata za osprzęt w kolorach drewnopodobnych — zależna wyłącznie od szerokości (mm)
@@ -2792,7 +2792,7 @@ export const PLISA_OSPRZET_KOLORY =[
 ];
 
 // Tkaniny plisowane — kolekcje z listą kolorów/kodów (bez wpływu na cenę — cena wynika wyłącznie
-// z wymiaru wg PLISA_III, Grupa III). Wybór ma charakter informacyjny na wycenie/zamówieniu.
+// z wymiaru wg PLISA_IV, Grupa IV). Wybór ma charakter informacyjny na wycenie/zamówieniu.
 export const PLISA_FABRICS =[
   {name:"Binomio",         colors:["AD11","AD12","AD13","AD14","AD15","AD16","AD101","AD102","AD103","AD104","AD105","AD106","AD317"]},
   {name:"Binomio Blackout",colors:["AD301","AD302","AD303","AD304","AD305","AD306","AD307","AD308","AD309","AD310","AD311","AD312","AD313","AD314","AD315","AD316","AD318","AD319","AD320","AD321"]},
@@ -2801,7 +2801,8 @@ export const PLISA_FABRICS =[
   {name:"Linea Blackout",  colors:["ADP301","ADP302","ADP303","ADP304"]},
   {name:"Aura",            colors:["AD521","AD522","AD523","AD524","AD525","AD526"]},
   {name:"Sintra Plain",    colors:["PP151","PP152","PP153","PP154","PP155","PP156","PP157","PP158","PP159","PP160","PP161","PP162","PP163","PP164","PP165","PP166"]},
-  {name:"Sogno Blackout",  colors:["PBO201","PBO202","PBO203","PBO204","PBO205","PBO206","PBO207","PBO208"]}
+  {name:"Sogno Blackout",  colors:["PBO201","PBO202","PBO203","PBO204","PBO205","PBO206","PBO207","PBO208"]},
+  {name:"Allegro Pearl",   colors:["7702","7703","7704","7705","7706","10432","10456","10457","10458","10459","10460","10461","10462","10792","10793","10794","10795","10796","10798"]}
 ];
 
 // Lookup: najbliższa większa/równa szerokość I wysokość (mm) — poza zakresem = null (ostrzeżenie w calc())
@@ -2810,7 +2811,7 @@ export function plisaLookup(wMm,hMm){
   if(wi<0)return null;
   var hi=PLISA_HEIGHTS.findIndex(function(h){return h>=hMm;});
   if(hi<0)return null;
-  var row=PLISA_III[hi];
+  var row=PLISA_IV[hi];
   if(!row||row[wi]==null)return null;
   return {price:row[wi], widthUsed:PLISA_WIDTHS[wi], heightUsed:PLISA_HEIGHTS[hi]};
 }
@@ -3105,7 +3106,7 @@ export function calc(p){
     total=plRes.price;
     var plColl=PLISA_FABRICS.find(function(f){return f.name===c.plKolekcja;});
     var plFabLabel=plColl?(plColl.name+(c.plKolorKod?" "+c.plKolorKod:"")):(c.plKolekcjaManual?c.plKolekcjaManual+(c.plKolorManual?" "+c.plKolorManual:""):null);
-    lines.push("Plisa okienna (Gr.III) "+plRes.widthUsed+"\xd7"+plRes.heightUsed+"mm \u2192 "+plRes.price+" z\u0142");
+    lines.push("Plisa okienna (Gr.IV) "+plRes.widthUsed+"\xd7"+plRes.heightUsed+"mm \u2192 "+plRes.price+" z\u0142");
     if(plFabLabel)lines.push("Tkanina: "+plFabLabel);
     var plOspCol=PLISA_OSPRZET_KOLORY.find(function(k){return k.v===c.plKolorOsprzetu;});
     if(plOspCol){
