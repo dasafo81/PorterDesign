@@ -350,6 +350,11 @@ export const sbApi = {
   addRailScrap: function(data){
     return sbFetch("POST","rail_scraps",Object.assign({},data,{created_at:new Date().toISOString()}));
   },
+  // Dodaje wiele sztuk naraz (np. kilka odcinków tej samej długości) — jeden POST z tablicą wierszy.
+  addRailScraps: function(dataArr){
+    var now=new Date().toISOString();
+    return sbFetch("POST","rail_scraps",(dataArr||[]).map(function(d){return Object.assign({},d,{created_at:now});}));
+  },
   deleteRailScrap: function(id){
     return sbFetch("DELETE","rail_scraps?id=eq."+id);
   },
