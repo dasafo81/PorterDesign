@@ -314,13 +314,13 @@ async function queryMetadataWindow(
 ): Promise<Record<string, unknown>[]> {
   const filters = {
     subjectType: subjectType === "subject1" ? "Subject1" : "Subject2",
-    // Zakupowe (subject2) filtrowane po "Issue" (data wystawienia) gubily faktury wystawione
-    // przez kontrahenta z data sprzed okna syncu, ktore do KSeF trafily/staly sie widoczne
-    // dopiero w oknie. "Acquisition" filtruje po dacie faktycznego nadania numeru KSeF —
-    // czyli po tym kiedy faktura naprawde staje sie dostepna dla nabywcy, nie po tym co
-    // kontrahent wpisal jako data wystawienia. Sprzedazowe (subject1) zostaja na "Issue",
-    // bo to Ty ustalasz date wystawienia wlasnych faktur.
-    dateRange: { from: from + "T00:00:00.000Z", to: to + "T23:59:59.999Z", dateType: subjectType === "subject1" ? "Issue" : "Acquisition" },
+    // "Issue" (data wystawienia) gubil faktury wystawione przez kontrahenta z data sprzed
+    // okna syncu, ktore do KSeF trafily/staly sie trwale zapisane dopiero w oknie.
+    // "Acquisition" nie jest tu obslugiwane przez KSeF (HTTP 400: nie da sie skonwertowac
+    // na InvoiceQueryDateType) — dokumentacja KSeF wprost zaleca "PermanentStorage" do
+    // przyrostowego pobierania faktur, bo jest odporne na asynchroniczne opoznienia procesu
+    // przyjmowania danych (Issue/Invoicing moga dawac nieprzewidywalne wyniki przy oknach czasowych).
+    dateRange: { from: from + "T00:00:00.000Z", to: to + "T23:59:59.999Z", dateType: "PermanentStorage" },
   };
   let all: Record<string, unknown>[] = [];
   let pageOffset = 0;
