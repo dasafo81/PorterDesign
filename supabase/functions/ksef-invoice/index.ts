@@ -48,7 +48,18 @@ function all(xml: string, tag: string): string[] {
   while ((m = re.exec(xml)) !== null) out.push(m[1].trim());
   return out;
 }
-function num(s: string): number { return parseFloat(s.replace(",", ".")) || 0; }
+// KSeF values are commonly emitted with a decimal comma; some exporters also
+// include Polish thousands separators (1.234,56). Never let parseFloat()
+// silently truncate those values.
+function num(s: string): number {
+  const raw = String(s ?? "").trim().replace(/\s/g, "");
+  if (!raw) return 0;
+  const normalized = raw.includes(",")
+    ? raw.replace(/\./g, "").replace(",", ".")
+    : raw;
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : 0;
+}
 function fmt(n: number): string {
   return n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
