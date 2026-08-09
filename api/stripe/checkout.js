@@ -16,10 +16,11 @@
 export const config = { runtime: 'edge' };
 
 const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
+const ALLOWED_ORIGIN = process.env.APP_URL || 'https://www.asystentdekoracji.pl';
 
 function cors() {
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
@@ -56,7 +57,7 @@ export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
-  const APP_URL    = process.env.APP_URL || 'https://asystentdekoracji.pl';
+  const APP_URL    = process.env.APP_URL || 'https://www.asystentdekoracji.pl';
   if (!STRIPE_KEY) return json({ error: 'server misconfigured' }, 500);
 
   const user = await verifyUser(req);
@@ -94,6 +95,7 @@ export default async function handler(req) {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${STRIPE_KEY}`,
+      'Idempotency-Key': (req.headers.get('idempotency-key') || `checkout:${tenantId}:${plan}`).slice(0, 255),
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: params.toString(),
