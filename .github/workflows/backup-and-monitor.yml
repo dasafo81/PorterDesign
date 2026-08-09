@@ -1,0 +1,53 @@
+name: Backup and production monitor
+
+on:
+  schedule:
+    - cron: "17 2 * * *"
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    if: github.event_name != 'schedule' || github.event.schedule == '*/15 * * * *'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production readiness
+        env:
+          HEALTH_URL: https://www.asystentdekoracji.pl/api/health
+        run: |
+          set -eu
+          body="$(curl --fail-with-body --silent --show-error --max-time 20 "$HEALTH_URL")"
+          echo "$body"
+          echo "$body" | grep -q '"ok":true'
+
+  backup:
+    if: github.event_name != 'schedule' || github.event.schedule == '17 2 * * *'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Export all configured tables
+        env:
+          SB_URL: ${{ secrets.SB_URL }}
+          SB_SERVICE_KEY: ${{ secrets.SB_SERVICE_KEY }}
+          BACKUP_DIR: backup
+          BACKUP_TABLES: ${{ vars.BACKUP_TABLES }}
+        run: python scripts/db_backup.py
+      - name: Create encrypted archive
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          test -n "$BACKUP_PASSPHRASE"
+          tar -czf backup.tar.gz backup
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 --output backup.tar.gz.gpg backup.tar.gz
+          rm -rf backup backup.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup-${{ github.run_id }}
+          path: backup.tar.gz.gpg
+          retention-days: 30

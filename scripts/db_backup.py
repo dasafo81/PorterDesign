@@ -18,7 +18,7 @@ import urllib.error
 SB_URL = os.environ["SB_URL"].rstrip("/")
 KEY = os.environ["SB_SERVICE_KEY"]
 PAGE = 1000
-OUT_DIR = "backup"
+OUT_DIR = os.environ.get("BACKUP_DIR", "backup")
 
 # Kolumna sortujaca dla stabilnej paginacji offsetowej (musi istniec w tabeli).
 TABLES = {
@@ -34,7 +34,17 @@ TABLES = {
     "rail_scraps": "id",
     "mail_templates": "id",
     "user_settings": "id",
+    # Base application tables (present before the checked-in migrations).
+    "catalog_items": "id",
+    "mail_recipients": "id",
+    "stripe_webhook_events": "id",
 }
+
+# A deployment can override this list while rolling out new tables.
+_requested = os.environ.get("BACKUP_TABLES")
+if _requested:
+    TABLES = {name.strip(): TABLES.get(name.strip(), "id")
+              for name in _requested.split(",") if name.strip()}
 
 
 def fetch_all(table, order_col):
@@ -60,7 +70,7 @@ def fetch_all(table, order_col):
                 "Accept": "application/json",
             },
         )
-        with urllib.request.urlopen(req) as r:
+        with urllib.request.urlopen(req, timeout=45) as r:
             batch = json.load(r)
         rows.extend(batch)
         if len(batch) < PAGE:
