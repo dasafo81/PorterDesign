@@ -2282,6 +2282,7 @@ export function ScreenMail(p){
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Temat"),
       ce("input",{type:"text",value:subject,onChange:function(e){setSubject(e.target.value);},placeholder:"Temat wiadomo\u015bci",style:INP})
     ),
+    ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate,templates:activeTemplates}),
     ce("div",{style:{flex:1,display:"flex",flexDirection:"column",marginBottom:10}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
         ce("label",{style:LSML},"Tre\u015b\u0107"),
@@ -2330,7 +2331,6 @@ export function ScreenMail(p){
             style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
         )
     ),
-    ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate,templates:activeTemplates}),
     ce("div",{style:{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid var(--bd2)"}},
       ce("button",{onClick:handleSaveDraft,disabled:!toEmail&&!subject&&bodyEmpty,style:Object.assign({},BGHOST,{opacity:(!toEmail&&!subject&&bodyEmpty)?0.4:1})},"\uD83D\uDCDD Zapisz roboczy"),
       ce("button",{onClick:handleSend,disabled:!toEmail||!subject||bodyEmpty||sending,
