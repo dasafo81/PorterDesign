@@ -86,15 +86,21 @@ export function App(p){
   }),gcalToken=sGcalTok[0],setGcalToken=sGcalTok[1];
   var sGsiRdy=useState(false),gsiReady=sGsiRdy[0],setGsiReady=sGsiRdy[1];
   React.useEffect(function(){
-    // Tylko ładujemy bibliotekę GIS — NIE próbujemy silent refresh przy starcie.
-    // Silent refresh przez GIS implicit flow otwiera account picker gdy jest wiele kont Google.
-    // Token jest odświeżany leniwie: gdy użytkownik wchodzi na CRM/Tasks i token wygasł.
+    // Ładujemy GIS i — jeśli użytkownik wcześniej połączył konto — próbujemy
+    // cichego odświeżenia. Nie pokazujemy UI ani account pickera; przy braku
+    // aktywnej sesji Google pozostawiamy użytkownikowi zwykły przycisk logowania.
     gcalWaitReady().then(function(){
       setGsiReady(true);
+      if(gcalHasValidToken())return null;
+      try { return localStorage.getItem("pd_gcal_hint") ? gcalGetToken() : null; }
+      catch(e){ return null; }
+    }).then(function(tok){
+      if(tok)setGcalToken(tok);
     }).catch(function(){});
   },[]);
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
   var s2=useState([]),clients=s2[0],setClients=s2[1];
+  var sDeals=useState([]),deals=sDeals[0],setDeals=sDeals[1];
   var s3=useState(null),curClientId=s3[0],setCurClientId=s3[1];
   var s4=useState(null),curRoomId=s4[0],setCurRoomId=s4[1];
   var s5=useState(null),curWin=s5[0],setCurWin=s5[1];
@@ -219,8 +225,9 @@ export function App(p){
 
   // Załaduj klientów z Supabase przy starcie
   React.useEffect(function(){
-    sbApi.getClients().then(function(data){
-      setClients(migrateClients(data||[]));
+    Promise.all([sbApi.getClients(),sbApi.getDeals()]).then(function(results){
+      setClients(migrateClients(results[0]||[]));
+      setDeals(results[1]||[]);
       setLoading(false);
     }).catch(function(e){
       console.error("Błąd ładowania:",e);
@@ -1876,7 +1883,7 @@ export function App(p){
             ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId})
           )
       : appMode==="kalendarz"
-        ? ce(CRMKalendarz,{deals:[],clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
+        ? ce(CRMKalendarz,{deals:deals,clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
       : appMode==="zadania"
         ? ce(ScreenTasks,{})
       : appMode==="faktury"
