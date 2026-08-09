@@ -4,13 +4,14 @@
 // Zabezpieczenia: walidacja pól, sprawdzenie czy email już istnieje, honeypot.
 //
 // POST /api/register
-// Body: { studio_name, email, phone, password, nip?, honeypot? }
+// Body: { studio_name, email, phone, password, nip?, honeypot?, legal_consent }
 
 export const config = { runtime: 'edge' };
 
 const SB_URL     = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
 const SERVICE    = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TRIAL_DAYS = 3;
+const LEGAL_VERSIONS = { terms: '1.0', privacy: '1.0', dpa: '1.0' };
 
 function cors() {
   return {
@@ -63,6 +64,7 @@ export default async function handler(req) {
   const phone       = ((body && body.phone) || '').trim();
   const password    = (body && body.password) || '';
   const nip         = ((body && body.nip) || '').replace(/[\s\-]/g, '');
+  const legal_consent = body && body.legal_consent === true;
 
   // Walidacja
   if (!studio_name) return json({ error: 'Podaj nazwę studia.' }, 400);
@@ -71,6 +73,7 @@ export default async function handler(req) {
   if (!phone || phone.length < 9) return json({ error: 'Podaj numer telefonu.' }, 400);
   if (!password || password.length < 8) return json({ error: 'Hasło musi mieć co najmniej 8 znaków.' }, 400);
   if (nip && !isValidNip(nip)) return json({ error: 'Podany NIP jest nieprawidłowy.' }, 400);
+  if (!legal_consent) return json({ error: 'Wymagana jest akceptacja dokumentów prawnych.' }, 400);
 
   const headers = {
     apikey: SERVICE,
@@ -98,6 +101,12 @@ export default async function handler(req) {
         nip: nip || null,
       },
       trial_ends_at: trialEndsAt(),
+      legal_consents: {
+        accepted_at: new Date().toISOString(),
+        terms_version: LEGAL_VERSIONS.terms,
+        privacy_version: LEGAL_VERSIONS.privacy,
+        dpa_version: LEGAL_VERSIONS.dpa,
+      },
     }),
   });
 
@@ -129,6 +138,12 @@ export default async function handler(req) {
         studio_name,
         phone,
         nip: nip || null,
+        legal_consents: {
+          accepted_at: new Date().toISOString(),
+          terms_version: LEGAL_VERSIONS.terms,
+          privacy_version: LEGAL_VERSIONS.privacy,
+          dpa_version: LEGAL_VERSIONS.dpa,
+        },
       },
     }),
   });

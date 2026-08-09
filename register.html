@@ -101,6 +101,9 @@
 
   .terms { font-size: 11px; color: var(--ink3); text-align: center; line-height: 1.6; }
   .terms a { color: var(--wsp-dark); text-decoration: none; }
+  .consent { display: flex; gap: 9px; align-items: flex-start; margin: 0.9rem 0 0.25rem; font-size: 11px; color: var(--ink2); line-height: 1.5; text-align: left; }
+  .consent input { flex: 0 0 auto; margin-top: 3px; accent-color: var(--wsp-dark); }
+  .consent a { color: var(--wsp-dark); }
 
   footer {
     text-align: center; padding: 1.5rem;
@@ -175,11 +178,11 @@
 
       <hr class="divider">
 
-      <p class="terms">
-        Rejestrując się, akceptujesz
-        <a href="/regulamin.html">Regulamin</a> oraz
-        <a href="/polityka-prywatnosci.html">Politykę Prywatności</a>.
-      </p>
+      <label class="consent">
+        <input type="checkbox" id="legal_consent" name="legal_consent" required>
+        <span>Akceptuję <a href="/terms" target="_blank" rel="noopener">Regulamin</a>, zapoznałem(-am) się z <a href="/privacy" target="_blank" rel="noopener">Polityką Prywatności</a> oraz akceptuję <a href="/dpa" target="_blank" rel="noopener">DPA</a>.</span>
+      </label>
+      <p class="terms">Wersje dokumentów: Regulamin 1.0, Polityka Prywatności 1.0, DPA 1.0.</p>
     </form>
 
     <p class="login-link">
@@ -212,12 +215,14 @@
     var nip         = document.getElementById('nip').value.trim();
     var password    = document.getElementById('password').value;
     var honeypot    = document.getElementById('honeypot').value;
+    var legal_consent = document.getElementById('legal_consent').checked;
 
     // Podstawowa walidacja po stronie klienta
     if (!studio_name) { showMsg('error', 'Podaj nazwę studia.'); return; }
     if (!email || !email.includes('@')) { showMsg('error', 'Podaj poprawny adres e-mail.'); return; }
     if (!phone || phone.replace(/\s/g,'').length < 9) { showMsg('error', 'Podaj numer telefonu.'); return; }
     if (!password || password.length < 8) { showMsg('error', 'Hasło musi mieć co najmniej 8 znaków.'); return; }
+    if (!legal_consent) { showMsg('error', 'Zaakceptuj Regulamin i DPA oraz potwierdź zapoznanie się z Polityką Prywatności.'); return; }
 
     btn.disabled = true;
     btn.textContent = 'Tworzenie konta…';
@@ -226,7 +231,7 @@
       var resp = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studio_name: studio_name, email: email, phone: phone, nip: nip, password: password, honeypot: honeypot }),
+        body: JSON.stringify({ studio_name: studio_name, email: email, phone: phone, nip: nip, password: password, honeypot: honeypot, legal_consent: legal_consent }),
       });
       var data = await resp.json();
 
