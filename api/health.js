@@ -14,10 +14,10 @@ export default async function handler(req) {
 
   if (key) {
     try {
-      const response = await fetch(`${url}/rest/v1/`, {
+      const response = await fetch(`${url}/rest/v1/clients?select=id&limit=1`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
       });
-      checks.supabase = response.ok || response.status === 404;
+      checks.supabase = response.ok;
     } catch (_) {
       checks.supabase = false;
     }
