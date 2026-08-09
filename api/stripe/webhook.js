@@ -7,6 +7,7 @@
 //   STRIPE_WEBHOOK_SECRET — whsec_... (z Stripe Dashboard → Webhooks → dany endpoint)
 //   STRIPE_PRICE_START / STRIPE_PRICE_STUDIO / STRIPE_PRICE_PRO — do mapowania price → plan
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY — już skonfigurowane
+//   Migration 0024_stripe_webhook_events.sql must be applied before enabling live webhooks.
 //
 // Skonfiguruj w Stripe Dashboard:
 //   Endpoint URL: https://asystentdekoracji.pl/api/stripe/webhook
@@ -16,6 +17,7 @@
 export const config = { runtime: 'edge' };
 
 const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
+const SIGNATURE_TOLERANCE_SECONDS = 300;
 
 function json(data, status) {
   return new Response(JSON.stringify(data), {
@@ -55,10 +57,23 @@ async function verifyStripeSignature(rawBody, sigHeader, secret) {
     sigHeader.split(',').map(kv => { const i = kv.indexOf('='); return [kv.slice(0, i), kv.slice(i + 1)]; })
   );
   const t = parts.t;
+  const timestamp = Number(t);
+  if (!Number.isFinite(timestamp) || Math.abs(Math.floor(Date.now() / 1000) - timestamp) > SIGNATURE_TOLERANCE_SECONDS) return false;
   const v1candidates = sigHeader.split(',').filter(kv => kv.startsWith('v1=')).map(kv => kv.slice(3));
   if (!t || v1candidates.length === 0) return false;
   const expected = await hmacHex(secret, `${t}.${rawBody}`);
   return v1candidates.includes(expected);
+}
+
+async function claimEvent(eventId, eventType, headers) {
+  const r = await fetch(`${SB_URL}/rest/v1/stripe_webhook_events`, {
+    method: 'POST',
+    headers: Object.assign({}, headers, { Prefer: 'return=minimal' }),
+    body: JSON.stringify({ id: eventId, event_type: eventType }),
+  });
+  if (r.status === 409) return false;
+  if (!r.ok) throw new Error(`webhook event claim failed (${r.status}): ${await r.text()}`);
+  return true;
 }
 
 async function updateTenantByCustomer(customerId, patch, headers) {
@@ -89,6 +104,7 @@ export default async function handler(req) {
 
   let event;
   try { event = JSON.parse(rawBody); } catch (e) { return json({ error: 'invalid json' }, 400); }
+  if (!event.id || !event.type) return json({ error: 'invalid event' }, 400);
 
   const headers = {
     apikey: SERVICE,
@@ -97,6 +113,8 @@ export default async function handler(req) {
   };
 
   try {
+    if (!(await claimEvent(event.id, event.type, headers))) return json({ received: true, duplicate: true });
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
@@ -148,8 +166,7 @@ export default async function handler(req) {
     }
   } catch (e) {
     console.error('webhook handler error:', e);
-    // Mimo błędu zwracamy 200 — Stripe potraktowałby 5xx jako retry, a błąd już jest zalogowany.
-    // Krytyczne pola (customer_id/subscription_id) i tak są nadpisywane przy kolejnym evencie.
+    return json({ error: 'webhook processing failed' }, 500);
   }
 
   return json({ received: true });
