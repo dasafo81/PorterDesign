@@ -1599,6 +1599,27 @@ export function ScreenMail(p){
   // Aktywna lista szablonów — z bazy jeśli załadowane, fallback na MAIL_TEMPLATES
   var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
 
+  // Synchronizuj widok poczty z historią przeglądarki. Dzięki temu „wstecz”
+  // wraca z compose/podglądu do poprzedniego kroku zamiast do głównego ekranu.
+  function mailNavigate(folder, thread){
+    setActiveFolder(folder);
+    setSelThread(thread||null);
+    try { window.history.pushState({pdMail:true,folder:folder}, "", window.location.href); } catch(e) {}
+  }
+  ue(function(){
+    function onPop(ev){
+      if(!ev.state||!ev.state.pdMail){
+        setActiveFolder("inbox");
+        setSelThread(null);
+        return;
+      }
+      setActiveFolder(ev.state.folder||"inbox");
+      setSelThread(null);
+    }
+    window.addEventListener("popstate",onPop);
+    return function(){window.removeEventListener("popstate",onPop);};
+  },[]);
+
   // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
   ue(function(){
     msalGetActiveAccount().then(function(acc){
@@ -1800,7 +1821,7 @@ export function ScreenMail(p){
     if(d.cc||d.bcc)setShowCcBcc(true);
     setAttachments(d.attachments||[]);
     setDrafts(function(prev){return prev.filter(function(x){return x.id!==d.id;});});
-    setActiveFolder("compose");
+    mailNavigate("compose");
   }
 
   // Wkleja treść i załączniki szablonu do bieżącego compose
@@ -2322,12 +2343,12 @@ export function ScreenMail(p){
       (userSettings&&(userSettings.signature_html||userSettings.signature_image_url))
         ?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
           "\u2139\uFE0F Podpis dopisze si\u0119 automatycznie. Zmie\u0144 go w ",
-          ce("a",{href:"#",onClick:function(e){e.preventDefault();setActiveFolder("settings");},
+          ce("a",{href:"#",onClick:function(e){e.preventDefault();mailNavigate("settings");},
             style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
         )
         :ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
           "\u2139\uFE0F Brak podpisu. Skonfiguruj go w ",
-          ce("a",{href:"#",onClick:function(e){e.preventDefault();setActiveFolder("settings");},
+          ce("a",{href:"#",onClick:function(e){e.preventDefault();mailNavigate("settings");},
             style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
         )
     ),
@@ -2360,7 +2381,7 @@ export function ScreenMail(p){
       templates:activeTemplates,
       onUseTemplate:function(tpl){
         setSelTemplate(tpl.id);
-        setActiveFolder("compose");
+        mailNavigate("compose");
       },
       onTemplatesChange:function(mapped){
         setDbTemplates(mapped);
@@ -2380,7 +2401,7 @@ export function ScreenMail(p){
         loaderActive
           ?ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:8,color:"var(--t3)",fontSize:13}},"\u23F3 Wczytywanie\u2026")
           :ce(MailList,{key:activeFolder,mails:folderMails,folder:activeFolder,onSelect:function(t){
-              setSelThread(t);
+              mailNavigate(activeFolder,t);
               if(t&&t.mails){t.mails.forEach(function(mm){if(mm.isRead===false)markAsRead(mm,true);});}
             },onToggleImportant:function(m){toggleImportant(m);},selectedId:selThread&&selThread.head?selThread.head.id:null,
             onLoadMore:loadMore,hasMore:!!nextLinks[activeFolder],loadingMore:loadingMore,
@@ -2405,7 +2426,7 @@ export function ScreenMail(p){
               +quoteHtml+"</blockquote>";
             setBody(quoted);
             setAttachments([]);
-            setActiveFolder("compose");
+            mailNavigate("compose");
           },
           onReplyAll:function(head,bodyCache,allRecipients){
             // allRecipients = [{email,name},...] — from + all to (excl. own email)
@@ -2422,7 +2443,7 @@ export function ScreenMail(p){
               +quoteHtml+"</blockquote>";
             setBody(quoted);
             setAttachments([]);
-            setActiveFolder("compose");
+            mailNavigate("compose");
           },
           onForward:function(head,bodyCache){
             setToEmail("");
@@ -2437,7 +2458,7 @@ export function ScreenMail(p){
               +quoteHtml;
             setBody(fwdBlock);
             setAttachments([]);
-            setActiveFolder("compose");
+            mailNavigate("compose");
           },
           onMarkRead:function(mail,val){markAsRead(mail,val);},
           onToggleImportant:function(mail){toggleImportant(mail);},
@@ -2469,7 +2490,7 @@ export function ScreenMail(p){
           var badge=f.id==="drafts"&&drafts.length>0?drafts.length:null;
           var unreadCnt=0;
           if(f.id==="inbox"){var _convs={};allMails.forEach(function(m){if(m.folder!=="inbox"||m.isRead!==false)return;var k=m.conversationId||("solo_"+m.id);_convs[k]=true;});unreadCnt=Object.keys(_convs).length;}
-          return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelThread(null);},
+          return ce("button",{key:f.id,onClick:function(){mailNavigate(f.id);},
             style:{width:"100%",textAlign:"left",padding:"8px 10px",borderRadius:9,border:"none",
               background:active?"var(--wb)":"transparent",color:active?"var(--wt)":"var(--t2)",
               fontSize:13,fontWeight:(active||unreadCnt>0)?700:500,cursor:"pointer",
@@ -2486,7 +2507,7 @@ export function ScreenMail(p){
           userFolders.map(function(f){
             var active=activeFolder===f.id;
             var cnt=allMails.filter(function(m){return m.folder===f.id;}).length;
-            return ce("button",{key:f.id,onClick:function(){setActiveFolder(f.id);setSelThread(null);},
+            return ce("button",{key:f.id,onClick:function(){mailNavigate(f.id);},
               style:{width:"100%",textAlign:"left",padding:"8px 10px",borderRadius:9,border:"none",
                 background:active?"var(--wb)":"transparent",color:active?"var(--wt)":"var(--t2)",
                 fontSize:13,fontWeight:active?700:500,cursor:"pointer",
@@ -2504,6 +2525,6 @@ export function ScreenMail(p){
     ),
 
     calMail&&!calSaved?ce(ModalCalendar,{mail:calMail,onClose:function(){setCalMail(null);},onSave:function(evt){setCalSaved(evt);setCalMail(null);}}):null,
-    showNF?ce(ModalNewFolder,{onClose:function(){setShowNF(false);},onSave:function(f){setUserFolders(function(prev){return prev.concat([f]);});setShowNF(false);setActiveFolder(f.id);}}):null
+    showNF?ce(ModalNewFolder,{onClose:function(){setShowNF(false);},onSave:function(f){setUserFolders(function(prev){return prev.concat([f]);});setShowNF(false);mailNavigate(f.id);}}):null
   );
 }
