@@ -987,6 +987,10 @@ export function CRMKalendarz(p){
       if(installerCal2) descParts.push("Monta\u017cysta: "+installerCal2.summary);
     }
     
+    var primaryCalId=(calList.find(function(c){return c.primary;})||{}).id||"primary";
+    var targetCalIds=[targetCalId];
+    // Termin montażu ma być widoczny jednocześnie u montażysty i w kalendarzu głównym.
+    if(targetCalId!==primaryCalId) targetCalIds.push(primaryCalId);
     var body={
       summary:ev.label+" \u2014 "+ev.client,
       description:descParts.join(" | "),
@@ -994,30 +998,32 @@ export function CRMKalendarz(p){
       start:{dateTime:d.toISOString(),timeZone:"Europe/Warsaw"},
       end:{dateTime:new Date(d.getTime()+60*60000).toISOString(),timeZone:"Europe/Warsaw"}
     };
-    function doPost(t){
-      return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(targetCalId)+"/events",{
+    function doPost(calId,t){
+      return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events",{
         method:"POST",
         headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},
         body:JSON.stringify(body)
       });
     }
-    doPost(gcalToken)
-      .then(function(r){
-        if(r.status===401){
-          return gcalGetToken().then(function(fresh){
-            setGcalToken(fresh);
-            return doPost(fresh);
-          });
-        }
-        return r;
-      })
-      .then(function(r){
-        if(!r.ok)throw new Error("HTTP "+r.status);
-        return r.json();
-      })
+    Promise.all(targetCalIds.map(function(calId){
+      return doPost(calId,gcalToken)
+        .then(function(r){
+          if(r.status===401){
+            return gcalGetToken().then(function(fresh){
+              setGcalToken(fresh);
+              return doPost(calId,fresh);
+            });
+          }
+          return r;
+        })
+        .then(function(r){
+          if(!r.ok)throw new Error("HTTP "+r.status);
+          return r.json();
+        });
+    }))
       .then(function(){
         fetchEvents(gcalToken);
-        alert("Dodano do Google Calendar!");
+        alert(targetCalIds.length>1?"Dodano jednocześnie do kalendarza montażysty i głównego.":"Dodano do Google Calendar!");
       })
       .catch(function(e){
         if(e&&e.code==="GCAL_INTERACTION_REQUIRED"){
