@@ -2079,6 +2079,19 @@ export function ScreenInvoices(p){
   var [err,setErr]=useState(null);
   var [viewBusyId,setViewBusyId]=useState(null);
 
+  function invoiceNavigate(nextView){
+    setView(nextView);
+    try { window.history.pushState({pdInvoices:true,view:nextView}, "", window.location.href); } catch(e) {}
+  }
+  useEffect(function(){
+    function onPop(ev){
+      if(!ev.state||!ev.state.pdInvoices){ setView("list"); return; }
+      setView(ev.state.view||"list");
+    }
+    window.addEventListener("popstate",onPop);
+    return function(){window.removeEventListener("popstate",onPop);};
+  },[]);
+
   // Ładuj faktury i ustawienia
   useEffect(function(){
     Promise.all([sbApi.getInvoices(), sbApi.getInvoiceSettings(), sbApi.getClients(), sbApi.getDeals()])
@@ -2098,14 +2111,14 @@ export function ScreenInvoices(p){
   function openNew(dir){
     // Jeśli brak ustawień sprzedawcy — wymuś najpierw konfigurację
     if(!settings||!settings.seller_name){
-      setView("settings");
+      invoiceNavigate("settings");
       return;
     }
     // dir przychodzi z aktywnej zakładki listy (Przychody/Wydatki) — dzięki temu
     // "+ Nowy wydatek" od razu otwiera edytor z direction="zakup", zamiast zawsze
     // domyślnego "sprzedaz" wewnątrz InvoiceEditor.
     setEditInv(dir==="zakup"?{direction:"zakup"}:null);
-    setView("editor");
+    invoiceNavigate("editor");
   }
   // Pobiera pełny rekord (z invoice_items) przed otwarciem edytora — wiersz z listy
   // (sbApi.getInvoices()) NIE zawiera pozycji, więc bez tego edytor startowałby z pustą
@@ -2115,22 +2128,22 @@ export function ScreenInvoices(p){
     sbApi.getInvoice(inv.id)
       .then(function(full){
         setEditInv(full||inv);
-        setView("editor");
+        invoiceNavigate("editor");
       })
       .catch(function(e){ alert("B\u0142\u0105d wczytywania faktury do edycji: "+(e.message||e)); })
       .finally(function(){ setViewBusyId(null); });
   }
-  function openSettings(){ setView("settings"); }
+  function openSettings(){ invoiceNavigate("settings"); }
 
   function onSaved(result){
     sbApi.getInvoices().then(function(data){ setInvoices(data||[]); });
     sbApi.getInvoice(result.id).then(function(full){
-      setDetailInv(full||result); setView("detail");
-    }).catch(function(){ setDetailInv(result); setView("detail"); });
+      setDetailInv(full||result); invoiceNavigate("detail");
+    }).catch(function(){ setDetailInv(result); invoiceNavigate("detail"); });
   }
   function onSettingsSaved(newSettings){
     setSettings(newSettings);
-    setView("list");
+    invoiceNavigate("list");
   }
   function onDelete(id){
     // Uwaga: numer NIE jest cofany do licznika (nawet dla faktur wystawionych) —
@@ -2168,7 +2181,7 @@ export function ScreenInvoices(p){
           seller_snapshot:src.seller_snapshot,
           invoice_items:itemsCopy
         });
-        setView("editor");
+        invoiceNavigate("editor");
       })
       .catch(function(e){ alert("B\u0142\u0105d wczytywania faktury do duplikacji: "+(e.message||e)); })
       .finally(function(){ setViewBusyId(null); });
@@ -2214,7 +2227,7 @@ export function ScreenInvoices(p){
           sbApi.getInvoice(inv.id)
             .then(function(full){
               setDetailInv(full||inv);
-              setView("detail");
+              invoiceNavigate("detail");
             })
             .catch(function(e){ alert("B\u0142\u0105d wczytywania faktury: "+(e.message||e)); })
             .finally(function(){ setViewBusyId(null); });
@@ -2225,21 +2238,21 @@ export function ScreenInvoices(p){
     !loading&&view==="detail"&&detailInv&&ce(InvoiceDetailView,{
       invoice:detailInv,
       settings:settings||{},
-      onEdit:function(){ setEditInv(detailInv); setView("editor"); },
-      onClose:function(){setView("list");}
+      onEdit:function(){ setEditInv(detailInv); invoiceNavigate("editor"); },
+      onClose:function(){invoiceNavigate("list");}
     }),
 
     !loading&&view==="editor"&&ce(InvoiceEditor,{
       invoice:editInv, settings:settings||{},
       clients:clientsAll, deals:dealsAll,
       onSave:onSaved,
-      onClose:function(){setView("list");}
+      onClose:function(){invoiceNavigate("list");}
     }),
 
     !loading&&view==="settings"&&ce(InvoiceSettings,{
       settings:settings||{},
       onSaved:onSettingsSaved,
-      onClose:function(){setView("list");}
+      onClose:function(){invoiceNavigate("list");}
     })
   );
 }
