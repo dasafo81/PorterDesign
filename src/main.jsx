@@ -4,6 +4,9 @@ import './index.css';
 import { App } from './App.jsx';
 import { ScreenLogin } from './components/ScreenLogin.jsx';
 import { loadSession, refreshSession } from './lib/auth.js';
+import { markBrokerCallback } from './lib/oauthBroker.js';
+
+markBrokerCallback();
 
 function Root() {
   var initial = loadSession();
