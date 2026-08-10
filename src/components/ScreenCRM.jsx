@@ -837,6 +837,7 @@ export function CRMKalendarz(p){
   var sNewEv=useState(null),newEvDraft=sNewEv[0],setNewEvDraft=sNewEv[1];
   var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
   var sSelGcalEv=useState(null),selectedGcalEv=sSelGcalEv[0],setSelectedGcalEv=sSelGcalEv[1];
+  var sSelDeal=useState(null),selectedDeal=sSelDeal[0],setSelectedDeal=sSelDeal[1];
   var sDragOver=useState(null),dragOverDay=sDragOver[0],setDragOverDay=sDragOver[1];
   var dragEvRef=React.useRef(null);
 
@@ -1273,7 +1274,7 @@ export function CRMKalendarz(p){
               onDragStart:canDrag?function(e){dragEvRef.current=ev.gcalRaw;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",ev.gcalRaw.id||"");}catch(_){}}:undefined,
               onDragEnd:function(){dragEvRef.current=null;setDragOverDay(null);},
               onDoubleClick:function(e){e.stopPropagation();},
-              style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:canDrag?"grab":"pointer",fontWeight:600},onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}}},
+              style:{fontSize:10,padding:"1px 4px",borderRadius:3,background:ev.color+"22",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:canDrag?"grab":"pointer",fontWeight:600},onClick:function(){if(ev.dealEv){setSelectedDeal(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}}},
               (ev.time?(new Date(ev.time).getHours()+":"+String(new Date(ev.time).getMinutes()).padStart(2,"0")+" "):"")+ ev.title
             );}),
             evs.length>3?ce("div",{onClick:function(e){e.stopPropagation();setRefDate(new Date(d));setCalView("day");},
@@ -1327,7 +1328,7 @@ export function CRMKalendarz(p){
                   onDragStart:canDrag?function(e){dragEvRef.current=ev.gcalRaw;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",ev.gcalRaw.id||"");}catch(_){}}:undefined,
                   onDragEnd:function(){dragEvRef.current=null;setDragOverDay(null);},
                   onDoubleClick:function(e){e.stopPropagation();},
-                  onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:canDrag?"grab":"pointer",fontWeight:600}},ev.title);})
+                  onClick:function(){if(ev.dealEv){setSelectedDeal(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:canDrag?"grab":"pointer",fontWeight:600}},ev.title);})
               );
             })
           ];
@@ -1358,7 +1359,7 @@ export function CRMKalendarz(p){
           ce("div",{style:{flex:1,padding:"4px 8px",display:"flex",flexDirection:"column",gap:4}},
             allDayEvs.map(function(ev,ei){
               return ce("div",{key:"ad"+ei,
-                onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+                onClick:function(){if(ev.dealEv){setSelectedDeal(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
                 style:{padding:"5px 10px",borderRadius:6,background:ev.color+"22",borderLeft:"3px solid "+ev.color,
                   color:ev.color,fontSize:12,fontWeight:700,cursor:"pointer"}},
                 "ϕ Cały dzień — ",ev.title
@@ -1367,7 +1368,7 @@ export function CRMKalendarz(p){
             hEvs.map(function(ev,ei){
               var t=ev.time?new Date(ev.time):null;
               return ce("div",{key:ei,
-                onClick:function(){if(ev.dealEv){p.onDealClick&&p.onDealClick(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+                onClick:function(){if(ev.dealEv){setSelectedDeal(ev.dealEv.deal);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
                 style:{padding:"7px 10px",borderRadius:8,background:ev.color+"18",borderLeft:"3px solid "+ev.color,
                   cursor:"pointer",display:"flex",alignItems:"flex-start",gap:8}},
                 ce("div",{style:{fontSize:11,color:ev.color,fontWeight:700,flexShrink:0,minWidth:38}},
@@ -1424,13 +1425,13 @@ export function CRMKalendarz(p){
       ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}},"Nadchodz\u0105ce terminy ("+upcoming.length+")"),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
         upcoming.slice(0,6).map(function(ev,i){
-          return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,cursor:"pointer"},onClick:function(){p.onDealClick&&p.onDealClick(ev.deal);}},
+          return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,cursor:"pointer"},onClick:function(){setSelectedDeal(ev.deal);}},
             ce("div",{style:{flexShrink:0,textAlign:"center",minWidth:32}},
               ce("div",{style:{fontSize:16,fontWeight:700,color:ev.color,lineHeight:1}},ev.date.getDate()),
               ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase"}},ev.date.toLocaleDateString("pl-PL",{month:"short"}))
             ),
             ce("div",{style:{flex:1,fontSize:12,fontWeight:600,color:"var(--t1)"}},ev.label+" \u2014 "+ev.client),
-            gcalToken?ce("button",{onClick:function(e){e.stopPropagation();addDealEventToGcal(ev);},style:{padding:"4px 9px",borderRadius:6,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:10,cursor:"pointer",flexShrink:0}},"\uD83D\uDCC5 Dodaj do GCal"):null
+            gcalToken?ce("button",{onClick:function(e){e.stopPropagation();addDealEventToGcal(ev);},style:{padding:"4px 9px",borderRadius:6,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:10,cursor:"pointer",flexShrink:0}},"\uD83D\uDCC5 Dodaj kopię do Google Calendar"):null
           );
         })
       )
@@ -1630,7 +1631,19 @@ export function CRMKalendarz(p){
           }
         },'\uD83D\uDDD1 Usuń wydarzenie')
       )
-    ):null
+    ):null,
+    selectedDeal?ce(ModalDeal,{
+      deal:selectedDeal,
+      client:(p.clients||[]).find(function(c){return String(c.id)===String(selectedDeal.client_id);})||null,
+      gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady,calList:calList,
+      onClose:function(){setSelectedDeal(null);},
+      onSave:function(data){
+        sbApi.updateDeal(selectedDeal.id,data).then(function(){setSelectedDeal(Object.assign({},selectedDeal,data));})
+          .catch(function(e){alert("Błąd zapisu: "+e.message);});
+      },
+      onDelete:function(){sbApi.deleteDeal(selectedDeal.id).then(function(){setSelectedDeal(null);}).catch(function(e){alert("Błąd usuwania: "+e.message);});},
+      onGoToClient:function(){},onGoToSummary:function(){}
+    }):null
   );
 }
 
