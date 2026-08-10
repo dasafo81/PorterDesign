@@ -1,6 +1,7 @@
 // msal.js — Microsoft Authentication Library dla Porter Design Assistant
 // Multi-tenant: authority = /common — obsługuje dowolny Azure AD + konta osobiste MS
 import * as msal from "@azure/msal-browser";
+import { brokerStart, brokerToken } from "./lib/oauthBroker.js";
 
 var CLIENT_ID = "ad714f55-19fb-4a5e-90a5-4253846e9338";
 
@@ -41,6 +42,7 @@ function getInstance() {
 getInstance().catch(function(e){console.error("MSAL init error",e);});
 
 export async function msalLogin() {
+  return brokerStart("microsoft");
   var inst = await getInstance();
   // Redirect zamiast popup — bardziej niezawodne na tablecie/mobile
   await inst.loginRedirect({ scopes: MSAL_SCOPES });
@@ -49,6 +51,11 @@ export async function msalLogin() {
 }
 
 export async function msalGetToken() {
+  if (localStorage.getItem("pd_oauth_microsoft")) {
+    try { return (await brokerToken("microsoft")).access_token; } catch (e) {
+      if (e && e.code === "OAUTH_RECONNECT_REQUIRED") throw e;
+    }
+  }
   var inst = await getInstance();
   var accounts = inst.getAllAccounts();
   if (!accounts.length) throw new Error("Brak zalogowanego konta MS");
@@ -72,6 +79,7 @@ export async function msalGetToken() {
 }
 
 export async function msalGetActiveAccount() {
+  if (localStorage.getItem("pd_oauth_microsoft")) return { username: "Połączone konto Microsoft" };
   var inst = await getInstance();
   var accounts = inst.getAllAccounts();
   return accounts[0] || null;

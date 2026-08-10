@@ -81,6 +81,7 @@ function isExpired(exp) {
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
+import { brokerStart, brokerToken } from './oauthBroker.js';
 
 // Czy GIS jest załadowany — przydatne dla UI ("przyciski disabled dopóki nie ready")
 export function gcalReady() {
@@ -94,31 +95,7 @@ export function gcalWaitReady() {
 
 // Pierwszy login z UI (consent screen Google)
 export function gcalLogin() {
-  return loadGSI().then(function(){
-    return new Promise(function(resolve, reject){
-      var client = window.google.accounts.oauth2.initTokenClient({
-        client_id: GCAL_CLIENT_ID,
-        scope: GCAL_SCOPES + " https://www.googleapis.com/auth/userinfo.email",
-        callback: function(resp){
-          if (resp.error) { reject(new Error(resp.error_description || resp.error)); return; }
-          // Pobierz email i zapisz jako hint do cichego refresh (eliminuje account picker przy multi-koncie)
-          fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-            headers: { Authorization: "Bearer " + resp.access_token }
-          }).then(function(r){ return r.json(); }).then(function(info){
-            writeCachedToken(resp.access_token, resp.expires_in, info.email || "");
-            resolve(resp.access_token);
-          }).catch(function(){
-            writeCachedToken(resp.access_token, resp.expires_in, "");
-            resolve(resp.access_token);
-          });
-        },
-        error_callback: function(err){
-          reject(new Error((err && err.message) || "Logowanie Google anulowane"));
-        }
-      });
-      client.requestAccessToken({ prompt: "consent" });
-    });
-  });
+  return brokerStart('google');
 }
 
 // Silent refresh — wywołuje GIS z prompt:"" (Google zwróci token bez UI jeśli sesja aktywna)
@@ -168,6 +145,12 @@ export function gcalGetToken() {
   var cached = readCachedToken();
   if (cached && !isExpired(cached.exp)) {
     return Promise.resolve(cached.token);
+  }
+  if (localStorage.getItem('pd_oauth_google')) {
+    return brokerToken('google').then(function(data) {
+      writeCachedToken(data.access_token, data.expires_in, readHint());
+      return data.access_token;
+    });
   }
   // Wygasł albo nie ma — próbujemy silent refresh
   return silentRefresh();
