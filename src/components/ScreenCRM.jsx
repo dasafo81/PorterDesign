@@ -840,6 +840,12 @@ export function CRMKalendarz(p){
   var sSelDeal=useState(null),selectedDeal=sSelDeal[0],setSelectedDeal=sSelDeal[1];
   var sDragOver=useState(null),dragOverDay=sDragOver[0],setDragOverDay=sDragOver[1];
   var dragEvRef=React.useRef(null);
+  function openDealEventPreview(ev){
+    var deal=ev.deal,client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||{};
+    var address=[client.addr,[client.postal,client.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    var start=new Date(ev.date),end=new Date(start.getTime()+3600000);
+    setSelectedGcalEv({id:"crm-"+deal.id+"-"+ev.type,summary:ev.label+" — "+ev.client,start:{dateTime:start.toISOString()},end:{dateTime:end.toISOString()},location:address,description:["Klient: "+(client.name||ev.client),client.phone?"Telefon: "+client.phone:null,deal.installer_name?"Montażysta: "+deal.installer_name:null].filter(Boolean).join("\n"),_calName:"Termin z CRM",_readOnly:true});
+  }
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
   React.useEffect(function(){
@@ -1425,13 +1431,12 @@ export function CRMKalendarz(p){
       ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}},"Nadchodz\u0105ce terminy ("+upcoming.length+")"),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
         upcoming.slice(0,6).map(function(ev,i){
-          return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,cursor:"pointer"},onClick:function(){setSelectedDeal(ev.deal);}},
+          return ce("div",{key:i,style:{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",borderLeft:"3px solid "+ev.color,cursor:"pointer"},onClick:function(){openDealEventPreview(ev);}},
             ce("div",{style:{flexShrink:0,textAlign:"center",minWidth:32}},
               ce("div",{style:{fontSize:16,fontWeight:700,color:ev.color,lineHeight:1}},ev.date.getDate()),
               ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase"}},ev.date.toLocaleDateString("pl-PL",{month:"short"}))
             ),
             ce("div",{style:{flex:1,fontSize:12,fontWeight:600,color:"var(--t1)"}},ev.label+" \u2014 "+ev.client),
-            gcalToken?ce("button",{onClick:function(e){e.stopPropagation();addDealEventToGcal(ev);},style:{padding:"4px 9px",borderRadius:6,border:"1px solid #4285f4",background:"none",color:"#4285f4",fontSize:10,cursor:"pointer",flexShrink:0}},"\uD83D\uDCC5 Dodaj kopię do Google Calendar"):null
           );
         })
       )
@@ -1600,7 +1605,7 @@ export function CRMKalendarz(p){
             ce('div',{style:{fontSize:13,color:'var(--t1)',lineHeight:1.5,wordBreak:'break-word',whiteSpace:'pre-wrap'}},r[1])
           );});
         })(),
-        selectedGcalEv.htmlLink?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null,
+        (!selectedGcalEv._readOnly&&selectedGcalEv.htmlLink)?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null,
         ce('div',{
           style:{marginTop:10,padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
           onClick:function(){openEditEventModal(selectedGcalEv);}
