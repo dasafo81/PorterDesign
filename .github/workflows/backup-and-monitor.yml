@@ -61,3 +61,22 @@ jobs:
           name: supabase-backup-${{ github.run_id }}
           path: backup.tar.gz.gpg
           retention-days: 30
+      - name: Upload encrypted backup to Backblaze B2 EU
+        env:
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_BUCKET_ID: ${{ secrets.B2_BUCKET_ID }}
+          B2_BUCKET_NAME: ${{ secrets.B2_BUCKET_NAME }}
+          BACKUP_FILE: backup.tar.gz.gpg
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: python scripts/b2_backup.py
+
+      - name: Controlled restore test (download + decrypt + validate only)
+        env:
+          B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+          B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+          B2_BUCKET_NAME: ${{ secrets.B2_BUCKET_NAME }}
+          B2_FILE_NAME: supabase/${{ github.repository }}/${{ github.run_id }}/backup.tar.gz.gpg
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: python scripts/b2_restore_test.py
