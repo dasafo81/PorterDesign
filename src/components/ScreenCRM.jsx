@@ -1090,7 +1090,10 @@ export function CRMKalendarz(p){
       // komunikatem „Błąd edycji wydarzenia”.
       if(ev._crmDealId){
         var crmPatch={};
-        crmPatch[ev._crmDateField||"delivery_date"]=ev.date;
+        // CRM terms are stored as timestamps. The previous fix sent only
+        // YYYY-MM-DD, so changing the hour appeared to save but was lost.
+        var crmDateTime=new Date(ev.date+"T"+ev.timeFrom+":00");
+        crmPatch[ev._crmDateField||"delivery_date"]=crmDateTime.toISOString();
         setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
         sbApi.updateDeal(ev._crmDealId,crmPatch)
           .then(function(){
