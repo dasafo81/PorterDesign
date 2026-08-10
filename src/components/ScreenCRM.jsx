@@ -844,7 +844,7 @@ export function CRMKalendarz(p){
     var deal=ev.deal,client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||{};
     var address=[client.addr,[client.postal,client.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
     var start=new Date(ev.date),end=new Date(start.getTime()+3600000);
-    setSelectedGcalEv({id:"crm-"+deal.id+"-"+ev.type,summary:ev.label+" — "+ev.client,start:{dateTime:start.toISOString()},end:{dateTime:end.toISOString()},location:address,description:["Klient: "+(client.name||ev.client),client.phone?"Telefon: "+client.phone:null,deal.installer_name?"Montażysta: "+deal.installer_name:null].filter(Boolean).join("\n"),_calName:"Termin z CRM",_readOnly:true});
+    setSelectedGcalEv({id:"crm-"+deal.id+"-"+ev.type,summary:ev.label+" — "+ev.client,start:{dateTime:start.toISOString()},end:{dateTime:end.toISOString()},location:address,description:["Klient: "+(client.name||ev.client),client.phone?"Telefon: "+client.phone:null,deal.installer_name?"Montażysta: "+deal.installer_name:null].filter(Boolean).join("\n"),_calName:"Termin z CRM",_readOnly:false,_crmDealId:deal.id,_crmDateField:ev.type==="visit"?"visit_date":(ev.type==="delivery2"?"delivery_date2":(ev.type==="delivery"?"delivery_date":"followup_date"))});
   }
 
   // Fetch zdarzeń gdy mamy token i zmienia się refDate/view
@@ -1061,7 +1061,8 @@ export function CRMKalendarz(p){
     var calId=ev._calId||'primary';
     setNewEvDraft({title:ev.summary||'',date:dateStr,timeFrom:timeFrom,timeTo:timeTo,
       description:ev.description||'',saving:false,selectedCals:[calId],
-      _editId:ev.id,_editCalId:calId});
+      _editId:ev.id,_editCalId:calId,_crmDealId:ev._crmDealId||null,
+      _crmDateField:ev._crmDateField||null});
     setSelectedGcalEv(null);
   }
 
@@ -1084,6 +1085,24 @@ export function CRMKalendarz(p){
     if(end<=start){alert('Godzina zako\u0144czenia musi by\u0107 p\u00f3\u017aniejsza ni\u017c rozpocz\u0119cia.');return;}
     // ── TRYB EDYCJI ──
     if(ev._editId){
+      // Termin z CRM nie jest wydarzeniem Google — zapisujemy go w dealu.
+      // Próba PATCH na sztucznym identyfikatorze "crm-..." kończyła się
+      // komunikatem „Błąd edycji wydarzenia”.
+      if(ev._crmDealId){
+        var crmPatch={};
+        crmPatch[ev._crmDateField||"delivery_date"]=ev.date;
+        setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
+        sbApi.updateDeal(ev._crmDealId,crmPatch)
+          .then(function(){
+            setNewEvDraft(null);
+            setSelectedGcalEv(null);
+          })
+          .catch(function(e){
+            setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
+            alert("Błąd edycji wydarzenia: "+((e&&e.message)||"nie udało się zapisać terminu."));
+          });
+        return;
+      }
       var patchCalId=ev._editCalId||'primary';
       var patchBody={summary:ev.title.trim(),description:ev.description||'',
         start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
