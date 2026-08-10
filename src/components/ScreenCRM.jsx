@@ -852,7 +852,6 @@ export function CRMKalendarz(p){
   React.useEffect(function(){
     if(!gcalToken) return;
     fetchCalendarList(gcalToken);
-    fetchEvents(gcalToken);
   },[gcalToken, refDate.getFullYear(), refDate.getMonth(), refDate.getDate(), calView]);
 
   function fetchCalendarList(token){
@@ -878,7 +877,10 @@ export function CRMKalendarz(p){
           return (a.summary||"").localeCompare(b.summary||"","pl");
         });
         setCalList(items);
-        fetchEvents(token);
+        // Przekaż świeżo pobraną listę bezpośrednio — stan React może być
+        // jeszcze nieaktualny, co wcześniej powodowało brak części wydarzeń
+        // przy pierwszym wejściu do kalendarza.
+        fetchEvents(token, items);
       })
       .catch(function(){});
   }
@@ -900,7 +902,7 @@ export function CRMKalendarz(p){
     });
   }
 
-  function fetchEvents(token){
+  function fetchEvents(token, calendarsOverride){
     setLoadingEv(true);setErrEv(null);
     // Oblicz zakres dat wg widoku
     var from,to;
@@ -917,7 +919,9 @@ export function CRMKalendarz(p){
       to=new Date(refDate.getFullYear(),refDate.getMonth()+1,0,23,59,59,999);
     }
     // Lista kalendarzy do odpytania: jeśli mamy listę, pobierz ze wszystkich; w przeciwnym razie tylko primary
-    var calsToFetch = calList.length>0 ? calList : [{id:"primary",summary:"",color:"#4285f4",primary:true}];
+    var calsToFetch = calendarsOverride&&calendarsOverride.length
+      ? calendarsOverride
+      : (calList.length>0 ? calList : [{id:"primary",summary:"",color:"#4285f4",primary:true}]);
     function buildUrl(calId){
       return "https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events"
         +"?timeMin="+encodeURIComponent(from.toISOString())
@@ -933,7 +937,7 @@ export function CRMKalendarz(p){
         .then(function(r){if(!r.ok)return {items:[]};return r.json();})
         .then(function(data){
           return (data.items||[]).map(function(ev){
-            return Object.assign({},ev,{_calId:calMeta.id,_calColor:calMeta.color,_calName:calMeta.summary});
+            return Object.assign({},ev,{_calId:calMeta.id,_calColor:calMeta.color,_calName:calMeta.summary,_calPrimary:!!calMeta.primary});
           });
         })
         .catch(function(){return [];});
@@ -942,7 +946,18 @@ export function CRMKalendarz(p){
       .then(function(arrays){
         var merged=[];
         arrays.forEach(function(a){merged=merged.concat(a);});
-        setGcalEvents(merged);
+        // Ten sam termin bywa obecny w kalendarzu głównym i kalendarzu
+        // montażysty jako dwie kopie z różnymi ID. Nie pokazuj duplikatu,
+        // ale preferuj wpis z kalendarza głównego.
+        var unique={};
+        merged.forEach(function(ev){
+          var start=ev.start&&(ev.start.dateTime||ev.start.date)||"";
+          var end=ev.end&&(ev.end.dateTime||ev.end.date)||"";
+          var key=[ev.summary||"",start,end,ev.location||""].join("\u001f");
+          var current=unique[key];
+          if(!current || (ev._calPrimary && !current._calPrimary)) unique[key]=ev;
+        });
+        setGcalEvents(Object.keys(unique).map(function(k){return unique[k];}));
         setLoadingEv(false);
       })
       .catch(function(e){
