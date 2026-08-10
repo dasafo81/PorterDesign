@@ -34,7 +34,18 @@ TABLES = {
     "rail_scraps": "id",
     "mail_templates": "id",
     "user_settings": "id",
+    "fabrics": "id",
+    "installers": "id",
+    "tasks": "id",
+    "catalog_items": "id",
+    "mail_recipients": "id",
+    "transactions": "id",
+    "fixed_expenses": "id",
+    "stripe_webhook_events": "id",
 }
+# Celowo POMINIETE (sekrety / dane ulotne, odtwarzane osobno):
+#   ksef_credentials, oauth_connections, oauth_states  - materialy poufne
+#   ai_usage_windows                                   - ulotne liczniki limitu
 
 
 def fetch_all(table, order_col):
