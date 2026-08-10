@@ -51,6 +51,20 @@ async function requireUser(req) {
   return response.ok ? response.json() : null;
 }
 
+async function consumeQuota(user) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
+  if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured');
+  const tenantId = user.app_metadata?.tenant_id || null;
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/consume_ai_quota`, {
+    method: 'POST',
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_user_id: user.id, p_tenant_id: tenantId, p_max_requests: 60, p_max_tokens: 180000 }),
+  });
+  if (!response.ok) throw new Error('AI quota check failed');
+  return response.json();
+}
+
 export default async function handler(req) {
   const cors = corsHeaders(req);
   if (req.method === 'OPTIONS') {
@@ -77,6 +91,8 @@ export default async function handler(req) {
   try {
     const user = await requireUser(req);
     if (!user) return json({ error: { message: 'Wymagane jest zalogowanie.' } }, 401, cors);
+    const quota = await consumeQuota(user);
+    if (!quota.allowed) return json({ error: { message: 'Limit użycia AI został osiągnięty. Spróbuj ponownie później.' } }, 429, { ...cors, 'Retry-After': '3600' });
 
     const body = await req.text();
     if (new TextEncoder().encode(body).length > MAX_BODY_BYTES) {
