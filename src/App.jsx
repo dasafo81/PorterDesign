@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { sbApi, stripeApi } from './lib/supabase.js';
-import { signOut } from './lib/auth.js';
+import { signOut, getAccessToken } from './lib/auth.js';
 import {
   FABRICS, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
@@ -2373,7 +2373,7 @@ export function ModalAIValuation(p){
 
     fetch("/api/claude",{
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+(getAccessToken()||"")},
       body:JSON.stringify({
         model:"claude-sonnet-4-20250514",
         max_tokens:3000,
@@ -2522,7 +2522,7 @@ export function ModalAIValuation(p){
         return{role:"assistant",content:m.rawText||m.text||" "};
       });
       fetch("/api/claude",{
-        method:"POST",headers:{"Content-Type":"application/json"},
+        method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(getAccessToken()||"")},
         body:JSON.stringify({model:"claude-sonnet-4-20250514",system:buildSystemPrompt(),messages:apiMessages,max_tokens:3000})
       }).then(function(r){return r.json();}).then(function(d){
         if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
@@ -2759,4 +2759,3 @@ export const CHANGELOG = [
       ]
     }
   ];
-
