@@ -198,11 +198,53 @@ export function ModalDeal(p){
       washing_sent:washingSent,
       updated_at:new Date().toISOString()
     };
+    function syncCalendarEvents(saved){
+      if(!gcalToken||!calList.length)return Promise.resolve();
+      var primary=(calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
+      var items=[];
+      [{date:saved.delivery_date,type:"delivery",label:"🚚 Realizacja",cal:saved.installer_calendar_id},
+       {date:saved.delivery_date2,type:"delivery2",label:saved.install_label2||"🔧 Termin 2",cal:saved.installer_calendar_id2}]
+        .forEach(function(x){
+          if(!x.date)return;
+          var targets=[x.cal||primary];
+          if(targets[0]!==primary)targets.push(primary);
+          targets.forEach(function(calId){items.push({date:x.date,type:x.type,label:x.label,calId:calId});});
+        });
+      function request(url,opts,t){
+        opts=opts||{};opts.headers=Object.assign({},opts.headers||{},{Authorization:"Bearer "+t,"Content-Type":"application/json"});
+        return fetch(url,opts).then(function(r){
+          if(r.status===401)return gcalGetToken().then(function(fresh){setGcalToken(fresh);return request(url,opts,fresh);});
+          return r;
+        });
+      }
+      return Promise.all(items.map(function(item){
+        var day=new Date(item.date), key=String(d.id)+"_"+item.type;
+        var start=new Date(day);start.setHours(9,0,0,0);
+        var end=new Date(start.getTime()+60*60000);
+        var body={summary:item.label+" — "+clientName,
+          description:"Automatycznie zsynchronizowane z Asystentem Dekoracji.",
+          start:{dateTime:start.toISOString(),timeZone:"Europe/Warsaw"},
+          end:{dateTime:end.toISOString(),timeZone:"Europe/Warsaw"},
+          extendedProperties:{private:{porterDesignDealId:String(d.id),porterDesignEventType:item.type}}};
+        var base="https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(item.calId)+"/events";
+        var search=base+"?privateExtendedProperty="+encodeURIComponent("porterDesignDealId="+String(d.id))+
+          "&privateExtendedProperty="+encodeURIComponent("porterDesignEventType="+item.type)+"&showDeleted=false";
+        return request(search,null,gcalToken).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();})
+          .then(function(data){
+            var existing=(data.items||[])[0];
+            return request(existing?base+"/"+encodeURIComponent(existing.id):base,
+              {method:existing?"PATCH":"POST",body:JSON.stringify(body)},gcalToken)
+              .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);});
+          });
+      })).then(function(){fetchEvents(gcalToken);});
+    }
     sbApi.updateDeal(d.id,patch).then(function(){
+      return syncCalendarEvents(patch);
+    }).then(function(){
       p.onSave(patch);
       setBusy(false);
       p.onClose();
-    }).catch(function(e){alert("Błąd: "+e.message);setBusy(false);});
+    }).catch(function(e){alert("Zapisano termin, ale synchronizacja Google Calendar nie powiodła się: "+e.message);setBusy(false);});
   }
 
   function deleteAttach(id){
