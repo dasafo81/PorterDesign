@@ -838,6 +838,7 @@ export function CRMKalendarz(p){
   var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
   var sSelGcalEv=useState(null),selectedGcalEv=sSelGcalEv[0],setSelectedGcalEv=sSelGcalEv[1];
   var sSelDeal=useState(null),selectedDeal=sSelDeal[0],setSelectedDeal=sSelDeal[1];
+  var sCalendarDeals=useState(p.deals||[]),calendarDeals=sCalendarDeals[0],setCalendarDeals=sCalendarDeals[1];
   var sDragOver=useState(null),dragOverDay=sDragOver[0],setDragOverDay=sDragOver[1];
   var dragEvRef=React.useRef(null);
   function openDealEventPreview(ev){
@@ -958,7 +959,7 @@ export function CRMKalendarz(p){
   // Zbierz terminy z dealów
   var now=new Date();
   var dealEvents=[];
-  (p.deals||[]).forEach(function(deal){
+  calendarDeals.forEach(function(deal){
     var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
     var name=cl?cl.name:"Klient";
     if(deal.visit_date){dealEvents.push({date:new Date(deal.visit_date),label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});}
@@ -1097,6 +1098,13 @@ export function CRMKalendarz(p){
         setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
         sbApi.updateDeal(ev._crmDealId,crmPatch)
           .then(function(){
+            setCalendarDeals(function(deals){
+              return deals.map(function(deal){
+                return String(deal.id)===String(ev._crmDealId)
+                  ? Object.assign({},deal,crmPatch)
+                  : deal;
+              });
+            });
             setNewEvDraft(null);
             setSelectedGcalEv(null);
           })
