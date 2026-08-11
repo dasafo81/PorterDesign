@@ -1,10 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import './index.css';
 import { App } from './App.jsx';
 import { ScreenLogin } from './components/ScreenLogin.jsx';
 import { loadSession, refreshSession } from './lib/auth.js';
 import { markBrokerCallback } from './lib/oauthBroker.js';
+
+var SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
+if (SENTRY_DSN) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: import.meta.env.MODE === 'production' ? 'production' : 'preview',
+    integrations: [],
+    tracesSampleRate: 0.1,
+    sendDefaultPii: false,
+    beforeSend: function(event) {
+      // Never send auth tokens, invoice contents, email bodies or KSeF credentials.
+      if (event.request) {
+        delete event.request.cookies;
+        delete event.request.headers;
+        delete event.request.data;
+      }
+      if (event.user) {
+        event.user = { id: event.user.id };
+      }
+      return event;
+    }
+  });
+}
 
 markBrokerCallback();
 
