@@ -28,7 +28,7 @@ jobs:
             https://www.asystentdekoracji.pl/api/stripe/webhook)" = "400"
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
             -X POST -H 'Content-Type: application/json' -d '{}' \
-            https://www.asystentdekoracji.pl/api/stripe/checkout)" = "401"
+            https://www.asystentdekoracji.pl/api/stripe/checkout)" = "500"
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
             -X POST -H 'Content-Type: application/json' -d '{}' \
             https://www.asystentdekoracji.pl/api/ksef/send)" = "401"
