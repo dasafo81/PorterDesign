@@ -19,6 +19,19 @@ jobs:
           body="$(curl --fail-with-body --silent --show-error --max-time 20 "$HEALTH_URL")"
           echo "$body"
           echo "$body" | grep -q '"ok":true'
+          # Synthetics below verify that critical routes are deployed and reject
+          # unauthenticated calls. They do not create payments or send invoices.
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            https://www.asystentdekoracji.pl/landing.html)" = "200"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            -X POST -H 'Content-Type: application/json' \
+            https://www.asystentdekoracji.pl/api/stripe/webhook)" = "400"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            -X POST -H 'Content-Type: application/json' -d '{}' \
+            https://www.asystentdekoracji.pl/api/stripe/checkout)" = "401"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
+            -X POST -H 'Content-Type: application/json' -d '{}' \
+            https://www.asystentdekoracji.pl/api/ksef/send)" = "401"
 
   backup:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 2 * * *'
