@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml } from '../constants/data.js';
 import { buildSimplifiedPDFHtml } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
+import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
 const ce = React.createElement;
 
@@ -1622,7 +1623,8 @@ export function ScreenMail(p){
 
   // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
   ue(function(){
-    msalGetActiveAccount().then(function(acc){
+    var returnedFromMicrosoft = consumeBrokerCallback('microsoft');
+    var finish = function(acc) {
       if(acc){
         setMsAccount(acc);
         return msalGetToken().then(function(token){
@@ -1632,7 +1634,17 @@ export function ScreenMail(p){
           }
         });
       }
-    }).catch(function(e){console.error("MSAL session check error",e);});
+      if (returnedFromMicrosoft) {
+        // The callback marker confirms the redirect, but make the error visible
+        // instead of silently falling back to the login card.
+        console.error("Microsoft OAuth callback returned without a usable broker connection");
+      }
+      return null;
+    };
+    (returnedFromMicrosoft
+      ? brokerTokenRetry('microsoft', 5).then(function(){ return msalGetActiveAccount(); })
+      : msalGetActiveAccount()
+    ).then(finish).catch(function(e){console.error("MSAL session check error",e);});
   },[]);
 
   // Załaduj szablony z bazy (nie wymaga auth — baza jest publiczna)

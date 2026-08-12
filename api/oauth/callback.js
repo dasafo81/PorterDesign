@@ -26,13 +26,17 @@ export async function handleCallback(req, providerOverride = null) {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
     const info = await ir.json();
-    await supabase('oauth_connections?on_conflict=user_id,provider,provider_account_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({
+    const saveConnection = await supabase('oauth_connections?on_conflict=user_id,provider,provider_account_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({
       user_id: saved.user_id, tenant_id: saved.tenant_id, provider,
       provider_account_id: provider === 'google' ? info.sub : info.id,
       provider_email: info.email || info.mail || info.userPrincipalName || null,
       scopes: tokens.scope || '', refresh_token_ciphertext: await encrypt(tokens.refresh_token),
       access_token_expires_at: new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString(),
     }) });
+    if (!saveConnection.ok) {
+      const detail = await saveConnection.text();
+      return json({ error: 'OAuth connection could not be saved', detail: detail.slice(0, 500) }, 502, cors());
+    }
     await supabase(`oauth_states?state_hash=eq.${encodeURIComponent(stateHash)}`, { method: 'DELETE' });
     return new Response(null, { status: 302, headers: { ...cors(), Location: `${process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl'}?oauth=${provider}&connected=1` } });
   } catch (e) {
