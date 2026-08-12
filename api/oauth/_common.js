@@ -60,5 +60,8 @@ export async function supabase(path, options = {}) {
 }
 
 export function redirectUri(provider) {
-  return `${process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl'}/api/oauth/callback?provider=${provider}`;
+  const origin = process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl';
+  return provider === 'microsoft'
+    ? `${origin}/api/oauth/microsoft-callback`
+    : `${origin}/api/oauth/callback?provider=${provider}`;
 }
