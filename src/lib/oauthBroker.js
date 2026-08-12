@@ -39,11 +39,28 @@ export function brokerToken(provider) {
   });
 }
 
+export function brokerTokenRetry(provider, attempts) {
+  var left = attempts == null ? 3 : attempts;
+  return brokerToken(provider).catch(function(e) {
+    if (left <= 1 || !e || e.code !== 'OAUTH_RECONNECT_REQUIRED') throw e;
+    return new Promise(function(resolve) { setTimeout(resolve, 500); })
+      .then(function() { return brokerTokenRetry(provider, left - 1); });
+  });
+}
+
 export function markBrokerCallback() {
   var params = new URLSearchParams(window.location.search);
   var provider = params.get('oauth');
   if (provider && params.get('connected') === '1') {
     localStorage.setItem('pd_oauth_' + provider, '1');
+    sessionStorage.setItem('pd_oauth_connected_' + provider, '1');
     window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
   }
+}
+
+export function consumeBrokerCallback(provider) {
+  var key = 'pd_oauth_connected_' + provider;
+  if (sessionStorage.getItem(key) !== '1') return false;
+  sessionStorage.removeItem(key);
+  return true;
 }
