@@ -25,7 +25,7 @@ export default async function handler(req) {
       redirect_uri: redirectUri(provider), response_type: 'code', state,
       scope: provider === 'google'
         ? 'openid email https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
-        : 'openid email offline_access Mail.Send Mail.ReadWrite Calendars.ReadWrite',
+        : 'openid email profile User.Read offline_access Mail.Send Mail.ReadWrite Calendars.ReadWrite',
       access_type: 'offline', prompt: 'consent',
     });
     const host = provider === 'google' ? 'https://accounts.google.com/o/oauth2/v2/auth' : 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
