@@ -30,6 +30,15 @@ const ce = React.createElement;
 export function App(p){
   var onLogout=p&&p.onLogout?p.onLogout:function(){};
   var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
+  React.useEffect(function(){
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("return") === "mail" && params.get("oauth") === "microsoft") {
+        setAppMode("mail");
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+      }
+    } catch (e) {}
+  },[]);
   // Super-admin flaga z JWT — pokazuje zakladke Admin tylko gdy is_super_admin: true
   var sIsSuper=useState(false),isSuperAdmin=sIsSuper[0],setIsSuperAdmin=sIsSuper[1];
   React.useEffect(function(){
