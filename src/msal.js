@@ -25,6 +25,25 @@ var msalConfig = {
 
 var _instance = null;
 var _initPromise = null;
+var _brokerToken = null;
+var _brokerTokenExpiresAt = 0;
+var _brokerAccount = null;
+
+function rememberBrokerToken(data) {
+  _brokerToken = data.access_token;
+  _brokerTokenExpiresAt = Date.now() + Math.max(60, (data.expires_in || 3600) - 60) * 1000;
+  _brokerAccount = {
+    username: data.provider_email || "Połączone konto Microsoft",
+    email: data.provider_email || ""
+  };
+  localStorage.setItem("pd_oauth_microsoft", "1");
+  return _brokerToken;
+}
+
+async function getBrokerToken() {
+  if (_brokerToken && Date.now() < _brokerTokenExpiresAt) return _brokerToken;
+  return rememberBrokerToken(await brokerToken("microsoft"));
+}
 
 function getInstance() {
   if (_initPromise) return _initPromise;
@@ -51,10 +70,13 @@ export async function msalLogin() {
 }
 
 export async function msalGetToken() {
-  if (localStorage.getItem("pd_oauth_microsoft")) {
-    try { return (await brokerToken("microsoft")).access_token; } catch (e) {
-      if (e && e.code === "OAUTH_RECONNECT_REQUIRED") throw e;
-    }
+  // Połączenie jest zapisane na backendzie, więc nie uzależniaj go od znacznika
+  // localStorage. Znacznik znika po wyczyszczeniu danych, zmianie urządzenia lub
+  // niektórych aktualizacjach PWA, mimo że refresh token nadal jest ważny.
+  try {
+    return await getBrokerToken();
+  } catch (e) {
+    if (e && e.code !== "OAUTH_RECONNECT_REQUIRED") throw e;
   }
   var inst = await getInstance();
   var accounts = inst.getAllAccounts();
@@ -79,7 +101,13 @@ export async function msalGetToken() {
 }
 
 export async function msalGetActiveAccount() {
-  if (localStorage.getItem("pd_oauth_microsoft")) return { username: "Połączone konto Microsoft" };
+  if (_brokerAccount) return _brokerAccount;
+  try {
+    await getBrokerToken();
+    return _brokerAccount;
+  } catch (e) {
+    if (e && e.code !== "OAUTH_RECONNECT_REQUIRED") throw e;
+  }
   var inst = await getInstance();
   var accounts = inst.getAllAccounts();
   return accounts[0] || null;
