@@ -26,9 +26,22 @@ export async function handleCallback(req, providerOverride = null) {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
     const info = await ir.json();
+    let tokenClaims = {};
+    if (provider === 'microsoft' && tokens.access_token) {
+      try {
+        const part = tokens.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        tokenClaims = JSON.parse(atob(part.padEnd(part.length + (4 - part.length % 4) % 4, '=')));
+      } catch (_) {}
+    }
+    const providerAccountId = provider === 'google'
+      ? info.sub
+      : (info.id || tokenClaims.oid || tokenClaims.sub || info.userPrincipalName || info.mail);
+    if (!providerAccountId) {
+      return json({ error: 'Microsoft account identifier missing', detail: info.error || 'Graph /me returned no id' }, 502, cors());
+    }
     const saveConnection = await supabase('oauth_connections?on_conflict=user_id,provider,provider_account_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({
       user_id: saved.user_id, tenant_id: saved.tenant_id, provider,
-      provider_account_id: provider === 'google' ? info.sub : info.id,
+      provider_account_id: providerAccountId,
       provider_email: info.email || info.mail || info.userPrincipalName || null,
       scopes: tokens.scope || '', refresh_token_ciphertext: await encrypt(tokens.refresh_token),
       access_token_expires_at: new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString(),
