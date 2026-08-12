@@ -25,7 +25,12 @@ export default async function handler(req) {
     const tr = await fetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
     const tokens = await tr.json();
     if (!tr.ok || !tokens.access_token) return json({ error: 'OAUTH_RECONNECT_REQUIRED' }, 401, cors());
-    return json({ access_token: tokens.access_token, expires_in: tokens.expires_in || 3600, provider }, 200, cors());
+    return json({
+      access_token: tokens.access_token,
+      expires_in: tokens.expires_in || 3600,
+      provider,
+      provider_email: connection.provider_email || null,
+    }, 200, cors());
   } catch (e) {
     return json({ error: e.message || 'Token refresh failed' }, 500, cors());
   }
