@@ -2,8 +2,8 @@ import { cors, encrypt, json, redirectUri, serviceConfig, supabase } from './_co
 
 export const config = { runtime: 'edge' };
 
-export default async function handler(req) {
-  const u = new URL(req.url), provider = u.searchParams.get('provider'), code = u.searchParams.get('code'), state = u.searchParams.get('state');
+export async function handleCallback(req, providerOverride = null) {
+  const u = new URL(req.url), provider = providerOverride || u.searchParams.get('provider'), code = u.searchParams.get('code'), state = u.searchParams.get('state');
   if (!provider || !code || !state) return json({ error: 'Missing OAuth parameters' }, 400, cors());
   try {
     serviceConfig();
@@ -39,3 +39,5 @@ export default async function handler(req) {
     return json({ error: e.message || 'OAuth callback failed' }, 500, cors());
   }
 }
+
+export default handleCallback;
