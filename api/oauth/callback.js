@@ -21,7 +21,9 @@ export async function handleCallback(req, providerOverride = null) {
     const tokenUrl = provider === 'google' ? 'https://oauth2.googleapis.com/token' : 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
     const tr = await fetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
     const tokens = await tr.json();
-    if (!tr.ok || !tokens.refresh_token) return json({ error: 'Provider did not return a refresh token' }, 400, cors());
+    if (!tr.ok) {
+      return json({ error: 'OAuth token exchange failed', detail: tokens.error_description || tokens.error || 'Provider rejected the authorization code' }, 400, cors());
+    }
     const ir = await fetch(provider === 'google' ? 'https://openidconnect.googleapis.com/v1/userinfo' : 'https://graph.microsoft.com/v1.0/me?$select=id,mail,userPrincipalName', {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
@@ -39,11 +41,23 @@ export async function handleCallback(req, providerOverride = null) {
     if (!providerAccountId) {
       return json({ error: 'Microsoft account identifier missing', detail: info.error || 'Graph /me returned no id' }, 502, cors());
     }
+    // Microsoft may omit refresh_token when the user has already granted offline_access.
+    // Keep the previously stored ciphertext in that case instead of destroying a
+    // working connection or forcing a needless reconnect loop.
+    let refreshTokenCiphertext = tokens.refresh_token ? await encrypt(tokens.refresh_token) : null;
+    if (!refreshTokenCiphertext) {
+      const existingResponse = await supabase(`oauth_connections?user_id=eq.${encodeURIComponent(saved.user_id)}&provider=eq.${encodeURIComponent(provider)}&provider_account_id=eq.${encodeURIComponent(providerAccountId)}&select=refresh_token_ciphertext&limit=1`);
+      const existingRows = existingResponse.ok ? await existingResponse.json() : [];
+      refreshTokenCiphertext = existingRows[0] && existingRows[0].refresh_token_ciphertext;
+    }
+    if (!refreshTokenCiphertext) {
+      return json({ error: 'Provider did not return a refresh token', detail: 'Microsoft did not return offline_access and no saved connection exists. Revoke the existing app consent in Microsoft, then connect once more.' }, 400, cors());
+    }
     const saveConnection = await supabase('oauth_connections?on_conflict=user_id,provider,provider_account_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify({
       user_id: saved.user_id, tenant_id: saved.tenant_id, provider,
       provider_account_id: providerAccountId,
       provider_email: info.email || info.mail || info.userPrincipalName || null,
-      scopes: tokens.scope || '', refresh_token_ciphertext: await encrypt(tokens.refresh_token),
+      scopes: tokens.scope || '', refresh_token_ciphertext: refreshTokenCiphertext,
       access_token_expires_at: new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString(),
     }) });
     if (!saveConnection.ok) {
