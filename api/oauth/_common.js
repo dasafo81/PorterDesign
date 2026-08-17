@@ -63,5 +63,5 @@ export function redirectUri(provider) {
   const origin = process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl';
   return provider === 'microsoft'
     ? `${origin}/api/oauth/microsoft-callback`
-    : `${origin}/api/oauth/callback?provider=${provider}`;
+    : `${origin}/api/oauth/google-callback`;
 }
