@@ -1431,7 +1431,15 @@ function InvoiceList(p){
         var isBusy=p.viewBusyId===inv.id;
         var rowBg=isOverdue?"var(--red-l)":"var(--bg2)";
         return ce("div",{key:inv.id,
-          onClick:function(){ if(isBusy)return; (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv); },
+          onClick:function(e){
+            if(isBusy)return;
+            // Zakończenie zaznaczania tekstu również emituje click. Nie otwieraj
+            // wtedy faktury — otwarcie wiersza jest tylko dla zwykłego kliknięcia.
+            var selection=window.getSelection&&window.getSelection();
+            if(selection&&selection.toString()) return;
+            if(e&&e.detail===0) return;
+            (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv);
+          },
           style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
             background:rowBg,width:"100%",opacity:isBusy?0.6:1},
