@@ -1438,7 +1438,12 @@ function InvoiceList(p){
           onMouseEnter:function(e){e.currentTarget.style.background=isOverdue?"var(--red-border)":"var(--bg3)";},
           onMouseLeave:function(e){e.currentTarget.style.background=rowBg;}
         },
-          ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--violet)"}},
+          ce("div",{
+            // Numer faktury ma być zwykłym tekstem: można go zaznaczyć i skopiować
+            // bez uruchamiania nawigacji do podglądu dokumentu.
+            onClick:function(e){e.stopPropagation();},
+            style:{fontSize:12,fontWeight:700,color:"var(--violet)",userSelect:"text",cursor:"text"}
+          },
             inv.number||ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},"(szkic)")),
           ce("div",{style:{fontSize:11,textAlign:"right",color:typeColorOf(inv.doc_type),fontWeight:600}},typeLabelStr),
           ce("div",null,
@@ -2195,7 +2200,10 @@ export function ScreenInvoices(p){
     loading&&ce("div",{style:{textAlign:"center",padding:"60px 0",color:"var(--t3)"}},"\u23F3 Ładowanie..."),
     err&&ce("div",{style:{background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:10,padding:"14px",fontSize:13,color:"var(--red)",marginBottom:16}},"\u26A0\uFE0F "+err),
 
-    !loading&&view==="list"&&ce("div",null,
+    // Lista pozostaje zamontowana także podczas podglądu/edycji. Dzięki temu
+    // powrót do niej zachowuje zakładkę Wydatki, wyszukiwarkę, okres i wszystkie
+    // zaznaczone filtry — dokładnie tak, jak w poprzednim ekranie.
+    !loading&&ce("div",{style:{display:view==="list"?"block":"none"}},
       settingsEmpty&&ce("div",{style:{background:"var(--amber-l)",border:"1px solid var(--amber)",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:13,color:"var(--amber)",display:"flex",alignItems:"center",gap:10}},
         ce("span",{style:{fontSize:18}},"\u26A0\uFE0F"),
         ce("span",null,"Uzupełnij dane sprzedawcy przed wystawieniem pierwszej faktury. "),
