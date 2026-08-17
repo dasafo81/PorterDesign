@@ -1439,12 +1439,15 @@ function InvoiceList(p){
           onMouseLeave:function(e){e.currentTarget.style.background=rowBg;}
         },
           ce("div",{
-            // Numer faktury ma być zwykłym tekstem: można go zaznaczyć i skopiować
-            // bez uruchamiania nawigacji do podglądu dokumentu.
+            // Numer faktury jest interaktywnie niezależny od wiersza: można rozpocząć
+            // zaznaczanie od dowolnego miejsca numeru bez uruchamiania nawigacji wiersza.
+            onPointerDown:function(e){e.stopPropagation();},
+            onMouseDown:function(e){e.stopPropagation();},
             onClick:function(e){e.stopPropagation();},
-            style:{fontSize:12,fontWeight:700,color:"var(--violet)",userSelect:"text",cursor:"text"}
+            style:{fontSize:12,fontWeight:700,color:"var(--violet)",userSelect:"text",WebkitUserSelect:"text",MozUserSelect:"text",cursor:"text"}
           },
-            inv.number||ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},"(szkic)")),
+            ce("span",{style:{userSelect:"text",WebkitUserSelect:"text",MozUserSelect:"text"}},
+              inv.number||ce("span",{style:{color:"var(--t3)",fontStyle:"italic"}},"(szkic)"))),
           ce("div",{style:{fontSize:11,textAlign:"right",color:typeColorOf(inv.doc_type),fontWeight:600}},typeLabelStr),
           ce("div",null,
             ce("div",{style:{fontSize:13,fontWeight:500,color:"var(--t1)"}},contragentName.slice(0,40)),
