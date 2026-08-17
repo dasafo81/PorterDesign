@@ -152,10 +152,11 @@ export function ModalDeal(p){
 
   var clientName=cl?cl.name:"(brak klienta)";
   var quoteBreak=dealQuoteBreakdown(cl);
-  var montazRateD=cl?((parseFloat(cl.install_fee)||0)/100):0;
+  var montazRateD=cl?(cl.install_fee_mode==="amount"?0:((parseFloat(cl.install_fee)||0)/100)):0;
+  var montazAmountD=cl&&cl.install_fee_mode==="amount"?(parseFloat(cl.install_fee)||0):0;
   var quoteBezMontazu=roundTo10(quoteBreak.total);
-  var quoteMontazVal=montazRateD>0?roundTo10(quoteBreak.total*montazRateD):0;
-  var clientTotal=roundTo10(montazRateD>0?quoteBreak.total*(1+montazRateD):quoteBreak.total);
+  var quoteMontazVal=montazAmountD>0?roundTo10(montazAmountD):(montazRateD>0?roundTo10(quoteBreak.total*montazRateD):0);
+  var clientTotal=roundTo10(quoteBreak.total+quoteMontazVal);
 
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
@@ -1708,8 +1709,9 @@ function DealCard(cp){
   var cl=clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
   var name=cl?cl.name:"(nieznany)";
   var baseTotal=cl?clientTotal2(cl):0;
-  var montazRate=cl?((parseFloat(cl.install_fee)||0)/100):0;
-  var total=roundTo10(montazRate>0?baseTotal*(1+montazRate):baseTotal);
+  var montazRate=cl?(cl.install_fee_mode==="amount"?0:((parseFloat(cl.install_fee)||0)/100)):0;
+  var montazAmount=cl&&cl.install_fee_mode==="amount"?(parseFloat(cl.install_fee)||0):0;
+  var total=roundTo10(baseTotal+(montazAmount>0?montazAmount:(montazRate>0?baseTotal*montazRate:0)));
   var hasVisit=deal.visit_date; var hasDelivery=deal.delivery_date;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
