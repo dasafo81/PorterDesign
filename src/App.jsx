@@ -121,6 +121,7 @@ export function App(p){
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
   var s14b=useState(false),showEmailModal=s14b[0],setShowEmailModal=s14b[1];
   var s14m=useState(""),montazInput=s14m[0],setMontazInput=s14m[1];
+  var s14mm=useState("percent"),montazMode=s14mm[0],setMontazMode=s14mm[1];
   var sDiscEn=useState(false),discountEnabled=sDiscEn[0],setDiscountEnabled=sDiscEn[1];
   var sDiscAmt=useState(""),discountInput=sDiscAmt[0],setDiscountInput=sDiscAmt[1];
   var sVisitFee=useState(false),visitFeeEnabled=sVisitFee[0],setVisitFeeEnabled=sVisitFee[1];
@@ -255,6 +256,7 @@ export function App(p){
     var cl=clients.find(function(c){return c.id===curClientId;});
     setCommissionInput(cl&&cl.commission!=null?String(cl.commission):"");
     setMontazInput(cl&&cl.install_fee!=null?String(cl.install_fee):"");
+    setMontazMode(cl&&cl.install_fee_mode==="amount"?"amount":"percent");
   },[curClientId,clients.length]);
 
   // Przewiń na górę przy każdym otwarciu widoku okna
@@ -321,7 +323,7 @@ export function App(p){
     setClients(function(cs){
       var updated=cs.map(function(cl){return cl.id===id?fn(cl):cl;});
       var newCl=updated.find(function(cl){return cl.id===id;});
-      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||''});
+      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'});
       return updated;
     });
   }
@@ -361,7 +363,8 @@ export function App(p){
       rooms:copiedRooms,
       status:"nowe",
       commission:cl.commission||null,
-      install_fee:cl.install_fee||null
+      install_fee:cl.install_fee||null,
+      install_fee_mode:cl.install_fee_mode||"percent"
     };
     sbApi.addClientFull(payload).then(function(data){
       var newCl=data&&data[0]?data[0]:mg(payload,{id:Date.now()});
@@ -1302,6 +1305,10 @@ export function App(p){
     }
 
     // Compute client total (Variant A for each group)
+    function installValue(base){
+      var v=+montazInput||0;
+      return montazMode==="amount"?roundTo10(v):(v>0?roundTo10(base*v/100):0);
+    }
     function clientTotalWithVariants(cl){
       var sum=0;
       (cl.rooms||[]).forEach(function(r){
@@ -1330,10 +1337,10 @@ export function App(p){
         commissionInput?ce("button",{onClick:function(){setCommissionInput("");if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{commission:""});});},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:0,display:"flex",alignItems:"center",gap:12}},
-        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Monta\u017c (%)"),
-        ce("input",{type:"text",inputMode:"numeric",min:0,max:100,step:1,value:montazInput,onChange:function(ev){var v=ev.target.value;setMontazInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:v});});},placeholder:"np. 10",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
-        montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+"%"):null,
-        montazInput?ce("button",{onClick:function(){setMontazInput("");if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:""});});},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Montaż ("+(montazMode==="amount"?"kwota":"%")+")"),
+        ce("select",{value:montazMode,onChange:function(ev){var m=ev.target.value;setMontazMode(m);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee_mode:m});});},style:{padding:"8px 10px",border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},ce("option",{value:"percent"},"%"),ce("option",{value:"amount"},"zł")),
+        ce("input",{type:"text",inputMode:"decimal",value:montazInput,onChange:function(ev){var v=ev.target.value;setMontazInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:v,install_fee_mode:montazMode});});},placeholder:montazMode==="amount"?"np. 1200":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+(montazMode==="amount"?" zł":"%")):null,
       ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:0}},
         ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},
@@ -1341,7 +1348,7 @@ export function App(p){
             ?(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie od (Wariant A) + "+commissionInput+"% polecenie":"\u0141\u0105cznie od (Wariant A)")
             :(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie + "+commissionInput+"% polecenie":"\u0141\u0105cznie ca\u0142a wizyta")
         ),
-        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},withComm(clientTotalWithVariants(curClient))+" z\u0142")
+        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(withComm(clientTotalWithVariants(curClient))+installValue(withComm(clientTotalWithVariants(curClient))))+" z\u0142")
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
@@ -1358,7 +1365,8 @@ export function App(p){
   else if(screen==="offerPreview"&&curClient){
     var previewTotal=offerPreviewRows.reduce(function(a,r){return a+(+r.total||0);},0);
     var previewMontazPct=(+montazInput||0)/100;
-    var previewMontazVal=previewMontazPct>0?roundTo10(previewTotal*previewMontazPct):0;
+    var previewMontazVal=installValue(previewTotal);
+    var previewMontazParam=montazMode==="amount"?{mode:"amount",value:previewMontazVal}:{mode:"percent",value:previewMontazPct};
     var previewDiscountVal=(discountEnabled&&(+discountInput)>0)?roundTo10(+discountInput):0;
     var previewVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
     var previewFinalTotal=Math.max(0,roundTo10(previewTotal+previewMontazVal-previewDiscountVal-previewVisitFeeVal));
@@ -1436,9 +1444,10 @@ export function App(p){
         ce("button",{onClick:recalcOfferPricesFromCommission,style:{padding:"8px 14px",borderRadius:8,border:"1.5px solid var(--bd2)",background:"var(--bg)",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}},"\uD83D\uDD04 Przelicz ceny")
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}},
-        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Montaż (%)"),
-        ce("input",{type:"text",inputMode:"numeric",min:0,max:100,step:1,value:montazInput,onChange:function(ev){var v=ev.target.value;setMontazInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:v});});},placeholder:"np. 10",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
-        montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+"%"):null
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDD28 Montaż ("+(montazMode==="amount"?"kwota":"%")+")"),
+        ce("select",{value:montazMode,onChange:function(ev){var m=ev.target.value;setMontazMode(m);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee_mode:m});});},style:{padding:"8px 10px",border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},ce("option",{value:"percent"},"%"),ce("option",{value:"amount"},"zł")),
+        ce("input",{type:"text",inputMode:"decimal",value:montazInput,onChange:function(ev){var v=ev.target.value;setMontazInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:v,install_fee_mode:montazMode});});},placeholder:montazMode==="amount"?"np. 1200":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
+        montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+(montazMode==="amount"?" zł":"%")):null,
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
@@ -1470,7 +1479,7 @@ export function App(p){
         Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
         ce("button",{onClick:function(){
           var vu=offerValidUntil?new Date(offerValidUntil):null;
-          generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazPct,offerNotes,vu,previewDiscountVal,previewVisitFeeVal);
+          generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu,previewDiscountVal,previewVisitFeeVal);
           setScreen("sum");
         },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
       )
@@ -1677,7 +1686,7 @@ export function App(p){
     function doSimplGenerate(){
       var vu=null;
       if(simplValidUntil){var d=new Date(simplValidUntil+"T00:00:00");if(!isNaN(d))vu=d;}
-      generateSimplifiedPDFFromRows(curClient,simplEditableRows,(+montazInput||0)/100,vu,"");
+      generateSimplifiedPDFFromRows(curClient,simplEditableRows,montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100},vu,"");
       setScreen("sum");
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);

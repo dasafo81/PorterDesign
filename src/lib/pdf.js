@@ -427,6 +427,9 @@ export function buildSimplifiedRows(client,selection,comm){
 // doedytowanej na ekranie podglądu) struktury pokój -> okno -> pozycje.
 export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix){
   montaz=montaz||0;
+  var montazMode=montaz.mode||"percent";
+  var montazInputValue=montaz.mode?montaz.value:montaz;
+  montaz=montazMode==="amount"?0:montazInputValue;
   if(!roomsData||!roomsData.length)return null;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
   var validDate=((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil:new Date(now.getTime()+30*24*60*60*1000);var validStr=validDate.toLocaleDateString("pl-PL");
@@ -452,6 +455,8 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
     return "<div style=\"margin-bottom:8mm;\"><div style=\"font-size:13px;font-weight:700;color:#1a1a18;letter-spacing:0.04em;text-transform:uppercase;padding:8px 10px;background:#f4f4f2;border-left:3px solid #1a1a18;margin-bottom:3mm;\">"+rd.name+"</div>"+winBodies+"</div>";
   }).join("");
   if(!grandTotal)return null;
+  var montazVal=montazMode==="amount"?roundTo10(montazInputValue):(montaz>0?roundTo10(grandTotal*montaz):0);
+  var hasMontaz=montazVal>0;
 
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u017c. Okiennych"+titleSuffix+"</title>"+pdfStyles()+"</head><body>"
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
@@ -461,11 +466,11 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
     +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections
-    +(montaz>0?"<div style=\"margin-top:6mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#1a1a18;\">Monta\u017c dekoracji okiennych ("+Math.round(montaz*100)+"%):</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">"+roundTo10(grandTotal*montaz)+" z\u0142</span></div>":"")
-    +(montaz>0?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#555;font-weight:600;\">\u0141\u0105cznie bez monta\u017cu:</span><span style=\"font-size:14px;font-weight:700;color:#555;\">"+roundTo10(grandTotal)+" z\u0142</span></div>":"")
-    +"<div style=\"margin-top:"+(montaz>0?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
-    +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(montaz>0?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
-    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(montaz>0?roundTo10(grandTotal*(1+montaz)):roundTo10(grandTotal))+" z\u0142</span></div>"
+    +(hasMontaz?"<div style=\"margin-top:6mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#1a1a18;\">Monta\u017c dekoracji okiennych ("+(montazMode==="amount"?montazVal.toFixed(2).replace(".",",")+" zł":Math.round(montaz*100)+"%")+"):</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">"+montazVal+" z\u0142</span></div>":"")
+    +(hasMontaz?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#555;font-weight:600;\">\u0141\u0105cznie bez monta\u017cu:</span><span style=\"font-size:14px;font-weight:700;color:#555;\">"+roundTo10(grandTotal)+" z\u0142</span></div>":"")
+    +"<div style=\"margin-top:"+(hasMontaz?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+    +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(hasMontaz?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
+    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(hasMontaz?roundTo10(grandTotal+montazVal):roundTo10(grandTotal))+" z\u0142</span></div>"
     +"<div class=\"sign-block\"><div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div><div class=\"sign\">Akceptacja klienta</div></div>"
     +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
     +"</body></html>";
