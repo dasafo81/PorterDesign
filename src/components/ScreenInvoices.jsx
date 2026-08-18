@@ -211,7 +211,8 @@ function InvoiceEditor(p){
   // Kierunek: sprzedażowa (domyślnie) lub zakupowa (faktura kosztowa od dostawcy).
   // Niezależny od docType — faktura zakupowa też może być np. EKO albo proformą.
   var [direction,setDirection]=useState(initInv.direction||(initInv.doc_type==="zakup"?"zakup":"sprzedaz"));
-  // Dla faktur zakupowych numer nadaje dostawca — wpisujemy go ręcznie, nie generujemy własnej numeracji.
+  // Dla zwykłych faktur zakupowych numer nadaje dostawca. Proforma i EKO są
+  // dokumentami wewnętrznymi w naszym obiegu — ich numer nadajemy automatycznie.
   var [purchaseNumber,setPurchaseNumber]=useState(direction==="zakup"?(initInv.number||""):"");
   var [issueDate,setIssueDate]=useState(initInv.issue_date||today);
   var [saleDate,setSaleDate]=useState(initInv.sale_date||today);
@@ -428,9 +429,11 @@ function InvoiceEditor(p){
 
   function validate(){
     if(!buyerName.trim()) return direction==="zakup"?"Brak nazwy sprzedawcy (kontrahenta)":"Brak nazwy nabywcy";
-    // EKO (niezależnie od kierunku) ma własną, automatyczną numerację (EKO/nr/MM) —
-    // nie wymagamy numeru od dostawcy, bo to nie jest prawdziwa faktura zewnętrzna.
-    if(direction==="zakup"&&docType!=="eko"&&!purchaseNumber.trim()) return "Podaj numer faktury nadany przez dostawcę";
+    // Proforma i EKO (niezależnie od kierunku) mają własną automatyczną numerację.
+    // Ręczny numer pozostaje wymagany wyłącznie dla rzeczywistej faktury zakupowej
+    // otrzymanej od dostawcy.
+    var isSupplierNumberedPurchase=direction==="zakup"&&docType!=="proforma"&&docType!=="eko";
+    if(isSupplierNumberedPurchase&&!purchaseNumber.trim()) return "Podaj numer faktury nadany przez dostawcę";
     if(items.length===0) return "Brak pozycji";
     if(items.some(function(it){return !it.name.trim();})) return "Każda pozycja musi mieć nazwę";
     return null;
@@ -468,31 +471,33 @@ function InvoiceEditor(p){
           phone:settings.seller_phone||"", bank:settings.seller_bank||""
         }
     };
-    if(isZakupDir&&docType!=="eko") header.number=purchaseNumber.trim();
+    if(isZakupDir&&docType!=="proforma"&&docType!=="eko") header.number=purchaseNumber.trim();
 
-    var prom;
-    // EKO ma zawsze własną automatyczną numerację (EKO/nr/MM), niezależnie od kierunku —
-    // to wewnętrzny dokument gotówkowy, który nigdy nie wychodzi poza aplikację (brak KSeF),
-    // więc numerujemy go sami, tak jak dokumenty sprzedażowe, a nie jak realną fakturę od dostawcy.
-    var isRealPurchaseDoc=isZakupDir&&docType!=="eko";
-    if(isNew){
-      if(isRealPurchaseDoc){
-        // Faktura kosztowa: numer nadaje dostawca, nie generujemy własnej numeracji —
-        // zapisujemy od razu jako "received" (odebrana/zarejestrowana), tak jak faktury z sync KSeF.
-        prom=sbApi.addInvoice(Object.assign({status:"received"},header));
-      } else {
-        // "draft"/"received" tu jest tylko przejściowe — chwilę niżej, zaraz po zapisaniu
-        // pozycji, nadajemy numer (dla EKO-zakupowych status zostaje "received", patrz niżej).
-        // Opcja ręcznego "Wystaw fakturę" jako osobny krok została usunięta: każda nowa
-        // faktura (niezależnie od typu dokumentu) jest wystawiana od razu przy zapisie,
-        // tak jak dotychczas działo się to tylko dla EKO.
-        prom=sbApi.addInvoice(Object.assign({status:isZakupDir?"received":"draft"},header));
+    var isRealPurchaseDoc=isZakupDir&&docType!=="proforma"&&docType!=="eko";
+    // Pobierz numer przed utworzeniem nagłówka. Dzięki temu błąd RPC nie zostawi
+    // w bazie nowej faktury bez numeru.
+    var numberPromise=isNew&&!isRealPurchaseDoc
+      ? sbApi.nextInvoiceNumber(docType,periodKey(settings.numbering_reset||"monthly",issueDate||todayISO()))
+      : Promise.resolve(null);
+
+    numberPromise.then(function(nr){
+      if(nr!==null){
+        var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
+        // Proforma korzysta z formatu ustawionego przez tenanta, EKO ma format EKO/nr/MM.
+        header.number=docType==="eko"
+          ? formatNumber("EKO/{nr}/{MM}",nrNum,issueDate||todayISO())
+          : formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
       }
-    } else {
-      prom=sbApi.updateInvoice(p.invoice.id,header).then(function(){return {id:p.invoice.id};});
-    }
-
-    prom.then(function(inv){
+      var prom;
+      if(isNew){
+        // Zwykła faktura zakupowa: numer nadaje dostawca i zapisujemy ją jako otrzymaną.
+        // Proforma/EKO w obu kierunkach dostają nasz numer automatyczny.
+        prom=sbApi.addInvoice(Object.assign({status:isRealPurchaseDoc?"received":(isZakupDir?"received":"draft")},header));
+      } else {
+        prom=sbApi.updateInvoice(p.invoice.id,header).then(function(){return {id:p.invoice.id};});
+      }
+      return prom;
+    }).then(function(inv){
       var invId=inv.id||inv[0]&&inv[0].id;
       // effItems (policzone wyżej) ma VAT już wyzerowany dla EKO — jedno źródło prawdy
       // zarówno dla sumy pokazywanej na ekranie, jak i dla zapisu (bez rozjazdu jak wcześniej).
@@ -508,22 +513,11 @@ function InvoiceEditor(p){
         };
       });
       return sbApi.replaceInvoiceItems(invId,itemsToSave).then(function(){
-        if(isNew&&!isRealPurchaseDoc){
-          var period2=periodKey(settings.numbering_reset||"monthly",issueDate||todayISO());
-          return sbApi.nextInvoiceNumber(docType,period2).then(function(nr){
-            var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
-            // EKO ma własny, uproszczony format (EKO/nr/MM) — niezależny od numeracji
-            // sprzedażowej/KSeF (settings.numbering_format) i nigdy nie zawiera roku,
-            // zgodnie z życzeniem: EKO/1/07.
-            var num=docType==="eko"
-              ? formatNumber("EKO/{nr}/{MM}",nrNum,issueDate||todayISO())
-              : formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
-            // EKO zakupowe zostaje "received" (to nie jest dokument wystawiony klientowi),
-            // sprzedażowe (w tym EKO-sprzedażowe) przechodzi w "issued" jak dotychczas.
-            var patch=isZakupDir?{number:num}:{status:"issued",number:num};
-            return sbApi.updateInvoice(invId,patch).then(function(){
-              return Object.assign({},inv,{id:invId,number:num},isZakupDir?{}:{status:"issued"});
-            });
+        // Sprzedażowe dokumenty są wystawione od razu; zakupowe proformy/EKO
+        // pozostają oznaczone jako otrzymane.
+        if(isNew&&!isZakupDir&&!isRealPurchaseDoc){
+          return sbApi.updateInvoice(invId,{status:"issued"}).then(function(){
+            return Object.assign({},inv,{id:invId,status:"issued"});
           });
         }
         return Object.assign({},inv,{id:invId});
@@ -566,9 +560,9 @@ function InvoiceEditor(p){
       fldRow("Typ dokumentu",
         ce("select",{style:inp,value:docType,onChange:function(e){setDocType(e.target.value);}},
           DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);}))),
-      direction==="zakup"&&docType!=="eko"&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:4,marginBottom:10}},
+      direction==="zakup"&&docType!=="proforma"&&docType!=="eko"&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:4,marginBottom:10}},
         "\uD83D\uDCE5 Faktura kosztowa — rejestrujemy dokument otrzymany od dostawcy. Numer nadaje dostawca (wpisz poni\u017cej), nie generujemy w\u0142asnej numeracji."),
-      direction==="zakup"&&docType!=="eko"&&fldRow("Numer faktury",
+      direction==="zakup"&&docType!=="proforma"&&docType!=="eko"&&fldRow("Numer faktury",
         ce("input",{style:inp,value:purchaseNumber,placeholder:"Np. FV/123/2026 (numer od dostawcy)",onChange:function(e){setPurchaseNumber(e.target.value);}})),
       docType==="eko"&&ce("div",{style:{background:"var(--grl)",border:"1px solid var(--gr)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--gr)",marginTop:4}},
         direction==="zakup"
