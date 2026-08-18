@@ -1265,7 +1265,10 @@ function InvoiceList(p){
     if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"var(--grd)"};
     if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"var(--grd)"};
     if(inv.payment_status==="partial")return {label:"Częściowa",color:"var(--amber)"};
-    if(inv.status==="issued"&&inv.due_date&&inv.due_date<todayISO()) return {label:"Przeterminowana",color:"var(--red)"};
+    // Faktury zakupowe (wydatki) dostają status "received" zamiast "issued" —
+    // bez tego warunku termin płatności wydatków nigdy nie podświetlał się na
+    // czerwono, mimo że wizualnie jest do tego przygotowany (kolumna, wiersz, badge).
+    if((inv.status==="issued"||inv.status==="received")&&inv.due_date&&inv.due_date<todayISO()) return {label:"Przeterminowana",color:"var(--red)"};
     return {label:"Oczekuje",color:"var(--t3)"};
   };
 
