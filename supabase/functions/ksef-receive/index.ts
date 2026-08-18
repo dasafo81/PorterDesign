@@ -155,8 +155,14 @@ function parseFA(xml: string) {
   const seller = parseParty(p1);
   const buyer = parseParty(p2);
   const platnoscB = xmlBlock(fa, "Platnosc") || xmlBlock(xml, "Platnosc");
+  // FA(3) spotykany w KSeF występuje w dwóch wariantach: zagnieżdżony
+  // RachunekBankowy/NrRB (lub IBAN) oraz prosty Platnosc/NrRachunku.
+  // Ten drugi jest emitowany przez nasz starszy generator i przez część programów
+  // księgowych, więc bez fallbacku konto sprzedawcy znikało po synchronizacji.
   const rachunek = platnoscB ? xmlBlock(platnoscB, "RachunekBankowy") : "";
-  const bank = rachunek ? (xmlVal(rachunek, "NrRB") || xmlVal(rachunek, "IBAN") || "") : "";
+  const bank = rachunek
+    ? (xmlVal(rachunek, "NrRB") || xmlVal(rachunek, "IBAN") || "")
+    : (platnoscB ? (xmlVal(platnoscB, "NrRachunku") || xmlVal(platnoscB, "NrRB") || xmlVal(platnoscB, "IBAN") || "") : "");
   const issueDate = xmlVal(xml, "P_1");
 
   // total_net/total_vat: NIE czytamy P_13_Razem/P_14_Razem — takie tagi nie istnieją
