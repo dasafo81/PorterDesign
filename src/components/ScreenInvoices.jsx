@@ -1658,10 +1658,12 @@ function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
       };
       partyBottom={
         label:"Nabywca:",
-        name:inv.buyer_name||s.seller_name||"",
-        nip:inv.buyer_nip||s.seller_nip||"",
-        street:inv.buyer_address||s.seller_address||"",
-        postal:inv.buyer_postal||s.seller_postal||"", city:inv.buyer_city||s.seller_city||""
+        // Ustawienia są źródłem prawdy dla nabywcy przy ręcznie rejestrowanym zakupie.
+        // buyer_* zostaje wyłącznie fallbackiem dla historycznych rekordów.
+        name:s.seller_name||inv.buyer_name||"",
+        nip:s.seller_nip||inv.buyer_nip||"",
+        street:s.seller_address||inv.buyer_address||"",
+        postal:s.seller_postal||inv.buyer_postal||"", city:s.seller_city||inv.buyer_city||""
       };
     }
   } else {
