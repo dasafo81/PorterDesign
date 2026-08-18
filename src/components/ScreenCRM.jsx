@@ -1201,11 +1201,13 @@ export function CRMKalendarz(p){
       var start=ev.start&&(ev.start.dateTime||ev.start.date);
       if(!start) return;
       var d=new Date(start);
-      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:ev._calColor||"#4285f4",time:ev.start.dateTime?d:null,calName:ev._calName||"",gcalRaw:ev});
+      var endRaw=ev.end&&(ev.end.dateTime||ev.end.date);
+      var endD=ev.start.dateTime?(endRaw?new Date(endRaw):new Date(d.getTime()+3600000)):null;
+      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:ev._calColor||"#4285f4",time:ev.start.dateTime?d:null,end:endD,calName:ev._calName||"",gcalRaw:ev});
     });
     // Deal events
     dealEvents.forEach(function(ev){
-      if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,dealEv:ev});
+      if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,end:new Date(ev.date.getTime()+3600000),dealEv:ev});
     });
     result.sort(function(a,b){return (a.time||0)-(b.time||0);});
     return result;
@@ -1213,6 +1215,64 @@ export function CRMKalendarz(p){
 
   // ── Klucz dnia (porównania / podświetlenie drop) ──
   function dayKeyStr(d){var pad=function(n){return String(n).padStart(2,'0');};return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+
+  // ── Układ bloków czasowych (wydarzenie zajmuje tyle miejsca, ile trwa) ──
+  // Zwraca listę {ev, top, height, col, cols} w pikselach dla siatki godzin
+  // od hourFrom do hourTo (hourTo wyłącznie), przy wysokości godziny hourPx.
+  function layoutTimedEvents(evs, day, hourFrom, hourTo, hourPx, minPx){
+    var dayStart=new Date(day);dayStart.setHours(0,0,0,0);
+    var gridStart=hourFrom*60, gridEnd=hourTo*60;
+    var items=[];
+    evs.forEach(function(ev){
+      if(!ev.time) return;
+      var s=new Date(ev.time);
+      var startMin=(s-dayStart)/60000;
+      var e=ev.end?new Date(ev.end):new Date(s.getTime()+3600000);
+      var endMin=(e-dayStart)/60000;
+      if(!(endMin>startMin)) endMin=startMin+60;      // zabezpieczenie
+      if(endMin>1440) endMin=1440;                    // wydarzenie przez północ – tnij do końca dnia
+      if(endMin<=gridStart||startMin>=gridEnd) {      // poza widoczną siatką – przypnij do krawędzi
+        startMin=Math.min(Math.max(startMin,gridStart),gridEnd-30);
+        endMin=Math.min(Math.max(endMin,startMin+30),gridEnd);
+      }
+      var visStart=Math.max(startMin,gridStart), visEnd=Math.min(endMin,gridEnd);
+      var top=(visStart-gridStart)/60*hourPx;
+      var height=Math.max(((visEnd-visStart)/60)*hourPx, minPx||18);
+      items.push({ev:ev,top:top,height:height,startMin:startMin,endMin:endMin,col:0,cols:1,
+        clippedTop:startMin<gridStart,clippedBottom:endMin>gridEnd});
+    });
+    items.sort(function(a,b){return a.startMin-b.startMin||b.endMin-a.endMin;});
+    // Grupy nachodzących się wydarzeń → kolumny obok siebie
+    var group=[],groupEnd=-1;
+    function flush(){
+      if(!group.length) return;
+      var colEnds=[];
+      group.forEach(function(it){
+        var placed=-1;
+        for(var c=0;c<colEnds.length;c++){ if(it.startMin>=colEnds[c]){placed=c;break;} }
+        if(placed<0){colEnds.push(it.endMin);placed=colEnds.length-1;}
+        else colEnds[placed]=it.endMin;
+        it.col=placed;
+      });
+      group.forEach(function(it){it.cols=colEnds.length;});
+      group=[];groupEnd=-1;
+    }
+    items.forEach(function(it){
+      if(group.length&&it.startMin>=groupEnd) flush();
+      group.push(it);
+      groupEnd=Math.max(groupEnd,it.endMin);
+    });
+    flush();
+    return items;
+  }
+
+  function fmtHM(d){return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");}
+  function evRangeLabel(ev){
+    if(!ev.time) return "";
+    var s=new Date(ev.time);
+    var e=ev.end?new Date(ev.end):null;
+    return fmtHM(s)+(e?"–"+fmtHM(e):"");
+  }
 
   // ── Przeniesienie zdarzenia GCal na inny dzień (drag&drop) ──
   function moveEventToDate(raw,targetDate){
@@ -1346,45 +1406,95 @@ export function CRMKalendarz(p){
     for(var i=0;i<7;i++){var d2=new Date(mon);d2.setDate(mon.getDate()+i);weekDays.push(d2);}
     var DOW_PL=["Pon","Wt","\u015ar","Czw","Pt","Sob","Nd"];
     var today=new Date();
-    var hours=[];for(var h=7;h<22;h++) hours.push(h);
+    var HOUR_FROM=7,HOUR_TO=22,HOUR_PX=44;
+    var hours=[];for(var h=HOUR_FROM;h<HOUR_TO;h++) hours.push(h);
+    var gridH=hours.length*HOUR_PX;
+    var dayData=weekDays.map(function(d){
+      var evs=getEventsForDay(d);
+      return {date:d,allDay:evs.filter(function(e){return !e.time;}),
+        blocks:layoutTimedEvents(evs,d,HOUR_FROM,HOUR_TO,HOUR_PX,16)};
+    });
+    var hasAllDay=dayData.some(function(x){return x.allDay.length>0;});
+
+    function evBlock(it,key,compact){
+      var ev=it.ev,canDrag=!!ev.gcalRaw;
+      var w=100/it.cols;
+      return ce("div",{key:key,title:evRangeLabel(ev)+" "+ev.title,
+        draggable:canDrag,
+        onDragStart:canDrag?function(e){e.stopPropagation();dragEvRef.current=ev.gcalRaw;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",ev.gcalRaw.id||"");}catch(_){}}:undefined,
+        onDragEnd:function(){dragEvRef.current=null;setDragOverDay(null);},
+        onDoubleClick:function(e){e.stopPropagation();},
+        onClick:function(e){e.stopPropagation();if(ev.dealEv){openDealEventPreview(ev.dealEv);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+        style:{position:"absolute",top:it.top,height:it.height,
+          left:"calc("+(it.col*w)+"% + 1px)",width:"calc("+w+"% - 3px)",
+          boxSizing:"border-box",overflow:"hidden",
+          padding:it.height>=28?"2px 4px":"0 4px",
+          borderRadius:4,background:ev.color,color:"#fff",
+          borderTop:it.clippedTop?"2px dotted rgba(255,255,255,0.7)":undefined,
+          borderBottom:it.clippedBottom?"2px dotted rgba(255,255,255,0.7)":undefined,
+          fontSize:9,lineHeight:1.15,fontWeight:600,
+          cursor:canDrag?"grab":"pointer",boxShadow:"0 1px 2px rgba(0,0,0,0.15)"}},
+        it.height>=28
+          ?[ce("div",{key:"t",style:{opacity:0.85,fontSize:8,whiteSpace:"nowrap"}},evRangeLabel(ev)),
+            ce("div",{key:"s",style:{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:it.height>=44?"normal":"nowrap"}},ev.title)]
+          :ce("div",{style:{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},evRangeLabel(ev)+" "+ev.title)
+      );
+    }
 
     return ce("div",{style:{overflowX:"auto"}},
-      ce("div",{style:{display:"grid",gridTemplateColumns:"44px repeat(7,1fr)",minWidth:520}},
-        // Nagłówek
-        ce("div",{style:{background:"var(--bg2)"}}),
-        weekDays.map(function(d,i){
-          var isToday=isSameDay(d,today);
-          return ce("div",{key:i,
-            onClick:function(){setRefDate(new Date(d));setCalView("day");},
-            style:{textAlign:"center",padding:"6px 2px",background:"var(--bg2)",borderLeft:"1px solid var(--bd2)",cursor:"pointer"},
-            title:"Pokaż dzień"},
-            ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em"}},DOW_PL[i]),
-            ce("div",{style:{fontSize:16,fontWeight:700,background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?28:null,height:isToday?28:null,borderRadius:isToday?14:null,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",textDecoration:"underline dotted",textUnderlineOffset:2}},d.getDate())
-          );
-        }),
-        // Godziny
-        hours.map(function(h){
-          return [
-            ce("div",{key:"h"+h,style:{fontSize:9,color:"var(--t3)",textAlign:"right",paddingRight:6,paddingTop:2,borderTop:"1px solid var(--bd2)"}},h+":00"),
-            weekDays.map(function(d,di){
-              var evs=getEventsForDay(d).filter(function(ev){return ev.time&&new Date(ev.time).getHours()===h;});
-              var wdk=dayKeyStr(d);
-              return ce("div",{key:"d"+di,
-                onDoubleClick:function(){var dd=new Date(d);dd.setHours(h,0,0,0);openNewEventModal(dd);},
-                onDragOver:function(e){e.preventDefault();e.dataTransfer.dropEffect="move";if(dragOverDay!==wdk)setDragOverDay(wdk);},
-                onDragLeave:function(){if(dragOverDay===wdk)setDragOverDay(null);},
-                onDrop:function(e){e.preventDefault();setDragOverDay(null);var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,d);},
-                style:{borderLeft:"1px solid var(--bd2)",borderTop:"1px solid var(--bd2)",minHeight:36,padding:2,position:"relative",background:dragOverDay===wdk?"rgba(124,58,237,0.08)":undefined}},
-                evs.map(function(ev,ei){var canDrag=!!ev.gcalRaw;return ce("div",{key:ei,title:ev.title,
-                  draggable:canDrag,
-                  onDragStart:canDrag?function(e){dragEvRef.current=ev.gcalRaw;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",ev.gcalRaw.id||"");}catch(_){}}:undefined,
-                  onDragEnd:function(){dragEvRef.current=null;setDragOverDay(null);},
-                  onDoubleClick:function(e){e.stopPropagation();},
-                  onClick:function(){if(ev.dealEv){openDealEventPreview(ev.dealEv);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},style:{fontSize:9,padding:"2px 4px",borderRadius:3,background:ev.color,color:"#fff",marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:canDrag?"grab":"pointer",fontWeight:600}},ev.title);})
-              );
+      ce("div",{style:{minWidth:560}},
+        // Nagłówek dni
+        ce("div",{style:{display:"grid",gridTemplateColumns:"44px repeat(7,1fr)"}},
+          ce("div",{style:{background:"var(--bg2)"}}),
+          weekDays.map(function(d,i){
+            var isToday=isSameDay(d,today);
+            return ce("div",{key:i,
+              onClick:function(){setRefDate(new Date(d));setCalView("day");},
+              style:{textAlign:"center",padding:"6px 2px",background:"var(--bg2)",borderLeft:"1px solid var(--bd2)",cursor:"pointer"},
+              title:"Pokaż dzień"},
+              ce("div",{style:{fontSize:9,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.07em"}},DOW_PL[i]),
+              ce("div",{style:{fontSize:16,fontWeight:700,background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?28:null,height:isToday?28:null,borderRadius:isToday?14:null,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",textDecoration:"underline dotted",textUnderlineOffset:2}},d.getDate())
+            );
+          })
+        ),
+        // Pas wydarzeń całodniowych
+        hasAllDay?ce("div",{style:{display:"grid",gridTemplateColumns:"44px repeat(7,1fr)",borderTop:"1px solid var(--bd2)"}},
+          ce("div",{style:{fontSize:8,color:"var(--t3)",textAlign:"right",paddingRight:6,paddingTop:4,textTransform:"uppercase"}},"ca\u0142y dzie\u0144"),
+          dayData.map(function(dd,di){
+            return ce("div",{key:di,style:{borderLeft:"1px solid var(--bd2)",padding:2,minHeight:20}},
+              dd.allDay.map(function(ev,ei){
+                return ce("div",{key:ei,title:ev.title,
+                  onClick:function(){if(ev.dealEv){openDealEventPreview(ev.dealEv);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+                  style:{fontSize:9,padding:"1px 4px",borderRadius:3,background:ev.color+"33",color:ev.color,marginBottom:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",cursor:"pointer",fontWeight:600}},ev.title);
+              })
+            );
+          })
+        ):null,
+        // Siatka godzin + wydarzenia
+        ce("div",{style:{display:"grid",gridTemplateColumns:"44px repeat(7,1fr)"}},
+          // Kolumna godzin
+          ce("div",{style:{position:"relative",height:gridH}},
+            hours.map(function(hh,hi){
+              return ce("div",{key:hh,style:{position:"absolute",top:hi*HOUR_PX,right:6,fontSize:9,color:"var(--t3)",borderTop:"1px solid transparent"}},hh+":00");
             })
-          ];
-        })
+          ),
+          dayData.map(function(dd,di){
+            var d=dd.date,wdk=dayKeyStr(d);
+            return ce("div",{key:di,
+              onDragOver:function(e){e.preventDefault();e.dataTransfer.dropEffect="move";if(dragOverDay!==wdk)setDragOverDay(wdk);},
+              onDragLeave:function(){if(dragOverDay===wdk)setDragOverDay(null);},
+              onDrop:function(e){e.preventDefault();setDragOverDay(null);var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,d);},
+              style:{position:"relative",height:gridH,borderLeft:"1px solid var(--bd2)",background:dragOverDay===wdk?"rgba(124,58,237,0.08)":undefined}},
+              // linie godzin (i podwójny klik = nowe wydarzenie o tej godzinie)
+              hours.map(function(hh,hi){
+                return ce("div",{key:"h"+hh,
+                  onDoubleClick:function(){var ddte=new Date(d);ddte.setHours(hh,0,0,0);openNewEventModal(ddte);},
+                  style:{position:"absolute",top:hi*HOUR_PX,left:0,right:0,height:HOUR_PX,borderTop:"1px solid var(--bd2)",boxSizing:"border-box"}});
+              }),
+              dd.blocks.map(function(it,bi){return evBlock(it,bi,true);})
+            );
+          })
+        )
       )
     );
   }
@@ -1392,51 +1502,80 @@ export function CRMKalendarz(p){
   // ── Render widoku dziennego ──
   function renderDayView(){
     var evs=getEventsForDay(refDate);
+    var allDayEvs=evs.filter(function(e){return !e.time;});
+    var HOUR_FROM=7,HOUR_TO=23,HOUR_PX=56;
+    var hours=[];for(var h=HOUR_FROM;h<HOUR_TO;h++) hours.push(h);
+    var gridH=hours.length*HOUR_PX;
+    var blocks=layoutTimedEvents(evs,refDate,HOUR_FROM,HOUR_TO,HOUR_PX,22);
     var today=new Date();
     var isToday=isSameDay(refDate,today);
-    var hours=[];for(var h=7;h<23;h++) hours.push(h);
+    var nowTop=null;
+    if(isToday){
+      var nowMin=today.getHours()*60+today.getMinutes();
+      if(nowMin>=HOUR_FROM*60&&nowMin<=HOUR_TO*60) nowTop=(nowMin-HOUR_FROM*60)/60*HOUR_PX;
+    }
     return ce("div",{style:{overflowY:"auto",maxHeight:600}},
       evs.length===0?ce("div",{style:{padding:"40px 24px",textAlign:"center",color:"var(--t3)",fontSize:13}},
         ce("div",{style:{fontSize:40,marginBottom:8,opacity:0.25}},"📅"),
         "Brak wydarzeń w tym dniu"
       ):null,
-      hours.map(function(h){
-        var hEvs=evs.filter(function(ev){return ev.time&&new Date(ev.time).getHours()===h;});
-        var allDayEvs=h===7?evs.filter(function(ev){return !ev.time;}):[];
-        var hasContent=hEvs.length>0||allDayEvs.length>0;
-        return ce("div",{key:h,
-          onDoubleClick:function(){var dd=new Date(refDate);dd.setHours(h,0,0,0);openNewEventModal(dd);},
-          style:{display:"flex",gap:0,borderTop:"1px solid "+(hasContent?"var(--bd2)":"var(--bd3)"),minHeight:hasContent?52:32,cursor:"default"}},
-          ce("div",{style:{width:52,flexShrink:0,padding:"5px 8px 0",fontSize:10,color:hasContent?"var(--t3)":"var(--bd2)",fontWeight:hasContent?700:400,textAlign:"right",userSelect:"none"}},h+":00"),
-          ce("div",{style:{flex:1,padding:"4px 8px",display:"flex",flexDirection:"column",gap:4}},
-            allDayEvs.map(function(ev,ei){
-              return ce("div",{key:"ad"+ei,
-                onClick:function(){if(ev.dealEv){openDealEventPreview(ev.dealEv);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
-                style:{padding:"5px 10px",borderRadius:6,background:ev.color+"22",borderLeft:"3px solid "+ev.color,
-                  color:ev.color,fontSize:12,fontWeight:700,cursor:"pointer"}},
-                "ϕ Cały dzień — ",ev.title
-              );
-            }),
-            hEvs.map(function(ev,ei){
-              var t=ev.time?new Date(ev.time):null;
-              return ce("div",{key:ei,
-                onClick:function(){if(ev.dealEv){openDealEventPreview(ev.dealEv);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
-                style:{padding:"7px 10px",borderRadius:8,background:ev.color+"18",borderLeft:"3px solid "+ev.color,
-                  cursor:"pointer",display:"flex",alignItems:"flex-start",gap:8}},
-                ce("div",{style:{fontSize:11,color:ev.color,fontWeight:700,flexShrink:0,minWidth:38}},
-                  t?(t.getHours()+":"+String(t.getMinutes()).padStart(2,"0")):null
-                ),
-                ce("div",{style:{fontSize:13,color:"var(--t1)",fontWeight:600,flex:1,lineHeight:1.4}},
-                  ev.title,
-                  ev.gcalRaw&&ev.gcalRaw._calName
-                    ?ce("div",{style:{fontSize:10,color:"var(--t3)",fontWeight:400,marginTop:2}},ev.gcalRaw._calName)
-                    :null
-                )
-              );
-            })
-          )
-        );
-      })
+      allDayEvs.length?ce("div",{style:{display:"flex",gap:0,borderBottom:"1px solid var(--bd2)",padding:"4px 0"}},
+        ce("div",{style:{width:52,flexShrink:0,fontSize:9,color:"var(--t3)",textAlign:"right",paddingRight:8,paddingTop:6,textTransform:"uppercase"}},"ca\u0142y dzie\u0144"),
+        ce("div",{style:{flex:1,padding:"0 8px",display:"flex",flexDirection:"column",gap:4}},
+          allDayEvs.map(function(ev,ei){
+            return ce("div",{key:"ad"+ei,
+              onClick:function(){if(ev.dealEv){openDealEventPreview(ev.dealEv);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+              style:{padding:"5px 10px",borderRadius:6,background:ev.color+"22",borderLeft:"3px solid "+ev.color,
+                color:ev.color,fontSize:12,fontWeight:700,cursor:"pointer"}},ev.title);
+          })
+        )
+      ):null,
+      ce("div",{style:{display:"flex"}},
+        // Kolumna godzin
+        ce("div",{style:{width:52,flexShrink:0,position:"relative",height:gridH}},
+          hours.map(function(hh,hi){
+            return ce("div",{key:hh,style:{position:"absolute",top:hi*HOUR_PX-1,right:8,fontSize:10,color:"var(--t3)",fontWeight:600}},hh+":00");
+          })
+        ),
+        // Siatka + bloki wydarzeń
+        ce("div",{style:{flex:1,position:"relative",height:gridH,borderLeft:"1px solid var(--bd2)"}},
+          hours.map(function(hh,hi){
+            return ce("div",{key:"h"+hh,
+              onDoubleClick:function(){var dd=new Date(refDate);dd.setHours(hh,0,0,0);openNewEventModal(dd);},
+              style:{position:"absolute",top:hi*HOUR_PX,left:0,right:0,height:HOUR_PX,borderTop:"1px solid var(--bd3)",boxSizing:"border-box"}},
+              ce("div",{style:{position:"absolute",top:HOUR_PX/2,left:0,right:0,borderTop:"1px dotted var(--bd3)",opacity:0.5}})
+            );
+          }),
+          nowTop!==null?ce("div",{style:{position:"absolute",top:nowTop,left:0,right:0,borderTop:"2px solid #ef4444",zIndex:5,pointerEvents:"none"}},
+            ce("div",{style:{position:"absolute",top:-4,left:-4,width:7,height:7,borderRadius:4,background:"#ef4444"}})
+          ):null,
+          blocks.map(function(it,bi){
+            var ev=it.ev,canDrag=!!ev.gcalRaw,w=100/it.cols;
+            return ce("div",{key:bi,title:evRangeLabel(ev)+" "+ev.title,
+              draggable:canDrag,
+              onDragStart:canDrag?function(e){dragEvRef.current=ev.gcalRaw;e.dataTransfer.effectAllowed="move";try{e.dataTransfer.setData("text/plain",ev.gcalRaw.id||"");}catch(_){}}:undefined,
+              onDragEnd:function(){dragEvRef.current=null;setDragOverDay(null);},
+              onDoubleClick:function(e){e.stopPropagation();},
+              onClick:function(){if(ev.dealEv){openDealEventPreview(ev.dealEv);}else if(ev.gcalRaw){setSelectedGcalEv(ev.gcalRaw);}},
+              style:{position:"absolute",top:it.top,height:it.height,
+                left:"calc("+(it.col*w)+"% + 6px)",width:"calc("+w+"% - 12px)",
+                boxSizing:"border-box",overflow:"hidden",
+                padding:it.height>=34?"6px 9px":"1px 9px",
+                borderRadius:8,background:ev.color+"22",borderLeft:"3px solid "+ev.color,
+                borderTop:it.clippedTop?"2px dotted "+ev.color:undefined,
+                borderBottom:it.clippedBottom?"2px dotted "+ev.color:undefined,
+                cursor:canDrag?"grab":"pointer"}},
+              ce("div",{style:{fontSize:11,color:ev.color,fontWeight:700,lineHeight:1.3}},evRangeLabel(ev)),
+              it.height>=34?ce("div",{style:{fontSize:13,color:"var(--t1)",fontWeight:600,lineHeight:1.35,overflow:"hidden"}},
+                ev.title,
+                (it.height>=60&&ev.gcalRaw&&ev.gcalRaw._calName)
+                  ?ce("div",{style:{fontSize:10,color:"var(--t3)",fontWeight:400,marginTop:2}},ev.gcalRaw._calName)
+                  :null
+              ):ce("span",{style:{fontSize:11,color:"var(--t1)",fontWeight:600,marginLeft:6}},ev.title)
+            );
+          })
+        )
+      )
     );
   }
 
