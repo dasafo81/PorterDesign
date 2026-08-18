@@ -1392,6 +1392,10 @@ function InvoiceList(p){
       list.map(function(inv){
         var ps=payStatus(inv);
         var isOverdue=ps.label==="Przeterminowana";
+        // Zapłacone faktury muszą być widoczne "na zielono" w całym wierszu, a nie
+        // tylko na badge statusu — wcześniej wyglądały jak zwykły (szary) wiersz,
+        // przez co lista zapłaconych i niezapłaconych była nie do odróżnienia rzutem oka.
+        var isPaidRow=ps.label==="Zapłacona";
         var isPurchase=tab==="zakup";
         var typeLabelStr=(TYPE_ICONS[inv.doc_type]||"📄")+" "+docTypeLabel(inv.doc_type||"vat");
         var cb=function(checked,onToggle){
@@ -1417,7 +1421,8 @@ function InvoiceList(p){
                     :isPaid?"Faktura oznaczona jako zapłacona — cofnij w edytorze faktury":undefined,
               onClick:function(e){e.stopPropagation();},
               onChange:function(e){p.onTogglePaid&&p.onTogglePaid(inv,e.target.checked);},
-              style:{width:16,height:16,cursor:isPaid?"not-allowed":"pointer",accentColor:"var(--violet)",opacity:isPaid?0.55:1}}),
+              style:{width:16,height:16,cursor:isPaid?"not-allowed":"pointer",
+                accentColor:isPaid?"var(--gr)":"var(--violet)",opacity:1}}),
             ce("div",{style:{fontSize:9,fontWeight:700,marginTop:2,color:ps.color}},ps.label)
           );
         };
@@ -1426,7 +1431,8 @@ function InvoiceList(p){
         var contragentName=isPurchase?(snap.name||inv.buyer_name||"—"):(inv.buyer_name||"—");
         var contragentNip=isPurchase?(snap.nip||inv.buyer_nip||""):(inv.buyer_nip||"");
         var isBusy=p.viewBusyId===inv.id;
-        var rowBg=isOverdue?"var(--red-l)":"var(--bg2)";
+        var rowBg=isOverdue?"var(--red-l)":(isPaidRow?"var(--grl)":"var(--bg2)");
+        var rowHoverBg=isOverdue?"var(--red-border)":(isPaidRow?"var(--grm)":"var(--bg3)");
         return ce("div",{key:inv.id,
           onClick:function(e){
             if(isBusy)return;
@@ -1439,8 +1445,9 @@ function InvoiceList(p){
           },
           style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
-            background:rowBg,width:"100%",opacity:isBusy?0.6:1},
-          onMouseEnter:function(e){e.currentTarget.style.background=isOverdue?"var(--red-border)":"var(--bg3)";},
+            background:rowBg,width:"100%",opacity:isBusy?0.6:1,
+            boxShadow:isPaidRow?"inset 3px 0 0 var(--gr)":"none"},
+          onMouseEnter:function(e){e.currentTarget.style.background=rowHoverBg;},
           onMouseLeave:function(e){e.currentTarget.style.background=rowBg;}
         },
           ce("div",{
@@ -1467,7 +1474,7 @@ function InvoiceList(p){
             // zamiast przewijać całą listę w poszukiwaniu "0,00 zł".
             (+inv.total_gross||0)===0
               ? ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--amber)"},title:"Zerowa kwota — sprawdź pozycje faktury"},"⚠ "+fmtMoney(inv.total_gross))
-              : ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},fmtMoney(inv.total_gross)),
+              : ce("div",{style:{fontSize:13,fontWeight:700,color:isPaidRow?"var(--grd)":"var(--t1)"}},fmtMoney(inv.total_gross)),
             ce("div",{style:{fontSize:10,color:"var(--t3)"}},"netto "+fmtMoney(inv.total_net))
           ),
           paidCb(),
