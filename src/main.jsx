@@ -41,6 +41,9 @@ function Root() {
   // więc tenant_id automatycznie wjedzie do tokenu po Phase 2.
   useEffect(function(){
     if(!loggedIn)return;
+    // Sesja przywrócona z localStorage może mieć wygasły JWT po zamknięciu
+    // karty. Odśwież ją od razu, zanim moduł Google Calendar wywoła OAuth.
+    refreshSession();
     var timer=setInterval(function(){refreshSession();},30*60*1000);
     // setInterval bywa spowalniany/wstrzymywany w kartach w tle, więc token
     // mógł wygasnąć zanim ktoś wrócił do karty — odśwież też przy powrocie.

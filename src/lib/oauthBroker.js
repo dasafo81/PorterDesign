@@ -1,4 +1,5 @@
 import { SB_KEY } from './supabase.js';
+import { refreshSession } from './auth.js';
 
 function authHeaders() {
   var raw = localStorage.getItem('sb_session');
@@ -8,12 +9,28 @@ function authHeaders() {
     : null;
 }
 
+// OAuth endpoints verify the application's Supabase JWT server-side.  A tab
+// restored after its JWT expired previously sent that stale token straight to
+// /api/oauth/start, which surfaced a raw "Unauthorized" instead of renewing
+// the app session first.  Retry once with a refreshed JWT before treating the
+// connection as unavailable.
+function oauthFetch(path) {
+  function send() {
+    var headers = authHeaders();
+    if (!headers) return Promise.reject(new Error('Brak sesji aplikacji'));
+    return fetch(path, { method: 'POST', headers: headers });
+  }
+  return send().then(function(response) {
+    if (response.status !== 401) return response;
+    return refreshSession().then(function(session) {
+      if (!session || !session.access_token) return response;
+      return send();
+    });
+  });
+}
+
 export function brokerStart(provider) {
-  var headers = authHeaders();
-  if (!headers) return Promise.reject(new Error('Brak sesji aplikacji'));
-  return fetch('/api/oauth/start?provider=' + encodeURIComponent(provider), {
-    method: 'POST', headers: headers
-  }).then(function(r) {
+  return oauthFetch('/api/oauth/start?provider=' + encodeURIComponent(provider)).then(function(r) {
     return r.json().then(function(data) {
       if (!r.ok || !data.url) throw new Error(data.error || 'Nie udało się rozpocząć połączenia');
       window.location.assign(data.url);
@@ -23,11 +40,7 @@ export function brokerStart(provider) {
 }
 
 export function brokerToken(provider) {
-  var headers = authHeaders();
-  if (!headers) return Promise.reject(new Error('Brak sesji aplikacji'));
-  return fetch('/api/oauth/token?provider=' + encodeURIComponent(provider), {
-    method: 'POST', headers: headers
-  }).then(function(r) {
+  return oauthFetch('/api/oauth/token?provider=' + encodeURIComponent(provider)).then(function(r) {
     return r.json().then(function(data) {
       if (!r.ok || !data.access_token) {
         var e = new Error(data.error || 'OAUTH_RECONNECT_REQUIRED');
