@@ -555,7 +555,7 @@ function MailPreview(p){
   // Buduje pełny srcDoc z podmienionym cid:→data: i zapisuje w stanie
   // Wywoływany po każdym załadowaniu obrazka, żeby iframe się odświeżył
   function buildSrcDoc(mid,htmlContent){
-    var IFRAME_STYLES="body{margin:0;padding:16px 20px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
+    var IFRAME_STYLES="@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');body{margin:0;padding:16px 20px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
     var cache=window._porterAttImgCache||{};
     // Usuń <script> i obsługę zdarzeń — sandbox i tak je blokuje, ale to ucisza ostrzeżenia w konsoli
     var clean=(htmlContent||"").replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,"").replace(/\son\w+\s*=\s*"[^"]*"/gi,"").replace(/\son\w+\s*=\s*'[^']*'/gi,"");
@@ -1030,7 +1030,7 @@ function SettingsView(p){
       // RichTextEditor renderuje HTML live — podgląd pokazuje tylko obrazek (tekst widać w edytorze)
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:16,marginBottom:16}},
         ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:10}},"Podgl\u0105d stopki"),
-        ce("div",{style:{padding:14,background:"#fff",borderRadius:8,border:"1px solid var(--bd2)",fontSize:13,color:"#333",fontFamily:"Arial, sans-serif"}},
+        ce("div",{style:{padding:14,background:"#fff",borderRadius:8,border:"1px solid var(--bd2)",fontSize:13,color:"#333",fontFamily:"Montserrat, Arial, sans-serif"}},
           (sigHtml||sigImg)
             ?ce("div",null,
               sigHtml?ce("div",{style:{marginBottom:sigImg?10:0},
@@ -1546,7 +1546,7 @@ export function RichTextEditor(p){
       style:{flex:1,padding:"12px 14px",fontSize:14,lineHeight:1.7,
         color:"var(--t1)",outline:"none",overflowY:"auto",
         background:p.bg||"transparent",
-        fontFamily:"Arial, Helvetica, sans-serif",
+        fontFamily:"Montserrat, Arial, Helvetica, sans-serif",
         minHeight:p.minHeight||220}
     })
   );
@@ -1872,14 +1872,18 @@ export function ScreenMail(p){
   // useCid=true → obrazek wstawiany jako <img src="cid:signature-image">,
   // wtedy musi być dołączony jako inline attachment w handleSend.
   function buildMailHtml(htmlBodyInput, settings, useCid){
-    var bodyHtml="<div style=\"font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"
+    // Domyślna czcionka maila: Montserrat (spójna z marką / PDF-ami).
+    // @import ładuje Montserrat w klientach, które to wspierają (np. Apple Mail);
+    // pozostałe (Gmail/Outlook zwykle blokują web-fonty) użyją fallbacku Arial.
+    var fontImport="<style>@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');</style>";
+    var bodyHtml="<div style=\"font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"
       +(htmlBodyInput||"")
       +"</div>";
     var sig=settings||{};
     var sigHtml=sig.signature_html||"";
     var sigImg=sig.signature_image_url||"";
-    if(!sigHtml&&!sigImg)return bodyHtml;
-    var sigBlock="<br><br><div style=\"font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#444;\">";
+    if(!sigHtml&&!sigImg)return fontImport+bodyHtml;
+    var sigBlock="<br><br><div style=\"font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#444;\">";
     if(sigHtml){
       // signature_html jest HTML z RichTextEditora — nie konwertujemy, używamy bezpośrednio
       sigBlock+=String(sigHtml);
@@ -1890,7 +1894,7 @@ export function ScreenMail(p){
       sigBlock+="<img src=\""+imgSrc+"\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">";
     }
     sigBlock+="</div>";
-    return bodyHtml+sigBlock;
+    return fontImport+bodyHtml+sigBlock;
   }
 
   // Pobiera obrazek z URL i konwertuje na base64 (dla embedowania jako CID)
