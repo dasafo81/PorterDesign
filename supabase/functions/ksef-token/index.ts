@@ -44,6 +44,18 @@ async function aesEncrypt(plain: string, hexKey: string): Promise<string> {
   return b64(iv) + ":" + b64(new Uint8Array(enc));
 }
 
+// Rozwiaz entity_id: jawny (query/body) albo podmiot domyslny tenanta.
+async function resolveEntityId(tenantId: string, service: string, explicit: string | null): Promise<string | null> {
+  if (explicit) return explicit;
+  const r = await fetch(
+    `${SB_URL}/rest/v1/entities?tenant_id=eq.${tenantId}&is_default=eq.true&select=id&limit=1`,
+    { headers: { apikey: service, Authorization: `Bearer ${service}` } },
+  );
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return rows?.[0]?.id || null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
 
@@ -57,10 +69,14 @@ Deno.serve(async (req: Request) => {
     apikey: auth.service!, Authorization: `Bearer ${auth.service}`,
     "Content-Type": "application/json", Prefer: "return=representation",
   };
-  const credUrl = `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}`;
+  const url = new URL(req.url);
+  const qEntity = url.searchParams.get("entityId");
 
-  // GET — status
+  // GET — status (entityId z query, domyslnie podmiot domyslny)
   if (req.method === "GET") {
+    const entityId = await resolveEntityId(auth.tenantId!, auth.service!, qEntity);
+    if (!entityId) return jsonRes({ error: "Brak podmiotu" }, 400);
+    const credUrl = `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&entity_id=eq.${entityId}`;
     const r = await fetch(credUrl + "&select=tenant_id,env,updated_at,cert_pem,token_encrypted", { headers: sbH });
     if (!r.ok) return jsonRes({ error: "db error" }, 500);
     const rows = await r.json();
@@ -74,23 +90,27 @@ Deno.serve(async (req: Request) => {
     let body;
     try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
 
+    const entityId = await resolveEntityId(auth.tenantId!, auth.service!, body?.entityId || qEntity);
+    if (!entityId) return jsonRes({ error: "Brak podmiotu" }, 400);
+    const credUrl = `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&entity_id=eq.${entityId}`;
+
     const env = body?.env === "test" ? "test" : "prod";
     const check = await fetch(credUrl + "&select=tenant_id", { headers: sbH });
     const exists = check.ok && (await check.json()).length > 0;
     const method = exists ? "PATCH" : "POST";
-    const url = exists ? credUrl : `${SB_URL}/rest/v1/ksef_credentials`;
+    const target = exists ? credUrl : `${SB_URL}/rest/v1/ksef_credentials`;
 
     // Tryb token
     const ksefToken = (body?.token || "").trim();
     if (ksefToken) {
       if (ksefToken.length < 20) return jsonRes({ error: "Token za krótki" }, 400);
       const payload = {
-        tenant_id: auth.tenantId, env,
+        tenant_id: auth.tenantId, entity_id: entityId, env,
         token_encrypted: await aesEncrypt(ksefToken, ENC_KEY),
         cert_pem: null, key_encrypted: null, cert_pass_enc: null, key_type: null,
         updated_at: new Date().toISOString(),
       };
-      const r = await fetch(url, { method, headers: sbH, body: JSON.stringify(payload) });
+      const r = await fetch(target, { method, headers: sbH, body: JSON.stringify(payload) });
       if (!r.ok) return jsonRes({ error: "Błąd zapisu tokenu", detail: await r.text() }, 500);
       return jsonRes({ ok: true, env, mode: "token" });
     }
@@ -117,20 +137,23 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload = {
-      tenant_id: auth.tenantId, env,
+      tenant_id: auth.tenantId, entity_id: entityId, env,
       cert_pem: certPem,
       key_encrypted: await aesEncrypt(cleanKeyPem, ENC_KEY),
       key_type: keyType,
       cert_pass_enc: null, token_encrypted: null,
       updated_at: new Date().toISOString(),
     };
-    const r = await fetch(url, { method, headers: sbH, body: JSON.stringify(payload) });
+    const r = await fetch(target, { method, headers: sbH, body: JSON.stringify(payload) });
     if (!r.ok) return jsonRes({ error: "Błąd zapisu certyfikatu", detail: await r.text() }, 500);
     return jsonRes({ ok: true, env, mode: "cert", keyType });
   }
 
-  // DELETE
+  // DELETE (entityId z query, domyslnie podmiot domyslny)
   if (req.method === "DELETE") {
+    const entityId = await resolveEntityId(auth.tenantId!, auth.service!, qEntity);
+    if (!entityId) return jsonRes({ error: "Brak podmiotu" }, 400);
+    const credUrl = `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&entity_id=eq.${entityId}`;
     await fetch(credUrl, { method: "DELETE", headers: sbH });
     return jsonRes({ ok: true });
   }

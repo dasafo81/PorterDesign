@@ -190,7 +190,22 @@ function InvoiceEditor(p){
   var isNew=!p.invoice||!p.invoice.id;
   var isDraft=!isNew&&p.invoice.status==="draft";
   var settings=p.settings||{};
-  var defaultVat=+(settings.default_vat)||23;
+  // Podmiot (multi-podmiot): sprzedawca i numeracja pochodza z aktywnego podmiotu.
+  // Fallback do invoice_settings dla wstecznej zgodnosci.
+  var ent=p.entity||{};
+  var sellerName=ent.name||settings.seller_name||"";
+  var sellerNip=ent.nip||settings.seller_nip||"";
+  var sellerAddress=ent.address||settings.seller_address||"";
+  var sellerPostal=ent.postal||settings.seller_postal||"";
+  var sellerCity=ent.city||settings.seller_city||"";
+  var sellerEmail=ent.email||settings.seller_email||"";
+  var sellerPhone=ent.phone||settings.seller_phone||"";
+  var sellerBank=ent.bank||settings.seller_bank||"";
+  var entVatExempt=ent.vat_status==="zwolniony";
+  var numberingFormat=ent.numbering_format||settings.numbering_format||"{nr}/{MM}/{YYYY}";
+  var numberingReset=ent.numbering_reset||settings.numbering_reset||"monthly";
+  // Podmiot zwolniony z VAT -> domyslna stawka "zw" (-1).
+  var defaultVat=entVatExempt?-1:(+(settings.default_vat)||23);
   var defaultDays=+(settings.default_payment_days)||14;
 
   function freshItem(){
@@ -454,21 +469,24 @@ function InvoiceEditor(p){
       // Dla faktur zakupowych my (Porter Design) jesteśmy nabywcą — buyer_* wypełniamy
       // danymi sprzedawcy z Ustawień, a prawdziwy kontrahent (wpisany w formularzu w polach
       // "Nabywca") ląduje w seller_snapshot. Zgodne z konwencją synchronizacji KSeF/PDF.
-      buyer_name: isZakupDir?(settings.seller_name||""):buyerName,
-      buyer_nip:  isZakupDir?(settings.seller_nip||""):buyerNip,
-      buyer_address: isZakupDir?(settings.seller_address||""):buyerAddr,
-      buyer_postal:  isZakupDir?(settings.seller_postal||""):buyerPostal,
-      buyer_city:    isZakupDir?(settings.seller_city||""):buyerCity,
-      buyer_email:   isZakupDir?(settings.seller_email||""):buyerEmail,
+      buyer_name: isZakupDir?sellerName:buyerName,
+      buyer_nip:  isZakupDir?sellerNip:buyerNip,
+      buyer_address: isZakupDir?sellerAddress:buyerAddr,
+      buyer_postal:  isZakupDir?sellerPostal:buyerPostal,
+      buyer_city:    isZakupDir?sellerCity:buyerCity,
+      buyer_email:   isZakupDir?sellerEmail:buyerEmail,
       notes:notes,
       total_net:totalNet, total_vat:totalVat, total_gross:totalGross,
+      // Przypisz fakture do podmiotu: dla istniejacej zachowaj jej podmiot,
+      // dla nowej uzyj aktywnego (gdy brak — trigger DB ustawi domyslny).
+      entity_id: (initInv.entity_id)||(ent.id)||undefined,
       seller_snapshot: isZakupDir
         ? {name:buyerName, nip:buyerNip, address:buyerAddr, postal:buyerPostal, city:buyerCity, email:buyerEmail, phone:"", bank:""}
         : {
-          name:settings.seller_name||"", nip:settings.seller_nip||"",
-          address:settings.seller_address||"", postal:settings.seller_postal||"",
-          city:settings.seller_city||"", email:settings.seller_email||"",
-          phone:settings.seller_phone||"", bank:settings.seller_bank||""
+          name:sellerName, nip:sellerNip,
+          address:sellerAddress, postal:sellerPostal,
+          city:sellerCity, email:sellerEmail,
+          phone:sellerPhone, bank:sellerBank
         }
     };
     if(isZakupDir&&docType!=="proforma"&&docType!=="eko") header.number=purchaseNumber.trim();
@@ -477,16 +495,16 @@ function InvoiceEditor(p){
     // Pobierz numer przed utworzeniem nagłówka. Dzięki temu błąd RPC nie zostawi
     // w bazie nowej faktury bez numeru.
     var numberPromise=isNew&&!isRealPurchaseDoc
-      ? sbApi.nextInvoiceNumber(docType,periodKey(settings.numbering_reset||"monthly",issueDate||todayISO()))
+      ? sbApi.nextInvoiceNumber(docType,periodKey(numberingReset,issueDate||todayISO()),ent.id)
       : Promise.resolve(null);
 
     numberPromise.then(function(nr){
       if(nr!==null){
         var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
-        // Proforma korzysta z formatu ustawionego przez tenanta, EKO ma format EKO/nr/MM.
+        // Proforma/faktura korzysta z formatu numeracji aktywnego podmiotu, EKO ma format EKO/nr/MM.
         header.number=docType==="eko"
           ? formatNumber("EKO/{nr}/{MM}",nrNum,issueDate||todayISO())
-          : formatNumber(settings.numbering_format||"{nr}/{MM}/{YYYY}",nrNum,issueDate||todayISO());
+          : formatNumber(numberingFormat,nrNum,issueDate||todayISO());
       }
       var prom;
       if(isNew){
@@ -714,72 +732,170 @@ function InvoiceEditor(p){
   );
 }
 
+// ── KARTA PODMIOTU (multi-podmiot) ──────────────────────────────────────────
+function EntityCard(p){
+  // p: entity, onSaved, onDeleted, startOpen
+  var [form,setForm]=useState(p.entity||{});
+  var [open,setOpen]=useState(!!p.startOpen);
+  var [busy,setBusy]=useState(false);
+  var [ok,setOk]=useState(false);
+  var [err,setErr]=useState(null);
+  function upd(k,v){setForm(function(f){return Object.assign({},f,{[k]:v});});}
+  var isDefault=!!form.is_default;
+
+  function save(){
+    setBusy(true);setErr(null);setOk(false);
+    var data={
+      name:form.name||"",nip:form.nip||"",address:form.address||"",postal:form.postal||"",
+      city:form.city||"",email:form.email||"",phone:form.phone||"",bank:form.bank||"",
+      vat_status:form.vat_status||"czynny",
+      numbering_format:form.numbering_format||"FV/{nr}/{MM}/{YYYY}",
+      numbering_reset:form.numbering_reset||"monthly"
+    };
+    sbApi.saveEntity(form.id,data)
+      .then(function(){
+        // Podmiot domyslny: zsynchronizuj invoice_settings (legacy fallbacky PDF/KSeF).
+        if(isDefault){
+          return sbApi.saveInvoiceSettings({
+            seller_name:data.name,seller_nip:data.nip,seller_address:data.address,
+            seller_postal:data.postal,seller_city:data.city,seller_email:data.email,
+            seller_phone:data.phone,seller_bank:data.bank,
+            numbering_format:data.numbering_format,numbering_reset:data.numbering_reset
+          });
+        }
+      })
+      .then(function(){setOk(true);setTimeout(function(){setOk(false);},2000);p.onSaved&&p.onSaved();})
+      .catch(function(e){setErr(e.message||"B\u0142\u0105d zapisu");})
+      .finally(function(){setBusy(false);});
+  }
+  function del(){
+    if(!confirm("Usun\u0105\u0107 podmiot \u201e"+(form.name||"")+"\u201d? Nie zadzia\u0142a, je\u015bli s\u0105 do niego przypisane faktury."))return;
+    setBusy(true);setErr(null);
+    sbApi.deleteEntity(form.id)
+      .then(function(){p.onDeleted&&p.onDeleted();})
+      .catch(function(e){setErr("Nie mo\u017cna usun\u0105\u0107 (prawdopodobnie s\u0105 przypisane faktury/liczniki).");setBusy(false);});
+  }
+  var row=function(lbl,el,note){return ce("div",{style:{marginBottom:14}},
+    ce("span",{style:label},lbl),el,
+    note&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:3}},note));};
+
+  return ce("div",{style:Object.assign({},card,{border:isDefault?"1px solid var(--violet)":card.border})},
+    ce("div",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer"},onClick:function(){setOpen(!open);}},
+      ce("span",{style:{fontSize:18}},"\uD83C\uDFE2"),
+      ce("div",{style:{flex:1}},
+        ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--t1)"}},form.name||"(bez nazwy)"),
+        ce("div",{style:{fontSize:11,color:"var(--t3)"}},"NIP: "+(form.nip||"\u2014")+"  \u2022  "+(form.vat_status==="zwolniony"?"zwolniony z VAT":"VAT czynny"))),
+      isDefault&&ce("span",{style:{fontSize:10,fontWeight:700,color:"var(--violet)",background:"var(--bg)",border:"1px solid var(--violet)",borderRadius:20,padding:"2px 8px"}},"DOMY\u015aLNY"),
+      ce("span",{style:{fontSize:14,color:"var(--t3)"}},open?"\u25be":"\u25b8")
+    ),
+
+    open&&ce("div",{style:{marginTop:14,borderTop:"1px solid var(--bd3)",paddingTop:14}},
+      err&&ce("div",{style:{background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--red)",marginBottom:10}},"\u26A0\uFE0F "+err),
+      ok&&ce("div",{style:{background:"var(--grl)",border:"1px solid var(--gr)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--gr)",marginBottom:10}},"\u2713 Zapisano"),
+
+      row("Nazwa firmy / imi\u0119 nazwisko",ce("input",{style:inp,value:form.name||"",onChange:function(e){upd("name",e.target.value);}})),
+      row("NIP",ce("input",{style:inp,value:form.nip||"",placeholder:"0000000000",onChange:function(e){upd("nip",e.target.value);}})),
+      row("Adres",ce("input",{style:inp,value:form.address||"",onChange:function(e){upd("address",e.target.value);}})),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"120px 1fr",gap:10,marginBottom:14}},
+        ce("div",null,ce("span",{style:label},"Kod pocztowy"),ce("input",{style:inp,value:form.postal||"",placeholder:"00-000",onChange:function(e){upd("postal",e.target.value);}})),
+        ce("div",null,ce("span",{style:label},"Miasto"),ce("input",{style:inp,value:form.city||"",onChange:function(e){upd("city",e.target.value);}}))),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}},
+        ce("div",null,ce("span",{style:label},"E-mail"),ce("input",{style:inp,type:"email",value:form.email||"",onChange:function(e){upd("email",e.target.value);}})),
+        ce("div",null,ce("span",{style:label},"Telefon"),ce("input",{style:inp,value:form.phone||"",onChange:function(e){upd("phone",e.target.value);}}))),
+      row("Numer konta (IBAN)",ce("input",{style:inp,value:form.bank||"",placeholder:"PL00 0000 0000 0000 0000 0000 0000",onChange:function(e){upd("bank",e.target.value);}})),
+      row("Status VAT",
+        ce("select",{style:inp,value:form.vat_status||"czynny",onChange:function(e){upd("vat_status",e.target.value);}},
+          ce("option",{value:"czynny"},"Czynny podatnik VAT"),
+          ce("option",{value:"zwolniony"},"Zwolniony z VAT")),
+        "Zwolniony \u2192 nowe faktury tego podmiotu domy\u015blnie ze stawk\u0105 \u201ezw\u201d."),
+      row("Szablon numeru",
+        ce("input",{style:inp,value:form.numbering_format||"FV/{nr}/{MM}/{YYYY}",onChange:function(e){upd("numbering_format",e.target.value);}}),
+        "Zmienne: {nr}, {MM}, {YYYY}. Osobny licznik dla ka\u017cdego podmiotu \u2014 u\u017cyj r\u00f3\u017cnych szablon\u00f3w, np. FV/PD/{nr}/{MM}/{YYYY}."),
+      row("Reset licznika",
+        ce("select",{style:inp,value:form.numbering_reset||"monthly",onChange:function(e){upd("numbering_reset",e.target.value);}},
+          ce("option",{value:"monthly"},"Co miesi\u0105c"),
+          ce("option",{value:"yearly"},"Co rok"),
+          ce("option",{value:"never"},"Nigdy (ci\u0105g\u0142y)"))),
+
+      ce("div",{style:{display:"flex",justifyContent:"space-between",gap:10,marginBottom:16}},
+        (!isDefault)&&ce("button",{onClick:del,disabled:busy,style:btnDanger},"\uD83D\uDDD1 Usu\u0144 podmiot"),
+        ce("div",{style:{flex:1}}),
+        ce("button",{onClick:save,disabled:busy,style:btnPrimary},busy?"\u23F3 Zapisuj\u0119...":"\u2713 Zapisz podmiot")),
+
+      // Integracja KSeF osobno dla tego podmiotu (osobny token/certyfikat).
+      ce(KsefTokenPanel,{entityId:form.id})
+    )
+  );
+}
+
 // ── USTAWIENIA FAKTURY ──────────────────────────────────────────────────────
 function InvoiceSettings(p){
   var [form,setForm]=useState(p.settings||{});
   var [busy,setBusy]=useState(false);
   var [ok,setOk]=useState(false);
   var [err,setErr]=useState(null);
+  var [adding,setAdding]=useState(false);
+  var entities=p.entities||[];
   function upd(k,v){setForm(function(f){return Object.assign({},f,{[k]:v});});}
 
-  function save(){
+  function saveDefaults(){
     setBusy(true); setErr(null); setOk(false);
-    sbApi.saveInvoiceSettings(form)
-      .then(function(){setOk(true);setTimeout(function(){setOk(false);},2000);p.onSaved(form);})
-      .catch(function(e){setErr(e.message||"Błąd zapisu");})
+    sbApi.saveInvoiceSettings({
+      default_vat:form.default_vat,default_payment_days:form.default_payment_days,
+      default_payment_method:form.default_payment_method,default_unit:form.default_unit,
+      kasowa_default:form.kasowa_default
+    })
+      .then(function(){setOk(true);setTimeout(function(){setOk(false);},2000);p.onSaved&&p.onSaved(form);})
+      .catch(function(e){setErr(e.message||"B\u0142\u0105d zapisu");})
       .finally(function(){setBusy(false);});
   }
 
+  function addEntity(){
+    setAdding(true); setErr(null);
+    sbApi.createEntity({name:"Nowy podmiot",vat_status:"czynny",numbering_format:"FV/{nr}/{MM}/{YYYY}",numbering_reset:"monthly",ksef_env:"prod"})
+      .then(function(){return p.onEntitiesChange&&p.onEntitiesChange();})
+      .catch(function(e){setErr(e.message||"Nie uda\u0142o si\u0119 doda\u0107 podmiotu");})
+      .finally(function(){setAdding(false);});
+  }
+
   var row=function(lbl,el,note){return ce("div",{style:{marginBottom:14}},
-    ce("span",{style:label},lbl),
-    el,
+    ce("span",{style:label},lbl),el,
     note&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:3}},note)
   );};
 
   return ce("div",{style:{maxWidth:640,margin:"0 auto",paddingBottom:40}},
     ce("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
-      ce("button",{onClick:p.onClose,style:Object.assign({},btnSecondary,{padding:"7px 12px"})},"\u2190 Wróć"),
+      ce("button",{onClick:p.onClose,style:Object.assign({},btnSecondary,{padding:"7px 12px"})},"\u2190 Wr\u00f3\u0107"),
       ce("h2",{style:{margin:0,fontSize:18,fontWeight:700,color:"var(--t1)"}},"Ustawienia fakturowania")),
 
     err&&ce("div",{style:{background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--red)",marginBottom:14}},"\u26A0\uFE0F "+err),
     ok&&ce("div",{style:{background:"var(--grl)",border:"1px solid var(--gr)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--gr)",marginBottom:14}},"\u2713 Zapisano"),
 
-    ce("div",{style:card},
-      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:14,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83C\uDFE2 Dane sprzedawcy"),
-      row("Nazwa firmy / imię nazwisko",ce("input",{style:inp,value:form.seller_name||"",onChange:function(e){upd("seller_name",e.target.value);}})),
-      row("NIP",ce("input",{style:inp,value:form.seller_nip||"",placeholder:"0000000000",onChange:function(e){upd("seller_nip",e.target.value);}})),
-      row("Adres",ce("input",{style:inp,value:form.seller_address||"",onChange:function(e){upd("seller_address",e.target.value);}})),
-      ce("div",{style:{display:"grid",gridTemplateColumns:"120px 1fr",gap:10,marginBottom:14}},
-        ce("div",null,ce("span",{style:label},"Kod pocztowy"),ce("input",{style:inp,value:form.seller_postal||"",placeholder:"00-000",onChange:function(e){upd("seller_postal",e.target.value);}})),
-        ce("div",null,ce("span",{style:label},"Miasto"),ce("input",{style:inp,value:form.seller_city||"",onChange:function(e){upd("seller_city",e.target.value);}}))),
-      row("E-mail",ce("input",{style:inp,type:"email",value:form.seller_email||"",onChange:function(e){upd("seller_email",e.target.value);}})),
-      row("Telefon",ce("input",{style:inp,value:form.seller_phone||"",onChange:function(e){upd("seller_phone",e.target.value);}})),
-      row("Numer konta (IBAN)",ce("input",{style:inp,value:form.seller_bank||"",placeholder:"PL00 0000 0000 0000 0000 0000 0000",onChange:function(e){upd("seller_bank",e.target.value);}}))
-    ),
+    // ── PODMIOTY ──────────────────────────────────────────────────────────────
+    ce("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:6}},
+      ce("h3",{style:{margin:0,fontSize:15,fontWeight:700,color:"var(--t1)"}},"\uD83C\uDFE2 Podmioty (dzia\u0142alno\u015bci)"),
+      ce("div",{style:{flex:1}}),
+      ce("button",{onClick:addEntity,disabled:adding,style:Object.assign({},btnSecondary,{fontSize:12,padding:"6px 12px"})},adding?"\u23F3 Dodaj\u0119...":"+ Dodaj podmiot")),
+    ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:12}},
+      "Ka\u017cdy podmiot ma w\u0142asne dane sprzedawcy, osobn\u0105 numeracj\u0119 i osobny token KSeF. W panelu faktur prze\u0142\u0105czasz si\u0119 mi\u0119dzy nimi u g\u00f3ry."),
+    entities.map(function(e){
+      return ce(EntityCard,{key:e.id,entity:e,startOpen:entities.length===1,
+        onSaved:function(){p.onEntitiesChange&&p.onEntitiesChange();},
+        onDeleted:function(){p.onEntitiesChange&&p.onEntitiesChange();}});
+    }),
 
-    ce("div",{style:card},
-      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:14,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83D\uDD22 Numeracja"),
-      row("Szablon numeru",
-        ce("input",{style:inp,value:form.numbering_format||"{nr}/{MM}/{YYYY}",onChange:function(e){upd("numbering_format",e.target.value);}}),
-        "Zmienne: {nr} = kolejny numer, {MM} = miesiąc, {YYYY} = rok. Przykład: FV/{nr}/{MM}/{YYYY} → FV/001/06/2026"),
-      row("Reset licznika",
-        ce("select",{style:inp,value:form.numbering_reset||"monthly",onChange:function(e){upd("numbering_reset",e.target.value);}},
-          ce("option",{value:"monthly"},"Co miesiąc"),
-          ce("option",{value:"yearly"},"Co rok"),
-          ce("option",{value:"never"},"Nigdy (ciągły)")))
-    ),
-
-    ce("div",{style:card},
-      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:14,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\u2699\uFE0F Domyślne wartości"),
-      row("Domyślna stawka VAT",
+    // ── DOMY\u015aLNE WARTO\u015aCI (wsp\u00f3lne dla tenanta) ──────────────────────────────
+    ce("div",{style:Object.assign({},card,{marginTop:8})},
+      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:14,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\u2699\uFE0F Domy\u015blne warto\u015bci (wsp\u00f3lne)"),
+      row("Domy\u015blna stawka VAT",
         ce("select",{style:inp,value:form.default_vat||23,onChange:function(e){upd("default_vat",+(e.target.value));}},
           VAT_RATES.map(function(r){return ce("option",{key:r,value:r},fmtVat(r));}))),
-      row("Termin płatności (dni)",
+      row("Termin p\u0142atno\u015bci (dni)",
         ce("input",{style:inp,type:"number",min:0,value:form.default_payment_days||14,onChange:function(e){upd("default_payment_days",+(e.target.value));}})),
-      row("Forma płatności",
+      row("Forma p\u0142atno\u015bci",
         ce("select",{style:inp,value:form.default_payment_method||"przelew",onChange:function(e){upd("default_payment_method",e.target.value);}},
           PAYMENT_METHODS.map(function(m){return ce("option",{key:m,value:m},m);}))),
-      row("Domyślna jednostka miary",
+      row("Domy\u015blna jednostka miary",
         ce("select",{style:inp,value:form.default_unit||"szt",onChange:function(e){upd("default_unit",e.target.value);}},
           UNITS.map(function(u){return ce("option",{key:u,value:u},u);}))),
       row("Metoda kasowa",
@@ -787,21 +903,21 @@ function InvoiceSettings(p){
           ce("input",{type:"checkbox",checked:!!form.kasowa_default,
             onChange:function(e){upd("kasowa_default",e.target.checked);},
             style:{width:15,height:15,cursor:"pointer"}}),
-          "Zaznaczaj domyślnie na nowych fakturach"),
-        "Dla małych podatników rozliczających VAT metodą kasową. Trafia do FA(3) jako Adnotacje/P_16 = 1 i na PDF jako napis „Metoda Kasowa”. Nigdy nie jest duplikowana w dodatkowym opisie faktury.")
+          "Zaznaczaj domy\u015blnie na nowych fakturach"),
+        "Dla ma\u0142ych podatnik\u00f3w rozliczaj\u0105cych VAT metod\u0105 kasow\u0105. Trafia do FA(3) jako Adnotacje/P_16 = 1 i na PDF jako napis \u201eMetoda Kasowa\u201d.")
     ),
 
-    ce(KsefTokenPanel,null),
-
     ce("div",{style:{display:"flex",justifyContent:"flex-end",gap:10}},
-      ce("button",{onClick:p.onClose,style:btnSecondary},"Anuluj"),
-      ce("button",{onClick:save,disabled:busy,style:btnPrimary},busy?"\u23F3 Zapisuję...":"\u2713 Zapisz ustawienia")
+      ce("button",{onClick:p.onClose,style:btnSecondary},"Zamknij"),
+      ce("button",{onClick:saveDefaults,disabled:busy,style:btnPrimary},busy?"\u23F3 Zapisuj\u0119...":"\u2713 Zapisz domy\u015blne")
     )
   );
 }
 
-// ── PANEL CERTYFIKATU KSEF ──────────────────
-function KsefTokenPanel(){
+
+// ── PANEL CERTYFIKATU KSEF (per podmiot) ──────────────────
+function KsefTokenPanel(p){
+  var entityId=(p&&p.entityId)||null;
   var [authMode,setAuthMode]=useState("cert"); // cert | token
   // -- cert state
   var [certText,setCertText]=useState("");
@@ -823,10 +939,10 @@ function KsefTokenPanel(){
   var keyRef=React.useRef(null);
 
   useEffect(function(){
-    ksefApi.getTokenStatus()
+    ksefApi.getTokenStatus(entityId)
       .then(function(s){setStatus(s);setEnv(s.env||"prod");setTokenEnv(s.env||"prod");})
       .catch(function(){setStatus({hasCert:false,env:"prod"});});
-  },[]);
+  },[entityId]);
 
   function readFile(file,cb){
     var r=new FileReader();
@@ -838,7 +954,7 @@ function KsefTokenPanel(){
     if(!certText.trim()){setErr("Wgraj plik .crt");return;}
     if(!keyText.trim()){setErr("Wgraj plik .key");return;}
     setBusy(true);setErr(null);setMsg(null);
-    ksefApi.saveCert(certText.trim(),keyText.trim(),keyPass,env)
+    ksefApi.saveCert(certText.trim(),keyText.trim(),keyPass,env,entityId)
       .then(function(r){
         setMsg("\u2713 Certyfikat zapisany (\u015brodowisko: "+(r.env==="prod"?"PRODUKCJA":"TEST")+")");
         setCertText("");setKeyText("");setKeyPass("");
@@ -853,7 +969,7 @@ function KsefTokenPanel(){
     if(!t){setErr("Wklej token KSeF");return;}
     if(t.length<20){setErr("Token wygl\u0105da za kr\u00f3tki");return;}
     setBusy(true);setErr(null);setMsg(null);
-    ksefApi.saveToken(t,tokenEnv)
+    ksefApi.saveToken(t,tokenEnv,entityId)
       .then(function(r){
         setMsg("\u2713 Token zapisany (\u015brodowisko: "+(r.env==="prod"?"PRODUKCJA":"TEST")+")");
         setTokenText("");
@@ -866,7 +982,7 @@ function KsefTokenPanel(){
   function del(){
     if(!confirm("Usun\u0105\u0107 certyfikat/token KSeF?"))return;
     setBusy(true);setErr(null);setMsg(null);
-    ksefApi.deleteToken()
+    ksefApi.deleteToken(entityId)
       .then(function(){setStatus({hasCert:false,env:"prod"});setMsg("\u2713 Usuni\u0119to");})
       .catch(function(e){setErr(e.message);})
       .finally(function(){setBusy(false);});
@@ -876,7 +992,7 @@ function KsefTokenPanel(){
   // /api/ksef/session co realna wysy\u0142ka, wi\u0119c wynik jest wiarygodny.
   function testConnection(){
     setTestBusy(true);setTestErr(null);setTestMsg(null);
-    ksefApi.openSession()
+    ksefApi.openSession(entityId)
       .then(function(){setTestMsg("\u2705 Po\u0142\u0105czenie dzia\u0142a \u2014 KSeF zaakceptowa\u0142 dane uwierzytelniaj\u0105ce.");})
       .catch(function(e){setTestErr(e.message||"B\u0142\u0105d testu po\u0142\u0105czenia");})
       .finally(function(){setTestBusy(false);});
@@ -1127,9 +1243,18 @@ function InvoiceList(p){
   var [dateTo,setDateTo]=useState(function(){ return new Date().toISOString().slice(0,10); });
   var [sess,setSess]=useState(null);
 
+  // Multi-podmiot: aktywny podmiot steruje filtrem listy oraz sesja KSeF przy synchronizacji.
+  var entitiesList=p.entities||[];
+  var activeEntityId=p.activeEntityId||"all";
+  var defaultEntity=entitiesList.filter(function(e){return e.is_default;})[0]||entitiesList[0]||null;
+  // Sesja synchronizacji: przy "wszystkie" uzyj podmiotu domyslnego.
+  var sessionEntityId=(activeEntityId!=="all")?activeEntityId:(defaultEntity&&defaultEntity.id);
+  var entityById=function(id){ return entitiesList.filter(function(e){return e.id===id;})[0]||null; };
+
   function getSession(){
-    if(sess&&new Date(sess.expiresAt)>new Date()) return Promise.resolve(sess);
-    return ksefApi.openSession().then(function(s){ setSess(s); return s; });
+    // Sesja jest zwiazana z konkretnym podmiotem — przy zmianie podmiotu otwieramy nowa.
+    if(sess&&sess._entityId===sessionEntityId&&new Date(sess.expiresAt)>new Date()) return Promise.resolve(sess);
+    return ksefApi.openSession(sessionEntityId).then(function(s){ s._entityId=sessionEntityId; setSess(s); return s; });
   }
 
   function syncKsef(){
@@ -1197,8 +1322,13 @@ function InvoiceList(p){
   var periodLabel={month:"bieżący miesiąc",prevMonth:"poprzedni miesiąc",quarter:"bieżący kwartał",
     prevQuarter:"poprzedni kwartał",year:"bieżący rok",all:"cały okres",custom:"zakres niestandardowy"}[periodPreset];
 
+  // Faktury filtrowane wg aktywnego podmiotu ("all" = wszystkie podmioty razem).
+  var entityInvoices=(activeEntityId==="all")
+    ? (p.invoices||[])
+    : (p.invoices||[]).filter(function(inv){ return inv.entity_id===activeEntityId; });
+
   // Faktury bieżącej zakładki (kierunek) — do kafelków stałych okresów, niezależnie od periodRange
-  var tabInvoices=(p.invoices||[]).filter(function(inv){
+  var tabInvoices=entityInvoices.filter(function(inv){
     var dir=invDirection(inv);
     return tab==="zakup"?dir==="zakup":dir!=="zakup";
   });
@@ -1207,7 +1337,7 @@ function InvoiceList(p){
   // Liczniki zakładek Sprzedaż/Zakup liczone z TEGO SAMEGO okresu co filtr listy —
   // wcześniej liczyły zawsze całą historię, niezależnie od tego, co pokazywał
   // panel podsumowania nad nimi, stąd rozjazd (np. "21" zamiast "17 w tym miesiącu").
-  var periodFilteredAll=(p.invoices||[]).filter(function(inv){
+  var periodFilteredAll=entityInvoices.filter(function(inv){
     return !periodRange || ((inv.issue_date||"")>=periodRange.from && (inv.issue_date||"")<=periodRange.to);
   });
   var tabCounts=periodFilteredAll.reduce(function(acc,inv){
@@ -1255,6 +1385,25 @@ function InvoiceList(p){
       .sort(function(a,b){return b.count-a.count;});
   })();
 
+  // Podsumowanie ŁĄCZNE per podmiot (tylko w widoku "Wszystkie") — przychody vs koszty
+  // dla wybranego okresu listy, z podziałem na podmioty i sumą zbiorczą.
+  var combinedSummary=(function(){
+    if(activeEntityId!=="all"||entitiesList.length<2) return null;
+    var by={};
+    periodFilteredAll.forEach(function(inv){
+      var eid=inv.entity_id||"—";
+      if(!by[eid]) by[eid]={rev:0,cost:0};
+      if(invDirection(inv)==="zakup") by[eid].cost+=(+inv.total_gross||0);
+      else by[eid].rev+=(+inv.total_gross||0);
+    });
+    var rows=entitiesList.map(function(e){
+      var s=by[e.id]||{rev:0,cost:0};
+      return {name:e.name||"(bez nazwy)",rev:s.rev,cost:s.cost};
+    });
+    var tot=rows.reduce(function(a,r){a.rev+=r.rev;a.cost+=r.cost;return a;},{rev:0,cost:0});
+    return {rows:rows,tot:tot};
+  })();
+
   var payStatus=function(inv){
     if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"var(--grd)"};
     if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"var(--grd)"};
@@ -1276,8 +1425,24 @@ function InvoiceList(p){
     border:"1px solid var(--bd2)",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:600,
     cursor:"pointer",background:active?"var(--violet)":"var(--bg)",color:active?"#fff":"var(--t2)"
   };};
+  var entChip=function(active){return {
+    border:active?"1px solid var(--violet)":"1px solid var(--bd2)",borderRadius:20,padding:"6px 14px",
+    fontSize:13,fontWeight:700,cursor:"pointer",
+    background:active?"var(--violet)":"var(--bg)",color:active?"#fff":"var(--t2)",fontFamily:"inherit"
+  };};
 
   return ce("div",null,
+
+    // ── Przełącznik podmiotu (multi-podmiot) ─────────────────────────────────
+    entitiesList.length>1&&ce("div",{style:{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}},
+      ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",marginRight:2}},"Podmiot:"),
+      entitiesList.map(function(e){
+        return ce("button",{key:e.id,onClick:function(){p.onEntityChange&&p.onEntityChange(e.id);},
+          style:entChip(activeEntityId===e.id)}, e.name||"(bez nazwy)");
+      }),
+      ce("button",{onClick:function(){p.onEntityChange&&p.onEntityChange("all");},
+        style:entChip(activeEntityId==="all")},"Wszystkie \u2211")
+    ),
 
     // ── Zakładki Przychody (Sprzedaż) / Wydatki (Zakup) ──────────────────────
     ce("div",{style:{display:"flex",gap:10,marginBottom:6}},
@@ -1301,6 +1466,29 @@ function InvoiceList(p){
       StatTile("Ostatnie 7 dni",stats.week),
       StatTile("Bieżący miesiąc",stats.month,true),
       StatTile("Bieżący rok",stats.year)
+    ),
+
+    // ── Podsumowanie ŁĄCZNE z wielu podmiotów (widok "Wszystkie") ─────────────
+    combinedSummary&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 14px",marginBottom:14}},
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:8}},
+        "Podsumowanie łączne (brutto) — "+periodLabel),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 130px 130px 130px",gap:6,fontSize:11,fontWeight:700,color:"var(--t3)",paddingBottom:6,borderBottom:"1px solid var(--bd2)"}},
+        ce("div",null,"Podmiot"),
+        ce("div",{style:{textAlign:"right"}},"Przychody"),
+        ce("div",{style:{textAlign:"right"}},"Koszty"),
+        ce("div",{style:{textAlign:"right"}},"Saldo")),
+      combinedSummary.rows.map(function(r,i){
+        return ce("div",{key:i,style:{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 130px 130px 130px",gap:6,fontSize:13,padding:"6px 0",borderBottom:"1px solid var(--bd3)"}},
+          ce("div",{style:{color:"var(--t1)",fontWeight:600}},r.name),
+          ce("div",{style:{textAlign:"right",color:"var(--gr)"}},fmtMoney(r.rev)),
+          ce("div",{style:{textAlign:"right",color:"var(--t2)"}},fmtMoney(r.cost)),
+          ce("div",{style:{textAlign:"right",fontWeight:700,color:(r.rev-r.cost)>=0?"var(--gr)":"var(--red)"}},fmtMoney(r.rev-r.cost)));
+      }),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 130px 130px 130px",gap:6,fontSize:13,paddingTop:8,fontWeight:800,color:"var(--t1)"}},
+        ce("div",null,"Razem"),
+        ce("div",{style:{textAlign:"right",color:"var(--gr)"}},fmtMoney(combinedSummary.tot.rev)),
+        ce("div",{style:{textAlign:"right"}},fmtMoney(combinedSummary.tot.cost)),
+        ce("div",{style:{textAlign:"right",color:(combinedSummary.tot.rev-combinedSummary.tot.cost)>=0?"var(--gr)":"var(--red)"}},fmtMoney(combinedSummary.tot.rev-combinedSummary.tot.cost)))
     ),
 
     // ── Filtr okresu dla listy poniżej (realnie filtruje wiersze tabeli) ──────
@@ -1854,7 +2042,7 @@ function InvoiceDetailView(p){
 
   function refreshKsefStatus(){
     setKsefBusy(true); setKsefErr(null);
-    ksefApi.openSession().then(function(sess){
+    ksefApi.openSession(currentInv.entity_id).then(function(sess){
       return ksefApi.checkStatus(currentInv.id, sess.accessToken, sess.baseUrl);
     }).then(function(res){
       if(res.ksefStatus==="confirmed") setKsefMsg("✅ Potwierdzona w KSeF. Nr KSeF: "+(res.ksefNumber||""));
@@ -1935,7 +2123,7 @@ function InvoiceDetailView(p){
 
   function sendToKsef(){
     setKsefBusy(true); setKsefErr(null); setKsefMsg(null);
-    ksefApi.openSession()
+    ksefApi.openSession(currentInv.entity_id)
       .then(function(sess){
         return ksefApi.sendInvoice(currentInv.id,sess.accessToken,sess.baseUrl);
       })
@@ -2093,6 +2281,14 @@ export function ScreenInvoices(p){
   var [view,setView]=useState("list");       // list | editor | settings
   var [invoices,setInvoices]=useState([]);
   var [settings,setSettings]=useState(null);
+  var [entities,setEntities]=useState([]);   // multi-podmiot
+  var [activeEntityId,setActiveEntityId]=useState(function(){
+    try{ return localStorage.getItem("pd_active_entity")||"all"; }catch(e){ return "all"; }
+  });
+  function changeEntity(id){
+    setActiveEntityId(id);
+    try{ localStorage.setItem("pd_active_entity",id); }catch(e){}
+  }
   var [editInv,setEditInv]=useState(null);   // null = now
   var [detailInv,setDetailInv]=useState(null); // faktura po zapisaniu
   var [clientsAll,setClientsAll]=useState([]);
@@ -2116,12 +2312,13 @@ export function ScreenInvoices(p){
 
   // Ładuj faktury i ustawienia
   useEffect(function(){
-    Promise.all([sbApi.getInvoices(), sbApi.getInvoiceSettings(), sbApi.getClients(), sbApi.getDeals()])
+    Promise.all([sbApi.getInvoices(), sbApi.getInvoiceSettings(), sbApi.getClients(), sbApi.getDeals(), sbApi.getEntities()])
       .then(function(results){
         setInvoices(results[0]||[]);
         setSettings(results[1]||{});
         setClientsAll(results[2]||[]);
         setDealsAll(results[3]||[]);
+        setEntities(results[4]||[]);
         setLoading(false);
       })
       .catch(function(e){
@@ -2130,9 +2327,19 @@ export function ScreenInvoices(p){
       });
   },[]);
 
+  // Podmiot aktywny: przy "all" nowa faktura uzywa podmiotu domyslnego.
+  var defaultEntity=entities.filter(function(e){return e.is_default;})[0]||entities[0]||null;
+  var activeEntity=(activeEntityId==="all")
+    ? defaultEntity
+    : (entities.filter(function(e){return e.id===activeEntityId;})[0]||defaultEntity);
+  function reloadEntities(){
+    return sbApi.getEntities().then(function(rows){ setEntities(rows||[]); return rows||[]; });
+  }
+
   function openNew(dir){
-    // Jeśli brak ustawień sprzedawcy — wymuś najpierw konfigurację
-    if(!settings||!settings.seller_name){
+    // Jeśli brak danych sprzedawcy w aktywnym podmiocie — wymuś najpierw konfigurację
+    var sellerReady=(activeEntity&&activeEntity.name)||(settings&&settings.seller_name);
+    if(!sellerReady){
       invoiceNavigate("settings");
       return;
     }
@@ -2200,7 +2407,7 @@ export function ScreenInvoices(p){
           buyer_name:src.buyer_name, buyer_nip:src.buyer_nip,
           buyer_address:src.buyer_address, buyer_postal:src.buyer_postal,
           buyer_city:src.buyer_city, buyer_email:src.buyer_email,
-          seller_snapshot:src.seller_snapshot,
+          seller_snapshot:src.seller_snapshot, entity_id:src.entity_id,
           invoice_items:itemsCopy
         });
         invoiceNavigate("editor");
@@ -2210,7 +2417,7 @@ export function ScreenInvoices(p){
   }
 
   // Brak ustawień — banner informacyjny
-  var settingsEmpty=!settings||!settings.seller_name;
+  var settingsEmpty=!(activeEntity&&activeEntity.name)&&!(settings&&settings.seller_name);
 
   return ce("div",{style:{padding:"0 4px"}},
 
@@ -2228,6 +2435,7 @@ export function ScreenInvoices(p){
       ),
       ce(InvoiceList,{
         invoices:invoices, viewBusyId:viewBusyId,
+        entities:entities, activeEntityId:activeEntityId, onEntityChange:changeEntity,
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete, onDuplicate:onDuplicate,
         onSynced:function(){ sbApi.getInvoices().then(function(data){ setInvoices(data||[]); }); },
         onTogglePaid:function(inv,val){
@@ -2268,7 +2476,9 @@ export function ScreenInvoices(p){
     }),
 
     !loading&&view==="editor"&&ce(InvoiceEditor,{
+      // Edycja/duplikat istniejacej faktury -> uzyj JEJ podmiotu; nowa -> aktywny podmiot.
       invoice:editInv, settings:settings||{},
+      entity:((editInv&&editInv.entity_id)?(entities.filter(function(e){return e.id===editInv.entity_id;})[0]||activeEntity):activeEntity)||{},
       clients:clientsAll, deals:dealsAll,
       onSave:onSaved,
       onClose:function(){invoiceNavigate("list");}
@@ -2276,6 +2486,8 @@ export function ScreenInvoices(p){
 
     !loading&&view==="settings"&&ce(InvoiceSettings,{
       settings:settings||{},
+      entities:entities, activeEntityId:activeEntityId,
+      onEntitiesChange:reloadEntities,
       onSaved:onSettingsSaved,
       onClose:function(){invoiceNavigate("list");}
     })
