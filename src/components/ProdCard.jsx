@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, getFabricEffective, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
+  FABRICS, getAllFabrics, getFabricEffective, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
   IMG_FALDA_POTROJNA, IMG_FALDA_STUDIO, IMG_JZ_ALUMINIUM, IMG_JZ_BAMBOO,
   IMG_JZ_BASSWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
   IMG_OKNO, IMG_ROLETA_BACK, IMG_ROLETA_CASCADE, IMG_ROLETA_DUO,
@@ -57,8 +57,9 @@ export function FabPicker(p){
   // Nadpisania z Katalogu (Magazyn → Katalog) scalone z bazą — cena/wysokość zawsze aktualne.
   // Scalenie tutaj (a nie w handlerach onSelect w ProdCard) wystarcza dla obu
   // pikerow tkaniny (główna + warstwa 2 Roleta Duo), bo oba używają tego komponentu.
-  var effFabrics=FABRICS.map(function(f){var ov=getFabricEffective(f.name);return ov?Object.assign({},f,{brutto:ov.brutto,width:ov.width,prod:ov.prod}):f;});
-  var list=q?effFabrics.filter(function(f){return f.name.toLowerCase().includes(q.toLowerCase())||f.prod.toLowerCase().includes(q.toLowerCase());}):effFabrics;
+  // getAllFabrics() = cennik bazowy z nadpisaniami (bez ukrytych) + tkaniny wlasne z Katalogu.
+  var effFabrics=getAllFabrics();
+  var list=q?effFabrics.filter(function(f){return (f.name||"").toLowerCase().includes(q.toLowerCase())||(f.prod||"").toLowerCase().includes(q.toLowerCase());}):effFabrics;
   var sf=effFabrics.find(function(f){return f.name===p.fabName;});
   var hasSelection=p.fabName||p.fabMan!=null;
   return ce("div",{style:{border:"1.5px solid "+(open?"var(--t1)":"var(--bd2)"),borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4,transition:"border-color .15s"}},
@@ -85,9 +86,9 @@ export function FabPicker(p){
           },
             active?ce("span",{style:{color:"var(--gr)",fontSize:14,flexShrink:0,width:16}},"✓"):ce("span",{style:{width:16,flexShrink:0}}),
             ce("span",{style:{flex:1,fontWeight:active?600:500,color:"var(--t1)"}},f.name),
-            ce("span",{style:{fontSize:11,color:"var(--t3)",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod),
-            ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap",fontSize:13}},f.width+"cm"),
-            ce("span",{style:{color:"var(--grd)",fontWeight:600,whiteSpace:"nowrap",fontSize:13}},f.brutto+" zł")
+            ce("span",{style:{fontSize:11,color:"var(--t3)",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod||"\u2014"),
+            ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap",fontSize:13}},(f.width!=null?f.width+"cm":"\u2014")),
+            ce("span",{style:{color:"var(--grd)",fontWeight:600,whiteSpace:"nowrap",fontSize:13}},(f.brutto!=null?f.brutto:"\u2014")+" z\u0142")
           );
         })
       ),

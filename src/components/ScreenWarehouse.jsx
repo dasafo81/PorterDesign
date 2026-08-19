@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
+  FABRICS, primeFabricOverrides, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
   KD_AKCESORIA, RS_MASKS
 } from '../constants/data.js';
@@ -738,7 +738,7 @@ function TabCatalog(p) {
   function reload() {
     setLoading(true);
     sbApi.getCatalogItems()
-      .then(function(d) { setRows(d || []); setLoading(false); })
+      .then(function(d) { setRows(d || []); primeFabricOverrides(d || []); setLoading(false); })
       .catch(function(e) { setErr(e.message); setLoading(false); });
   }
   useEffect(function() { reload(); }, []);
@@ -845,10 +845,10 @@ function TabCatalog(p) {
         ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 } },
           x.items.map(function(it, idx) {
             return ce("div", { key: it.rowId || it.baseKey || idx,
-              style: { background: "var(--bg2)", border: "1.5px solid " + (it.warn ? "#f0c98a" : "var(--bd2)"), borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, cursor: "pointer" },
+              style: { background: "var(--bg2)", border: "1.5px solid " + (it.warn ? "#f0c98a" : "var(--bd2)"), borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, cursor: "pointer" },
               onClick: function() { setEditItem(it); } },
-              ce("div", { style: { minWidth: 0, flex: 1 } },
-                ce("div", { style: { fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+              ce("div", { style: { minWidth: 0 } },
+                ce("div", { title: it.name, style: { fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
                   it.name,
                   !it.isBase && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "var(--violet)", background: "rgba(124,58,237,0.10)", borderRadius: 6, padding: "1px 5px" } }, "w\u0142asny"),
                   it.overridden && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#0369a1", background: "rgba(3,105,161,0.10)", borderRadius: 6, padding: "1px 5px" } }, "edyt.")
@@ -856,10 +856,10 @@ function TabCatalog(p) {
                 ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
-              ce("div", { style: { display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" } },
+              ce("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap" } },
                 it.belkowa != null && ce("div", { style: { fontSize: 10, color: "var(--t3)" } }, "belka " + fmtPrice(it.belkowa) + " z\u0142"),
                 it.zakup != null && ce("div", { style: { fontSize: 10, color: "var(--t3)" } }, "zakup " + fmtPrice(it.zakup) + " z\u0142"),
-                ce("div", { style: { fontSize: 14, fontWeight: 800, color: "var(--violet)" } }, fmtPrice(it.price) + " " + (it.unit || "z\u0142")),
+                ce("div", { style: { fontSize: 14, fontWeight: 800, color: "var(--violet)", marginLeft: "auto" } }, fmtPrice(it.price) + " " + (it.unit || "z\u0142")),
                 !it.isBase && ce("button", { onClick: function(e) { e.stopPropagation(); handleDelete(it); },
                   title: "Usu\u0144", style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 13, opacity: 0.5, padding: "0 2px" } }, "\uD83D\uDDD1")
               )

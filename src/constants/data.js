@@ -2445,19 +2445,54 @@ export const TAPETY =[
 // primeFabricOverrides po pobraniu catalog_items z Supabase). Klucz nadpisania
 // to base_key w formacie "tkaniny::<nazwa>" (patrz ScreenWarehouse.jsx).
 var _fabricOverrides = {};
+// Tkaniny wlasne (dodane recznie w Magazyn -> Katalog, bez base_key, grupa "tkaniny")
+var _customFabrics = [];
+function _rowToFabric(r){
+  return {
+    name: r.name,
+    brutto: r.price!=null ? r.price : null,
+    prod: r.meta || "W\u0142asne",
+    width: r.height_cm!=null ? r.height_cm : null,
+    zakup: r.purchase_price!=null ? r.purchase_price : null,
+    sklad: r.composition || null,
+    belkowa: r.belka_price!=null ? r.belka_price : null,
+    custom: true
+  };
+}
 export function primeFabricOverrides(rows){
   _fabricOverrides = {};
+  _customFabrics = [];
   (rows||[]).forEach(function(r){
     if(r.base_key && r.base_key.indexOf("tkaniny::")===0){
       _fabricOverrides[r.base_key.slice(9)] = r;
+    } else if(!r.base_key && r.group_id==="tkaniny" && r.name){
+      _customFabrics.push(_rowToFabric(r));
     }
   });
+}
+// Pelna lista tkanin dostepna w wycenach: cennik bazowy (z nadpisaniami z Katalogu,
+// bez pozycji ukrytych) + tkaniny wlasne dodane recznie w Katalogu.
+export function getAllFabrics(){
+  var out = [];
+  FABRICS.forEach(function(f){
+    var ov = _fabricOverrides[f.name];
+    if(ov && ov.hidden) return;
+    var eff = getFabricEffective(f.name);
+    out.push(eff ? Object.assign({}, f, eff) : f);
+  });
+  var seen = {};
+  out.forEach(function(f){ seen[f.name]=1; });
+  _customFabrics.forEach(function(f){ if(!seen[f.name]){ seen[f.name]=1; out.push(f); } });
+  return out;
 }
 // Zwraca efektywną tkaninę (baza FABRICS + nadpisanie z katalogu, jeśli istnieje)
 export function getFabricEffective(name){
   var base = FABRICS.find(function(f){return f.name===name;});
   var ov = _fabricOverrides[name];
-  if(!base && !ov) return null;
+  if(!base && !ov){
+    var cf = _customFabrics.find(function(f){return f.name===name;});
+    return cf ? Object.assign({}, cf) : null;
+  }
   return {
     name: name,
     brutto: (ov && ov.price!=null) ? ov.price : (base?base.brutto:null),
@@ -3360,7 +3395,7 @@ export function buildOfferDetailRows(client){
           else{sz="Flex";}
           var mars=pc.mars?(Math.round(+pc.mars*100))+"%":"150%";
           modelSzycia=sz+" "+mars;
-          var fabObj=p.fabName?FABRICS.find(function(f){return f.name===p.fabName;}):null;
+          var fabObj=p.fabName?getFabricEffective(p.fabName):null;
           tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
           producent=fabObj?fabObj.prod:"-";
           szerokosc=par.wCm?(par.wCm+" cm"):"-";
@@ -3373,7 +3408,7 @@ export function buildOfferDetailRows(client){
         } else if(p.type==="roleta"){
           var rModelMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
           modelSzycia=rModelMap[pc.rModel]||pc.rModel||"-";
-          var fabObjR=p.fabName?FABRICS.find(function(f){return f.name===p.fabName;}):null;
+          var fabObjR=p.fabName?getFabricEffective(p.fabName):null;
           var rLancuszekKolorMap={srebrny:"Srebrny",zloty:"Z\u0142oty",stare_zloto:"Stare z\u0142oto",antracyt:"Antracyt",miedz:"Mied\u017a"};
           var rLancuszekLbl=pc.rSystem==="elektryk"?null
             :(pc.lancuszek==="metalowy"
@@ -3473,7 +3508,7 @@ export function buildFabricRows(client){
           });
           rows.push({
             fabName:p.fabName||(p.fabManName||"tkanina"),
-            prod:p.fabName?(FABRICS.find(function(f){return f.name===p.fabName;})||{prod:"-"}).prod:"-",
+            prod:p.fabName?((getFabricEffective(p.fabName)||{prod:"-"}).prod||"-"):"-",
             kolor:pc.kolor||"-",
             brutto:p.fabMan||p.fabP||0,
             width:p.fabW||null,
@@ -3492,7 +3527,7 @@ export function buildFabricRows(client){
           var rTunele=isBezMech?0:Math.floor((par.hCm||0)/23);
           var rHcm=isBezMech?(par.hCm||0):(par.hCm||0)+5+10+rTunele*2;
           var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
-          var fabObj=p.fabName?FABRICS.find(function(f){return f.name===p.fabName;}):null;
+          var fabObj=p.fabName?getFabricEffective(p.fabName):null;
           rows.push({
             fabName:p.fabName||(p.fabManName||"tkanina"),
             prod:fabObj?fabObj.prod:"-",
@@ -3506,7 +3541,7 @@ export function buildFabricRows(client){
           });
           // Roleta Duo — druga warstwa tkaniny
           if(pc.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
-            var fab2Obj=p.fab2Name?FABRICS.find(function(f){return f.name===p.fab2Name;}):null;
+            var fab2Obj=p.fab2Name?getFabricEffective(p.fab2Name):null;
             rows.push({
               fabName:p.fab2Name||(p.fab2ManName||"tkanina"),
               prod:fab2Obj?fab2Obj.prod:"-",
@@ -3547,7 +3582,7 @@ export function buildSewingRows(client){
         var pc=prod.c||{},par=prod.par||{};
         var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
         var lblDisp=prod.type==="inny"?(prod.innyNazwa||lbl):lbl;
-        var fabObj=prod.fabName?FABRICS.find(function(f){return f.name===prod.fabName;}):null;
+        var fabObj=prod.fabName?getFabricEffective(prod.fabName):null;
 
         if(prod.type==="roleta"){
           var isBezMech=pc.rSystem==="bez_mechanizmu";
@@ -3565,7 +3600,7 @@ export function buildSewingRows(client){
             :"Biały";
           var // elektryk: stronaSilnika | manual Duo: obie strony | półautomat/manual: stronaObslugi
           rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.rModel==="duo"&&pc.rSystem==="manual"?"Obie strony":(pc.stronaObslugi||"Lewo"));
-          var fab2Obj=prod.fab2Name?FABRICS.find(function(f){return f.name===prod.fab2Name;}):null;
+          var fab2Obj=prod.fab2Name?getFabricEffective(prod.fab2Name):null;
           var fabricDesc=prod.fabName||(prod.fabManName||"tkanina");
           if(pc.rModel==="duo"){
             var fab2Desc=prod.fab2Name||(prod.fab2ManName||"tkanina");
