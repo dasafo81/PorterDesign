@@ -339,8 +339,8 @@ export function App(p){
     });
   }
 
-  function addClient(name,addr,phone,email,postal,city){
-    sbApi.addClient(name,addr,phone,email,postal,city).then(function(data){
+  function addClient(name,addr,phone,email,postal,city,contactId){
+    sbApi.addClient(name,addr,phone,email,postal,city,contactId).then(function(data){
       var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,postal:postal||"",city:city||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
       setClients(function(cs){return [newCl].concat(cs);});
       setCurClientId(newCl.id);

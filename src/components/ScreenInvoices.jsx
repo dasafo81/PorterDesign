@@ -255,6 +255,15 @@ function InvoiceEditor(p){
   var [dealId,setDealId]=useState(initInv.deal_id||null);
   var [clientSearch,setClientSearch]=useState("");
   var [clientDropOpen,setClientDropOpen]=useState(false);
+  // Powiązanie z bazą kontrahentów (Faza 2)
+  var [contacts,setContacts]=useState([]);
+  var [contactId,setContactId]=useState(initInv.contact_id||null);
+  var [contactSearch,setContactSearch]=useState("");
+  var [contactDropOpen,setContactDropOpen]=useState(false);
+  var [saveAsContact,setSaveAsContact]=useState(false);
+  useEffect(function(){
+    sbApi.getContacts().then(function(rows){setContacts(rows||[]);}).catch(function(){});
+  },[]);
   var [items,setItems]=useState(
     (initInv.invoice_items&&initInv.invoice_items.length>0)
       ? initInv.invoice_items
@@ -363,6 +372,34 @@ function InvoiceEditor(p){
     setClientId(null); setDealId(null); setClientSearch("");
   }
 
+  // ── Kontrahenci (baza) — picker autouzupełniający dane nabywcy/sprzedawcy ──
+  var filteredContacts=(function(){
+    var wantRole=direction==="zakup"?"dostawca":"klient";
+    var base=contacts.filter(function(c){return c.role===wantRole||c.role==="oba";});
+    var pool=base.length?base:contacts; // gdy brak trafień po roli, pokaż wszystkich
+    var q=contactSearch.trim().toLowerCase();
+    if(!q)return pool;
+    return pool.filter(function(c){
+      return (c.name||"").toLowerCase().includes(q)
+        || (c.nip||"").includes(q)
+        || (c.phone||"").includes(q)
+        || (c.city||"").toLowerCase().includes(q);
+    });
+  })();
+  function pickContact(c){
+    setContactId(c.id);
+    setBuyerName(c.name||"");
+    setBuyerNip(c.nip||"");
+    setBuyerAddr(c.street||"");
+    setBuyerPostal(c.postal||"");
+    setBuyerCity(c.city||"");
+    setBuyerEmail(c.email||"");
+    setContactSearch(c.name||"");
+    setContactDropOpen(false);
+    setSaveAsContact(false);
+  }
+  function clearContact(){ setContactId(null); setContactSearch(""); }
+
   function addItem(){
     setItems(function(prev){
       var n=freshItem(); n.position=prev.length+1;
@@ -466,6 +503,7 @@ function InvoiceEditor(p){
       issue_date:issueDate, sale_date:saleDate, due_date:dueDate,
       payment_method:payMethod, kasowa:kasowa,
       client_id:isZakupDir?null:clientId, deal_id:isZakupDir?null:dealId,
+      contact_id: contactId||null,
       // Dla faktur zakupowych my (Porter Design) jesteśmy nabywcą — buyer_* wypełniamy
       // danymi sprzedawcy z Ustawień, a prawdziwy kontrahent (wpisany w formularzu w polach
       // "Nabywca") ląduje w seller_snapshot. Zgodne z konwencją synchronizacji KSeF/PDF.
@@ -498,7 +536,22 @@ function InvoiceEditor(p){
       ? sbApi.nextInvoiceNumber(docType,periodKey(numberingReset,issueDate||todayISO()),ent.id)
       : Promise.resolve(null);
 
-    numberPromise.then(function(nr){
+    // Faza 2: gdy nie wybrano kontrahenta z bazy, a zaznaczono "zapisz jako nowego" —
+    // najpierw utwórz kontrahenta i podepnij jego id do faktury (contact_id).
+    var contactPromise=(!contactId&&saveAsContact&&buyerName.trim())
+      ? sbApi.addContact({
+          kind: buyerNip.trim()?"firma":"osoba",
+          role: isZakupDir?"dostawca":"klient",
+          name:buyerName.trim(), nip:buyerNip.trim(),
+          street:buyerAddr.trim(), postal:buyerPostal.trim(), city:buyerCity.trim(),
+          email:buyerEmail.trim(), phone:"", default_vat:23, default_payment_days:14, tags:[]
+        }).then(function(data){return data&&data[0]?data[0].id:null;}).catch(function(){return null;})
+      : Promise.resolve(contactId||null);
+
+    contactPromise.then(function(_cid){
+      if(_cid)header.contact_id=_cid;
+      return numberPromise;
+    }).then(function(nr){
       if(nr!==null){
         var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
         // Proforma/faktura korzysta z formatu numeracji aktywnego podmiotu, EKO ma format EKO/nr/MM.
@@ -605,6 +658,42 @@ function InvoiceEditor(p){
     ce("div",{style:card},
       ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},
         direction==="zakup"?"\uD83D\uDE9A Sprzedawca (dostawca)":"\uD83C\uDFE2 Nabywca"),
+
+      // ── Kontrahent z bazy (Faza 2) — autouzupełnia dane poniżej ──
+      ce("div",{style:{marginBottom:14,position:"relative"}},
+        ce("span",{style:label},(direction==="zakup"?"Dostawca":"Klient")+" z bazy kontrahent\u00f3w (opcjonalnie)"),
+        ce("div",{style:{display:"flex",gap:8}},
+          ce("input",{style:Object.assign({},inp,{flex:1}),
+            value:contactSearch,
+            placeholder:"Szukaj: nazwa, NIP, telefon, miasto...",
+            onChange:function(e){setContactSearch(e.target.value);setContactDropOpen(true);if(!e.target.value)clearContact();},
+            onFocus:function(){setContactDropOpen(true);},
+            onBlur:function(){setTimeout(function(){setContactDropOpen(false);},150);},
+            onKeyDown:function(e){if(e.key==="Escape")setContactDropOpen(false);}}),
+          contactId&&ce("button",{onClick:clearContact,type:"button",
+            style:Object.assign({},btnSecondary,{padding:"8px 12px"})},"\u00D7")
+        ),
+        contactDropOpen&&filteredContacts.length>0&&ce("div",{
+          style:{position:"absolute",top:"100%",left:0,right:0,zIndex:50,
+            background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:8,
+            maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.15)",marginTop:4}},
+          filteredContacts.slice(0,30).map(function(c){
+            return ce("div",{key:c.id,
+              onMouseDown:function(){pickContact(c);},
+              style:{padding:"8px 12px",cursor:"pointer",fontSize:13,
+                borderBottom:"1px solid var(--bd3)",color:"var(--t1)"}},
+              ce("div",{style:{fontWeight:600}},c.name),
+              ce("div",{style:{fontSize:11,color:"var(--t3)"}}, [c.nip?"NIP "+c.nip:null,c.city||null,c.phone||null].filter(Boolean).join(" \u00B7 ")||"\u2014")
+            );
+          })
+        ),
+        contactId
+          ? ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},"\u2713 Powi\u0105zano z kontrahentem z bazy")
+          : (buyerName.trim()?ce("label",{style:{display:"flex",alignItems:"center",gap:7,fontSize:12,color:"var(--t2)",marginTop:7,cursor:"pointer"}},
+              ce("input",{type:"checkbox",checked:saveAsContact,onChange:function(e){setSaveAsContact(e.target.checked);},style:{width:14,height:14,cursor:"pointer"}}),
+              "Zapisz jako nowego kontrahenta w bazie"):null)
+      ),
+
       direction!=="zakup"&&ce("div",{style:{marginBottom:14,position:"relative"}},
         ce("span",{style:label},"Klient z CRM (opcjonalnie)"),
         ce("div",{style:{display:"flex",gap:8}},
