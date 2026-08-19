@@ -23,6 +23,7 @@ import { ScreenTasks } from './components/ScreenTasks.jsx';
 import { ScreenAdmin } from './components/ScreenAdmin.jsx';
 import { ScreenInvoices } from './components/ScreenInvoices.jsx';
 import { ScreenWarehouse } from './components/ScreenWarehouse.jsx';
+import { ScreenContacts } from './components/ScreenContacts.jsx';
 const ce = React.createElement;
 
 
@@ -1867,10 +1868,11 @@ export function App(p){
       )
     ),
     // ── Main nav tabs ──
-    ce("div",{style:{display:"grid",gridTemplateColumns:(isSuperAdmin?"1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr":"1fr 1fr 1fr 1fr 1fr 1fr 1fr"),gap:4,marginBottom:"1.2rem",background:"var(--panel-bg)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid var(--panel-border)",boxShadow:"var(--glass-shadow)"}},
+    ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+(isSuperAdmin?9:8)+",1fr)",gap:4,marginBottom:"1.2rem",background:"var(--panel-bg)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid var(--panel-border)",boxShadow:"var(--glass-shadow)"}},
       [
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
+        {id:"kontrahenci",label:"Kontrah.",icon:"\uD83D\uDC65"},
         {id:"kalendarz", label:"Kalen.",icon:"\uD83D\uDCC5"},
         {id:"mail",      label:"Mail",  icon:"\uD83D\uDCE8"},
         {id:"zadania",   label:"Zadania",icon:"\u2705"},
@@ -1918,6 +1920,8 @@ export function App(p){
         ? ce(ScreenInvoices,{})
       : appMode==="magazyn"
         ? ce(ScreenWarehouse,{})
+      : appMode==="kontrahenci"
+        ? ce(ScreenContacts,{})
       : appMode==="admin"
         ? ce(ScreenAdmin,null)
         : ce(Fragment,null,
