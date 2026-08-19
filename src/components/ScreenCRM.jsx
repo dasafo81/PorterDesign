@@ -1362,11 +1362,11 @@ export function CRMKalendarz(p){
     var DOW_PL=["Pon","Wt","\u015ar","Czw","Pt","Sob","Nd"];
     return ce("div",null,
       // Nagłówki dni
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,marginBottom:1}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:1,marginBottom:1}},
         DOW_PL.map(function(d,i){return ce("div",{key:i,style:{textAlign:"center",fontSize:10,fontWeight:700,color:"var(--t3)",padding:"6px 0",letterSpacing:"0.07em",textTransform:"uppercase",background:"var(--bg2)"}},d);})
       ),
       // Siatka dni
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:1}},
         days.map(function(d,i){
           if(!d) return ce("div",{key:i,style:{background:"var(--bg2)",minHeight:80,opacity:0.3}});
           var evs=getEventsForDay(d);
@@ -1379,7 +1379,7 @@ export function CRMKalendarz(p){
             onDragOver:function(e){e.preventDefault();e.dataTransfer.dropEffect="move";if(dragOverDay!==dk)setDragOverDay(dk);},
             onDragLeave:function(){if(dragOverDay===dk)setDragOverDay(null);},
             onDrop:function(e){e.preventDefault();setDragOverDay(null);var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,d);},
-            style:{background:isDragOver?"rgba(124,58,237,0.08)":"var(--bg)",minHeight:80,padding:"4px 5px",border:isDragOver?"1px dashed var(--violet)":"1px solid var(--bd2)",borderTop:isToday?"2px solid var(--t1)":(isDragOver?"1px dashed var(--violet)":"1px solid var(--bd2)"),position:"relative",cursor:"default"}},
+            style:{background:isDragOver?"rgba(124,58,237,0.08)":"var(--bg)",minHeight:80,minWidth:0,overflow:"hidden",padding:"4px 5px",border:isDragOver?"1px dashed var(--violet)":"1px solid var(--bd2)",borderTop:isToday?"2px solid var(--t1)":(isDragOver?"1px dashed var(--violet)":"1px solid var(--bd2)"),position:"relative",cursor:"default"}},
             ce("div",{style:{fontSize:11,fontWeight:isToday?700:400,background:isToday?"var(--t1)":null,color:isToday?"var(--bg)":"var(--t2)",width:isToday?20:null,height:isToday?20:null,borderRadius:isToday?10:null,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:2}},d.getDate()),
             evs.slice(0,3).map(function(ev,ei){var canDrag=!!ev.gcalRaw;return ce("div",{key:ei,title:ev.title,
               draggable:canDrag,
