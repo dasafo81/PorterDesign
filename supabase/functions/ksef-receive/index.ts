@@ -448,9 +448,23 @@ async function loadStoredXml(invoiceId: string, sbH: Record<string, string>): Pr
   return rows?.[0]?.xml_payload || null;
 }
 
+// Multi-podmiot: rozwiazuje entityId przekazany z frontu do PRAWIDLOWEGO podmiotu tego
+// tenanta. Waliduje, ze podany entityId nalezy do tenanta (zeby nie dalo sie wstrzyknac
+// cudzego), a gdy go brak/niepoprawny — spada do podmiotu domyslnego. Pusty string => trigger
+// pd_fill_entity_id w bazie sam ustawi podmiot domyslny (bezpieczny fallback).
+async function resolveEntityId(tenantId: string, entityId: string, sbH: Record<string, string>): Promise<string> {
+  if (entityId) {
+    const r = await fetch(`${SB_URL}/rest/v1/entities?tenant_id=eq.${tenantId}&id=eq.${entityId}&select=id&limit=1`, { headers: sbH });
+    if (r.ok) { const rows = await r.json(); if (rows?.[0]?.id) return String(rows[0].id); }
+  }
+  const rd = await fetch(`${SB_URL}/rest/v1/entities?tenant_id=eq.${tenantId}&is_default=eq.true&select=id&limit=1`, { headers: sbH });
+  if (rd.ok) { const rows = await rd.json(); if (rows?.[0]?.id) return String(rows[0].id); }
+  return "";
+}
+
 async function saveInvoices(
   metaHeaders: Record<string, unknown>[],
-  baseUrl: string, accessToken: string, tenantId: string, service: string, direction: string,
+  baseUrl: string, accessToken: string, tenantId: string, service: string, entityId: string, direction: string,
   deadlineAt: number,
   existing: { idByKsef: Map<string, string>; byNumber: Map<string, string>; xmlPresent: Set<string>; itemsPresent: Set<string> }
 ): Promise<{ saved: number; repaired: number; skipped: number; remaining: number; errors: unknown[] }> {
@@ -554,7 +568,7 @@ async function saveInvoices(
       const metaIssue = String(meta.issueDate || "").slice(0, 10);
 
       const record: Record<string, unknown> = {
-        tenant_id: tenantId, doc_type: docType, status: isIncoming ? "received" : "issued",
+        tenant_id: tenantId, ...(entityId ? { entity_id: entityId } : {}), doc_type: docType, status: isIncoming ? "received" : "issued",
         direction: direction,
         ksef_status: "confirmed", ksef_number: ksefNum, ksef_mode: "online",
         number: parsed.number || ksefNum,
@@ -615,7 +629,7 @@ Deno.serve(async (req: Request) => {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400); }
 
-  const { accessToken, baseUrl, direction, dateFrom, dateTo } = body;
+  const { accessToken, baseUrl, direction, dateFrom, dateTo, entityId } = body;
   if (!accessToken || !baseUrl) return jsonRes({ error: "accessToken i baseUrl wymagane" }, 400);
 
   const now = new Date();
@@ -633,13 +647,14 @@ Deno.serve(async (req: Request) => {
     // Edge Function (~150 s), zeby zdazyc zwrocic odpowiedz zamiast dostac 504 z gatewaya.
     const deadlineAt = startedAt + 95_000;
     const sbH = { apikey: auth.service, Authorization: `Bearer ${auth.service}`, "Content-Type": "application/json", Prefer: "return=representation" };
+    const resolvedEntityId = await resolveEntityId(auth.tenantId, entityId ? String(entityId) : "", sbH);
     const existing = await loadExisting(auth.tenantId, sbH);
 
     // UWAGA: sekwencyjnie, nie Promise.all — rownolegle wywolania podwajaly tempo zapytan
     // do KSeF i omijaly wspolny throttle (limit 8 zad./s => HTTP 429).
     const empty = { saved: 0, repaired: 0, skipped: 0, remaining: 0, errors: [] as unknown[] };
-    const inRes  = inH.length  ? await saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, "zakup",    deadlineAt, existing) : empty;
-    const outRes = outH.length ? await saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, "sprzedaz", deadlineAt, existing) : empty;
+    const inRes  = inH.length  ? await saveInvoices(inH,  baseUrl as string, accessToken as string, auth.tenantId, auth.service, resolvedEntityId, "zakup",    deadlineAt, existing) : empty;
+    const outRes = outH.length ? await saveInvoices(outH, baseUrl as string, accessToken as string, auth.tenantId, auth.service, resolvedEntityId, "sprzedaz", deadlineAt, existing) : empty;
 
     const remaining = inRes.remaining + outRes.remaining;
     const repaired = inRes.repaired + outRes.repaired;

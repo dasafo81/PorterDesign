@@ -1261,7 +1261,7 @@ function InvoiceList(p){
     setSyncing(true); setSyncErr(null); setSyncMsg(null);
     getSession()
       .then(function(s){
-        return ksefApi.receiveInvoices(s.accessToken,s.baseUrl,"all",dateFrom,dateTo);
+        return ksefApi.receiveInvoices(s.accessToken,s.baseUrl,"all",dateFrom,dateTo,sessionEntityId);
       })
       .then(function(r){
         var inCount=(r.incoming&&r.incoming.saved)||0;
