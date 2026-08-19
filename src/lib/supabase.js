@@ -255,6 +255,27 @@ export const sbApi = {
       return sbFetch("POST","invoice_settings",patch);
     });
   },
+  // ── PODMIOTY (multi-podmiot: wiele dzialalnosci w jednym tenancie) ──────────
+  // Lista podmiotow tenanta (domyslny pierwszy).
+  getEntities: function(){
+    return sbFetch("GET","entities?select=*&order=is_default.desc,sort_order.asc,created_at.asc");
+  },
+  // Utworz nowy podmiot. tenant_id z DEFAULT (JWT). Zwraca utworzony rekord.
+  createEntity: function(data){
+    return sbFetch("POST","entities",Object.assign({},data)).then(function(rows){
+      return Array.isArray(rows)?rows[0]:rows;
+    });
+  },
+  // Zapisz zmiany podmiotu.
+  saveEntity: function(id,data){
+    var patch=Object.assign({},data,{updated_at:new Date().toISOString()});
+    delete patch.id; delete patch.tenant_id; delete patch.created_at;
+    return sbFetch("PATCH","entities?id=eq."+id,patch);
+  },
+  deleteEntity: function(id){
+    return sbFetch("DELETE","entities?id=eq."+id);
+  },
+
   // Lista faktur (naglowki), najnowsze pierwsze wg daty wystawienia.
   // (created_at sortowalo wg momentu zapisu do bazy - przy synchronizacji z KSeF
   // kolejnosc zapisu nie pokrywa sie z chronologia faktur, co myliło uzytkownika)
@@ -294,20 +315,26 @@ export const sbApi = {
     });
   },
   // Atomowe nadanie kolejnego numeru (RPC, bez wyscigow). Zwraca int.
-  nextInvoiceNumber: function(docType, period){
+  // entityId (opcjonalny): osobna numeracja per podmiot. Gdy null -> podmiot domyslny.
+  nextInvoiceNumber: function(docType, period, entityId){
+    if(entityId){
+      return sbFetch("POST","rpc/next_invoice_number",{p_entity_id:entityId,p_doc_type:docType,p_period:period});
+    }
     return sbFetch("POST","rpc/next_invoice_number",{p_doc_type:docType,p_period:period});
   },
   // Dekrementuje licznik przy wycofaniu faktury (usuwa wiersz gdy last_number <= 1)
-  decrementInvoiceCounter: function(docType, period){
+  // entityId (opcjonalny): licznik jest per podmiot.
+  decrementInvoiceCounter: function(docType, period, entityId){
     var enc=encodeURIComponent;
-    return sbFetch("GET","invoice_counters?doc_type=eq."+enc(docType)+"&period=eq."+enc(period)+"&select=last_number")
+    var filt="doc_type=eq."+enc(docType)+"&period=eq."+enc(period)+(entityId?("&entity_id=eq."+enc(entityId)):"");
+    return sbFetch("GET","invoice_counters?"+filt+"&select=last_number")
       .then(function(rows){
         var cur=rows&&rows[0]&&rows[0].last_number;
         if(!cur||cur<=0) return;
         if(cur<=1){
-          return sbFetch("DELETE","invoice_counters?doc_type=eq."+enc(docType)+"&period=eq."+enc(period));
+          return sbFetch("DELETE","invoice_counters?"+filt);
         }
-        return sbFetch("PATCH","invoice_counters?doc_type=eq."+enc(docType)+"&period=eq."+enc(period),{last_number:cur-1});
+        return sbFetch("PATCH","invoice_counters?"+filt,{last_number:cur-1});
       });
   },
 
@@ -503,25 +530,27 @@ function ksefFetch(method, path, body) {
 }
 
 export const ksefApi = {
+  // entityId (opcjonalny, wszedzie): credentiale/sesja KSeF sa per podmiot.
+  // Gdy pominiety -> backend uzywa podmiotu domyslnego (wsteczna zgodnosc).
   // Sprawdź czy token KSeF jest zapisany (nie zwraca samego tokenu)
-  getTokenStatus: function() {
-    return ksefFetch("GET", "/api/ksef/token");
+  getTokenStatus: function(entityId) {
+    return ksefFetch("GET", "/api/ksef/token" + (entityId ? ("?entityId=" + encodeURIComponent(entityId)) : ""));
   },
   // Zapisz certyfikat KSeF — certPem i keyPem to zawartość plików .crt / .key
-  saveCert: function(certPem, keyPem, keyPass, env) {
-    return ksefFetch("POST", "/api/ksef/token", { certPem: certPem, keyPem: keyPem, keyPass: keyPass || "", env: env || "test" });
+  saveCert: function(certPem, keyPem, keyPass, env, entityId) {
+    return ksefFetch("POST", "/api/ksef/token", { certPem: certPem, keyPem: keyPem, keyPass: keyPass || "", env: env || "test", entityId: entityId || null });
   },
-  // Pozostawione dla kompatybilności (nie używane przy certyfikacie)
-  saveToken: function(token, env) {
-    return ksefFetch("POST", "/api/ksef/token", { token: token, env: env || "test" });
+  // Zapisz token KSeF (autoryzacyjny) dla podmiotu.
+  saveToken: function(token, env, entityId) {
+    return ksefFetch("POST", "/api/ksef/token", { token: token, env: env || "test", entityId: entityId || null });
   },
   // Usuń token KSeF
-  deleteToken: function() {
-    return ksefFetch("DELETE", "/api/ksef/token");
+  deleteToken: function(entityId) {
+    return ksefFetch("DELETE", "/api/ksef/token" + (entityId ? ("?entityId=" + encodeURIComponent(entityId)) : ""));
   },
   // Uwierzytelnij w KSeF 2.0 → zwraca { accessToken, refreshToken, expiresAt, baseUrl }
-  openSession: function() {
-    return ksefFetch("POST", "/api/ksef/session");
+  openSession: function(entityId) {
+    return ksefFetch("POST", "/api/ksef/session", entityId ? { entityId: entityId } : {});
   },
   // Wyślij fakturę sprzedażową do KSeF 2.0
   sendInvoice: function(invoiceId, accessToken, baseUrl) {

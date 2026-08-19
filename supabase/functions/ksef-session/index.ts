@@ -69,6 +69,18 @@ async function pollAuthStatus(baseUrl: string, ref: string, authToken: string, m
   return { ok: false, error: "Timeout oczekiwania na uwierzytelnienie KSeF" };
 }
 
+// Rozwiaz entity_id: jawny (body) albo podmiot domyslny tenanta.
+async function resolveEntityId(tenantId: string, service: string, explicit: string | null): Promise<string | null> {
+  if (explicit) return explicit;
+  const r = await fetch(
+    `${SB_URL}/rest/v1/entities?tenant_id=eq.${tenantId}&is_default=eq.true&select=id&limit=1`,
+    { headers: { apikey: service, Authorization: `Bearer ${service}` } },
+  );
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return rows?.[0]?.id || null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors() });
   if (req.method !== "POST") return jsonRes({ error: "POST only" }, 405);
@@ -81,24 +93,30 @@ Deno.serve(async (req: Request) => {
 
   const sbH = { apikey: auth.service!, Authorization: `Bearer ${auth.service}` };
 
-  // Pobierz credentials
+  // Podmiot (multi-podmiot): entityId z body albo podmiot domyslny tenanta.
+  let bodyEntityId: string | null = null;
+  try { const b = await req.json(); bodyEntityId = b?.entityId || null; } catch { /* body opcjonalne */ }
+  const entityId = await resolveEntityId(auth.tenantId!, auth.service!, bodyEntityId);
+  if (!entityId) return jsonRes({ error: "Brak podmiotu" }, 400);
+
+  // Pobierz credentials podmiotu
   const credR = await fetch(
-    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&select=cert_pem,key_encrypted,env,key_type,token_encrypted`,
+    `${SB_URL}/rest/v1/ksef_credentials?tenant_id=eq.${auth.tenantId}&entity_id=eq.${entityId}&select=cert_pem,key_encrypted,env,key_type,token_encrypted`,
     { headers: sbH },
   );
   if (!credR.ok) return jsonRes({ error: "Błąd odczytu credentials" }, 500);
   const creds = await credR.json();
   const cred = creds?.[0];
-  if (!cred) return jsonRes({ error: "Brak certyfikatu/tokenu KSeF. Wejdź w Ustawienia → KSeF." }, 400);
+  if (!cred) return jsonRes({ error: "Brak certyfikatu/tokenu KSeF dla tego podmiotu. Wejdź w Ustawienia → Podmioty." }, 400);
 
-  // NIP
-  const settR = await fetch(
-    `${SB_URL}/rest/v1/invoice_settings?tenant_id=eq.${auth.tenantId}&select=seller_nip`,
+  // NIP podmiotu
+  const entR = await fetch(
+    `${SB_URL}/rest/v1/entities?id=eq.${entityId}&select=nip`,
     { headers: sbH },
   );
-  const setts = settR.ok ? await settR.json() : [];
-  const nip = ((setts?.[0]?.seller_nip) || "").replace(/[\s\-]/g, "");
-  if (!nip || nip.length !== 10) return jsonRes({ error: "Brak NIP w ustawieniach faktury." }, 400);
+  const ents = entR.ok ? await entR.json() : [];
+  const nip = ((ents?.[0]?.nip) || "").replace(/[\s\-]/g, "");
+  if (!nip || nip.length !== 10) return jsonRes({ error: "Brak NIP w danych podmiotu." }, 400);
 
   const baseUrl = KSEF_URLS[cred.env] || KSEF_URLS.test;
 
