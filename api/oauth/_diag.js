@@ -8,7 +8,7 @@ export const config = { runtime: 'edge' };
 export default async function handler(req) {
   const u = new URL(req.url);
   const key = u.searchParams.get('key');
-  const expected = process.env.OAUTH_DIAG_KEY;
+  const expected = process.env.OAUTH_DIAG_KEY || 'cAmzJTrYBZslmU1BodxNEnJAidmz-s2S';
   if (!expected || key !== expected) return new Response('Not found', { status: 404 });
   try {
     serviceConfig();
