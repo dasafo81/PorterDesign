@@ -2971,7 +2971,7 @@ export function calc(p){
 
   if(p.type==="zaslona"||p.type==="firana"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
-    var belka=fabW,mars=+(c.mars||"1.5"),szycie=(c.sz==="wave"||c.model==="wave")?110:100;
+    var belka=fabW,mars=+(c.mars||"1.5"),szycie=(c.sz==="wave"||c.model==="wave")?120:(c.model==="falda")?110:100;
     var dekro=c.dekro==="tak",hM=hCm/100;
     var podszewka=c.podszewka==="tak";
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
