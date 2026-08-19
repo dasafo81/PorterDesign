@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { sbApi, stripeApi } from './lib/supabase.js';
 import { signOut, getAccessToken } from './lib/auth.js';
 import {
-  FABRICS, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
+  FABRICS, getAllFabrics, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
   buildFabricRows, buildKarniszRows, buildOfferDetailRows, buildRailsRows, buildSewingRows, calc,
@@ -2209,7 +2209,7 @@ export function ModalAIValuation(p){
 
   // \u2500\u2500 SYSTEM PROMPT \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   function buildSystemPrompt(){
-    var fabList=FABRICS.map(function(f){
+    var fabList=getAllFabrics().map(function(f){
       return "- "+f.name+" ("+f.brutto+" zł/mb, szer. "+(f.width||"?")+"cm)";
     }).join("\n");
     var jzList=Object.keys(JZ_LABELS).map(function(k){
