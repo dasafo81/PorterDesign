@@ -77,6 +77,27 @@ export const sbApi = {
   updateClientStatus: function(id,status){
     return sbFetch("PATCH","clients?id=eq."+id,{status:status});
   },
+  // \u2500\u2500 KONTRAHENCI (baza klient\u00f3w i dostawc\u00f3w) \u2500\u2500
+  getContacts: function(){
+    return sbFetch("GET","contacts?select=*&order=name.asc");
+  },
+  addContact: function(data){
+    return sbFetch("POST","contacts",data);
+  },
+  updateContact: function(id,data){
+    return sbFetch("PATCH","contacts?id=eq."+id,data);
+  },
+  deleteContact: function(id){
+    return sbFetch("DELETE","contacts?id=eq."+id);
+  },
+  // Faktury danego kontrahenta (Faza 3 \u2014 karta z histori\u0105)
+  getContactInvoices: function(contactId){
+    return sbFetch("GET","invoices?contact_id=eq."+contactId+"&select=*&order=created_at.desc");
+  },
+  // Wyceny (clients) danego kontrahenta
+  getContactQuotes: function(contactId){
+    return sbFetch("GET","clients?contact_id=eq."+contactId+"&select=id,name,status,created_at&order=id.desc");
+  },
   // \u2500\u2500 DEALS (CRM) \u2500\u2500
   getDeals: function(){
     return sbFetch("GET","deals?select=*&order=created_at.asc");
