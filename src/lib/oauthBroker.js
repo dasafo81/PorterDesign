@@ -67,6 +67,10 @@ export function markBrokerCallback() {
   if (provider && params.get('connected') === '1') {
     localStorage.setItem('pd_oauth_' + provider, '1');
     sessionStorage.setItem('pd_oauth_connected_' + provider, '1');
+    // Zapamiętaj, do której zakładki wrócić po połączeniu OAuth. Query string
+    // jest zaraz czyszczony (replaceState), więc routing po powrocie nie może
+    // na nim polegać — wcześniej Google lądował na ekranie startowym.
+    sessionStorage.setItem('pd_oauth_landing', provider);
     window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
   }
 }

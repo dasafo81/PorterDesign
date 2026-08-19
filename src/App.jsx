@@ -29,16 +29,21 @@ const ce = React.createElement;
 
 export function App(p){
   var onLogout=p&&p.onLogout?p.onLogout:function(){};
-  var sMode=useState("wyceniarka"),appMode=sMode[0],setAppMode=sMode[1];
-  React.useEffect(function(){
+  // Po powrocie z połączenia OAuth wróć na właściwą zakładkę. Sygnał trzymamy
+  // w sessionStorage (markBrokerCallback), bo query string jest już wyczyszczony.
+  // Wcześniej Google zawsze lądował na ekranie startowym i kalendarz zostawał
+  // "niezalogowany" mimo udanego połączenia.
+  var sMode=useState(function(){
     try {
-      var params = new URLSearchParams(window.location.search);
-      if (params.get("return") === "mail" && params.get("oauth") === "microsoft") {
-        setAppMode("mail");
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
+      var landing = sessionStorage.getItem("pd_oauth_landing");
+      if (landing) {
+        sessionStorage.removeItem("pd_oauth_landing");
+        if (landing === "google") return "kalendarz";
+        if (landing === "microsoft") return "mail";
       }
     } catch (e) {}
-  },[]);
+    return "wyceniarka";
+  }),appMode=sMode[0],setAppMode=sMode[1];
   // Super-admin flaga z JWT — pokazuje zakladke Admin tylko gdy is_super_admin: true
   var sIsSuper=useState(false),isSuperAdmin=sIsSuper[0],setIsSuperAdmin=sIsSuper[1];
   React.useEffect(function(){
@@ -101,7 +106,12 @@ export function App(p){
     gcalWaitReady().then(function(){
       setGsiReady(true);
       if(gcalHasValidToken())return null;
-      try { return localStorage.getItem("pd_gcal_hint") ? gcalGetToken() : null; }
+      // Hydratuj token gdy istnieje połączenie brokerowe (pd_oauth_google) —
+      // gcalGetToken() odświeży go po stronie serwera z zapisanego refresh_tokena,
+      // bez ekranu zgód. Wcześniej gate na samym pd_gcal_hint sprawiał, że po
+      // świeżym połączeniu kalendarz zostawał niezalogowany aż do kolejnego
+      // pełnego logowania z 3 ekranami zgód.
+      try { return (localStorage.getItem("pd_oauth_google")==="1" || localStorage.getItem("pd_gcal_hint")) ? gcalGetToken() : null; }
       catch(e){ return null; }
     }).then(function(tok){
       if(tok)setGcalToken(tok);
