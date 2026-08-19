@@ -77,25 +77,69 @@ export function signOut() {
   });
 }
 
-// Odśwież token (wywołuj co ~50 minut żeby sesja nie wygasła)
-export function refreshSession() {
-  if (!_session || !_session.refresh_token) return Promise.resolve(null);
+// Ponownie wczytaj sesję z localStorage — inna karta mogła w międzyczasie
+// zrotować refresh_token (Supabase rotuje przy każdym użyciu i unieważnia
+// stary). Trzymanie tylko kopii w pamięci prowadziło do wysyłania zużytego
+// tokenu → wykrycie ponownego użycia → unieważnienie CAŁEJ rodziny tokenów
+// i wylogowanie (objaw: "po chwili znowu Unauthorized / niezalogowany").
+function reloadSessionFromStorage() {
+  try {
+    var raw = localStorage.getItem('sb_session');
+    _session = raw ? JSON.parse(raw) : _session;
+  } catch (e) {}
+  return _session;
+}
+
+function postRefresh(refreshToken) {
   return fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
     method: 'POST',
     headers: {
       'apikey': SB_KEY,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ refresh_token: _session.refresh_token })
+    body: JSON.stringify({ refresh_token: refreshToken })
   })
   .then(function(r) {
     return r.ok ? r.json() : null;
-  })
-  .then(function(data) {
-    if (data) saveSession(data);
-    return data;
-  })
-  .catch(function() {
+  });
+}
+
+// Pojedynczy "in-flight" refresh w obrębie karty — kilka równoczesnych wywołań
+// (timer + visibilitychange + retry OAuth po 401) współdzieli jeden request,
+// zamiast wysyłać ten sam refresh_token wielokrotnie.
+var _refreshInFlight = null;
+
+function runRefresh() {
+  // W obrębie locka (jeśli dostępny) bierzemy NAJŚWIEŻSZY token ze storage —
+  // inna karta mogła już go zrotować, wtedy po prostu go adoptujemy.
+  reloadSessionFromStorage();
+  if (!_session || !_session.refresh_token) return Promise.resolve(null);
+  var tried = _session.refresh_token;
+  return postRefresh(tried).then(function(data) {
+    if (data) { saveSession(data); return data; }
+    // Refresh się nie powiódł — sprawdź, czy inna karta właśnie zapisała
+    // świeższą sesję; jeśli tak, adoptuj ją zamiast zabijać połączenie.
+    reloadSessionFromStorage();
+    if (_session && _session.refresh_token && _session.refresh_token !== tried) {
+      return _session;
+    }
     return null;
   });
+}
+
+// Odśwież access_token. Bezpieczny przy wielu kartach: serializuje refresh
+// przez Web Locks API (gdy dostępne), zawsze czyta najnowszą sesję z
+// localStorage i nie wysyła dwa razy tego samego refresh_tokena.
+export function refreshSession() {
+  if (_refreshInFlight) return _refreshInFlight;
+  var withLock;
+  if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
+    withLock = navigator.locks.request('sb_session_refresh', function() { return runRefresh(); });
+  } else {
+    withLock = runRefresh();
+  }
+  _refreshInFlight = Promise.resolve(withLock)
+    .catch(function() { return null; })
+    .then(function(res) { _refreshInFlight = null; return res; });
+  return _refreshInFlight;
 }

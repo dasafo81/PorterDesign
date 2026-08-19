@@ -36,21 +36,41 @@ function Root() {
   var initial = loadSession();
   var ss = useState(!!initial); var loggedIn = ss[0]; var setLoggedIn = ss[1];
 
-  // Odśwież access_token co 30 min — Supabase token wygasa po ~1h.
-  // Przy refresh_token grant Supabase regeneruje JWT z aktualnym app_metadata,
-  // więc tenant_id automatycznie wjedzie do tokenu po Phase 2.
+  // Odświeżaj access_token PROAKTYWNIE — na ~60s przed jego wygaśnięciem,
+  // niezależnie od ustawionego czasu życia JWT (mógł być krótszy niż stały
+  // 30-min interwał, przez co token wygasał w trakcie pracy → "po chwili
+  // znowu niezalogowany"). Po każdym refreshu przeliczamy termin z claim `exp`.
   useEffect(function(){
     if(!loggedIn)return;
+    var timer=null;
+    function tokenExpMs(){
+      try{
+        var raw=localStorage.getItem("sb_session");
+        var s=raw?JSON.parse(raw):null;
+        if(s&&s.access_token){
+          var payload=JSON.parse(atob(s.access_token.split(".")[1]));
+          if(payload&&payload.exp) return payload.exp*1000;
+        }
+      }catch(e){}
+      return 0;
+    }
+    function schedule(){
+      if(timer){clearTimeout(timer);timer=null;}
+      var exp=tokenExpMs();
+      // 60s zapasu przed wygaśnięciem; jeśli brak/expired — odśwież niebawem.
+      var delay=exp?Math.max(10000, exp-Date.now()-60000):15000;
+      timer=setTimeout(function(){ refreshSession().then(schedule); }, delay);
+    }
     // Sesja przywrócona z localStorage może mieć wygasły JWT po zamknięciu
     // karty. Odśwież ją od razu, zanim moduł Google Calendar wywoła OAuth.
-    refreshSession();
-    var timer=setInterval(function(){refreshSession();},30*60*1000);
-    // setInterval bywa spowalniany/wstrzymywany w kartach w tle, więc token
-    // mógł wygasnąć zanim ktoś wrócił do karty — odśwież też przy powrocie.
-    function onVisible(){ if(document.visibilityState==="visible") refreshSession(); }
+    refreshSession().then(schedule);
+    // Karty w tle usypiają timery, więc odśwież też po powrocie do karty.
+    // refreshSession() jest teraz "single-flight" + zabezpieczony Web Locks,
+    // więc równoczesne wywołania nie unieważnią sesji.
+    function onVisible(){ if(document.visibilityState==="visible") refreshSession().then(schedule); }
     document.addEventListener("visibilitychange", onVisible);
     return function(){
-      clearInterval(timer);
+      if(timer)clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
   },[loggedIn]);
