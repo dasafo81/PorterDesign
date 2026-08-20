@@ -1582,6 +1582,9 @@ export function ScreenMail(p){
   var sccvis=us(false),showCcBcc=sccvis[0],setShowCcBcc=sccvis[1];
   var ssub=us(""),subject=ssub[0],setSubject=ssub[1];
   var sbod=us(""),body=sbod[0],setBody=sbod[1];
+  // Cytowany wątek (Odpowiedz/Odpowiedz wszystkim/Przekaż) — trzymany osobno od `body`,
+  // żeby podpis dało się wstawić między własną treścią a cytatem, a nie za nim.
+  var sqt=us(""),quotedHtml=sqt[0],setQuotedHtml=sqt[1];
   var satt=us([]),attachments=satt[0],setAttachments=satt[1];
   var scon=us([]),contactSug=scon[0],setContactSug=scon[1];
   var ssent=us(false),justSent=ssent[0],setJustSent=ssent[1];
@@ -1845,18 +1848,19 @@ export function ScreenMail(p){
 
   function handleSaveDraft(){
     if(!toEmail&&!subject&&bodyEmpty)return;
-    var d={id:"d_"+Date.now(),to:toEmail,cc:ccEmail,bcc:bccEmail,subject:subject,body:body,attachments:attachments.slice(),savedAt:new Date().toISOString()};
+    var d={id:"d_"+Date.now(),to:toEmail,cc:ccEmail,bcc:bccEmail,subject:subject,body:body,quote:quotedHtml,attachments:attachments.slice(),savedAt:new Date().toISOString()};
     setDrafts(function(prev){
       var next=[d].concat(prev);
       try{localStorage.setItem("pd_mail_drafts",JSON.stringify(next));}catch(e){}
       return next;
     });
-    setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
+    setToEmail(""); setSubject(""); setBody(""); setQuotedHtml(""); setAttachments([]); setSelClientId(null);
     setCcEmail(""); setBccEmail("");
   }
 
   function openDraft(d){
     setToEmail(d.to||""); setSubject(d.subject||""); setBody(d.body||"");
+    setQuotedHtml(d.quote||"");
     setCcEmail(d.cc||""); setBccEmail(d.bcc||"");
     if(d.cc||d.bcc)setShowCcBcc(true);
     setAttachments(d.attachments||[]);
@@ -1899,7 +1903,7 @@ export function ScreenMail(p){
   // + podpis (HTML + obrazek z Ustawień). Treść już jest HTML, nie escapujemy.
   // useCid=true → obrazek wstawiany jako <img src="cid:signature-image">,
   // wtedy musi być dołączony jako inline attachment w handleSend.
-  function buildMailHtml(htmlBodyInput, settings, useCid){
+  function buildMailHtml(htmlBodyInput, settings, useCid, quotedHtmlInput){
     // Domyślna czcionka maila: Montserrat (spójna z marką / PDF-ami).
     // @import ładuje Montserrat w klientach, które to wspierają (np. Apple Mail);
     // pozostałe (Gmail/Outlook zwykle blokują web-fonty) użyją fallbacku Arial.
@@ -1910,19 +1914,25 @@ export function ScreenMail(p){
     var sig=settings||{};
     var sigHtml=sig.signature_html||"";
     var sigImg=sig.signature_image_url||"";
-    if(!sigHtml&&!sigImg)return fontImport+bodyHtml;
-    var sigBlock="<br><br><div style=\"font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#444;\">";
-    if(sigHtml){
-      // signature_html jest HTML z RichTextEditora — nie konwertujemy, używamy bezpośrednio
-      sigBlock+=String(sigHtml);
+    var sigBlock="";
+    if(sigHtml||sigImg){
+      // Podpis wchodzi zaraz po treści wiadomości, PRZED cytowanym wątkiem — nie na jego końcu
+      sigBlock="<br><br><div style=\"font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#444;\">";
+      if(sigHtml){
+        // signature_html jest HTML z RichTextEditora — nie konwertujemy, używamy bezpośrednio
+        sigBlock+=String(sigHtml);
+      }
+      if(sigImg){
+        if(sigHtml)sigBlock+="<br>";
+        var imgSrc=useCid?"cid:signature-image":sigImg;
+        sigBlock+="<img src=\""+imgSrc+"\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">";
+      }
+      sigBlock+="</div>";
     }
-    if(sigImg){
-      if(sigHtml)sigBlock+="<br>";
-      var imgSrc=useCid?"cid:signature-image":sigImg;
-      sigBlock+="<img src=\""+imgSrc+"\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">";
-    }
-    sigBlock+="</div>";
-    return fontImport+bodyHtml+sigBlock;
+    var quotedBlock=quotedHtmlInput
+      ?"<div style=\"font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"+quotedHtmlInput+"</div>"
+      :"";
+    return fontImport+bodyHtml+sigBlock+quotedBlock;
   }
 
   // Pobiera obrazek z URL i konwertuje na base64 (dla embedowania jako CID)
@@ -1971,7 +1981,7 @@ export function ScreenMail(p){
     var sigImgUrl=(userSettings&&userSettings.signature_image_url)||"";
     var hasSigImg=!!sigImgUrl;
     // useCid=true tylko gdy faktycznie mamy obrazek do osadzenia
-    var htmlBody=buildMailHtml(body, userSettings, hasSigImg);
+    var htmlBody=buildMailHtml(body, userSettings, hasSigImg, quotedHtml);
 
     function doSend(atts){
       // Odśwież token tuż przed wysyłką — może wygasnąć podczas pracy w app
@@ -2003,13 +2013,13 @@ export function ScreenMail(p){
           if(!r.ok)return r.json().then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+r.status+")");});
           var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:toName,
             subject:subject,date:new Date().toISOString(),preview:htmlToPreview(body).slice(0,80)+"...",
-            body:body,attachments:attachments.slice()};
+            body:body+(quotedHtml||""),attachments:attachments.slice()};
           setAllMails(function(prev){return [nm].concat(prev);});
           setSending(false); setJustSent(true);
           // Zapisz adres odbiorcy w historii (Supabase — działa cross-device)
           sbApi.upsertMailRecipient(toEmail, toName).catch(function(){});
           setTimeout(function(){setJustSent(false);},3000);
-          setToEmail(""); setSubject(""); setBody(""); setAttachments([]); setSelClientId(null);
+          setToEmail(""); setSubject(""); setBody(""); setQuotedHtml(""); setAttachments([]); setSelClientId(null);
           setCcEmail(""); setBccEmail("");
         })
         .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
@@ -2383,18 +2393,34 @@ export function ScreenMail(p){
         )
       ),
       ce(RichTextEditor,{value:body,onChange:setBody,minHeight:200,bg:"var(--bg)",placeholder:"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026"}),
-      // Informacja o automatycznie doklejanym podpisie
+      // Podpis — zawsze widoczny, bezpo\u015brednio pod tre\u015bci\u0105 aktualnie pisanej wiadomo\u015bci
+      // (nie na ko\u0144cu cytowanego w\u0105tku, kt\u00f3ry renderuje si\u0119 osobno ni\u017cej). Doklejany
+      // automatycznie przy wysy\u0142ce — patrz buildMailHtml.
       (userSettings&&(userSettings.signature_html||userSettings.signature_image_url))
-        ?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
-          "\u2139\uFE0F Podpis dopisze si\u0119 automatycznie. Zmie\u0144 go w ",
-          ce("a",{href:"#",onClick:function(e){e.preventDefault();mailNavigate("settings");},
-            style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
+        ?ce("div",{style:{marginTop:8,padding:"10px 12px",border:"1px dashed var(--bd2)",borderRadius:8,background:"var(--bg)"}},
+          ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:6,fontStyle:"italic"}},
+            "\u2139\uFE0F Podpis (doklejany automatycznie) \u2014 zmie\u0144 go w ",
+            ce("a",{href:"#",onClick:function(e){e.preventDefault();mailNavigate("settings");},
+              style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
+          ),
+          userSettings.signature_html?ce("div",{style:{fontSize:13,color:"var(--t1)",lineHeight:1.6},
+            dangerouslySetInnerHTML:{__html:userSettings.signature_html}}):null,
+          userSettings.signature_image_url?ce("img",{src:userSettings.signature_image_url,alt:"",
+            style:{maxWidth:200,maxHeight:90,display:"block",marginTop:userSettings.signature_html?8:0}}):null
         )
         :ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
           "\u2139\uFE0F Brak podpisu. Skonfiguruj go w ",
           ce("a",{href:"#",onClick:function(e){e.preventDefault();mailNavigate("settings");},
             style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
+        ),
+      // Cytowany w\u0105tek (Odpowiedz / Przeka\u017c) — pod podpisem, edytowalny osobno,
+      // \u017ceby podpis zawsze zosta\u0142 mi\u0119dzy w\u0142asn\u0105 tre\u015bci\u0105 a cytatem, nie po nim.
+      quotedHtml
+        ?ce("div",{style:{marginTop:14}},
+          ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4,fontStyle:"italic"}},"Poprzednia wiadomo\u015b\u0107"),
+          ce(RichTextEditor,{value:quotedHtml,onChange:setQuotedHtml,minHeight:120,bg:"var(--bg)"})
         )
+        :null
     ),
     ce("div",{style:{display:"flex",gap:8,paddingTop:4,borderTop:"1px solid var(--bd2)"}},
       ce("button",{onClick:handleSaveDraft,disabled:!toEmail&&!subject&&bodyEmpty,style:Object.assign({},BGHOST,{opacity:(!toEmail&&!subject&&bodyEmpty)?0.4:1})},"\uD83D\uDCDD Zapisz roboczy"),
@@ -2468,7 +2494,8 @@ export function ScreenMail(p){
               +"<div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">W dniu "
               +new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from)+" napisa\u0142(a):</div>"
               +quoteHtml+"</blockquote>";
-            setBody(quoted);
+            setBody("");
+            setQuotedHtml(quoted);
             setAttachments([]);
             mailNavigate("compose");
           },
@@ -2485,7 +2512,8 @@ export function ScreenMail(p){
             var quoted="<br><br><blockquote style=\"border-left:3px solid #ccc;padding-left:14px;color:#555;margin:8px 0;font-size:13px\">"
               +"<div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">W dniu "+new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from)+" napisa\u0142(a):</div>"
               +quoteHtml+"</blockquote>";
-            setBody(quoted);
+            setBody("");
+            setQuotedHtml(quoted);
             setAttachments([]);
             mailNavigate("compose");
           },
@@ -2500,7 +2528,8 @@ export function ScreenMail(p){
               +"Data: "+new Date(head.date||"").toLocaleString("pl-PL")+"<br>"
               +"Temat: "+subj+"</div>"
               +quoteHtml;
-            setBody(fwdBlock);
+            setBody("");
+            setQuotedHtml(fwdBlock);
             setAttachments([]);
             mailNavigate("compose");
           },
