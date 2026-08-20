@@ -833,7 +833,7 @@ export function CRMKalendarz(p){
   var sEvents=useState([]),gcalEvents=sEvents[0],setGcalEvents=sEvents[1];
   var sLoadingEv=useState(false),loadingEv=sLoadingEv[0],setLoadingEv=sLoadingEv[1];
   var sErrEv=useState(null),errEv=sErrEv[0],setErrEv=sErrEv[1];
-  var sView=useState("month"),calView=sView[0],setCalView=sView[1];
+  var sView=useState("week"),calView=sView[0],setCalView=sView[1];
   var sRefDate=useState(function(){return new Date();}),refDate=sRefDate[0],setRefDate=sRefDate[1];
   var sNewEv=useState(null),newEvDraft=sNewEv[0],setNewEvDraft=sNewEv[1];
   var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
