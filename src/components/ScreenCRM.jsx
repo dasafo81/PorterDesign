@@ -1274,21 +1274,22 @@ export function CRMKalendarz(p){
     return fmtHM(s)+(e?"–"+fmtHM(e):"");
   }
 
-  // ── Godzina:minuta odpowiadająca pozycji Y upuszczenia w siatce godzin ──
-  // Zaokrągla do najbliższych 15 minut i przycina do zakresu [hourFrom, hourTo).
+  // ── Godzina odpowiadająca pozycji Y upuszczenia w siatce godzin ──
+  // Zwraca początek bloku godzinowego, w który upuszczono wydarzenie (pełna
+  // godzina, bez zaokrąglania do minut) — przycięty do zakresu [hourFrom, hourTo).
   function timeFromDropY(e,hourFrom,hourTo,hourPx){
     var rect=e.currentTarget.getBoundingClientRect();
     var offY=e.clientY-rect.top;
     var totalMin=hourFrom*60+(offY/hourPx)*60;
-    var snapped=Math.round(totalMin/15)*15;
-    snapped=Math.max(hourFrom*60,Math.min(hourTo*60-15,snapped));
-    return {h:Math.floor(snapped/60),m:snapped%60};
+    var snappedHour=Math.max(hourFrom,Math.min(hourTo-1,Math.floor(totalMin/60)));
+    return {h:snappedHour,m:0};
   }
 
   // ── Przeniesienie zdarzenia GCal na inny dzień i/lub godzinę (drag&drop) ──
   // targetTime: opcjonalny {h,m} wyliczony z pozycji upuszczenia w siatce
   // godzinowej (widok tygodnia/dnia) — nadpisuje godzinę zamiast zawsze
-  // zachowywać oryginalną, jak to było wcześniej.
+  // zachowywać oryginalną, jak to było wcześniej, i ustawia czas trwania
+  // na stałe 30 minut (zamiast zachowywać oryginalny czas trwania).
   function moveEventToDate(raw,targetDate,targetTime){
     if(!raw||!gcalToken) return;
     var calId=raw._calId||'primary';
@@ -1312,7 +1313,7 @@ export function CRMKalendarz(p){
       body={start:newStartObj,end:newEndObj};
     } else {
       var oldEnd=endDT?new Date(endDT):new Date(oldStart.getTime()+3600000);
-      var durMs=Math.max(0,oldEnd-oldStart);
+      var durMs=targetTime?(30*60000):Math.max(0,oldEnd-oldStart);
       var ns2=new Date(targetDate);ns2.setHours(targetTime?targetTime.h:oldStart.getHours(),targetTime?targetTime.m:oldStart.getMinutes(),0,0);
       var ne2=new Date(ns2.getTime()+durMs);
       newStartObj={dateTime:ns2.toISOString(),timeZone:'Europe/Warsaw'};
