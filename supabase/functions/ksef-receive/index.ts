@@ -150,12 +150,33 @@ function parsePaymentMethod(platnoscB: string): string {
 // (api/ksef/send.js) i faktycznie NIGDY nie trafial zadnej faktury, wiec kazda
 // synchronizacja z KSeF zerowala Uwagi (zgloszenie 2026-08-20, faktura
 // NITECZKAMI FV/26/08/5 mimo widocznej notatki "Dostawa zwolniona z art. 113...").
+// Uwagi — laczymy dwa niezalezne zrodla wolnego tekstu w FA(3):
+// 1) Zwolnienie/P_19A|P_19B|P_19C — podstawa prawna zwolnienia z VAT (np. "Dostawa
+//    zwolniona z art. 113..."). To OSOBNE, ustrukturyzowane pole schematu FA(3)
+//    (Zwolnienie/opcja A), NIE DodatkowyOpis — wczesniejsza wersja go w ogole nie
+//    czytala, wiec taka notatka (widoczna na oryginalnym PDF sprzedawcy) nigdy nie
+//    trafiala do naszej bazy (zgloszenie 2026-08-20, NITECZKAMI FV/26/08/5).
+// 2) DodatkowyOpis/Wartosc (format uzywany przez nasz wlasny generator
+//    ksef-send/index.ts oraz wiele programow ksiegowych), z fallbackiem na
+//    StopkaFaktury / oczyszczenie tagow XML gdy dostawca uzyl innej struktury.
 function parseNotes(fa: string, xml: string): string {
+  const parts: string[] = [];
+
+  const zwolnienieB = xmlBlock(fa, "Zwolnienie") || xmlBlock(xml, "Zwolnienie");
+  const p19 = zwolnienieB
+    ? (xmlVal(zwolnienieB, "P_19A") || xmlVal(zwolnienieB, "P_19B") || xmlVal(zwolnienieB, "P_19C"))
+    : "";
+  if (p19) parts.push("Podstawa zwolnienia z VAT: " + p19);
+
   const raw = xmlVal(fa, "DodatkowyOpis") || xmlVal(xml, "StopkaFaktury") || "";
-  if (!raw) return "";
-  const wartosci = xmlAll(raw, "Wartosc");
-  if (wartosci.length > 0) return wartosci.join(" | ");
-  return raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  if (raw) {
+    const wartosci = xmlAll(raw, "Wartosc");
+    parts.push(wartosci.length > 0
+      ? wartosci.join(" | ")
+      : raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  }
+
+  return parts.filter(Boolean).join(" | ");
 }
 // Platnosc/Zaplacono: "1"=Tak, "2"=Nie (ta sama konwencja co pozostale flagi Adnotacje
 // w FA(3), np. P_17/P_18/P_19 — "2" jako domyslna odpowiedz przecząca). Dzięki temu
