@@ -102,6 +102,14 @@ function fmtRecipients(list){
   }).filter(Boolean).join(", ");
 }
 
+// To samo co fmtRecipients, ale jako lista {email,name} — potrzebne dla "Odpowiedz wszystkim"
+function recipObjs(list){
+  return (list||[]).map(function(r){
+    var e=(r&&r.emailAddress)||{};
+    return e.address?{email:e.address,name:e.name||e.address}:null;
+  }).filter(Boolean);
+}
+
 function fmtBytes(n){
   if(!n)return "";
   if(n<1024)return n+"B";
@@ -536,6 +544,8 @@ function mapGraphMsg(m,folder){
     to:isSent?(rec.address||""):"",
     toName:isSent?(rec.name||rec.address||""):"",
     cc:fmtRecipients(m.ccRecipients),
+    toAll:recipObjs(m.toRecipients),
+    ccAll:recipObjs(m.ccRecipients),
     subject:m.subject||"",
     date:m.sentDateTime||m.receivedDateTime||new Date().toISOString(),
     preview:m.bodyPreview||"",body:null,
@@ -802,7 +812,12 @@ function MailPreview(p){
           ?ce("button",{onClick:function(){p.onReply&&p.onReply(head,bodies);},style:Object.assign({},BGHOST,{color:"var(--violet)",borderColor:"var(--violet)",fontWeight:600})},"\u21a9 Odpowiedz")
           :null,
         p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
-          ?ce("button",{onClick:function(){p.onReplyAll&&p.onReplyAll(head,bodies,(head._allRecipients||[]));},style:Object.assign({},BGHOST,{color:"var(--violet)",opacity:0.75})},"\u21a9 Odpowiedz wszystkim")
+          ?ce("button",{onClick:function(){
+              if(!p.onReplyAll)return;
+              var senderObj=head.from?{email:head.from,name:head.fromName||head.from}:null;
+              var toList=(senderObj?[senderObj]:[]).concat(head.toAll||[]);
+              p.onReplyAll(head,bodies,toList,head.ccAll||[]);
+            },style:Object.assign({},BGHOST,{color:"var(--violet)",opacity:0.75})},"\u21a9 Odpowiedz wszystkim")
           :null,
         ce("button",{onClick:function(){p.onForward&&p.onForward(head,bodies);},style:BGHOST},"\u27A1 Przeka\u017c"),
         p.activeFolder==="inbox"
@@ -1747,6 +1762,8 @@ export function ScreenMail(p){
           from:fromAddr.address||"",fromName:fromAddr.name||fromAddr.address||"",
           to:"",toName:"",
           cc:fmtRecipients(m.ccRecipients),
+          toAll:recipObjs(m.toRecipients),
+          ccAll:recipObjs(m.ccRecipients),
           subject:m.subject||"",
           date:m.receivedDateTime||new Date().toISOString(),
           preview:m.bodyPreview||"",body:null, // body dociągamy on-demand
@@ -2512,12 +2529,26 @@ export function ScreenMail(p){
             setAttachments([]);
             mailNavigate("compose");
           },
-          onReplyAll:function(head,bodyCache,allRecipients){
-            // allRecipients = [{email,name},...] — from + all to (excl. own email)
+          onReplyAll:function(head,bodyCache,toRecipients,ccRecipients){
             var own=msAccount&&(msAccount.username||msAccount.email)||"";
-            var recs=(allRecipients||[]).filter(function(r){return r.email&&r.email.toLowerCase()!==own.toLowerCase();});
-            var toVal=recs.length>0?recs[0].email:(head.from||"");
-            setToEmail(toVal);
+            var dedupe=function(list,exclude){
+              var seen={};
+              return (list||[]).filter(function(r){
+                if(!r.email)return false;
+                var k=r.email.toLowerCase();
+                if(k===own.toLowerCase())return false;
+                if(seen[k])return false;
+                if(exclude&&exclude[k])return false;
+                seen[k]=true;
+                return true;
+              });
+            };
+            var toRecs=dedupe(toRecipients);
+            var toKeys={};toRecs.forEach(function(r){toKeys[r.email.toLowerCase()]=true;});
+            var ccRecs=dedupe(ccRecipients,toKeys);
+            setToEmail(toRecs.length?toRecs.map(function(r){return r.email;}).join(", "):(head.from||""));
+            setCcEmail(ccRecs.length?ccRecs.map(function(r){return r.email;}).join(", "):"");
+            setShowCcBcc(ccRecs.length>0);
             var subj=head.subject||"";
             setSubject(subj.startsWith("Re:")?subj:"Re: "+subj);
             var cachedBody=bodyCache&&bodyCache[head.id];
