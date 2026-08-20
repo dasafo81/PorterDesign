@@ -1594,6 +1594,8 @@ export function ScreenMail(p){
   var sset=us(null),userSettings=sset[0],setUserSettings=sset[1];
   // Szablony z bazy — null = ładowanie, [] = puste, [...] = załadowane
   var sdbt=us(null),dbTemplates=sdbt[0],setDbTemplates=sdbt[1];
+  // Kontrahenci (baza Kontrahenci) — do podpowiedzi w polu "Do:", niezależnie od wycen
+  var sctc=us([]),contacts=sctc[0],setContacts=sctc[1];
 
   var selClient=clients.find(function(c){return String(c.id)===String(selClientId);})||null;
   var userEmail=msAccount&&(msAccount.username||msAccount.email)||"";
@@ -1667,6 +1669,15 @@ export function ScreenMail(p){
     }).catch(function(e){
       console.error("getMailTemplates error",e);
       setDbTemplates([]); // puste — Paulina może tworzyć nowe
+    });
+  },[]);
+
+  // Załaduj Kontrahentów — trzecie źródło podpowiedzi w polu "Do:" (obok wycen i historii wysyłek),
+  // bo kontrahent często nie ma jeszcze wyceny ani nie dostał żadnego maila.
+  ue(function(){
+    sbApi.getContacts().then(function(rows){setContacts(rows||[]);}).catch(function(e){
+      console.error("getContacts error",e);
+      setContacts([]);
     });
   },[]);
 
@@ -1791,6 +1802,10 @@ export function ScreenMail(p){
     if(val.length<2){setContactSug([]);return;}
     var q=val.toLowerCase();
     var fc=clients.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).map(function(c){return {email:c.email,name:c.name};});
+    // Kontrahenci (baza Kontrahenci) — dopisz tych, których nie ma jeszcze wśród klientów z wycen
+    contacts.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).forEach(function(c){
+      if(!fc.find(function(x){return x.email.toLowerCase()===c.email.toLowerCase();}))fc.push({email:c.email,name:c.name});
+    });
     // Dociągnij historię adresów z Supabase (cross-device, cross-session)
     sbApi.searchMailRecipients(q).then(function(rows){
       // Dodatkowy filtr po stronie klienta — upewnij się że query nadal pasuje
