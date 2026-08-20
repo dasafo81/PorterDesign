@@ -2166,11 +2166,6 @@ function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
     +(inv.notes?"<div class='notes-box'><div class='notes-head'>Uwagi</div>"+String(inv.notes)+"</div>"
       :(previewMode?"<div class='notes-box'><div class='notes-head'>Uwagi</div><span style='color:#999'>\u2014 brak uwag \u2014</span></div>":""))
     +(inv.kasowa===true||inv.kasowa==="true"?"<div class='kasowa'>Metoda Kasowa</div>":"")
-    +(isZakup?"":"<div class='sign-name'>Paulina Porter</div>"
-    +"<div class='sign-block'>"
-    +"<div class='sign'>Osoba uprawniona do odbioru</div>"
-    +"<div class='sign'>Osoba uprawniona do wystawienia</div>"
-    +"</div>")
     +"</body></html>";
 }
 
