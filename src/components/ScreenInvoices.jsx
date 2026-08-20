@@ -2258,8 +2258,17 @@ function InvoiceDetailView(p){
       ),
     // Podgl\u0105d faktury \u2014 renderowany od razu, bez potrzeby pobierania PDF
     ce("div",{style:Object.assign({},card,{marginBottom:16,padding:0,overflow:"hidden"})},
-      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
-        textTransform:"uppercase",padding:"14px 18px 0"}},"Podgl\u0105d"),
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"14px 18px 0"}},
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
+          textTransform:"uppercase"}},"Podgl\u0105d"),
+        // Prawdziwy widok z systemu KSeF dost\u0119pny tylko dla faktur potwierdzonych \u2014
+        // to oficjalna strona weryfikacyjna MF (ten sam URL co kod QR I), nie da si\u0119
+        // jej osadzi\u0107 w iframe (X-Frame-Options), wi\u0119c otwieramy w nowej karcie.
+        ksefQrUrl&&ce("a",{href:ksefQrUrl,target:"_blank",rel:"noopener noreferrer",
+          style:{fontSize:12,fontWeight:600,color:"var(--violet)",textDecoration:"none"}},
+          "\uD83D\uDD0E Zobacz oficjalny widok w KSeF \u2197")
+      ),
       ce("iframe",{
         title:"Podgl\u0105d faktury",
         srcDoc:buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl),
