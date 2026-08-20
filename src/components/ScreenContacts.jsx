@@ -48,14 +48,16 @@ function ModalContact(p){
   s=useState(false);                               var nipLoading=s[0], setNipLoading=s[1];
 
   function applyAddr(str){
-    // "ul. X 1, 00-000 MIASTO" → street / postal / city
-    var parts=(str||"").split(",").map(function(x){return x.trim();});
-    if(parts.length>=2){
-      setStreet(parts[0]);
-      var rest=parts.slice(1).join(", ");
-      var m=rest.match(/(\d{2}-\d{3})\s+(.+)/);
-      if(m){ setPostal(m[1]); setCity(m[2]); } else { setCity(rest); }
-    } else if(str){ setStreet(str); }
+    // Adres może nie mieć przecinka między ulicą a kodem — miejscowości bez nazwy
+    // ulicy Biała Lista zwraca jako samo "00-000 Miasto". Szukamy kodu pocztowego
+    // w dowolnym miejscu ciągu zamiast zakładać przecinek.
+    var adr=str||"";
+    var pm=adr.match(/(\d{2}-\d{3})\s*,?\s*(.*)$/);
+    if(pm){
+      setStreet(adr.slice(0,pm.index).replace(/,\s*$/,"").trim());
+      setPostal(pm[1]);
+      setCity(pm[2].trim());
+    } else if(adr){ setStreet(adr); }
   }
   // NIP lookup: GUS (/api/gus) → fallback Biała Lista VAT
   function lookupNip(){
