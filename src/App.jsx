@@ -1383,7 +1383,7 @@ export function App(p){
     var previewMontazPct=(+montazInput||0)/100;
     var previewMontazVal=installValue(previewTotal);
     var previewMontazParam=montazMode==="amount"?{mode:"amount",value:previewMontazVal}:{mode:"percent",value:previewMontazPct};
-    var previewDiscountVal=(discountEnabled&&(+discountInput)>0)?roundTo10(+discountInput):0;
+    var previewDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(previewTotal*(+discountInput)/100)):0;
     var previewVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
     var previewFinalTotal=Math.max(0,roundTo10(previewTotal+previewMontazVal-previewDiscountVal-previewVisitFeeVal));
     function recalcOfferPricesFromCommission(){
@@ -1470,8 +1470,9 @@ export function App(p){
           ce("input",{type:"checkbox",checked:discountEnabled,onChange:function(ev){setDiscountEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
           ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83C\uDFF7\uFE0F Rabat")
         ),
-        discountEnabled?ce("input",{type:"text",inputMode:"decimal",value:discountInput,onChange:function(ev){setDiscountInput(ev.target.value);},placeholder:"kwota",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
-        discountEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł"):null
+        discountEnabled?ce("select",{value:discountMode,onChange:function(ev){setDiscountMode(ev.target.value);},style:{padding:"8px 10px",border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},ce("option",{value:"amount"},"zł"),ce("option",{value:"percent"},"%")):null,
+        discountEnabled?ce("input",{type:"text",inputMode:"decimal",value:discountInput,onChange:function(ev){setDiscountInput(ev.target.value);},placeholder:discountMode==="amount"?"np. 300":"np. 10",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
+        discountEnabled&&discountInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+discountInput+(discountMode==="amount"?" zł":"%")):null
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
