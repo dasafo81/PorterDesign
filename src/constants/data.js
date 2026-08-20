@@ -3846,10 +3846,6 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
   <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
   ${userNotesHTML}
   <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
-  <div class="sign-block">
-    <div class="sign">Osoba uprawniona do wystawienia<br><strong>Paulina Porter</strong></div>
-    <div class="sign">Osoba uprawniona do odbioru</div>
-  </div>
   <div class="footer"><span>${SELLER.name} | ${SELLER.city}</span><span>Strona 1</span></div>
   </body></html>`;
   var montazVal=montazMode==="amount"?roundTo10(montazInputValue): (montaz>0?roundTo10(total*montaz):0);
