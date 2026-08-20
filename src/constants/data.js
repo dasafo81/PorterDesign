@@ -3310,7 +3310,7 @@ export function getPDFOfferNumber(client){
 // później wystawić fakturę "na podstawie" tej oferty). Działa w tle: nie jest
 // await-owana przed otwarciem okna PDF, żeby nie zablokować popupu, a błąd
 // zapisu nie przerywa generowania oferty (klient i tak dostaje PDF).
-function persistOffer(client,number,kind,total,validUntil,notes){
+function persistOffer(client,number,kind,total,validUntil,notes,discount){
   if(!client||!client.id)return;
   sbApi.addOffer({
     client_id:client.id,
@@ -3318,7 +3318,8 @@ function persistOffer(client,number,kind,total,validUntil,notes){
     kind:kind,
     total_gross:roundTo10(total||0),
     valid_until:((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil.toISOString().slice(0,10):null,
-    notes:notes||""
+    notes:notes||"",
+    discount_amount:roundTo10(+discount>0?+discount:0)
   }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
 }
 
@@ -3861,7 +3862,7 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
       +'<div style="margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#555;font-weight:600;">\u0141\u0105cznie bez monta\u017cu:</span><span style="font-size:14px;font-weight:700;color:#555;">'+total.toFixed(2).replace(".",",")+' z\u0142</span></div>';
   }
   if(discount>0){
-    extraBreakdown+='<div style="margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Rabat:</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">\u2212'+discount.toFixed(2).replace(".",",")+' z\u0142</span></div>';
+    extraBreakdown+='<div style="margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Przyznany rabat:</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">\u2212'+discount.toFixed(2).replace(".",",")+' z\u0142</span></div>';
   }
   if(visitFee>0){
     extraBreakdown+='<div style="margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Koszt wizyty (odliczony od zam\u00f3wienia):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">\u2212'+visitFee.toFixed(2).replace(".",",")+' z\u0142</span></div>';
@@ -3908,7 +3909,7 @@ export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUnti
   if(!html){alert("Brak wycenionych produktów.");return;}
   var offerNo=getPDFOfferNumber(client);
   var offerTotal=(rows||[]).reduce(function(a,r){return a+(+r.total||0);},0);
-  persistOffer(client,offerNo,"szczegolowa",offerTotal,validUntil,offerNotes);
+  persistOffer(client,offerNo,"szczegolowa",offerTotal,validUntil,offerNotes,discount);
   openPDFWindow(html, offerNo,{landscape:true});
 }
 
