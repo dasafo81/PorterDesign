@@ -64,10 +64,13 @@ function fmt(n: number): string {
   return n.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Mapa form płatności FA(3)
+// Mapa form płatności FA(3) — oficjalny słownik (dozwolone wartości 1-7 wg XSD MF):
+// 1-gotówka, 2-karta, 3-bon, 4-czek, 5-kredyt, 6-przelew, 7-mobilna.
+// WCZEŚNIEJSZA WERSJA MIAŁA KODY 2-6 PRZESUNIĘTE O JEDNO MIEJSCE (np. "6":"kredyt"
+// zamiast poprawnego "6":"przelew") — ta sama poprawka co w ksef-receive/index.ts.
 const PAY_MAP: Record<string, string> = {
-  "1":"gotówka","2":"przelew","3":"karta płatnicza","4":"bon","5":"czek",
-  "6":"kredyt","7":"mobilna","8":"skonto",
+  "1":"gotówka","2":"karta płatnicza","3":"bon","4":"czek","5":"kredyt",
+  "6":"przelew","7":"mobilna",
   "gotowka":"gotówka","gotówka":"gotówka","przelew":"przelew",
   "karta":"karta płatnicza","czek":"czek","bon":"bon",
 };
