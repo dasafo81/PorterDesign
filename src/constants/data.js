@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SB_URL } from '../lib/supabase.js';
+import { SB_URL, sbApi } from '../lib/supabase.js';
 const ce = React.createElement;
 
 export const SB_STORAGE = SB_URL + "/storage/v1/object/public/assets/porter-design-assets/";
@@ -3306,6 +3306,22 @@ export function getPDFOfferNumber(client){
   return "OF-"+y+m+d+"-"+slug;
 }
 
+// Zapisuje wygenerowaną ofertę w bazie (historia ofert per klient — pozwala
+// później wystawić fakturę "na podstawie" tej oferty). Działa w tle: nie jest
+// await-owana przed otwarciem okna PDF, żeby nie zablokować popupu, a błąd
+// zapisu nie przerywa generowania oferty (klient i tak dostaje PDF).
+function persistOffer(client,number,kind,total,validUntil,notes){
+  if(!client||!client.id)return;
+  sbApi.addOffer({
+    client_id:client.id,
+    number:number,
+    kind:kind,
+    total_gross:roundTo10(total||0),
+    valid_until:((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil.toISOString().slice(0,10):null,
+    notes:notes||""
+  }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
+}
+
 // Zwraca czytelny opis szczegółów produktu (tkanina/kolor/kolor lameli/kolor karnisza)
 // używany we wszystkich PDF-ach ofertowych (Wycena PDF, Wycena Uproszczona, Oferta).
 export function productDetailText(p){
@@ -3890,7 +3906,10 @@ export function generateOfferPDF(client,comm,montaz,discount,visitFee){
 export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUntil,discount,visitFee){
   var html=buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil,discount,visitFee);
   if(!html){alert("Brak wycenionych produktów.");return;}
-  openPDFWindow(html, getPDFOfferNumber(client),{landscape:true});
+  var offerNo=getPDFOfferNumber(client);
+  var offerTotal=(rows||[]).reduce(function(a,r){return a+(+r.total||0);},0);
+  persistOffer(client,offerNo,"szczegolowa",offerTotal,validUntil,offerNotes);
+  openPDFWindow(html, offerNo,{landscape:true});
 }
 
 // ── Suppliers for karnisze / szyny ─────────────────────────────────────────
