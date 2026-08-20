@@ -480,6 +480,18 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
 export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil,titleSuffix){
   var html=buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix);
   if(!html){alert("Brak pozycji do wyceny.");return;}
+  var offerNo=getPDFOfferNumber(client);
+  var offerTotal=(roomsData||[]).reduce(function(a,rd){return a+(+rd.total||0);},0);
+  // Zapis w tle do historii ofert klienta (pozwala później wystawić fakturę
+  // "na podstawie" tej oferty) — nie blokuje otwarcia okna PDF.
+  if(client&&client.id){
+    sbApi.addOffer({
+      client_id:client.id, number:offerNo, kind:"uproszczona",
+      total_gross:roundTo10(offerTotal||0),
+      valid_until:((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil.toISOString().slice(0,10):null,
+      notes:titleSuffix||""
+    }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
+  }
   openPDFWindow(html,(client.name||"")+" - Oferta"+(titleSuffix||""));
 }
 
