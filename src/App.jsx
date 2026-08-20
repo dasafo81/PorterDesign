@@ -590,6 +590,15 @@ export function App(p){
     return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",marginBottom:0,paddingBottom:0,borderBottom:"none"}},parts.concat([quickSum]));
   }
 
+  // Wartość montażu (kwota lub % od bazy) — używana w kilku ekranach
+  // (sum, offerPreview), więc musi być zdefiniowana poza blokami if/else if,
+  // bo function declaration wewnątrz bloku jest block-scoped w strict mode
+  // i nie jest widoczna w sąsiednich gałęziach.
+  function installValue(base){
+    var v=+montazInput||0;
+    return montazMode==="amount"?roundTo10(v):(v>0?roundTo10(base*v/100):0);
+  }
+
   var content=null;
 
   // ── HOME ──
@@ -1316,10 +1325,6 @@ export function App(p){
     }
 
     // Compute client total (Variant A for each group)
-    function installValue(base){
-      var v=+montazInput||0;
-      return montazMode==="amount"?roundTo10(v):(v>0?roundTo10(base*v/100):0);
-    }
     function clientTotalWithVariants(cl){
       var sum=0;
       (cl.rooms||[]).forEach(function(r){
