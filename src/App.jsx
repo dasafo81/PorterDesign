@@ -43,7 +43,7 @@ export function App(p){
         if (landing === "microsoft") return "mail";
       }
     } catch (e) {}
-    return "wyceniarka";
+    return "crm";
   }),appMode=sMode[0],setAppMode=sMode[1];
   // Super-admin flaga z JWT — pokazuje zakladke Admin tylko gdy is_super_admin: true
   var sIsSuper=useState(false),isSuperAdmin=sIsSuper[0],setIsSuperAdmin=sIsSuper[1];
@@ -1876,8 +1876,8 @@ export function App(p){
     // ── Main nav tabs ──
     ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+(isSuperAdmin?9:8)+",1fr)",gap:4,marginBottom:"1.2rem",background:"var(--panel-bg)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid var(--panel-border)",boxShadow:"var(--glass-shadow)"}},
       [
-        {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
+        {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
         {id:"kontrahenci",label:"Kontrah.",icon:"\uD83D\uDC65"},
         {id:"kalendarz", label:"Kalen.",icon:"\uD83D\uDCC5"},
         {id:"mail",      label:"Mail",  icon:"\uD83D\uDCE8"},
