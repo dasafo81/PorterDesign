@@ -154,14 +154,28 @@ function parseFA3(xml: string) {
   }
 
   // Uwagi — DodatkowyOpis lub StopkaFaktury
+  // Uwagi — laczymy Zwolnienie/P_19A|B|C (podstawa prawna zwolnienia z VAT, np.
+  // "Dostawa zwolniona z art. 113...") z DodatkowyOpis/Wartosc (wolny tekst).
+  // Pierwsze to osobne, ustrukturyzowane pole schematu FA(3), ktore wczesniej
+  // w ogole nie bylo czytane.
   function parseNotes(): string {
+    const parts: string[] = [];
+
+    const zwolnienieB = block(fa, "Zwolnienie") || block(xml, "Zwolnienie");
+    const p19 = zwolnienieB
+      ? (v(zwolnienieB, "P_19A") || v(zwolnienieB, "P_19B") || v(zwolnienieB, "P_19C"))
+      : "";
+    if (p19) parts.push("Podstawa zwolnienia z VAT: " + p19);
+
     const raw = v(fa, "DodatkowyOpis") || v(xml, "StopkaFaktury") || "";
-    if (!raw) return "";
-    // Wyciągnij <Wartosc> jeśli jest strukturą
-    const wartosci = all(raw, "Wartosc");
-    if (wartosci.length > 0) return wartosci.join(" | ");
-    // Usuń tagi XML jeśli są
-    return raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (raw) {
+      const wartosci = all(raw, "Wartosc");
+      parts.push(wartosci.length > 0
+        ? wartosci.join(" | ")
+        : raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+    }
+
+    return parts.filter(Boolean).join(" | ");
   }
 
   const header = {
