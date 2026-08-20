@@ -328,15 +328,15 @@ function InvoiceEditor(p){
         if(s.name&&!/[a-zA-Z]{3,}.*\s.*[a-zA-Z]{3,}.*\s/.test(s.name)){
           setErr("Biała Lista zwróciła tylko imię i nazwisko („"+s.name+"”) — to wszystko co jest dostępne w rejestrze VAT dla tego NIP. Możesz dopisać nazwę handlową ręcznie jeśli potrzebna.");
         }
-        // Adres może być złożony; wyciągamy najlepiej jak możemy
+        // Adres może być złożony i nie zawsze ma przecinek między ulicą a kodem —
+        // miejscowości bez nazwy ulicy Biała Lista zwraca jako samo "00-000 Miasto".
+        // Szukamy kodu pocztowego w dowolnym miejscu ciągu zamiast zakładać przecinek.
         var adr=s.workingAddress||s.residenceAddress||"";
-        var parts=adr.split(",").map(function(x){return x.trim();});
-        if(parts.length>=2){
-          setBuyerAddr(parts[0]);
-          var rest=parts[1]||"";
-          var m=rest.match(/^(\d{2}-\d{3})\s+(.+)$/);
-          if(m){setBuyerPostal(m[1]);setBuyerCity(m[2]);}
-          else{setBuyerCity(rest);}
+        var pm=adr.match(/(\d{2}-\d{3})\s*,?\s*(.*)$/);
+        if(pm){
+          setBuyerAddr(adr.slice(0,pm.index).replace(/,\s*$/,"").trim());
+          setBuyerPostal(pm[1]);
+          setBuyerCity(pm[2].trim());
         } else {
           setBuyerAddr(adr);
         }
