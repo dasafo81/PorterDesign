@@ -183,6 +183,6 @@ left join invoices i on i.contact_id = m.id
 where m.nip = ''
 group by m.id, m.name, m.phone
 having count(distinct c.id) + count(distinct i.id) > 1
-order by liczba_wycen + liczba_faktur desc;
+order by count(distinct c.id) + count(distinct i.id) desc;
 
 commit;
