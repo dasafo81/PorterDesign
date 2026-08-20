@@ -249,11 +249,22 @@ function InvoiceEditor(p){
   // wiec kazda faktura sprzedazowa musi miec te adnotacje — inaczej robi sie
   // rozjazd miedzy PDF-em a FA(3) (Adnotacje/P_16), zglaszany przez ksiegowa.
   // Dokumenty EKO i faktury zakupowe (dokument dostawcy) sa z tego wylaczone.
+  // Podmiot zwolniony z VAT (np. PD Porter Design Damian Porter — zwolnienie
+  // podmiotowe z art. 113 ust. 1) nigdy nie rozlicza sie metoda kasowa — to
+  // adnotacja P_16 zarezerwowana dla malych podatnikow czynnych VAT, wiec
+  // nadpisuje kasowa_default niezaleznie od jego wartosci.
   // Dla istniejacej faktury zostaje to, co zapisano przy jej wystawieniu.
   var [kasowa,setKasowa]=useState(isNew
-    ? (!!settings.kasowa_default && direction!=="zakup" && docType!=="eko")
+    ? (!entVatExempt && !!settings.kasowa_default && direction!=="zakup" && docType!=="eko")
     : !!(initInv.kasowa));
-  var [notes,setNotes]=useState(initInv.notes||"");
+  // Uwagi: nowa faktura sprzedazowa podmiotu zwolnionego z VAT dostaje domyslnie
+  // adnotacje o podstawie zwolnienia (art. 113 ust. 1) — wymagana na fakturze,
+  // a bez tego bywala pomijana recznie. Nie dotyczy faktur zakupowych (tam w
+  // Uwagach nie opisujemy statusu VAT wlasnego podmiotu) ani edycji istniejacej
+  // faktury — tam notatka zostaje taka, jaka zapisano przy wystawieniu.
+  var [notes,setNotes]=useState(isNew&&entVatExempt&&direction!=="zakup"
+    ? "Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT"
+    : (initInv.notes||""));
   var initSnap=initInv.seller_snapshot||{};
   var initContractor=(direction==="zakup"&&(initSnap.name||initSnap.nip))?initSnap:null;
   var [buyerName,setBuyerName]=useState(initContractor?(initContractor.name||""):(initInv.buyer_name||""));
