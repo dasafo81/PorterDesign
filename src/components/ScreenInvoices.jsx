@@ -257,6 +257,10 @@ function InvoiceEditor(p){
   var [clientOffers,setClientOffers]=useState([]);
   var [offerId,setOfferId]=useState(initInv.offer_id||null);
   var [offerNumber,setOfferNumber]=useState(initInv.offer_number||"");
+  // Zwykle fakturujemy 50% wartości oferty (zaliczka) — stąd domyślny wybór,
+  // ale "100" i "custom" (dowolny %) pozostają dostępne jednym klikiem.
+  var [offerPctChoice,setOfferPctChoice]=useState("50");
+  var [offerPctCustom,setOfferPctCustom]=useState("");
   var [clientSearch,setClientSearch]=useState("");
   var [clientDropOpen,setClientDropOpen]=useState(false);
   // Powiązanie z bazą kontrahentów (Faza 2)
@@ -387,6 +391,27 @@ function InvoiceEditor(p){
     var o=clientOffers.find(function(x){return String(x.id)===String(id);});
     setOfferId(o?o.id:null);
     setOfferNumber(o?o.number:"");
+    setOfferPctChoice("50");
+    setOfferPctCustom("");
+  }
+  // Wstawia pozycję faktury na X% wartości brutto powiązanej oferty (domyślnie 50% —
+  // typowa zaliczka). Jeśli faktura ma jeszcze tylko świeżą, pustą pozycję — zastępuje
+  // ją; w przeciwnym razie dopisuje nową, żeby nie skasować już wpisanych danych.
+  function applyOfferAmount(){
+    var o=clientOffers.find(function(x){return String(x.id)===String(offerId);});
+    if(!o){setErr("Najpierw wybierz ofertę");return;}
+    var pct=offerPctChoice==="100"?100:offerPctChoice==="50"?50:Math.max(0,+(String(offerPctCustom).replace(",","."))||0);
+    if(pct<=0){setErr("Podaj poprawny procent");return;}
+    setErr(null);
+    var vr=docType==="eko"?0:defaultVat;
+    var gross=+((+(o.total_gross||0)*pct/100).toFixed(2));
+    var nums=calcLineFromGross(gross,1,vr);
+    var itemName=(pct>=100?"Realizacja zamówienia wg oferty ":"Zaliczka "+pct+"% na poczet realizacji zamówienia wg oferty ")+o.number;
+    var newItem=Object.assign({name:itemName,quantity:1,unit:settings.default_unit||"szt",vat_rate:vr},nums,{unit_gross:gross,position:1,pkwiu:""});
+    setItems(function(prev){
+      if(prev.length===1&&!prev[0].name.trim()&&(+prev[0].line_gross||0)===0)return [newItem];
+      return prev.concat([Object.assign({},newItem,{position:prev.length+1})]);
+    });
   }
 
   // ── Kontrahenci (baza) — picker autouzupełniający dane nabywcy/sprzedawcy ──
@@ -754,7 +779,24 @@ function InvoiceEditor(p){
               o.number+" \u2014 "+fmtDate((o.created_at||"").slice(0,10))+" \u2014 "+fmtMoney(o.total_gross||0));
           })
         ),
-        offerId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},"\u2713 Faktura wystawiana na podstawie oferty "+offerNumber)
+        offerId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},"\u2713 Faktura wystawiana na podstawie oferty "+offerNumber),
+        offerId&&ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:10,flexWrap:"wrap"}},
+          ce("span",{style:{fontSize:11,color:"var(--t3)"}},"Kwota faktury:"),
+          ["50","100"].map(function(v){
+            var active=offerPctChoice===v;
+            return ce("button",{key:v,type:"button",onClick:function(){setOfferPctChoice(v);},
+              style:Object.assign({},btnSecondary,{padding:"5px 12px",fontSize:12},active?{background:"var(--t1)",color:"var(--bg)",borderColor:"var(--t1)"}:{})
+            },v+"%");
+          }),
+          ce("button",{type:"button",onClick:function(){setOfferPctChoice("custom");},
+            style:Object.assign({},btnSecondary,{padding:"5px 12px",fontSize:12},offerPctChoice==="custom"?{background:"var(--t1)",color:"var(--bg)",borderColor:"var(--t1)"}:{})
+          },"Inna"),
+          offerPctChoice==="custom"&&ce("input",{style:Object.assign({},inpSm,{width:60,textAlign:"right"}),value:offerPctCustom,inputMode:"decimal",placeholder:"np. 30",
+            onChange:function(e){setOfferPctCustom(e.target.value);}}),
+          offerPctChoice==="custom"&&ce("span",{style:{fontSize:12,color:"var(--t3)"}},"%"),
+          ce("button",{type:"button",onClick:applyOfferAmount,
+            style:Object.assign({},btnSecondary,{padding:"5px 14px",fontSize:12,fontWeight:700})},"\u2192 Wstaw pozycj\u0119")
+        )
       ),
 
       ce("div",{style:{display:"flex",gap:8,marginBottom:10}},
