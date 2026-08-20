@@ -108,7 +108,8 @@ function buildFA3(inv, items, settings) {
   }).join('');
 
   // Sposób płatności → kod FA(3)
-  const payMap = { 'przelew': '6', 'gotówka': '1', 'karta': '5', 'BLIK': '5' };
+  // Oficjalne kody FA(3): 1-gotówka, 2-karta, 3-bon, 4-czek, 5-kredyt, 6-przelew, 7-mobilna.
+  const payMap = { 'przelew': '6', 'gotówka': '1', 'karta': '2', 'BLIK': '7' };
   const payCode = payMap[inv.payment_method] || '6';
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
