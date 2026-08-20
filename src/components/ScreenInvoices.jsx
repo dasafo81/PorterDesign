@@ -1891,7 +1891,7 @@ async function buildKsefQrUrl(inv, settings){
   return "https://"+host+"/invoice/"+nip+"/"+ddmmyyyy+"/"+inv.ksef_invoice_hash;
 }
 
-function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
+function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
   var s=settings||{};
   var items=inv.invoice_items||[];
   var isZakup=invDirection(inv)==="zakup";
@@ -2025,7 +2025,8 @@ function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
     +".qr-box img{display:block;width:86px;height:86px;}"
     +".qr-box .qr-label{font-size:8px;color:#888;margin-top:3px;}"
     +".slownie{margin-top:4mm;text-align:right;font-size:11px;}"
-    +".notes-box{margin-top:6mm;padding:8px 12px;background:#f7f7f7;border-radius:4px;font-size:10px;color:#444;}"
+    +".notes-box{margin-top:6mm;padding:10px 12px;background:#f7f7f7;border:1px solid #ddd;border-radius:4px;font-size:11px;color:#222;}"
+    +".notes-box .notes-head{font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#666;margin-bottom:4px;}"
     +".kasowa{margin-top:10mm;font-size:11px;}"
     +".watermark{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:88px;font-weight:900;color:rgba(0,0,0,0.06);pointer-events:none;z-index:0;letter-spacing:6px;white-space:nowrap;}"
     +".sign-name{text-align:right;margin-top:6mm;font-size:13px;}"
@@ -2043,7 +2044,8 @@ function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
     +"</div>"
     +"<div class='pay-row'>"
     +"<div>Termin p\u0142atno\u015bci: "+fmtD(inv.due_date)+"<br>Spos\u00f3b p\u0142atno\u015bci: "+(inv.payment_method||"przelew").replace(/^./,function(c){return c.toUpperCase();})+"</div>"
-    +(selBank?"<div style='text-align:right'>Bank Millennium: "+selBank+"</div>":"<div></div>")
+    +(selBank?"<div style='text-align:right'>Numer konta: "+selBank+"</div>"
+      :(previewMode?"<div style='text-align:right;color:#c0392b'>\u26A0\uFE0F Brak numeru konta w Ustawieniach</div>":"<div></div>"))
     +"</div>"
     +"<div class='parties'>"
     +"<div class='party'><div class='sect-head'>"+partyTop.label+"</div><p><strong>"+partyTop.name+"</strong>"
@@ -2073,7 +2075,8 @@ function buildInvoicePDFHtml(inv,settings,ksefQrUrl){
     +"<tr class='grand'><td>Do zap\u0142aty:</td><td>"+fmtM(remaining)+" PLN</td></tr>"
     +"</table></div>"
     +"<div class='slownie'><strong>S\u0142ownie:</strong> "+numberToWordsPL(gross)+"</div>"
-    +(inv.notes?"<div class='notes-box'>"+String(inv.notes)+"</div>":"")
+    +(inv.notes?"<div class='notes-box'><div class='notes-head'>Uwagi</div>"+String(inv.notes)+"</div>"
+      :(previewMode?"<div class='notes-box'><div class='notes-head'>Uwagi</div><span style='color:#999'>\u2014 brak uwag \u2014</span></div>":""))
     +(inv.kasowa===true||inv.kasowa==="true"?"<div class='kasowa'>Metoda Kasowa</div>":"")
     +(isZakup?"":"<div class='sign-name'>Paulina Porter</div>"
     +"<div class='sign-block'>"
@@ -2256,22 +2259,18 @@ function InvoiceDetailView(p){
             "Pobierz PDF i wy\u015blij klientowi, nast\u0119pnie wy\u015blij do KSeF.")
         )
       ),
-    // Podgl\u0105d faktury \u2014 renderowany od razu, bez potrzeby pobierania PDF
+    // Podgl\u0105d faktury \u2014 renderowany od razu, bez potrzeby pobierania PDF.
+    // Link do oficjalnego widoku w KSeF zosta\u0142 wycofany \u2014 dop\u00f3ki nie naprawimy
+    // niezgodno\u015bci hasha w kodzie QR, portal MF i tak zg\u0142asza "nie znaleziono",
+    // wi\u0119c tylko wprowadza\u0142 w b\u0142\u0105d. Trzeci parametr (true) w\u0142\u0105cza tryb podgl\u0105du:
+    // puste pola (numer konta, uwagi) pokazuj\u0105 wyra\u017any placeholder zamiast znika\u0107 bez
+    // \u015bladu \u2014 tylko tutaj, w PDF-ie wysy\u0142anym do klienta puste pola nadal si\u0119 chowaj\u0105.
     ce("div",{style:Object.assign({},card,{marginBottom:16,padding:0,overflow:"hidden"})},
-      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",
-        padding:"14px 18px 0"}},
-        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
-          textTransform:"uppercase"}},"Podgl\u0105d"),
-        // Prawdziwy widok z systemu KSeF dost\u0119pny tylko dla faktur potwierdzonych \u2014
-        // to oficjalna strona weryfikacyjna MF (ten sam URL co kod QR I), nie da si\u0119
-        // jej osadzi\u0107 w iframe (X-Frame-Options), wi\u0119c otwieramy w nowej karcie.
-        ksefQrUrl&&ce("a",{href:ksefQrUrl,target:"_blank",rel:"noopener noreferrer",
-          style:{fontSize:12,fontWeight:600,color:"var(--violet)",textDecoration:"none"}},
-          "\uD83D\uDD0E Zobacz oficjalny widok w KSeF \u2197")
-      ),
+      ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.08em",
+        textTransform:"uppercase",padding:"14px 18px 0"}},"Podgl\u0105d"),
       ce("iframe",{
         title:"Podgl\u0105d faktury",
-        srcDoc:buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl),
+        srcDoc:buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl,true),
         style:{width:"100%",height:640,border:"none",marginTop:10}
       })
     ),
