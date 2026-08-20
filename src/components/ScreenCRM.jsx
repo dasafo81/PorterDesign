@@ -1274,8 +1274,22 @@ export function CRMKalendarz(p){
     return fmtHM(s)+(e?"–"+fmtHM(e):"");
   }
 
-  // ── Przeniesienie zdarzenia GCal na inny dzień (drag&drop) ──
-  function moveEventToDate(raw,targetDate){
+  // ── Godzina:minuta odpowiadająca pozycji Y upuszczenia w siatce godzin ──
+  // Zaokrągla do najbliższych 15 minut i przycina do zakresu [hourFrom, hourTo).
+  function timeFromDropY(e,hourFrom,hourTo,hourPx){
+    var rect=e.currentTarget.getBoundingClientRect();
+    var offY=e.clientY-rect.top;
+    var totalMin=hourFrom*60+(offY/hourPx)*60;
+    var snapped=Math.round(totalMin/15)*15;
+    snapped=Math.max(hourFrom*60,Math.min(hourTo*60-15,snapped));
+    return {h:Math.floor(snapped/60),m:snapped%60};
+  }
+
+  // ── Przeniesienie zdarzenia GCal na inny dzień i/lub godzinę (drag&drop) ──
+  // targetTime: opcjonalny {h,m} wyliczony z pozycji upuszczenia w siatce
+  // godzinowej (widok tygodnia/dnia) — nadpisuje godzinę zamiast zawsze
+  // zachowywać oryginalną, jak to było wcześniej.
+  function moveEventToDate(raw,targetDate,targetTime){
     if(!raw||!gcalToken) return;
     var calId=raw._calId||'primary';
     var startDT=raw.start&&(raw.start.dateTime||raw.start.date);
@@ -1283,7 +1297,9 @@ export function CRMKalendarz(p){
     if(!startDT) return;
     var isAllDay=!!(raw.start&&raw.start.date&&!raw.start.dateTime);
     var oldStart=new Date(startDT);
-    if(isSameDay(oldStart,targetDate)) return;
+    var sameDay=isSameDay(oldStart,targetDate);
+    var sameTime=isAllDay||!targetTime||(oldStart.getHours()===targetTime.h&&oldStart.getMinutes()===targetTime.m);
+    if(sameDay&&sameTime) return;
     var pad=function(n){return String(n).padStart(2,'0');};
     var body,newStartObj,newEndObj;
     if(isAllDay){
@@ -1297,7 +1313,7 @@ export function CRMKalendarz(p){
     } else {
       var oldEnd=endDT?new Date(endDT):new Date(oldStart.getTime()+3600000);
       var durMs=Math.max(0,oldEnd-oldStart);
-      var ns2=new Date(targetDate);ns2.setHours(oldStart.getHours(),oldStart.getMinutes(),oldStart.getSeconds(),0);
+      var ns2=new Date(targetDate);ns2.setHours(targetTime?targetTime.h:oldStart.getHours(),targetTime?targetTime.m:oldStart.getMinutes(),0,0);
       var ne2=new Date(ns2.getTime()+durMs);
       newStartObj={dateTime:ns2.toISOString(),timeZone:'Europe/Warsaw'};
       newEndObj={dateTime:ne2.toISOString(),timeZone:'Europe/Warsaw'};
@@ -1483,7 +1499,7 @@ export function CRMKalendarz(p){
             return ce("div",{key:di,
               onDragOver:function(e){e.preventDefault();e.dataTransfer.dropEffect="move";if(dragOverDay!==wdk)setDragOverDay(wdk);},
               onDragLeave:function(){if(dragOverDay===wdk)setDragOverDay(null);},
-              onDrop:function(e){e.preventDefault();setDragOverDay(null);var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,d);},
+              onDrop:function(e){e.preventDefault();setDragOverDay(null);var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,d,timeFromDropY(e,HOUR_FROM,HOUR_TO,HOUR_PX));},
               style:{position:"relative",height:gridH,borderLeft:"1px solid var(--bd2)",background:dragOverDay===wdk?"rgba(124,58,237,0.08)":undefined}},
               // linie godzin (i podwójny klik = nowe wydarzenie o tej godzinie)
               hours.map(function(hh,hi){
@@ -1538,7 +1554,9 @@ export function CRMKalendarz(p){
           })
         ),
         // Siatka + bloki wydarzeń
-        ce("div",{style:{flex:1,position:"relative",height:gridH,borderLeft:"1px solid var(--bd2)"}},
+        ce("div",{style:{flex:1,position:"relative",height:gridH,borderLeft:"1px solid var(--bd2)"},
+          onDragOver:function(e){e.preventDefault();e.dataTransfer.dropEffect="move";},
+          onDrop:function(e){e.preventDefault();var raw=dragEvRef.current;dragEvRef.current=null;if(raw)moveEventToDate(raw,refDate,timeFromDropY(e,HOUR_FROM,HOUR_TO,HOUR_PX));}},
           hours.map(function(hh,hi){
             return ce("div",{key:"h"+hh,
               onDoubleClick:function(){var dd=new Date(refDate);dd.setHours(hh,0,0,0);openNewEventModal(dd);},
