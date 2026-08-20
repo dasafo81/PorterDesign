@@ -23,6 +23,16 @@ var DOC_TYPES = [
 var FILTER_DOC_TYPES = DOC_TYPES.concat([{id:"zakup", label:"Zakupowa (stary model)"}]);
 var PAYMENT_METHODS = ["przelew","gotówka","karta","BLIK"];
 var UNITS = ["szt","m","m²","mb","kpl","usługa","godz"];
+// Opcje menu statusu płatności (kolumna "Zapłacono" na liście faktur) — id "issued" mapuje
+// się na payment_status="unpaid" (istniejąca wartość), pozostałe id odpowiadają wprost
+// wartościom payment_status w bazie. Kolejność = kolejność w rozwijanym menu.
+var PAY_STATUS_OPTIONS = [
+  {id:"issued",   label:"Wystawiona"},
+  {id:"paid",     label:"Opłacona"},
+  {id:"partial",  label:"Częściowo opł."},
+  {id:"rejected", label:"Odrzucona"},
+  {id:"sent",     label:"Wysłana"}
+];
 
 // ── Style helpers ───────────────────────────────────────────────────────────
 var inp = {
@@ -1439,6 +1449,12 @@ function InvoiceList(p){
   });
   var [dateTo,setDateTo]=useState(function(){ return new Date().toISOString().slice(0,10); });
   var [sess,setSess]=useState(null);
+  // Menu statusu płatności ("Zapłacono" na liście) — pozycjonowane na sztywno (position:fixed)
+  // wg współrzędnych przycisku, żeby nie było przycinane przez overflow:hidden kontenera tabeli.
+  var [payMenu,setPayMenu]=useState(null); // {invId, top, left} | null
+  // Modal wpisania kwoty przy wyborze "Częściowo opł." z menu statusu płatności.
+  var [partialModalInv,setPartialModalInv]=useState(null); // faktura | null
+  var [partialAmountInput,setPartialAmountInput]=useState("");
 
   // Multi-podmiot: aktywny podmiot steruje filtrem listy oraz sesja KSeF przy synchronizacji.
   var entitiesList=p.entities||[];
@@ -1605,12 +1621,42 @@ function InvoiceList(p){
     if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"var(--grd)"};
     if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"var(--grd)"};
     if(inv.payment_status==="partial")return {label:"Częściowa",color:"var(--amber)"};
+    // Odrzucona (klient odmówił zapłaty) — ma pierwszeństwo przed sprawdzeniem terminu,
+    // bo termin płatności przestaje mieć znaczenie, gdy faktura została odrzucona.
+    if(inv.payment_status==="rejected")return {label:"Odrzucona",color:"var(--red)"};
     // Faktury zakupowe (wydatki) dostają status "received" zamiast "issued" —
     // bez tego warunku termin płatności wydatków nigdy nie podświetlał się na
     // czerwono, mimo że wizualnie jest do tego przygotowany (kolumna, wiersz, badge).
     if((inv.status==="issued"||inv.status==="received")&&inv.due_date&&inv.due_date<todayISO()) return {label:"Przeterminowana",color:"var(--red)"};
-    return {label:"Oczekuje",color:"var(--t3)"};
+    if(inv.payment_status==="sent")   return {label:"Wysłana",color:"var(--violet)"};
+    return {label:"Wystawiona",color:"var(--t3)"};
   };
+
+  // Stosuje status wybrany z menu "Zapłacono". Dla "Częściowo opł." trzeba najpierw
+  // zapytać o wpłaconą kwotę — otwiera modal zamiast zapisywać od razu. Reszta opcji
+  // aplikuje się od razu po kliknięciu.
+  function applyPayStatus(inv,optionId){
+    setPayMenu(null);
+    if(optionId==="partial"){
+      setPartialModalInv(inv);
+      setPartialAmountInput(inv.paid_amount?String(inv.paid_amount).replace(".",","):"");
+      return;
+    }
+    // "issued" (Wystawiona) mapuje się na payment_status "unpaid" — to ta sama, już
+    // istniejąca wartość domyślna, więc nie wprowadzamy dla niej osobnej kolumny w bazie.
+    var statusMap={issued:"unpaid",paid:"paid",rejected:"rejected",sent:"sent"};
+    var newStatus=statusMap[optionId]||"unpaid";
+    var newAmount=newStatus==="paid"?(+(inv.total_gross)||0):0;
+    p.onChangePayStatus&&p.onChangePayStatus(inv,newStatus,newAmount);
+  }
+  // Zatwierdzenie kwoty w modalu częściowej wpłaty.
+  function confirmPartialPayment(){
+    if(!partialModalInv)return;
+    var amt=Math.max(0,+(String(partialAmountInput).replace(",",".")||0));
+    p.onChangePayStatus&&p.onChangePayStatus(partialModalInv,"partial",amt);
+    setPartialModalInv(null);
+    setPartialAmountInput("");
+  }
 
   var tabBtn=function(active){return {
     flex:1,cursor:"pointer",padding:"14px 18px",borderRadius:14,border:"none",textAlign:"left",
@@ -1791,24 +1837,43 @@ function InvoiceList(p){
               style:{width:16,height:16,cursor:"pointer",accentColor:"var(--violet)"}})
           );
         };
-        // Checkbox "Zapłacono": stan liczymy z payStatus (nie z inv.paid osobno) — inaczej
-        // gotówkowe faktury pokazywaly pusta kratke mimo etykiety "Zaplacona".
-        // Zaplacone sa zablokowane i wyszarzone niezaleznie od zrodla (gotowka/reczne odhaczenie/KSeF),
-        // zeby wyglad byl spojny. Cofniecie robi sie z edytora faktury.
-        var paidCb=function(){
+        // Kontrolka statusu płatności ("Zapłacono"): klikalna plakietka, otwiera menu z opcjami
+        // Wystawiona / Opłacona / Częściowo opł. / Odrzucona / Wysłana (patrz applyPayStatus).
+        // Wybranie "Częściowo opł." otwiera osobny modal do wpisania wpłaconej kwoty
+        // (confirmPartialPayment) — na liście widać wtedy plakietkę pół zieloną/pół czerwoną
+        // oraz kwotę pozostałą do dopłaty. Płatność gotówką zostaje zablokowana — nalicza się
+        // automatycznie po wystawieniu, tak jak wcześniej (nie da się jej cofnąć z tego miejsca).
+        var payControl=function(){
           var forcedPaid=inv.payment_method==="gotówka"&&inv.status==="issued";
-          var isPaid=forcedPaid||ps.label==="Zapłacona";
-          var lockedByCash=forcedPaid;
+          var isPartial=ps.label==="Częściowa";
+          var remaining=isPartial?Math.max(0,(+inv.total_gross||0)-(+inv.paid_amount||0)):0;
+          var tone=(forcedPaid||ps.label==="Zapłacona")?{bg:"var(--grl)",fg:"var(--grd)"}
+            :(ps.label==="Odrzucona"||ps.label==="Przeterminowana")?{bg:"var(--red-l)",fg:"var(--red)"}
+            :ps.label==="Wysłana"?{bg:"var(--violet-l)",fg:"var(--violet)"}
+            :{bg:"var(--bg)",fg:"var(--t3)"}; // Wystawiona (domyślny)
+          var pillStyle={
+            fontSize:10,fontWeight:700,borderRadius:20,padding:"3px 10px",whiteSpace:"nowrap",
+            border:"none",fontFamily:"inherit",outline:"none",
+            cursor:forcedPaid?"not-allowed":"pointer",
+            background:isPartial?"linear-gradient(90deg, var(--gr) 50%, var(--red) 50%)":tone.bg,
+            color:isPartial?"#fff":tone.fg
+          };
           return ce("div",{style:{textAlign:"center"}},
-            ce("input",{type:"checkbox",checked:isPaid,
-              disabled:isPaid,
-              title:lockedByCash?"Płatność gotówką — uznawana za zapłaconą automatycznie po wystawieniu"
-                    :isPaid?"Faktura oznaczona jako zapłacona — cofnij w edytorze faktury":undefined,
-              onClick:function(e){e.stopPropagation();},
-              onChange:function(e){p.onTogglePaid&&p.onTogglePaid(inv,e.target.checked);},
-              style:{width:16,height:16,cursor:isPaid?"not-allowed":"pointer",
-                accentColor:isPaid?"var(--gr)":"var(--violet)",opacity:1}}),
-            ce("div",{style:{fontSize:9,fontWeight:700,marginTop:2,color:ps.color}},ps.label)
+            ce("button",{
+              type:"button",
+              disabled:forcedPaid,
+              title:forcedPaid?"Płatność gotówką — uznawana za zapłaconą automatycznie po wystawieniu"
+                    :"Kliknij, aby zmienić status płatności",
+              onClick:function(e){
+                e.stopPropagation();
+                if(forcedPaid)return;
+                var rect=e.currentTarget.getBoundingClientRect();
+                var menuWidth=170;
+                setPayMenu({invId:inv.id,top:rect.bottom+4,left:Math.min(rect.left,window.innerWidth-menuWidth-8)});
+              },
+              style:pillStyle
+            }, ps.label+(forcedPaid?"":" ▾")),
+            isPartial&&ce("div",{style:{fontSize:9,fontWeight:700,marginTop:3,color:"var(--red)"}},"do dopłaty: "+fmtMoney(remaining))
           );
         };
         var snap=inv.seller_snapshot||{};
@@ -1862,7 +1927,7 @@ function InvoiceList(p){
               : ce("div",{style:{fontSize:13,fontWeight:700,color:isPaidRow?"var(--grd)":"var(--t1)"}},fmtMoney(inv.total_gross)),
             ce("div",{style:{fontSize:10,color:"var(--t3)"}},"netto "+fmtMoney(inv.total_net))
           ),
-          paidCb(),
+          payControl(),
           inv.ksef_number
             ? ce("div",{style:{textAlign:"center"},title:"Zatwierdzone automatycznie przez nadanie numeru KSeF"},
                 ce("input",{type:"checkbox",checked:true,disabled:true,
@@ -1902,6 +1967,52 @@ function InvoiceList(p){
       ce("div",{style:{textAlign:"right"}},
         ce("div",{style:{fontSize:10,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em"}},"Suma brutto"),
         ce("div",{style:{fontSize:18,fontWeight:800,color:"var(--violet)"}},fmtMoney(listTotals.gross))
+      )
+    ),
+
+    // ── Menu statusu płatności (rozwijane po kliknięciu plakietki "Zapłacono") ──
+    // position:fixed wg współrzędnych przycisku (patrz payControl) — tabela ma
+    // overflow:hidden, więc zwykłe position:absolute byłoby przycinane przez
+    // zaokrąglone rogi kontenera.
+    payMenu&&(function(){
+      var menuInv=list.find(function(i){return i.id===payMenu.invId;});
+      return ce("div",null,
+      // Niewidzialna nakładka na cały ekran — kliknięcie poza menu je zamyka.
+      ce("div",{onClick:function(){setPayMenu(null);},style:{position:"fixed",inset:0,zIndex:300}}),
+      ce("div",{style:{position:"fixed",top:payMenu.top,left:payMenu.left,zIndex:301,minWidth:170,
+          background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,
+          boxShadow:"0 8px 24px rgba(0,0,0,0.18)",overflow:"hidden"}},
+        PAY_STATUS_OPTIONS.map(function(opt,oi){
+          return ce("div",{key:opt.id,
+            onClick:function(e){e.stopPropagation();if(menuInv)applyPayStatus(menuInv,opt.id);},
+            style:{padding:"9px 14px",fontSize:13,color:"var(--t1)",cursor:"pointer",
+              borderBottom:oi<PAY_STATUS_OPTIONS.length-1?"1px solid var(--bd3)":"none"},
+            onMouseEnter:function(e){e.currentTarget.style.background="var(--bg3)";},
+            onMouseLeave:function(e){e.currentTarget.style.background="transparent";}
+          },opt.label);
+        })
+      )
+      );
+    })(),
+
+    // ── Modal: kwota częściowej wpłaty (otwiera się po wyborze "Częściowo opł.") ──
+    partialModalInv&&ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",
+      display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
+      ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"1.8rem",width:320,
+        border:"1px solid var(--bd2)",boxShadow:"0 12px 40px rgba(0,0,0,0.15)"}},
+        ce("div",{style:{fontSize:13,fontWeight:600,marginBottom:4,color:"var(--t1)",letterSpacing:"0.02em"}},
+          "Częściowa wpłata"),
+        ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:12}},
+          "Faktura "+(partialModalInv.number||"(szkic)")+" \u2014 "+fmtMoney(partialModalInv.total_gross)+" brutto"),
+        ce("span",{style:label},"Wpłacona kwota"),
+        ce("input",{autoFocus:true,value:partialAmountInput,inputMode:"decimal",placeholder:"0,00",
+          onChange:function(e){setPartialAmountInput(e.target.value);},
+          onKeyDown:function(e){if(e.key==="Enter")confirmPartialPayment();},
+          style:Object.assign({},inp,{marginBottom:14,textAlign:"right"})}),
+        ce("div",{style:{display:"flex",gap:8}},
+          ce("button",{onClick:confirmPartialPayment,style:Object.assign({},btnPrimary,{flex:1})},"Zapisz"),
+          ce("button",{onClick:function(){setPartialModalInv(null);setPartialAmountInput("");},style:btnSecondary},"Anuluj")
+        )
       )
     )
   );
@@ -2657,15 +2768,17 @@ export function ScreenInvoices(p){
         entities:entities, activeEntityId:activeEntityId, onEntityChange:changeEntity,
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete, onDuplicate:onDuplicate,
         onSynced:function(){ sbApi.getInvoices().then(function(data){ setInvoices(data||[]); }); },
-        onTogglePaid:function(inv,val){
-          // Zaznaczenie jako zapłacona ustawia paid_amount na pełną kwotę brutto; odznaczenie zeruje.
-          // payment_status musi iść razem z paid, inaczej etykieta statusu (payStatus) pokazuje
-          // "Oczekuje" mimo zaznaczonego checkboxa — payStatus() czyta payment_status, nie paid.
-          var newAmount=val?(+(inv.total_gross)||0):0;
-          var newStatus=val?"paid":"unpaid";
-          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:val,paid_amount:newAmount,payment_status:newStatus}):x;});});
-          sbApi.updateInvoice(inv.id,{paid:val,paid_amount:newAmount,payment_status:newStatus}).catch(function(){
-            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:!val,paid_amount:inv.paid_amount||0,payment_status:inv.payment_status||"unpaid"}):x;});});
+        onChangePayStatus:function(inv,newStatus,newAmount){
+          // Uogólniony handler zmiany statusu płatności — zasila menu "Zapłacono"
+          // (Wystawiona/Opłacona/Częściowo opł./Odrzucona/Wysłana), zastępuje dawny
+          // checkbox onTogglePaid. `paid` (bool) trzymamy zsynchronizowane z
+          // payment_status="paid" dla wstecznej zgodności ze starym schematem.
+          var amount=+(newAmount)||0;
+          var isPaid=newStatus==="paid";
+          var prevPatch={paid:inv.paid,paid_amount:inv.paid_amount||0,payment_status:inv.payment_status||"unpaid"};
+          setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:isPaid,paid_amount:amount,payment_status:newStatus}):x;});});
+          sbApi.updateInvoice(inv.id,{paid:isPaid,paid_amount:amount,payment_status:newStatus}).catch(function(){
+            setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,prevPatch):x;});});
           });
         },
         onToggleApproved:function(inv,val){
