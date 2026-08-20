@@ -100,6 +100,16 @@ export const sbApi = {
   getContactQuotes: function(contactId){
     return sbFetch("GET","clients?contact_id=eq."+contactId+"&select=id,name,status,created_at&order=id.desc");
   },
+  // \u2500\u2500 OFERTY (historia numer\u00f3w ofert generowanych dla klienta) \u2500\u2500
+  // U\u017cywane przy \u0142\u0105czeniu faktury z ofert\u0105, na podstawie kt\u00f3rej jest wystawiana.
+  getClientOffers: function(clientId){
+    return sbFetch("GET","offers?client_id=eq."+clientId+"&select=*&order=created_at.desc");
+  },
+  addOffer: function(data){
+    return sbFetch("POST","offers",data).then(function(rows){
+      return Array.isArray(rows)?rows[0]:rows;
+    });
+  },
   // \u2500\u2500 DEALS (CRM) \u2500\u2500
   getDeals: function(){
     return sbFetch("GET","deals?select=*&order=created_at.asc");
