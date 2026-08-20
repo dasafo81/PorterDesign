@@ -253,6 +253,10 @@ function InvoiceEditor(p){
   var [buyerEmail,setBuyerEmail]=useState(initContractor?(initContractor.email||""):(initInv.buyer_email||""));
   var [clientId,setClientId]=useState(initInv.client_id||null);
   var [dealId,setDealId]=useState(initInv.deal_id||null);
+  // Powiązanie z ofertą — łączy fakturę z wcześniej wygenerowaną wyceną klienta
+  var [clientOffers,setClientOffers]=useState([]);
+  var [offerId,setOfferId]=useState(initInv.offer_id||null);
+  var [offerNumber,setOfferNumber]=useState(initInv.offer_number||"");
   var [clientSearch,setClientSearch]=useState("");
   var [clientDropOpen,setClientDropOpen]=useState(false);
   // Powiązanie z bazą kontrahentów (Faza 2)
@@ -264,6 +268,11 @@ function InvoiceEditor(p){
   useEffect(function(){
     sbApi.getContacts().then(function(rows){setContacts(rows||[]);}).catch(function(){});
   },[]);
+  // Lista ofert wybranego klienta (do powiązania faktury z konkretną ofertą)
+  useEffect(function(){
+    if(!clientId||direction==="zakup"){setClientOffers([]);return;}
+    sbApi.getClientOffers(clientId).then(function(rows){setClientOffers(rows||[]);}).catch(function(){setClientOffers([]);});
+  },[clientId,direction]);
   var [items,setItems]=useState(
     (initInv.invoice_items&&initInv.invoice_items.length>0)
       ? initInv.invoice_items
@@ -367,9 +376,17 @@ function InvoiceEditor(p){
     setDealId(d?d.id:null);
     setClientSearch(c.name||"");
     setClientDropOpen(false);
+    // Zmiana klienta unieważnia wcześniej wybraną ofertę (należała do innego klienta)
+    setOfferId(null); setOfferNumber("");
   }
   function clearClient(){
     setClientId(null); setDealId(null); setClientSearch("");
+    setOfferId(null); setOfferNumber("");
+  }
+  function pickOffer(id){
+    var o=clientOffers.find(function(x){return String(x.id)===String(id);});
+    setOfferId(o?o.id:null);
+    setOfferNumber(o?o.number:"");
   }
 
   // ── Kontrahenci (baza) — picker autouzupełniający dane nabywcy/sprzedawcy ──
@@ -503,6 +520,7 @@ function InvoiceEditor(p){
       issue_date:issueDate, sale_date:saleDate, due_date:dueDate,
       payment_method:payMethod, kasowa:kasowa,
       client_id:isZakupDir?null:clientId, deal_id:isZakupDir?null:dealId,
+      offer_id:isZakupDir?null:(offerId||null), offer_number:isZakupDir?"":(offerNumber||""),
       contact_id: contactId||null,
       // Dla faktur zakupowych my (Porter Design) jesteśmy nabywcą — buyer_* wypełniamy
       // danymi sprzedawcy z Ustawień, a prawdziwy kontrahent (wpisany w formularzu w polach
@@ -726,6 +744,19 @@ function InvoiceEditor(p){
         clientId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},
           "\u2713 Powi\u0105zano z klientem CRM"+(dealId?" \u2014 deal #"+dealId:""))
       ),
+
+      direction!=="zakup"&&clientId&&ce("div",{style:{marginBottom:14}},
+        ce("span",{style:label},"Powi\u0105zana oferta (opcjonalnie)"),
+        ce("select",{style:inp,value:offerId||"",onChange:function(e){pickOffer(e.target.value);}},
+          ce("option",{value:""},clientOffers.length?"\u2014 brak (nie dotyczy) \u2014":"\u2014 klient nie ma jeszcze \u017cadnej wygenerowanej oferty \u2014"),
+          clientOffers.map(function(o){
+            return ce("option",{key:o.id,value:o.id},
+              o.number+" \u2014 "+fmtDate((o.created_at||"").slice(0,10))+" \u2014 "+fmtMoney(o.total_gross||0));
+          })
+        ),
+        offerId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},"\u2713 Faktura wystawiana na podstawie oferty "+offerNumber)
+      ),
+
       ce("div",{style:{display:"flex",gap:8,marginBottom:10}},
         ce("div",{style:{flex:1}},
           ce("span",{style:label},direction==="zakup"?"NIP sprzedawcy":"NIP nabywcy"),
