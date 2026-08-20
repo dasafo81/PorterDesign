@@ -94,7 +94,10 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     return `
     <P_13_1>${fmt2(g.net)}</P_13_1><P_14_1>${fmt2(g.vat)}</P_14_1>`;
   }).join("");
-  const payMap: Record<string,string> = {"przelew":"6","gotówka":"1","karta":"5","BLIK":"5"};
+  // Oficjalne kody FA(3): 1-gotówka, 2-karta, 3-bon, 4-czek, 5-kredyt, 6-przelew, 7-mobilna.
+  // Wczesniej "karta" i "BLIK" mapowaly sie na "5" (kredyt) zamiast poprawnych "2" (karta)
+  // i "7" (mobilna) — wysylane faktury zglaszaly do KSeF zla forme platnosci.
+  const payMap: Record<string,string> = {"przelew":"6","gotówka":"1","karta":"2","BLIK":"7"};
   const payCode = payMap[inv.payment_method||""]||"6";
   // ── Metoda kasowa ─────────────────────────────────────────────────────────
   // W FA(3) jedynym poprawnym miejscem na te adnotacje jest Adnotacje/P_16
