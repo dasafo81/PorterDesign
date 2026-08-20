@@ -1343,6 +1343,9 @@ export function App(p){
       return sum;
     }
     var hasAnyVariants=(curClient.rooms||[]).some(function(r){return(r.windows||[]).some(function(w){return!!w.variantGroup;});});
+    var sumBaseTotal=roundTo10(withComm(clientTotalWithVariants(curClient))+installValue(withComm(clientTotalWithVariants(curClient))));
+    var sumDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(sumBaseTotal*(+discountInput)/100)):0;
+    var sumFinalTotal=Math.max(0,roundTo10(sumBaseTotal-sumDiscountVal));
 
     content=ce(Fragment,null,
       sRooms.map(function(r){return renderRoomSummary(r);}),
@@ -1359,13 +1362,23 @@ export function App(p){
         ce("input",{type:"text",inputMode:"decimal",value:montazInput,onChange:function(ev){var v=ev.target.value;setMontazInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{install_fee:v,install_fee_mode:montazMode});});},placeholder:montazMode==="amount"?"np. 1200":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
         montazInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+montazInput+(montazMode==="amount"?" zł":"%")):null,
       ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:0,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
+          ce("input",{type:"checkbox",checked:discountEnabled,onChange:function(ev){setDiscountEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
+          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83C\uDFF7\uFE0F Rabat")
+        ),
+        discountEnabled?ce("select",{value:discountMode,onChange:function(ev){setDiscountMode(ev.target.value);},style:{padding:"8px 10px",border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},ce("option",{value:"amount"},"zł"),ce("option",{value:"percent"},"%")):null,
+        discountEnabled?ce("input",{type:"text",inputMode:"decimal",value:discountInput,onChange:function(ev){setDiscountInput(ev.target.value);},placeholder:discountMode==="amount"?"np. 300":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
+        discountEnabled&&discountInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+discountInput+(discountMode==="amount"?" zł":"%")):null
+      ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:0}},
         ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},
-          hasAnyVariants
+          (hasAnyVariants
             ?(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie od (Wariant A) + "+commissionInput+"% polecenie":"\u0141\u0105cznie od (Wariant A)")
-            :(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie + "+commissionInput+"% polecenie":"\u0141\u0105cznie ca\u0142a wizyta")
+            :(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie + "+commissionInput+"% polecenie":"\u0141\u0105cznie ca\u0142a wizyta"))
+          +(sumDiscountVal>0?" \u2212 rabat":"")
         ),
-        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(withComm(clientTotalWithVariants(curClient))+installValue(withComm(clientTotalWithVariants(curClient))))+" z\u0142")
+        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},sumFinalTotal+" z\u0142")
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
