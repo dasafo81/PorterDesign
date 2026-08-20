@@ -1806,6 +1806,19 @@ export function ScreenMail(p){
     contacts.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).forEach(function(c){
       if(!fc.find(function(x){return x.email.toLowerCase()===c.email.toLowerCase();}))fc.push({email:c.email,name:c.name});
     });
+    // Osoby, z którymi już była korespondencja w Outlooku (inbox/sent/trash/spam — już wczytane w allMails).
+    // To realna historia maili, nie tylko to co wysłano przez Kompozytor tej appki.
+    var seenMail={};
+    allMails.forEach(function(m){
+      var addr=m.folder==="sent"?m.to:m.from;
+      var nm=m.folder==="sent"?m.toName:m.fromName;
+      if(!addr)return;
+      var al=addr.toLowerCase();
+      if(seenMail[al])return;
+      if(al.indexOf(q)===-1&&(nm||"").toLowerCase().indexOf(q)===-1)return;
+      seenMail[al]=1;
+      if(!fc.find(function(x){return x.email.toLowerCase()===al;}))fc.push({email:addr,name:nm||addr});
+    });
     // Dociągnij historię adresów z Supabase (cross-device, cross-session)
     sbApi.searchMailRecipients(q).then(function(rows){
       // Dodatkowy filtr po stronie klienta — upewnij się że query nadal pasuje
@@ -1816,10 +1829,10 @@ export function ScreenMail(p){
       hist.forEach(function(h){if(!combined.find(function(x){return x.email.toLowerCase()===h.email.toLowerCase();}))combined.push(h);});
       setContactSug(combined.slice(0,8));
     }).catch(function(){
-      setContactSug(fc.slice(0,5));
+      setContactSug(fc.slice(0,8));
     });
     // Pokaż lokalnych od razu, Supabase dopełni za chwilę
-    setContactSug(fc.slice(0,5));
+    setContactSug(fc.slice(0,8));
   }
 
   // Czy treść maila (HTML z RichTextEditora) jest faktycznie pusta?
