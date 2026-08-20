@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sbApi, ksefApi } from '../lib/supabase.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
+import { InlineEdit } from '../constants/data.js';
 const ce = React.createElement;
 
 // ── Stałe ──────────────────────────────────────────────────────────────────
@@ -407,6 +408,22 @@ function InvoiceEditor(p){
       });
     }
   }
+
+  // Nadaje/poprawia numer wybranej (juz istniejacej) oferty klienta — zarowno
+  // w bazie (offers.number), jak i lokalnie w selektorze/etykiecie ponizej,
+  // zeby faktura powiazana z ta oferta od razu pokazywala nowy numer.
+  function renameOffer(newNumber){
+    var num=(newNumber||"").trim();
+    if(!num||!offerId)return;
+    var prevNumber=offerNumber;
+    setOfferNumber(num);
+    setClientOffers(function(prev){return prev.map(function(o){return String(o.id)===String(offerId)?Object.assign({},o,{number:num}):o;});});
+    sbApi.updateOffer(offerId,{number:num}).catch(function(e){
+      setOfferNumber(prevNumber);
+      setClientOffers(function(prev){return prev.map(function(o){return String(o.id)===String(offerId)?Object.assign({},o,{number:prevNumber}):o;});});
+      alert("Błąd zapisu numeru oferty: "+(e.message||e));
+    });
+  }
   // Wstawia pozycję faktury na X% wartości brutto powiązanej oferty (domyślnie 50% —
   // typowa zaliczka). Jeśli faktura ma jeszcze tylko świeżą, pustą pozycję — zastępuje
   // ją; w przeciwnym razie dopisuje nową, żeby nie skasować już wpisanych danych.
@@ -793,7 +810,10 @@ function InvoiceEditor(p){
               o.number+" \u2014 "+fmtDate((o.created_at||"").slice(0,10))+" \u2014 "+fmtMoney(o.total_gross||0));
           })
         ),
-        offerId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},"\u2713 Faktura wystawiana na podstawie oferty "+offerNumber),
+        offerId&&ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}},
+          ce("span",{style:{fontSize:11,color:"var(--violet)"}},"\u2713 Faktura wystawiana na podstawie oferty"),
+          ce(InlineEdit,{value:offerNumber,onSave:renameOffer,style:{fontSize:11,color:"var(--violet)",fontWeight:700},inputStyle:{fontSize:11,minWidth:140}})
+        ),
         offerId&&offerDiscount>0&&ce("div",{style:{fontSize:11,color:"var(--amber)",marginTop:4}},"\uD83C\uDFF7\uFE0F Przyznany rabat z tej oferty: \u2212"+fmtMoney(offerDiscount)+" (dopisany do Uwag faktury)"),
         offerId&&ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:10,flexWrap:"wrap"}},
           ce("span",{style:{fontSize:11,color:"var(--t3)"}},"Kwota faktury:"),
