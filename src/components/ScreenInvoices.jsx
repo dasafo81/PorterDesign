@@ -257,6 +257,7 @@ function InvoiceEditor(p){
   var [clientOffers,setClientOffers]=useState([]);
   var [offerId,setOfferId]=useState(initInv.offer_id||null);
   var [offerNumber,setOfferNumber]=useState(initInv.offer_number||"");
+  var [offerDiscount,setOfferDiscount]=useState(initInv.offer_discount||0);
   // Zwykle fakturujemy 50% wartości oferty (zaliczka) — stąd domyślny wybór,
   // ale "100" i "custom" (dowolny %) pozostają dostępne jednym klikiem.
   var [offerPctChoice,setOfferPctChoice]=useState("50");
@@ -381,11 +382,11 @@ function InvoiceEditor(p){
     setClientSearch(c.name||"");
     setClientDropOpen(false);
     // Zmiana klienta unieważnia wcześniej wybraną ofertę (należała do innego klienta)
-    setOfferId(null); setOfferNumber("");
+    setOfferId(null); setOfferNumber(""); setOfferDiscount(0);
   }
   function clearClient(){
     setClientId(null); setDealId(null); setClientSearch("");
-    setOfferId(null); setOfferNumber("");
+    setOfferId(null); setOfferNumber(""); setOfferDiscount(0);
   }
   function pickOffer(id){
     var o=clientOffers.find(function(x){return String(x.id)===String(id);});
@@ -393,6 +394,18 @@ function InvoiceEditor(p){
     setOfferNumber(o?o.number:"");
     setOfferPctChoice("50");
     setOfferPctCustom("");
+    var disc=o?(+o.discount_amount||0):0;
+    setOfferDiscount(disc);
+    // Rabat z oferty nie może trafić na fakturę jako osobna (ujemna) pozycja —
+    // patrz uzasadnienie przy "Rabat kwotowy" niżej — więc dopisujemy go do Uwag,
+    // żeby był widoczny na wydruku faktury.
+    if(disc>0){
+      var noteLine="Przyznany rabat z oferty "+o.number+": "+fmtMoney(disc)+".";
+      setNotes(function(prev){
+        if(prev&&prev.indexOf(noteLine)>=0)return prev;
+        return (prev?prev.replace(/\s*$/,"")+"\n":"")+noteLine;
+      });
+    }
   }
   // Wstawia pozycję faktury na X% wartości brutto powiązanej oferty (domyślnie 50% —
   // typowa zaliczka). Jeśli faktura ma jeszcze tylko świeżą, pustą pozycję — zastępuje
@@ -546,6 +559,7 @@ function InvoiceEditor(p){
       payment_method:payMethod, kasowa:kasowa,
       client_id:isZakupDir?null:clientId, deal_id:isZakupDir?null:dealId,
       offer_id:isZakupDir?null:(offerId||null), offer_number:isZakupDir?"":(offerNumber||""),
+      offer_discount:isZakupDir?0:(+offerDiscount||0),
       contact_id: contactId||null,
       // Dla faktur zakupowych my (Porter Design) jesteśmy nabywcą — buyer_* wypełniamy
       // danymi sprzedawcy z Ustawień, a prawdziwy kontrahent (wpisany w formularzu w polach
@@ -780,6 +794,7 @@ function InvoiceEditor(p){
           })
         ),
         offerId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},"\u2713 Faktura wystawiana na podstawie oferty "+offerNumber),
+        offerId&&offerDiscount>0&&ce("div",{style:{fontSize:11,color:"var(--amber)",marginTop:4}},"\uD83C\uDFF7\uFE0F Przyznany rabat z tej oferty: \u2212"+fmtMoney(offerDiscount)+" (dopisany do Uwag faktury)"),
         offerId&&ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:10,flexWrap:"wrap"}},
           ce("span",{style:{fontSize:11,color:"var(--t3)"}},"Kwota faktury:"),
           ["50","100"].map(function(v){
