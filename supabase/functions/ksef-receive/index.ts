@@ -127,17 +127,35 @@ function parseParty(block: string): Party {
   };
 }
 
-// Forma płatności (Platnosc/FormaPlatnosci) — kody wg FA(3), zgodnie z mapowaniem
-// używanym już przy podglądzie faktur w ksef-invoice/index.ts.
+// Forma płatności (Platnosc/FormaPlatnosci) — oficjalny słownik FA(3) (dozwolone
+// wartości 1-7, potwierdzone w dokumentacji XSD MF): 1-gotówka, 2-karta, 3-bon,
+// 4-czek, 5-kredyt, 6-przelew, 7-mobilna. WCZEŚNIEJSZA WERSJA MIAŁA KODY 2-6
+// PRZESUNIĘTE O JEDNO MIEJSCE (np. "6":"kredyt" zamiast poprawnego "6":"przelew"),
+// więc faktura opłacana realnie przelewem (kod 6) pokazywała się w podglądzie jako
+// "Kredyt" — zgłoszenie 2026-08-20 (faktura NITECZKAMI FV/26/08/5).
 const PAY_METHOD_MAP: Record<string, string> = {
-  "1": "gotówka", "2": "przelew", "3": "karta", "4": "bon", "5": "czek",
-  "6": "kredyt", "7": "mobilna", "8": "skonto",
+  "1": "gotówka", "2": "karta", "3": "bon", "4": "czek", "5": "kredyt",
+  "6": "przelew", "7": "mobilna",
 };
 function parsePaymentMethod(platnoscB: string): string {
   if (!platnoscB) return "przelew";
   const raw = xmlVal(platnoscB, "FormaPlatnosci");
   if (!raw) return "przelew";
   return PAY_METHOD_MAP[raw] || raw.toLowerCase();
+}
+// Uwagi — DodatkowyOpis/Wartosc (format uzywany przez nasz wlasny generator
+// ksef-send/index.ts oraz wiekszosc programow ksiegowych), z fallbackiem na
+// StopkaFaktury. WCZESNIEJSZA WERSJA szukala tagu <P_Opis>, ktory nie istnieje
+// w schemacie FA(3) — to relikt starego, juz nieuzywanego generatora
+// (api/ksef/send.js) i faktycznie NIGDY nie trafial zadnej faktury, wiec kazda
+// synchronizacja z KSeF zerowala Uwagi (zgloszenie 2026-08-20, faktura
+// NITECZKAMI FV/26/08/5 mimo widocznej notatki "Dostawa zwolniona z art. 113...").
+function parseNotes(fa: string, xml: string): string {
+  const raw = xmlVal(fa, "DodatkowyOpis") || xmlVal(xml, "StopkaFaktury") || "";
+  if (!raw) return "";
+  const wartosci = xmlAll(raw, "Wartosc");
+  if (wartosci.length > 0) return wartosci.join(" | ");
+  return raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 // Platnosc/Zaplacono: "1"=Tak, "2"=Nie (ta sama konwencja co pozostale flagi Adnotacje
 // w FA(3), np. P_17/P_18/P_19 — "2" jako domyslna odpowiedz przecząca). Dzięki temu
@@ -195,7 +213,7 @@ function parseFA(xml: string) {
     total_net: totalNetFromItems,
     total_vat: totalVatFromItems,
     currency: xmlVal(xml, "KodWaluty") || "PLN",
-    notes: xmlVal(xml, "P_Opis"),
+    notes: parseNotes(fa, xml),
     payment_method: parsePaymentMethod(platnoscB),
     paid: parsePaidFlag(platnoscB),
     seller_party: seller, buyer_party: buyer, bank,
