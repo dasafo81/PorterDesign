@@ -1883,7 +1883,7 @@ function InvoiceList(p){
               style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px"}
             },"📋"),
             ce("button",{
-              onClick:function(e){e.stopPropagation();if(confirm("Usunąć fakturę?"))p.onDelete(inv.id);},
+              onClick:function(e){e.stopPropagation();if(confirm("Usunąć fakturę?"))p.onDelete(inv);},
               style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px"}
             },"🗑"))
         );
@@ -2574,13 +2574,32 @@ export function ScreenInvoices(p){
     setSettings(newSettings);
     invoiceNavigate("list");
   }
-  function onDelete(id){
-    // Uwaga: numer NIE jest cofany do licznika (nawet dla faktur wystawionych) —
-    // dekrementacja bez sprawdzenia, czy to faktycznie ostatni nadany numer w danym
-    // okresie/typie, prowadziła do przydzielenia tego samego numeru dwóm różnym fakturom.
+  function onDelete(inv){
+    var id=(inv&&typeof inv==="object")?inv.id:inv; // zgodność wsteczna, gdyby ktoś wywołał z samym id
+    // Cofnięcie numeru do licznika jest bezpieczne WYŁĄCZNIE gdy:
+    //  1) faktura nigdy nie trafiła do KSeF (numer nie "wyszedł" na zewnątrz),
+    //  2) numer faktycznie pochodzi z naszego licznika — nie dotyczy zwykłych faktur
+    //     zakupowych, tam numer nadaje dostawca (patrz isRealPurchaseDoc w save()),
+    //  3) to najświeżej wystawiona faktura w swojej grupie licznika
+    //     (entity_id, doc_type, period) — inaczej cofnięcie mogłoby przydzielić
+    //     ten sam numer dwóm różnym fakturom, gdyby usunięto starszą z grupy.
+    var reclaim=null;
+    if(inv&&typeof inv==="object"&&!inv.ksef_number&&inv.doc_type&&inv.entity_id
+       &&!(inv.direction==="zakup"&&inv.doc_type!=="proforma"&&inv.doc_type!=="eko")){
+      var ent2=entities.filter(function(e){return e.id===inv.entity_id;})[0];
+      var reset2=ent2?ent2.numbering_reset:"monthly";
+      var period2=periodKey(reset2,inv.issue_date||inv.created_at);
+      var isNewest=!invoices.some(function(x){
+        return x.id!==inv.id&&x.entity_id===inv.entity_id&&x.doc_type===inv.doc_type
+          &&periodKey(reset2,x.issue_date||x.created_at)===period2
+          &&(x.created_at||"")>(inv.created_at||"");
+      });
+      if(isNewest) reclaim={docType:inv.doc_type,period:period2,entityId:inv.entity_id};
+    }
     sbApi.deleteInvoice(id)
       .then(function(){
         setInvoices(function(prev){return prev.filter(function(i){return i.id!==id;});});
+        if(reclaim) sbApi.decrementInvoiceCounter(reclaim.docType,reclaim.period,reclaim.entityId).catch(function(){});
       })
       .catch(function(e){ alert("B\u0142\u0105d usuwania: "+e.message); });
   }
