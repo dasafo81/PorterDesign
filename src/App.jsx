@@ -135,6 +135,7 @@ export function App(p){
   var s14mm=useState("percent"),montazMode=s14mm[0],setMontazMode=s14mm[1];
   var sDiscEn=useState(false),discountEnabled=sDiscEn[0],setDiscountEnabled=sDiscEn[1];
   var sDiscAmt=useState(""),discountInput=sDiscAmt[0],setDiscountInput=sDiscAmt[1];
+  var sDiscMode=useState("amount"),discountMode=sDiscMode[0],setDiscountMode=sDiscMode[1];
   var sVisitFee=useState(false),visitFeeEnabled=sVisitFee[0],setVisitFeeEnabled=sVisitFee[1];
   var sVisitFeeAmt=useState(""),visitFeeInput=sVisitFeeAmt[0],setVisitFeeInput=sVisitFeeAmt[1];
   var sOfferRows=useState([]),offerPreviewRows=sOfferRows[0],setOfferPreviewRows=sOfferRows[1];
