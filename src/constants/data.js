@@ -3835,9 +3835,6 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
     </div>
   </div>
   <div class="meta">
-    <div class="meta-block"><h4>Sprzedawca</h4>
-      <p><strong>${SELLER.name}</strong><br>${SELLER.addr}<br>${SELLER.city}<br>NIP: ${SELLER.nip}<br>Tel.: ${SELLER.tel}<br>E-mail: ${SELLER.email}<br>Konto: ${SELLER.bank}<br>${SELLER.bankName}</p>
-    </div>
     <div class="meta-block"><h4>Nabywca</h4>
       <p><strong>${client.name}</strong><br>${client.addr||""}</p>
     </div>
