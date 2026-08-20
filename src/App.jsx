@@ -1216,8 +1216,6 @@ export function App(p){
       setOfferPreviewRows(applyOfferComm(baseRows,comm));
       setOfferNotes("");
       setOfferValidUntil(new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10));
-      setDiscountEnabled(false);
-      setDiscountInput("");
       setVisitFeeEnabled(false);
       setVisitFeeInput("");
       setScreen("offerPreview");
@@ -1481,15 +1479,6 @@ export function App(p){
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
-          ce("input",{type:"checkbox",checked:discountEnabled,onChange:function(ev){setDiscountEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
-          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83C\uDFF7\uFE0F Rabat")
-        ),
-        discountEnabled?ce("select",{value:discountMode,onChange:function(ev){setDiscountMode(ev.target.value);},style:{padding:"8px 10px",border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},ce("option",{value:"amount"},"zł"),ce("option",{value:"percent"},"%")):null,
-        discountEnabled?ce("input",{type:"text",inputMode:"decimal",value:discountInput,onChange:function(ev){setDiscountInput(ev.target.value);},placeholder:discountMode==="amount"?"np. 300":"np. 10",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
-        discountEnabled&&discountInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+discountInput+(discountMode==="amount"?" zł":"%")):null
-      ),
-      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
-        ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
           ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){setVisitFeeEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
           ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83D\uDE97 Koszt wizyty")
         ),
@@ -1499,7 +1488,7 @@ export function App(p){
       ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16}},
         previewMontazVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--bg)",opacity:0.7}},ce("span",null,"Bez montażu"),ce("span",null,roundTo10(previewTotal)+" zł")):null,
-        previewDiscountVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--bg)",opacity:0.7}},ce("span",null,"Rabat"),ce("span",null,"\u2212"+previewDiscountVal+" zł")):null,
+        previewDiscountVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--bg)",opacity:0.7}},ce("span",null,"Przyznany rabat"),ce("span",null,"\u2212"+previewDiscountVal+" zł")):null,
         previewVisitFeeVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--bg)",opacity:0.7}},ce("span",null,"Koszt wizyty (odliczony)"),ce("span",null,"\u2212"+previewVisitFeeVal+" zł")):null,
         ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
           ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},previewMontazVal>0?"\u0141\u0105cznie z montażem":"\u0141\u0105cznie"),
