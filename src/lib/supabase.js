@@ -110,6 +110,13 @@ export const sbApi = {
       return Array.isArray(rows)?rows[0]:rows;
     });
   },
+  // Nadaje/poprawia numer juz istniejacej oferty (np. gdy auto-numer
+  // OF-YYYYMMDD-Slug trzeba zastapic recznym/docelowym numerem).
+  updateOffer: function(id,data){
+    return sbFetch("PATCH","offers?id=eq."+id,data).then(function(rows){
+      return Array.isArray(rows)?rows[0]:rows;
+    });
+  },
   // \u2500\u2500 DEALS (CRM) \u2500\u2500
   getDeals: function(){
     return sbFetch("GET","deals?select=*&order=created_at.asc");
