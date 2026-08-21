@@ -123,3 +123,67 @@ export function ModalClient(p){
     )
   );
 }
+
+// ── Modal: nowa wycena dla istniejącego klienta (bez tworzenia nowego kontrahenta) ──
+export function ModalNewQuoteFromClient(p){
+  var clientsList=p.clients||[];
+  var css=useState(""),search=css[0],setSearch=css[1];
+  var cis=useState(null),picked=cis[0],setPicked=cis[1];
+
+  var filtered=search.trim()
+    ? clientsList.filter(function(c){
+        var q=search.toLowerCase();
+        return (c.name||"").toLowerCase().includes(q)
+          || (c.addr||"").toLowerCase().includes(q)
+          || (c.phone||"").includes(q);
+      })
+    : clientsList;
+
+  function submit(){
+    if(!picked)return;
+    p.onOk(picked.name||"",picked.addr||"",picked.phone||"",picked.email||"",picked.postal||"",picked.city||"",picked.contact_id||null);
+    p.onClose();
+  }
+
+  var INP={width:"100%",padding:"14px 16px",fontSize:15,border:"1px solid var(--bd2)",borderRadius:10,marginBottom:10,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",display:"block",minHeight:52};
+
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:16,padding:"2rem",width:"min(380px, 92vw)",border:"1px solid var(--bd2)",boxShadow:"0 12px 40px rgba(0,0,0,0.15)",maxHeight:"92vh",overflowY:"auto"}},
+      ce("div",{style:{fontSize:13,fontWeight:600,marginBottom:12,color:"var(--t1)",letterSpacing:"0.02em"}},"Nowa wycena dla istniejącego klienta"),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:12}},"Wybierz klienta z listy \u2014 powstanie nowa, pusta wycena z jego danymi kontaktowymi."),
+
+      ce("input",{value:search,placeholder:"Szukaj: imi\u0119 i nazwisko, adres, telefon\u2026",
+        onChange:function(ev){setSearch(ev.target.value);setPicked(null);},
+        autoFocus:true,
+        style:Object.assign({},INP,{marginBottom:10})}),
+
+      ce("div",{style:{maxHeight:260,overflowY:"auto",border:"1px solid var(--bd2)",borderRadius:10,marginBottom:16}},
+        filtered.length===0
+          ? ce("div",{style:{padding:14,fontSize:13,color:"var(--t3)",textAlign:"center"}},"Brak klient\u00f3w")
+          : filtered.map(function(c){
+              var isActive=picked&&picked.id===c.id;
+              return ce("div",{key:c.id,
+                onClick:function(){setPicked(c);},
+                style:{padding:"10px 14px",cursor:"pointer",fontSize:13,
+                  borderBottom:"1px solid var(--bd3)",
+                  background:isActive?"var(--grl)":"transparent",
+                  color:"var(--t1)"}},
+                ce("div",{style:{fontWeight:600}},c.name),
+                (c.addr||c.phone)?ce("div",{style:{fontSize:11,color:"var(--t3)"}},[c.addr,c.phone].filter(Boolean).join(" \u00b7 ")):null
+              );
+            })
+      ),
+
+      ce("div",{style:{display:"flex",gap:10}},
+        ce("button",{onClick:submit,disabled:!picked,
+          style:{flex:1,padding:"13px",borderRadius:10,border:"none",
+            background:picked?"var(--t1)":"var(--bd2)",color:"var(--bg)",
+            fontSize:14,fontWeight:600,cursor:picked?"pointer":"not-allowed",letterSpacing:"0.03em"}
+        },"Utw\u00f3rz wycen\u0119"),
+        ce("button",{onClick:p.onClose,
+          style:{padding:"13px 18px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:14,cursor:"pointer"}
+        },"Anuluj")
+      )
+    )
+  );
+}
