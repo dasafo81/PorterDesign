@@ -1030,6 +1030,17 @@ export function App(p){
       var swProducts=curWin&&curWin.id===sw.id?(curWin.products||[]):(sw.products||[]);
       var swTotal=swProducts.reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);
 
+      // Zmiana kolejności produktów w oknie (↑/↓ w ProdCard) — swap i,i+dir.
+      function moveProd(i,dir){
+        setCurWin(function(w){
+          var prods=(w.products||[]).slice();
+          var j=i+dir;
+          if(j<0||j>=prods.length)return w;
+          var tmp=prods[i];prods[i]=prods[j];prods[j]=tmp;
+          return mg(w,{products:prods});
+        });
+      }
+
       // auto-save swProducts back to room whenever they change
       function saveSingleWin(){
         if(!curWin)return;
