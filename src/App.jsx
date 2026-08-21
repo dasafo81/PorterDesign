@@ -12,7 +12,7 @@ import {
 import {
   buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows
 } from './lib/pdf.js';
-import { ModalClient } from './components/ModalClient.jsx';
+import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker } from './components/ProdCard.jsx';
@@ -125,6 +125,7 @@ export function App(p){
   var s4=useState(null),curRoomId=s4[0],setCurRoomId=s4[1];
   var s5=useState(null),curWin=s5[0],setCurWin=s5[1];
   var s6=useState(false),showClientModal=s6[0],setShowClientModal=s6[1];
+  var s6b=useState(false),showNewQuoteModal=s6b[0],setShowNewQuoteModal=s6b[1];
   var s7=useState(false),showRoomModal=s7[0],setShowRoomModal=s7[1];
   var s8=useState(false),showWinModal=s8[0],setShowWinModal=s8[1];
   var s11b=useState(false),showFabricModal=s11b[0],setShowFabricModal=s11b[1];
@@ -795,6 +796,13 @@ export function App(p){
         },
           ce("span",{style:{fontSize:16,lineHeight:1}},"+"),
           ce("span",null,"Nowy klient")
+        ),
+        ce("div",{
+          onClick:function(){setShowNewQuoteModal(true);},
+          style:{padding:"11px 20px",borderRadius:14,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:7,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)"}
+        },
+          ce("span",{style:{fontSize:16,lineHeight:1}},"+"),
+          ce("span",null,"Nowa wycena")
         )
       ),
 
@@ -1938,6 +1946,7 @@ export function App(p){
             content
           ),
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
+    showNewQuoteModal?ce(ModalNewQuoteFromClient,{clients:clients,onOk:addClient,onClose:function(){setShowNewQuoteModal(false);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
