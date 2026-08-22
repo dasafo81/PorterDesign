@@ -423,10 +423,23 @@ function AttachmentsSection(p){
 function MailList(p){
   var us=React.useState;
   var sf=us(""),filter=sf[0],setFilter=sf[1];
-  var sfi=us(false),onlyImportant=sfi[0],setOnlyImportant=sfi[1];
   var sfu=us(false),onlyUnread=sfu[0],setOnlyUnread=sfu[1];
-  var sff=us(null),flagFilter=sff[0],setFlagFilter=sff[1];   // id flagi lub null
+  var sff=us([]),selFlags=sff[0],setSelFlags=sff[1];        // id-ki flag w filtrze (multi)
+  var sfm=us("any"),flagMode=sfm[0],setFlagMode=sfm[1];     // "any" = dowolna, "all" = wszystkie naraz
+  var sfo=us(false),filterOpen=sfo[0],setFilterOpen=sfo[1]; // rozwiniety panel filtra
+  var smk=us(null),menuKey=smk[0],setMenuKey=smk[1];        // klucz watku z otwartym menu "Oznacz jako"
   var ue=React.useEffect;
+  // "Wazne" (importance=high w Graph) traktujemy jak flage — dzieki temu jedno
+  // menu i jeden filtr obsluguja i ja, i kategorie tenanta (Damian itd.).
+  var allFlags=[{id:"__important",label:"Wa\u017cne",color:"var(--red)",important:true}].concat(p.flags||[]);
+  function threadHasFlag(t,fl){
+    if(fl.important)return t.mails.some(function(m){return m.isImportant;});
+    return t.mails.some(function(m){return (m.categories||[]).indexOf(fl.category)>=0;});
+  }
+  function toggleThreadFlag(t,fl){
+    if(fl.important){ if(p.onToggleImportant)p.onToggleImportant(t.head); }
+    else { if(p.onToggleFlag)p.onToggleFlag(t.head,fl); }
+  }
   var isInbox=p.folder==="inbox";
   var searching=filter.trim().length>0;
   var serverMatched=searching&&p.searchResults!=null;
@@ -472,11 +485,12 @@ function MailList(p){
   }
 
   var filtered=threads.filter(function(t){
-    if(onlyImportant&&!t.mails.some(function(m){return m.isImportant;}))return false;
     if(onlyUnread&&isInbox&&!t.mails.some(function(m){return m.isRead===false;}))return false;
-    if(flagFilter){
-      var ff=(p.flags||[]).find(function(x){return x.id===flagFilter;});
-      if(ff&&!t.mails.some(function(m){return (m.categories||[]).indexOf(ff.category)>=0;}))return false;
+    if(selFlags.length){
+      // "all" = watek ma WSZYSTKIE zaznaczone flagi naraz, "any" = przynajmniej jedna
+      var picked=allFlags.filter(function(f){return selFlags.indexOf(f.id)>=0;});
+      var hits=picked.filter(function(f){return threadHasFlag(t,f);}).length;
+      if(flagMode==="all"?hits<picked.length:hits===0)return false;
     }
     if(!searching)return true;         // przeglądanie — pokaż wszystko
     if(serverMatched)return true;      // serwer już dopasował (adres/temat/treść)
@@ -492,12 +506,7 @@ function MailList(p){
         ce("input",{type:"text",value:filter,onChange:function(e){setFilter(e.target.value);},
           placeholder:"Szukaj...",style:Object.assign({},INP,{paddingLeft:32,fontSize:12})})
       ),
-      ce("div",{style:{display:"flex",gap:5,flexWrap:"wrap"}},
-        ce("button",{onClick:function(){setOnlyImportant(function(v){return !v;});},
-          style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(onlyImportant?"var(--red)":"var(--bd2)"),background:onlyImportant?"var(--red-l)":"transparent",color:onlyImportant?"var(--red)":"var(--t3)",fontSize:11,fontWeight:onlyImportant?700:500,cursor:"pointer",flex:1,justifyContent:"center"}},
-          ce("span",{style:{fontSize:13,color:"var(--red)"}},"\u2691"),
-          onlyImportant?"Wszystkie":"Tylko ważne"
-        ),
+      ce("div",{style:{display:"flex",gap:5,position:"relative"}},
         // Tylko nieprzeczytane — sens ma wyłącznie w Odebranych
         isInbox?ce("button",{onClick:function(){setOnlyUnread(function(v){return !v;});},
           title:onlyUnread?"Poka\u017c wszystkie":"Poka\u017c tylko nieprzeczytane",
@@ -505,16 +514,49 @@ function MailList(p){
           ce("span",{style:{width:7,height:7,borderRadius:"50%",background:"var(--violet)",flexShrink:0}}),
           onlyUnread?"Wszystkie":"Nieprzeczytane"
         ):null,
-        // Filtry po flagach (kategoriach) — lista per tenant
-        (p.flags||[]).map(function(fl){
-          var on=flagFilter===fl.id;
-          return ce("button",{key:fl.id,onClick:function(){setFlagFilter(on?null:fl.id);},
-            title:on?"Poka\u017c wszystkie":"Poka\u017c tylko oznaczone: "+fl.label,
-            style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(on?fl.color:"var(--bd2)"),background:on?fl.color+"1f":"transparent",color:on?fl.color:"var(--t3)",fontSize:11,fontWeight:on?700:500,cursor:"pointer",flex:1,justifyContent:"center"}},
-            ce("span",{style:{fontSize:13,color:fl.color}},"\u2691"),
-            fl.label
-          );
-        })
+        // Filtr po flagach — multi-select, tryb "dowolna" / "wszystkie naraz"
+        ce("button",{onClick:function(){setFilterOpen(function(v){return !v;});},
+          title:"Filtruj po oznaczeniach",
+          style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(selFlags.length?"var(--violet)":"var(--bd2)"),background:selFlags.length?"var(--violet-l)":"transparent",color:selFlags.length?"var(--violet)":"var(--t3)",fontSize:11,fontWeight:selFlags.length?700:500,cursor:"pointer",flex:1,justifyContent:"center"}},
+          ce("span",{style:{fontSize:12}},"\u2691"),
+          "Filtruj",
+          selFlags.length?ce("span",{style:{background:"var(--violet)",color:"var(--bg)",borderRadius:9,fontSize:9,fontWeight:700,padding:"0 5px"}},selFlags.length):null,
+          ce("span",{style:{fontSize:9,opacity:0.7}},"\u25be")
+        ),
+        filterOpen?ce("div",{style:{position:"absolute",top:"calc(100% + 5px)",right:0,zIndex:400,minWidth:210,
+          background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.18)",overflow:"hidden"}},
+          ce("div",{style:{padding:"8px 12px 6px",fontSize:10,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)"}},"Poka\u017c oznaczone"),
+          allFlags.map(function(fl){
+            var on=selFlags.indexOf(fl.id)>=0;
+            return ce("div",{key:fl.id,onClick:function(){
+                setSelFlags(function(prev){return on?prev.filter(function(x){return x!==fl.id;}):prev.concat([fl.id]);});
+              },
+              style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",fontSize:12,cursor:"pointer",
+                background:on?"var(--bd3)":"transparent",borderTop:"1px solid var(--bd3)"}},
+              ce("span",{style:{width:14,height:14,borderRadius:4,flexShrink:0,fontSize:10,lineHeight:"14px",textAlign:"center",
+                border:"1px solid "+(on?fl.color:"var(--bd2)"),background:on?fl.color:"transparent",color:"#fff"}},on?"\u2713":""),
+              ce("span",{style:{fontSize:13,color:fl.color}},"\u2691"),
+              ce("span",{style:{color:"var(--t1)",fontWeight:on?700:500}},fl.label)
+            );
+          }),
+          // Tryb łączenia — widoczny dopiero gdy zaznaczono co najmniej dwie flagi
+          selFlags.length>1?ce("div",{style:{display:"flex",gap:4,padding:"8px 10px",borderTop:"1px solid var(--bd3)"}},
+            [{id:"any",label:"Dowolna"},{id:"all",label:"Wszystkie naraz"}].map(function(mo){
+              var on=flagMode===mo.id;
+              return ce("button",{key:mo.id,onClick:function(){setFlagMode(mo.id);},
+                style:{flex:1,padding:"4px 6px",borderRadius:7,fontSize:10,cursor:"pointer",
+                  border:"1px solid "+(on?"var(--violet)":"var(--bd2)"),
+                  background:on?"var(--violet-l)":"transparent",
+                  color:on?"var(--violet)":"var(--t3)",fontWeight:on?700:500}},mo.label);
+            })
+          ):null,
+          ce("div",{style:{display:"flex",gap:6,padding:"8px 10px",borderTop:"1px solid var(--bd3)"}},
+            ce("button",{onClick:function(){setSelFlags([]);setFlagMode("any");},
+              style:{flex:1,padding:"5px 8px",borderRadius:7,fontSize:11,cursor:"pointer",border:"1px solid var(--bd2)",background:"transparent",color:"var(--t2)"}},"Wyczy\u015b\u0107"),
+            ce("button",{onClick:function(){setFilterOpen(false);},
+              style:{flex:1,padding:"5px 8px",borderRadius:7,fontSize:11,cursor:"pointer",border:"none",background:"var(--t1)",color:"var(--bg)",fontWeight:700}},"Gotowe")
+          )
+        ):null
       )
     ),
     ce("div",{style:{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}},
@@ -530,36 +572,45 @@ function MailList(p){
           var nm=displayName(m);
           var ci=Math.abs((nm||"").charCodeAt(0)||0)%colors.length;
           var unread=isInbox&&t.mails.some(function(x){return x.isRead===false;});
-          var threadImportant=t.mails.some(function(x){return x.isImportant;});
-          // Flagi wątku: on/off per flaga — ikony są klikalne (toggle), nie tylko wskaźnikiem
-          var flagState=(p.flags||[]).map(function(fl){
-            return {fl:fl,on:t.mails.some(function(x){return (x.categories||[]).indexOf(fl.category)>=0;})};
-          });
+          // Jedna ikona ⚑ na wątek: kolor pierwszej aktywnej flagi, licznik gdy jest ich więcej.
+          // Najechanie (lub klik) otwiera menu "Oznacz jako" ze wszystkimi flagami.
+          var onFlags=allFlags.filter(function(fl){return threadHasFlag(t,fl);});
+          var menuOpen=menuKey===t.key;
           return ce("div",{key:t.key,onClick:function(){p.onSelect(t);},
             style:{padding:"10px 12px",borderRadius:10,cursor:"pointer",
               background:selectedInThread?"var(--wb)":(unread?"var(--bd3)":"transparent"),
               border:"1px solid "+(selectedInThread?"var(--wbd)":(unread?"var(--bd2)":"transparent")),
               borderLeft:!selectedInThread&&unread?"3px solid var(--violet)":"1px solid "+(selectedInThread?"var(--wbd)":"transparent"),
               transition:"all .12s",display:"flex",gap:8,alignItems:"flex-start"}},
-            ce("button",{onClick:function(ev){ev.stopPropagation();if(p.onToggleImportant)p.onToggleImportant(t.head);},
-              title:threadImportant?"Usu\u0144 oznaczenie wa\u017cne":"Oznacz jako wa\u017cne",
-              style:{border:"none",background:"transparent",cursor:"pointer",padding:"2px 4px",fontSize:16,lineHeight:1,color:threadImportant?"var(--red)":"var(--bd2)",alignSelf:"center",flexShrink:0,opacity:threadImportant?1:0.55,transition:"color .12s, opacity .12s"},
-              onMouseEnter:function(ev){if(!threadImportant){ev.currentTarget.style.color="var(--red)";ev.currentTarget.style.opacity="0.85";}},
-              onMouseLeave:function(ev){if(!threadImportant){ev.currentTarget.style.color="var(--bd2)";ev.currentTarget.style.opacity="0.55";}}
-            },"\u2691"),
-            flagState.length>0?ce("span",{style:{display:"flex",flexDirection:"column",gap:1,alignSelf:"center",flexShrink:0}},
-              flagState.map(function(fs){
-                return ce("button",{key:fs.fl.id,
-                  onClick:function(ev){ev.stopPropagation();if(p.onToggleFlag)p.onToggleFlag(t.head,fs.fl);},
-                  title:(fs.on?"Usu\u0144 oznaczenie: ":"Oznacz jako: ")+fs.fl.label,
-                  style:{border:"none",background:"transparent",cursor:"pointer",padding:"1px 3px",
-                    fontSize:13,lineHeight:1,flexShrink:0,transition:"opacity .12s",
-                    color:fs.on?fs.fl.color:"var(--bd2)",opacity:fs.on?1:0.5},
-                  onMouseEnter:function(ev){if(!fs.on){ev.currentTarget.style.color=fs.fl.color;ev.currentTarget.style.opacity="0.85";}},
-                  onMouseLeave:function(ev){if(!fs.on){ev.currentTarget.style.color="var(--bd2)";ev.currentTarget.style.opacity="0.5";}}
-                },"\u2691");
-              })
-            ):null,
+            ce("span",{style:{position:"relative",alignSelf:"center",flexShrink:0},
+              onMouseEnter:function(){setMenuKey(t.key);},
+              onMouseLeave:function(){setMenuKey(function(k){return k===t.key?null:k;});}},
+              ce("button",{onClick:function(ev){ev.stopPropagation();setMenuKey(menuOpen?null:t.key);},
+                title:onFlags.length?onFlags.map(function(f){return f.label;}).join(", "):"Oznacz jako\u2026",
+                style:{border:"none",background:"transparent",cursor:"pointer",padding:"2px 4px",fontSize:16,lineHeight:1,
+                  color:onFlags.length?onFlags[0].color:"var(--bd2)",opacity:onFlags.length?1:0.5,
+                  display:"flex",alignItems:"center",gap:1,transition:"opacity .12s"}},
+                "\u2691",
+                onFlags.length>1?ce("span",{style:{fontSize:9,fontWeight:700,color:"var(--t3)"}},onFlags.length):null
+              ),
+              menuOpen?ce("div",{onClick:function(ev){ev.stopPropagation();},
+                style:{position:"absolute",top:"100%",left:0,zIndex:350,minWidth:170,paddingTop:2}},
+                ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,
+                  boxShadow:"0 8px 24px rgba(0,0,0,0.18)",overflow:"hidden"}},
+                  ce("div",{style:{padding:"7px 12px 5px",fontSize:9,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)"}},"Oznacz jako"),
+                  allFlags.map(function(fl){
+                    var on=onFlags.indexOf(fl)>=0;
+                    return ce("div",{key:fl.id,onClick:function(ev){ev.stopPropagation();toggleThreadFlag(t,fl);},
+                      style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",fontSize:12,cursor:"pointer",
+                        borderTop:"1px solid var(--bd3)",background:on?"var(--bd3)":"transparent"}},
+                      ce("span",{style:{fontSize:14,color:fl.color,width:14,flexShrink:0}},"\u2691"),
+                      ce("span",{style:{flex:1,color:"var(--t1)",fontWeight:on?700:500}},fl.label),
+                      on?ce("span",{style:{fontSize:11,color:fl.color,fontWeight:700}},"\u2713"):null
+                    );
+                  })
+                )
+              ):null
+            ),
             ce(Avatar,{size:34,bg:selectedInThread?colors[ci]:colors[ci]+"99",label:initials(nm)}),
             ce("div",{style:{flex:1,minWidth:0}},
               ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}},
@@ -642,6 +693,7 @@ function MailPreview(p){
   var thread=p.thread; // {key, head, mails:[...]} albo null
   var us=React.useState, ue=React.useEffect;
   var sm=us(false),showMove=sm[0],setShowMove=sm[1];
+  var sfm2=us(false),showFlags=sfm2[0],setShowFlags=sfm2[1];   // menu "Oznacz jako"
   // Cache body per messageId — żeby przy ponownym kliknięciu nie pobierać znowu
   var sb=us({}),bodies=sb[0],setBodies=sb[1];
   var sl=us({}),loadingBody=sl[0],setLoadingBody=sl[1];
@@ -883,6 +935,11 @@ function MailPreview(p){
 
   // Header wątku — bierze nazwę z najnowszej wiadomości
   var headPerson=displayPerson(head);
+  // "Ważne" traktujemy jak flagę — jedno menu obsługuje importance i kategorie tenanta
+  var previewFlags=[{id:"__important",label:"Wa\u017cne",color:"var(--red)",important:true}].concat(p.flags||[]);
+  var headFlags=previewFlags.filter(function(fl){
+    return fl.important?!!head.isImportant:(head.categories||[]).indexOf(fl.category)>=0;
+  });
 
   return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
     ce("div",{style:{padding:"16px 20px 14px",borderBottom:"1px solid var(--bd2)",flexShrink:0}},
@@ -906,18 +963,34 @@ function MailPreview(p){
         p.activeFolder==="inbox"
           ?ce("button",{onClick:function(){p.onMarkRead&&p.onMarkRead(head,!head.isRead);},style:BGHOST},head.isRead?"\uD83D\uDCEC Oznacz jako nieprzeczytane":"\uD83D\uDCEC Oznacz jako przeczytane")
           :null,
+        // Jedno menu "Oznacz jako": Wa\u017cne (importance) + flagi tenanta (kategorie Outlooka)
         p.activeFolder!=="trash"&&p.activeFolder!=="spam"
-          ?ce("button",{onClick:function(){p.onToggleImportant&&p.onToggleImportant(head);},style:Object.assign({},BGHOST,head.isImportant?{color:"var(--red)",borderColor:"var(--red)",fontWeight:700}:{})},head.isImportant?"\u2691 Wa\u017cne":"\u2691 Oznacz jako wa\u017cne")
+          ?ce("div",{style:{position:"relative"},
+              onMouseEnter:function(){setShowFlags(true);},
+              onMouseLeave:function(){setShowFlags(false);}},
+            ce("button",{onClick:function(){setShowFlags(function(v){return !v;});},
+              style:Object.assign({},BGHOST,headFlags.length?{color:headFlags[0].color,borderColor:headFlags[0].color,fontWeight:700,background:headFlags[0].color+"1f"}:{})},
+              "\u2691 "+(headFlags.length?headFlags.map(function(f){return f.label;}).join(", "):"Oznacz jako")+" \u25be"),
+            showFlags?ce("div",{style:{position:"absolute",top:"100%",left:0,zIndex:350,minWidth:180,paddingTop:4}},
+              ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,
+                boxShadow:"0 8px 24px rgba(0,0,0,0.18)",overflow:"hidden"}},
+                previewFlags.map(function(fl,i){
+                  var on=headFlags.indexOf(fl)>=0;
+                  return ce("div",{key:fl.id,onClick:function(){
+                      if(fl.important){p.onToggleImportant&&p.onToggleImportant(head);}
+                      else {p.onToggleFlag&&p.onToggleFlag(head,fl);}
+                    },
+                    style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",fontSize:12,cursor:"pointer",
+                      borderTop:i===0?"none":"1px solid var(--bd3)",background:on?"var(--bd3)":"transparent"}},
+                    ce("span",{style:{fontSize:14,color:fl.color,width:14,flexShrink:0}},"\u2691"),
+                    ce("span",{style:{flex:1,color:"var(--t1)",fontWeight:on?700:500}},fl.label),
+                    on?ce("span",{style:{fontSize:11,color:fl.color,fontWeight:700}},"\u2713"):null
+                  );
+                })
+              )
+            ):null
+          )
           :null,
-        // Flagi (kategorie Outlooka) \u2014 zestaw konfigurowalny per tenant
-        (p.flags||[]).map(function(fl){
-          var on=(head.categories||[]).indexOf(fl.category)>=0;
-          return ce("button",{key:fl.id,onClick:function(){p.onToggleFlag&&p.onToggleFlag(head,fl);},
-            title:on?"Usu\u0144 oznaczenie: "+fl.label:"Oznacz: "+fl.label,
-            style:Object.assign({},BGHOST,{color:fl.color,borderColor:on?fl.color:"var(--bd2)",
-              background:on?fl.color+"1f":"transparent",fontWeight:on?700:500})},
-            "\u2691 "+fl.label);
-        }),
         ce("button",{onClick:p.onCalendar,style:BGHOST},"\uD83D\uDCC5 Dodaj do kalendarza"),
         p.activeFolder==="trash"||p.activeFolder==="spam"
           ?ce("button",{onClick:function(){p.onRestore&&p.onRestore(head);},style:Object.assign({},BGHOST,{color:"var(--gr)",borderColor:"var(--gr)"})},"↩ Przywróć do skrzynki")
