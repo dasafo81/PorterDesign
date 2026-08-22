@@ -130,6 +130,7 @@ export function ModalDeal(p){
   // Koszty zlecenia (deal_costs) — strona kosztowa, osobna tabela
   var scst=useState([]),costs=scst[0],setCosts=scst[1];
   var scstb=useState(false),costBusy=scstb[0],setCostBusy=scstb[1];
+  var sinvc=useState([]),invCosts=sinvc[0],setInvCosts=sinvc[1];
   var scste=useState(false),costErr=scste[0],setCostErr=scste[1];
   var scstd=useState({kind:"tkanina",amount:"",supplier:"",installer_name:"",paid_at:"",planned_delivery:"",actual_delivery:"",note:""}),
       costDraft=scstd[0],setCostDraft=scstd[1];
@@ -167,6 +168,15 @@ export function ModalDeal(p){
   function costKindMeta(id){
     return COST_KINDS.find(function(k){return k.id===id;})||{id:id,label:id,icon:"📎"};
   }
+  // Faktura zakupowa nie niesie informacji o rodzaju kosztu — zgadujemy po dostawcy,
+  // wylacznie do ikony i grupowania. Nieznany dostawca ląduje w "inne".
+  function guessKindFromSupplier(name){
+    var n=String(name||"").toLowerCase();
+    if(n.indexOf("vadain")>=0||n.indexOf("textil")>=0||n.indexOf("tkanin")>=0)return "tkanina";
+    if(n.indexOf("laurales")>=0||n.indexOf("trinitas")>=0||n.indexOf("szwalnia")>=0||n.indexOf("dekor")>=0)return "szycie";
+    if(n.indexOf("szyny")>=0||n.indexOf("szyn ks")>=0||n.indexOf("karnisz")>=0)return "osprzet";
+    return "inne";
+  }
   var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant"];
 
   var clientName=cl?cl.name:"(brak klienta)";
@@ -187,13 +197,36 @@ export function ModalDeal(p){
     sbApi.getDealCosts(d.id)
       .then(function(rows){setCosts(rows||[]);setCostErr(false);})
       .catch(function(){setCosts([]);setCostErr(true);});
+    sbApi.getDealInvoiceCosts(d.id)
+      .then(function(rows){setInvCosts(rows||[]);})
+      .catch(function(){setInvCosts([]);});
   },[d.id]);
+
+  // Koszty fakturowane (netto) z faktur zakupowych przypisanych do tego zlecenia,
+  // znormalizowane do tego samego ksztaltu co wiersze deal_costs. Sa READ-ONLY —
+  // zrodlem prawdy jest faktura, wiec edycja idzie przez modul Faktury.
+  var invCostRows=(invCosts||[]).map(function(iv){
+    var supplier=(iv.seller_snapshot&&iv.seller_snapshot.name)||"";
+    return {
+      id:"inv:"+iv.id,
+      kind:guessKindFromSupplier(supplier),
+      amount:parseFloat(iv.total_net)||0,
+      supplier:supplier,
+      installer_name:"",
+      paid_at:iv.issue_date||null,
+      fromInvoice:true,
+      invoiceNumber:iv.number||"",
+      unpaid:iv.payment_status!=="paid"
+    };
+  });
 
   // Suma kosztow + marza wzgledem wartosci wyceny dla klienta (clientTotal).
   // clientTotal jest kwota BRUTTO z wyceny — marza jest wiec orientacyjna,
   // do czasu az zlecenia beda spinane z faktura sprzedazowa.
-  var costsTotal=(costs||[]).reduce(function(a,x){return a+(parseFloat(x.amount)||0);},0);
-  var costsByKind=(costs||[]).reduce(function(a,x){
+  // Reczne wpisy (wyplaty montazystow, gotowka) + koszty z faktur w jednej liscie.
+  var allCostRows=invCostRows.concat(costs||[]);
+  var costsTotal=allCostRows.reduce(function(a,x){return a+(parseFloat(x.amount)||0);},0);
+  var costsByKind=allCostRows.reduce(function(a,x){
     a[x.kind]=(a[x.kind]||0)+(parseFloat(x.amount)||0);
     return a;
   },{});
@@ -600,10 +633,12 @@ export function ModalDeal(p){
             "Moduł kosztów niedostępny — uruchom migrację 0034_deal_costs.sql w Supabase."
           ):ce(Fragment,null,
             // Lista zapisanych kosztow
-            (costs||[]).length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
-              (costs||[]).map(function(x){
+            allCostRows.length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
+              allCostRows.map(function(x){
                 var km=costKindMeta(x.kind);
-                var sub=[x.supplier||null,x.installer_name||null,x.paid_at?fmtDate(x.paid_at):null,
+                var sub=[x.supplier||null,x.installer_name||null,
+                  x.fromInvoice?("FV "+(x.invoiceNumber||"\u2014")):null,
+                  x.paid_at?fmtDate(x.paid_at):null,
                   (x.planned_delivery&&x.actual_delivery&&x.actual_delivery>x.planned_delivery)?"⚠ dostawa +"+Math.round((new Date(x.actual_delivery)-new Date(x.planned_delivery))/86400000)+" dni":null
                 ].filter(Boolean).join(" · ");
                 return ce("div",{key:x.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:9}},
@@ -612,16 +647,22 @@ export function ModalDeal(p){
                     ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)"}},km.label),
                     sub?ce("div",{style:{fontSize:10,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub):null
                   ),
+                  x.fromInvoice?ce("span",{title:"Koszt z faktury zakupowej \u2014 edycja w module Faktury",
+                    style:{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:20,flexShrink:0,
+                      background:"var(--violet-l)",color:"var(--violet)"}},"FV"):null,
                   ce("span",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",flexShrink:0}},
                     (parseFloat(x.amount)||0).toLocaleString("pl-PL")+" zł"),
-                  ce("button",{onClick:function(){deleteCost(x.id);},
-                    style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}},"×")
+                  x.fromInvoice
+                    ?ce("span",{style:{width:22,flexShrink:0}})
+                    :ce("button",{onClick:function(){deleteCost(x.id);},
+                      style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}},"×")
                 );
               })
-            ):ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:10}},"Brak zapisanych kosztów"),
+            ):ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:10,lineHeight:1.5}},
+              "Brak koszt\u00f3w. Faktury zakupowe dopisuj\u0105 si\u0119 tu automatycznie po przypisaniu do zlecenia (Faktury \u2192 Wydatki \u2192 Przypisz do zlece\u0144)."),
 
             // Podsumowanie: koszty vs marza
-            (costs||[]).length>0?ce("div",{style:{borderTop:"1px solid var(--bd2)",paddingTop:8,marginBottom:12,display:"flex",flexDirection:"column",gap:4}},
+            allCostRows.length>0?ce("div",{style:{borderTop:"1px solid var(--bd2)",paddingTop:8,marginBottom:12,display:"flex",flexDirection:"column",gap:4}},
               COST_KINDS.filter(function(k){return costsByKind[k.id]>0;}).map(function(k){
                 return ce("div",{key:k.id,style:{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--t3)"}},
                   ce("span",null,k.label),
@@ -640,6 +681,8 @@ export function ModalDeal(p){
 
             // Formularz dodania kosztu
             ce("div",{style:{display:"flex",flexDirection:"column",gap:8,padding:"10px 12px",border:"1px dashed var(--bd2)",borderRadius:10}},
+              ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.05em",color:"var(--t3)",textTransform:"uppercase"}},
+                "Koszt bez faktury (wyp\u0142ata monta\u017cysty, got\u00f3wka)"),
               ce("div",{style:{display:"flex",gap:8}},
                 ce("select",{value:costDraft.kind,
                   onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{kind:v});});},
