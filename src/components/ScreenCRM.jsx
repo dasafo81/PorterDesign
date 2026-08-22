@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
-import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10 } from '../constants/data.js';
+import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 import { fillTemplate, RichTextEditor } from './ScreenMail.jsx';
@@ -131,6 +131,10 @@ export function ModalDeal(p){
   var scst=useState([]),costs=scst[0],setCosts=scst[1];
   var scstb=useState(false),costBusy=scstb[0],setCostBusy=scstb[1];
   var sinvc=useState([]),invCosts=sinvc[0],setInvCosts=sinvc[1];
+  var srat=useState(null),rates=srat[0],setRates=srat[1];
+  var sratE=useState(false),ratesEdit=sratE[0],setRatesEdit=sratE[1];
+  var sratD=useState({sew_curtain_mb:"",sew_roman_m2:"",lining_mb:"",mech_divisor:""}),
+      ratesDraft=sratD[0],setRatesDraft=sratD[1];
   var scste=useState(false),costErr=scste[0],setCostErr=scste[1];
   var scstd=useState({kind:"tkanina",amount:"",supplier:"",installer_name:"",paid_at:"",planned_delivery:"",actual_delivery:"",note:""}),
       costDraft=scstd[0],setCostDraft=scstd[1];
@@ -200,7 +204,71 @@ export function ModalDeal(p){
     sbApi.getDealInvoiceCosts(d.id)
       .then(function(rows){setInvCosts(rows||[]);})
       .catch(function(){setInvCosts([]);});
+    sbApi.getCostRates()
+      .then(function(r){
+        setRates(r);
+        setRatesDraft({
+          sew_curtain_mb:r&&r.sew_curtain_mb!=null?String(r.sew_curtain_mb):"",
+          sew_roman_m2:  r&&r.sew_roman_m2!=null?String(r.sew_roman_m2):"",
+          lining_mb:     r&&r.lining_mb!=null?String(r.lining_mb):"",
+          mech_divisor:  r&&r.mech_divisor!=null?String(r.mech_divisor):"2.46"
+        });
+      })
+      .catch(function(){setRates(null);});
   },[d.id]);
+
+  // ── KOSZT WŁASNY WYLICZONY Z WYCENY ──────────────────────────────────────
+  // Przechodzi po wszystkich pozycjach wyceny, zbiera zuzycie z calc().usage
+  // i mnozy przez ceny zakupu. To jedyna droga do marzy przy fakturach zbiorczych
+  // od Vadaina i szwalni — z samej faktury nie da sie odtworzyc, ile materialu
+  // poszlo na ktore zlecenie.
+  var calcRates=rates?{
+    sewCurtainMb:rates.sew_curtain_mb,
+    sewRomanM2:rates.sew_roman_m2,
+    liningMb:rates.lining_mb,
+    mechDivisor:rates.mech_divisor
+  }:{sewCurtainMb:null,sewRomanM2:null,liningMb:null,mechDivisor:2.46};
+
+  var quoteCost=React.useMemo(function(){
+    if(!cl||!cl.rooms)return null;
+    var acc={fabric:0,lining:0,sewing:0,hardware:0,total:0,missing:{},items:0,fabMb:0,sewMb:0,sewM2:0};
+    (cl.rooms||[]).forEach(function(room){
+      (room.windows||[]).forEach(function(win){
+        (win.products||[]).forEach(function(prod){
+          var pfc=(prod.type==="zaslona"||prod.type==="firana")
+            ? mg(prod,{panels:getPanelsForProd(prod)}) : prod;
+          var res;
+          try{ res=calc(pfc); }catch(e){ return; }
+          if(!res||!res.usage)return;
+          var co=costOf(res.usage,calcRates,getFabricEffective);
+          if(!co)return;
+          acc.items++;
+          acc.fabric+=co.fabric; acc.lining+=co.lining;
+          acc.sewing+=co.sewing; acc.hardware+=co.hardware; acc.total+=co.total;
+          acc.fabMb+=res.usage.fabMb+res.usage.fab2Mb;
+          acc.sewMb+=res.usage.sewMb; acc.sewM2+=res.usage.sewM2;
+          (co.missing||[]).forEach(function(m){acc.missing[m]=(acc.missing[m]||0)+1;});
+        });
+      });
+    });
+    acc.missingList=Object.keys(acc.missing);
+    acc.complete=acc.missingList.length===0;
+    return acc.items?acc:null;
+  },[cl,rates]);
+
+  function saveRates(){
+    var num=function(v){var n=parseFloat(String(v).replace(",","."));return isFinite(n)?n:null;};
+    var payload={
+      sew_curtain_mb:num(ratesDraft.sew_curtain_mb),
+      sew_roman_m2:num(ratesDraft.sew_roman_m2),
+      lining_mb:num(ratesDraft.lining_mb),
+      mech_divisor:num(ratesDraft.mech_divisor)||2.46
+    };
+    sbApi.upsertCostRates(payload).then(function(){
+      setRates(Object.assign({},rates||{},payload));
+      setRatesEdit(false);
+    }).catch(function(e){alert("Błąd zapisu stawek: "+e.message);});
+  }
 
   // Koszty fakturowane (netto) z faktur zakupowych przypisanych do tego zlecenia,
   // znormalizowane do tego samego ksztaltu co wiersze deal_costs. Sa READ-ONLY —
@@ -632,6 +700,70 @@ export function ModalDeal(p){
           costErr?ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
             "Moduł kosztów niedostępny — uruchom migrację 0034_deal_costs.sql w Supabase."
           ):ce(Fragment,null,
+            // ── Koszt wyliczony z wyceny (ze zużycia materiałów) ───────────
+            quoteCost?ce("div",{style:{marginBottom:12,padding:"10px 12px",borderRadius:10,
+              background:"var(--bg2)",border:"1px solid var(--bd2)"}},
+              ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+                ce("div",{style:{flex:1,fontSize:10,fontWeight:700,letterSpacing:"0.05em",
+                  color:"var(--t3)",textTransform:"uppercase"}},"Koszt wyliczony z wyceny"),
+                ce("button",{onClick:function(){setRatesEdit(!ratesEdit);},
+                  style:{border:"none",background:"none",color:"var(--violet)",fontSize:11,
+                    fontWeight:700,cursor:"pointer",padding:0,fontFamily:"inherit"}},
+                  ratesEdit?"zwiń":"stawki")
+              ),
+              ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:8,lineHeight:1.5}},
+                "Zu\u017cycie odczytane z "+quoteCost.items+" pozycji wyceny: "+
+                quoteCost.fabMb.toFixed(1)+" mb tkaniny"+
+                (quoteCost.sewMb?", "+quoteCost.sewMb.toFixed(1)+" mb szycia":"")+
+                (quoteCost.sewM2?", "+quoteCost.sewM2.toFixed(2)+" m\u00b2 szycia":"")+"."),
+
+              // Edycja stawek — inline, bez osobnego ekranu ustawień
+              ratesEdit?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10,
+                paddingBottom:10,borderBottom:"1px solid var(--bd2)"}},
+                [["sew_curtain_mb","Szycie zas\u0142on (z\u0142/mb)"],
+                 ["sew_roman_m2","Szycie rolet (z\u0142/m\u00b2)"],
+                 ["lining_mb","Podszewka zakup (z\u0142/mb)"],
+                 ["mech_divisor","Dzielnik pozycji gotowych"]].map(function(f){
+                  return ce("div",{key:f[0],style:{display:"flex",alignItems:"center",gap:8}},
+                    ce("span",{style:{flex:1,fontSize:11,color:"var(--t2)"}},f[1]),
+                    ce("input",{type:"text",inputMode:"decimal",value:ratesDraft[f[0]],
+                      placeholder:"\u2014",
+                      onChange:function(ev){var v=ev.target.value;
+                        setRatesDraft(function(s){var n={};n[f[0]]=v;return Object.assign({},s,n);});},
+                      style:Object.assign({},INP,{width:90,textAlign:"right",padding:"6px 9px",fontSize:12})}));
+                }),
+                ce("button",{onClick:saveRates,
+                  style:{padding:"7px",borderRadius:8,border:"none",background:"var(--violet)",
+                    color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}},
+                  "Zapisz stawki (wsp\u00f3lne dla wszystkich zlece\u0144)")
+              ):null,
+
+              [["Tkanina",quoteCost.fabric],["Podszewka",quoteCost.lining],
+               ["Szycie",quoteCost.sewing],["Mechanizmy / osprz\u0119t",quoteCost.hardware]]
+                .filter(function(r){return r[1]>0;})
+                .map(function(r,i){
+                  return ce("div",{key:i,style:{display:"flex",justifyContent:"space-between",
+                    fontSize:11,color:"var(--t3)",marginBottom:3}},
+                    ce("span",null,r[0]),
+                    ce("span",null,r[1].toLocaleString("pl-PL",{maximumFractionDigits:0})+" z\u0142"));
+                }),
+              ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,
+                fontWeight:700,color:"var(--t2)",paddingTop:5,borderTop:"1px solid var(--bd3)",marginTop:4}},
+                ce("span",null,"Koszt materia\u0142\u00f3w i szycia"),
+                ce("span",null,quoteCost.total.toLocaleString("pl-PL",{maximumFractionDigits:0})+" z\u0142")),
+              clientTotal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,
+                fontWeight:800,marginTop:5,
+                color:(clientTotal-quoteCost.total)>=0?"var(--gr)":"var(--red, #ef4444)"}},
+                ce("span",null,"Mar\u017ca na produkcie"),
+                ce("span",null,(clientTotal-quoteCost.total).toLocaleString("pl-PL",{maximumFractionDigits:0})+
+                  " z\u0142 \u00b7 "+Math.round((clientTotal-quoteCost.total)/clientTotal*100)+"%")):null,
+              !quoteCost.complete?ce("div",{style:{marginTop:8,padding:"7px 9px",borderRadius:8,
+                background:"var(--red-l)",fontSize:10,color:"var(--red)",lineHeight:1.5}},
+                "\u26a0 Mar\u017ca zawy\u017cona \u2014 brakuje: "+quoteCost.missingList.join(", ")+
+                ". Uzupe\u0142nij w Magazyn \u2192 Katalog albo w stawkach powy\u017cej."
+              ):null
+            ):null,
+
             // Lista zapisanych kosztow
             allCostRows.length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
               allCostRows.map(function(x){
