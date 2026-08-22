@@ -3319,7 +3319,9 @@ export function costOf(usage,rates,fabricLookup){
   // w tkaninie"). Tryb dokladny wlacza sie po wpisaniu stawki zl/mb lub zl/m2
   // i ma pierwszenstwo. Dzieki temu marza liczy sie od razu, bez konfiguracji.
   var sewCost=0;
-  var sewPct=(r.sewQuotePct==null)?100:(+r.sewQuotePct||0);
+  // Szycie sprzedajemy z marza 100% (cena dla klienta = nasz koszt x 2),
+  // wiec koszt to polowa wartosci szycia z wyceny.
+  var sewPct=(r.sewQuotePct==null)?50:(+r.sewQuotePct||0);
   var sewExact=(r.sewCurtainMb!=null&&usage.sewMb)||(r.sewRomanM2!=null&&usage.sewM2);
   if(sewExact){
     if(usage.sewMb){
