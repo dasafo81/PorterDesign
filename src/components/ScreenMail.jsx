@@ -373,8 +373,8 @@ function AttachmentsSection(p){
             ce("span",{style:{fontSize:10,marginLeft:4}},"\u25be")
           ),
           showPicker?ce("div",{style:{position:"absolute",top:"calc(100% + 4px)",left:0,
-            background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:12,
-            boxShadow:"0 8px 30px rgba(0,0,0,0.18)",zIndex:400,minWidth:240,overflow:"hidden"}},
+            background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:12,
+            boxShadow:"0 10px 30px rgba(0,0,0,0.22)",zIndex:400,minWidth:240,overflow:"hidden"}},
             ce("div",{style:{padding:"8px 0"}},
               APP_PDF_OPTIONS.map(function(opt){
                 var already=!!p.attachments.find(function(a){return a.id===opt.id;});
@@ -524,7 +524,7 @@ function MailList(p){
           ce("span",{style:{fontSize:9,opacity:0.7}},"\u25be")
         ),
         filterOpen?ce("div",{style:{position:"absolute",top:"calc(100% + 5px)",right:0,zIndex:400,minWidth:210,
-          background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.18)",overflow:"hidden"}},
+          background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,boxShadow:"0 10px 30px rgba(0,0,0,0.22)",overflow:"hidden"}},
           ce("div",{style:{padding:"8px 12px 6px",fontSize:10,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)"}},"Poka\u017c oznaczone"),
           allFlags.map(function(fl){
             var on=selFlags.indexOf(fl.id)>=0;
@@ -532,7 +532,7 @@ function MailList(p){
                 setSelFlags(function(prev){return on?prev.filter(function(x){return x!==fl.id;}):prev.concat([fl.id]);});
               },
               style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",fontSize:12,cursor:"pointer",
-                background:on?"var(--bd3)":"transparent",borderTop:"1px solid var(--bd3)"}},
+                background:on?"var(--menu-hover)":"transparent",borderTop:"1px solid var(--bd3)"}},
               ce("span",{style:{width:14,height:14,borderRadius:4,flexShrink:0,fontSize:10,lineHeight:"14px",textAlign:"center",
                 border:"1px solid "+(on?fl.color:"var(--bd2)"),background:on?fl.color:"transparent",color:"#fff"}},on?"\u2713":""),
               ce("span",{style:{fontSize:13,color:fl.color}},"\u2691"),
@@ -595,14 +595,14 @@ function MailList(p){
               ),
               menuOpen?ce("div",{onClick:function(ev){ev.stopPropagation();},
                 style:{position:"absolute",top:"100%",left:0,zIndex:350,minWidth:170,paddingTop:2}},
-                ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,
-                  boxShadow:"0 8px 24px rgba(0,0,0,0.18)",overflow:"hidden"}},
+                ce("div",{style:{background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,
+                  boxShadow:"0 10px 30px rgba(0,0,0,0.22)",overflow:"hidden"}},
                   ce("div",{style:{padding:"7px 12px 5px",fontSize:9,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)"}},"Oznacz jako"),
                   allFlags.map(function(fl){
                     var on=onFlags.indexOf(fl)>=0;
                     return ce("div",{key:fl.id,onClick:function(ev){ev.stopPropagation();toggleThreadFlag(t,fl);},
                       style:{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",fontSize:12,cursor:"pointer",
-                        borderTop:"1px solid var(--bd3)",background:on?"var(--bd3)":"transparent"}},
+                        borderTop:"1px solid var(--bd3)",background:on?"var(--menu-hover)":"transparent"}},
                       ce("span",{style:{fontSize:14,color:fl.color,width:14,flexShrink:0}},"\u2691"),
                       ce("span",{style:{flex:1,color:"var(--t1)",fontWeight:on?700:500}},fl.label),
                       on?ce("span",{style:{fontSize:11,color:fl.color,fontWeight:700}},"\u2713"):null
@@ -972,8 +972,8 @@ function MailPreview(p){
               style:Object.assign({},BGHOST,headFlags.length?{color:headFlags[0].color,borderColor:headFlags[0].color,fontWeight:700,background:headFlags[0].color+"1f"}:{})},
               "\u2691 "+(headFlags.length?headFlags.map(function(f){return f.label;}).join(", "):"Oznacz jako")+" \u25be"),
             showFlags?ce("div",{style:{position:"absolute",top:"100%",left:0,zIndex:350,minWidth:180,paddingTop:4}},
-              ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,
-                boxShadow:"0 8px 24px rgba(0,0,0,0.18)",overflow:"hidden"}},
+              ce("div",{style:{background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,
+                boxShadow:"0 10px 30px rgba(0,0,0,0.22)",overflow:"hidden"}},
                 previewFlags.map(function(fl,i){
                   var on=headFlags.indexOf(fl)>=0;
                   return ce("div",{key:fl.id,onClick:function(){
@@ -981,7 +981,7 @@ function MailPreview(p){
                       else {p.onToggleFlag&&p.onToggleFlag(head,fl);}
                     },
                     style:{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",fontSize:12,cursor:"pointer",
-                      borderTop:i===0?"none":"1px solid var(--bd3)",background:on?"var(--bd3)":"transparent"}},
+                      borderTop:i===0?"none":"1px solid var(--bd3)",background:on?"var(--menu-hover)":"transparent"}},
                     ce("span",{style:{fontSize:14,color:fl.color,width:14,flexShrink:0}},"\u2691"),
                     ce("span",{style:{flex:1,color:"var(--t1)",fontWeight:on?700:500}},fl.label),
                     on?ce("span",{style:{fontSize:11,color:fl.color,fontWeight:700}},"\u2713"):null
@@ -1003,7 +1003,7 @@ function MailPreview(p){
         ),
         ce("div",{style:{position:"relative"}},
           ce("button",{onClick:function(){setShowMove(function(v){return !v;});},style:BGHOST},"\uD83D\uDCC1 Przenie\u015b \u25be"),
-          showMove?ce("div",{style:{position:"absolute",top:"calc(100% + 4px)",left:0,background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.15)",zIndex:300,minWidth:190,overflow:"hidden"}},
+          showMove?ce("div",{style:{position:"absolute",top:"calc(100% + 4px)",left:0,background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,boxShadow:"0 10px 30px rgba(0,0,0,0.22)",zIndex:300,minWidth:190,overflow:"hidden"}},
             (p.customFolders||[]).length===0
               ?ce("div",{style:{padding:"12px 14px",fontSize:12,color:"var(--t3)",fontStyle:"italic"}},"Brak w\u0142asnych folder\u00f3w")
               :(p.customFolders||[]).map(function(f){
@@ -1800,8 +1800,8 @@ export function RichTextEditor(p){
           ce("span",{style:{display:"inline-block",width:10,height:3,background:"#dc2626",marginLeft:3}})
         ),
         colorOpen?ce("div",{style:{position:"absolute",top:"calc(100% + 4px)",left:0,
-          background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:8,
-          boxShadow:"0 8px 24px rgba(0,0,0,0.15)",zIndex:200,padding:8,
+          background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:8,
+          boxShadow:"0 10px 30px rgba(0,0,0,0.22)",zIndex:200,padding:8,
           display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:4,minWidth:140}},
           COLORS.map(function(c){
             return ce("button",{key:c.val,type:"button",title:c.name,
@@ -2689,7 +2689,7 @@ export function ScreenMail(p){
           showCcBcc?"\u2212 Ukryj CC/UDW":"+ CC / UDW")
       ),
       ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},onBlur:function(){setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:INP}),
-      contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--bg2)",backdropFilter:"blur(20px)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:9999,boxShadow:"0 8px 32px rgba(0,0,0,0.18)",overflow:"hidden",marginTop:2,maxHeight:280,overflowY:"auto"}},
+      contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:9999,boxShadow:"0 10px 30px rgba(0,0,0,0.22)",overflow:"hidden",marginTop:2,maxHeight:280,overflowY:"auto"}},
         contactSug.map(function(c){
           return ce("div",{key:c.email,onClick:function(){setToEmail(c.email);setContactSug([]);},
             style:{padding:"9px 12px",fontSize:13,cursor:"pointer",borderBottom:"1px solid var(--bd3)",display:"flex",alignItems:"center",gap:10,background:"transparent"}},
@@ -2728,8 +2728,8 @@ export function ScreenMail(p){
           },"\uD83D\uDCCB Wstaw szablon \u25BE"),
           showTplPicker?ce("div",{style:{
             position:"absolute",right:0,top:"100%",marginTop:4,zIndex:300,
-            background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,
-            boxShadow:"0 8px 24px rgba(0,0,0,0.13)",minWidth:190,overflow:"hidden"
+            background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,
+            boxShadow:"0 10px 30px rgba(0,0,0,0.22)",minWidth:190,overflow:"hidden"
           }},
             activeTemplates.map(function(tpl){
               return ce("div",{key:tpl.id,
