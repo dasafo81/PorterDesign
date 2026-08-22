@@ -41,6 +41,26 @@ export const MAIL_TEMPLATES = [
 export const DEFAULT_MAIL_FLAGS = [
   {id:"damian",label:"Damian",color:"#8b5cf6",category:"Damian",preset:"preset8"}
 ];
+// Kolory dopuszczalne dla flag \u2014 celowo ograniczone do presetow Outlooka,
+// zeby oznaczenie mialo ten sam kolor w aplikacji i w skrzynce Outlooka.
+export const FLAG_PALETTE = [
+  {preset:"preset8", color:"#8b5cf6", name:"Fioletowy"},
+  {preset:"preset0", color:"#e11d48", name:"Czerwony"},
+  {preset:"preset1", color:"#f97316", name:"Pomara\u0144czowy"},
+  {preset:"preset3", color:"#eab308", name:"\u017b\u00f3\u0142ty"},
+  {preset:"preset4", color:"#22c55e", name:"Zielony"},
+  {preset:"preset5", color:"#14b8a6", name:"Turkusowy"},
+  {preset:"preset7", color:"#3b82f6", name:"Niebieski"},
+  {preset:"preset10",color:"#64748b", name:"Stalowy"}
+];
+// Slug z etykiety \u2014 stabilne id flagi (bez polskich znak\u00f3w i spacji)
+export function flagSlug(label){
+  var s=String(label||"").toLowerCase()
+    .replace(/\u0105/g,"a").replace(/\u0107/g,"c").replace(/\u0119/g,"e").replace(/\u0142/g,"l")
+    .replace(/\u0144/g,"n").replace(/\u00f3/g,"o").replace(/\u015b/g,"s").replace(/\u017a/g,"z").replace(/\u017c/g,"z")
+    .replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
+  return s||("flag_"+Date.now());
+}
 export function getMailFlags(){
   try{
     var raw=localStorage.getItem("pd_mail_flags");
@@ -1036,6 +1056,48 @@ function SettingsView(p){
   var sSv=us(false),saving=sSv[0],setSaving=sSv[1];
   var sMsg=us(null),msg=sMsg[0],setMsg=sMsg[1];
   var fileRef=ur(null);
+  // Edytor flag (kolorowych oznacze\u0144) \u2014 lokalna kopia, zapis osobnym przyciskiem
+  var sFl=us((p.flags||[]).slice()),flags=sFl[0],setFlags=sFl[1];
+  var sFlSv=us(false),flagsSaving=sFlSv[0],setFlagsSaving=sFlSv[1];
+  var sFlMsg=us(null),flagsMsg=sFlMsg[0],setFlagsMsg=sFlMsg[1];
+
+  ue(function(){ setFlags((p.flags||[]).slice()); },[p.flags]);
+
+  function updFlag(idx,patch){
+    setFlags(function(prev){
+      return prev.map(function(f,i){return i===idx?Object.assign({},f,patch):f;});
+    });
+    setFlagsMsg(null);
+  }
+  function addFlag(){
+    var pal=FLAG_PALETTE[(flags.length)%FLAG_PALETTE.length];
+    setFlags(function(prev){return prev.concat([{id:"flag_"+Date.now(),label:"Nowa flaga",
+      color:pal.color,preset:pal.preset,category:"Nowa flaga"}]);});
+    setFlagsMsg(null);
+  }
+  function removeFlag(idx){
+    if(!window.confirm("Usun\u0105\u0107 t\u0119 flag\u0119? Wiadomo\u015bci ju\u017c oznaczone zachowaj\u0105 kategori\u0119 w Outlooku."))return;
+    setFlags(function(prev){return prev.filter(function(_,i){return i!==idx;});});
+    setFlagsMsg(null);
+  }
+  function saveFlags(){
+    // category = etykieta (to nazwa kategorii widoczna w Outlooku), id = slug
+    var clean=flags
+      .filter(function(f){return String(f.label||"").trim().length>0;})
+      .map(function(f){
+        var label=String(f.label).trim();
+        return {id:f.id||flagSlug(label),label:label,color:f.color||"#8b5cf6",
+          category:label,preset:f.preset||"preset8"};
+      });
+    setFlagsSaving(true);setFlagsMsg(null);
+    Promise.resolve(p.onSaveFlags?p.onSaveFlags(clean):null).then(function(){
+      setFlagsSaving(false);
+      setFlagsMsg({type:"ok",text:"Flagi zapisane"});
+    }).catch(function(err){
+      setFlagsSaving(false);
+      setFlagsMsg({type:"err",text:"B\u0142\u0105d zapisu flag: "+(err.message||"nieznany")});
+    });
+  }
 
   // Resync kiedy props się zmienią (np. po pierwszym załadowaniu z bazy)
   ue(function(){
@@ -1142,6 +1204,46 @@ function SettingsView(p){
               sigImg?ce("img",{src:sigImg,alt:"",style:{maxWidth:250,maxHeight:100,display:"block"}}):null
             )
             :ce("div",{style:{color:"#999",fontStyle:"italic"}},"(podpis pusty)")
+        )
+      ),
+
+      // ── Sekcja: Flagi (kolorowe oznaczenia) ────────────────────────────
+      // Zapisywane osobno od podpisu — to ustawienie całego studia, nie użytkownika.
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:16,marginBottom:16}},
+        ce("h3",{style:{fontSize:14,fontWeight:700,color:"var(--t1)",marginBottom:4}},"Flagi (kolorowe oznaczenia)"),
+        ce("p",{style:{fontSize:11,color:"var(--t3)",marginBottom:12,lineHeight:1.6}},
+          "Oznaczenia wiadomo\u015bci widoczne na li\u015bcie mail\u00f3w i jako filtr. Technicznie to kategorie Outlooka \u2014 "+
+          "flaga postawiona tutaj jest widoczna tak\u017ce w samym Outlooku i na telefonie. Ustawienie dotyczy ca\u0142ego studia."),
+        flags.length===0
+          ?ce("div",{style:{fontSize:12,color:"var(--t3)",fontStyle:"italic",marginBottom:10}},"Brak flag \u2014 dodaj pierwsz\u0105 poni\u017cej.")
+          :ce("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:10}},
+            flags.map(function(f,idx){
+              return ce("div",{key:f.id||idx,style:{display:"flex",alignItems:"center",gap:8,
+                padding:"8px 10px",borderRadius:10,background:"var(--bg3)",border:"1px solid var(--bd2)"}},
+                ce("span",{style:{fontSize:17,lineHeight:1,color:f.color,flexShrink:0}},"\u2691"),
+                ce("input",{value:f.label||"",placeholder:"Nazwa flagi",
+                  onChange:function(ev){updFlag(idx,{label:ev.target.value});},
+                  style:Object.assign({},INP,{flex:1,fontSize:13,padding:"7px 10px"})}),
+                ce("div",{style:{display:"flex",gap:4,flexShrink:0}},
+                  FLAG_PALETTE.map(function(pal){
+                    var on=(f.color||"").toLowerCase()===pal.color;
+                    return ce("button",{key:pal.preset,title:pal.name,
+                      onClick:function(){updFlag(idx,{color:pal.color,preset:pal.preset});},
+                      style:{width:20,height:20,borderRadius:"50%",background:pal.color,cursor:"pointer",
+                        border:on?"2px solid var(--t1)":"2px solid transparent",padding:0,flexShrink:0}});
+                  })
+                ),
+                ce("button",{onClick:function(){removeFlag(idx);},title:"Usu\u0144 flag\u0119",
+                  style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:16,padding:"2px 4px",flexShrink:0}},"\u00d7")
+              );
+            })
+          ),
+        ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          ce("button",{onClick:addFlag,style:BGHOST},"+ Dodaj flag\u0119"),
+          ce("button",{onClick:saveFlags,disabled:flagsSaving,
+            style:Object.assign({},BGHOST,flagsSaving?{opacity:0.5,cursor:"not-allowed"}:{fontWeight:700})},
+            flagsSaving?"\u23F3 Zapisuj\u0119\u2026":"\uD83D\uDCBE Zapisz flagi"),
+          flagsMsg?ce("span",{style:{fontSize:12,color:flagsMsg.type==="ok"?"var(--gr)":"var(--red)"}},flagsMsg.text):null
         )
       ),
 
@@ -1670,7 +1772,7 @@ export function ScreenMail(p){
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
   var sloadingMails=us(false),loadingMails=sloadingMails[0],setLoadingMails=sloadingMails[1];
   var srk=us(0),refreshKey=srk[0],setRefreshKey=srk[1];
-  var sflg=us(getMailFlags),mailFlags=sflg[0];   // flagi per tenant (localStorage / default)
+  var sflg=us(getMailFlags),mailFlags=sflg[0],setMailFlags=sflg[1];   // flagi per tenant
   // ── Paginacja historii (per folder) + wyszukiwanie server-side ──
   var snl=us({}),nextLinks=snl[0],setNextLinks=snl[1];            // @odata.nextLink per folder
   var slm=us(false),loadingMore=slm[0],setLoadingMore=slm[1];
@@ -1885,6 +1987,21 @@ export function ScreenMail(p){
       setLoadingMails(false);
     });
   },[accessToken,refreshKey]);
+
+  // Flagi per tenant z Supabase. Do czasu odpowiedzi dziala fallback
+  // (localStorage \u2192 DEFAULT_MAIL_FLAGS) ustawiony w inicjalizatorze stanu.
+  ue(function(){
+    sbApi.getMailFlags().then(function(list){
+      if(list)setMailFlags(list);
+    }).catch(function(){});
+  },[]);
+
+  // Zapis definicji flag (Ustawienia) \u2014 Supabase + lokalny cache offline
+  function saveMailFlags(list){
+    setMailFlags(list);
+    try{localStorage.setItem("pd_mail_flags",JSON.stringify(list));}catch(e){}
+    return sbApi.saveMailFlags(list);
+  }
 
   // Zmiana folderu → wyczyść aktywne wyszukiwanie
   ue(function(){ setSearchResults(null); setSearchNextLink(null); }, [activeFolder]);
@@ -2619,7 +2736,9 @@ export function ScreenMail(p){
     rightContent=ce(SettingsView,{
       userEmail:userEmail,
       userSettings:userSettings,
-      onSaved:function(row){setUserSettings(row);}
+      onSaved:function(row){setUserSettings(row);},
+      flags:mailFlags,
+      onSaveFlags:saveMailFlags
     });
   } else {
     var folderMails=allMails.filter(function(m){return m.folder===activeFolder;});
