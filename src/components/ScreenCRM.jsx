@@ -133,7 +133,7 @@ export function ModalDeal(p){
   var sinvc=useState([]),invCosts=sinvc[0],setInvCosts=sinvc[1];
   var srat=useState(null),rates=srat[0],setRates=srat[1];
   var sratE=useState(false),ratesEdit=sratE[0],setRatesEdit=sratE[1];
-  var sratD=useState({sew_curtain_mb:"",sew_roman_m2:"",lining_mb:"",mech_divisor:""}),
+  var sratD=useState({sew_quote_pct:"100",sew_curtain_mb:"",sew_roman_m2:"",lining_mb:"",mech_divisor:""}),
       ratesDraft=sratD[0],setRatesDraft=sratD[1];
   var scste=useState(false),costErr=scste[0],setCostErr=scste[1];
   var scstd=useState({kind:"tkanina",amount:"",supplier:"",installer_name:"",paid_at:"",planned_delivery:"",actual_delivery:"",note:""}),
