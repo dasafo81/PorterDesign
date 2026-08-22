@@ -212,7 +212,7 @@ export function ModalDeal(p){
           sew_curtain_mb:r&&r.sew_curtain_mb!=null?String(r.sew_curtain_mb):"",
           sew_roman_m2:  r&&r.sew_roman_m2!=null?String(r.sew_roman_m2):"",
           lining_mb:     r&&r.lining_mb!=null?String(r.lining_mb):"",
-          mech_divisor:  r&&r.mech_divisor!=null?String(r.mech_divisor):"2.46"
+          mech_divisor:  r&&r.mech_divisor!=null?String(r.mech_divisor):"2"
         });
       })
       .catch(function(){setRates(null);});
@@ -229,7 +229,7 @@ export function ModalDeal(p){
     liningMb:rates.lining_mb,
     mechDivisor:rates.mech_divisor,
     sewQuotePct:rates.sew_quote_pct
-  }:{sewCurtainMb:null,sewRomanM2:null,liningMb:null,mechDivisor:2.46,sewQuotePct:50};
+  }:{sewCurtainMb:null,sewRomanM2:null,liningMb:null,mechDivisor:2,sewQuotePct:50};
 
   var quoteCost=React.useMemo(function(){
     if(!cl||!cl.rooms)return null;
@@ -265,7 +265,7 @@ export function ModalDeal(p){
       sew_curtain_mb:num(ratesDraft.sew_curtain_mb),
       sew_roman_m2:num(ratesDraft.sew_roman_m2),
       lining_mb:num(ratesDraft.lining_mb),
-      mech_divisor:num(ratesDraft.mech_divisor)||2.46
+      mech_divisor:num(ratesDraft.mech_divisor)||2
     };
     sbApi.upsertCostRates(payload).then(function(){
       setRates(Object.assign({},rates||{},payload));
