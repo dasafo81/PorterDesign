@@ -130,6 +130,25 @@ export const sbApi = {
   deleteDeal: function(id){
     return sbFetch("DELETE","deals?id=eq."+id);
   },
+  // \u2500\u2500 KOSZTY ZLECENIA (strona kosztowa deala) \u2500\u2500
+  // Jeden wiersz = jedno realne wydanie: zam\u00f3wienie u dostawcy albo wyp\u0142ata
+  // dla monta\u017cysty. Nie myli\u0107 z clients.install_fee, kt\u00f3re jest kwot\u0105 p\u0142acon\u0105
+  // PRZEZ klienta za monta\u017c.
+  getDealCosts: function(dealId){
+    return sbFetch("GET","deal_costs?deal_id=eq."+dealId+"&select=*&order=created_at.asc");
+  },
+  addDealCost: function(data){
+    return sbFetch("POST","deal_costs",data).then(function(rows){
+      return Array.isArray(rows)?rows[0]:rows;
+    });
+  },
+  updateDealCost: function(id,data){
+    var patch=Object.assign({},data,{updated_at:new Date().toISOString()});
+    return sbFetch("PATCH","deal_costs?id=eq."+id,patch);
+  },
+  deleteDealCost: function(id){
+    return sbFetch("DELETE","deal_costs?id=eq."+id);
+  },
   getAttachments: function(dealId){
     return sbFetch("GET","deal_attachments?deal_id=eq."+dealId+"&select=*&order=created_at.asc");
   },
