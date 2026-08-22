@@ -32,6 +32,23 @@ export const MAIL_TEMPLATES = [
   {id:"wlasny",label:"W\u0142asny",icon:"\u270F\uFE0F",subject:"",body:"",suggestAttachments:[]}
 ];
 
+// ── Flagi (kolorowe oznaczenia maili) ──────────────────────────────
+// Technicznie to kategorie Outlooka (message.categories) — dzięki temu oznaczenie
+// jest widoczne także w samym Outlooku i synchronizuje się między urządzeniami.
+// Per-tenant: każdy tenant może mieć własny zestaw — nadpisanie w localStorage
+// pod kluczem "pd_mail_flags" (JSON: [{id,label,color,category,preset}]).
+// preset = kolor kategorii w Outlooku (preset8 = fioletowy, preset0 = czerwony…)
+export const DEFAULT_MAIL_FLAGS = [
+  {id:"damian",label:"Damian",color:"#8b5cf6",category:"Damian",preset:"preset8"}
+];
+export function getMailFlags(){
+  try{
+    var raw=localStorage.getItem("pd_mail_flags");
+    if(raw){var arr=JSON.parse(raw);if(Array.isArray(arr)&&arr.length)return arr;}
+  }catch(e){}
+  return DEFAULT_MAIL_FLAGS;
+}
+
 var APP_PDF_OPTIONS = [
   {id:"pdf_oferta",label:"Wycena pe\u0142na",icon:"\uD83D\uDCC4"},
   {id:"pdf_uproszczona",label:"Wycena uproszczona",icon:"\uD83D\uDCC3"},
@@ -387,6 +404,8 @@ function MailList(p){
   var us=React.useState;
   var sf=us(""),filter=sf[0],setFilter=sf[1];
   var sfi=us(false),onlyImportant=sfi[0],setOnlyImportant=sfi[1];
+  var sfu=us(false),onlyUnread=sfu[0],setOnlyUnread=sfu[1];
+  var sff=us(null),flagFilter=sff[0],setFlagFilter=sff[1];   // id flagi lub null
   var ue=React.useEffect;
   var isInbox=p.folder==="inbox";
   var searching=filter.trim().length>0;
@@ -434,6 +453,11 @@ function MailList(p){
 
   var filtered=threads.filter(function(t){
     if(onlyImportant&&!t.mails.some(function(m){return m.isImportant;}))return false;
+    if(onlyUnread&&isInbox&&!t.mails.some(function(m){return m.isRead===false;}))return false;
+    if(flagFilter){
+      var ff=(p.flags||[]).find(function(x){return x.id===flagFilter;});
+      if(ff&&!t.mails.some(function(m){return (m.categories||[]).indexOf(ff.category)>=0;}))return false;
+    }
     if(!searching)return true;         // przeglądanie — pokaż wszystko
     if(serverMatched)return true;      // serwer już dopasował (adres/temat/treść)
     var q=filter.toLowerCase();
@@ -448,10 +472,29 @@ function MailList(p){
         ce("input",{type:"text",value:filter,onChange:function(e){setFilter(e.target.value);},
           placeholder:"Szukaj...",style:Object.assign({},INP,{paddingLeft:32,fontSize:12})})
       ),
-      ce("button",{onClick:function(){setOnlyImportant(function(v){return !v;});},
-        style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(onlyImportant?"var(--red)":"var(--bd2)"),background:onlyImportant?"var(--red-l)":"transparent",color:onlyImportant?"var(--red)":"var(--t3)",fontSize:11,fontWeight:onlyImportant?700:500,cursor:"pointer",width:"100%",justifyContent:"center"}},
-        ce("span",{style:{fontSize:13,color:"var(--red)"}},"\u2691"),
-        onlyImportant?"Wszystkie":"Tylko ważne"
+      ce("div",{style:{display:"flex",gap:5,flexWrap:"wrap"}},
+        ce("button",{onClick:function(){setOnlyImportant(function(v){return !v;});},
+          style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(onlyImportant?"var(--red)":"var(--bd2)"),background:onlyImportant?"var(--red-l)":"transparent",color:onlyImportant?"var(--red)":"var(--t3)",fontSize:11,fontWeight:onlyImportant?700:500,cursor:"pointer",flex:1,justifyContent:"center"}},
+          ce("span",{style:{fontSize:13,color:"var(--red)"}},"\u2691"),
+          onlyImportant?"Wszystkie":"Tylko ważne"
+        ),
+        // Tylko nieprzeczytane — sens ma wyłącznie w Odebranych
+        isInbox?ce("button",{onClick:function(){setOnlyUnread(function(v){return !v;});},
+          title:onlyUnread?"Poka\u017c wszystkie":"Poka\u017c tylko nieprzeczytane",
+          style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(onlyUnread?"var(--violet)":"var(--bd2)"),background:onlyUnread?"var(--violet-l)":"transparent",color:onlyUnread?"var(--violet)":"var(--t3)",fontSize:11,fontWeight:onlyUnread?700:500,cursor:"pointer",flex:1,justifyContent:"center"}},
+          ce("span",{style:{width:7,height:7,borderRadius:"50%",background:"var(--violet)",flexShrink:0}}),
+          onlyUnread?"Wszystkie":"Nieprzeczytane"
+        ):null,
+        // Filtry po flagach (kategoriach) — lista per tenant
+        (p.flags||[]).map(function(fl){
+          var on=flagFilter===fl.id;
+          return ce("button",{key:fl.id,onClick:function(){setFlagFilter(on?null:fl.id);},
+            title:on?"Poka\u017c wszystkie":"Poka\u017c tylko oznaczone: "+fl.label,
+            style:{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",borderRadius:8,border:"1px solid "+(on?fl.color:"var(--bd2)"),background:on?fl.color+"1f":"transparent",color:on?fl.color:"var(--t3)",fontSize:11,fontWeight:on?700:500,cursor:"pointer",flex:1,justifyContent:"center"}},
+            ce("span",{style:{fontSize:13,color:fl.color}},"\u2691"),
+            fl.label
+          );
+        })
       )
     ),
     ce("div",{style:{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}},
@@ -468,6 +511,9 @@ function MailList(p){
           var ci=Math.abs((nm||"").charCodeAt(0)||0)%colors.length;
           var unread=isInbox&&t.mails.some(function(x){return x.isRead===false;});
           var threadImportant=t.mails.some(function(x){return x.isImportant;});
+          var threadFlags=(p.flags||[]).filter(function(fl){
+            return t.mails.some(function(x){return (x.categories||[]).indexOf(fl.category)>=0;});
+          });
           return ce("div",{key:t.key,onClick:function(){p.onSelect(t);},
             style:{padding:"10px 12px",borderRadius:10,cursor:"pointer",
               background:selectedInThread?"var(--wb)":(unread?"var(--bd3)":"transparent"),
@@ -480,6 +526,11 @@ function MailList(p){
               onMouseEnter:function(ev){if(!threadImportant){ev.currentTarget.style.color="var(--red)";ev.currentTarget.style.opacity="0.85";}},
               onMouseLeave:function(ev){if(!threadImportant){ev.currentTarget.style.color="var(--bd2)";ev.currentTarget.style.opacity="0.55";}}
             },"\u2691"),
+            threadFlags.length>0?ce("span",{style:{display:"flex",flexDirection:"column",gap:1,alignSelf:"center",flexShrink:0}},
+              threadFlags.map(function(fl){
+                return ce("span",{key:fl.id,title:fl.label,style:{fontSize:13,lineHeight:1,color:fl.color}},"\u2691");
+              })
+            ):null,
             ce(Avatar,{size:34,bg:selectedInThread?colors[ci]:colors[ci]+"99",label:initials(nm)}),
             ce("div",{style:{flex:1,minWidth:0}},
               ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:2}},
@@ -553,7 +604,8 @@ function mapGraphMsg(m,folder){
     hasAttachments:!!m.hasAttachments,
     conversationId:m.conversationId||null,
     isRead:isSent?true:(m.isRead!==false),
-    isImportant:m.importance==="high"
+    isImportant:m.importance==="high",
+    categories:m.categories||[]
   };
 }
 
@@ -596,6 +648,8 @@ function MailPreview(p){
   // $select=contentId daje 400, bo contentId nie jest polem bazowego attachment (tylko fileAttachment).
   function fetchAttachments(mid){
     if(!mid)return;
+    // Placeholder \u015bwie\u017co wys\u0142anego maila (id "m_...") \u2014 Graph go jeszcze nie zna
+    if(String(mid).indexOf("m_")===0)return;
     if(fetchedAtts[mid]&&fetchedAtts[mid].length>0)return;
     if(loadingAtts[mid])return;
     setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
@@ -826,6 +880,15 @@ function MailPreview(p){
         p.activeFolder!=="trash"&&p.activeFolder!=="spam"
           ?ce("button",{onClick:function(){p.onToggleImportant&&p.onToggleImportant(head);},style:Object.assign({},BGHOST,head.isImportant?{color:"var(--red)",borderColor:"var(--red)",fontWeight:700}:{})},head.isImportant?"\u2691 Wa\u017cne":"\u2691 Oznacz jako wa\u017cne")
           :null,
+        // Flagi (kategorie Outlooka) \u2014 zestaw konfigurowalny per tenant
+        (p.flags||[]).map(function(fl){
+          var on=(head.categories||[]).indexOf(fl.category)>=0;
+          return ce("button",{key:fl.id,onClick:function(){p.onToggleFlag&&p.onToggleFlag(head,fl);},
+            title:on?"Usu\u0144 oznaczenie: "+fl.label:"Oznacz: "+fl.label,
+            style:Object.assign({},BGHOST,{color:fl.color,borderColor:on?fl.color:"var(--bd2)",
+              background:on?fl.color+"1f":"transparent",fontWeight:on?700:500})},
+            "\u2691 "+fl.label);
+        }),
         ce("button",{onClick:p.onCalendar,style:BGHOST},"\uD83D\uDCC5 Dodaj do kalendarza"),
         p.activeFolder==="trash"||p.activeFolder==="spam"
           ?ce("button",{onClick:function(){p.onRestore&&p.onRestore(head);},style:Object.assign({},BGHOST,{color:"var(--gr)",borderColor:"var(--gr)"})},"↩ Przywróć do skrzynki")
@@ -885,6 +948,21 @@ function MailPreview(p){
             )
           ),
           isExp?ce("div",{style:{padding:"8px 12px 16px",background:"transparent"}},
+            // \u015awie\u017co wys\u0142any mail: mamy tylko lokalny placeholder (id "m_..."), Graph
+            // nie zwr\u00f3ci dla niego za\u0142\u0105cznik\u00f3w \u2014 pokazujemy list\u0119 z kompozytora.
+            (String(m.id).indexOf("m_")===0&&(m.localAttachments||[]).length>0)
+              ?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,padding:"0 4px"}},
+                  (m.localAttachments||[]).map(function(att,j){
+                    return ce("div",{key:att.id||j,
+                      style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px 7px 10px",borderRadius:10,
+                        background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
+                      ce("span",{style:{fontSize:16}},"\uD83D\uDCCE"),
+                      ce("span",{style:{color:"var(--t1)",fontWeight:500}},att.name||"Za\u0142\u0105cznik"),
+                      att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:4}},fmtBytes(att.size)):null
+                    );
+                  })
+                )
+              :null,
             (loadingAtts[m.id]||(fetchedAtts[m.id]&&fetchedAtts[m.id].length>0))?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,padding:"0 4px"}},
               loadingAtts[m.id]
                 ?ce("div",{style:{fontSize:11,color:"var(--t3)",fontStyle:"italic"}},"\u23F3 \u0141adowanie za\u0142\u0105cznik\u00f3w\u2026")
@@ -1592,6 +1670,7 @@ export function ScreenMail(p){
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
   var sloadingMails=us(false),loadingMails=sloadingMails[0],setLoadingMails=sloadingMails[1];
   var srk=us(0),refreshKey=srk[0],setRefreshKey=srk[1];
+  var sflg=us(getMailFlags),mailFlags=sflg[0];   // flagi per tenant (localStorage / default)
   // ── Paginacja historii (per folder) + wyszukiwanie server-side ──
   var snl=us({}),nextLinks=snl[0],setNextLinks=snl[1];            // @odata.nextLink per folder
   var slm=us(false),loadingMore=slm[0],setLoadingMore=slm[1];
@@ -1730,10 +1809,10 @@ export function ScreenMail(p){
     if(!accessToken)return;
     setLoadingMails(true);
 
-    var inboxUrl="https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead,importance&$orderby=receivedDateTime desc";
-    var sentUrl="https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,ccRecipients,sentDateTime,bodyPreview,hasAttachments,conversationId,importance&$orderby=sentDateTime desc";
-    var trashUrl="https://graph.microsoft.com/v1.0/me/mailFolders/deletedItems/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
-    var spamUrl="https://graph.microsoft.com/v1.0/me/mailFolders/junkEmail/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,conversationId,isRead&$orderby=receivedDateTime desc";
+    var inboxUrl="https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead,importance&$orderby=receivedDateTime desc";
+    var sentUrl="https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,ccRecipients,sentDateTime,bodyPreview,hasAttachments,categories,conversationId,importance&$orderby=sentDateTime desc";
+    var trashUrl="https://graph.microsoft.com/v1.0/me/mailFolders/deletedItems/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead&$orderby=receivedDateTime desc";
+    var spamUrl="https://graph.microsoft.com/v1.0/me/mailFolders/junkEmail/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead&$orderby=receivedDateTime desc";
 
     // Odśwież token przed każdym pobraniem — stary token wygasa po ~1h
     msalGetToken().then(function(freshToken){
@@ -1771,7 +1850,8 @@ export function ScreenMail(p){
           hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
           isRead:m.isRead!==false,
-          isImportant:m.importance==="high"
+          isImportant:m.importance==="high",
+          categories:m.categories||[]
         };
       });
       var sentMails=(sentData.value||[]).map(function(m){
@@ -1788,11 +1868,12 @@ export function ScreenMail(p){
           hasAttachments:!!m.hasAttachments,
           conversationId:m.conversationId||null,
           isRead:true,
-          isImportant:m.importance==="high"
+          isImportant:m.importance==="high",
+          categories:m.categories||[]
         };
       });
-      var trashMails=(trashData.value||[]).map(function(m){var fa=(m.from&&m.from.emailAddress)||{};return {id:m.id,folder:"trash",from:fa.address||"",fromName:fa.name||fa.address||"",to:"",toName:"",cc:fmtRecipients(m.ccRecipients),subject:m.subject||"",date:m.receivedDateTime||new Date().toISOString(),preview:m.bodyPreview||"",body:null,attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],hasAttachments:!!m.hasAttachments,conversationId:m.conversationId||null,isRead:m.isRead!==false};});
-      var spamMails=(spamData.value||[]).map(function(m){var fa=(m.from&&m.from.emailAddress)||{};return {id:m.id,folder:"spam",from:fa.address||"",fromName:fa.name||fa.address||"",to:"",toName:"",cc:fmtRecipients(m.ccRecipients),subject:m.subject||"",date:m.receivedDateTime||new Date().toISOString(),preview:m.bodyPreview||"",body:null,attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],hasAttachments:!!m.hasAttachments,conversationId:m.conversationId||null,isRead:m.isRead!==false};});
+      var trashMails=(trashData.value||[]).map(function(m){var fa=(m.from&&m.from.emailAddress)||{};return {id:m.id,folder:"trash",from:fa.address||"",fromName:fa.name||fa.address||"",to:"",toName:"",cc:fmtRecipients(m.ccRecipients),subject:m.subject||"",date:m.receivedDateTime||new Date().toISOString(),preview:m.bodyPreview||"",body:null,attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],hasAttachments:!!m.hasAttachments,conversationId:m.conversationId||null,isRead:m.isRead!==false,categories:m.categories||[]};});
+      var spamMails=(spamData.value||[]).map(function(m){var fa=(m.from&&m.from.emailAddress)||{};return {id:m.id,folder:"spam",from:fa.address||"",fromName:fa.name||fa.address||"",to:"",toName:"",cc:fmtRecipients(m.ccRecipients),subject:m.subject||"",date:m.receivedDateTime||new Date().toISOString(),preview:m.bodyPreview||"",body:null,attachments:m.hasAttachments?[{name:"Za\u0142\u0105czniki"}]:[],hasAttachments:!!m.hasAttachments,conversationId:m.conversationId||null,isRead:m.isRead!==false,categories:m.categories||[]};});
       setAllMails(inboxMails.concat(sentMails).concat(trashMails).concat(spamMails));
       setNextLinks({
         inbox:inboxData["@odata.nextLink"]||null,
@@ -2041,10 +2122,19 @@ export function ScreenMail(p){
         })
         .then(function(r){
           if(!r.ok)return r.json().then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+r.status+")");});
+          var sentAtts=attachments.slice();
           var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:toName,
             subject:subject,date:new Date().toISOString(),preview:htmlToPreview(body).slice(0,80)+"...",
-            body:body+(quotedHtml||""),attachments:attachments.slice()};
+            body:body+(quotedHtml||""),attachments:sentAtts,
+            // localAttachments \u2014 pe\u0142ne metadane z kompozytora; Graph nie zwr\u00f3ci
+            // za\u0142\u0105cznik\u00f3w dla sztucznego id "m_...", wi\u0119c renderujemy je lokalnie
+            localAttachments:sentAtts,
+            hasAttachments:sentAtts.length>0,
+            isRead:true,isImportant:false,categories:[]};
           setAllMails(function(prev){return [nm].concat(prev);});
+          // Po chwili od\u015bwie\u017c foldery \u2014 placeholder zostanie zast\u0105piony prawdziw\u0105
+          // wiadomo\u015bci\u0105 z Sent Items (z klikalnymi, pobieralnymi za\u0142\u0105cznikami)
+          setTimeout(function(){setRefreshKey(function(k){return k+1;});},6000);
           setSending(false); setJustSent(true);
           // Zapisz adres odbiorcy w historii (Supabase — działa cross-device)
           sbApi.upsertMailRecipient(toEmail, toName).catch(function(){});
@@ -2200,7 +2290,7 @@ export function ScreenMail(p){
     });
   }
   var GRAPH_FOLDER={inbox:"inbox",sent:"sentItems",trash:"deletedItems",spam:"junkEmail"};
-  var MAIL_SELECT="subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,hasAttachments,conversationId,isRead,importance";
+  var MAIL_SELECT="subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead,importance";
 
   // Doładuj starsze wiadomości bieżącego folderu (podąża za @odata.nextLink)
   function loadMore(folder){
@@ -2290,6 +2380,44 @@ export function ScreenMail(p){
         body:JSON.stringify({importance:newVal?"high":"normal"})
       }).catch(function(e){console.warn("toggleImportant PATCH failed",e);});
     }).catch(function(){});
+  }
+
+  // Flaga = kategoria Outlooka. Kolor bierze si\u0119 z master category \u2014 tworzymy j\u0105
+  // raz (jednorazowo na sesj\u0119), \u017ceby oznaczenie mia\u0142o w\u0142a\u015bciwy kolor tak\u017ce w Outlooku.
+  function ensureMasterCategory(flag,token){
+    if(!flag||!flag.category||!token)return Promise.resolve();
+    if(!window._porterMailCats)window._porterMailCats={};
+    if(window._porterMailCats[flag.category])return Promise.resolve();
+    window._porterMailCats[flag.category]=true;
+    return fetch("https://graph.microsoft.com/v1.0/me/outlook/masterCategories",{
+      method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+      body:JSON.stringify({displayName:flag.category,color:flag.preset||"preset8"})
+    }).catch(function(){});   // 409 = kategoria ju\u017c istnieje \u2014 ignorujemy
+  }
+  function toggleFlag(mail,flag){
+    if(!mail||!flag||mail.id.indexOf("m_")===0)return;
+    var cur=(mail.categories||[]).slice();
+    var idx=cur.indexOf(flag.category);
+    if(idx>=0)cur.splice(idx,1); else cur.push(flag.category);
+    var upd=function(m){return m.id===mail.id?Object.assign({},m,{categories:cur}):m;};
+    setAllMails(function(prev){return prev.map(upd);});
+    setSearchResults(function(prev){return prev?prev.map(upd):prev;});
+    if(selThread&&selThread.mails&&selThread.mails.some(function(m){return m.id===mail.id;})){
+      setSelThread(function(prev){
+        if(!prev)return prev;
+        return Object.assign({},prev,{head:upd(prev.head),mails:prev.mails.map(upd)});
+      });
+    }
+    msalGetToken().then(function(tok){
+      var token=tok||accessToken;
+      if(!token)return;
+      return Promise.resolve(ensureMasterCategory(flag,token)).then(function(){
+        return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
+          method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
+          body:JSON.stringify({categories:cur})
+        });
+      });
+    }).catch(function(e){console.warn("toggleFlag PATCH failed",e);});
   }
 
   if(!logged){
@@ -2506,10 +2634,12 @@ export function ScreenMail(p){
             },onToggleImportant:function(m){toggleImportant(m);},selectedId:selThread&&selThread.head?selThread.head.id:null,
             onLoadMore:loadMore,hasMore:!!nextLinks[activeFolder],loadingMore:loadingMore,
             onSearch:runSearch,searchResults:searchResults,searchLoading:searchLoading,
-            onLoadMoreSearch:loadMoreSearch,searchHasMore:!!searchNextLink})
+            onLoadMoreSearch:loadMoreSearch,searchHasMore:!!searchNextLink,
+            flags:mailFlags,onToggleFlag:toggleFlag})
       ),
       ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
         ce(MailPreview,{thread:selThread,accessToken:accessToken,onTokenRefresh:function(tok){setAccessToken(tok);},onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
+          flags:mailFlags,onToggleFlag:toggleFlag,
           onReply:function(head,bodyCache){
             setToEmail(head.from||"");
             var subj=head.subject||"";
