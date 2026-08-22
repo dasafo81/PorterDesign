@@ -275,6 +275,11 @@ function InvoiceEditor(p){
   var [buyerEmail,setBuyerEmail]=useState(initContractor?(initContractor.email||""):(initInv.buyer_email||""));
   var [clientId,setClientId]=useState(initInv.client_id||null);
   var [dealId,setDealId]=useState(initInv.deal_id||null);
+  // Faktura zakupowa -> zlecenie: deal_id istnieje w schemacie od migracji 0001,
+  // ale dotad byl zerowany dla kierunku "zakup", wiec kosztow z KSeF nie dalo sie
+  // przypisac do konkretnej realizacji. Ten selektor to odblokowuje.
+  var [createDealCost,setCreateDealCost]=useState(false);
+  var [dealCostKind,setDealCostKind]=useState("tkanina");
   // Powiązanie z ofertą — łączy fakturę z wcześniej wygenerowaną wyceną klienta
   var [clientOffers,setClientOffers]=useState([]);
   var [offerId,setOfferId]=useState(initInv.offer_id||null);
@@ -384,6 +389,15 @@ function InvoiceEditor(p){
   // Lista klientów z CRM (przekazana z ScreenInvoices), filtrowana po wyszukiwaniu
   var clientsList=p.clients||[];
   var dealsList=p.deals||[];
+  // Lista zlecen do selektora na fakturze zakupowej — najswiezsze na gorze.
+  var zakupDealOptions=dealsList.map(function(dl){
+    var cli=(p.clients||[]).find(function(x){return String(x.id)===String(dl.client_id);});
+    return {
+      id:dl.id,
+      label:(cli&&cli.name?cli.name:"(bez klienta)")+(dl.stage?" \u00B7 "+dl.stage:""),
+      created:dl.created_at||""
+    };
+  }).sort(function(a,b){return String(b.created).localeCompare(String(a.created));});
   var filteredClients=clientSearch.trim()
     ? clientsList.filter(function(c){
         var q=clientSearch.toLowerCase();
@@ -595,7 +609,9 @@ function InvoiceEditor(p){
       doc_type:docType, direction:direction,
       issue_date:issueDate, sale_date:saleDate, due_date:dueDate,
       payment_method:payMethod, kasowa:kasowa,
-      client_id:isZakupDir?null:clientId, deal_id:isZakupDir?null:dealId,
+      // client_id zostaje pusty na zakupie (to link do NABYWCY), ale deal_id juz nie —
+      // faktura zakupowa moze i powinna wskazywac zlecenie, ktorego dotyczy koszt.
+      client_id:isZakupDir?null:clientId, deal_id:dealId||null,
       offer_id:isZakupDir?null:(offerId||null), offer_number:isZakupDir?"":(offerNumber||""),
       offer_discount:isZakupDir?0:(+offerDiscount||0),
       contact_id: contactId||null,
@@ -688,6 +704,24 @@ function InvoiceEditor(p){
         }
         return Object.assign({},inv,{id:invId});
       });
+    })
+    .then(function(result){
+      // Dopisanie kosztu do zlecenia. Blad tutaj nie moze cofnac zapisanej faktury —
+      // faktura jest juz w bazie, wiec awarie logujemy i idziemy dalej.
+      if(!(isZakupDir&&dealId&&createDealCost))return result;
+      return sbApi.addDealCost({
+        deal_id:dealId,
+        kind:dealCostKind,
+        amount:totalNet,
+        supplier:buyerName.trim(),
+        paid_at:null,
+        invoice_id:result.id||null,
+        note:"Z faktury "+(header.number||purchaseNumber||"").trim()
+      }).then(function(){return result;})
+        .catch(function(ex){
+          console.warn("Nie uda\u0142o si\u0119 dopisa\u0107 kosztu do zlecenia:",ex);
+          return result;
+        });
     })
     .then(function(result){
       setBusy(false);
@@ -820,6 +854,38 @@ function InvoiceEditor(p){
         ),
         clientId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:4}},
           "\u2713 Powi\u0105zano z klientem CRM"+(dealId?" \u2014 deal #"+dealId:""))
+      ),
+
+      direction==="zakup"&&ce("div",{style:{marginBottom:14}},
+        ce("span",{style:label},"Zlecenie, kt\u00f3rego dotyczy koszt (opcjonalnie)"),
+        ce("select",{style:inp,value:dealId||"",
+          onChange:function(e){
+            var v=e.target.value||null;
+            setDealId(v);
+            if(!v)setCreateDealCost(false);
+          }},
+          ce("option",{value:""},"\u2014 nie przypisuj do zlecenia \u2014"),
+          zakupDealOptions.map(function(o){
+            return ce("option",{key:o.id,value:o.id},o.label);
+          })
+        ),
+        dealId&&ce("label",{style:{display:"flex",alignItems:"center",gap:7,fontSize:12,color:"var(--t2)",marginTop:9,cursor:"pointer"}},
+          ce("input",{type:"checkbox",checked:createDealCost,
+            onChange:function(e){setCreateDealCost(e.target.checked);},
+            style:{width:14,height:14,cursor:"pointer"}}),
+          "Dopisz koszt do zlecenia (kwota netto: "+fmtMoney(totalNet)+")"
+        ),
+        dealId&&createDealCost&&ce("select",{style:Object.assign({},inp,{marginTop:7}),
+          value:dealCostKind,onChange:function(e){setDealCostKind(e.target.value);}},
+          ce("option",{value:"tkanina"},"\uD83E\uDDF5 Tkanina"),
+          ce("option",{value:"osprzet"},"\uD83D\uDD29 Karnisz / osprz\u0119t"),
+          ce("option",{value:"szycie"},"\u2702\uFE0F Szycie"),
+          ce("option",{value:"transport"},"\uD83D\uDE9A Transport"),
+          ce("option",{value:"inne"},"\uD83D\uDCCE Inne")
+        ),
+        dealId&&createDealCost&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.5}},
+          "Powstanie wpis w \u201eEkonomii zlecenia\u201d powi\u0105zany z t\u0105 faktur\u0105. Zapisywana jest kwota NETTO."
+        )
       ),
 
       direction!=="zakup"&&clientId&&ce("div",{style:{marginBottom:14}},
