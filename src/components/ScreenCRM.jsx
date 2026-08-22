@@ -697,9 +697,11 @@ export function ModalDeal(p){
         ):null,
 
         ce(SectionCard,{icon:"💰",title:"Ekonomia zlecenia",done:costsTotal>0},
-          costErr?ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
-            "Moduł kosztów niedostępny — uruchom migrację 0034_deal_costs.sql w Supabase."
-          ):ce(Fragment,null,
+          // Wyliczenie z wyceny liczy sie w przegladarce z clients.rooms i cennika —
+          // nie dotyka zadnej nowej tabeli, wiec musi byc widoczne NIEZALEZNIE od
+          // tego, czy migracje 0034/0035 zostaly juz uruchomione. Wczesniej siedzialo
+          // wewnatrz galezi costErr i znikalo razem z lista recznych kosztow.
+          ce(Fragment,null,
             // ── Koszt wyliczony z wyceny (ze zużycia materiałów) ───────────
             quoteCost?ce("div",{style:{marginBottom:12,padding:"10px 12px",borderRadius:10,
               background:"var(--bg2)",border:"1px solid var(--bd2)"}},
@@ -762,7 +764,13 @@ export function ModalDeal(p){
                 "\u26a0 Mar\u017ca zawy\u017cona \u2014 brakuje: "+quoteCost.missingList.join(", ")+
                 ". Uzupe\u0142nij w Magazyn \u2192 Katalog albo w stawkach powy\u017cej."
               ):null
-            ):null,
+            ):ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5,marginBottom:10}},
+              "Brak pozycji w wycenie \u2014 nie ma z czego policzy\u0107 zu\u017cycia materia\u0142\u00f3w."),
+
+            costErr?ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5,
+              padding:"8px 10px",borderRadius:8,background:"var(--bg2)",border:"1px dashed var(--bd2)"}},
+              "Wydatki got\u00f3wkowe (wyp\u0142aty monta\u017cyst\u00f3w) niedost\u0119pne \u2014 uruchom migracj\u0119 0034_deal_costs.sql w Supabase."
+            ):ce(Fragment,null,
 
             // Lista zapisanych kosztow
             allCostRows.length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
@@ -858,6 +866,7 @@ export function ModalDeal(p){
                 style:{padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
                   fontSize:12,fontWeight:700,cursor:costBusy?"not-allowed":"pointer",opacity:costBusy?0.6:1}},
                 costBusy?"⏳ Zapisuję...":"+ Dodaj koszt")
+            )
             )
           )
         ),
