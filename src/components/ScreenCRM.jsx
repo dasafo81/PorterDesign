@@ -127,6 +127,12 @@ export function ModalDeal(p){
   var sinv=useState(!!d.invoice_sent),invoiceSent=sinv[0],setInvoiceSent=sinv[1];
   var swash=useState(!!d.washing_sent),washingSent=swash[0],setWashingSent=swash[1];
   var sat=useState([]),attachments=sat[0],setAttachments=sat[1];
+  // Koszty zlecenia (deal_costs) — strona kosztowa, osobna tabela
+  var scst=useState([]),costs=scst[0],setCosts=scst[1];
+  var scstb=useState(false),costBusy=scstb[0],setCostBusy=scstb[1];
+  var scste=useState(false),costErr=scste[0],setCostErr=scste[1];
+  var scstd=useState({kind:"tkanina",amount:"",supplier:"",installer_name:"",paid_at:"",planned_delivery:"",actual_delivery:"",note:""}),
+      costDraft=scstd[0],setCostDraft=scstd[1];
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
   var sgcd=useState(null),gcalDraft=sgcd[0],setGcalDraft=sgcd[1];
@@ -148,6 +154,19 @@ export function ModalDeal(p){
     "Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"
   ];
   var INSTALLER_OPTIONS=["","Darek","Rafał","Grzesiek","Damian"];
+  // Rodzaje kosztow — te same wartosci co CHECK-lista w komentarzu migracji 0034
+  var COST_KINDS=[
+    {id:"tkanina",  label:"Tkanina",           icon:"🧵"},
+    {id:"szycie",   label:"Szycie",            icon:"✂️"},
+    {id:"osprzet",  label:"Karnisz / osprzęt", icon:"🔩"},
+    {id:"montaz",   label:"Wypłata montażysty",icon:"🔧"},
+    {id:"transport",label:"Transport",         icon:"🚚"},
+    {id:"inne",     label:"Inne",              icon:"📎"}
+  ];
+  var COST_SUPPLIERS=["","Vadain","LaurAles","Szyny KS","TRINITAS","Marcin Dekor","Margo Textil","Sama Tekstil"];
+  function costKindMeta(id){
+    return COST_KINDS.find(function(k){return k.id===id;})||{id:id,label:id,icon:"📎"};
+  }
   var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant"];
 
   var clientName=cl?cl.name:"(brak klienta)";
@@ -161,6 +180,54 @@ export function ModalDeal(p){
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
   },[d.id]);
+
+  // Koszty zlecenia. Blad (np. brak tabeli przed uruchomieniem migracji 0034)
+  // nie moze wywalic calego modala — panel po prostu pokazuje komunikat.
+  React.useEffect(function(){
+    sbApi.getDealCosts(d.id)
+      .then(function(rows){setCosts(rows||[]);setCostErr(false);})
+      .catch(function(){setCosts([]);setCostErr(true);});
+  },[d.id]);
+
+  // Suma kosztow + marza wzgledem wartosci wyceny dla klienta (clientTotal).
+  // clientTotal jest kwota BRUTTO z wyceny — marza jest wiec orientacyjna,
+  // do czasu az zlecenia beda spinane z faktura sprzedazowa.
+  var costsTotal=(costs||[]).reduce(function(a,x){return a+(parseFloat(x.amount)||0);},0);
+  var costsByKind=(costs||[]).reduce(function(a,x){
+    a[x.kind]=(a[x.kind]||0)+(parseFloat(x.amount)||0);
+    return a;
+  },{});
+  var marzaVal=clientTotal-costsTotal;
+  var marzaPct=clientTotal>0?Math.round(marzaVal/clientTotal*100):0;
+
+  function addCost(){
+    var amt=parseFloat(String(costDraft.amount).replace(",","."));
+    if(!amt||amt<=0){alert("Podaj kwotę kosztu.");return;}
+    setCostBusy(true);
+    var row={
+      deal_id:d.id,
+      kind:costDraft.kind,
+      amount:amt,
+      supplier:costDraft.supplier||"",
+      installer_name:costDraft.kind==="montaz"?(costDraft.installer_name||""):"",
+      paid_at:costDraft.paid_at||null,
+      planned_delivery:costDraft.planned_delivery||null,
+      actual_delivery:costDraft.actual_delivery||null,
+      note:costDraft.note||""
+    };
+    sbApi.addDealCost(row).then(function(saved){
+      setCosts(function(prev){return prev.concat([saved||row]);});
+      setCostDraft({kind:costDraft.kind,amount:"",supplier:"",installer_name:"",paid_at:"",planned_delivery:"",actual_delivery:"",note:""});
+      setCostBusy(false);
+    }).catch(function(e){alert("Błąd zapisu kosztu: "+e.message);setCostBusy(false);});
+  }
+
+  function deleteCost(id){
+    if(!confirm("Usunąć ten koszt?"))return;
+    sbApi.deleteDealCost(id).then(function(){
+      setCosts(function(prev){return prev.filter(function(x){return x.id!==id;});});
+    }).catch(function(e){alert("Błąd: "+e.message);});
+  }
 
   // Szablony maili "Opinia - swobodna" i "Instrukcja prania i czyszczenia" — do wysyłki z karty deala,
   // analogicznie do wysyłki faktury z modułu Faktury.
@@ -527,6 +594,98 @@ export function ModalDeal(p){
             )
           )
         ):null,
+
+        ce(SectionCard,{icon:"💰",title:"Ekonomia zlecenia",done:costsTotal>0},
+          costErr?ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
+            "Moduł kosztów niedostępny — uruchom migrację 0034_deal_costs.sql w Supabase."
+          ):ce(Fragment,null,
+            // Lista zapisanych kosztow
+            (costs||[]).length>0?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
+              (costs||[]).map(function(x){
+                var km=costKindMeta(x.kind);
+                var sub=[x.supplier||null,x.installer_name||null,x.paid_at?fmtDate(x.paid_at):null,
+                  (x.planned_delivery&&x.actual_delivery&&x.actual_delivery>x.planned_delivery)?"⚠ dostawa +"+Math.round((new Date(x.actual_delivery)-new Date(x.planned_delivery))/86400000)+" dni":null
+                ].filter(Boolean).join(" · ");
+                return ce("div",{key:x.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:9}},
+                  ce("span",{style:{fontSize:14,flexShrink:0}},km.icon),
+                  ce("div",{style:{flex:1,minWidth:0}},
+                    ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)"}},km.label),
+                    sub?ce("div",{style:{fontSize:10,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},sub):null
+                  ),
+                  ce("span",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",flexShrink:0}},
+                    (parseFloat(x.amount)||0).toLocaleString("pl-PL")+" zł"),
+                  ce("button",{onClick:function(){deleteCost(x.id);},
+                    style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}},"×")
+                );
+              })
+            ):ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:10}},"Brak zapisanych kosztów"),
+
+            // Podsumowanie: koszty vs marza
+            (costs||[]).length>0?ce("div",{style:{borderTop:"1px solid var(--bd2)",paddingTop:8,marginBottom:12,display:"flex",flexDirection:"column",gap:4}},
+              COST_KINDS.filter(function(k){return costsByKind[k.id]>0;}).map(function(k){
+                return ce("div",{key:k.id,style:{display:"flex",justifyContent:"space-between",fontSize:11,color:"var(--t3)"}},
+                  ce("span",null,k.label),
+                  ce("span",null,costsByKind[k.id].toLocaleString("pl-PL")+" zł"));
+              }),
+              ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,fontWeight:600,color:"var(--t2)"}},
+                ce("span",null,"Koszty razem"),
+                ce("span",null,costsTotal.toLocaleString("pl-PL")+" zł")),
+              clientTotal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,
+                color:marzaVal>=0?"var(--gr)":"var(--red, #ef4444)"}},
+                ce("span",null,"Marża (orientacyjnie)"),
+                ce("span",null,marzaVal.toLocaleString("pl-PL")+" zł · "+marzaPct+"%")):null,
+              clientTotal>0?ce("div",{style:{fontSize:10,color:"var(--t3)",lineHeight:1.4}},
+                "Liczona od wartości wyceny brutto, nie od faktury sprzedażowej."):null
+            ):null,
+
+            // Formularz dodania kosztu
+            ce("div",{style:{display:"flex",flexDirection:"column",gap:8,padding:"10px 12px",border:"1px dashed var(--bd2)",borderRadius:10}},
+              ce("div",{style:{display:"flex",gap:8}},
+                ce("select",{value:costDraft.kind,
+                  onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{kind:v});});},
+                  style:Object.assign({},INP,{flex:1})},
+                  COST_KINDS.map(function(k){return ce("option",{key:k.id,value:k.id},k.icon+" "+k.label);})
+                ),
+                ce("input",{type:"text",inputMode:"decimal",value:costDraft.amount,placeholder:"kwota zł",
+                  onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{amount:v});});},
+                  style:Object.assign({},INP,{width:110,textAlign:"right"})})
+              ),
+              costDraft.kind==="montaz"
+                ?ce("select",{value:costDraft.installer_name,
+                    onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{installer_name:v});});},
+                    style:INP},
+                    INSTALLER_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— montażysta —");}))
+                :ce("select",{value:costDraft.supplier,
+                    onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{supplier:v});});},
+                    style:INP},
+                    COST_SUPPLIERS.map(function(o,i){return ce("option",{key:i,value:o},o||"— dostawca —");})),
+              ce("div",{style:{display:"flex",gap:8}},
+                ce("div",{style:{flex:1}},
+                  ce("label",{style:{fontSize:10,color:"var(--t3)",display:"block",marginBottom:3}},"ZAPŁACONO"),
+                  ce("input",{type:"date",value:costDraft.paid_at,
+                    onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{paid_at:v});});},
+                    style:INP})),
+                costDraft.kind!=="montaz"?ce("div",{style:{flex:1}},
+                  ce("label",{style:{fontSize:10,color:"var(--t3)",display:"block",marginBottom:3}},"DOSTAWA PLAN."),
+                  ce("input",{type:"date",value:costDraft.planned_delivery,
+                    onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{planned_delivery:v});});},
+                    style:INP})):null,
+                costDraft.kind!=="montaz"?ce("div",{style:{flex:1}},
+                  ce("label",{style:{fontSize:10,color:"var(--t3)",display:"block",marginBottom:3}},"DOSTAWA FAKT."),
+                  ce("input",{type:"date",value:costDraft.actual_delivery,
+                    onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{actual_delivery:v});});},
+                    style:INP})):null
+              ),
+              ce("input",{type:"text",value:costDraft.note,placeholder:"Uwagi (nr zamówienia, tkanina...)",
+                onChange:function(ev){var v=ev.target.value;setCostDraft(function(s){return Object.assign({},s,{note:v});});},
+                style:INP}),
+              ce("button",{onClick:addCost,disabled:costBusy,
+                style:{padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
+                  fontSize:12,fontWeight:700,cursor:costBusy?"not-allowed":"pointer",opacity:costBusy?0.6:1}},
+                costBusy?"⏳ Zapisuję...":"+ Dodaj koszt")
+            )
+          )
+        ),
 
         ce(SectionCard,{icon:"📅",title:"Spotkanie",done:visitDone},
           ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
