@@ -205,6 +205,25 @@ export const sbApi = {
         }
       });
   },
+  // ── FLAGI MAILA (kolorowe oznaczenia = kategorie Outlooka) — per tenant ──
+  // Jeden wiersz na tenant, lista definicji w kolumnie jsonb `flags`.
+  // Zwraca tablice albo null (brak wiersza / blad) — wtedy UI bierze domyslne.
+  getMailFlags: function(){
+    return sbFetch("GET","mail_flags?select=flags&limit=1").then(function(rows){
+      var f=rows&&rows[0]&&rows[0].flags;
+      return Array.isArray(f)?f:null;
+    }).catch(function(){return null;});
+  },
+  // Upsert listy flag. tenant_id ustawia DEFAULT z JWT przy INSERT.
+  saveMailFlags: function(list){
+    var payload={flags:list||[],updated_at:new Date().toISOString()};
+    return sbFetch("GET","mail_flags?select=tenant_id&limit=1").then(function(rows){
+      if(rows&&rows.length){
+        return sbFetch("PATCH","mail_flags?tenant_id=eq."+rows[0].tenant_id,payload);
+      }
+      return sbFetch("POST","mail_flags",payload);
+    });
+  },
   // Upload obrazka podpisu do bucket mail-signatures
   // Zwraca publiczny URL gotowy do wstawienia w <img src="...">
   uploadSignatureImage: function(email, file){
