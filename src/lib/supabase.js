@@ -149,6 +149,14 @@ export const sbApi = {
   deleteDealCost: function(id){
     return sbFetch("DELETE","deal_costs?id=eq."+id);
   },
+  // Koszty fakturowane — czytane NA \u017bYWO z faktur zakupowych powi\u0105zanych ze
+  // zleceniem. Celowo NIE kopiujemy ich do deal_costs: korekta faktury ma od razu
+  // poprawia\u0107 mar\u017c\u0119, a jedna kwota nie mo\u017ce mie\u0107 dw\u00f3ch \u017ar\u00f3de\u0142 prawdy.
+  getDealInvoiceCosts: function(dealId){
+    return sbFetch("GET","invoices?deal_id=eq."+dealId+"&direction=eq.zakup"+
+      "&select=id,number,issue_date,total_net,total_gross,seller_snapshot,status,payment_status"+
+      "&order=issue_date.asc");
+  },
   getAttachments: function(dealId){
     return sbFetch("GET","deal_attachments?deal_id=eq."+dealId+"&select=*&order=created_at.asc");
   },
