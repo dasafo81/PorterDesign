@@ -36,3 +36,14 @@ create policy subscription_gate on cost_rates
 
 comment on table cost_rates is
   'Stawki kosztowe do wyliczania marzy ze zuzycia materialow. Jeden wiersz na tenant.';
+
+-- ── Uzupełnienie: koszt szycia jako % wartości z wyceny ─────────────────────
+-- W wycenie szycie idzie po 100/110/120 zl/mb (zaslony) i 200 zl/m2 (rolety).
+-- Jesli placimy szwalni dokladnie tyle, ile bierzemy od klienta (marza siedzi
+-- w tkaninie), to koszt = wartosc z wyceny x 100%. Jesli szycie ma narzut,
+-- ustaw procent nizej (np. 60 = placimy 60% tego, co sprzedajemy).
+-- Wypelnione sew_curtain_mb / sew_roman_m2 maja pierwszenstwo przed procentem.
+alter table cost_rates add column if not exists sew_quote_pct numeric not null default 100;
+
+comment on column cost_rates.sew_quote_pct is
+  'Koszt szycia jako % wartosci szycia z wyceny. 100 = sprzedajemy po kosztach.';
