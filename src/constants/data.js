@@ -2968,6 +2968,23 @@ export function calc(p){
   var fabP=p.fabMan!=null?p.fabMan:(p.fabP!=null?p.fabP:null);
   var fabW=p.fabW||0;
   var total=0,lines=[],warn=null;
+  // ── ZUŻYCIE MATERIAŁÓW (usage) ───────────────────────────────────────────
+  // calc() liczylo metry biezace i powierzchnie szycia od zawsze, ale zapisywalo
+  // je wylacznie jako tekst w `lines`. Bez liczby nie da sie pomnozyc zuzycia
+  // przez cene ZAKUPU, a faktury od Vadaina i LaurAles sa zbiorcze dla wielu
+  // zlecen — wiec kosztu nie da sie przypisac do realizacji z samej faktury.
+  // Ten obiekt niczego nie zmienia w cenie sprzedazy; jest czystym dopiskiem.
+  var usage={
+    // Nazwa tkaniny siedzi na produkcie (p.fabName), nie w konfiguracji c —
+    // ustawia ja sf() w ProdCard. fabManName to tkanina wpisana recznie
+    // (spoza cennika), dla ktorej ceny zakupu z definicji nie znamy.
+    fabName:(p.fabName||null), fabManName:(p.fabManName||null),
+    fab2Name:(p.fab2Name||null),
+    fabMb:0, fab2Mb:0, liningMb:0,
+    fabSell:0,              // wartosc SPRZEDAZY tkaniny (do wyliczenia mechSell)
+    sewMb:0, sewM2:0,       // zasłony liczy sie na mb, rolety na m2
+    sewSell:0               // wartosc SPRZEDAZY szycia
+  };
 
   if(p.type==="zaslona"||p.type==="firana"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
@@ -2990,6 +3007,9 @@ export function calc(p){
       }
       kp=podszewka?+(z*80+ks*0.5).toFixed(2):0;
       koszt=kt+ks+kp;total+=koszt;
+      usage.fabMb+=z; usage.fabSell+=kt;
+      usage.sewMb+=z; usage.sewSell+=ks;
+      if(podszewka){usage.liningMb+=z; usage.fabSell+=z*80; usage.sewSell+=ks*0.5;}
       lines.push(pn.side+" "+pw+"cm \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":""));
     });
   }else if(p.type==="zaluzja"){
@@ -3066,6 +3086,8 @@ export function calc(p){
       var kosztSzycia=parseFloat((powSzycie*200).toFixed(2));
       var kosztTkaniny=parseFloat(((tkanWcmMat/100)*tkan).toFixed(2));
       total=parseFloat((kosztSzycia+kosztTkaniny).toFixed(2));
+      usage.fabMb+=tkanWcmMat/100; usage.fabSell+=kosztTkaniny;
+      usage.sewM2+=powSzycie;      usage.sewSell+=kosztSzycia;
       lines.push("Roleta bez mech. "+rModel+" "+wCm+"\xd7"+hCm+"cm \xb7 szycie "+powSzycie+"m\xb2\xd7200z\u0142 + tkanina "+(tkanWcmMat/100).toFixed(2)+"mb\xd7"+tkan+"z\u0142");
     }else if(rModel==="duo"){
       // Duo: dwie różne tkaniny (np. firankowa + zaciemniająca)
@@ -3077,6 +3099,9 @@ export function calc(p){
       var kosztTkan2Duo=parseFloat(((tkanWcm/100)*tkan2).toFixed(2));
       var mechCostDuo=c.rSystem==="polautomatyczny"?parseFloat(rr.p.toFixed(2)):parseFloat((rr.p*2).toFixed(2));
       total=mechCostDuo+kosztSzyciaDuo+kosztTkan1Duo+kosztTkan2Duo;
+      usage.fabMb+=tkanWcm/100;  usage.fab2Mb+=tkanWcm/100;
+      usage.fabSell+=kosztTkan1Duo+kosztTkan2Duo;
+      usage.sewM2+=powSzycie*2;  usage.sewSell+=kosztSzyciaDuo;
       lines.push("Roleta Duo "+wCm+"\xd7"+hCm+"cm \xb7 "+pow+"m\xb2 \xb7 "+powInfo);
       lines.push("  Szycie: "+powSzycie+"m\xb2\xd7200z\u0142 \xd7 2 tkaniny");
       lines.push("  Tkanina 1: "+(tkanWcm/100).toFixed(2)+"mb\xd7"+tkan.toFixed(0)+"z\u0142");
@@ -3087,6 +3112,8 @@ export function calc(p){
       var kosztTkaniny=parseFloat(((tkanWcm/100)*tkan).toFixed(2));
       rr=lookup(wCm,RCITY);
       total=parseFloat((rr.p*2).toFixed(2))+kosztSzycia+kosztTkaniny;
+      usage.fabMb+=tkanWcm/100; usage.fabSell+=kosztTkaniny;
+      usage.sewM2+=powSzycie;   usage.sewSell+=kosztSzycia;
       if(c.rSystem==="elektryk"){
         rr=lookup(wCm,REL);
         total=parseFloat((rr.p*2).toFixed(2))+kosztSzycia+kosztTkaniny;
@@ -3102,6 +3129,8 @@ export function calc(p){
       var kosztPodszTkan=+((tkanWcm/100)*80).toFixed(2);
       var podszTot=+(kosztPodszSzycia+kosztPodszTkan).toFixed(2);
       total+=podszTot;
+      usage.liningMb+=tkanWcm/100;
+      usage.fabSell+=kosztPodszTkan; usage.sewSell+=kosztPodszSzycia;
       lines.push("+ Podszewka "+(tkanWcm/100).toFixed(2)+"mb\xd780z\u0142 + 50% szycia \u2192 +"+podszTot.toFixed(2)+" z\u0142");
     }
     // Maskownice/boczki
@@ -3238,7 +3267,72 @@ export function calc(p){
     });
     total=kdT;
   }
-  return{total:total,lines:lines,warn:warn};
+  // Reszta ceny (mechanizmy rolet, zaluzje, karnisze, szyny, plisy, doplaty)
+  // to pozycje kupowane gotowe — ich koszt wyliczamy z mnoznika, patrz costOf().
+  usage.mechSell=Math.max(0,+(total-usage.fabSell-usage.sewSell).toFixed(2));
+  usage.fabMb=+(usage.fabMb.toFixed(3));
+  usage.fab2Mb=+(usage.fab2Mb.toFixed(3));
+  usage.liningMb=+(usage.liningMb.toFixed(3));
+  usage.sewMb=+(usage.sewMb.toFixed(3));
+  usage.sewM2=+(usage.sewM2.toFixed(3));
+  usage.fabSell=+(usage.fabSell.toFixed(2));
+  usage.sewSell=+(usage.sewSell.toFixed(2));
+  return{total:total,lines:lines,warn:warn,usage:usage};
+}
+
+// ── KOSZT WŁASNY POZYCJI ────────────────────────────────────────────────────
+// Liczy koszt z ZUŻYCIA, nie z faktury. Faktury za tkaninę i szycie są zbiorcze
+// dla wielu zleceń, więc przypisanie ich do realizacji jest niemożliwe — ale
+// zużycie każdej pozycji jest znane co do metra, a cena zakupu tkaniny siedzi
+// w cenniku (FABRICS.zakup, nadpisywalna przez catalog_items.purchase_price).
+//
+// rates:
+//   sewCurtainMb — ile płacimy szwalni za mb szycia zasłony/firany
+//   sewRomanM2   — ile płacimy szwalni za m² rolety rzymskiej
+//   liningMb     — cena zakupu podszewki za mb
+//   mechDivisor  — dzielnik ceny detalicznej pozycji gotowych (mechanizmy,
+//                  żaluzje, karnisze). Cenniki lookup budowane są wzorem
+//                  net × 1,23 × 2, więc koszt netto ≈ detal / 2,46.
+// Zwraca null dla składników, dla których brakuje danych — świadomie, żeby
+// niepełna marża była widoczna jako niepełna, a nie zaniżona o ciche zero.
+export function costOf(usage,rates,fabricLookup){
+  if(!usage)return null;
+  var r=rates||{};
+  var divisor=+(r.mechDivisor)||2.46;
+  var missing=[];
+  var fabCost=0;
+  function unitCost(name,mb,labelIfMissing){
+    if(!mb)return 0;
+    var f=name&&fabricLookup?fabricLookup(name):null;
+    if(!f||f.zakup==null){missing.push(labelIfMissing);return 0;}
+    return mb*(+f.zakup||0);
+  }
+  fabCost+=unitCost(usage.fabName,usage.fabMb,"cena zakupu tkaniny"+(usage.fabName?" \u201e"+usage.fabName+"\u201d":""));
+  fabCost+=unitCost(usage.fab2Name,usage.fab2Mb,"cena zakupu tkaniny"+(usage.fab2Name?" \u201e"+usage.fab2Name+"\u201d":""));
+  var liningCost=0;
+  if(usage.liningMb){
+    if(r.liningMb==null){missing.push("cena zakupu podszewki");}
+    else liningCost=usage.liningMb*(+r.liningMb||0);
+  }
+  var sewCost=0;
+  if(usage.sewMb){
+    if(r.sewCurtainMb==null){missing.push("stawka szycia zas\u0142on (z\u0142/mb)");}
+    else sewCost+=usage.sewMb*(+r.sewCurtainMb||0);
+  }
+  if(usage.sewM2){
+    if(r.sewRomanM2==null){missing.push("stawka szycia rolet (z\u0142/m\u00b2)");}
+    else sewCost+=usage.sewM2*(+r.sewRomanM2||0);
+  }
+  var mechCost=usage.mechSell?usage.mechSell/divisor:0;
+  return {
+    fabric:+(fabCost.toFixed(2)),
+    lining:+(liningCost.toFixed(2)),
+    sewing:+(sewCost.toFixed(2)),
+    hardware:+(mechCost.toFixed(2)),
+    total:+((fabCost+liningCost+sewCost+mechCost).toFixed(2)),
+    missing:missing,
+    complete:missing.length===0
+  };
 }
 
 export function mg(a,b){return Object.assign({},a,b);}
