@@ -3314,14 +3314,24 @@ export function costOf(usage,rates,fabricLookup){
     if(r.liningMb==null){missing.push("cena zakupu podszewki");}
     else liningCost=usage.liningMb*(+r.liningMb||0);
   }
+  // Koszt szycia — dwa tryby. Domyslny: procent wartosci szycia z wyceny
+  // (sewQuotePct=100 oznacza "sprzedajemy szycie po kosztach, marza jest
+  // w tkaninie"). Tryb dokladny wlacza sie po wpisaniu stawki zl/mb lub zl/m2
+  // i ma pierwszenstwo. Dzieki temu marza liczy sie od razu, bez konfiguracji.
   var sewCost=0;
-  if(usage.sewMb){
-    if(r.sewCurtainMb==null){missing.push("stawka szycia zas\u0142on (z\u0142/mb)");}
-    else sewCost+=usage.sewMb*(+r.sewCurtainMb||0);
-  }
-  if(usage.sewM2){
-    if(r.sewRomanM2==null){missing.push("stawka szycia rolet (z\u0142/m\u00b2)");}
-    else sewCost+=usage.sewM2*(+r.sewRomanM2||0);
+  var sewPct=(r.sewQuotePct==null)?100:(+r.sewQuotePct||0);
+  var sewExact=(r.sewCurtainMb!=null&&usage.sewMb)||(r.sewRomanM2!=null&&usage.sewM2);
+  if(sewExact){
+    if(usage.sewMb){
+      if(r.sewCurtainMb==null){missing.push("stawka szycia zas\u0142on (z\u0142/mb)");}
+      else sewCost+=usage.sewMb*(+r.sewCurtainMb||0);
+    }
+    if(usage.sewM2){
+      if(r.sewRomanM2==null){missing.push("stawka szycia rolet (z\u0142/m\u00b2)");}
+      else sewCost+=usage.sewM2*(+r.sewRomanM2||0);
+    }
+  }else{
+    sewCost=usage.sewSell*sewPct/100;
   }
   var mechCost=usage.mechSell?usage.mechSell/divisor:0;
   return {
