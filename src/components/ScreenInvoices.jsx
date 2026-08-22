@@ -278,8 +278,7 @@ function InvoiceEditor(p){
   // Faktura zakupowa -> zlecenie: deal_id istnieje w schemacie od migracji 0001,
   // ale dotad byl zerowany dla kierunku "zakup", wiec kosztow z KSeF nie dalo sie
   // przypisac do konkretnej realizacji. Ten selektor to odblokowuje.
-  var [createDealCost,setCreateDealCost]=useState(false);
-  var [dealCostKind,setDealCostKind]=useState("tkanina");
+
   // Powiązanie z ofertą — łączy fakturę z wcześniej wygenerowaną wyceną klienta
   var [clientOffers,setClientOffers]=useState([]);
   var [offerId,setOfferId]=useState(initInv.offer_id||null);
@@ -706,24 +705,6 @@ function InvoiceEditor(p){
       });
     })
     .then(function(result){
-      // Dopisanie kosztu do zlecenia. Blad tutaj nie moze cofnac zapisanej faktury —
-      // faktura jest juz w bazie, wiec awarie logujemy i idziemy dalej.
-      if(!(isZakupDir&&dealId&&createDealCost))return result;
-      return sbApi.addDealCost({
-        deal_id:dealId,
-        kind:dealCostKind,
-        amount:totalNet,
-        supplier:buyerName.trim(),
-        paid_at:null,
-        invoice_id:result.id||null,
-        note:"Z faktury "+(header.number||purchaseNumber||"").trim()
-      }).then(function(){return result;})
-        .catch(function(ex){
-          console.warn("Nie uda\u0142o si\u0119 dopisa\u0107 kosztu do zlecenia:",ex);
-          return result;
-        });
-    })
-    .then(function(result){
       setBusy(false);
       p.onSave(result);
     })
@@ -869,22 +850,8 @@ function InvoiceEditor(p){
             return ce("option",{key:o.id,value:o.id},o.label);
           })
         ),
-        dealId&&ce("label",{style:{display:"flex",alignItems:"center",gap:7,fontSize:12,color:"var(--t2)",marginTop:9,cursor:"pointer"}},
-          ce("input",{type:"checkbox",checked:createDealCost,
-            onChange:function(e){setCreateDealCost(e.target.checked);},
-            style:{width:14,height:14,cursor:"pointer"}}),
-          "Dopisz koszt do zlecenia (kwota netto: "+fmtMoney(totalNet)+")"
-        ),
-        dealId&&createDealCost&&ce("select",{style:Object.assign({},inp,{marginTop:7}),
-          value:dealCostKind,onChange:function(e){setDealCostKind(e.target.value);}},
-          ce("option",{value:"tkanina"},"\uD83E\uDDF5 Tkanina"),
-          ce("option",{value:"osprzet"},"\uD83D\uDD29 Karnisz / osprz\u0119t"),
-          ce("option",{value:"szycie"},"\u2702\uFE0F Szycie"),
-          ce("option",{value:"transport"},"\uD83D\uDE9A Transport"),
-          ce("option",{value:"inne"},"\uD83D\uDCCE Inne")
-        ),
-        dealId&&createDealCost&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.5}},
-          "Powstanie wpis w \u201eEkonomii zlecenia\u201d powi\u0105zany z t\u0105 faktur\u0105. Zapisywana jest kwota NETTO."
+        dealId&&ce("div",{style:{fontSize:11,color:"var(--violet)",marginTop:5,lineHeight:1.5}},
+          "\u2713 Kwota netto "+fmtMoney(totalNet)+" wliczy si\u0119 do koszt\u00f3w tego zlecenia."
         )
       ),
 
@@ -1517,6 +1484,8 @@ function InvoiceList(p){
   var [periodPreset,setPeriodPreset]=useState("month"); // month | prevMonth | year | all | custom
   var [customFrom,setCustomFrom]=useState("");
   var [customTo,setCustomTo]=useState("");
+  var [assignOpen,setAssignOpen]=useState(false);
+  var [assignBusyId,setAssignBusyId]=useState(null);
   var [syncOpen,setSyncOpen]=useState(false);
   var [syncing,setSyncing]=useState(false);
   var [syncMsg,setSyncMsg]=useState(null);
@@ -1735,6 +1704,34 @@ function InvoiceList(p){
     setPartialAmountInput("");
   }
 
+  // Wszystkie faktury zakupowe bez deal_id — niezaleznie od filtra okresu,
+  // bo przypisanie robi sie zwykle po fakcie, nie w miesiacu wystawienia.
+  var allPurchases=(p.invoices||[]).filter(function(x){
+    return invDirection(x)==="zakup"&&x.status!=="cancelled";
+  });
+  var unassignedPurchases=allPurchases.filter(function(x){return !x.deal_id;});
+  var plFaktur=function(n){
+    if(n===1)return "faktura";
+    var t=n%10, s=n%100;
+    return (t>=2&&t<=4&&!(s>=12&&s<=14))?"faktury":"faktur";
+  };
+  // Zlecenia do wyboru — najswiezsze na gorze, z nazwa klienta i etapem.
+  var assignDealOptions=(p.deals||[]).map(function(dl){
+    var cli=(p.clients||[]).find(function(x){return String(x.id)===String(dl.client_id);});
+    return {
+      id:dl.id,
+      label:(cli&&cli.name?cli.name:"(bez klienta)")+(dl.stage?" \u00B7 "+dl.stage:""),
+      created:dl.created_at||""
+    };
+  }).sort(function(a,b){return String(b.created).localeCompare(String(a.created));});
+
+  function assignDeal(inv,newDealId){
+    setAssignBusyId(inv.id);
+    Promise.resolve(p.onAssignDeal&&p.onAssignDeal(inv,newDealId||null))
+      .then(function(){setAssignBusyId(null);})
+      .catch(function(e){setAssignBusyId(null);alert("B\u0142\u0105d przypisania: "+(e&&e.message||e));});
+  }
+
   var tabBtn=function(active){return {
     flex:1,cursor:"pointer",padding:"14px 18px",borderRadius:14,border:"none",textAlign:"left",
     background:active?"var(--bd3)":"var(--bg2)",
@@ -1762,6 +1759,23 @@ function InvoiceList(p){
       }),
       ce("button",{onClick:function(){p.onEntityChange&&p.onEntityChange("all");},
         style:entChip(activeEntityId==="all")},"Wszystkie \u2211")
+    ),
+
+    // ── Przypisywanie faktur kosztowych do zleceń ────────────────────────────
+    // Faktury z KSeF wpadaja bez zadnego zwiazku z realizacja. Bez tego kroku
+    // marza na zleceniu jest nie do policzenia, a otwieranie kazdej faktury
+    // w edytorze osobno jest robota, ktorej nikt nie wykona przy kilkudziesieciu
+    // dokumentach miesiecznie. Stad zbiorczy ekran: jedna lista, jeden select.
+    tab==="zakup"&&unassignedPurchases.length>0&&ce("div",{
+      style:{display:"flex",alignItems:"center",gap:12,background:"var(--violet-l)",
+        border:"1px solid var(--violet)",borderRadius:12,padding:"11px 14px",marginBottom:12}},
+      ce("div",{style:{flex:1,fontSize:12,color:"var(--violet)",lineHeight:1.5}},
+        ce("b",null,unassignedPurchases.length+" "+plFaktur(unassignedPurchases.length)+" kosztowych bez zlecenia"),
+        " \u2014 dop\u00f3ki nie s\u0105 przypisane, nie licz\u0105 si\u0119 do mar\u017cy \u017cadnej realizacji."),
+      ce("button",{onClick:function(){setAssignOpen(true);},
+        style:{padding:"9px 16px",borderRadius:9,border:"none",background:"var(--violet)",
+          color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,fontFamily:"inherit"}},
+        "\uD83D\uDD17 Przypisz do zlece\u0144")
     ),
 
     // ── Zakładki Przychody (Sprzedaż) / Wydatki (Zakup) ──────────────────────
@@ -1861,6 +1875,68 @@ function InvoiceList(p){
     ),
 
     // Panel synchronizacji KSeF (rozwijany) — osobny zakres dat, tylko dla pobierania z KSeF
+    // ── Modal: zbiorcze przypisanie faktur kosztowych do zleceń ──────────────
+    // Zapis idzie od razu po wyborze z selecta (bez przycisku "zapisz"), bo to
+    // jedna kolumna i jedno pole — potwierdzanie kazdego wiersza byloby tarciem.
+    assignOpen&&ce("div",{
+      onClick:function(){setAssignOpen(false);},
+      style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:3000,
+        background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+      ce("div",{
+        onClick:function(e){e.stopPropagation();},
+        style:{background:"var(--bg)",borderRadius:16,width:"100%",maxWidth:860,
+          maxHeight:"88vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}},
+        ce("div",{style:{padding:"16px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",gap:12}},
+          ce("div",{style:{flex:1}},
+            ce("div",{style:{fontSize:15,fontWeight:800,color:"var(--t1)"}},"\uD83D\uDD17 Przypisz faktury kosztowe do zlece\u0144"),
+            ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},
+              "Kwota netto ka\u017cdej przypisanej faktury wchodzi do koszt\u00f3w zlecenia automatycznie.")),
+          ce("button",{onClick:function(){setAssignOpen(false);},
+            style:{border:"none",background:"none",fontSize:22,color:"var(--t3)",cursor:"pointer",padding:"0 4px"}},"\u00D7")
+        ),
+        ce("div",{style:{padding:"6px 20px 16px",overflowY:"auto"}},
+          unassignedPurchases.length===0
+            ? ce("div",{style:{padding:"28px 0",textAlign:"center",fontSize:13,color:"var(--t3)"}},
+                "\u2713 Wszystkie faktury kosztowe s\u0105 przypisane.")
+            : ce("div",null,
+                ce("div",{style:{display:"grid",gridTemplateColumns:"110px 90px minmax(150px,1fr) 100px minmax(200px,1.2fr)",
+                  gap:8,padding:"8px 0",borderBottom:"1px solid var(--bd2)",position:"sticky",top:0,background:"var(--bg)",zIndex:1}},
+                  ["Numer","Data","Dostawca","Netto","Zlecenie"].map(function(h,i){
+                    return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",
+                      textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===3?"right":"left"}},h);
+                  })
+                ),
+                unassignedPurchases.map(function(inv){
+                  var snap=inv.seller_snapshot||{};
+                  var supplier=snap.name||inv.buyer_name||"\u2014";
+                  var isBusyRow=assignBusyId===inv.id;
+                  return ce("div",{key:inv.id,
+                    style:{display:"grid",gridTemplateColumns:"110px 90px minmax(150px,1fr) 100px minmax(200px,1.2fr)",
+                      gap:8,padding:"9px 0",borderBottom:"1px solid var(--bd3)",alignItems:"center",
+                      opacity:isBusyRow?0.5:1}},
+                    ce("div",{style:{fontSize:12,color:"var(--t1)",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},inv.number||"\u2014"),
+                    ce("div",{style:{fontSize:11,color:"var(--t3)"}},inv.issue_date||"\u2014"),
+                    ce("div",{style:{fontSize:12,color:"var(--t2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},title:supplier},supplier),
+                    ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--t1)",textAlign:"right"}},fmtMoney(inv.total_net)),
+                    ce("select",{
+                      disabled:isBusyRow,
+                      value:inv.deal_id||"",
+                      onChange:function(e){assignDeal(inv,e.target.value);},
+                      style:{padding:"7px 9px",fontSize:12,border:"1px solid var(--bd2)",borderRadius:8,
+                        background:"var(--bg2)",color:"var(--t1)",width:"100%",boxSizing:"border-box",
+                        outline:"none",fontFamily:"inherit",cursor:isBusyRow?"wait":"pointer"}},
+                      ce("option",{value:""},"\u2014 wybierz zlecenie \u2014"),
+                      assignDealOptions.map(function(o){
+                        return ce("option",{key:o.id,value:o.id},o.label);
+                      })
+                    )
+                  );
+                })
+              )
+        )
+      )
+    ),
+
     syncOpen&&ce("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"flex-end",
       background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:10,padding:"10px 12px"}},
       ce("div",null,ce("span",{style:label},"Od"),
@@ -2842,6 +2918,21 @@ export function ScreenInvoices(p){
       ),
       ce(InvoiceList,{
         invoices:invoices, viewBusyId:viewBusyId,
+        clients:clientsAll, deals:dealsAll,
+        // Przypisanie faktury kosztowej do zlecenia. Optymistycznie w UI, z cofnieciem
+        // przy bledzie — tak samo jak zmiana statusu platnosci nizej.
+        onAssignDeal:function(inv,newDealId){
+          var prev=inv.deal_id||null;
+          setInvoices(function(list){return list.map(function(x){
+            return x.id===inv.id?Object.assign({},x,{deal_id:newDealId}):x;
+          });});
+          return sbApi.updateInvoice(inv.id,{deal_id:newDealId}).catch(function(e){
+            setInvoices(function(list){return list.map(function(x){
+              return x.id===inv.id?Object.assign({},x,{deal_id:prev}):x;
+            });});
+            throw e;
+          });
+        },
         entities:entities, activeEntityId:activeEntityId, onEntityChange:changeEntity,
         onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete, onDuplicate:onDuplicate,
         onSynced:function(){ sbApi.getInvoices().then(function(data){ setInvoices(data||[]); }); },
