@@ -54,3 +54,10 @@ comment on column cost_rates.sew_quote_pct is
 -- ustawiony procent (np. 60) zostaje nietkniety.
 alter table cost_rates alter column sew_quote_pct set default 50;
 update cost_rates set sew_quote_pct = 50 where sew_quote_pct = 100;
+
+-- ── Korekta dzielnika pozycji gotowych ──────────────────────────────────────
+-- Szyny KS (i pozostale pozycje z cennikow lookup) sprzedajemy na tej samej
+-- zasadzie co szycie: cena dla klienta = nasz koszt x 2. Wczesniejsze 2,46
+-- zakladalo dodatkowo narzut VAT w cenniku — bledne zalozenie.
+alter table cost_rates alter column mech_divisor set default 2;
+update cost_rates set mech_divisor = 2 where mech_divisor = 2.46;
