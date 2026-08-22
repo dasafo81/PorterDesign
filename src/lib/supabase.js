@@ -152,6 +152,22 @@ export const sbApi = {
   // Koszty fakturowane — czytane NA \u017bYWO z faktur zakupowych powi\u0105zanych ze
   // zleceniem. Celowo NIE kopiujemy ich do deal_costs: korekta faktury ma od razu
   // poprawia\u0107 mar\u017c\u0119, a jedna kwota nie mo\u017ce mie\u0107 dw\u00f3ch \u017ar\u00f3de\u0142 prawdy.
+  // Stawki kosztowe (jeden wiersz na tenant). Brak wiersza => same NULL-e,
+  // czyli "stawki nieustawione" — costOf() oznaczy wtedy marze jako niepelna.
+  getCostRates: function(){
+    return sbFetch("GET","cost_rates?select=*&limit=1").then(function(rows){
+      return (rows&&rows[0])||null;
+    });
+  },
+  upsertCostRates: function(data){
+    var patch=Object.assign({},data,{updated_at:new Date().toISOString()});
+    return sbFetch("GET","cost_rates?select=tenant_id&limit=1").then(function(rows){
+      if(rows&&rows.length>0){
+        return sbFetch("PATCH","cost_rates?tenant_id=eq."+rows[0].tenant_id,patch);
+      }
+      return sbFetch("POST","cost_rates",patch);
+    });
+  },
   getDealInvoiceCosts: function(dealId){
     return sbFetch("GET","invoices?deal_id=eq."+dealId+"&direction=eq.zakup"+
       "&select=id,number,issue_date,total_net,total_gross,seller_snapshot,status,payment_status"+
