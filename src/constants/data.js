@@ -3291,14 +3291,15 @@ export function calc(p){
 //   sewRomanM2   — ile płacimy szwalni za m² rolety rzymskiej
 //   liningMb     — cena zakupu podszewki za mb
 //   mechDivisor  — dzielnik ceny detalicznej pozycji gotowych (mechanizmy,
-//                  żaluzje, karnisze). Cenniki lookup budowane są wzorem
-//                  net × 1,23 × 2, więc koszt netto ≈ detal / 2,46.
+//                  żaluzje, karnisze, szyny KS). Marża 100%, więc koszt = detal / 2.
 // Zwraca null dla składników, dla których brakuje danych — świadomie, żeby
 // niepełna marża była widoczna jako niepełna, a nie zaniżona o ciche zero.
 export function costOf(usage,rates,fabricLookup){
   if(!usage)return null;
   var r=rates||{};
-  var divisor=+(r.mechDivisor)||2.46;
+  // Pozycje gotowe (mechanizmy rolet, zaluzje, karnisze, szyny KS) sprzedajemy
+  // tak samo jak szycie: cena dla klienta = nasz koszt x 2.
+  var divisor=+(r.mechDivisor)||2;
   var missing=[];
   var fabCost=0;
   function unitCost(name,mb,labelIfMissing){
