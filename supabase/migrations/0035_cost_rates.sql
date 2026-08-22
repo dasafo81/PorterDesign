@@ -47,3 +47,10 @@ alter table cost_rates add column if not exists sew_quote_pct numeric not null d
 
 comment on column cost_rates.sew_quote_pct is
   'Koszt szycia jako % wartosci szycia z wyceny. 100 = sprzedajemy po kosztach.';
+
+-- ── Korekta domyslnej wartosci: szycie sprzedajemy z marza 100% ─────────────
+-- Cena szycia dla klienta = nasz koszt x 2, wiec koszt = 50% wartosci z wyceny.
+-- UPDATE dotyka tylko wierszy zostawionych na starym domysle 100 — recznie
+-- ustawiony procent (np. 60) zostaje nietkniety.
+alter table cost_rates alter column sew_quote_pct set default 50;
+update cost_rates set sew_quote_pct = 50 where sew_quote_pct = 100;
