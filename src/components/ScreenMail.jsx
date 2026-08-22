@@ -531,8 +531,9 @@ function MailList(p){
           var ci=Math.abs((nm||"").charCodeAt(0)||0)%colors.length;
           var unread=isInbox&&t.mails.some(function(x){return x.isRead===false;});
           var threadImportant=t.mails.some(function(x){return x.isImportant;});
-          var threadFlags=(p.flags||[]).filter(function(fl){
-            return t.mails.some(function(x){return (x.categories||[]).indexOf(fl.category)>=0;});
+          // Flagi wątku: on/off per flaga — ikony są klikalne (toggle), nie tylko wskaźnikiem
+          var flagState=(p.flags||[]).map(function(fl){
+            return {fl:fl,on:t.mails.some(function(x){return (x.categories||[]).indexOf(fl.category)>=0;})};
           });
           return ce("div",{key:t.key,onClick:function(){p.onSelect(t);},
             style:{padding:"10px 12px",borderRadius:10,cursor:"pointer",
@@ -546,9 +547,17 @@ function MailList(p){
               onMouseEnter:function(ev){if(!threadImportant){ev.currentTarget.style.color="var(--red)";ev.currentTarget.style.opacity="0.85";}},
               onMouseLeave:function(ev){if(!threadImportant){ev.currentTarget.style.color="var(--bd2)";ev.currentTarget.style.opacity="0.55";}}
             },"\u2691"),
-            threadFlags.length>0?ce("span",{style:{display:"flex",flexDirection:"column",gap:1,alignSelf:"center",flexShrink:0}},
-              threadFlags.map(function(fl){
-                return ce("span",{key:fl.id,title:fl.label,style:{fontSize:13,lineHeight:1,color:fl.color}},"\u2691");
+            flagState.length>0?ce("span",{style:{display:"flex",flexDirection:"column",gap:1,alignSelf:"center",flexShrink:0}},
+              flagState.map(function(fs){
+                return ce("button",{key:fs.fl.id,
+                  onClick:function(ev){ev.stopPropagation();if(p.onToggleFlag)p.onToggleFlag(t.head,fs.fl);},
+                  title:(fs.on?"Usu\u0144 oznaczenie: ":"Oznacz jako: ")+fs.fl.label,
+                  style:{border:"none",background:"transparent",cursor:"pointer",padding:"1px 3px",
+                    fontSize:13,lineHeight:1,flexShrink:0,transition:"opacity .12s",
+                    color:fs.on?fs.fl.color:"var(--bd2)",opacity:fs.on?1:0.5},
+                  onMouseEnter:function(ev){if(!fs.on){ev.currentTarget.style.color=fs.fl.color;ev.currentTarget.style.opacity="0.85";}},
+                  onMouseLeave:function(ev){if(!fs.on){ev.currentTarget.style.color="var(--bd2)";ev.currentTarget.style.opacity="0.5";}}
+                },"\u2691");
               })
             ):null,
             ce(Avatar,{size:34,bg:selectedInThread?colors[ci]:colors[ci]+"99",label:initials(nm)}),
