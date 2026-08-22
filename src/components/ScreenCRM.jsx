@@ -208,6 +208,7 @@ export function ModalDeal(p){
       .then(function(r){
         setRates(r);
         setRatesDraft({
+          sew_quote_pct: r&&r.sew_quote_pct!=null?String(r.sew_quote_pct):"50",
           sew_curtain_mb:r&&r.sew_curtain_mb!=null?String(r.sew_curtain_mb):"",
           sew_roman_m2:  r&&r.sew_roman_m2!=null?String(r.sew_roman_m2):"",
           lining_mb:     r&&r.lining_mb!=null?String(r.lining_mb):"",
@@ -226,8 +227,9 @@ export function ModalDeal(p){
     sewCurtainMb:rates.sew_curtain_mb,
     sewRomanM2:rates.sew_roman_m2,
     liningMb:rates.lining_mb,
-    mechDivisor:rates.mech_divisor
-  }:{sewCurtainMb:null,sewRomanM2:null,liningMb:null,mechDivisor:2.46};
+    mechDivisor:rates.mech_divisor,
+    sewQuotePct:rates.sew_quote_pct
+  }:{sewCurtainMb:null,sewRomanM2:null,liningMb:null,mechDivisor:2.46,sewQuotePct:50};
 
   var quoteCost=React.useMemo(function(){
     if(!cl||!cl.rooms)return null;
@@ -259,6 +261,7 @@ export function ModalDeal(p){
   function saveRates(){
     var num=function(v){var n=parseFloat(String(v).replace(",","."));return isFinite(n)?n:null;};
     var payload={
+      sew_quote_pct:num(ratesDraft.sew_quote_pct)!=null?num(ratesDraft.sew_quote_pct):50,
       sew_curtain_mb:num(ratesDraft.sew_curtain_mb),
       sew_roman_m2:num(ratesDraft.sew_roman_m2),
       lining_mb:num(ratesDraft.lining_mb),
@@ -722,8 +725,9 @@ export function ModalDeal(p){
               // Edycja stawek — inline, bez osobnego ekranu ustawień
               ratesEdit?ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10,
                 paddingBottom:10,borderBottom:"1px solid var(--bd2)"}},
-                [["sew_curtain_mb","Szycie zas\u0142on (z\u0142/mb)"],
-                 ["sew_roman_m2","Szycie rolet (z\u0142/m\u00b2)"],
+                [["sew_quote_pct","Koszt szycia jako % wyceny"],
+                 ["sew_curtain_mb","Szycie zas\u0142on \u2014 dok\u0142adnie (z\u0142/mb)"],
+                 ["sew_roman_m2","Szycie rolet \u2014 dok\u0142adnie (z\u0142/m\u00b2)"],
                  ["lining_mb","Podszewka zakup (z\u0142/mb)"],
                  ["mech_divisor","Dzielnik pozycji gotowych"]].map(function(f){
                   return ce("div",{key:f[0],style:{display:"flex",alignItems:"center",gap:8}},
