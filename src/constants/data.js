@@ -2441,22 +2441,46 @@ export const TAPETY =[
 ];
 
 // ── Klasyfikacja tkaniny wg składu: Naturalne / Semi-Natural ────────────
-// Parsuje pola typu "58% CO, 42% PES" lub "100% LI" (kody wg cenników:
-// CO=bawełna, LI=len, WO=wełna, SI=jedwab, JU=juta, HE=konopie).
+// Parsuje pola typu "58% CO, 42% PES", "100% LI", ale też polskie opisy
+// wpisywane ręcznie przy własnych tkaninach: "60% Bawełna, 40% Poliester"
+// albo "Len 100%". Rozpoznaje zarówno kody skrótowe z cenników dostawców
+// (CO=bawełna, LI=len, WO=wełna, SI=jedwab, JU=juta, HE=konopie), jak i
+// pełne nazwy PL/EN wraz z odmianami przymiotnikowymi.
 // Zasada zgłoszona przez Damiana: 100% włókna naturalnego → "Naturalne";
 // mieszanka włókna naturalnego z syntetykiem (PES, PA, RPET, PAN, VI, OT...)
 // → "Semi-Natural"; brak włókna naturalnego w składzie (albo skład nie do
 // sparsowania, np. "z obciążnikiem") → brak kategorii (null).
-var NATURAL_FIBER_CODES = ["CO","LI","WO","SI","JU","HE"];
+function _normPl(s){
+  return String(s).toLowerCase()
+    .replace(/ł/g,"l").replace(/ą/g,"a").replace(/ć/g,"c").replace(/ę/g,"e")
+    .replace(/ń/g,"n").replace(/ó/g,"o").replace(/ś/g,"s").replace(/ź/g,"z").replace(/ż/g,"z");
+}
+var NATURAL_FIBER_TOKENS = [
+  // kody skrótowe (jak w cennikach dostawców)
+  "co","li","wo","si","ju","he",
+  // polskie nazwy i odmiany przymiotnikowe/deklinacje
+  "bawelna","bawelniany","bawelniana","bawelniane","bawelny","bawelnie",
+  "len","lniany","lniana","lniane","lnu","lnie",
+  "welna","welniany","welniana","welniane","welny","welnie",
+  "jedwab","jedwabny","jedwabna","jedwabne","jedwabiu",
+  "juta","jutowy","jutowa","jutowe","juty",
+  "konopie","konopny","konopna","konopne","konopi",
+  // angielskie nazwy (spotykane w cennikach zagranicznych)
+  "cotton","linen","wool","silk","jute","hemp"
+];
 export function classifyFabricComposition(sklad){
   if(!sklad) return null;
-  var re = /(\d+(?:[.,]\d+)?)\s*%\s*([A-Za-zĄąĆćĘꣳŃńÓóŚśŹźŻż]+)/g;
+  // Dopasowuje oba szyki zapisu: "60% Bawełna" oraz "Bawełna 60%"
+  var re = /(\d+(?:[.,]\d+)?)\s*%\s*([\p{L}]+)|([\p{L}]+)\s*(\d+(?:[.,]\d+)?)\s*%/gu;
   var m, hasNatural=false, hasOther=false, naturalPct=0, totalPct=0;
   while((m = re.exec(String(sklad))) !== null){
-    var pct = parseFloat(m[1].replace(",", "."));
-    var code = m[2].toUpperCase();
+    var pctStr = m[1]!=null ? m[1] : m[4];
+    var word   = m[2]!=null ? m[2] : m[3];
+    if(pctStr==null || !word) continue;
+    var pct = parseFloat(pctStr.replace(",", "."));
+    var token = _normPl(word);
     totalPct += pct;
-    if(NATURAL_FIBER_CODES.indexOf(code) >= 0){ hasNatural = true; naturalPct += pct; }
+    if(NATURAL_FIBER_TOKENS.indexOf(token) >= 0){ hasNatural = true; naturalPct += pct; }
     else hasOther = true;
   }
   if(!hasNatural || !totalPct) return null;
