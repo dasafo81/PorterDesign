@@ -413,7 +413,12 @@ export function buildSimplifiedRows(client,selection,comm){
     var winsData=[];var roomTotal=0;
     wins.forEach(function(w){var wr=buildWinRowsSel([w]);if(!wr.total)return;
       var isV=!!w.variantGroup;
-      var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(w.name||"Razem");
+      // "Razem" tylko gdy w pomieszczeniu jest realnie jedno okno (spójnie z
+      // single-window mode w edycji, gdzie nazwa okna jest wtedy ukryta i
+      // nieedytowalna). Bez tego stara nazwa sprzed zejscia z 2+ okien do 1
+      // (np. po usunieciu sasiedniego okna) "wyciekala" tutaj i na PDF, mimo
+      // ze nigdzie w UI nie dalo sie jej juz zobaczyc ani wyczyscic.
+      var wLabel=isV?((w.variantBaseName||w.name)+" \u2014 Wariant "+w.variantLabel):(wins.length>1?(w.name||"Okno"):"Razem");
       winsData.push({winId:w.id,label:wLabel,isVariant:isV,items:wr.items,total:wr.total});
       roomTotal+=wr.total;
     });
