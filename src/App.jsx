@@ -1298,21 +1298,29 @@ export function App(p){
         roomBaseTotal+=wt(sorted[0]);
       });
 
-      function winCard(w,extraStyle){
+      // hideName: gdy w pomieszczeniu jest realnie jedno okno (single-window
+      // mode w edycji), nazwa okna jest tam ukryta i nieedytowalna — więc
+      // pokazywanie jej tutaj potrafiło ujawniać "osierocone" nazwy sprzed
+      // zejścia z 2+ okien do 1 (np. po usunięciu sąsiedniego okna), mimo że
+      // nigdzie w UI nie dało się ich już zobaczyć ani wyczyścić.
+      function winCard(w,extraStyle,hideName){
         var t=wt(w);
         var desc=(w.products||[]).map(function(p){var l=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
         return ce("div",{key:w.id,style:mg({padding:"14px 16px",background:"var(--bg2)",borderRadius:12,marginBottom:6,display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,border:"1px solid var(--bd3)"},extraStyle||{})},
           ce("div",{style:{flex:1,minWidth:0}},
-            ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:3}},"\uD83E\uDE9F "+w.name),
-            ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},desc||"\u2014")
+            hideName?null:ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:3}},"\uD83E\uDE9F "+w.name),
+            ce("div",{style:{fontSize:hideName?14:11,fontWeight:hideName?600:400,color:hideName?"var(--t1)":"var(--t3)",marginTop:2}},desc||"\u2014")
           ),
           ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--gr)",whiteSpace:"nowrap"}},withComm(t)+" z\u0142")
         );
       }
 
       var rows=[];
-      // plain windows first
-      plainWins.forEach(function(w){rows.push(winCard(w));});
+      // plain windows first — nazwę okna pokazujemy tylko, gdy w pomieszczeniu
+      // jest ich więcej niż jedno (inaczej nie ma czego rozróżniać, a stara
+      // nazwa mogłaby wprowadzać w błąd — patrz komentarz przy winCard)
+      var singleWindowRoom=plainWins.length===1&&!hasVariants;
+      plainWins.forEach(function(w){rows.push(winCard(w,null,singleWindowRoom));});
       // then each variant group
       Object.keys(variantGroups).forEach(function(gid){
         var group=variantGroups[gid].slice().sort(function(a,b){return(a.variantLabel||"").localeCompare(b.variantLabel||"");});
