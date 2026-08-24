@@ -487,12 +487,21 @@ export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil
   if(!html){alert("Brak pozycji do wyceny.");return;}
   var offerNo=getPDFOfferNumber(client);
   var offerTotal=(roomsData||[]).reduce(function(a,rd){return a+(+rd.total||0);},0);
+  // Kwota zapisywana w offers.total_gross musi zawierać montaż — inaczej faktura
+  // wystawiana "na podstawie oferty" (ScreenInvoices.applyOfferAmount liczy % od
+  // total_gross) nie doliczy montażu, mimo że PDF oferty go pokazuje. Ta sama
+  // logika co w generateOfferPDFFromRows (constants/data.js).
+  var montazParam=montaz||0;
+  var montazModeV=montazParam.mode||"percent";
+  var montazInputV=montazParam.mode?montazParam.value:montazParam;
+  var montazPctV=montazModeV==="amount"?0:montazInputV;
+  var montazAmount=montazModeV==="amount"?roundTo10(montazInputV):(montazPctV>0?roundTo10(offerTotal*montazPctV):0);
   // Zapis w tle do historii ofert klienta (pozwala później wystawić fakturę
   // "na podstawie" tej oferty) — nie blokuje otwarcia okna PDF.
   if(client&&client.id){
     sbApi.addOffer({
       client_id:client.id, number:offerNo, kind:"uproszczona",
-      total_gross:roundTo10(offerTotal||0),
+      total_gross:roundTo10((offerTotal+montazAmount)||0),
       valid_until:((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil.toISOString().slice(0,10):null,
       notes:titleSuffix||""
     }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
