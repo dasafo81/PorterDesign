@@ -689,6 +689,12 @@ function ModalCatalogItem(p) {
   var sK = useState(it.sklad || "");                            var sklad = sK[0]; var setSklad = sK[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
 
+  // Podpowiedzi producenta: unikalne wartości "meta" już użyte w aktualnie wybranej grupie
+  var activeGroupItems = (p.allGroups || []).find(function(g) { return g.id === grp; });
+  var producerSuggestions = activeGroupItems
+    ? Array.from(new Set(activeGroupItems.items.map(function(it) { return (it.meta || "").trim(); }).filter(Boolean))).sort()
+    : [];
+
   function num(v) { return v === "" ? null : parseFloat(String(v).replace(",", ".")); }
   function body() {
     return { group_id: grp, name: name.trim(), price: num(price), unit: unit.trim() || "z\u0142",
@@ -759,7 +765,9 @@ function ModalCatalogItem(p) {
       ),
       ce("div", { style: { marginBottom: 20 } },
         ce("div", { style: lbl }, "Producent / opis (inne)"),
-        ce("input", { value: meta, onChange: function(e) { setMeta(e.target.value); }, placeholder: "np. MARGO TEXTIL", style: inp })
+        ce("input", { value: meta, onChange: function(e) { setMeta(e.target.value); }, placeholder: "np. MARGO TEXTIL", list: "catalog-meta-suggestions", style: inp }),
+        ce("datalist", { id: "catalog-meta-suggestions" },
+          producerSuggestions.map(function(m) { return ce("option", { key: m, value: m }); }))
       ),
 
       ce("div", { style: { display: "flex", gap: 10 } },
@@ -920,7 +928,7 @@ function TabCatalog(p) {
     }),
 
     editItem !== null && ce(ModalCatalogItem, {
-      item: editItem, groups: groupOpts,
+      item: editItem, groups: groupOpts, allGroups: groups,
       onSave: function() { setEditItem(null); reload(); },
       onClose: function() { setEditItem(null); }
     })
