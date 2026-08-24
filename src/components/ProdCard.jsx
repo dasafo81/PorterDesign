@@ -679,6 +679,14 @@ export function ProdCard(p){
             )
           )
         ),
+        prod.type==="zaslona"?ce("div",{style:{marginTop:4,marginBottom:20}},
+          ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (opcjonalnie)"},
+            ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56,maxWidth:260}},
+              ce("span",{style:{padding:"0 14px",color:"var(--t3)",fontSize:14,flexShrink:0}},"cm"),
+              ce("input",{type:"text",inputMode:"numeric",value:par.hPomieszczenia||"",onChange:function(ev){sp("hPomieszczenia",ev.target.value);},placeholder:"np. 270",style:{flex:1,padding:"16px 14px 16px 0",fontSize:17,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:56}})
+            )
+          )
+        ):null,
         ce("div",{style:{marginTop:4}},
           ce(Fld,{label:"KOLOR"},
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, Ivory White...",style:{padding:"16px 18px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box"}})
