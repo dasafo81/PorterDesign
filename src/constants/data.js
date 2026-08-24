@@ -2456,6 +2456,7 @@ function _rowToFabric(r){
     zakup: r.purchase_price!=null ? r.purchase_price : null,
     sklad: r.composition || null,
     belkowa: r.belka_price!=null ? r.belka_price : null,
+    gramatura: r.weight_gsm!=null ? r.weight_gsm : null,
     custom: true
   };
 }
@@ -2500,7 +2501,8 @@ export function getFabricEffective(name){
     prod:   (ov && ov.meta) ? ov.meta : (base?base.prod:"-"),
     zakup:  (ov && ov.purchase_price!=null) ? ov.purchase_price : (base?base.zakup:null),
     sklad:  (ov && ov.composition) ? ov.composition : (base?base.sklad:null),
-    belkowa:(ov && ov.belka_price!=null) ? ov.belka_price : (base?base.belkowa:null)
+    belkowa:(ov && ov.belka_price!=null) ? ov.belka_price : (base?base.belkowa:null),
+    gramatura:(ov && ov.weight_gsm!=null) ? ov.weight_gsm : (base?base.gramatura:null)
   };
 }
 
