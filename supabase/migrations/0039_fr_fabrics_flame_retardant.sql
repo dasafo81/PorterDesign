@@ -47,11 +47,13 @@ begin
     set flame_retardant = true, updated_at = now()
     where base_key = any(v_keys);
 
-  -- 2) Reszta (bazowa pozycja bez dotychczasowego nadpisania) → nowy wiersz
+  -- 2) Reszta (bazowa pozycja bez dotychczasowego nadpisania) → nowy wiersz.
+  -- Kolumna "name" ma constraint NOT NULL bez wartości domyślnej — trzeba ją
+  -- wypełnić (wyciągamy z base_key, usuwając prefiks "tkaniny::").
   foreach v_key in array v_keys loop
     if not exists (select 1 from catalog_items where base_key = v_key) then
-      insert into catalog_items (tenant_id, group_id, base_key, flame_retardant)
-      values (v_tenant, 'tkaniny', v_key, true);
+      insert into catalog_items (tenant_id, group_id, base_key, name, flame_retardant)
+      values (v_tenant, 'tkaniny', v_key, regexp_replace(v_key, '^tkaniny::', ''), true);
     end if;
   end loop;
 end $$;
