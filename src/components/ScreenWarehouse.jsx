@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, primeFabricOverrides, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
+  FABRICS, primeFabricOverrides, classifyFabricComposition, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
   KD_AKCESORIA, RS_MASKS, PRICE_LISTS
 } from '../constants/data.js';
@@ -579,7 +579,8 @@ function buildBaseCatalog() {
           unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null,
           zakup: f.zakup != null ? f.zakup : null, sklad: f.sklad || "",
           belkowa: f.belkowa != null ? f.belkowa : null,
-          gramatura: f.gramatura != null ? f.gramatura : null };
+          gramatura: f.gramatura != null ? f.gramatura : null,
+          flameRetardant: !!f.flameRetardant, soundproof: !!f.soundproof };
       }) },
     { id: "tapety", label: "Tapety", icon: "\uD83C\uDFA8",
       items: TAPETY.map(function(t) {
@@ -659,6 +660,8 @@ function mergeCatalog(baseGroups, rows) {
         sklad:    o && o.composition != null ? o.composition : it.sklad,
         belkowa:  o && o.belka_price != null ? o.belka_price : it.belkowa,
         gramatura:o && o.weight_gsm != null ? o.weight_gsm : it.gramatura,
+        flameRetardant: o && o.flame_retardant != null ? !!o.flame_retardant : !!it.flameRetardant,
+        soundproof:     o && o.soundproof != null      ? !!o.soundproof      : !!it.soundproof,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
@@ -666,12 +669,20 @@ function mergeCatalog(baseGroups, rows) {
       items.push({ rowId: c.id, baseKey: null, groupId: g.id, isBase: false, overridden: false,
         name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
         zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price,
-        gramatura: c.weight_gsm != null ? c.weight_gsm : null });
+        gramatura: c.weight_gsm != null ? c.weight_gsm : null,
+        flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
       m.gramaturaLabel = m.gramatura != null ? (m.gramatura + " g/m\u00b2") : null;
       m.warn = (g.tracksHeight && m.heightCm == null) ? "brak wysoko\u015bci" : null;
+      // Kategoria składu (Naturalne / Semi-Natural) + tagi filtrowania — dotyczy tylko tkanin
+      m.compositionCategory = g.id === "tkaniny" ? classifyFabricComposition(m.sklad) : null;
+      var tags = [];
+      if (m.compositionCategory) tags.push(m.compositionCategory);
+      if (m.flameRetardant) tags.push("Trudnopalne");
+      if (m.soundproof) tags.push("D\u017Awi\u0119koszczelne");
+      m.tags = tags;
     });
     return { id: g.id, label: g.label, icon: g.icon, tracksHeight: g.tracksHeight, items: items };
   });
@@ -692,6 +703,8 @@ function ModalCatalogItem(p) {
   var sBk = useState(it.belkowa != null ? String(it.belkowa) : ""); var belkowa = sBk[0]; var setBelkowa = sBk[1];
   var sK = useState(it.sklad || "");                            var sklad = sK[0]; var setSklad = sK[1];
   var sGr = useState(it.gramatura != null ? String(it.gramatura) : ""); var gram = sGr[0]; var setGram = sGr[1];
+  var sFR = useState(!!it.flameRetardant);                     var flame = sFR[0]; var setFlame = sFR[1];
+  var sSP = useState(!!it.soundproof);                         var sound = sSP[0]; var setSound = sSP[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
 
   // Podpowiedzi producenta: unikalne wartości "meta" już użyte w aktualnie wybranej grupie
@@ -700,11 +713,15 @@ function ModalCatalogItem(p) {
     ? Array.from(new Set(activeGroupItems.items.map(function(it) { return (it.meta || "").trim(); }).filter(Boolean))).sort()
     : [];
 
+  // Kategoria wg składu — wyliczana na żywo z pola "Skład" (Naturalne / Semi-Natural)
+  var liveCategory = classifyFabricComposition(sklad);
+
   function num(v) { return v === "" ? null : parseFloat(String(v).replace(",", ".")); }
   function body() {
     return { group_id: grp, name: name.trim(), price: num(price), unit: unit.trim() || "z\u0142",
       meta: meta.trim() || null, height_cm: num(height), purchase_price: num(zakup),
-      belka_price: num(belkowa), composition: sklad.trim() || null, weight_gsm: num(gram) };
+      belka_price: num(belkowa), composition: sklad.trim() || null, weight_gsm: num(gram),
+      flame_retardant: flame, soundproof: sound };
   }
   function save() {
     if (!name.trim()) return;
@@ -766,11 +783,22 @@ function ModalCatalogItem(p) {
       ),
       ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Sk\u0142ad"),
-        ce("input", { value: sklad, onChange: function(e) { setSklad(e.target.value); }, placeholder: "np. 100% PES", style: inp })
+        ce("input", { value: sklad, onChange: function(e) { setSklad(e.target.value); }, placeholder: "np. 100% PES", style: inp }),
+        grp === "tkaniny" && ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 5 } },
+          "Kategoria (auto, wg sk\u0142adu): ",
+          liveCategory ? ce("strong", { style: { color: "var(--t2)" } }, liveCategory) : "\u2014")
       ),
       grp === "tkaniny" && ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Gramatura (g/m\u00b2) \u2014 opcjonalnie"),
         ce("input", { value: gram, onChange: function(e) { setGram(e.target.value); }, placeholder: "np. 280", style: inp })
+      ),
+      grp === "tkaniny" && ce("div", { style: { display: "flex", gap: 16, marginBottom: 16 } },
+        ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
+          ce("input", { type: "checkbox", checked: flame, onChange: function(e) { setFlame(e.target.checked); }, style: { width: 15, height: 15 } }),
+          "\uD83D\uDD25 Trudnopalna"),
+        ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
+          ce("input", { type: "checkbox", checked: sound, onChange: function(e) { setSound(e.target.checked); }, style: { width: 15, height: 15 } }),
+          "\uD83D\uDD07 D\u017Awi\u0119koszczelna")
       ),
       ce("div", { style: { marginBottom: 20 } },
         ce("div", { style: lbl }, "Producent / opis (inne)"),
@@ -801,6 +829,7 @@ function TabCatalog(p) {
   var s3 = useState(null);  var editItem = s3[0]; var setEditItem = s3[1];
   var s4 = useState("all"); var activeCat = s4[0]; var setActiveCat = s4[1];
   var s4b = useState(null); var activeMeta = s4b[0]; var setActiveMeta = s4b[1];
+  var s4c = useState(null); var activeTag = s4c[0];  var setActiveTag = s4c[1];
 
   function reload() {
     setLoading(true);
@@ -837,12 +866,22 @@ function TabCatalog(p) {
     ? Array.from(new Set(activeGroupForMeta.items.map(function(it) { return it.meta; }).filter(Boolean))).sort()
     : [];
 
+  // ── Kategorie tkanin (Naturalne / Semi-Natural / Trudnopalne / Dźwiękoszczelne) ──
+  // Tylko w zakładce Tkaniny — reszta kategorii katalogu nie ma tych atrybutów.
+  var FABRIC_TAGS = ["Naturalne", "Semi-Natural", "Trudnopalne", "D\u017Awi\u0119koszczelne"];
+  var fabricTagCounts = activeCat === "tkaniny" && activeGroupForMeta
+    ? FABRIC_TAGS.map(function(tag) {
+        return { tag: tag, count: activeGroupForMeta.items.filter(function(it) { return (it.tags || []).indexOf(tag) >= 0; }).length };
+      }).filter(function(x) { return x.count > 0; })
+    : [];
+
   var rendered = groups
     .filter(function(gr) { return activeCat === "all" || gr.id === activeCat; })
     .map(function(gr) {
       var items = gr.items.filter(function(it) {
         if (onlyNoH && !it.warn) return false;
         if (activeMeta && it.meta !== activeMeta) return false;
+        if (activeTag && (it.tags || []).indexOf(activeTag) < 0) return false;
         if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
         return true;
       });
@@ -865,7 +904,7 @@ function TabCatalog(p) {
       catTabs.map(function(c) {
         var count = c.id === "all" ? totalItems : (groups.find(function(gr) { return gr.id === c.id; }) || { items: [] }).items.length;
         var active = activeCat === c.id;
-        return ce("button", { key: c.id, onClick: function() { setActiveCat(c.id); setActiveMeta(null); },
+        return ce("button", { key: c.id, onClick: function() { setActiveCat(c.id); setActiveMeta(null); setActiveTag(null); },
           style: { padding: "14px 16px", borderRadius: 14, border: "1.5px solid " + (active ? "var(--violet)" : "var(--bd2)"), background: active ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: active ? "var(--violet)" : "var(--t3)", fontSize: 14, fontWeight: active ? 700 : 500, cursor: "pointer", display: "flex", gap: 9, alignItems: "center", width: "100%", boxSizing: "border-box" } },
           ce("span", { style: { fontSize: 20, flexShrink: 0 } }, c.icon),
           ce("span", { style: { flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, c.label),
@@ -882,6 +921,19 @@ function TabCatalog(p) {
         return ce("button", { key: prod, onClick: function() { setActiveMeta(prod); },
           style: { padding: "8px 14px", borderRadius: 20, border: "1.5px solid " + (act ? "var(--violet)" : "var(--bd2)"), background: act ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: act ? "var(--violet)" : "var(--t3)", fontSize: 12.5, fontWeight: act ? 700 : 500, cursor: "pointer" } },
           prod);
+      })
+    ),
+
+    fabricTagCounts.length > 0 && ce("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 } },
+      ce("button", { onClick: function() { setActiveTag(null); },
+        style: { padding: "8px 14px", borderRadius: 20, border: "1.5px solid " + (!activeTag ? "var(--violet)" : "var(--bd2)"), background: !activeTag ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: !activeTag ? "var(--violet)" : "var(--t3)", fontSize: 12.5, fontWeight: !activeTag ? 700 : 500, cursor: "pointer" } },
+        "Wszystkie kategorie"),
+      fabricTagCounts.map(function(x) {
+        var act = activeTag === x.tag;
+        var icon = x.tag === "Trudnopalne" ? "\uD83D\uDD25 " : x.tag === "D\u017Awi\u0119koszczelne" ? "\uD83D\uDD07 " : "\uD83C\uDF3F ";
+        return ce("button", { key: x.tag, onClick: function() { setActiveTag(x.tag); },
+          style: { padding: "8px 14px", borderRadius: 20, border: "1.5px solid " + (act ? "var(--violet)" : "var(--bd2)"), background: act ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: act ? "var(--violet)" : "var(--t3)", fontSize: 12.5, fontWeight: act ? 700 : 500, cursor: "pointer" } },
+          icon + x.tag + " (" + x.count + ")");
       })
     ),
 
@@ -921,6 +973,12 @@ function TabCatalog(p) {
                   it.overridden && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#0369a1", background: "rgba(3,105,161,0.10)", borderRadius: 6, padding: "1px 5px" } }, "edyt.")
                 ),
                 ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.gramaturaLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
+                it.tags && it.tags.length > 0 && ce("div", { style: { display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4 } },
+                  it.tags.map(function(tag) {
+                    var tc = tag === "Trudnopalne" ? "#dc2626" : tag === "D\u017Awi\u0119koszczelne" ? "#0369a1" : "#16a34a";
+                    return ce("span", { key: tag, style: { fontSize: 9.5, fontWeight: 700, color: tc, background: tc + "18", borderRadius: 6, padding: "1px 6px" } }, tag);
+                  })
+                ),
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap" } },
