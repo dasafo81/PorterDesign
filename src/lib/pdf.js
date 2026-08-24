@@ -648,7 +648,10 @@ export function generateSewingOrderPDF(client, modalData){
     +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-weight:700">PD PORTER DESIGN</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>'+SELLER.tel+'<br>'+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
-    +'<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin: <strong>'+termStr+'</strong></p>'+'</div>'
+    +(hasBothTypes
+      ?'<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin (zas\u0142ony/firany): <strong>'+termCurtainsStr+'</strong><br>Termin (rolety rzymskie): <strong>'+termRoletyStr+'</strong></p>'
+      :'<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin: <strong>'+termStr+'</strong></p>')
+    +'</div>'
     +'</div>'
     +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zasłony i firany — specyfikacja szycia",['3%','11%','7%','14%','7%','7%','7%','13%','31%'])+curtainOptionsHTML:"")
     +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,"Rolety rzymskie \u2014 specyfikacja szycia",['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML+notesFieldHTML:"")
