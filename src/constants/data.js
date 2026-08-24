@@ -4285,3 +4285,30 @@ export const WIN_PRESETS=[
   {key:"tarasowe",label:"Tarasowe",img:IMG_OKNO},
   {key:"inne",label:"Okno...",img:IMG_OKNO,needsName:true}
 ];
+
+// ── PRICE_LISTS (Magazyn → Cenniki) ────────────────────────────────────
+// Statyczne cenniki usług (nie z Supabase). Każdy wpis: id, title, rows[].
+// rows[].service = nazwa usługi, .net = cena netto (tekst z jm.), .client = cena dla klienta.
+export const PRICE_LISTS=[
+  {
+    id:"szycie_niteczkami",
+    title:"Cennik szycia \u201eNiteczkami\u201d",
+    rows:[
+      {service:"Szycie proste",net:"7 z\u0142/mb",client:"15 z\u0142/mb"},
+      {service:"G\u00f3ra na ta\u015bmie (ta\u015bma + przeszycie)",net:"21 z\u0142/mb",client:"42 z\u0142/mb"},
+      {service:"Skos Flex",net:"105 z\u0142/mb",client:"210 z\u0142/mb"},
+      {service:"Skos Ta\u015bma",net:"63 z\u0142/mb",client:"126 z\u0142/mb"},
+      {service:"Rolety",net:"95 z\u0142/m\u00b2",client:"190 z\u0142/m\u00b2"},
+      {service:"G\u00f3ra na haczykach conflex",net:"35 z\u0142/mb",client:"70 z\u0142/mb"},
+      {service:"Dekoracja na ta\u015bmie wave z wpi\u0119ciem agrafek francuskich",net:"25 z\u0142/mb",client:"50 z\u0142/mb"},
+      {service:"Ta\u015bma na p\u0142asko",net:"28 z\u0142/mb",client:"56 z\u0142/mb"},
+      {service:"Poszewki na poduszki z k\u0119dr\u0105",net:"25 z\u0142/szt.",client:"50 z\u0142/szt."},
+      {service:"Poszewki na poduszki bez k\u0119dry",net:"20 z\u0142/szt.",client:"40 z\u0142/szt."},
+      {service:"Wype\u0142nienie do poduszek",net:"10 z\u0142/szt.",client:"20 z\u0142/szt."},
+      {service:"Rolety i zas\u0142ony na podszewce",net:"+50% ceny",client:"+100% ceny"},
+      {service:"Narzuta na podszewce",net:"35 z\u0142/m\u00b2",client:"70 z\u0142/m\u00b2"},
+      {service:"Szycie k\u0119dry sznura",net:"10 z\u0142/mb",client:"20 z\u0142/mb"},
+      {service:"Narzuta z wk\u0142adem",net:"50 z\u0142/m\u00b2",client:"100 z\u0142/m\u00b2"}
+    ]
+  }
+];
