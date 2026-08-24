@@ -578,7 +578,8 @@ function buildBaseCatalog() {
         return { baseKey: "tkaniny::" + f.name, name: f.name, price: fx("tkaniny", f.brutto),
           unit: "z\u0142/mb", meta: f.prod || "", heightCm: f.width != null ? f.width : null,
           zakup: f.zakup != null ? f.zakup : null, sklad: f.sklad || "",
-          belkowa: f.belkowa != null ? f.belkowa : null };
+          belkowa: f.belkowa != null ? f.belkowa : null,
+          gramatura: f.gramatura != null ? f.gramatura : null };
       }) },
     { id: "tapety", label: "Tapety", icon: "\uD83C\uDFA8",
       items: TAPETY.map(function(t) {
@@ -657,16 +658,19 @@ function mergeCatalog(baseGroups, rows) {
         zakup:    o && o.purchase_price != null ? o.purchase_price : it.zakup,
         sklad:    o && o.composition != null ? o.composition : it.sklad,
         belkowa:  o && o.belka_price != null ? o.belka_price : it.belkowa,
+        gramatura:o && o.weight_gsm != null ? o.weight_gsm : it.gramatura,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
     (customByGroup[g.id] || []).forEach(function(c) {
       items.push({ rowId: c.id, baseKey: null, groupId: g.id, isBase: false, overridden: false,
         name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
-        zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price });
+        zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price,
+        gramatura: c.weight_gsm != null ? c.weight_gsm : null });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
+      m.gramaturaLabel = m.gramatura != null ? (m.gramatura + " g/m\u00b2") : null;
       m.warn = (g.tracksHeight && m.heightCm == null) ? "brak wysoko\u015bci" : null;
     });
     return { id: g.id, label: g.label, icon: g.icon, tracksHeight: g.tracksHeight, items: items };
@@ -687,6 +691,7 @@ function ModalCatalogItem(p) {
   var sZ = useState(it.zakup != null ? String(it.zakup) : "");  var zakup = sZ[0]; var setZakup = sZ[1];
   var sBk = useState(it.belkowa != null ? String(it.belkowa) : ""); var belkowa = sBk[0]; var setBelkowa = sBk[1];
   var sK = useState(it.sklad || "");                            var sklad = sK[0]; var setSklad = sK[1];
+  var sGr = useState(it.gramatura != null ? String(it.gramatura) : ""); var gram = sGr[0]; var setGram = sGr[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
 
   // Podpowiedzi producenta: unikalne wartości "meta" już użyte w aktualnie wybranej grupie
@@ -699,7 +704,7 @@ function ModalCatalogItem(p) {
   function body() {
     return { group_id: grp, name: name.trim(), price: num(price), unit: unit.trim() || "z\u0142",
       meta: meta.trim() || null, height_cm: num(height), purchase_price: num(zakup),
-      belka_price: num(belkowa), composition: sklad.trim() || null };
+      belka_price: num(belkowa), composition: sklad.trim() || null, weight_gsm: num(gram) };
   }
   function save() {
     if (!name.trim()) return;
@@ -762,6 +767,10 @@ function ModalCatalogItem(p) {
       ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Sk\u0142ad"),
         ce("input", { value: sklad, onChange: function(e) { setSklad(e.target.value); }, placeholder: "np. 100% PES", style: inp })
+      ),
+      grp === "tkaniny" && ce("div", { style: { marginBottom: 12 } },
+        ce("div", { style: lbl }, "Gramatura (g/m\u00b2) \u2014 opcjonalnie"),
+        ce("input", { value: gram, onChange: function(e) { setGram(e.target.value); }, placeholder: "np. 280", style: inp })
       ),
       ce("div", { style: { marginBottom: 20 } },
         ce("div", { style: lbl }, "Producent / opis (inne)"),
@@ -911,7 +920,7 @@ function TabCatalog(p) {
                   !it.isBase && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "var(--violet)", background: "rgba(124,58,237,0.10)", borderRadius: 6, padding: "1px 5px" } }, "w\u0142asny"),
                   it.overridden && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#0369a1", background: "rgba(3,105,161,0.10)", borderRadius: 6, padding: "1px 5px" } }, "edyt.")
                 ),
-                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
+                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.gramaturaLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap" } },
