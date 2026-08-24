@@ -847,7 +847,7 @@ function TabCatalog(p) {
         ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } },
           totalItems + " pozycji cennikowych" + (noHeightCount > 0 ? " \u00B7 \u26A0\uFE0F " + noHeightCount + " tkanin bez wysoko\u015bci" : ""))
       ),
-      ce("button", { onClick: function() { setEditItem({ groupId: "inne" }); },
+      ce("button", { onClick: function() { setEditItem({ groupId: activeCat !== "all" ? activeCat : "inne" }); },
         style: btn({ padding: "10px 18px", background: "var(--violet)", color: "#fff", display: "flex", alignItems: "center", gap: 6 }) },
         ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj produkt")
     ),
