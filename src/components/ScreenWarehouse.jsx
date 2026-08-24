@@ -3,7 +3,7 @@ import { sbApi } from '../lib/supabase.js';
 import {
   FABRICS, primeFabricOverrides, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
-  KD_AKCESORIA, RS_MASKS
+  KD_AKCESORIA, RS_MASKS, PRICE_LISTS
 } from '../constants/data.js';
 const ce = React.createElement;
 
@@ -396,6 +396,56 @@ function TabRails(p) {
       onSave: function() { setShowModal(false); reload(); },
       onClose: function() { setShowModal(false); }
     })
+  );
+}
+
+
+// ── Zakładka: Cenniki ──────────────────────────────────────────────────────
+function TabCenniki(p) {
+  var s1 = useState(PRICE_LISTS[0] ? PRICE_LISTS[0].id : null); var activeId = s1[0]; var setActiveId = s1[1];
+  var active = PRICE_LISTS.find(function(pl) { return pl.id === activeId; }) || PRICE_LISTS[0];
+
+  var pillBase   = { padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", border: "0.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)" };
+  var pillActive = Object.assign({}, pillBase, { background: "#EEEDFE", borderColor: "#AFA9EC", color: "#3C3489" });
+
+  return ce("div", null,
+    ce("div", { style: { marginBottom: 12 } },
+      ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCB0 Cenniki"),
+      ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } },
+        PRICE_LISTS.length + " cennik" + (PRICE_LISTS.length === 1 ? "" : "i"))
+    ),
+
+    PRICE_LISTS.length > 1 && ce("div", { style: { display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" } },
+      PRICE_LISTS.map(function(pl) {
+        return ce("button", { key: pl.id, onClick: function() { setActiveId(pl.id); }, style: activeId === pl.id ? pillActive : pillBase }, pl.title);
+      })
+    ),
+
+    !active && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak cennik\u00f3w."),
+
+    active && ce("div", null,
+      ce("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)", marginBottom: 8 } }, active.title),
+      ce("div", { style: { border: "0.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
+        ce("table", { style: { width: "100%", borderCollapse: "collapse" } },
+          ce("thead", null,
+            ce("tr", null,
+              ce("th", { style: { padding: "8px 12px", background: "var(--bg2)", borderBottom: "0.5px solid var(--bd2)", fontSize: 11, fontWeight: 700, color: "var(--t3)", textAlign: "left", textTransform: "uppercase", letterSpacing: ".05em" } }, "Us\u0142uga"),
+              ce("th", { style: { padding: "8px 12px", background: "var(--bg2)", borderBottom: "0.5px solid var(--bd2)", fontSize: 11, fontWeight: 700, color: "var(--t3)", textAlign: "right", textTransform: "uppercase", letterSpacing: ".05em" } }, "Cena netto"),
+              ce("th", { style: { padding: "8px 12px", background: "var(--bg2)", borderBottom: "0.5px solid var(--bd2)", fontSize: 11, fontWeight: 700, color: "var(--t3)", textAlign: "right", textTransform: "uppercase", letterSpacing: ".05em" } }, "Cena dla klienta")
+            )
+          ),
+          ce("tbody", null,
+            active.rows.map(function(r, i) {
+              return ce("tr", { key: i, style: { background: i % 2 === 0 ? "var(--bg)" : "var(--bg2)" } },
+                ce("td", { style: { padding: "8px 12px", borderBottom: "0.5px solid var(--bd3)", fontSize: 13, color: "var(--t1)" } }, r.service),
+                ce("td", { style: { padding: "8px 12px", borderBottom: "0.5px solid var(--bd3)", fontSize: 13, color: "var(--t2)", textAlign: "right" } }, r.net),
+                ce("td", { style: { padding: "8px 12px", borderBottom: "0.5px solid var(--bd3)", fontSize: 13, fontWeight: 700, color: "var(--violet)", textAlign: "right" } }, r.client)
+              );
+            })
+          )
+        )
+      )
+    )
   );
 }
 
@@ -884,7 +934,8 @@ export function ScreenWarehouse(p) {
   var tabs = [
     { id: "warehouse", label: "Magazyn", icon: "\uD83D\uDCE6" },
     { id: "catalog",   label: "Katalog", icon: "\uD83D\uDCD1" },
-    { id: "rails",     label: "Szyny KS", icon: "\uD83D\uDCCF" }
+    { id: "rails",     label: "Szyny KS", icon: "\uD83D\uDCCF" },
+    { id: "cenniki",   label: "Cenniki", icon: "\uD83D\uDCB0" }
   ];
 
   return ce("div", { style: { padding: "0 4px" } },
@@ -898,6 +949,7 @@ export function ScreenWarehouse(p) {
     ),
     tab === "warehouse" ? ce(TabWarehouse, {})
       : tab === "catalog" ? ce(TabCatalog, {})
-      : ce(TabRails, {})
+      : tab === "rails" ? ce(TabRails, {})
+      : ce(TabCenniki, {})
   );
 }// ── Zakładka: Szyny KS ───────────────────────────────────────────────────────
