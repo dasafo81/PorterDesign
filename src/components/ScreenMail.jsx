@@ -2760,7 +2760,7 @@ export function ScreenMail(p){
             ce("a",{href:"#",onClick:function(e){e.preventDefault();mailNavigate("settings");},
               style:{color:"var(--t2)",textDecoration:"underline"}},"Ustawieniach"),"."
           ),
-          userSettings.signature_html?ce("div",{style:{fontSize:13,color:"var(--t1)",lineHeight:1.6},
+          userSettings.signature_html?ce("div",{style:{fontSize:13,color:"var(--t1)",lineHeight:1.6,fontFamily:"Montserrat, Arial, sans-serif"},
             dangerouslySetInnerHTML:{__html:userSettings.signature_html}}):null,
           userSettings.signature_image_url?ce("img",{src:userSettings.signature_image_url,alt:"",
             style:{maxWidth:200,maxHeight:90,display:"block",marginTop:userSettings.signature_html?8:0}}):null
