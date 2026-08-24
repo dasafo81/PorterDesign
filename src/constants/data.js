@@ -4009,7 +4009,15 @@ export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUnti
   if(!html){alert("Brak wycenionych produktów.");return;}
   var offerNo=getPDFOfferNumber(client);
   var offerTotal=(rows||[]).reduce(function(a,r){return a+(+r.total||0);},0);
-  persistOffer(client,offerNo,"szczegolowa",offerTotal,validUntil,offerNotes,discount);
+  // Kwota zapisywana w offers.total_gross musi zawierać montaż — inaczej faktura
+  // wystawiana "na podstawie oferty" (ScreenInvoices.applyOfferAmount liczy % od
+  // total_gross) nie doliczy montażu, mimo że PDF oferty go pokazuje.
+  var montazParam=montaz||0;
+  var montazModeV=montazParam.mode||"percent";
+  var montazInputV=montazParam.mode?montazParam.value:montazParam;
+  var montazPctV=montazModeV==="amount"?0:montazInputV;
+  var montazAmount=montazModeV==="amount"?roundTo10(montazInputV):(montazPctV>0?roundTo10(offerTotal*montazPctV):0);
+  persistOffer(client,offerNo,"szczegolowa",offerTotal+montazAmount,validUntil,offerNotes,discount);
   openPDFWindow(html, offerNo,{landscape:true});
 }
 
