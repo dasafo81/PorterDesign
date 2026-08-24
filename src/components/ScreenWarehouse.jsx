@@ -706,6 +706,7 @@ function ModalCatalogItem(p) {
   var sFR = useState(!!it.flameRetardant);                     var flame = sFR[0]; var setFlame = sFR[1];
   var sSP = useState(!!it.soundproof);                         var sound = sSP[0]; var setSound = sSP[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
+  var sE = useState("");                                      var formErr = sE[0]; var setFormErr = sE[1];
 
   // Podpowiedzi producenta: unikalne wartości "meta" już użyte w aktualnie wybranej grupie
   var activeGroupItems = (p.allGroups || []).find(function(g) { return g.id === grp; });
@@ -724,14 +725,15 @@ function ModalCatalogItem(p) {
       flame_retardant: flame, soundproof: sound };
   }
   function save() {
-    if (!name.trim()) return;
+    if (!name.trim()) { setFormErr("Podaj nazw\u0119 (kod/nazw\u0119 tkaniny) \u2014 pole \u201eProducent\u201d samo nie wystarczy."); return; }
+    setFormErr("");
     setBusy(true);
     var op;
     if (hasRow) op = sbApi.updateCatalogItem(it.rowId, body());
     else if (isBase) op = sbApi.addCatalogItem(Object.assign({ base_key: it.baseKey }, body()));
     else op = sbApi.addCatalogItem(Object.assign({ base_key: null }, body()));
     op.then(function() { setBusy(false); p.onSave(); })
-      .catch(function(e) { setBusy(false); alert("B\u0142\u0105d: " + e.message); });
+      .catch(function(e) { setBusy(false); setFormErr("B\u0142\u0105d zapisu: " + e.message); });
   }
   function resetBase() {
     if (!hasRow) return;
@@ -806,6 +808,8 @@ function ModalCatalogItem(p) {
         ce("datalist", { id: "catalog-meta-suggestions" },
           producerSuggestions.map(function(m) { return ce("option", { key: m, value: m }); }))
       ),
+
+      formErr && ce("div", { style: { background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#b91c1c", marginBottom: 12 } }, formErr),
 
       ce("div", { style: { display: "flex", gap: 10 } },
         ce("button", { onClick: p.onClose, style: btn({ flex: 1, padding: 12, background: "var(--bg2)", color: "var(--t2)", border: "1.5px solid var(--bd2)" }) }, "Anuluj"),
