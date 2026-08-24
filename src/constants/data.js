@@ -2440,6 +2440,30 @@ export const TAPETY =[
   {name:"Ultimate",brutto:180,prod:"Capture",width:300,zakup:97,sklad:"100% RPET"}
 ];
 
+// ── Klasyfikacja tkaniny wg składu: Naturalne / Semi-Natural ────────────
+// Parsuje pola typu "58% CO, 42% PES" lub "100% LI" (kody wg cenników:
+// CO=bawełna, LI=len, WO=wełna, SI=jedwab, JU=juta, HE=konopie).
+// Zasada zgłoszona przez Damiana: 100% włókna naturalnego → "Naturalne";
+// mieszanka włókna naturalnego z syntetykiem (PES, PA, RPET, PAN, VI, OT...)
+// → "Semi-Natural"; brak włókna naturalnego w składzie (albo skład nie do
+// sparsowania, np. "z obciążnikiem") → brak kategorii (null).
+var NATURAL_FIBER_CODES = ["CO","LI","WO","SI","JU","HE"];
+export function classifyFabricComposition(sklad){
+  if(!sklad) return null;
+  var re = /(\d+(?:[.,]\d+)?)\s*%\s*([A-Za-zĄąĆćĘꣳŃńÓóŚśŹźŻż]+)/g;
+  var m, hasNatural=false, hasOther=false, naturalPct=0, totalPct=0;
+  while((m = re.exec(String(sklad))) !== null){
+    var pct = parseFloat(m[1].replace(",", "."));
+    var code = m[2].toUpperCase();
+    totalPct += pct;
+    if(NATURAL_FIBER_CODES.indexOf(code) >= 0){ hasNatural = true; naturalPct += pct; }
+    else hasOther = true;
+  }
+  if(!hasNatural || !totalPct) return null;
+  if(!hasOther && naturalPct >= totalPct - 1) return "Naturalne";
+  return "Semi-Natural";
+}
+
 // ── Nadpisania tkanin z Katalogu (Magazyn → Katalog) ───────────────────
 // Cache w pamiećci procesu, wypełniany raz przy starcie apki (App.jsx wywołuje
 // primeFabricOverrides po pobraniu catalog_items z Supabase). Klucz nadpisania
@@ -2457,6 +2481,8 @@ function _rowToFabric(r){
     sklad: r.composition || null,
     belkowa: r.belka_price!=null ? r.belka_price : null,
     gramatura: r.weight_gsm!=null ? r.weight_gsm : null,
+    flameRetardant: !!r.flame_retardant,
+    soundproof: !!r.soundproof,
     custom: true
   };
 }
@@ -2502,7 +2528,9 @@ export function getFabricEffective(name){
     zakup:  (ov && ov.purchase_price!=null) ? ov.purchase_price : (base?base.zakup:null),
     sklad:  (ov && ov.composition) ? ov.composition : (base?base.sklad:null),
     belkowa:(ov && ov.belka_price!=null) ? ov.belka_price : (base?base.belkowa:null),
-    gramatura:(ov && ov.weight_gsm!=null) ? ov.weight_gsm : (base?base.gramatura:null)
+    gramatura:(ov && ov.weight_gsm!=null) ? ov.weight_gsm : (base?base.gramatura:null),
+    flameRetardant: (ov && ov.flame_retardant!=null) ? !!ov.flame_retardant : !!(base && base.flameRetardant),
+    soundproof: (ov && ov.soundproof!=null) ? !!ov.soundproof : !!(base && base.soundproof)
   };
 }
 
