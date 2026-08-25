@@ -302,7 +302,7 @@ export function App(p){
   },[simplSel,simplRoomGroups,commissionInput,curClient]);
 
   // Zapisz zmiany w Supabase z debounce
-  function saveClientToSb(id, data){
+  function saveClientToSb(id, data, expectedUpdatedAt){
     if(offlineMode){
       var offlineQuotes=[];
       try{
@@ -323,10 +323,19 @@ export function App(p){
       return;
     }
     setSaveStatus("saving");
-    sbApi.updateClient(id, data).then(function(){
+    sbApi.updateClient(id, data, expectedUpdatedAt).then(function(rows){
+      var fresh=Array.isArray(rows)?rows[0]:rows;
+      if(fresh&&fresh.updated_at){
+        setClients(function(cs){return cs.map(function(cl){return cl.id===id?mg(cl,{updated_at:fresh.updated_at}):cl;});});
+      }
       setSaveStatus("ok");
       setTimeout(function(){setSaveStatus(null);},1500);
     }).catch(function(e){
+      if(e&&e.conflict){
+        setSaveStatus("conflict");
+        alert("Ten klient zosta\u0142 w mi\u0119dzyczasie zmieniony w innej karcie, przez inn\u0105 osob\u0119 lub na innym urz\u0105dzeniu.\n\nTwoja ostatnia zmiana NIE zosta\u0142a zapisana, \u017ceby nie nadpisa\u0107 cudzej pracy. Ods\u015bwie\u017c stron\u0119 (F5), sprawd\u017a aktualne dane i wprowad\u017a zmian\u0119 ponownie.");
+        return;
+      }
       console.error("Błąd zapisu:",e);
       setSaveStatus("error");
     });
@@ -336,7 +345,7 @@ export function App(p){
     setClients(function(cs){
       var updated=cs.map(function(cl){return cl.id===id?fn(cl):cl;});
       var newCl=updated.find(function(cl){return cl.id===id;});
-      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'});
+      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'}, newCl.updated_at);
       return updated;
     });
   }
