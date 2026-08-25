@@ -85,6 +85,23 @@ export const sbApi = {
       return rows;
     });
   },
+  // Lekki odczyt metadanych klienta \u2014 do wykrywania nieaktualnej karty
+  // (zob. staleClient w App.jsx). Nie ciagnie ciezkiego JSON-a `rooms`.
+  getClientMeta: function(id){
+    return sbFetch("GET","clients?id=eq."+id+"&select=id,updated_at").then(function(rows){
+      return (rows&&rows[0])||null;
+    });
+  },
+  // Historia wersji klienta (trigger trg_clients_snapshot, migracja 0040).
+  // Kazda zmiana `rooms` odklada POPRZEDNI stan do client_snapshots.
+  getClientSnapshots: function(id){
+    return sbFetch("GET","client_snapshots?client_id=eq."+id+"&select=id,created_at,product_count,changed_by&order=created_at.desc&limit=60");
+  },
+  getClientSnapshot: function(snapId){
+    return sbFetch("GET","client_snapshots?id=eq."+snapId+"&select=*").then(function(rows){
+      return (rows&&rows[0])||null;
+    });
+  },
   // Usu\u0144 klienta
   deleteClient: function(id){
     return sbFetch("DELETE","clients?id=eq."+id);
