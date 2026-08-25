@@ -141,6 +141,7 @@ export function ModalDeal(p){
   var sul=useState(false),uploading=sul[0],setUploading=sul[1];
   var sbusy=useState(false),busy=sbusy[0],setBusy=sbusy[1];
   var sgcd=useState(null),gcalDraft=sgcd[0],setGcalDraft=sgcd[1];
+  var persistedDatesRef=useRef({});
   // Szablony maili "Opinia - swobodna" / "Instrukcja prania i czyszczenia" oraz stan modala wysyłki
   var smt=useState(null),mailTpls=smt[0],setMailTpls=smt[1];
   var smk=useState(null),mailKind=smk[0],setMailKind=smk[1]; // "opinia" | "instrukcja" | null
@@ -382,6 +383,13 @@ export function ModalDeal(p){
   // bez kliknięcia „Zapisz” (przez co nie pojawiał się też na kafelku w CRM).
   function persistDealDate(field,val,setter){
     if(setter)setter(val);
+    // Natywny picker <input type="datetime-local"> wywołuje onChange przy KAŻDEJ
+    // zmianie w kalendarzyku (także przy przewijaniu miesięcy), więc zapis leci
+    // dopiero z onBlur/Enter. Tu dodatkowo ucinamy powtórzenia tej samej wartości.
+    var prev=persistedDatesRef.current[field];
+    if(prev===undefined)prev=(d[field]?String(d[field]).slice(0,16):"");
+    if(prev===(val||"")) return;
+    persistedDatesRef.current[field]=val||"";
     var patch={};
     patch[field]=val||null;
     patch.updated_at=new Date().toISOString();
@@ -898,7 +906,9 @@ export function ModalDeal(p){
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
             ce("input",{
               type:"datetime-local",value:visitDate,
-              onChange:function(ev){persistDealDate("visit_date",ev.target.value,setVisitDate);},
+              onChange:function(ev){setVisitDate(ev.target.value);},
+              onBlur:function(ev){persistDealDate("visit_date",ev.target.value,setVisitDate);},
+              onKeyDown:function(ev){if(ev.key==="Enter"){persistDealDate("visit_date",ev.target.value,setVisitDate);ev.target.blur();}},
               title:"Termin spotkania (zapisywany od razu w dealu)",
               style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
             }),
@@ -924,7 +934,9 @@ export function ModalDeal(p){
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
             ce("input",{
               type:"datetime-local",value:delivDate,
-              onChange:function(ev){persistDealDate("delivery_date",ev.target.value,setDelivDate);},
+              onChange:function(ev){setDelivDate(ev.target.value);},
+              onBlur:function(ev){persistDealDate("delivery_date",ev.target.value,setDelivDate);},
+              onKeyDown:function(ev){if(ev.key==="Enter"){persistDealDate("delivery_date",ev.target.value,setDelivDate);ev.target.blur();}},
               title:"Termin montażu (zapisywany od razu w dealu)",
               style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
             }),
