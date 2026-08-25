@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, getAllFabrics, getFabricEffective, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
+  FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
   IMG_FALDA_POTROJNA, IMG_FALDA_STUDIO, IMG_JZ_ALUMINIUM, IMG_JZ_BAMBOO,
   IMG_JZ_BASSWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
   IMG_OKNO, IMG_ROLETA_BACK, IMG_ROLETA_CASCADE, IMG_ROLETA_DUO,
@@ -62,6 +62,24 @@ export function FabPicker(p){
   var list=q?effFabrics.filter(function(f){return (f.name||"").toLowerCase().includes(q.toLowerCase())||(f.prod||"").toLowerCase().includes(q.toLowerCase());}):effFabrics;
   var sf=effFabrics.find(function(f){return f.name===p.fabName;});
   var hasSelection=p.fabName||p.fabMan!=null;
+  // Bestsellery (p.prodType: "zaslona" | "firana") — tylko gdy lista nie jest przefiltrowana wyszukiwarką.
+  var bestsellerGroups=(!q && p.prodType)?getBestsellerFabrics(p.prodType):[];
+  function renderFabRow(f){
+    var active=p.fabName===f.name;
+    return ce("div",{key:f.name,
+      onClick:function(){p.onSelect(f);setOpen(false);setQ("");},
+      style:{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",borderBottom:"1px solid var(--bd3)",cursor:"pointer",fontSize:15,background:active?"var(--grl)":"var(--bg)"}
+    },
+      active?ce("span",{style:{color:"var(--gr)",fontSize:14,flexShrink:0,width:16}},"✓"):ce("span",{style:{width:16,flexShrink:0}}),
+      ce("span",{style:{flex:1,fontWeight:active?600:500,color:"var(--t1)"}},f.name),
+      ce("span",{style:{fontSize:11,color:"var(--t3)",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod||"\u2014"),
+      ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap",fontSize:13}},(f.width!=null?f.width+"cm":"\u2014")),
+      ce("span",{style:{color:"var(--grd)",fontWeight:600,whiteSpace:"nowrap",fontSize:13}},(f.brutto!=null?f.brutto:"\u2014")+" z\u0142")
+    );
+  }
+  function renderCatHeader(label,withTopBorder){
+    return ce("div",{style:{padding:"8px 16px 4px",fontSize:11,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",textTransform:"uppercase",background:"var(--bg2)",borderTop:withTopBorder?"1px solid var(--bd3)":"none"}},label);
+  }
   return ce("div",{style:{border:"1.5px solid "+(open?"var(--t1)":"var(--bd2)"),borderRadius:12,overflow:"hidden",marginTop:8,marginBottom:4,transition:"border-color .15s"}},
     ce("div",{
       onClick:function(){setOpen(!open);},
@@ -77,20 +95,15 @@ export function FabPicker(p){
     ),
     open?ce("div",null,
       ce("input",{autoFocus:true,value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny po nazwie lub dostawcy...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
-      ce("div",{style:{maxHeight:240,overflowY:"auto"}},
-        list.map(function(f){
-          var active=p.fabName===f.name;
-          return ce("div",{key:f.name,
-            onClick:function(){p.onSelect(f);setOpen(false);setQ("");},
-            style:{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",borderBottom:"1px solid var(--bd3)",cursor:"pointer",fontSize:15,background:active?"var(--grl)":"var(--bg)"}
-          },
-            active?ce("span",{style:{color:"var(--gr)",fontSize:14,flexShrink:0,width:16}},"✓"):ce("span",{style:{width:16,flexShrink:0}}),
-            ce("span",{style:{flex:1,fontWeight:active?600:500,color:"var(--t1)"}},f.name),
-            ce("span",{style:{fontSize:11,color:"var(--t3)",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},f.prod||"\u2014"),
-            ce("span",{style:{color:"var(--t2)",whiteSpace:"nowrap",fontSize:13}},(f.width!=null?f.width+"cm":"\u2014")),
-            ce("span",{style:{color:"var(--grd)",fontWeight:600,whiteSpace:"nowrap",fontSize:13}},(f.brutto!=null?f.brutto:"\u2014")+" z\u0142")
+      ce("div",{style:{maxHeight:280,overflowY:"auto"}},
+        bestsellerGroups.length?bestsellerGroups.map(function(g,gi){
+          return ce(Fragment,{key:"bs-"+g.cat},
+            renderCatHeader("\u2b50 "+g.cat,gi>0),
+            g.fabrics.map(function(f){return renderFabRow(f);})
           );
-        })
+        }):null,
+        bestsellerGroups.length?renderCatHeader("Wszystkie tkaniny",true):null,
+        list.map(function(f){return renderFabRow(f);})
       ),
       ce("div",{style:{padding:"12px 14px",display:"flex",alignItems:"center",gap:10,borderTop:"1px solid var(--bd3)",background:"var(--bg2)",flexWrap:"wrap"}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",flex:1}},"Cena ręczna (zł/mb):"),
@@ -692,7 +705,7 @@ export function ProdCard(p){
             ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, Ivory White...",style:{padding:"16px 18px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box"}})
           )
         ),
-        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabManName:prod.fabManName,onSelect:sf,onManual:sfm,onManualW:sfmW,onManualName:sfmN})
+        ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabManName:prod.fabManName,prodType:prod.type,onSelect:sf,onManual:sfm,onManualW:sfmW,onManualName:sfmN})
       ),
 
       // SEKCJA 2: Model zasłony
