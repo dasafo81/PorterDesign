@@ -712,6 +712,12 @@ function MailPreview(p){
     var cache=window._porterAttImgCache||{};
     // Usuń <script> i obsługę zdarzeń — sandbox i tak je blokuje, ale to ucisza ostrzeżenia w konsoli
     var clean=(htmlContent||"").replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,"").replace(/\son\w+\s*=\s*"[^"]*"/gi,"").replace(/\son\w+\s*=\s*'[^']*'/gi,"");
+    // Wymuś otwieranie linków w nowej karcie — sandbox iframe'a blokuje nawigację
+    // samego iframe'a/top window, więc bez target="_blank" klik w link nic nie robi.
+    clean=clean.replace(/<a\b((?:(?!target=)[^>])*)>/gi,function(whole,attrs){
+      var withoutRel=attrs.replace(/\srel=["'][^"']*["']/gi,"");
+      return "<a"+withoutRel+' target="_blank" rel="noopener noreferrer">';
+    });
     var resolved=clean.replace(/<img\b[^>]*\bsrc=["']cid:([^"'>]+)["'][^>]*>/gi,function(whole,cid){
       var cleanCid=cid.replace(/^<|>$/g,"").trim();
       var dataUri=cache[mid+"__cid__"+cleanCid];
@@ -1107,7 +1113,7 @@ function MailPreview(p){
                   ?(bodyIsHtml
                     ?ce("iframe",{
                       srcDoc:resolvedSrcDocs[m.id]||"",
-                      sandbox:"allow-same-origin",
+                      sandbox:"allow-same-origin allow-popups allow-popups-to-escape-sandbox",
                       style:{width:"100%",border:"none",minHeight:200,display:"block",background:"#fff"},
                       onLoad:function(e){
                         var fr=e.target;
