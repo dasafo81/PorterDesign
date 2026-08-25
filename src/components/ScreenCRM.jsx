@@ -386,7 +386,10 @@ export function ModalDeal(p){
     patch[field]=val||null;
     patch.updated_at=new Date().toISOString();
     sbApi.updateDeal(d.id,patch)
-      .then(function(){ if(p.onPatch)p.onPatch(patch); })
+      .then(function(){
+        console.log("[deal] zapisano termin",d.id,patch);
+        if(p.onPatch)p.onPatch(patch);
+      })
       .catch(function(e){alert("Termin zapisany w kalendarzu, ale nie udało się zapisać go w dealu: "+e.message);});
   }
 
@@ -893,16 +896,17 @@ export function ModalDeal(p){
             visitDate?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
               "📅 "+fmtDate(visitDate)+(visitDate.length>10?" "+visitDate.slice(11,16):"")
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
+            ce("input",{
+              type:"datetime-local",value:visitDate,
+              onChange:function(ev){persistDealDate("visit_date",ev.target.value,setVisitDate);},
+              title:"Termin spotkania (zapisywany od razu w dealu)",
+              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
+            }),
             gcalToken?ce("button",{
               onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt){persistDealDate("visit_date",dt,setVisitDate);});},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
-            },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):ce("input",{
-              type:"datetime-local",value:visitDate,
-              onChange:function(ev){persistDealDate("visit_date",ev.target.value,setVisitDate);},
-              title:"Ustaw termin (bez Google Calendar)",
-              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
-            })
+            },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):null
           ),
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SKĄD KLIENT"),
@@ -918,16 +922,17 @@ export function ModalDeal(p){
             delivDate?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
               "📅 "+fmtDate(delivDate)+(delivDate.length>10?" "+delivDate.slice(11,16):"")
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
+            ce("input",{
+              type:"datetime-local",value:delivDate,
+              onChange:function(ev){persistDealDate("delivery_date",ev.target.value,setDelivDate);},
+              title:"Termin montażu (zapisywany od razu w dealu)",
+              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
+            }),
             gcalToken?ce("button",{
               onClick:function(){addToGcal("Montaż",delivDate,"",function(dt){persistDealDate("delivery_date",dt,setDelivDate);});},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
-            },"📅 "+(delivDate?"Zmień":"Ustaw termin")):ce("input",{
-              type:"datetime-local",value:delivDate,
-              onChange:function(ev){persistDealDate("delivery_date",ev.target.value,setDelivDate);},
-              title:"Ustaw termin (bez Google Calendar)",
-              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
-            })
+            },"📅 "+(delivDate?"Zmień":"Ustaw termin")):null
           ),
           ce("div",{style:{display:"flex",gap:8}},
             ce("div",{style:{flex:1}},
