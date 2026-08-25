@@ -1,4 +1,4 @@
-import { cors, decrypt, json, serviceConfig, supabase, userFromRequest } from './_common.js';
+import { cors, decrypt, encrypt, json, serviceConfig, supabase, userFromRequest } from './_common.js';
 
 export const config = { runtime: 'edge' };
 
@@ -25,6 +25,17 @@ export default async function handler(req) {
     const tr = await fetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
     const tokens = await tr.json();
     if (!tr.ok || !tokens.access_token) return json({ error: 'OAUTH_RECONNECT_REQUIRED' }, 401, cors());
+    // Both Google and Microsoft (v2.0 endpoint) may rotate the refresh_token on every
+    // refresh grant, invalidating the previous one. If we don't persist the new value,
+    // the NEXT refresh attempt uses a dead token and forces the user to reconnect —
+    // this was the cause of "muszę się logować do Outlooka po każdym przelogowaniu".
+    if (tokens.refresh_token) {
+      const newCiphertext = await encrypt(tokens.refresh_token);
+      await supabase(`oauth_connections?id=eq.${encodeURIComponent(connection.id)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ refresh_token_ciphertext: newCiphertext, updated_at: new Date().toISOString() }),
+      });
+    }
     return json({
       access_token: tokens.access_token,
       expires_in: tokens.expires_in || 3600,
