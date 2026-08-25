@@ -2557,6 +2557,35 @@ export function getFabricEffective(name){
     soundproof: (ov && ov.soundproof!=null) ? !!ov.soundproof : !!(base && base.soundproof)
   };
 }
+// Bestsellery tkanin — pokazywane jako pierwsza sekcja po otwarciu listy tkanin w wycenach
+// (FabPicker w ProdCard.jsx), pogrupowane wg kategorii; osobne zestawy dla zasłon i firan.
+export const FABRIC_BESTSELLERS = {
+  zaslona: [
+    {cat:"A'la naturalne, strukturalne", names:["34280","Wave","Corsica","Riki"]},
+    {cat:"Welury", names:["Velvet","Spring"]},
+    {cat:"100% Naturalne", names:["Nam"]},
+    {cat:"Gładkie", names:["34200","Wonder"]}
+  ],
+  firana: [
+    {cat:"Strukturalne, naturalne", names:["Yita"]},
+    {cat:"Gładkie", names:["David"]},
+    {cat:"100% Natural", names:["Pallino"]}
+  ]
+};
+// Zwraca bestsellery dla danego typu produktu ("zaslona" | "firana") jako [{cat, fabrics:[...]}],
+// z pominięciem pozycji ukrytych w Katalogu; dane zawsze aktualne (getFabricEffective = baza + nadpisania).
+export function getBestsellerFabrics(prodType){
+  var groups = FABRIC_BESTSELLERS[prodType];
+  if(!groups) return [];
+  return groups.map(function(g){
+    var fabrics = g.names.map(function(n){
+      var ov = _fabricOverrides[n];
+      if(ov && ov.hidden) return null;
+      return getFabricEffective(n);
+    }).filter(Boolean);
+    return {cat:g.cat, fabrics:fabrics};
+  }).filter(function(g){return g.fabrics.length>0;});
+}
 
 export const PROD_TYPES =[
   {id:"zaslona",label:"Zas\u0142ona",icon:"🪟"},
