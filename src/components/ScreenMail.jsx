@@ -130,6 +130,15 @@ export function fmtMailDate(iso){
   return d.toLocaleDateString("pl-PL",{day:"2-digit",month:"2-digit"});
 }
 
+// Pełna data + godzina — używana w wynikach wyszukiwania, gdzie w jednym dniu
+// może być kilka wiadomości z tej samej korespondencji i sam dzień nie wystarcza.
+export function fmtMailDateFull(iso){
+  if(!iso)return "";
+  var d=new Date(iso);
+  return d.toLocaleDateString("pl-PL",{day:"2-digit",month:"2-digit",year:"2-digit"})
+    +", "+d.toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"});
+}
+
 // Formatuje listę odbiorców Graph (np. ccRecipients) do czytelnego stringa "Imię <adres>, ..."
 function fmtRecipients(list){
   return (list||[]).map(function(r){
@@ -465,11 +474,14 @@ function MailList(p){
 
   // Grupowanie po conversationId — dla wszystkich folderów które mają tę informację
   // (Inbox + Sent z Outlooka). Drafts i custom foldery nie używają conversationId.
+  // WYJĄTEK: podczas wyszukiwania NIE grupujemy — każda wiadomość (wysłana/odebrana)
+  // jest osobnym wynikiem, żeby dało się trafić w konkretnego maila z załącznikiem,
+  // a nie tylko w najnowszą wiadomość całego wątku.
   var threads=[];
   if(sourceMails&&sourceMails.length){
     var byConv={};
     sourceMails.forEach(function(m){
-      var key=m.conversationId||("solo_"+m.id);
+      var key=searching?("msg_"+m.id):(m.conversationId||("solo_"+m.id));
       if(!byConv[key]){byConv[key]={key:key,mails:[]};}
       byConv[key].mails.push(m);
     });
@@ -621,7 +633,7 @@ function MailList(p){
                     t.count>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,marginLeft:6}},"("+t.count+")"):null
                   )
                 ),
-                ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},fmtMailDate(m.date))
+                ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},searching?fmtMailDateFull(m.date):fmtMailDate(m.date))
               ),
               ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t1)",fontWeight:unread?700:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
               ce("div",{style:{fontSize:11,color:"var(--t2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview),
