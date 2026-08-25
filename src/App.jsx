@@ -607,16 +607,80 @@ export function App(p){
     });
   }
 
-  function saveWin(){
+  // \u2500\u2500 AUTOSAVE OKNA \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Do 2026-08-25 edycje produktow zyly wylacznie w stanie `curWin` i trafialy do
+  // kolumny `rooms` dopiero po kliknieciu "Zapisz" / "Zapisz okno". Wyjscie z ekranu
+  // bez klikniecia = cicha utrata pracy, ktorej NIE ratuje historia wersji —
+  // client_snapshots odklada tylko to, co doszlo do bazy.
+  // Teraz: zapis z debounce 1.5 s + flush przy ukryciu karty + ostrzezenie
+  // beforeunload, gdyby debounce nie zdazyl polecec przed zamknieciem.
+
+  // Zapisuje podane okno do rooms wlasciwego pomieszczenia.
+  function persistWin(w){
+    if(!w||!curClientId||!curRoomId)return;
     updateClient(curClientId,function(cl){
       var newRooms=(cl.rooms||[]).map(function(r){
         if(r.id!==curRoomId)return r;
-        var found=(r.windows||[]).find(function(w){return w.id===curWin.id;});
-        var newWins=found?(r.windows||[]).map(function(w){return w.id===curWin.id?curWin:w;}):(r.windows||[]).concat([curWin]);
+        var found=(r.windows||[]).find(function(x){return x.id===w.id;});
+        var newWins=found?(r.windows||[]).map(function(x){return x.id===w.id?w:x;}):(r.windows||[]).concat([w]);
         return mg(r,{windows:newWins});
       });
       return mg(cl,{rooms:newRooms});
     });
+  }
+
+  var curWinRef=React.useRef(curWin);curWinRef.current=curWin;
+  var winDirtyRef=React.useRef(false);
+  var flushWinRef=React.useRef(function(){});
+  // Nadpisywane przy kazdym renderze — dzieki temu efekt z pusta lista zaleznosci
+  // wola zawsze aktualna wersje, bez stale closure na curClientId/curRoomId.
+  flushWinRef.current=function(){
+    if(!winDirtyRef.current)return;
+    persistWin(curWinRef.current);
+    winDirtyRef.current=false;
+  };
+
+  React.useEffect(function(){
+    if(screen!=="detail"&&screen!=="windows")return;
+    if(!curWin||!curClientId||!curRoomId)return;
+    // Porownanie z wersja juz w bazie — chroni przed zbednym PATCH-em tuz po
+    // otwarciu okna (openWin robi kopie identyczna z zapisana).
+    var cl=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
+    var room=cl?(cl.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
+    var saved=room?(room.windows||[]).find(function(w){return w.id===curWin.id;}):null;
+    if(saved&&JSON.stringify(saved)===JSON.stringify(curWin)){
+      winDirtyRef.current=false;
+      return;
+    }
+    winDirtyRef.current=true;
+    var t=setTimeout(function(){
+      persistWin(curWin);
+      winDirtyRef.current=false;
+    },1500);
+    return function(){clearTimeout(t);};
+  },[curWin,curClientId,curRoomId,screen]);
+
+  // Flush przy ukryciu karty (przelaczenie zakladki, minimalizacja, zamkniecie
+  // aplikacji na telefonie) + ostrzezenie przy zamykaniu okna przegladarki.
+  React.useEffect(function(){
+    function onHide(){if(document.hidden)flushWinRef.current();}
+    function onBeforeUnload(e){
+      if(!winDirtyRef.current)return;
+      flushWinRef.current();
+      e.preventDefault();e.returnValue="";return "";
+    }
+    document.addEventListener("visibilitychange",onHide);
+    window.addEventListener("pagehide",function(){flushWinRef.current();});
+    window.addEventListener("beforeunload",onBeforeUnload);
+    return function(){
+      document.removeEventListener("visibilitychange",onHide);
+      window.removeEventListener("beforeunload",onBeforeUnload);
+    };
+  },[]);
+
+  function saveWin(){
+    persistWin(curWin);
+    winDirtyRef.current=false;
     setScreen("windows");
   }
 
@@ -1106,18 +1170,12 @@ export function App(p){
         });
       }
 
-      // auto-save swProducts back to room whenever they change
+      // Zapis reczny przyciskiem "Zapisz". Autosave (debounce 1.5 s) robi to samo
+      // w tle — przycisk zostaje jako natychmiastowe potwierdzenie dla uzytkownika.
       function saveSingleWin(){
         if(!curWin)return;
-        updateClient(curClientId,function(cl){
-          var newRooms=(cl.rooms||[]).map(function(r){
-            if(r.id!==curRoomId)return r;
-            var found=(r.windows||[]).find(function(w){return w.id===curWin.id;});
-            var newWins=found?(r.windows||[]).map(function(w){return w.id===curWin.id?curWin:w;}):(r.windows||[]).concat([curWin]);
-            return mg(r,{windows:newWins});
-          });
-          return mg(cl,{rooms:newRooms});
-        });
+        persistWin(curWin);
+        winDirtyRef.current=false;
       }
 
       content=ce(Fragment,null,
