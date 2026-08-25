@@ -99,6 +99,59 @@ export function gcalLink(title,date,desc){
   return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(title)+"&dates="+start+"/"+end+"&details="+encodeURIComponent(desc||"");
 }
 
+// Komponenty pomocnicze karty deala — MUSZĄ być zdefiniowane poza ModalDeal.
+// Zdefiniowane w środku tworzyły nowy typ komponentu przy każdym renderze, przez co
+// React montował wszystkie sekcje od nowa: karta przewijała się do góry, a otwarty
+// natywny picker daty był niszczony w trakcie wybierania terminu.
+function CheckRow(rp){
+  return ce("div",{
+    style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:9,
+      background:rp.checked?"rgba(124,58,237,0.08)":"transparent",
+      border:"1px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
+      transition:"all .15s",userSelect:"none"}
+  },
+    ce("div",{
+      onClick:function(){rp.onChange(!rp.checked);},
+      style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",flex:1,minWidth:0}
+    },
+      ce("div",{style:{
+        width:20,height:20,borderRadius:5,flexShrink:0,
+        background:rp.checked?"var(--t1)":"transparent",
+        border:"1.5px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
+        display:"flex",alignItems:"center",justifyContent:"center",
+        transition:"all .15s"
+      }},rp.checked?ce("span",{style:{color:"#fff",fontSize:13,lineHeight:1}},"✓"):null),
+      ce("div",null,
+        ce("div",{style:{fontSize:13,fontWeight:rp.checked?600:400,color:"var(--t1)"}},(rp.checked?"✅ ":"")+rp.label),
+        rp.sublabel?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},rp.sublabel):null
+      )
+    ),
+    rp.action||null
+  );
+}
+
+function SectionCard(rp){
+  return ce("div",{style:{
+    border:"1.5px solid "+(rp.done?"var(--t1)":"var(--bd2)"),
+    borderRadius:14,overflow:"hidden",marginBottom:12,
+    background:rp.done?"rgba(124,58,237,0.04)":"var(--bg2,#f8f8f6)",
+    transition:"all .2s"
+  }},
+    ce("div",{style:{
+      display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
+      borderBottom:"1px solid "+(rp.done?"rgba(124,58,237,0.2)":"var(--bd2)"),
+      background:rp.done?"rgba(124,58,237,0.07)":"transparent"
+    }},
+      ce("span",{style:{fontSize:16}},rp.icon),
+      ce("span",{style:{fontSize:12,fontWeight:700,letterSpacing:"0.08em",color:rp.done?"var(--t1)":"var(--t2)",textTransform:"uppercase"}},(rp.done?"✓ ":"")+rp.title),
+      rp.done?ce("span",{style:{marginLeft:"auto",fontSize:10,background:"var(--t1)",color:"#fff",borderRadius:20,padding:"2px 8px",fontWeight:600}},"ZROBIONE"):null
+    ),
+    ce("div",{style:{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}},
+      rp.children
+    )
+  );
+}
+
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
 export function ModalDeal(p){
   var d=p.deal;
@@ -616,55 +669,6 @@ export function ModalDeal(p){
   }
 
   var INP={padding:"10px 12px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:9,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box",outline:"none"};
-
-  function CheckRow(rp){
-    return ce("div",{
-      style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:9,
-        background:rp.checked?"rgba(124,58,237,0.08)":"transparent",
-        border:"1px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
-        transition:"all .15s",userSelect:"none"}
-    },
-      ce("div",{
-        onClick:function(){rp.onChange(!rp.checked);},
-        style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",flex:1,minWidth:0}
-      },
-        ce("div",{style:{
-          width:20,height:20,borderRadius:5,flexShrink:0,
-          background:rp.checked?"var(--t1)":"transparent",
-          border:"1.5px solid "+(rp.checked?"var(--t1)":"var(--bd2)"),
-          display:"flex",alignItems:"center",justifyContent:"center",
-          transition:"all .15s"
-        }},rp.checked?ce("span",{style:{color:"#fff",fontSize:13,lineHeight:1}},"✓"):null),
-        ce("div",null,
-          ce("div",{style:{fontSize:13,fontWeight:rp.checked?600:400,color:"var(--t1)"}},(rp.checked?"✅ ":"")+rp.label),
-          rp.sublabel?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},rp.sublabel):null
-        )
-      ),
-      rp.action||null
-    );
-  }
-
-  function SectionCard(rp){
-    return ce("div",{style:{
-      border:"1.5px solid "+(rp.done?"var(--t1)":"var(--bd2)"),
-      borderRadius:14,overflow:"hidden",marginBottom:12,
-      background:rp.done?"rgba(124,58,237,0.04)":"var(--bg2,#f8f8f6)",
-      transition:"all .2s"
-    }},
-      ce("div",{style:{
-        display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
-        borderBottom:"1px solid "+(rp.done?"rgba(124,58,237,0.2)":"var(--bd2)"),
-        background:rp.done?"rgba(124,58,237,0.07)":"transparent"
-      }},
-        ce("span",{style:{fontSize:16}},rp.icon),
-        ce("span",{style:{fontSize:12,fontWeight:700,letterSpacing:"0.08em",color:rp.done?"var(--t1)":"var(--t2)",textTransform:"uppercase"}},(rp.done?"✓ ":"")+rp.title),
-        rp.done?ce("span",{style:{marginLeft:"auto",fontSize:10,background:"var(--t1)",color:"#fff",borderRadius:20,padding:"2px 8px",fontWeight:600}},"ZROBIONE"):null
-      ),
-      ce("div",{style:{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}},
-        rp.children
-      )
-    );
-  }
 
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"}},
     ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:660,borderRadius:18,maxHeight:"94vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}},
