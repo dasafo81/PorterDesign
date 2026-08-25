@@ -404,6 +404,25 @@ function InvoiceEditor(p){
       })
     : clientsList;
 
+  // ── ADNOTACJA "Dotyczy oferty" W UWAGACH ───────────────────────
+  // Powiązanie faktury z ofertą żyło dotąd wyłącznie w bazie (offer_id/offer_number)
+  // i w tym formularzu — na wydruku PDF ani w FA(3) nie zostawał po nim żaden ślad,
+  // więc klient dostawał fakturę bez informacji, której wyceny dotyczy. Dopisujemy
+  // jedną linię do Uwag — tym samym wzorcem co rabat z oferty.
+  // Linia jest ZARZĄDZANA: zmiana oferty ją podmienia, odłączenie oferty usuwa,
+  // żeby w Uwagach nie zostawały numery nieaktualnych ofert. Wszystko inne, co
+  // Paulina wpisała ręcznie, zostaje nietknięte.
+  var OFFER_NOTE_PREFIX="Dotyczy oferty nr ";
+  function syncOfferNote(newNumber){
+    setNotes(function(prev){
+      var lines=String(prev||"").split("\n").filter(function(ln){
+        return ln.trim().indexOf(OFFER_NOTE_PREFIX)!==0;
+      });
+      if(newNumber) lines.push(OFFER_NOTE_PREFIX+newNumber+".");
+      return lines.join("\n").replace(/^\n+/,"").replace(/\n{3,}/g,"\n\n");
+    });
+  }
+
   function pickClient(c){
     setClientId(c.id);
     setBuyerName(c.name||buyerName);
@@ -417,11 +436,11 @@ function InvoiceEditor(p){
     setClientSearch(c.name||"");
     setClientDropOpen(false);
     // Zmiana klienta unieważnia wcześniej wybraną ofertę (należała do innego klienta)
-    setOfferId(null); setOfferNumber(""); setOfferDiscount(0);
+    setOfferId(null); setOfferNumber(""); setOfferDiscount(0); syncOfferNote("");
   }
   function clearClient(){
     setClientId(null); setDealId(null); setClientSearch("");
-    setOfferId(null); setOfferNumber(""); setOfferDiscount(0);
+    setOfferId(null); setOfferNumber(""); setOfferDiscount(0); syncOfferNote("");
   }
   function pickOffer(id){
     var o=clientOffers.find(function(x){return String(x.id)===String(id);});
@@ -429,6 +448,8 @@ function InvoiceEditor(p){
     setOfferNumber(o?o.number:"");
     setOfferPctChoice("50");
     setOfferPctCustom("");
+    // Adnotacja o numerze oferty — niezależnie od tego, czy był rabat.
+    syncOfferNote(o?(o.number||""):"");
     var disc=o?(+o.discount_amount||0):0;
     setOfferDiscount(disc);
     // Rabat z oferty nie może trafić na fakturę jako osobna (ujemna) pozycja —
@@ -451,9 +472,11 @@ function InvoiceEditor(p){
     if(!num||!offerId)return;
     var prevNumber=offerNumber;
     setOfferNumber(num);
+    syncOfferNote(num);
     setClientOffers(function(prev){return prev.map(function(o){return String(o.id)===String(offerId)?Object.assign({},o,{number:num}):o;});});
     sbApi.updateOffer(offerId,{number:num}).catch(function(e){
       setOfferNumber(prevNumber);
+      syncOfferNote(prevNumber);
       setClientOffers(function(prev){return prev.map(function(o){return String(o.id)===String(offerId)?Object.assign({},o,{number:prevNumber}):o;});});
       alert("Błąd zapisu numeru oferty: "+(e.message||e));
     });
@@ -866,7 +889,8 @@ function InvoiceEditor(p){
         ),
         offerId&&ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}},
           ce("span",{style:{fontSize:11,color:"var(--violet)"}},"\u2713 Faktura wystawiana na podstawie oferty"),
-          ce(InlineEdit,{value:offerNumber,onSave:renameOffer,style:{fontSize:11,color:"var(--violet)",fontWeight:700},inputStyle:{fontSize:11,minWidth:140}})
+          ce(InlineEdit,{value:offerNumber,onSave:renameOffer,style:{fontSize:11,color:"var(--violet)",fontWeight:700},inputStyle:{fontSize:11,minWidth:140}}),
+          ce("span",{style:{fontSize:10,color:"var(--t3)"}},"\u2014 numer trafia do Uwag i na wydruk faktury")
         ),
         offerId&&offerDiscount>0&&ce("div",{style:{fontSize:11,color:"var(--amber)",marginTop:4}},"\uD83C\uDFF7\uFE0F Przyznany rabat z tej oferty: \u2212"+fmtMoney(offerDiscount)+" (dopisany do Uwag faktury)"),
         offerId&&ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:10,flexWrap:"wrap"}},
