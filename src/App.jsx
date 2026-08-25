@@ -15,6 +15,7 @@ import {
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
+import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker } from './components/ProdCard.jsx';
 import { ScreenMail } from './components/ScreenMail.jsx';
 import { ScreenCRM, CRMKalendarz } from './components/ScreenCRM.jsx';
@@ -156,6 +157,7 @@ export function App(p){
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
+  var shh=useState(false),showHistoryModal=shh[0],setShowHistoryModal=shh[1];
   // confirmDelete: {type:"client"|"room"|"window", label:str, onConfirm:fn}
   var sHS=useState(""),homeSearch=sHS[0],setHomeSearch=sHS[1];
   var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
@@ -1105,7 +1107,12 @@ export function App(p){
           ce(InlineEdit,{value:curClient.email||"(brak e-mail)",
             onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{email:v});});},
             inputStyle:{fontSize:14}})
-        )
+        ),
+        ce("button",{
+          onClick:function(){setShowHistoryModal(true);},
+          title:"Podgl\u0105d i przywracanie wcze\u015bniejszych wersji wyceny",
+          style:{marginTop:14,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t3)",cursor:"pointer",fontSize:12,fontWeight:500,padding:"7px 12px",borderRadius:8}
+        },"\u21ba Historia wersji")
       ),
       ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t2)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:12}},"Pomieszczenia"),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:12}},
@@ -2095,6 +2102,31 @@ export function App(p){
     showEmailModal?ce(ModalClientEmail,{client:curClient,onClose:function(){setShowEmailModal(false);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
+    showHistoryModal&&curClient?ce(ModalClientHistory,{
+      clientId:curClient.id,
+      clientName:curClient.name||"",
+      currentCount:countProducts(curClient.rooms),
+      onRestore:function(full){
+        // Przywrocenie idzie przez updateClient, wiec: (a) obowiazuje guard
+        // updated_at, (b) obecny stan trafia do client_snapshots jako nowa
+        // wersja — cofniecie przywrocenia jest mozliwe.
+        var snap=full.snapshot||{};
+        updateClient(curClient.id,function(cl){
+          return mg(cl,{
+            rooms:snap.rooms||cl.rooms,
+            name:snap.name||cl.name,
+            commission:snap.commission!=null?snap.commission:cl.commission,
+            install_fee:snap.install_fee!=null?snap.install_fee:cl.install_fee,
+            install_fee_mode:snap.install_fee_mode||cl.install_fee_mode||"percent"
+          });
+        });
+        // Okno trzymane w pamieci pochodzi ze starego stanu — czyscimy, zeby
+        // autosave nie nadpisal wlasnie przywroconej wersji.
+        setCurWin(null);
+        winDirtyRef.current=false;
+      },
+      onClose:function(){setShowHistoryModal(false);}
+    }):null,
     confirmDelete?ce(ModalConfirmDelete,{
       itemType:confirmDelete.type,
       label:confirmDelete.label,
