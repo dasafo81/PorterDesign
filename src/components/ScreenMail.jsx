@@ -704,6 +704,10 @@ function MailPreview(p){
   var sla=us({}),loadingAtts=sla[0],setLoadingAtts=sla[1];
   // Resolved srcDoc per messageId — aktualizowany po załadowaniu obrazków cid:
   var ssd=us({}),resolvedSrcDocs=ssd[0],setResolvedSrcDocs=ssd[1];
+  // Galeria (lightbox) załączników-obrazków: {mid, idx} albo null
+  var slb=us(null),lightbox=slb[0],setLightbox=slb[1];
+  var slbl=us(false),lbLoading=slbl[0],setLbLoading=slbl[1];
+  var slbt=us(0),lbTick=slbt[0],setLbTick=slbt[1]; // wymusza re-render po dociągnięciu obrazka do cache
 
   // Buduje pełny srcDoc z podmienionym cid:→data: i zapisuje w stanie
   // Wywoływany po każdym załadowaniu obrazka, żeby iframe się odświeżył
@@ -797,6 +801,69 @@ function MailPreview(p){
     });
   }
 
+  // ── Galeria obrazków ────────────────────────────────────────────────────
+  // Załączniki-obrazki danej wiadomości (kolejność taka jak kafelków)
+  function imageAtts(mid){
+    return (fetchedAtts[mid]||[]).filter(function(a){
+      return a.contentType&&a.contentType.indexOf("image/")===0;
+    });
+  }
+
+  // Data-URI obrazka z cache; jeśli brak (plik >3MB) — dociąga z Graph i cache'uje
+  function ensureAttImage(mid,att){
+    if(!window._porterAttImgCache)window._porterAttImgCache={};
+    var key=mid+"__"+att.id;
+    if(window._porterAttImgCache[key])return Promise.resolve(window._porterAttImgCache[key]);
+    setLbLoading(true);
+    return msalGetToken().then(function(tok){
+      if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
+      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id,{
+        headers:{"Authorization":"Bearer "+(tok||p.accessToken)}
+      });
+    })
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(data){
+      setLbLoading(false);
+      if(!data||!data.contentBytes)return null;
+      var uri="data:"+(att.contentType||data.contentType||"image/jpeg")+";base64,"+data.contentBytes;
+      window._porterAttImgCache[key]=uri;
+      setLbTick(function(t){return t+1;});
+      return uri;
+    })
+    .catch(function(){setLbLoading(false);return null;});
+  }
+
+  function openLightbox(mid,attId){
+    var imgs=imageAtts(mid);
+    var idx=-1;
+    imgs.forEach(function(a,i){if(a.id===attId)idx=i;});
+    if(idx<0)idx=0;
+    setLightbox({mid:mid,idx:idx});
+    if(imgs[idx])ensureAttImage(mid,imgs[idx]);
+  }
+
+  function lightboxStep(delta){
+    if(!lightbox)return;
+    var imgs=imageAtts(lightbox.mid);
+    if(imgs.length<2)return;
+    var ni=(lightbox.idx+delta+imgs.length)%imgs.length;
+    setLightbox({mid:lightbox.mid,idx:ni});
+    if(imgs[ni])ensureAttImage(lightbox.mid,imgs[ni]);
+  }
+
+  // Nawigacja klawiaturą w galerii: ← → Esc
+  ue(function(){
+    if(!lightbox)return;
+    function onKey(e){
+      if(e.key==="Escape"){setLightbox(null);}
+      else if(e.key==="ArrowRight"){e.preventDefault();lightboxStep(1);}
+      else if(e.key==="ArrowLeft"){e.preventDefault();lightboxStep(-1);}
+    }
+    window.addEventListener("keydown",onKey);
+    return function(){window.removeEventListener("keydown",onKey);};
+  // eslint-disable-next-line
+  },[lightbox]);
+
   // Otwiera plik załącznika w nowym oknie (obrazki/PDF wyświetlają się, reszta pobiera)
   function downloadAttachment(mid,attId,attName,contentType){
     // Otwórz okno OD RAZU (synchronicznie) — inaczej przeglądarka zablokuje popup po async fetch
@@ -883,6 +950,7 @@ function MailPreview(p){
 
   // Przy zmianie wątku — rozwiń najnowszą wiadomość i pobierz jej body jeśli jeszcze nie ma
   ue(function(){
+    setLightbox(null);
     if(!thread)return;
     var head=thread.head;
     if(head){
@@ -947,7 +1015,69 @@ function MailPreview(p){
     return fl.important?!!head.isImportant:(head.categories||[]).indexOf(fl.category)>=0;
   });
 
+  // ── Overlay galerii ─────────────────────────────────────────────────────
+  var lbNode=null;
+  if(lightbox){
+    var lbImgs=imageAtts(lightbox.mid);
+    var lbAtt=lbImgs[lightbox.idx]||null;
+    var lbSrc=(lbAtt&&window._porterAttImgCache)?window._porterAttImgCache[lightbox.mid+"__"+lbAtt.id]||null:null;
+    var LB_NAV={position:"absolute",top:"50%",transform:"translateY(-50%)",width:46,height:46,borderRadius:"50%",
+      border:"none",background:"rgba(255,255,255,0.16)",color:"#fff",fontSize:24,lineHeight:1,cursor:"pointer",
+      display:"flex",alignItems:"center",justifyContent:"center"};
+    var LB_BTN={border:"none",background:"rgba(255,255,255,0.16)",color:"#fff",borderRadius:8,
+      padding:"6px 12px",fontSize:14,cursor:"pointer",flexShrink:0};
+    lbNode=ce("div",{"data-tick":lbTick,
+      onClick:function(){setLightbox(null);},
+      style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9999,background:"rgba(15,15,18,0.93)",
+        display:"flex",alignItems:"center",justifyContent:"center"}},
+      // Górny pasek
+      ce("div",{onClick:function(e){e.stopPropagation();},
+        style:{position:"absolute",top:0,left:0,right:0,display:"flex",alignItems:"center",gap:10,
+          padding:"14px 18px",color:"#fff",background:"linear-gradient(180deg,rgba(0,0,0,0.6),transparent)"}},
+        ce("span",{style:{fontSize:13,fontWeight:600,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+          (lbAtt&&lbAtt.name)||"obraz"),
+        lbImgs.length>1?ce("span",{style:{fontSize:12,opacity:0.75,flexShrink:0}},(lightbox.idx+1)+" / "+lbImgs.length):null,
+        ce("button",{title:"Pobierz / otw\u00f3rz w nowym oknie",style:LB_BTN,
+          onClick:function(){if(lbAtt)downloadAttachment(lightbox.mid,lbAtt.id,lbAtt.name,lbAtt.contentType);}},"\u2913"),
+        ce("button",{title:"Zamknij (Esc)",style:LB_BTN,onClick:function(){setLightbox(null);}},"\u2715")
+      ),
+      // Obraz
+      ce("div",{onClick:function(e){e.stopPropagation();},
+        style:{display:"flex",alignItems:"center",justifyContent:"center",maxWidth:"90vw",maxHeight:"80vh"}},
+        lbSrc
+          ?ce("img",{src:lbSrc,alt:(lbAtt&&lbAtt.name)||"",
+            style:{maxWidth:"90vw",maxHeight:"80vh",objectFit:"contain",borderRadius:8,
+              boxShadow:"0 8px 40px rgba(0,0,0,0.55)",display:"block"}})
+          :ce("div",{style:{color:"#bbb",fontSize:14,fontStyle:"italic"}},
+            lbLoading?"\u23F3 \u0141adowanie obrazu\u2026":"Nie uda\u0142o si\u0119 wczyta\u0107 obrazu")
+      ),
+      // Strzałki
+      lbImgs.length>1?ce("button",{title:"Poprzedni (\u2190)",style:Object.assign({},LB_NAV,{left:16}),
+        onClick:function(e){e.stopPropagation();lightboxStep(-1);}},"\u2039"):null,
+      lbImgs.length>1?ce("button",{title:"Nast\u0119pny (\u2192)",style:Object.assign({},LB_NAV,{right:16}),
+        onClick:function(e){e.stopPropagation();lightboxStep(1);}},"\u203a"):null,
+      // Pasek miniatur
+      lbImgs.length>1?ce("div",{onClick:function(e){e.stopPropagation();},
+        style:{position:"absolute",bottom:0,left:0,right:0,display:"flex",gap:8,justifyContent:"center",
+          overflowX:"auto",padding:"14px 18px",background:"linear-gradient(0deg,rgba(0,0,0,0.6),transparent)"}},
+        lbImgs.map(function(a,i){
+          var th=(window._porterAttImgCache&&window._porterAttImgCache[lightbox.mid+"__"+a.id])||null;
+          return ce("div",{key:a.id||i,title:a.name||"",
+            onClick:function(){setLightbox({mid:lightbox.mid,idx:i});ensureAttImage(lightbox.mid,a);},
+            style:{width:56,height:56,flexShrink:0,borderRadius:6,cursor:"pointer",overflow:"hidden",
+              border:i===lightbox.idx?"2px solid #fff":"2px solid rgba(255,255,255,0.25)",
+              opacity:i===lightbox.idx?1:0.6,background:"rgba(255,255,255,0.1)",
+              display:"flex",alignItems:"center",justifyContent:"center"}},
+            th?ce("img",{src:th,alt:"",style:{width:"100%",height:"100%",objectFit:"cover",display:"block"}})
+              :ce("span",{style:{fontSize:18}},"\uD83D\uDDBC\uFE0F")
+          );
+        })
+      ):null
+    );
+  }
+
   return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
+    lbNode,
     ce("div",{style:{padding:"16px 20px 14px",borderBottom:"1px solid var(--bd2)",flexShrink:0}},
       ce("div",{style:{fontWeight:700,fontSize:16,color:"var(--t1)",marginBottom:10,lineHeight:1.3,display:"flex",alignItems:"center",gap:8}},
         head.subject,
@@ -1082,9 +1212,9 @@ function MailPreview(p){
                   // Obrazek z miniaturą w cache — pokaż podgląd, klik otwiera w nowym oknie
                   if(isImg&&imgSrc){
                     return ce("div",{key:att.id||j,
-                      title:"Kliknij, aby otworzy\u0107 w nowym oknie",
+                      title:"Kliknij, aby otworzy\u0107 galeri\u0119",
                       style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"},
-                      onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);}},
+                      onClick:function(){openLightbox(m.id,att.id);}},
                       ce("img",{src:imgSrc,alt:att.name||"",
                         style:{maxWidth:140,maxHeight:140,borderRadius:8,border:"1px solid var(--bd2)",
                           objectFit:"cover",boxShadow:"0 2px 8px rgba(0,0,0,0.13)",display:"block"}}),
@@ -1093,15 +1223,18 @@ function MailPreview(p){
                   }
                   // Obrazek bez miniatury (jeszcze nie pobrany) lub inny plik — kafelek klikalny
                   return ce("div",{key:att.id||j,
-                    title:"Kliknij, aby otworzy\u0107 w nowym oknie",
-                    onClick:function(){downloadAttachment(m.id,att.id,att.name,att.contentType);},
+                    title:isImg?"Kliknij, aby otworzy\u0107 galeri\u0119":"Kliknij, aby otworzy\u0107 w nowym oknie",
+                    onClick:function(){
+                      if(isImg)openLightbox(m.id,att.id);
+                      else downloadAttachment(m.id,att.id,att.name,att.contentType);
+                    },
                     style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px 7px 10px",borderRadius:10,
                       background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12,cursor:"pointer",
                       boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}},
                     ce("span",{style:{fontSize:16}},isPdf?"\uD83D\uDCC4":isImg?"\uD83D\uDDBC\uFE0F":"\uD83D\uDCCE"),
                     ce("span",{style:{color:"var(--t1)",fontWeight:500}},att.name||"Za\u0142\u0105cznik"),
                     att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:4}},fmtBytes(att.size)):null,
-                    ce("span",{style:{fontSize:11,color:"var(--accent)",marginLeft:6,fontWeight:700}},"\u2197")
+                    ce("span",{style:{fontSize:11,color:"var(--accent)",marginLeft:6,fontWeight:700}},isImg?"\uD83D\uDD0D":"\u2197")
                   );
                 })
             ):null,
