@@ -69,8 +69,21 @@ export const sbApi = {
     return sbFetch("POST","clients",data);
   },
   // Zaktualizuj rooms klienta (zapisuje ca\u0142y JSON)
-  updateClient: function(id, data){
-    return sbFetch("PATCH","clients?id=eq."+id, data);
+  // expectedUpdatedAt (opcjonalny): jesli podany, PATCH dotyczy tylko wiersza,
+  // ktorego updated_at wciaz odpowiada temu, co karta ostatnio zaladowala.
+  // Chroni przed cichym nadpisaniem nowszych danych przez karte/urzadzenie
+  // trzymajace w pamieci stary stan klienta (zob. incydent Bartosz Zarzecki 2026-08-25).
+  updateClient: function(id, data, expectedUpdatedAt){
+    var path="clients?id=eq."+id;
+    if(expectedUpdatedAt) path+="&updated_at=eq."+encodeURIComponent(expectedUpdatedAt);
+    return sbFetch("PATCH",path, data).then(function(rows){
+      if(expectedUpdatedAt && Array.isArray(rows) && rows.length===0){
+        var err=new Error("Konflikt zapisu: klient zosta\u0142 zmieniony gdzie indziej w mi\u0119dzyczasie");
+        err.conflict=true;
+        throw err;
+      }
+      return rows;
+    });
   },
   // Usu\u0144 klienta
   deleteClient: function(id){
