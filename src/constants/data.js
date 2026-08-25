@@ -3079,7 +3079,7 @@ export function calc(p){
     (p.panels||[]).forEach(function(pn){
       var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pw/100,z,kt,ks,kp,koszt;
       if(useA2){
-        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil(pwZ/pg);
+        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
         z=Math.ceil((lp*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
         var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv).toFixed(2):+(lp*250).toFixed(2);
