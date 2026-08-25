@@ -335,8 +335,13 @@ export function App(p){
     };
   },[curClientId,offlineMode]);
 
-  // Zapisz zmiany w Supabase z debounce
-  function saveClientToSb(id, data, expectedUpdatedAt){
+  // Zapisz zmiany w Supabase z debounce.
+  // Zapis jest BEZWARUNKOWY. Optymistyczna blokada (updated_at=eq.) zostala
+  // wycofana 2026-08-25: generowala falszywe konflikty (wlasny debounce, karta
+  // w tle, trigger snapshotow) i blokowala edycje wlascicielce danych, kasujac
+  // jej wprowadzone zmiany. Przed cicha utrata wyceny chroni teraz guard
+  // liczby produktow w updateClient() + historia wersji w client_snapshots.
+  function saveClientToSb(id, data){
     if(offlineMode){
       var offlineQuotes=[];
       try{
@@ -357,7 +362,7 @@ export function App(p){
       return;
     }
     setSaveStatus("saving");
-    sbApi.updateClient(id, data, expectedUpdatedAt).then(function(rows){
+    sbApi.updateClient(id, data).then(function(rows){
       var fresh=Array.isArray(rows)?rows[0]:rows;
       if(fresh&&fresh.updated_at){
         setClients(function(cs){return cs.map(function(cl){return cl.id===id?mg(cl,{updated_at:fresh.updated_at}):cl;});});
@@ -365,11 +370,6 @@ export function App(p){
       setSaveStatus("ok");
       setTimeout(function(){setSaveStatus(null);},1500);
     }).catch(function(e){
-      if(e&&e.conflict){
-        setSaveStatus("conflict");
-        alert("Ten klient zosta\u0142 w mi\u0119dzyczasie zmieniony w innej karcie, przez inn\u0105 osob\u0119 lub na innym urz\u0105dzeniu.\n\nTwoja ostatnia zmiana NIE zosta\u0142a zapisana, \u017ceby nie nadpisa\u0107 cudzej pracy. Ods\u015bwie\u017c stron\u0119 (F5), sprawd\u017a aktualne dane i wprowad\u017a zmian\u0119 ponownie.");
-        return;
-      }
       console.error("Błąd zapisu:",e);
       setSaveStatus("error");
     });
@@ -391,11 +391,13 @@ export function App(p){
         // Guard: nagly spadek liczby produktow o >50% (przy min. 3) prawie zawsze
         // oznacza zapis ze starej karty albo blad, a nie swiadome usuwanie.
         var before=countProducts(prev&&prev.rooms), after=countProducts(newCl.rooms);
-        if(before>=3&&after<Math.ceil(before/2)){
+        // Prog ostrzejszy, gdy karta jest nieaktualna (ktos zapisal z innego
+        // urzadzenia) \u2014 wtedy KAZDY ubytek produktow jest podejrzany.
+        if((before>=3&&after<Math.ceil(before/2))||(staleClient&&after<before)){
           var ok=window.confirm("UWAGA \u2014 ta zmiana usuwa "+(before-after)+" z "+before+" produkt\u00f3w tego klienta.\n\nJe\u015bli to nie by\u0142o zamierzone, kliknij Anuluj i od\u015bwie\u017c stron\u0119 (F5).\n\nZapisa\u0107 mimo to?");
           if(!ok)return cs;
         }
-        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'}, newCl.updated_at);
+        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'});
       }
       return updated;
     });
@@ -1082,7 +1084,7 @@ export function App(p){
       staleClient?ce("div",{style:{background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:12,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:12}},
         ce("span",{style:{fontSize:20}},"\u26A0\uFE0F"),
         ce("div",{style:{flex:1,fontSize:13,color:"#78350F",lineHeight:1.5,fontWeight:600}},
-          "Ten klient zosta\u0142 zmieniony na innym urz\u0105dzeniu. Ta karta pokazuje NIEAKTUALNE dane \u2014 zmiany zapisz\u0105 si\u0119 dopiero po od\u015bwie\u017ceniu."),
+          "Ten klient zosta\u0142 zmieniony na innym urz\u0105dzeniu. Ta karta mo\u017ce pokazywa\u0107 nieaktualne dane \u2014 Twoje zmiany si\u0119 zapisz\u0105, ale mog\u0105 nadpisa\u0107 tamte. Je\u015bli to nie Ty edytowa\u0142a\u015b gdzie indziej, od\u015bwie\u017c stron\u0119 (F5)."),
         ce("button",{onClick:function(){window.location.reload();},
           style:{border:"none",background:"#B45309",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:700,padding:"9px 16px",borderRadius:8,whiteSpace:"nowrap"}},"Od\u015bwie\u017c")
       ):null,
