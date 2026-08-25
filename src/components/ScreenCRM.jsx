@@ -377,6 +377,19 @@ export function ModalDeal(p){
     }).catch(function(e){alert("Błąd: "+e.message);setBusy(false);});
   }
 
+  // Termin ustawiony z karty deala musi trafić do bazy OD RAZU — wcześniej
+  // zapisywał się tylko w stanie lokalnym i znikał, jeśli karta została zamknięta
+  // bez kliknięcia „Zapisz” (przez co nie pojawiał się też na kafelku w CRM).
+  function persistDealDate(field,val,setter){
+    if(setter)setter(val);
+    var patch={};
+    patch[field]=val||null;
+    patch.updated_at=new Date().toISOString();
+    sbApi.updateDeal(d.id,patch)
+      .then(function(){ if(p.onPatch)p.onPatch(patch); })
+      .catch(function(e){alert("Termin zapisany w kalendarzu, ale nie udało się zapisać go w dealu: "+e.message);});
+  }
+
   function deleteAttach(id){
     sbApi.deleteAttachment(id).then(function(){
       setAttachments(function(a){return a.filter(function(x){return x.id!==id;});});
@@ -881,10 +894,15 @@ export function ModalDeal(p){
               "📅 "+fmtDate(visitDate)+(visitDate.length>10?" "+visitDate.slice(11,16):"")
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
             gcalToken?ce("button",{
-              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt){setVisitDate(dt);});},
+              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt){persistDealDate("visit_date",dt,setVisitDate);});},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
-            },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):null
+            },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):ce("input",{
+              type:"datetime-local",value:visitDate,
+              onChange:function(ev){persistDealDate("visit_date",ev.target.value,setVisitDate);},
+              title:"Ustaw termin (bez Google Calendar)",
+              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
+            })
           ),
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SKĄD KLIENT"),
@@ -901,10 +919,15 @@ export function ModalDeal(p){
               "📅 "+fmtDate(delivDate)+(delivDate.length>10?" "+delivDate.slice(11,16):"")
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
             gcalToken?ce("button",{
-              onClick:function(){addToGcal("Montaż",delivDate,"",function(dt){setDelivDate(dt);});},
+              onClick:function(){addToGcal("Montaż",delivDate,"",function(dt){persistDealDate("delivery_date",dt,setDelivDate);});},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
-            },"📅 "+(delivDate?"Zmień":"Ustaw termin")):null
+            },"📅 "+(delivDate?"Zmień":"Ustaw termin")):ce("input",{
+              type:"datetime-local",value:delivDate,
+              onChange:function(ev){persistDealDate("delivery_date",ev.target.value,setDelivDate);},
+              title:"Ustaw termin (bez Google Calendar)",
+              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
+            })
           ),
           ce("div",{style:{display:"flex",gap:8}},
             ce("div",{style:{flex:1}},
@@ -924,7 +947,7 @@ export function ModalDeal(p){
                 "📅 "+fmtDate(delivDate2)+(delivDate2.length>10?" "+delivDate2.slice(11,16):"")
               ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
               gcalToken?ce("button",{
-                onClick:function(){addToGcal(installLabel2||"Montaż 2",delivDate2,installerCalId2||installerCalId,function(dt){setDelivDate2(dt);});},
+                onClick:function(){addToGcal(installLabel2||"Montaż 2",delivDate2,installerCalId2||installerCalId,function(dt){persistDealDate("delivery_date2",dt,setDelivDate2);});},
                 title:"Ustaw termin i dodaj do Google Calendar",
                 style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
               },"📅 "+(delivDate2?"Zmień":"Ustaw termin")):null
@@ -2197,6 +2220,13 @@ export function CRMKalendarz(p){
         sbApi.updateDeal(selectedDeal.id,data).then(function(){setSelectedDeal(Object.assign({},selectedDeal,data));})
           .catch(function(e){alert("Błąd zapisu: "+e.message);});
       },
+      // Zapis cząstkowy (termin) — aktualizuje dane bez zamykania karty
+      onPatch:function(data){
+        setSelectedDeal(function(sd){return sd?Object.assign({},sd,data):sd;});
+        setCalendarDeals(function(deals){
+          return deals.map(function(dl){return String(dl.id)===String(selectedDeal.id)?Object.assign({},dl,data):dl;});
+        });
+      },
       onDelete:function(){sbApi.deleteDeal(selectedDeal.id).then(function(){setSelectedDeal(null);}).catch(function(e){alert("Błąd usuwania: "+e.message);});},
       onGoToClient:function(){},onGoToSummary:function(){}
     }):null
@@ -2403,6 +2433,13 @@ export function ScreenCRM(p){
     setModalDeal(null);
   }
 
+  // Zapis cząstkowy z karty deala (np. termin spotkania/montażu) — odświeża
+  // kafelek w Kanbanie i dane w otwartej karcie, ale jej nie zamyka.
+  function onDealPatch(dealId,data){
+    setDeals(function(prev){return prev.map(function(d){return d.id===dealId?Object.assign({},d,data):d;});});
+    setModalDeal(function(md){return md&&md.id===dealId?Object.assign({},md,data):md;});
+  }
+
   function onDealDelete(dealId){
     sbApi.deleteDeal(dealId).then(function(){
       setDeals(function(prev){return prev.filter(function(d){return d.id!==dealId;});});
@@ -2467,6 +2504,7 @@ export function ScreenCRM(p){
       gsiReady:gsiReady,
       calList:calList,
       onSave:function(data){onDealSave(modalDeal.id,data);},
+      onPatch:function(data){onDealPatch(modalDeal.id,data);},
       onDelete:function(){onDealDelete(modalDeal.id);},
       onClose:function(){setModalDeal(null);},
       onGoToClient:function(){goToClient(modalDeal.client_id);},
