@@ -301,6 +301,38 @@ export function App(p){
     setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(simplRoomGroups,simplSel),c));
   },[simplSel,simplRoomGroups,commissionInput,curClient]);
 
+  // \u2500\u2500 Wykrywanie nieaktualnej karty \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  // Guard updated_at blokuje nadpisanie dopiero PRZY zapisie. Tutaj wykrywamy
+  // rozjazd wczesniej: cyklicznie co 30 s i po powrocie do karty. Ref zamiast
+  // zaleznosci od `clients` \u2014 inaczej interval restartowalby sie po kazdym zapisie.
+  var [staleClient,setStaleClient]=React.useState(false);
+  var clientsRef=React.useRef(clients);
+  clientsRef.current=clients;
+
+  React.useEffect(function(){
+    if(!curClientId||offlineMode){setStaleClient(false);return;}
+    var stopped=false;
+    function check(){
+      if(stopped||document.hidden)return;
+      sbApi.getClientMeta(curClientId).then(function(meta){
+        if(stopped||!meta||!meta.updated_at)return;
+        var local=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
+        if(local&&local.updated_at&&local.updated_at!==meta.updated_at){
+          setStaleClient(true);
+        }
+      }).catch(function(){});
+    }
+    var t=setInterval(check,30000);
+    document.addEventListener("visibilitychange",check);
+    window.addEventListener("focus",check);
+    check();
+    return function(){
+      stopped=true;clearInterval(t);
+      document.removeEventListener("visibilitychange",check);
+      window.removeEventListener("focus",check);
+    };
+  },[curClientId,offlineMode]);
+
   // Zapisz zmiany w Supabase z debounce
   function saveClientToSb(id, data, expectedUpdatedAt){
     if(offlineMode){
@@ -341,11 +373,28 @@ export function App(p){
     });
   }
 
+  // Liczy produkty w rooms \u2014 do wykrywania podejrzanie duzej utraty danych.
+  function countProducts(rooms){
+    return (rooms||[]).reduce(function(a,r){
+      return a+(r.windows||[]).reduce(function(b,w){return b+((w.products||[]).length);},0);
+    },0);
+  }
+
   function updateClient(id,fn){
     setClients(function(cs){
+      var prev=cs.find(function(cl){return cl.id===id;});
       var updated=cs.map(function(cl){return cl.id===id?fn(cl):cl;});
       var newCl=updated.find(function(cl){return cl.id===id;});
-      if(newCl) saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'}, newCl.updated_at);
+      if(newCl){
+        // Guard: nagly spadek liczby produktow o >50% (przy min. 3) prawie zawsze
+        // oznacza zapis ze starej karty albo blad, a nie swiadome usuwanie.
+        var before=countProducts(prev&&prev.rooms), after=countProducts(newCl.rooms);
+        if(before>=3&&after<Math.ceil(before/2)){
+          var ok=window.confirm("UWAGA \u2014 ta zmiana usuwa "+(before-after)+" z "+before+" produkt\u00f3w tego klienta.\n\nJe\u015bli to nie by\u0142o zamierzone, kliknij Anuluj i od\u015bwie\u017c stron\u0119 (F5).\n\nZapisa\u0107 mimo to?");
+          if(!ok)return cs;
+        }
+        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'}, newCl.updated_at);
+      }
       return updated;
     });
   }
@@ -964,6 +1013,13 @@ export function App(p){
       );
     });
     content=ce(Fragment,null,
+      staleClient?ce("div",{style:{background:"#FEF3C7",border:"1px solid #F59E0B",borderRadius:12,padding:"14px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:12}},
+        ce("span",{style:{fontSize:20}},"\u26A0\uFE0F"),
+        ce("div",{style:{flex:1,fontSize:13,color:"#78350F",lineHeight:1.5,fontWeight:600}},
+          "Ten klient zosta\u0142 zmieniony na innym urz\u0105dzeniu. Ta karta pokazuje NIEAKTUALNE dane \u2014 zmiany zapisz\u0105 si\u0119 dopiero po od\u015bwie\u017ceniu."),
+        ce("button",{onClick:function(){window.location.reload();},
+          style:{border:"none",background:"#B45309",color:"#fff",cursor:"pointer",fontSize:13,fontWeight:700,padding:"9px 16px",borderRadius:8,whiteSpace:"nowrap"}},"Od\u015bwie\u017c")
+      ):null,
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,padding:"22px 20px",marginBottom:20}},
         ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:12}},"Klient"),
         ce("div",{style:{fontSize:20,fontWeight:700,color:"var(--t1)",marginBottom:8,lineHeight:1.3}},
