@@ -454,6 +454,15 @@ export const sbApi = {
     }
     return sbFetch("POST","rpc/next_invoice_number",{p_doc_type:docType,p_period:period});
   },
+  // Numery wszystkich dokumentow podmiotu — do wyliczenia REALNIE najwyzszego numeru
+  // w biezacym okresie. Licznik invoice_counters potrafi byc w tyle za stanem
+  // faktycznym (sync KSeF, import bazy, dekrementacja przy usuwaniu), wiec przy
+  // nadawaniu numeru opieramy sie na tabeli invoices, a licznik tylko dociagamy.
+  listInvoiceNumbers: function(entityId){
+    var q="invoices?select=id,number,issue_date,doc_type,direction&order=issue_date.desc&limit=2000";
+    if(entityId) q+="&entity_id=eq."+encodeURIComponent(entityId);
+    return sbFetch("GET",q);
+  },
   // Czy numer jest juz uzyty przez inny dokument tego podmiotu? Licznik
   // invoice_counters potrafi zostac w tyle za realnie uzytymi numerami (sync z KSeF,
   // przywrocenie bazy, decrementInvoiceCounter przy usuwaniu), wiec kazdy kandydat na
