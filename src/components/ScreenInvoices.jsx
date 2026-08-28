@@ -121,6 +121,20 @@ function formatNumber(tmpl, nr, date){
     .replace("{YYYY}",yyyy);
 }
 
+// Buduje wyrazenie regularne numeru z szablonu numeracji, zeby wyluskac z ISTNIEJACYCH
+// numerow czesc {nr}. Dzieki temu potrafimy odczytac realnie najwyzszy numer wydany w
+// danym miesiacu/roku, niezaleznie od stanu licznika invoice_counters.
+function numberRegex(tmpl, date){
+  var d=date?new Date(date):new Date();
+  var mm=String(d.getMonth()+1).padStart(2,"0");
+  var yyyy=String(d.getFullYear());
+  var esc=(tmpl||"{nr}/{MM}/{YYYY}").replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  var pat=esc.split("\\{nr\\}").join("(\\d+)")
+             .split("\\{MM\\}").join(mm)
+             .split("\\{YYYY\\}").join(yyyy);
+  return new RegExp("^"+pat+"$");
+}
+
 // Klucz okresu dla licznika
 function periodKey(reset, date){
   var d=date||todayISO();
@@ -678,25 +692,55 @@ function InvoiceEditor(p){
     var numFmt=docType==="eko"?"EKO/{nr}/{MM}":numberingFormat;
     var selfId=(p.invoice&&p.invoice.id)||null;
 
-    // Nadanie numeru odporne na kolizje.
+    // Nadanie numeru odporne na kolizje i na rozjazd licznika.
     // RPC next_invoice_number podbija licznik invoice_counters (tenant+entity+doc_type+
-    // period), ale licznik potrafi zostac W TYLE za numerami faktycznie uzytymi w
-    // tabeli invoices — po synchronizacji z KSeF, po imporcie/przywroceniu bazy albo po
-    // decrementInvoiceCounter przy usuwaniu faktury. Skutkiem bylo nadanie numeru
-    // nalezacego juz do innego dokumentu (widoczne przy zamianie proformy na fakture
-    // VAT). Dlatego kazdy kandydat jest sprawdzany w bazie; przy kolizji bierzemy
-    // kolejny, dzieki czemu licznik sam "dogania" realny stan numeracji.
-    function reserveNumber(tries){
+    // period), ale licznik potrafi zostac DALEKO w tyle za numerami faktycznie uzytymi
+    // w tabeli invoices: liczniki sa per doc_type (proforma ma swoj, faktura VAT swoj),
+    // a format numeru jest wspolny, dochodzi jeszcze sync z KSeF, import bazy i
+    // decrementInvoiceCounter przy usuwaniu. Efekt: przy zamianie proformy na fakture
+    // VAT licznik 'vat' zwracal np. 2, gdy w miesiacu wystawiono juz 9/08/2026.
+    // Dlatego zrodlem prawdy jest tabela invoices: czytamy wszystkie numery podmiotu,
+    // dopasowujemy je do szablonu numeracji dla BIEZACEGO okresu i bierzemy max+1.
+    // Licznik dociagamy powtarzajac RPC, zeby przestal odstawac.
+    function maxUsedNumber(){
+      return sbApi.listInvoiceNumbers(ent.id).then(function(rows){
+        var re=numberRegex(numFmt,issueDate||todayISO());
+        var hasPeriodTokens=/\{MM\}|\{YYYY\}/.test(numFmt||"");
+        var mx=0;
+        (rows||[]).forEach(function(r){
+          if(!r||!r.number) return;
+          if(selfId&&r.id===selfId) return;
+          // Faktury zakupowe od dostawcy maja numer obcy — nie naleza do naszej numeracji.
+          var dir=r.direction||(r.doc_type==="zakup"?"zakup":"sprzedaz");
+          if(dir==="zakup"&&r.doc_type!=="proforma"&&r.doc_type!=="eko") return;
+          // Gdy szablon nie zawiera {MM}/{YYYY}, okres trzeba odfiltrowac po dacie.
+          if(!hasPeriodTokens&&periodKey(numberingReset,r.issue_date||"")!==numPeriod) return;
+          var m=re.exec(String(r.number).trim());
+          if(m) mx=Math.max(mx,+m[1]||0);
+        });
+        return mx;
+      }).catch(function(){ return 0; });   // brak odczytu -> polegamy na liczniku
+    }
+    function bumpCounter(tries,mx){
       return sbApi.nextInvoiceNumber(docType,numPeriod,ent.id).then(function(nr){
         var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
-        // Proforma/faktura korzysta z formatu numeracji podmiotu, EKO ma format EKO/nr/MM.
-        var cand=formatNumber(numFmt,nrNum,issueDate||todayISO());
-        return sbApi.invoiceNumberExists(cand,ent.id,selfId).then(function(taken){
-          if(!taken) return cand;
-          if(tries>=50) throw new Error("Nie uda\u0142o si\u0119 nada\u0107 wolnego numeru \u2014 sprawd\u017a numeracj\u0119 w Ustawieniach podmiotu.");
-          return reserveNumber(tries+1);
-        });
+        if(nrNum<=mx&&tries<200) return bumpCounter(tries+1,mx);
+        return Math.max(nrNum,mx+1);
       });
+    }
+    // Ostatnia siatka bezpieczenstwa: dokladny numer nie moze istniec w bazie.
+    function ensureFree(n,tries){
+      var cand=formatNumber(numFmt,n,issueDate||todayISO());
+      return sbApi.invoiceNumberExists(cand,ent.id,selfId).then(function(taken){
+        if(!taken) return cand;
+        if(tries>=50) throw new Error("Nie uda\u0142o si\u0119 nada\u0107 wolnego numeru \u2014 sprawd\u017a numeracj\u0119 w Ustawieniach podmiotu.");
+        return ensureFree(n+1,tries+1);
+      });
+    }
+    function reserveNumber(){
+      return maxUsedNumber()
+        .then(function(mx){ return bumpCounter(0,mx); })
+        .then(function(n){ return ensureFree(n,0); });
     }
 
     // Pobierz numer przed utworzeniem nagłówka. Dzięki temu błąd RPC nie zostawi
@@ -705,7 +749,7 @@ function InvoiceEditor(p){
     if(isRealPurchaseDoc||numberLocked){
       numberPromise=Promise.resolve(null);   // numer od dostawcy albo utrwalony w KSeF
     } else if(autoNumber){
-      numberPromise=reserveNumber(0);
+      numberPromise=reserveNumber();
     } else {
       // Numer wpisany recznie — pilnujemy tylko unikalnosci w obrebie podmiotu.
       var manualNr=ownNumber.trim();
