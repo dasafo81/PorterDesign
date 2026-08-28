@@ -454,6 +454,18 @@ export const sbApi = {
     }
     return sbFetch("POST","rpc/next_invoice_number",{p_doc_type:docType,p_period:period});
   },
+  // Czy numer jest juz uzyty przez inny dokument tego podmiotu? Licznik
+  // invoice_counters potrafi zostac w tyle za realnie uzytymi numerami (sync z KSeF,
+  // przywrocenie bazy, decrementInvoiceCounter przy usuwaniu), wiec kazdy kandydat na
+  // numer weryfikujemy jeszcze w tabeli invoices. exceptId pozwala pominac edytowana
+  // fakture (jej wlasny numer nie jest kolizja).
+  invoiceNumberExists: function(number, entityId, exceptId){
+    var enc=encodeURIComponent;
+    var q="invoices?select=id&limit=1&number=eq."+enc(number);
+    if(entityId) q+="&entity_id=eq."+enc(entityId);
+    if(exceptId) q+="&id=neq."+enc(exceptId);
+    return sbFetch("GET",q).then(function(rows){return !!(rows&&rows.length);});
+  },
   // Dekrementuje licznik przy wycofaniu faktury (usuwa wiersz gdy last_number <= 1)
   // entityId (opcjonalny): licznik jest per podmiot.
   decrementInvoiceCounter: function(docType, period, entityId){
