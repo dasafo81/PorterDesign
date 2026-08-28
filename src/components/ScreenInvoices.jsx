@@ -240,6 +240,14 @@ function InvoiceEditor(p){
   // Dla zwykłych faktur zakupowych numer nadaje dostawca. Proforma i EKO są
   // dokumentami wewnętrznymi w naszym obiegu — ich numer nadajemy automatycznie.
   var [purchaseNumber,setPurchaseNumber]=useState(direction==="zakup"?(initInv.number||""):"");
+  // Numer w NASZEJ numeracji (sprzedaz oraz proforma/EKO w obu kierunkach).
+  // autoNumber=true -> numer nadaje licznik przy zapisie; false -> uzytkownik wpisuje
+  // numer recznie (potrzebne np. przy poprawianiu numeracji po imporcie/synchronizacji).
+  // Nowy dokument startuje na "auto", istniejacy trzyma swoj numer.
+  var [autoNumber,setAutoNumber]=useState(!initInv.id);
+  var [ownNumber,setOwnNumber]=useState(initInv.number||"");
+  // Dokument z numerem KSeF ma numeracje utrwalona po stronie MF — nie renumerujemy.
+  var numberLocked=!!(initInv.id&&initInv.ksef_number);
   var [issueDate,setIssueDate]=useState(initInv.issue_date||today);
   var [saleDate,setSaleDate]=useState(initInv.sale_date||today);
   var [dueDate,setDueDate]=useState(initInv.due_date||addDays(today,defaultDays));
@@ -615,6 +623,9 @@ function InvoiceEditor(p){
     // otrzymanej od dostawcy.
     var isSupplierNumberedPurchase=direction==="zakup"&&docType!=="proforma"&&docType!=="eko";
     if(isSupplierNumberedPurchase&&!purchaseNumber.trim()) return "Podaj numer faktury nadany przez dostawcę";
+    // Numeracja wlasna z odznaczonym "Auto" — numer musi byc podany.
+    if(!isSupplierNumberedPurchase&&!autoNumber&&!numberLocked&&!ownNumber.trim())
+      return "Podaj numer dokumentu albo zaznacz \"Auto\"";
     if(items.length===0) return "Brak pozycji";
     if(items.some(function(it){return !it.name.trim();})) return "Każda pozycja musi mieć nazwę";
     return null;
@@ -663,11 +674,46 @@ function InvoiceEditor(p){
     if(isZakupDir&&docType!=="proforma"&&docType!=="eko") header.number=purchaseNumber.trim();
 
     var isRealPurchaseDoc=isZakupDir&&docType!=="proforma"&&docType!=="eko";
+    var numPeriod=periodKey(numberingReset,issueDate||todayISO());
+    var numFmt=docType==="eko"?"EKO/{nr}/{MM}":numberingFormat;
+    var selfId=(p.invoice&&p.invoice.id)||null;
+
+    // Nadanie numeru odporne na kolizje.
+    // RPC next_invoice_number podbija licznik invoice_counters (tenant+entity+doc_type+
+    // period), ale licznik potrafi zostac W TYLE za numerami faktycznie uzytymi w
+    // tabeli invoices — po synchronizacji z KSeF, po imporcie/przywroceniu bazy albo po
+    // decrementInvoiceCounter przy usuwaniu faktury. Skutkiem bylo nadanie numeru
+    // nalezacego juz do innego dokumentu (widoczne przy zamianie proformy na fakture
+    // VAT). Dlatego kazdy kandydat jest sprawdzany w bazie; przy kolizji bierzemy
+    // kolejny, dzieki czemu licznik sam "dogania" realny stan numeracji.
+    function reserveNumber(tries){
+      return sbApi.nextInvoiceNumber(docType,numPeriod,ent.id).then(function(nr){
+        var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
+        // Proforma/faktura korzysta z formatu numeracji podmiotu, EKO ma format EKO/nr/MM.
+        var cand=formatNumber(numFmt,nrNum,issueDate||todayISO());
+        return sbApi.invoiceNumberExists(cand,ent.id,selfId).then(function(taken){
+          if(!taken) return cand;
+          if(tries>=50) throw new Error("Nie uda\u0142o si\u0119 nada\u0107 wolnego numeru \u2014 sprawd\u017a numeracj\u0119 w Ustawieniach podmiotu.");
+          return reserveNumber(tries+1);
+        });
+      });
+    }
+
     // Pobierz numer przed utworzeniem nagłówka. Dzięki temu błąd RPC nie zostawi
     // w bazie nowej faktury bez numeru.
-    var numberPromise=isNew&&!isRealPurchaseDoc
-      ? sbApi.nextInvoiceNumber(docType,periodKey(numberingReset,issueDate||todayISO()),ent.id)
-      : Promise.resolve(null);
+    var numberPromise;
+    if(isRealPurchaseDoc||numberLocked){
+      numberPromise=Promise.resolve(null);   // numer od dostawcy albo utrwalony w KSeF
+    } else if(autoNumber){
+      numberPromise=reserveNumber(0);
+    } else {
+      // Numer wpisany recznie — pilnujemy tylko unikalnosci w obrebie podmiotu.
+      var manualNr=ownNumber.trim();
+      numberPromise=sbApi.invoiceNumberExists(manualNr,ent.id,selfId).then(function(taken){
+        if(taken) throw new Error("Numer \""+manualNr+"\" jest ju\u017c u\u017cyty przez inny dokument tego podmiotu.");
+        return manualNr;
+      });
+    }
 
     // Faza 2: gdy nie wybrano kontrahenta z bazy, a zaznaczono "zapisz jako nowego" —
     // najpierw utwórz kontrahenta i podepnij jego id do faktury (contact_id).
@@ -685,13 +731,10 @@ function InvoiceEditor(p){
       if(_cid)header.contact_id=_cid;
       return numberPromise;
     }).then(function(nr){
-      if(nr!==null){
-        var nrNum=Array.isArray(nr)?+(nr[0]):+(nr)||0;
-        // Proforma/faktura korzysta z formatu numeracji aktywnego podmiotu, EKO ma format EKO/nr/MM.
-        header.number=docType==="eko"
-          ? formatNumber("EKO/{nr}/{MM}",nrNum,issueDate||todayISO())
-          : formatNumber(numberingFormat,nrNum,issueDate||todayISO());
-      }
+      // nr === null oznacza "nie ruszamy numeru" (faktura zakupowa od dostawcy albo
+      // dokument z numerem KSeF). W pozostalych przypadkach reserveNumber/kontrola
+      // recznego numeru zwracaja gotowy, sprawdzony ciag znakow.
+      if(nr!==null) header.number=nr;
       var prom;
       if(isNew){
         // Zwykła faktura zakupowa: numer nadaje dostawca i zapisujemy ją jako otrzymaną.
@@ -762,12 +805,42 @@ function InvoiceEditor(p){
           ce("option",{value:"sprzedaz"},"\uD83D\uDCE4 Sprzeda\u017cowa (wystawiamy)"),
           ce("option",{value:"zakup"},"\uD83D\uDCE5 Zakupowa / kosztowa (od dostawcy)"))),
       fldRow("Typ dokumentu",
-        ce("select",{style:inp,value:docType,onChange:function(e){setDocType(e.target.value);}},
+        ce("select",{style:inp,value:docType,onChange:function(e){
+          var v=e.target.value;
+          setDocType(v);
+          // Licznik numeracji jest per doc_type — po zmianie typu istniejacego dokumentu
+          // (typowo proforma -> faktura VAT) numer musi zostac nadany od nowa z licznika
+          // typu docelowego, inaczej faktura VAT zostaje z numerem proformy.
+          if(initInv.id&&!numberLocked) setAutoNumber(v!==initInv.doc_type);
+        }},
           DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);}))),
       direction==="zakup"&&docType!=="proforma"&&docType!=="eko"&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:4,marginBottom:10}},
         "\uD83D\uDCE5 Faktura kosztowa — rejestrujemy dokument otrzymany od dostawcy. Numer nadaje dostawca (wpisz poni\u017cej), nie generujemy w\u0142asnej numeracji."),
       direction==="zakup"&&docType!=="proforma"&&docType!=="eko"&&fldRow("Numer faktury",
         ce("input",{style:inp,value:purchaseNumber,placeholder:"Np. FV/123/2026 (numer od dostawcy)",onChange:function(e){setPurchaseNumber(e.target.value);}})),
+      // Numer dokumentu w naszej numeracji — edytowalny po odznaczeniu "Auto".
+      !(direction==="zakup"&&docType!=="proforma"&&docType!=="eko")&&fldRow("Numer dokumentu",
+        ce("div",{style:{display:"flex",alignItems:"center",gap:10}},
+          ce("input",{
+            style:Object.assign({},inp,(autoNumber||numberLocked)?{opacity:0.55,cursor:"not-allowed"}:{}),
+            value:autoNumber?(initInv.id?"(nowy numer zostanie nadany przy zapisie)":"(nadany automatycznie przy zapisie)"):ownNumber,
+            disabled:autoNumber||numberLocked,
+            placeholder:"Np. 12/08/2026",
+            onChange:function(e){setOwnNumber(e.target.value);}}),
+          !numberLocked&&ce("label",{style:{display:"flex",alignItems:"center",gap:6,fontSize:13,color:"var(--t2)",cursor:"pointer",userSelect:"none",whiteSpace:"nowrap"}},
+            ce("input",{type:"checkbox",checked:autoNumber,style:{width:15,height:15,cursor:"pointer"},
+              onChange:function(e){
+                var v=e.target.checked;
+                setAutoNumber(v);
+                if(!v&&!ownNumber.trim()) setOwnNumber(initInv.number||"");
+              }}),
+            "Auto"))),
+      autoNumber&&initInv.id&&!numberLocked&&ce("div",{style:{background:"var(--amber-l,var(--bg2))",border:"1px solid var(--amber)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--amber)",marginTop:-4,marginBottom:10}},
+        "\u2139\uFE0F Przy zapisie dokument otrzyma nowy, kolejny numer z numeracji typu \u201E"
+        +(((DOC_TYPES.filter(function(d){return d.id===docType;})[0])||{}).label||docType)
+        +"\u201D. Dotychczasowy numer "+(initInv.number||"\u2014")+" przestanie obowi\u0105zywa\u0107. Odznacz \u201EAuto\u201D, aby wpisa\u0107 numer r\u0119cznie."),
+      numberLocked&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:-4,marginBottom:10}},
+        "\uD83D\uDD12 Numer zablokowany \u2014 dokument ma nadany numer KSeF ("+initInv.ksef_number+"), numeracja jest utrwalona po stronie MF."),
       docType==="eko"&&ce("div",{style:{background:"var(--grl)",border:"1px solid var(--gr)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--gr)",marginTop:4}},
         direction==="zakup"
           ? "🟢 Dokument EKO (kosztowy) — 0% VAT, wewnętrzny wydatek gotówkowy. Numer nadajemy sami (EKO/nr/miesiąc), nigdy nie wychodzi poza aplikację (bez KSeF)."
