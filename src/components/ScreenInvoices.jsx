@@ -2106,7 +2106,15 @@ function InvoiceList(p){
       search||!allTypesSelected?"Brak pasujących dokumentów w wybranym okresie.":"Brak dokumentów w wybranym okresie."),
 
     // Tabela
+    // Kontener z poziomym przewijaniem (overflowX:"auto") — suma szerokości kolumn
+    // (~1.2k px) nie mieści się w viewportcie tabletu/wąskiego okna. Wcześniej
+    // overflow:"hidden" na zewnętrznym div bezpowrotnie ucinał prawe kolumny (Status,
+    // przyciski akcji) bez żadnej możliwości doscrollowania do nich. minWidth na
+    // wewnętrznym div utrzymuje układ kolumn, żeby przewijanie miało sens (bez niego
+    // grid ściskałby kolumny zamiast pozwolić na scroll).
     list.length>0&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden"}},
+      ce("div",{style:{overflowX:"auto",WebkitOverflowScrolling:"touch"}},
+        ce("div",{style:{minWidth:1050}},
       // Nagłówek tabeli
       ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 64px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
         ["Numer","Typ","Kontrahent","Data","Termin pł.","Płatność","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
@@ -2247,6 +2255,8 @@ function InvoiceList(p){
             },"🗑"))
         );
       })
+        )
+      )
     ),
 
     // Podsumowanie łącznej kwoty aktualnie wyświetlanej listy (po zastosowaniu
