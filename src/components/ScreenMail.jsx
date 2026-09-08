@@ -724,6 +724,19 @@ function MailPreview(p){
   // Buduje pełny srcDoc z podmienionym cid:→data: i zapisuje w stanie
   // Wywoływany po każdym załadowaniu obrazka, żeby iframe się odświeżył
   function buildSrcDoc(mid,htmlContent){
+    // Wyjatek w budowaniu srcDoc zostawial resolvedSrcDocs[mid] pusty,
+    // a iframe dostawal srcDoc="" -> bialy prostokat bez sladu w UI.
+    try{ buildSrcDocUnsafe(mid,htmlContent); }
+    catch(err){
+      console.error("[mail] buildSrcDoc failed dla",mid,err);
+      var esc=String(htmlContent||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+      var fb="<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style=\"margin:0;padding:16px 20px;"
+        +"font:13px Montserrat,Arial,sans-serif;color:#1a1a1a;white-space:pre-wrap;word-break:break-word;\">"+esc+"</body></html>";
+      setResolvedSrcDocs(function(prev){var n=Object.assign({},prev);n[mid]=fb;return n;});
+    }
+  }
+
+  function buildSrcDocUnsafe(mid,htmlContent){
     var IFRAME_STYLES="@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');body{margin:0;padding:16px 20px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
     var cache=window._porterAttImgCache||{};
     // Usuń <script> i obsługę zdarzeń — sandbox i tak je blokuje, ale to ucisza ostrzeżenia w konsoli
@@ -952,7 +965,14 @@ function MailPreview(p){
         if(!_retry){setTimeout(function(){fetchBody(mid,true);},wait);}
         return null;
       }
-      return r.ok?r.json():null;
+      if(!r.ok){
+        // Graph zwrocil blad (401/403/404/5xx). Wczesniej wracalismy null i
+        // loadingBody[mid] zostawalo TRUE na zawsze -> wieczny spinner bez retry.
+        console.error("[mail] fetchBody HTTP "+r.status+" dla",mid);
+        setBodyError(mid,"B\u0142\u0105d pobierania tre\u015bci (HTTP "+r.status+")");
+        return null;
+      }
+      return r.json();
     })
     .then(function(data){
       if(!data)return;
@@ -965,10 +985,26 @@ function MailPreview(p){
       setBodies(function(prev){var n=Object.assign({},prev);n[mid]={isHtml:isHtml,content:rawContent||"(pusta tre\u015b\u0107)"};return n;});
       setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
     })
-    .catch(function(){
-      setBodies(function(prev){var n=Object.assign({},prev);n[mid]="(b\u0142\u0105d pobierania tre\u015bci)";return n;});
-      setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+    .catch(function(err){
+      console.error("[mail] fetchBody wyjatek dla",mid,err);
+      setBodyError(mid,"B\u0142\u0105d pobierania tre\u015bci: "+((err&&err.message)||err));
     });
+  }
+
+  // Zapisuje blad pobierania jako PELNOPRAWNY obiekt body (nie goly string).
+  // Wczesniej catch zapisywal string -> bodyObj.content bylo undefined,
+  // a hasBody bylo true, wiec render pokazywal pusty (bialy) prostokat.
+  function setBodyError(mid,msg){
+    setBodies(function(prev){var n=Object.assign({},prev);n[mid]={isHtml:false,content:msg,error:true};return n;});
+    setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+  }
+
+  // Ponowna proba pobrania tresci — czysci cache, zeby fetchBody nie zrobil early-return
+  function retryBody(mid){
+    setBodies(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+    setResolvedSrcDocs(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+    setLoadingBody(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+    setTimeout(function(){fetchBody(mid);},60);
   }
 
   // Przy zmianie wątku — rozwiń najnowszą wiadomość i pobierz jej body jeśli jeszcze nie ma
@@ -1179,8 +1215,12 @@ function MailPreview(p){
         var per=displayPerson(m);
         var isExp=!!expanded[m.id];
         var bodyObj=bodies[m.id];
+        // Zabezpieczenie: bodies[mid] MUSI byc obiektem {isHtml,content}.
+        // Gdyby kiedykolwiek trafil tu goly string, zamien go na poprawny ksztalt.
+        if(typeof bodyObj==="string")bodyObj={isHtml:false,content:bodyObj,error:true};
+        var bodyErr=!!(bodyObj&&bodyObj.error);
         var mBodyIsHtml=m.body&&/<[a-z][\s\S]*>/i.test(m.body);
-        var bodyIsHtml=(bodyObj&&bodyObj.isHtml)||mBodyIsHtml;
+        var bodyIsHtml=!bodyErr&&((bodyObj&&bodyObj.isHtml)||mBodyIsHtml);
         var bodyContent=m.body||(bodyObj&&bodyObj.content)||"";
         var hasBody=!!(m.body||bodyObj);
         var loading=!!loadingBody[m.id];
@@ -1265,17 +1305,31 @@ function MailPreview(p){
               boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden",minHeight:60}},
               loading
                 ?ce("div",{style:{padding:"18px 20px",color:"#888",fontStyle:"italic",fontSize:13}},"\u23F3 Wczytywanie tre\u015bci\u2026")
+                :bodyErr
+                  ?ce("div",{style:{padding:"16px 20px",fontSize:13,color:"var(--red)",display:"flex",
+                      alignItems:"center",gap:12,flexWrap:"wrap"}},
+                    ce("span",null,"\u26A0\uFE0F "+bodyContent),
+                    ce("button",{onClick:function(){retryBody(m.id);},
+                      style:{padding:"6px 12px",borderRadius:8,border:"1px solid var(--bd2)",
+                        background:"transparent",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer"}},
+                      "\u21BB Spr\u00f3buj ponownie")
+                  )
                 :hasBody
                   ?(bodyIsHtml
-                    ?ce("iframe",{
-                      srcDoc:resolvedSrcDocs[m.id]||"",
-                      sandbox:"allow-same-origin allow-popups allow-popups-to-escape-sandbox",
-                      style:{width:"100%",border:"none",minHeight:200,display:"block",background:"#fff"},
-                      onLoad:function(e){
-                        var fr=e.target;
-                        try{fr.style.height=(fr.contentDocument.documentElement.scrollHeight+24)+"px";}catch(ex){}
-                      }
-                    })
+                    ?(resolvedSrcDocs[m.id]
+                      ?ce("iframe",{
+                        srcDoc:resolvedSrcDocs[m.id],
+                        sandbox:"allow-same-origin allow-popups allow-popups-to-escape-sandbox",
+                        style:{width:"100%",border:"none",minHeight:200,display:"block",background:"#fff"},
+                        onLoad:function(e){
+                          var fr=e.target;
+                          try{fr.style.height=(fr.contentDocument.documentElement.scrollHeight+24)+"px";}catch(ex){}
+                        }
+                      })
+                      // srcDoc jeszcze nie zbudowany — wczesniej renderowal sie pusty iframe (bialo)
+                      :ce("div",{style:{padding:"16px 20px",color:"var(--t3)",fontStyle:"italic",fontSize:13}},
+                        "\u23F3 Przygotowywanie tre\u015bci\u2026")
+                    )
                     :ce("div",{style:{padding:"16px 20px",whiteSpace:"pre-wrap",fontSize:13,color:"#1a1a1a",lineHeight:1.75}},bodyContent)
                   )
                   :ce("div",{style:{padding:"16px 20px",color:"#999",fontStyle:"italic",fontSize:13}},m.preview||"(brak tre\u015bci)")
