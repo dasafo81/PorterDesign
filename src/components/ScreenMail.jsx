@@ -728,6 +728,17 @@ function MailPreview(p){
     var cache=window._porterAttImgCache||{};
     // Usuń <script> i obsługę zdarzeń — sandbox i tak je blokuje, ale to ucisza ostrzeżenia w konsoli
     var clean=(htmlContent||"").replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,"").replace(/\son\w+\s*=\s*"[^"]*"/gi,"").replace(/\son\w+\s*=\s*'[^']*'/gi,"");
+    // Niektóre maile (newslettery/cenniki dostawców, np. z Mailchimp/GetResponse) przychodzą
+    // z Grapha jako PEŁNY dokument HTML (własny <!doctype><html><head><style>...<body>...).
+    // Zagnieżdżenie takiego dokumentu wewnątrz naszej własnej powłoki <html><body> tworzy
+    // podwójny <html>/<head>/<body> — przeglądarka dostaje niepoprawny DOM i renderuje pustą
+    // (białą) stronę, mimo że treść "załadowała się" poprawnie. Wyciągamy więc samą zawartość
+    // <body> i dokładamy oryginalne <style> z <head>, żeby layout maila się nie rozjechał.
+    var extraStyles="";
+    var styleMatches=clean.match(/<style[^>]*>[\s\S]*?<\/style>/gi);
+    if(styleMatches)extraStyles=styleMatches.join("");
+    var bodyMatch=clean.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    if(bodyMatch)clean=bodyMatch[1];
     // Wymuś otwieranie linków w nowej karcie — sandbox iframe'a blokuje nawigację
     // samego iframe'a/top window, więc bez target="_blank" klik w link nic nie robi.
     clean=clean.replace(/<a\b((?:(?!target=)[^>])*)>/gi,function(whole,attrs){
@@ -741,7 +752,7 @@ function MailPreview(p){
       if(dataUri)return whole.replace(/src=["']cid:[^"'>]+["']/i,'src="'+dataUri+'"');
       return "";
     });
-    var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+IFRAME_STYLES+"</style></head><body>"+resolved+"</body></html>";
+    var doc="<!DOCTYPE html><html><head><meta charset='UTF-8'><style>"+IFRAME_STYLES+"</style>"+extraStyles+"</head><body>"+resolved+"</body></html>";
     setResolvedSrcDocs(function(prev){var n=Object.assign({},prev);n[mid]=doc;return n;});
   }
 
