@@ -813,6 +813,9 @@ export const FABRICS =[
   {name:"Teide",brutto:270,prod:"DEKOMA",width:302,zakup:117},
   {name:"Underground",brutto:380,prod:"DEKOMA",width:145,zakup:152},
   {name:"Wool",brutto:310,prod:"DEKOMA",width:145,zakup:117},
+  {name:"Lupus",brutto:390,prod:"DEKOMA",width:160,zakup:153},
+  {name:"Matilda",brutto:390,prod:"DEKOMA",width:155,zakup:153},
+  {name:"Ton",brutto:150,prod:"DEKOMA",width:142,zakup:59},
   // ── VV DESIGN cennik 2026 (01.04.2026) ──
   {name:"Adriatic",brutto:220,prod:"VV design",width:280,zakup:108,sklad:"50% CO, 50% PES"},
   {name:"Alba",brutto:190,prod:"VV design",width:310,zakup:95,sklad:"82% PES RECYCLING, 18% PES"},
