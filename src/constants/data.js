@@ -1192,7 +1192,30 @@ export const FABRICS =[
   {name:"Twinkle",brutto:286,prod:"Cosmonova",width:298,zakup:127.71,sklad:"50% LI, 30% PES, 19% VIS, 1% PA"},
   {name:"Velurio",brutto:230,prod:"Cosmonova",width:280,zakup:102.72,sklad:"100% PES"},
   {name:"Vivara",brutto:370,prod:"Cosmonova",width:287,zakup:165.23,sklad:"100% LI"},
-  {name:"Zenith",brutto:328,prod:"Cosmonova",width:290,zakup:146.81,sklad:"49% VIS, 49% PES, 2% PA"}
+  {name:"Zenith",brutto:328,prod:"Cosmonova",width:290,zakup:146.81,sklad:"49% VIS, 49% PES, 2% PA"},
+  // \u2500\u2500 LART cennik tkanin zas\u0142onowych (tylko pozycje z r\u0119cznie wpisan\u0105 cen\u0105 sprzeda\u017cy) \u2500\u2500
+  // brutto = cena r\u0119czna (sprzeda\u017cy), zakup = cena kuponowa, belkowa = cena belkowa (informacyjna)
+  {name:"DIMOUT BO UNI",brutto:100,prod:"LART",width:280,zakup:42.5,belkowa:31.9},
+  {name:"WAVE LART",brutto:100,prod:"LART",width:300,zakup:34.9,belkowa:27.9},
+  {name:"SUMI",brutto:150,prod:"LART",width:280,zakup:39.9,belkowa:29.9},
+  {name:"ROFE",brutto:150,prod:"LART",width:300,zakup:39.7,belkowa:29.8},
+  {name:"DIMOUT 310",brutto:160,prod:"LART",width:280,zakup:54,belkowa:42.6},
+  {name:"BLOW",brutto:120,prod:"LART",width:300,zakup:36.9,belkowa:21.3},
+  // \u2500\u2500 CAPTURE (Kolekcja Vadain) \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
+  {name:"Aurora Capture",brutto:220,prod:"Capture",width:300,zakup:130,sklad:"80% RPET, 12% PES, 8% LI"},
+  {name:"Euphoria",brutto:250,prod:"Capture",width:300,zakup:142,sklad:"58% CO, 42% PES"},
+  {name:"Explore",brutto:240,prod:"Capture",width:300,zakup:138,sklad:"57% RPET, 23% PES, 17% PAN, 3% PA"},
+  {name:"Fame",brutto:210,prod:"Capture",width:300,zakup:122,sklad:"100% PES"},
+  {name:"Glaze",brutto:160,prod:"Capture",width:303,zakup:90,sklad:"100% RPET"},
+  {name:"Halo",brutto:210,prod:"Capture",width:300,zakup:122,sklad:"59% PES, 38% VI, 3% LI"},
+  {name:"Lucente Capture",brutto:210,prod:"Capture",width:290,zakup:129,sklad:"90% PES, 10% OT"},
+  {name:"Lumi\u00e8re",brutto:180,prod:"Capture",width:300,zakup:105,sklad:"66% PES, 34% CO"},
+  {name:"Moire",brutto:160,prod:"Capture",width:300,zakup:97,sklad:"80% RPET, 20% PES"},
+  {name:"Rumour",brutto:130,prod:"Capture",width:320,zakup:75,sklad:"100% PES"},
+  {name:"Sign",brutto:160,prod:"Capture",width:300,zakup:96,sklad:"100% PES"},
+  {name:"Thread",brutto:110,prod:"Capture",width:317,zakup:70,sklad:"55% RPET, 45% PES"},
+  {name:"Tomorrow",brutto:170,prod:"Capture",width:298,zakup:95,sklad:"100% PES"},
+  {name:"Ultimate",brutto:180,prod:"Capture",width:300,zakup:102,sklad:"100% RPET"}
 ];
 
 // ── TAPETY (kolekcja ARTE / Decodore) ─────────────────────────────────
@@ -2414,30 +2437,7 @@ export const TAPETY =[
   {name:"A59519",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
   {name:"A59520",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
   {name:"A59521",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
-  {name:"A59522",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66},
-  // \u2500\u2500 LART cennik tkanin zas\u0142onowych (tylko pozycje z r\u0119cznie wpisan\u0105 cen\u0105 sprzeda\u017cy) \u2500\u2500
-  // brutto = cena r\u0119czna (sprzeda\u017cy), zakup = cena kuponowa, belkowa = cena belkowa (informacyjna)
-  {name:"DIMOUT BO UNI",brutto:100,prod:"LART",width:280,zakup:42.5,belkowa:31.9},
-  {name:"WAVE",brutto:100,prod:"LART",width:300,zakup:34.9,belkowa:27.9},
-  {name:"SUMI",brutto:150,prod:"LART",width:280,zakup:39.9,belkowa:29.9},
-  {name:"ROFE",brutto:150,prod:"LART",width:300,zakup:39.7,belkowa:29.8},
-  {name:"DIMOUT 310",brutto:160,prod:"LART",width:280,zakup:54,belkowa:42.6},
-  {name:"BLOW",brutto:120,prod:"LART",width:300,zakup:36.9,belkowa:21.3},
-  // \u2500\u2500 CAPTURE (Kolekcja Vadain) \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
-  {name:"Aurora",brutto:220,prod:"Capture",width:300,zakup:130,sklad:"80% RPET, 12% PES, 8% LI"},
-  {name:"Euphoria",brutto:250,prod:"Capture",width:300,zakup:142,sklad:"58% CO, 42% PES"},
-  {name:"Explore",brutto:240,prod:"Capture",width:300,zakup:138,sklad:"57% RPET, 23% PES, 17% PAN, 3% PA"},
-  {name:"Fame",brutto:210,prod:"Capture",width:300,zakup:122,sklad:"100% PES"},
-  {name:"Glaze",brutto:160,prod:"Capture",width:303,zakup:90,sklad:"100% RPET"},
-  {name:"Halo",brutto:210,prod:"Capture",width:300,zakup:122,sklad:"59% PES, 38% VI, 3% LI"},
-  {name:"Lucente",brutto:210,prod:"Capture",width:290,zakup:129,sklad:"90% PES, 10% OT"},
-  {name:"Lumi\u00e8re",brutto:180,prod:"Capture",width:300,zakup:105,sklad:"66% PES, 34% CO"},
-  {name:"Moire",brutto:160,prod:"Capture",width:300,zakup:97,sklad:"80% RPET, 20% PES"},
-  {name:"Rumour",brutto:130,prod:"Capture",width:320,zakup:75,sklad:"100% PES"},
-  {name:"Sign",brutto:160,prod:"Capture",width:300,zakup:96,sklad:"100% PES"},
-  {name:"Thread",brutto:110,prod:"Capture",width:317,zakup:70,sklad:"55% RPET, 45% PES"},
-  {name:"Tomorrow",brutto:170,prod:"Capture",width:298,zakup:95,sklad:"100% PES"},
-  {name:"Ultimate",brutto:180,prod:"Capture",width:300,zakup:102,sklad:"100% RPET"}
+  {name:"A59522",kolekcja:"WASHED LINEN WASHED LINEN",jm:"rol",brutto:877.0,zakup:508.66}
 ];
 
 // ── Klasyfikacja tkaniny wg składu: Naturalne / Semi-Natural ────────────
