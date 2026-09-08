@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, primeFabricOverrides, classifyFabricComposition, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
+  FABRICS, primeFabricOverrides, classifyFabricComposition, classifyFabricBlackout,
+  isHighFabric, HIGH_FABRIC_MIN_CM, HIGH_FABRIC_TAG, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
   KD_AKCESORIA, RS_MASKS, PRICE_LISTS
 } from '../constants/data.js';
@@ -678,8 +679,15 @@ function mergeCatalog(baseGroups, rows) {
       m.warn = (g.tracksHeight && m.heightCm == null) ? "brak wysoko\u015bci" : null;
       // Kategoria składu (Naturalne / Semi-Natural) + tagi filtrowania — dotyczy tylko tkanin
       m.compositionCategory = g.id === "tkaniny" ? classifyFabricComposition(m.sklad) : null;
+      // Zaciemnienie czytamy z nazwy, "wysokość" — z szerokości beli (heightCm).
+      // Obie kategorie są wyliczane, więc działają też dla tkanin własnych i nadpisań
+      // bez żadnej dodatkowej kolumny w bazie.
+      m.blackoutCategory = g.id === "tkaniny" ? classifyFabricBlackout(m.name) : null;
+      m.isHighFabric = g.id === "tkaniny" && isHighFabric(m.heightCm);
       var tags = [];
       if (m.compositionCategory) tags.push(m.compositionCategory);
+      if (m.blackoutCategory) tags.push(m.blackoutCategory);
+      if (m.isHighFabric) tags.push(HIGH_FABRIC_TAG);
       if (m.flameRetardant) tags.push("Trudnopalne");
       if (m.soundproof) tags.push("D\u017Awi\u0119koszczelne");
       m.tags = tags;
@@ -716,6 +724,9 @@ function ModalCatalogItem(p) {
 
   // Kategoria wg składu — wyliczana na żywo z pola "Skład" (Naturalne / Semi-Natural)
   var liveCategory = classifyFabricComposition(sklad);
+  // Kategorie wyliczane z pozostałych pól: zaciemnienie z nazwy, wysokość z szerokości beli
+  var liveBlackout = classifyFabricBlackout(name);
+  var liveHigh = isHighFabric(num(height));
 
   function num(v) { return v === "" ? null : parseFloat(String(v).replace(",", ".")); }
   function body() {
@@ -789,6 +800,13 @@ function ModalCatalogItem(p) {
         grp === "tkaniny" && ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 5 } },
           "Kategoria (auto, wg sk\u0142adu): ",
           liveCategory ? ce("strong", { style: { color: "var(--t2)" } }, liveCategory) : "\u2014")
+      ),
+      grp === "tkaniny" && ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: -4, marginBottom: 12 } },
+        "Kategorie automatyczne: ",
+        ce("strong", { style: { color: "var(--t2)" } },
+          [liveBlackout, liveHigh ? HIGH_FABRIC_TAG : null].filter(Boolean).join(", ") || "\u2014"),
+        ce("div", { style: { marginTop: 3 } },
+          "Blackout / Dimout \u2014 z nazwy tkaniny \u00B7 \u201EWysokie\u201D \u2014 od " + HIGH_FABRIC_MIN_CM + " cm szeroko\u015bci beli")
       ),
       grp === "tkaniny" && ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Gramatura (g/m\u00b2) \u2014 opcjonalnie"),
@@ -870,9 +888,10 @@ function TabCatalog(p) {
     ? Array.from(new Set(activeGroupForMeta.items.map(function(it) { return it.meta; }).filter(Boolean))).sort()
     : [];
 
-  // ── Kategorie tkanin (Naturalne / Semi-Natural / Trudnopalne / Dźwiękoszczelne) ──
+  // ── Kategorie tkanin (skład / zaciemnienie / wysokość / trudnopalność / dźwięk) ──
   // Tylko w zakładce Tkaniny — reszta kategorii katalogu nie ma tych atrybutów.
-  var FABRIC_TAGS = ["Naturalne", "Semi-Natural", "Trudnopalne", "D\u017Awi\u0119koszczelne"];
+  var FABRIC_TAGS = ["Naturalne", "Semi-Natural", "Blackout", "Dimout", HIGH_FABRIC_TAG,
+    "Trudnopalne", "D\u017Awi\u0119koszczelne"];
   var fabricTagCounts = activeCat === "tkaniny" && activeGroupForMeta
     ? FABRIC_TAGS.map(function(tag) {
         return { tag: tag, count: activeGroupForMeta.items.filter(function(it) { return (it.tags || []).indexOf(tag) >= 0; }).length };
@@ -934,7 +953,12 @@ function TabCatalog(p) {
         "Wszystkie kategorie"),
       fabricTagCounts.map(function(x) {
         var act = activeTag === x.tag;
-        var icon = x.tag === "Trudnopalne" ? "\uD83D\uDD25 " : x.tag === "D\u017Awi\u0119koszczelne" ? "\uD83D\uDD07 " : "\uD83C\uDF3F ";
+        var icon = x.tag === "Trudnopalne" ? "\uD83D\uDD25 "
+          : x.tag === "D\u017Awi\u0119koszczelne" ? "\uD83D\uDD07 "
+          : x.tag === "Blackout" ? "\uD83C\uDF11 "
+          : x.tag === "Dimout" ? "\uD83C\uDF13 "
+          : x.tag === HIGH_FABRIC_TAG ? "\u2195\uFE0F "
+          : "\uD83C\uDF3F ";
         return ce("button", { key: x.tag, onClick: function() { setActiveTag(x.tag); },
           style: { padding: "8px 14px", borderRadius: 20, border: "1.5px solid " + (act ? "var(--violet)" : "var(--bd2)"), background: act ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: act ? "var(--violet)" : "var(--t3)", fontSize: 12.5, fontWeight: act ? 700 : 500, cursor: "pointer" } },
           icon + x.tag + " (" + x.count + ")");
@@ -979,7 +1003,12 @@ function TabCatalog(p) {
                 ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.gramaturaLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
                 it.tags && it.tags.length > 0 && ce("div", { style: { display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4 } },
                   it.tags.map(function(tag) {
-                    var tc = tag === "Trudnopalne" ? "#dc2626" : tag === "D\u017Awi\u0119koszczelne" ? "#0369a1" : "#16a34a";
+                    var tc = tag === "Trudnopalne" ? "#dc2626"
+                      : tag === "D\u017Awi\u0119koszczelne" ? "#0369a1"
+                      : tag === "Blackout" ? "#334155"
+                      : tag === "Dimout" ? "#7c3aed"
+                      : tag === HIGH_FABRIC_TAG ? "#0891b2"
+                      : "#16a34a";
                     return ce("span", { key: tag, style: { fontSize: 9.5, fontWeight: 700, color: tc, background: tc + "18", borderRadius: 6, padding: "1px 6px" } }, tag);
                   })
                 ),
