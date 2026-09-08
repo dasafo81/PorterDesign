@@ -2488,6 +2488,32 @@ export function classifyFabricComposition(sklad){
   return "Semi-Natural";
 }
 
+// ── Zaciemnienie tkaniny: Blackout / Dimout ───────────────────────
+// Stopień zaciemnienia nie wynika ze składu i nie ma dla niego osobnej kolumny
+// w bazie — u wszystkich dostawców jest zapisany w nazwie tkaniny: "Roma FR
+// Black-Out", "Skyfall Dim Out", "DIMOUT BO UNI", "Jowisz Blackout FR".
+// Rozpoznajemy więc wszystkie warianty pisowni (razem / z myślnikiem / ze spacją).
+// Dimout ma pierwszeństwo: kilka pozycji ma w nazwie i "Dimout", i skrót "BO",
+// a to wciąż tkanina przyciemniająca, nie zaciemniająca całkowicie.
+export function classifyFabricBlackout(name){
+  if(!name) return null;
+  var n = String(name).toLowerCase();
+  if(/dim\s*-?\s*out/.test(n)) return "Dimout";
+  if(/black\s*-?\s*out/.test(n)) return "Blackout";
+  return null;
+}
+
+// ── Tkaniny wysokie ──────────────────────────────────────
+// Szerokość beli (pole "width" w FABRICS / "height_cm" w katalogu) od której
+// można uszyć zasłonę na pełną wysokość bez łączenia pasów — czyli tkaniny
+// szyte "w poprzek". Wartość w jednym miejscu, żeby próg dawało się zmienić
+// bez szukania po komponentach.
+export var HIGH_FABRIC_MIN_CM = 320;
+export var HIGH_FABRIC_TAG = "Wysokie (320+ cm)";
+export function isHighFabric(widthCm){
+  return widthCm != null && +widthCm >= HIGH_FABRIC_MIN_CM;
+}
+
 // ── Nadpisania tkanin z Katalogu (Magazyn → Katalog) ───────────────────
 // Cache w pamiećci procesu, wypełniany raz przy starcie apki (App.jsx wywołuje
 // primeFabricOverrides po pobraniu catalog_items z Supabase). Klucz nadpisania
