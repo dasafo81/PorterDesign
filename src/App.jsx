@@ -260,6 +260,45 @@ export function App(p){
     });
   },[]);
 
+  // ── ODSWIEZANIE LISTY KLIENTOW PO POWROCIE DO KARTY ────────────────
+  // Lista ladowala sie RAZ, przy starcie. Gdy Paulina zakladala nowa wycene u
+  // klienta, druga osoba nie widziala jej bez F5. Dociaganie z efektu
+  // `staleClient` obejmuje wylacznie klienta AKTUALNIE otwartego, wiec nowych
+  // pozycji na liscie nie pokazywalo.
+  // Klient otwarty w tej karcie jest tu SWIADOMIE pomijany — ma wlasna, ostrozna
+  // sciezke odswiezania (domkniecie niezapisanej pracy przed podmiana danych).
+  // Nadpisanie go tutaj skasowaloby edycje sprzed sekundy.
+  var curClientIdRef=React.useRef(curClientId);curClientIdRef.current=curClientId;
+  var lastListReloadRef=React.useRef(0);
+  React.useEffect(function(){
+    if(offlineMode)return;
+    var stopped=false;
+    function reload(){
+      if(stopped||document.hidden)return;
+      // focus + visibilitychange potrafia wpasc razem — dlawimy do 1 na 5 s.
+      var now=Date.now();
+      if(now-lastListReloadRef.current<5000)return;
+      lastListReloadRef.current=now;
+      Promise.all([sbApi.getClients(),sbApi.getDeals()]).then(function(res){
+        if(stopped)return;
+        var fresh=migrateClients(res[0]||[]);
+        setClients(function(cs){
+          var openId=curClientIdRef.current;
+          var local=(cs||[]).find(function(cl){return cl.id===openId;});
+          return fresh.map(function(cl){return (local&&cl.id===openId)?local:cl;});
+        });
+        setDeals(res[1]||[]);
+      }).catch(function(){});
+    }
+    document.addEventListener("visibilitychange",reload);
+    window.addEventListener("focus",reload);
+    return function(){
+      stopped=true;
+      document.removeEventListener("visibilitychange",reload);
+      window.removeEventListener("focus",reload);
+    };
+  },[offlineMode]);
+
   // Załaduj nadpisania tkanin z Katalogu (Magazyn → Katalog) przy starcie.
   // Cicho pomijamy błąd — brak nadpisań = ceny bazowe z FABRICS, jak dotychczas.
   React.useEffect(function(){
