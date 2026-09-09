@@ -178,6 +178,9 @@ export function App(p){
   var shh=useState(false),showHistoryModal=shh[0],setShowHistoryModal=shh[1];
   // confirmDelete: {type:"client"|"room"|"window", label:str, onConfirm:fn}
   var sHS=useState(""),homeSearch=sHS[0],setHomeSearch=sHS[1];
+  // Kosz klientow (soft delete, migracja 0041)
+  var sTR=useState(false),trashOpen=sTR[0],setTrashOpen=sTR[1];
+  var sTL=useState([]),trashList=sTL[0],setTrashList=sTL[1];
   var sHT=useState("nowe"),homeTab=sHT[0],setHomeTab=sHT[1];
   var sOffline=useState(false),offlineMode=sOffline[0],setOfflineMode=sOffline[1];
   var sShowOfflineModal=useState(false),showOfflineModal=sShowOfflineModal[0],setShowOfflineModal=sShowOfflineModal[1];
@@ -965,6 +968,7 @@ export function App(p){
           ce("button",{
             onClick:function(ev){
               ev.stopPropagation();
+              // Miekkie usuniecie \u2014 klient laduje w Koszu (deleted_at), nie znika z bazy.
               var doDelete=function(){sbApi.deleteClient(cl.id).then(function(){setClients(function(cs){return cs.filter(function(c){return c.id!==cl.id;});});}).catch(function(e){alert("B\u0142\u0105d usuwania: "+e.message);});};
               if(hasClientData(cl)){setConfirmDelete({type:"client",label:cl.name,onConfirm:doDelete});}else{doDelete();}
             },
@@ -1073,8 +1077,34 @@ export function App(p){
         },
           ce("span",{style:{fontSize:16,lineHeight:1}},"+"),
           ce("span",null,"Nowa wycena")
-        )
+        ),
+        ce("div",{
+          onClick:function(){
+            setTrashOpen(true);
+            sbApi.getDeletedClients().then(function(rows){setTrashList(rows||[]);}).catch(function(){setTrashList([]);});
+          },
+          title:"Kosz \u2014 usuni\u0119ci klienci",
+          style:{padding:"11px 14px",borderRadius:14,fontSize:15,cursor:"pointer",whiteSpace:"nowrap",border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)"}
+        },"\uD83D\uDDD1")
       ),
+
+      trashOpen?ce(ModalTrash,{
+        items:trashList,
+        onClose:function(){setTrashOpen(false);},
+        onRestore:function(id){
+          sbApi.restoreClient(id).then(function(){
+            setTrashList(function(ts){return ts.filter(function(t){return t.id!==id;});});
+            return sbApi.getClients();
+          }).then(function(rows){
+            if(rows)setClients(migrateClients(rows));
+          }).catch(function(e){alert("B\u0142\u0105d przywracania: "+e.message);});
+        },
+        onPurge:function(id){
+          sbApi.hardDeleteClient(id).then(function(){
+            setTrashList(function(ts){return ts.filter(function(t){return t.id!==id;});});
+          }).catch(function(e){alert("B\u0142\u0105d usuwania: "+e.message);});
+        }
+      }):null,
 
       // ── Demo banner ──
       isDemo?ce("div",{style:{border:"1.5px solid var(--violet)",background:"var(--violet-l)",backdropFilter:"blur(10px)",borderRadius:14,padding:"12px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,color:"var(--violet)",marginBottom:14}},
@@ -2327,6 +2357,59 @@ function ScreenBillingGate(p){
         })
       ),
       ce("button",{onClick:onLogout,style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:12,textDecoration:"underline"}},"Wyloguj si\u0119")
+    )
+  );
+}
+
+// ── KOSZ KLIENTOW ─────────────────────────────────────────
+// Klient usuniety trafia tutaj (deleted_at), zamiast znikac z bazy. Do 2026-09-09
+// deleteClient robil twardy DELETE — razem z klientem szedl kaskada deal z CRM,
+// nie do odzyskania nawet z historii wersji.
+function ModalTrash(p){
+  var items=p.items||[];
+  function dni(t){
+    if(!t)return "";
+    var d=Math.floor((Date.now()-new Date(t).getTime())/86400000);
+    return d<=0?"dzisiaj":(d===1?"wczoraj":d+" dni temu");
+  }
+  return ce("div",{
+    onClick:p.onClose,
+    style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(3px)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}
+  },
+    ce("div",{
+      onClick:function(e){e.stopPropagation();},
+      style:{background:"var(--bg1)",border:"1.5px solid var(--bd2)",borderRadius:18,padding:22,width:"100%",maxWidth:560,maxHeight:"80vh",overflowY:"auto",boxSizing:"border-box"}
+    },
+      ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
+        ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--t1)"}},"\uD83D\uDDD1  Kosz"),
+        ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:20,color:"var(--t3)",lineHeight:1}},"\u00d7")
+      ),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16}},
+        "Usuni\u0119ci klienci wraz z wycenami. Przywr\u00f3cenie odtwarza r\u00f3wnie\u017c powi\u0105zania z CRM i fakturami."),
+      items.length===0
+        ? ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"24px 0",textAlign:"center"}},"Kosz jest pusty.")
+        : ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            items.map(function(cl){
+              return ce("div",{key:cl.id,style:{display:"flex",alignItems:"center",gap:10,border:"1.5px solid var(--bd3)",borderRadius:12,padding:"10px 12px"}},
+                ce("div",{style:{flex:1,minWidth:0}},
+                  ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},cl.name||"(bez nazwy)"),
+                  ce("div",{style:{fontSize:11,color:"var(--t3)"}},"usuni\u0119ty "+dni(cl.deleted_at))
+                ),
+                ce("button",{
+                  onClick:function(){p.onRestore(cl.id);},
+                  className:"btn-primary",
+                  style:{padding:"7px 14px",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",border:"none"}
+                },"Przywr\u00f3\u0107"),
+                ce("button",{
+                  onClick:function(){
+                    if(window.confirm("Usun\u0105\u0107 TRWALE klienta \""+(cl.name||"")+"\"?\n\nTej operacji nie da si\u0119 cofn\u0105\u0107 \u2014 znikn\u0105 te\u017c powi\u0105zane deale i historia wersji."))p.onPurge(cl.id);
+                  },
+                  title:"Usu\u0144 trwale",
+                  style:{border:"1.5px solid var(--bd2)",background:"transparent",cursor:"pointer",fontSize:12,color:"var(--t3)",padding:"7px 10px",borderRadius:10}
+                },"Trwale")
+              );
+            })
+          )
     )
   );
 }
