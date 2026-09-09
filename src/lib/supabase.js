@@ -90,6 +90,13 @@ export const sbApi = {
   },
   // Lekki odczyt metadanych klienta \u2014 do wykrywania nieaktualnej karty
   // (zob. staleClient w App.jsx). Nie ciagnie ciezkiego JSON-a `rooms`.
+  // Pelny wiersz jednego klienta — do dociagniecia swiezych danych, gdy karta
+  // okaze sie nieaktualna (wiele kart / tablet wznawiajacy uspiona sesje).
+  getClient: function(id){
+    return sbFetch("GET","clients?id=eq."+id+"&select=*").then(function(rows){
+      return (rows&&rows[0])||null;
+    });
+  },
   getClientMeta: function(id){
     return sbFetch("GET","clients?id=eq."+id+"&select=id,updated_at").then(function(rows){
       return (rows&&rows[0])||null;
