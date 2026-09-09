@@ -289,7 +289,10 @@ export function App(p){
       var isSingle=wins.length<=1;
       if(!isSingle)return;
       var sw=wins[0]||{id:"default_"+curRoomId,name:"",isDefault:true,products:[]};
-      if(!curWin||curWin.id!==sw.id){
+      // Warunek na kontekst jest kluczowy: przy kolizji id ("default_1" u wielu
+      // klientow) samo porownanie id NIE wykrywalo, ze curWin nalezy do kogos innego.
+      if(!curWin||curWin.id!==sw.id||curWinCtxRef.current.c!==curClientId||curWinCtxRef.current.r!==curRoomId){
+        curWinCtxRef.current={c:curClientId,r:curRoomId};
         setCurWin(JSON.parse(JSON.stringify(sw)));
       }
     }
@@ -449,7 +452,19 @@ export function App(p){
     }).catch(function(e){alert("B\u0142\u0105d kopiowania: "+e.message);});
   }
 
-  function openClient(id){setCurClientId(id);setScreen("rooms");}
+  function openClient(id){
+    // Zalegly autosave leci do WLASCIWEGO klienta, a curWin/curRoomId czyscimy,
+    // zeby okno nie wedrowalo miedzy kartami klientow.
+    if(winDirtyRef.current&&curWinRef.current){
+      persistWin(curWinRef.current,curWinCtxRef.current.c,curWinCtxRef.current.r);
+      winDirtyRef.current=false;
+    }
+    if(id!==curClientId){
+      setCurWin(null);setCurRoomId(null);
+      curWinCtxRef.current={c:null,r:null};
+    }
+    setCurClientId(id);setScreen("rooms");
+  }
   function openRoom(id){
     // Ensure the room has at least a default window
     updateClient(curClientId,function(cl){
@@ -464,8 +479,15 @@ export function App(p){
     });
     setCurRoomId(id);setScreen("windows");
   }
-  function openWin(w){setCurWin(JSON.parse(JSON.stringify(w)));setScreen("detail");}
-  function newWin(name){setCurWin({id:Date.now(),name:name,products:[]});setScreen("detail");}
+  function openWin(w){
+    curWinCtxRef.current={c:curClientId,r:curRoomId};
+    setCurWin(JSON.parse(JSON.stringify(w)));setScreen("detail");
+  }
+  function newWin(name){
+    curWinCtxRef.current={c:curClientId,r:curRoomId};
+    // Gole Date.now() potrafilo dac to samo id na dwoch urzadzeniach naraz.
+    setCurWin({id:Date.now()+"_"+Math.random().toString(36).slice(2,7),name:name,products:[]});setScreen("detail");
+  }
 
   // ── VARIANT LOGIC ──
   function duplicateWinAsVariant(win){
@@ -620,20 +642,30 @@ export function App(p){
   // beforeunload, gdyby debounce nie zdazyl polecec przed zamknieciem.
 
   // Zapisuje podane okno do rooms wlasciwego pomieszczenia.
-  function persistWin(w){
-    if(!w||!curClientId||!curRoomId)return;
-    updateClient(curClientId,function(cl){
-      var newRooms=(cl.rooms||[]).map(function(r){
-        if(r.id!==curRoomId)return r;
-        var found=(r.windows||[]).find(function(x){return x.id===w.id;});
-        var newWins=found?(r.windows||[]).map(function(x){return x.id===w.id?w:x;}):(r.windows||[]).concat([w]);
-        return mg(r,{windows:newWins});
+  // Kontekst (klient + pomieszczenie) pochodzi Z MOMENTU OTWARCIA OKNA, a nie
+  // z biezacych curClientId/curRoomId. Bez tego zalegly autosave po przejsciu
+  // do innego klienta zapisywal okno U NIEGO (incydent 2026-09: wymiary z
+  // pomieszczenia klienta A ladowaly pod klientem B). Dodatkowo pierwszy pokoj
+  // kazdego klienta mial id=1, wiec domyslne okno mialo id "default_1" u
+  // wszystkich — kolizja id zamieniala doklejenie w ciche NADPISANIE.
+  function persistWin(w,cid,rid){
+    var c=(cid!=null?cid:curWinCtxRef.current.c);
+    var r=(rid!=null?rid:curWinCtxRef.current.r);
+    if(!w||!c||!r)return;
+    updateClient(c,function(cl){
+      var newRooms=(cl.rooms||[]).map(function(rr){
+        if(rr.id!==r)return rr;
+        var found=(rr.windows||[]).find(function(x){return x.id===w.id;});
+        var newWins=found?(rr.windows||[]).map(function(x){return x.id===w.id?w:x;}):(rr.windows||[]).concat([w]);
+        return mg(rr,{windows:newWins});
       });
       return mg(cl,{rooms:newRooms});
     });
   }
 
   var curWinRef=React.useRef(curWin);curWinRef.current=curWin;
+  // Do kogo nalezy okno trzymane w `curWin`. Ustawiane ZAWSZE razem z setCurWin.
+  var curWinCtxRef=React.useRef({c:null,r:null});
   var winDirtyRef=React.useRef(false);
   var flushWinRef=React.useRef(function(){});
   // Nadpisywane przy kazdym renderze — dzieki temu efekt z pusta lista zaleznosci
@@ -647,6 +679,15 @@ export function App(p){
   React.useEffect(function(){
     if(screen!=="detail"&&screen!=="windows")return;
     if(!curWin||!curClientId||!curRoomId)return;
+    var ctx=curWinCtxRef.current;
+    // curWin pochodzi z innego klienta/pomieszczenia (przelaczenie karty przed
+    // uplywem debounce). Domykamy zapis U WLASCICIELA i wychodzimy — nigdy nie
+    // przepisujemy tego okna pod biezacego klienta.
+    if(ctx.c!==curClientId||ctx.r!==curRoomId){
+      if(winDirtyRef.current&&ctx.c&&ctx.r)persistWin(curWin,ctx.c,ctx.r);
+      winDirtyRef.current=false;
+      return;
+    }
     // Porownanie z wersja juz w bazie — chroni przed zbednym PATCH-em tuz po
     // otwarciu okna (openWin robi kopie identyczna z zapisana).
     var cl=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
@@ -658,7 +699,7 @@ export function App(p){
     }
     winDirtyRef.current=true;
     var t=setTimeout(function(){
-      persistWin(curWin);
+      persistWin(curWin,ctx.c,ctx.r);
       winDirtyRef.current=false;
     },1500);
     return function(){clearTimeout(t);};
@@ -2125,6 +2166,7 @@ export function App(p){
         // Okno trzymane w pamieci pochodzi ze starego stanu — czyscimy, zeby
         // autosave nie nadpisal wlasnie przywroconej wersji.
         setCurWin(null);
+        curWinCtxRef.current={c:null,r:null};
         winDirtyRef.current=false;
       },
       onClose:function(){setShowHistoryModal(false);}
