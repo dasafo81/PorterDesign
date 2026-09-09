@@ -61,7 +61,10 @@ export const sbApi = {
   },
   // Dodaj nowego klienta
   addClient: function(name, addr, phone, email, postal, city, contactId){
-    var row={name:name,addr:addr,phone:phone||"",email:email||"",postal:postal||"",city:city||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+    // Pokoj dostawal na sztywno id=1, wiec jego domyslne okno mialo id "default_1"
+    // U KAZDEGO klienta. Kolizja id sprawiala, ze bledny zapis okna nie doklejal go,
+    // tylko NADPISYWAL cudze wymiary (incydent 2026-09). Teraz id jest unikalne.
+    var row={name:name,addr:addr,phone:phone||"",email:email||"",postal:postal||"",city:city||"",rooms:[{id:Date.now(),name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
     if(contactId)row.contact_id=contactId;
     return sbFetch("POST","clients",row);
   },
