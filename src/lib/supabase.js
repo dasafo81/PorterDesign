@@ -57,7 +57,12 @@ function sbFetch(method, path, body){
 export const sbApi = {
   // Pobierz wszystkich klient\u00f3w
   getClients: function(){
-    return sbFetch("GET","clients?select=*&order=id.desc");
+    // deleted_at is null \u2014 klienci w Koszu nie trafiaja na liste.
+    return sbFetch("GET","clients?select=*&deleted_at=is.null&order=id.desc");
+  },
+  // Kosz: klienci usunieci, ale wciaz odzyskiwalni.
+  getDeletedClients: function(){
+    return sbFetch("GET","clients?select=*&deleted_at=not.is.null&order=deleted_at.desc");
   },
   // Dodaj nowego klienta
   addClient: function(name, addr, phone, email, postal, city, contactId){
@@ -112,8 +117,17 @@ export const sbApi = {
       return (rows&&rows[0])||null;
     });
   },
-  // Usu\u0144 klienta
+  // Usu\u0144 klienta \u2014 MIEKKO, do Kosza. Wiersz zostaje, wiec przezywaja tez
+  // powiazania (deals, oferty, faktury), ktore przy twardym DELETE szly kaskada
+  // i byly nie do odzyskania (incydent 2026-09-09: skasowany deal Tomaszewskiej).
   deleteClient: function(id){
+    return sbFetch("PATCH","clients?id=eq."+id,{deleted_at:new Date().toISOString()});
+  },
+  restoreClient: function(id){
+    return sbFetch("PATCH","clients?id=eq."+id,{deleted_at:null});
+  },
+  // Nieodwracalne. Uzywane wylacznie z Kosza, po osobnym potwierdzeniu.
+  hardDeleteClient: function(id){
     return sbFetch("DELETE","clients?id=eq."+id);
   },
   updateClientStatus: function(id,status){
