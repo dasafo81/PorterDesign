@@ -306,7 +306,11 @@ export function App(p){
         setClients(function(cs){
           var openId=curClientIdRef.current;
           var local=(cs||[]).find(function(cl){return cl.id===openId;});
-          return fresh.map(function(cl){return (local&&cl.id===openId)?local:cl;});
+          var merged=fresh.map(function(cl){return (local&&cl.id===openId)?local:cl;});
+          // Klienci zalozeni offline nie istnieja jeszcze na serwerze \u2014 bez tego
+          // odswiezenie listy skasowaloby ich razem z pomiarami.
+          var tmp=(cs||[]).filter(function(cl){return typeof cl.id==="string"&&cl.id.indexOf("tmp_")===0;});
+          return tmp.concat(merged);
         });
         setDeals(res[1]||[]);
       }).catch(function(){});
@@ -493,13 +497,40 @@ export function App(p){
   }
 
   function addClient(name,addr,phone,email,postal,city,contactId){
+    // TRYB OFFLINE: do 2026-09-09 ta funkcja i tak strzelala do Supabase, a blad
+    // ladowal wylacznie w console.error. Paulina na pomiarze wpisywala klienta,
+    // dostawala ekran pomieszczen i pracowala dalej \u2014 a klient nigdy nie powstal
+    // i po powrocie do listy go nie bylo. Teraz nowy klient czeka lokalnie
+    // (pd_offline_new_clients) i jest zakladany przy synchronizacji.
+    if(offlineMode){
+      var tmpId="tmp_"+Date.now()+"_"+Math.random().toString(36).slice(2,7);
+      var payload={name:name,addr:addr,phone:phone||"",email:email||"",postal:postal||"",city:city||"",
+        rooms:[{id:Date.now(),name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+      if(contactId)payload.contact_id=contactId;
+      var pend=[];
+      try{var raw=localStorage.getItem("pd_offline_new_clients");if(raw)pend=JSON.parse(raw);}catch(e){}
+      pend.push({id:tmpId,payload:payload,timestamp:Date.now()});
+      try{localStorage.setItem("pd_offline_new_clients",JSON.stringify(pend));}
+      catch(e){alert("Nie uda\u0142o si\u0119 zapisa\u0107 klienta w pami\u0119ci urz\u0105dzenia: "+e.message);return;}
+      setClients(function(cs){return [mg(payload,{id:tmpId,status:"nowe"})].concat(cs);});
+      setCurClientId(tmpId);
+      setScreen("rooms");
+      return;
+    }
     sbApi.addClient(name,addr,phone,email,postal,city,contactId).then(function(data){
-      var newCl=data&&data[0]?data[0]:{id:Date.now(),name:name,addr:addr,postal:postal||"",city:city||"",rooms:[{id:1,name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
+      var newCl=data&&data[0]?data[0]:null;
+      // Wczesniej podstawialismy tu atrape z id:Date.now() \u2014 klient wygladal na
+      // zapisanego, a kazdy pozniejszy PATCH szedl na nieistniejacy wiersz.
+      if(!newCl||!newCl.id){
+        alert("Klient NIE zosta\u0142 zapisany \u2014 serwer nie zwr\u00f3ci\u0142 nowego wiersza.\n\nSpr\u00f3buj ponownie.");
+        return;
+      }
       setClients(function(cs){return [newCl].concat(cs);});
       setCurClientId(newCl.id);
       setScreen("rooms");
     }).catch(function(e){
       console.error("Błąd dodawania klienta:",e);
+      alert("Klient NIE zosta\u0142 zapisany.\n\n"+(e.message||"")+"\n\nSprawd\u017a po\u0142\u0105czenie i spr\u00f3buj ponownie. Je\u015bli jeste\u015b bez zasi\u0119gu \u2014 w\u0142\u0105cz tryb OFFLINE, wtedy klient poczeka na synchronizacj\u0119.");
     });
   }
 
@@ -2426,9 +2457,38 @@ function ModalOfflineQuotes(p){
       var raw=localStorage.getItem("pd_offline_quotes");
       if(raw)stored=JSON.parse(raw);
     }catch(e){}
+    // Klient zalozony offline i jeszcze nieedytowany nie ma wpisu w
+    // pd_offline_quotes — bez tego nigdy by sie nie zsynchronizowal.
+    pendingNew().forEach(function(np){
+      var has=stored.some(function(q){return q.id===np.id;});
+      if(!has)stored.push({id:np.id,data:{},timestamp:np.timestamp});
+    });
     setOfflineQuotes(stored);
   },[p.show]);
   
+  // Klienci ZALOZENI offline czekaja osobno — na serwerze jeszcze nie istnieja,
+  // wiec updateClient nie ma czego zaktualizowac. Trzeba je najpierw utworzyc.
+  function pendingNew(){
+    try{var r=localStorage.getItem("pd_offline_new_clients");return r?JSON.parse(r):[];}catch(e){return [];}
+  }
+  function removePendingNew(id){
+    var l=pendingNew().filter(function(x){return x.id!==id;});
+    try{localStorage.setItem("pd_offline_new_clients",JSON.stringify(l));}catch(e){}
+  }
+  // Jedna sciezka dla obu przypadkow: nowy klient -> INSERT, istniejacy -> PATCH.
+  function pushQuote(q){
+    var np=pendingNew().filter(function(x){return x.id===q.id;})[0];
+    if(np){
+      var payload=mg(np.payload,q.data||{});
+      delete payload.id;
+      return sbApi.addClientFull(payload).then(function(rows){
+        removePendingNew(q.id);
+        return rows;
+      });
+    }
+    return sbApi.updateClient(q.id,q.data);
+  }
+
   function deleteQuote(id){
     var filtered=offlineQuotes.filter(function(q){return q.id!==id;});
     setOfflineQuotes(filtered);
@@ -2439,7 +2499,7 @@ function ModalOfflineQuotes(p){
   
   function syncQuote(quote){
     setSyncing(quote.id);
-    sbApi.updateClient(quote.id,quote.data).then(function(){
+    pushQuote(quote).then(function(){
       deleteQuote(quote.id);
       setSyncing(null);
       sbApi.getClients().then(function(data){
@@ -2455,7 +2515,7 @@ function ModalOfflineQuotes(p){
     if(offlineQuotes.length===0)return;
     setSyncing("all");
     var promises=offlineQuotes.map(function(q){
-      return sbApi.updateClient(q.id,q.data);
+      return pushQuote(q);
     });
     Promise.all(promises).then(function(){
       try{
