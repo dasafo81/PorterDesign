@@ -17,15 +17,33 @@ import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker } from './components/ProdCard.jsx';
-import { ScreenMail } from './components/ScreenMail.jsx';
 import { ScreenCRM, CRMKalendarz } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
-import { ScreenTasks } from './components/ScreenTasks.jsx';
-import { ScreenAdmin } from './components/ScreenAdmin.jsx';
-import { ScreenInvoices } from './components/ScreenInvoices.jsx';
-import { ScreenWarehouse } from './components/ScreenWarehouse.jsx';
-import { ScreenContacts } from './components/ScreenContacts.jsx';
 const ce = React.createElement;
+
+// \u2500\u2500 Leniwe ekrany \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// Kazdy z tych ekranow trafia do osobnego chunku i sciaga sie dopiero przy
+// pierwszym wejsciu w zakladke. W terenie Paulina korzysta glownie z CRM +
+// wyceny, wiec Mail (MSAL), Faktury (KSeF), Magazyn, Zadania, Kontrahenci
+// i Admin nie musza byc czescia pierwszego pobrania.
+// ScreenCRM zostaje ladowany statycznie \u2014 to domyslna zakladka.
+function lazyNamed(loader,name){
+  return React.lazy(function(){
+    return loader().then(function(m){return {default:m[name]};});
+  });
+}
+const ScreenMail      = lazyNamed(function(){return import('./components/ScreenMail.jsx');},'ScreenMail');
+const ScreenTasks     = lazyNamed(function(){return import('./components/ScreenTasks.jsx');},'ScreenTasks');
+const ScreenAdmin     = lazyNamed(function(){return import('./components/ScreenAdmin.jsx');},'ScreenAdmin');
+const ScreenInvoices  = lazyNamed(function(){return import('./components/ScreenInvoices.jsx');},'ScreenInvoices');
+const ScreenWarehouse = lazyNamed(function(){return import('./components/ScreenWarehouse.jsx');},'ScreenWarehouse');
+const ScreenContacts  = lazyNamed(function(){return import('./components/ScreenContacts.jsx');},'ScreenContacts');
+
+// Fallback pokazywany na czas pobierania chunku ekranu.
+const LazyScreenFallback = ce("div",{style:{
+  display:"flex",alignItems:"center",justifyContent:"center",
+  minHeight:"40vh",fontSize:12,color:"var(--t3)",letterSpacing:"0.04em"
+}},"Wczytywanie\u2026");
 
 
 
@@ -2195,6 +2213,7 @@ export function App(p){
       })
     ),
     // Treść główna
+    ce(React.Suspense,{fallback:LazyScreenFallback},
     appMode==="crm"
       ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,
           gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady,
@@ -2221,7 +2240,8 @@ export function App(p){
         : ce(Fragment,null,
             screen!=="home"?ce(BC,{}):null,
             content
-          ),
+          )
+    ),
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
     showNewQuoteModal?ce(ModalNewQuoteFromClient,{clients:clients,onOk:addClient,onClose:function(){setShowNewQuoteModal(false);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
