@@ -723,6 +723,26 @@ export function App(p){
     };
   },[]);
 
+  // ── TWARDY RESET OKNA PRZY ZMIANIE KLIENTA ────────────────────────
+  // openClient() to NIE jedyna droga zmiany klienta — robia to takze CRM, Poczta,
+  // modal AI i wyceny offline (setCurClientId przekazywany w dol jako prop).
+  // Tamte sciezki omijaly czyszczenie stanu, wiec `curWin` z poprzedniego klienta
+  // zostawal w pamieci. Ten efekt lapie KAZDA zmiane curClientId, niezaleznie od
+  // sciezki: zalegly zapis domyka u wlasciciela, reszte czysci.
+  var prevClientIdRef=React.useRef(curClientId);
+  React.useEffect(function(){
+    if(prevClientIdRef.current===curClientId)return;
+    var prev=prevClientIdRef.current;
+    prevClientIdRef.current=curClientId;
+    var ctx=curWinCtxRef.current;
+    if(winDirtyRef.current&&curWinRef.current&&ctx.c===prev&&ctx.r){
+      persistWin(curWinRef.current,ctx.c,ctx.r);
+    }
+    winDirtyRef.current=false;
+    curWinCtxRef.current={c:null,r:null};
+    setCurWin(null);
+  },[curClientId]);
+
   function saveWin(){
     persistWin(curWin);
     winDirtyRef.current=false;
