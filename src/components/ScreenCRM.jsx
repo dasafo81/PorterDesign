@@ -4,7 +4,7 @@ import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
-import { fillTemplate, RichTextEditor } from './ScreenMail.jsx';
+import { fillTemplate, RichTextEditor } from './MailShared.jsx';
 const ce = React.createElement;
 
 
