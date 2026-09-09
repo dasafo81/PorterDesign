@@ -322,9 +322,35 @@ export function App(p){
       sbApi.getClientMeta(curClientId).then(function(meta){
         if(stopped||!meta||!meta.updated_at)return;
         var local=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
-        if(local&&local.updated_at&&local.updated_at!==meta.updated_at){
-          setStaleClient(true);
+        if(!local||!local.updated_at||local.updated_at===meta.updated_at)return;
+        // ROZJAZD. Do 2026-09-09 zapalalismy tylko ostrzezenie, a karta dalej
+        // trzymala stary stan i przy pierwszym kliknieciu wysylala go jako
+        // CALY `rooms` — cofajac prace zrobiona gdzie indziej (incydent Szostak:
+        // 14 -> 11 produktow, Sypialnia znikala w calosci). Tablet Pauliny jest
+        // na to najbardziej narazony: ikona na pulpicie otwiera KOLEJNA karte,
+        // a system wznawia uspione karty z pamieci, bez przeladowania.
+        // Teraz zamiast ostrzegac — dociagamy swiezy wiersz.
+        if(winDirtyRef.current&&curWinRef.current&&curWinCtxRef.current.c){
+          // Najpierw domykamy wlasna niezapisana prace u jej wlasciciela.
+          // Po tym zapisie updated_at i tak sie zmieni, a kolejny check
+          // (za 30 s / przy powrocie do karty) dociagnie polaczony stan.
+          persistWin(curWinRef.current,curWinCtxRef.current.c,curWinCtxRef.current.r);
+          winDirtyRef.current=false;
+          return;
         }
+        setStaleClient(true);
+        sbApi.getClient(curClientId).then(function(fresh){
+          if(stopped||!fresh)return;
+          setClients(function(cs){
+            return cs.map(function(cl){return cl.id===fresh.id?migrateClients([fresh])[0]:cl;});
+          });
+          // Okno trzymane w pamieci pochodzi ze starego stanu — czyscimy,
+          // zeby autosave nie nadpisal wlasnie dociagnietych danych.
+          setCurWin(null);
+          curWinCtxRef.current={c:null,r:null};
+          winDirtyRef.current=false;
+          setStaleClient(false);
+        }).catch(function(){});
       }).catch(function(){});
     }
     var t=setInterval(check,30000);
