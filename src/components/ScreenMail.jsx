@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml, resolvePDFAssets } from '../constants/data.js';
-import { buildSimplifiedPDFHtml } from '../lib/pdf.js';
+import { buildSimplifiedPDFHtml, htmlToPdfBase64 } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
@@ -341,7 +341,11 @@ function AttachmentsSection(p){
           background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
           ce("span",{style:{fontSize:13}},att.type==="app"?"\uD83D\uDCC4":att.type==="template"?"\uD83D\uDCCE":"\uD83D\uDCCE"),
           ce("span",{style:{color:"var(--t1)",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},att.name),
-          att.size
+          att.pending
+            ?ce("span",{style:{fontSize:10,color:"var(--t3)",fontWeight:600}},"generuj\u0119 PDF\u2026")
+          :att.error
+            ?ce("span",{style:{fontSize:10,color:"#e11d48",fontWeight:600}},"b\u0142\u0105d PDF")
+          :att.size
             ?ce("span",{style:{color:"var(--t3)",fontSize:10}},fmtBytes(att.size))
             :att.type==="template"
               ?ce("span",{style:{fontSize:10,color:"#7c3aed",fontWeight:600}},"z szablonu")
@@ -1988,6 +1992,52 @@ export function ScreenMail(p){
     });
   },[]);
 
+  // Prefill z karty "Podsumowanie" (przycisk "Mail do klienta" w App.jsx):
+  // adresat + szablon "po spotkaniu" + wycena uproszczona jako prawdziwy PDF.
+  // Czekamy na zalogowanie i załadowanie szablonów, potem zużywamy prefill jednorazowo.
+  ue(function(){
+    var pf=window.__pdMailPrefill;
+    if(!pf||!logged||dbTemplates===null)return;
+    window.__pdMailPrefill=null;
+    var cl=clients.find(function(c){return String(c.id)===String(pf.clientId);})||null;
+    var key=String(pf.templateKey||"").toLowerCase();
+    var keySlug=key.replace(/\s+/g,"_");
+    var tpl=activeTemplates.find(function(t){
+      return String(t.label||"").toLowerCase().indexOf(key)!==-1||String(t.id||"").toLowerCase().indexOf(keySlug)!==-1;
+    })||{
+      id:"po_spotkaniu",subject:"Wycena \u2013 {clientName}",suggestAttachments:[],templateFiles:[],
+      body:"Dzie\u0144 dobry,\n\nW nawi\u0105zaniu do naszego spotkania przesy\u0142am w za\u0142\u0105czeniu uproszczon\u0105 wycen\u0119 {honorific} zam\u00f3wienia."
+        +"\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wp\u0142aty zaliczki w wysoko\u015bci 50% warto\u015bci zam\u00f3wienia."
+        +"\n\nW razie pyta\u0144 pozostaj\u0119 do dyspozycji."
+    };
+    var filled=fillTemplate(tpl,cl);
+    var isHtml=/<[a-z][\s\S]*>/i.test(filled.body);
+    setSelClientId(cl?cl.id:null);
+    setToEmail(pf.to||(cl&&cl.email)||"");
+    setSubject(filled.subject||"");
+    setBody(isHtml?filled.body:plainToHtml(filled.body));
+    setQuotedHtml(""); setCcEmail(""); setBccEmail("");
+    // Załączniki szablonu — bez wersji HTML wyceny (dołączamy prawdziwy PDF poniżej)
+    var tplApp=(tpl.suggestAttachments||[]).filter(function(sid){return sid!=="pdf_uproszczona"&&sid!=="pdf_oferta";}).map(function(sid){
+      var opt=APP_PDF_OPTIONS.find(function(o){return o.id===sid;});
+      return opt?{id:opt.id,name:opt.label+".pdf",size:null,type:"app"}:null;
+    }).filter(Boolean);
+    var tplFiles=(tpl.templateFiles||[]).map(function(f){
+      return {id:"tplf_"+f.url,name:f.name,size:f.size||null,type:"template",url:f.url};
+    });
+    var pdfId="pdfdata_uproszczona_"+Date.now();
+    setAttachments([{id:pdfId,name:pf.pdfName||"Wycena.pdf",size:null,type:"pdfdata",pending:true}].concat(tplApp,tplFiles));
+    mailNavigate("compose");
+    htmlToPdfBase64(pf.pdfHtml).then(function(b64){
+      setAttachments(function(prev){return prev.map(function(a){
+        return a.id===pdfId?Object.assign({},a,{pending:false,contentBytes:b64,size:Math.round(b64.length*3/4)}):a;
+      });});
+    }).catch(function(e){
+      console.error("htmlToPdfBase64 error",e);
+      setAttachments(function(prev){return prev.map(function(a){return a.id===pdfId?Object.assign({},a,{pending:false,error:true}):a;});});
+    });
+  },[logged,dbTemplates]);
+
   // Załaduj Kontrahentów — trzecie źródło podpowiedzi w polu "Do:" (obok wycen i historii wysyłek),
   // bo kontrahent często nie ma jeszcze wyceny ani nie dostał żadnego maila.
   ue(function(){
@@ -2308,6 +2358,8 @@ export function ScreenMail(p){
 
   function handleSend(){
     if(!toEmail||!subject||bodyEmpty)return;
+    if(attachments.some(function(a){return a.pending;})){alert("Poczekaj chwil\u0119 \u2014 PDF wyceny jeszcze si\u0119 generuje.");return;}
+    if(attachments.some(function(a){return a.type==="pdfdata"&&a.error;})&&!window.confirm("Nie uda\u0142o si\u0119 wygenerowa\u0107 PDF wyceny. Wys\u0142a\u0107 bez niego?"))return;
     setSending(true);
     setSendError(null);
     var toName=selClient?selClient.name:toEmail;
@@ -2382,6 +2434,11 @@ export function ScreenMail(p){
         return {"@odata.type":"#microsoft.graph.fileAttachment",name:file.name,contentType:file.type||"application/octet-stream",contentBytes:btoa(binary)};
       });
     })));
+    // Gotowe PDF-y wygenerowane w app (type="pdfdata", np. wycena z karty Podsumowanie)
+    var pdfDataAtts=attachments.filter(function(a){return a.type==="pdfdata"&&a.contentBytes;}).map(function(a){
+      return {"@odata.type":"#microsoft.graph.fileAttachment",name:a.name,contentType:"application/pdf",contentBytes:a.contentBytes};
+    });
+    if(pdfDataAtts.length)promises.push(Promise.resolve(pdfDataAtts));
     // Template files (type="template") — pobieramy z Supabase Storage URL
     var templateFiles=attachments.filter(function(a){return a.type==="template"&&a.url;});
     if(templateFiles.length>0){
