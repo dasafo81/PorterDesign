@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml, resolvePDFAssets } from '../constants/data.js';
-import { buildSimplifiedPDFHtml, htmlToPdfBase64 } from '../lib/pdf.js';
+import { buildSimplifiedPDFHtml } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
@@ -1992,42 +1992,6 @@ export function ScreenMail(p){
     });
   },[]);
 
-  // Prefill z karty "Podsumowanie" (przycisk "Mail do klienta" w App.jsx):
-  // adresat + stały szablon "po spotkaniu" + wycena uproszczona jako prawdziwy PDF.
-  // Czekamy na zalogowanie, potem zużywamy prefill jednorazowo.
-  ue(function(){
-    var pf=window.__pdMailPrefill;
-    if(!pf||!logged)return;
-    window.__pdMailPrefill=null;
-    var cl=clients.find(function(c){return String(c.id)===String(pf.clientId);})||null;
-    // Stały szablon "po spotkaniu" (HTML — akapity jak w plainToHtml, pogrubione etykiety)
-    var P=function(t){return "<div>"+t+"</div>";}, GAP="<div><br></div>";
-    var bodyHtml=[
-      P("Dzie\u0144 dobry,"),
-      P("Bardzo dzi\u0119kuj\u0119 za niezwykle mi\u0142e spotkanie. Zgodnie z naszymi ustaleniami, w za\u0142\u0105czniku przesy\u0142am ofert\u0119 oraz dok\u0142adne informacje dotycz\u0105ce aran\u017cacji okiennych."),
-      P("Poni\u017cej przesy\u0142am kluczowe informacje organizacyjne:"),
-      P("<b>Warunki p\u0142atno\u015bci:</b> Rozpocz\u0119cie zam\u00f3wienia nast\u0119puje po wp\u0142acie zaliczki w wysoko\u015bci 50% warto\u015bci zlecenia.")
-        +P("<b>Czas realizacji:</b> Wynosi ok. 4 tygodni od momentu zaksi\u0119gowania wp\u0142aty."),
-      P("Je\u015bli akceptuj\u0105 Pa\u0144stwo przedstawion\u0105 ofert\u0119 i przechodzimy do dzia\u0142ania, bardzo prosz\u0119 o potwierdzenie oraz przes\u0142anie danych do wystawienia faktury na wspomnian\u0105 zaliczk\u0119."),
-      P("W razie jakichkolwiek pyta\u0144 do za\u0142\u0105czonego projektu, pozostaj\u0119 do dyspozycji.")
-    ].join(GAP);
-    setSelClientId(cl?cl.id:null);
-    setToEmail(pf.to||(cl&&cl.email)||"");
-    setSubject("Oferta aran\u017cacji okiennych");
-    setBody(bodyHtml);
-    setQuotedHtml(""); setCcEmail(""); setBccEmail("");
-    var pdfId="pdfdata_uproszczona_"+Date.now();
-    setAttachments([{id:pdfId,name:pf.pdfName||"Wycena.pdf",size:null,type:"pdfdata",pending:true}]);
-    mailNavigate("compose");
-    htmlToPdfBase64(pf.pdfHtml).then(function(b64){
-      setAttachments(function(prev){return prev.map(function(a){
-        return a.id===pdfId?Object.assign({},a,{pending:false,contentBytes:b64,size:Math.round(b64.length*3/4)}):a;
-      });});
-    }).catch(function(e){
-      console.error("htmlToPdfBase64 error",e);
-      setAttachments(function(prev){return prev.map(function(a){return a.id===pdfId?Object.assign({},a,{pending:false,error:true}):a;});});
-    });
-  },[logged]);
 
   // Załaduj Kontrahentów — trzecie źródło podpowiedzi w polu "Do:" (obok wycen i historii wysyłek),
   // bo kontrahent często nie ma jeszcze wyceny ani nie dostał żadnego maila.
