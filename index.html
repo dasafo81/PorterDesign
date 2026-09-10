@@ -155,6 +155,59 @@
     });
   </script>
 
+  <script>
+    // Straznik bialego ekranu: dziala niezaleznie od Reacta, wiec lapie tez
+    // bledy, ktorych ErrorBoundary nie widzi (nieudane pobranie glownego bundla,
+    // blad przy starcie modulu, iOS ubijajacy strone w tle).
+    (function(){
+      function log(msg){
+        try{ localStorage.setItem("pd_last_error", new Date().toISOString()+" | "+String(msg).slice(0,300)); }catch(e){}
+      }
+      window.addEventListener("error",function(e){
+        var t=e&&e.target;
+        if(t&&t.tagName==="SCRIPT") log("Nie zaladowano skryptu: "+(t.src||""));
+        else log((e&&e.message)||"error");
+      },true);
+      window.addEventListener("unhandledrejection",function(e){
+        var r=e&&e.reason; log("Promise: "+((r&&(r.message||r))||"?"));
+      });
+      function isEmpty(){
+        var m=document.getElementById("app-mount");
+        return !m||!m.firstElementChild;
+      }
+      function reloadOnce(){
+        try{
+          var last=+sessionStorage.getItem("pd_chunk_reload")||0;
+          if(Date.now()-last<30000) return false;
+          sessionStorage.setItem("pd_chunk_reload",String(Date.now()));
+        }catch(e){}
+        location.reload(); return true;
+      }
+      function showFallback(){
+        if(document.getElementById("pd-fallback")) return;
+        var last=""; try{ last=localStorage.getItem("pd_last_error")||""; }catch(e){}
+        var d=document.createElement("div");
+        d.id="pd-fallback";
+        d.style.cssText="position:fixed;inset:0;z-index:10000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;font-family:Montserrat,sans-serif;";
+        d.innerHTML='<div style="font-size:15px;font-weight:700;color:#222">Aplikacja nie wystartowa\u0142a</div>'+
+          '<button onclick="location.reload()" style="padding:10px 22px;border-radius:8px;border:none;background:#7c3aed;color:#fff;font-size:13px;font-weight:700">Od\u015bwie\u017c aplikacj\u0119</button>'+
+          '<div style="font-size:10px;color:#999;max-width:420px;word-break:break-word"></div>';
+        d.lastChild.textContent=last;
+        document.body.appendChild(d);
+      }
+      function check(){
+        if(!isEmpty()){ var f=document.getElementById("pd-fallback"); if(f) f.remove(); return; }
+        log("Pusty ekran (app-mount bez tresci)");
+        if(!reloadOnce()) showFallback();
+      }
+      window.addEventListener("load",function(){ setTimeout(check,8000); });
+      document.addEventListener("visibilitychange",function(){
+        if(document.visibilityState==="visible") setTimeout(check,1500);
+      });
+      window.addEventListener("pageshow",function(){ setTimeout(check,1500); });
+    })();
+  </script>
+
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
