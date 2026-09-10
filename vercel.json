@@ -1,7 +1,15 @@
 {
-  "buildCommand": "rm -rf node_modules/.vite && npm run build && cp register.html dist/register.html && cp landing.html dist/landing.html && cp privacy.html dist/privacy.html && cp terms.html dist/terms.html && cp dpa.html dist/dpa.html && cp manifest.json icon-192.png icon-512.png apple-touch-icon.png dist/",
+  "buildCommand": "rm -rf node_modules/.vite && npm run build && cp register.html landing.html privacy.html terms.html dpa.html manifest.json icon-192.png icon-512.png apple-touch-icon.png dist/",
   "outputDirectory": "dist",
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/((?!api/).*)",
+      "has": [{ "type": "host", "value": "porter-design.vercel.app" }],
+      "destination": "https://asystentdekoracji.pl/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
