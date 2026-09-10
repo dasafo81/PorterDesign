@@ -677,6 +677,15 @@ function mergeCatalog(baseGroups, rows) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
       m.gramaturaLabel = m.gramatura != null ? (m.gramatura + " g/m\u00b2") : null;
       m.warn = (g.tracksHeight && m.heightCm == null) ? "brak wysoko\u015bci" : null;
+      // Pozostałe braki danych (poza wysokością) — tylko tkaniny
+      m.missing = [];
+      if (g.id === "tkaniny") {
+        if (m.price == null || m.price === "") m.missing.push("cena");
+        if (m.zakup == null || m.zakup === "") m.missing.push("zakup");
+        if (!m.sklad) m.missing.push("sklad");
+        if (m.gramatura == null) m.missing.push("gramatura");
+        if (!m.meta) m.missing.push("producent");
+      }
       // Kategoria składu (Naturalne / Semi-Natural) + tagi filtrowania — dotyczy tylko tkanin
       m.compositionCategory = g.id === "tkaniny" ? classifyFabricComposition(m.sklad) : null;
       // Zaciemnienie czytamy z nazwy, "wysokość" — z szerokości beli (heightCm).
@@ -842,12 +851,22 @@ function ModalCatalogItem(p) {
 }
 
 // ── Zakładka: Katalog ────────────────────────────────────────────────────────
+// Braki danych tkanin (klucze = wartości w m.missing, patrz mergeCatalog)
+var MISSING_FIELDS = [
+  { k: "sklad",     l: "Brak sk\u0142adu" },
+  { k: "zakup",     l: "Brak ceny zakupu" },
+  { k: "cena",      l: "Brak ceny sprzeda\u017cy" },
+  { k: "gramatura", l: "Brak gramatury" },
+  { k: "producent", l: "Brak producenta" }
+];
+
 function TabCatalog(p) {
   var s0 = useState([]);    var rows = s0[0];    var setRows = s0[1];
   var s0b = useState(true); var loading = s0b[0]; var setLoading = s0b[1];
   var s0c = useState(null); var err = s0c[0];    var setErr = s0c[1];
   var s1 = useState("");    var search = s1[0];  var setSearch = s1[1];
   var s2 = useState(false); var onlyNoH = s2[0]; var setOnlyNoH = s2[1];
+  var s2b = useState(null); var missingFilter = s2b[0]; var setMissingFilter = s2b[1]; // null | klucz z MISSING_FIELDS
   var s3 = useState(null);  var editItem = s3[0]; var setEditItem = s3[1];
   var s4 = useState("all"); var activeCat = s4[0]; var setActiveCat = s4[1];
   var s4b = useState(null); var activeMeta = s4b[0]; var setActiveMeta = s4b[1];
@@ -877,6 +896,9 @@ function TabCatalog(p) {
   var totalItems = groups.reduce(function(a, gr) { return a + gr.items.length; }, 0);
   var fabG = groups.find(function(gr) { return gr.id === "tkaniny"; });
   var noHeightCount = fabG ? fabG.items.filter(function(it) { return it.warn; }).length : 0;
+  var missingCounts = fabG ? MISSING_FIELDS.map(function(f) {
+    return { k: f.k, l: f.l, count: fabG.items.filter(function(it) { return (it.missing || []).indexOf(f.k) >= 0; }).length };
+  }).filter(function(x) { return x.count > 0; }) : [];
 
   var catTabs = [{ id: "all", label: "Wszystkie", icon: "\uD83D\uDCC1" }].concat(
     groups.map(function(gr) { return { id: gr.id, label: gr.label, icon: gr.icon }; })
@@ -903,6 +925,7 @@ function TabCatalog(p) {
     .map(function(gr) {
       var items = gr.items.filter(function(it) {
         if (onlyNoH && !it.warn) return false;
+        if (missingFilter && (it.missing || []).indexOf(missingFilter) < 0) return false;
         if (activeMeta && it.meta !== activeMeta) return false;
         if (activeTag && (it.tags || []).indexOf(activeTag) < 0) return false;
         if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
@@ -970,7 +993,13 @@ function TabCatalog(p) {
         style: Object.assign({}, inp, { flex: 1, minWidth: 180 }) }),
       noHeightCount > 0 && ce("button", { onClick: function() { setOnlyNoH(!onlyNoH); },
         style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (onlyNoH ? "#d97706" : "var(--bd2)"), background: onlyNoH ? "rgba(217,119,6,0.10)" : "var(--bg2)", color: onlyNoH ? "#d97706" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
-        "\u26A0\uFE0F Bez wysoko\u015bci (" + noHeightCount + ")")
+        "\u26A0\uFE0F Bez wysoko\u015bci (" + noHeightCount + ")"),
+      missingCounts.map(function(x) {
+        var act = missingFilter === x.k;
+        return ce("button", { key: x.k, onClick: function() { setMissingFilter(act ? null : x.k); },
+          style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (act ? "#d97706" : "var(--bd2)"), background: act ? "rgba(217,119,6,0.10)" : "var(--bg2)", color: act ? "#d97706" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
+          "\u26A0\uFE0F " + x.l + " (" + x.count + ")");
+      })
     ),
 
     err && ce("div", { style: { background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 10, padding: 12, fontSize: 13, color: "#b91c1c", marginBottom: 14 } }, err),
