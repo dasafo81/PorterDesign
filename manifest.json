@@ -2,11 +2,14 @@
   "name": "Porter Design Assistant",
   "short_name": "Porter Design",
   "description": "Asystent wycen dekoracji okiennych",
+  "id": "/",
+  "scope": "/",
   "start_url": "/",
   "display": "standalone",
+  "launch_handler": { "client_mode": "focus-existing" },
   "background_color": "#ffffff",
   "theme_color": "#1a1a2e",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon-192.png",
