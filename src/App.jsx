@@ -1722,7 +1722,20 @@ export function App(p){
       return sum;
     }
     var hasAnyVariants=(curClient.rooms||[]).some(function(r){return(r.windows||[]).some(function(w){return!!w.variantGroup;});});
-    var sumBaseTotal=roundTo10(withComm(clientTotalWithVariants(curClient))+installValue(withComm(clientTotalWithVariants(curClient))));
+    // Rozbicie kwoty na pasku: produkty / polecenie / montaz. Kazdy skladnik
+    // zaokraglony do 10 zl, polecenie liczone jako roznica — skladniki sumuja
+    // sie dokladnie do "Razem" (ta sama wartosc co wczesniej).
+    var sumProductsRaw=clientTotalWithVariants(curClient);
+    var sumProductsVal=roundTo10(sumProductsRaw);
+    var sumWithCommVal=withComm(sumProductsRaw);
+    var sumCommVal=sumWithCommVal-sumProductsVal;
+    var sumMontazVal=installValue(sumWithCommVal);
+    var sumBaseTotal=roundTo10(sumWithCommVal+sumMontazVal);
+    var sumBarRow=function(label,val,minus){
+      return ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--bg)",opacity:0.75}},
+        ce("span",null,label),
+        ce("span",null,(minus?"\u2212":"")+val+" z\u0142"));
+    };
     var sumDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(sumBaseTotal*(+discountInput)/100)):0;
     var sumFinalTotal=Math.max(0,roundTo10(sumBaseTotal-sumDiscountVal));
 
@@ -1750,14 +1763,15 @@ export function App(p){
         discountEnabled?ce("input",{type:"text",inputMode:"decimal",value:discountInput,onChange:function(ev){setDiscountInput(ev.target.value);},placeholder:discountMode==="amount"?"np. 300":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
         discountEnabled&&discountInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+discountInput+(discountMode==="amount"?" zł":"%")):null
       ),
-      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,marginTop:0}},
-        ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},
-          (hasAnyVariants
-            ?(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie od (Wariant A) + "+commissionInput+"% polecenie":"\u0141\u0105cznie od (Wariant A)")
-            :(commissionInput&&(+commissionInput)>0?"\u0141\u0105cznie + "+commissionInput+"% polecenie":"\u0141\u0105cznie ca\u0142a wizyta"))
-          +(sumDiscountVal>0?" \u2212 rabat":"")
-        ),
-        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},sumFinalTotal+" z\u0142")
+      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16,marginTop:0}},
+        sumBarRow(hasAnyVariants?"\u0141\u0105cznie (Wariant A)":"\u0141\u0105cznie",sumProductsVal),
+        sumBarRow("Polecenie"+((+commissionInput)>0?" ("+commissionInput+"%)":""),sumCommVal),
+        sumBarRow("Monta\u017c"+(montazInput?" ("+(montazMode==="amount"?"kwota":montazInput+"%")+")":""),sumMontazVal),
+        sumDiscountVal>0?sumBarRow("Rabat",sumDiscountVal,true):null,
+        ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid rgba(255,255,255,0.18)",paddingTop:8,marginTop:2}},
+          ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},hasAnyVariants?"Razem od (Wariant A)":"Razem"),
+          ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},sumFinalTotal+" z\u0142")
+        )
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
