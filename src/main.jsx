@@ -63,6 +63,7 @@ class AppErrorBoundary extends React.Component {
   componentDidCatch(err,info){
     if(isChunkError(err)&&reloadOnce()) return;
     try{ if(SENTRY_DSN) Sentry.captureException(err,{extra:{componentStack:info&&info.componentStack}}); }catch(e){}
+    try{ localStorage.setItem("pd_last_error", new Date().toISOString()+" | React: "+String((err&&err.message)||err).slice(0,300)); }catch(e){}
     console.error("[AppErrorBoundary]",err);
   }
   render(){
@@ -71,6 +72,7 @@ class AppErrorBoundary extends React.Component {
     return ce("div",{style:{minHeight:"60vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:24,textAlign:"center",fontFamily:"Montserrat, sans-serif"}},
       ce("div",{style:{fontSize:15,fontWeight:700}},"Co\u015b posz\u0142o nie tak"),
       ce("div",{style:{fontSize:12,color:"#888",maxWidth:360}},"Dane zapisane w bazie s\u0105 bezpieczne. Od\u015bwie\u017c aplikacj\u0119, aby kontynuowa\u0107."),
+      ce("div",{style:{fontSize:10,color:"#999",maxWidth:420,wordBreak:"break-word"}},String((this.state.err&&this.state.err.message)||this.state.err)),
       ce("button",{onClick:function(){window.location.reload();},style:{padding:"10px 22px",borderRadius:8,border:"none",background:"#7c3aed",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}},"Od\u015bwie\u017c aplikacj\u0119")
     );
   }
@@ -125,13 +127,11 @@ function Root() {
     });
   }
 
-  return React.createElement(AppErrorBoundary, null,
-    React.createElement(App, {
-      onLogout: function() { setLoggedIn(false); }
-    })
-  );
+  return React.createElement(App, {
+    onLogout: function() { setLoggedIn(false); }
+  });
 }
 
 ReactDOM.createRoot(document.getElementById('app-mount')).render(
-  React.createElement(Root)
+  React.createElement(AppErrorBoundary, null, React.createElement(Root))
 );
