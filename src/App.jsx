@@ -1115,8 +1115,11 @@ export function App(p){
             sbApi.getDeletedClients().then(function(rows){setTrashList(rows||[]);}).catch(function(){setTrashList([]);});
           },
           title:"Kosz \u2014 usuni\u0119ci klienci",
-          style:{padding:"11px 14px",borderRadius:14,fontSize:15,cursor:"pointer",whiteSpace:"nowrap",border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)"}
-        },"\uD83D\uDDD1")
+          style:{padding:"11px 16px",borderRadius:14,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:7,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)"}
+        },
+          ce("span",{style:{fontSize:15,lineHeight:1}},"\uD83D\uDDD1"),
+          ce("span",null,"Kosz")
+        )
       ),
 
       trashOpen?ce(ModalTrash,{
@@ -2405,11 +2408,13 @@ function ModalTrash(p){
   }
   return ce("div",{
     onClick:p.onClose,
-    style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",backdropFilter:"blur(3px)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}
+    style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.40)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}
   },
     ce("div",{
       onClick:function(e){e.stopPropagation();},
-      style:{background:"var(--bg1)",border:"1.5px solid var(--bd2)",borderRadius:18,padding:22,width:"100%",maxWidth:560,maxHeight:"80vh",overflowY:"auto",boxSizing:"border-box"}
+      // var(--bg) — ten sam token co pozostale modale. Bylo tu var(--bg1),
+      // ktore w projekcie nie istnieje: niezdefiniowana zmienna = brak tla.
+      style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:16,padding:24,width:"100%",maxWidth:560,maxHeight:"80vh",overflowY:"auto",boxSizing:"border-box",boxShadow:"0 12px 40px rgba(0,0,0,0.30)"}
     },
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
         ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--t1)"}},"\uD83D\uDDD1  Kosz"),
