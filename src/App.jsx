@@ -10,8 +10,9 @@ import {
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
-  buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows
+  buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
 } from './lib/pdf.js';
+import { RichTextEditor } from './components/MailShared.jsx';
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
@@ -151,6 +152,7 @@ export function App(p){
   var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
   var s14b=useState(false),showEmailModal=s14b[0],setShowEmailModal=s14b[1];
+  var s14c=useState(null),emailPdf=s14c[0],setEmailPdf=s14c[1]; // {html,name} wyceny do maila z Podsumowania
   var s14m=useState(""),montazInput=s14m[0],setMontazInput=s14m[1];
   var s14mm=useState("percent"),montazMode=s14mm[0],setMontazMode=s14mm[1];
   var sDiscEn=useState(false),discountEnabled=sDiscEn[0],setDiscountEnabled=sDiscEn[1];
@@ -1613,9 +1615,8 @@ export function App(p){
       setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(groups,initSel),comm));
       setScreen("simplifiedPreview");
     }
-    // Mail do klienta: przejście do modułu Mail z gotowym szablonem "po spotkaniu"
-    // i wyceną uproszczoną (domyślne warianty, jak w podglądzie) jako prawdziwym PDF.
-    // Przekazanie przez window.__pdMailPrefill — ScreenMail odbiera je po zamontowaniu.
+    // Mail do klienta: pop-up z wysyłką maila "po spotkaniu" + wycena uproszczona
+    // (domyślne warianty, jak w podglądzie) jako prawdziwy PDF.
     function startClientMail(){
       var groups=buildSimplifiedGroups(curClient);
       if(!groups.length){alert("Brak pomieszcze\u0144 z produktami.");return;}
@@ -1623,14 +1624,8 @@ export function App(p){
       var montazP=montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100};
       var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"");
       if(!html){alert("Brak pozycji do wyceny.");return;}
-      window.__pdMailPrefill={
-        clientId:curClient.id,
-        to:curClient.email||"",
-        templateKey:"po spotkaniu",
-        pdfHtml:html,
-        pdfName:"Wycena - "+(curClient.name||"klient")+".pdf"
-      };
-      setAppMode("mail");
+      setEmailPdf({html:html,name:"Oferta - "+(curClient.name||"klient")+".pdf"});
+      setShowEmailModal(true);
     }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
@@ -2330,7 +2325,7 @@ export function App(p){
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showEmailModal?ce(ModalClientEmail,{client:curClient,onClose:function(){setShowEmailModal(false);}}):null,
+    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
@@ -2641,63 +2636,130 @@ function ModalOfflineQuotes(p){
 }
 
 export function ModalClientEmail(p){
-  var useState=React.useState,useRef=React.useRef;
+  // Wysyłka maila "po spotkaniu" prosto z karty Podsumowanie (Microsoft Graph),
+  // z wyceną uproszczoną jako prawdziwym PDF-em. Treść/temat/adresat edytowalne.
+  var useState=React.useState,useEffect=React.useEffect;
   var client=p.client||{};
-  var sr1=useState(false),copied=sr1[0],setCopied=sr1[1];
-  var sr2=useState("rozmowy"),kontekst=sr2[0],setKontekst=sr2[1];
-  var emailRef=useRef(null);
+  function P(t){return "<div>"+t+"</div>";}
+  var DEFAULT_BODY=[
+    P("Dzie\u0144 dobry,"),
+    P("Bardzo dzi\u0119kuj\u0119 za niezwykle mi\u0142e spotkanie. Zgodnie z naszymi ustaleniami, w za\u0142\u0105czniku przesy\u0142am ofert\u0119 oraz dok\u0142adne informacje dotycz\u0105ce aran\u017cacji okiennych."),
+    P("Poni\u017cej przesy\u0142am kluczowe informacje organizacyjne:"),
+    P("<b>Warunki p\u0142atno\u015bci:</b> Rozpocz\u0119cie zam\u00f3wienia nast\u0119puje po wp\u0142acie zaliczki w wysoko\u015bci 50% warto\u015bci zlecenia.")
+      +P("<b>Czas realizacji:</b> Wynosi ok. 4 tygodni od momentu zaksi\u0119gowania wp\u0142aty."),
+    P("Je\u015bli akceptuj\u0105 Pa\u0144stwo przedstawion\u0105 ofert\u0119 i przechodzimy do dzia\u0142ania, bardzo prosz\u0119 o potwierdzenie oraz przes\u0142anie danych do wystawienia faktury na wspomnian\u0105 zaliczk\u0119."),
+    P("W razie jakichkolwiek pyta\u0144 do za\u0142\u0105czonego projektu, pozostaj\u0119 do dyspozycji.")
+  ].join("<div><br></div>");
+  var s1=useState(client.email||""),toEmail=s1[0],setToEmail=s1[1];
+  var s2=useState("Oferta aran\u017cacji okiennych"),subject=s2[0],setSubject=s2[1];
+  var s3=useState(DEFAULT_BODY),body=s3[0],setBody=s3[1];
+  var s4=useState(null),pdfB64=s4[0],setPdfB64=s4[1];
+  var s5=useState(null),pdfErr=s5[0],setPdfErr=s5[1];
+  var s6=useState(false),sending=s6[0],setSending=s6[1];
+  var s7=useState(false),sent=s7[0],setSent=s7[1];
+  var s8=useState(null),sendErr=s8[0],setSendErr=s8[1];
+  var s9=useState(null),settings=s9[0],setSettings=s9[1];
+  var pdfName=p.pdfName||"Oferta.pdf";
 
-  var total=roundTo10((client.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c,prod){var pfc=(prod.type==="zaslona"||prod.type==="firana")?mg(prod,{panels:getPanelsForProd(prod)}):prod;return c+(prod.mp!=null?prod.mp:(calc(pfc).total||0));},0);},0);},0));
-  var zaliczka=roundTo10(total*0.5);
+  // PDF wyceny + podpis z Ustawień poczty (ten sam co w module Mail); msal.js ładowany leniwie
+  useEffect(function(){
+    if(!p.pdfHtml){setPdfErr("Brak pozycji do wyceny.");return;}
+    htmlToPdfBase64(p.pdfHtml).then(setPdfB64).catch(function(e){console.error("htmlToPdfBase64",e);setPdfErr("Nie uda\u0142o si\u0119 wygenerowa\u0107 PDF.");});
+    import('./msal.js').then(function(m){return m.msalGetActiveAccount();}).then(function(acc){
+      var em=acc&&(acc.username||acc.email);
+      return em?sbApi.getUserSettings(em):null;
+    }).then(function(row){setSettings(row||{});}).catch(function(){setSettings({});});
+  },[]);
 
-  var konteksty=["rozmowy","spotkania","wysłanych wymiarów"];
-
-  function buildMail(){
-    var k=kontekst;
-    var mail="Dzień dobry,\n\n"
-      +"W nawiązaniu do "+k+", przesyłam w załączeniu PDF z uproszczoną, przybliżoną wyceną "+(client.gender==="male"?"Pana":"Pani")+" zamówienia."
-      +(total>0?"\n\nOrientacyjna wartość realizacji: "+total+" zł brutto\n(zaliczka 50% = "+zaliczka+" zł)":"")
-      +"\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wpłaty zaliczki w wysokości 50% wartości zamówienia."
-      +"\n\nChętnie przyjadę z wzornikami tkanin, aby dobrać kolor i fakturę do wnętrza."
-      +"\n\nKoszt pomiaru z dojazdem wynosi 250 zł brutto i jest w całości odliczany od wartości zamówienia, jeśli przekracza ono 6 000 zł brutto."
-      +"\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design\nTel.: "+SELLER.tel+"\nE-mail: "+SELLER.email;
-    return mail;
+  function previewPdf(){
+    if(!pdfB64)return;
+    var bin=atob(pdfB64),arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    var url=URL.createObjectURL(new Blob([arr],{type:"application/pdf"}));
+    window.open(url,"_blank");
+    setTimeout(function(){URL.revokeObjectURL(url);},60000);
   }
 
-  var mailText=buildMail();
-
-  function copyMail(){
-    var el=emailRef.current;
-    if(!el)return;
-    if(navigator.clipboard&&navigator.clipboard.writeText){
-      navigator.clipboard.writeText(mailText).then(function(){setCopied(true);setTimeout(function(){setCopied(false);},2500);});
-    } else {
-      el.select();document.execCommand("copy");setCopied(true);setTimeout(function(){setCopied(false);},2500);
-    }
+  function imgToB64(url){
+    return fetch(url).then(function(r){
+      if(!r.ok)throw new Error("podpis");
+      var ct=r.headers.get("content-type")||"image/png";
+      return r.blob().then(function(b){return new Promise(function(res,rej){
+        var fr=new FileReader();fr.onloadend=function(){res({b64:String(fr.result).split(",")[1]||"",ct:ct});};fr.onerror=rej;fr.readAsDataURL(b);
+      });});
+    });
   }
+
+  function send(){
+    var to=toEmail.trim();
+    if(!to||!subject.trim()||!pdfB64||sending)return;
+    setSending(true);setSendErr(null);
+    var st=settings||{};
+    var sigHtml=st.signature_html||"",sigImg=st.signature_image_url||"";
+    var font="font-family:Montserrat,Arial,Helvetica,sans-serif;";
+    var imgP=sigImg?imgToB64(sigImg).catch(function(){return null;}):Promise.resolve(null);
+    Promise.all([import('./msal.js').then(function(m){return m.msalGetToken();}),imgP]).then(function(r){
+      var tok=r[0],img=r[1];
+      if(!tok)throw new Error("MS_NO_TOKEN");
+      var sig="";
+      if(sigHtml||img){
+        sig="<br><br><div style=\""+font+"font-size:13px;color:#444;\">"+sigHtml
+          +(img?(sigHtml?"<br>":"")+"<img src=\"cid:signature-image\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">":"")+"</div>";
+      }
+      var html="<div style=\""+font+"font-size:14px;color:#222;\">"+body+"</div>"+sig;
+      var atts=[{"@odata.type":"#microsoft.graph.fileAttachment",name:pdfName,contentType:"application/pdf",contentBytes:pdfB64}];
+      if(img)atts.push({"@odata.type":"#microsoft.graph.fileAttachment",name:"signature.png",contentType:img.ct,contentBytes:img.b64,isInline:true,contentId:"signature-image"});
+      var recips=to.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean).map(function(a){return {emailAddress:{address:a}};});
+      if(recips.length===1&&client.name)recips[0].emailAddress.name=client.name;
+      return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+        method:"POST",headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
+        body:JSON.stringify({message:{subject:subject,body:{contentType:"HTML",content:html},toRecipients:recips,attachments:atts},saveToSentItems:true})
+      }).then(function(res){
+        if(!res.ok)return res.json().catch(function(){return {};}).then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+res.status+")");});
+        sbApi.upsertMailRecipient(to,client.name||"").catch(function(){});
+        setSending(false);setSent(true);
+        setTimeout(function(){p.onClose();},1600);
+      });
+    }).catch(function(e){
+      setSending(false);
+      var m=(e&&e.message)||"";
+      setSendErr(m==="MS_NO_TOKEN"||m.indexOf("MS_INTERACTION_REQUIRED")!==-1||m.indexOf("Brak zalogowanego")!==-1||(e&&e.code)
+        ?"Brak po\u0142\u0105czenia z poczt\u0105 Microsoft \u2014 zaloguj si\u0119 w module Mail i spr\u00f3buj ponownie."
+        :m||"Nieznany b\u0142\u0105d");
+    });
+  }
+
+  var canSend=!!toEmail.trim()&&!!subject.trim()&&!!pdfB64&&!sending&&!sent;
+  var lbl={fontSize:11,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:6};
+  var inp={width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"var(--bg)",color:"var(--t1)",fontSize:14,boxSizing:"border-box",outline:"none"};
 
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}},
-    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"24px",width:"100%",maxWidth:480,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 8px 40px rgba(0,0,0,0.22)"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"24px",width:"100%",maxWidth:640,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 8px 40px rgba(0,0,0,0.22)"}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}},
         ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",lineHeight:1,padding:"0 4px"}},"\u00d7")
       ),
-      ce("div",{style:{marginBottom:14}},
-        ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:8}},"Nawiązanie do:"),
-        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-          konteksty.map(function(k){
-            return ce("button",{key:k,onClick:function(){setKontekst(k);},style:{padding:"8px 14px",borderRadius:8,border:"1.5px solid "+(kontekst===k?"var(--gr)":"var(--bd2)"),background:kontekst===k?"var(--grl)":"transparent",color:kontekst===k?"var(--grd)":"var(--t2)",fontSize:12,fontWeight:kontekst===k?700:400,cursor:"pointer"}},k);
-          })
-        )
-      ),
-      ce("textarea",{ref:emailRef,value:mailText,readOnly:true,style:{width:"100%",height:280,padding:"14px",borderRadius:12,border:"1px solid var(--bd2)",background:"var(--bg2)",color:"var(--t1)",fontSize:12,lineHeight:1.7,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box",outline:"none"}}),
-      ce("div",{style:{display:"flex",gap:10,marginTop:14}},
-        ce("button",{onClick:copyMail,style:{flex:1,padding:"14px",borderRadius:12,border:"none",background:copied?"var(--grd)":"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer"}},copied?"\u2713 Skopiowano!":"\uD83D\uDCCB Kopiuj do schowka"),
-        ce("button",{onClick:p.onClose,style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:14,cursor:"pointer"}},"Zamknij")
-      ),
-      total>0?ce("div",{style:{marginTop:12,padding:"10px 14px",background:"var(--grl)",borderRadius:10,fontSize:11,color:"var(--grd)",textAlign:"center"}},
-        "Wycena: "+total+" zł  |  Zaliczka 50%: "+zaliczka+" zł"
-      ):null
+      ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Do"),
+        ce("input",{type:"email",value:toEmail,onChange:function(ev){setToEmail(ev.target.value);},placeholder:"adres e-mail klienta",style:inp})),
+      ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Temat"),
+        ce("input",{type:"text",value:subject,onChange:function(ev){setSubject(ev.target.value);},style:inp})),
+      ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Tre\u015b\u0107"),
+        ce(RichTextEditor,{value:body,onChange:setBody,minHeight:220,bg:"var(--bg)"}),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:4}},"Podpis z Ustawie\u0144 poczty zostanie dodany automatycznie.")),
+      ce("div",{style:{marginBottom:14}},ce("div",{style:lbl},"Za\u0142\u0105cznik"),
+        ce("div",{style:{display:"inline-flex",alignItems:"center",gap:8,padding:"6px 12px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
+          ce("span",null,"\uD83D\uDCC4"),
+          ce("span",{style:{color:"var(--t1)"}},pdfName),
+          pdfErr?ce("span",{style:{color:"#e11d48",fontWeight:600}},pdfErr)
+            :!pdfB64?ce("span",{style:{color:"var(--t3)",fontWeight:600}},"generuj\u0119 PDF\u2026")
+            :ce("button",{onClick:previewPdf,style:{border:"none",background:"none",color:"var(--gr)",fontWeight:600,cursor:"pointer",fontSize:12,padding:0}},"podgl\u0105d")
+        )),
+      sendErr?ce("div",{style:{marginBottom:12,padding:"10px 14px",background:"#fde8ec",color:"#b4123a",borderRadius:10,fontSize:12}},sendErr):null,
+      ce("div",{style:{display:"flex",gap:10}},
+        ce("button",{onClick:send,disabled:!canSend,style:{flex:1,padding:"14px",borderRadius:12,border:"none",background:sent?"#059669":"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:canSend?"pointer":"default",opacity:(canSend||sent)?1:0.6}},
+          sent?"\u2713 Wys\u0142ano":sending?"\u2026 Wysy\u0142anie":"\uD83D\uDCEC Wy\u015blij"),
+        ce("button",{onClick:p.onClose,style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:14,cursor:"pointer"}},"Anuluj")
+      )
     )
   );
 }
