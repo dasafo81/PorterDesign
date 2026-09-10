@@ -10,7 +10,7 @@ import {
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
-  buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows
+  buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows
 } from './lib/pdf.js';
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
@@ -1613,6 +1613,25 @@ export function App(p){
       setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(groups,initSel),comm));
       setScreen("simplifiedPreview");
     }
+    // Mail do klienta: przejście do modułu Mail z gotowym szablonem "po spotkaniu"
+    // i wyceną uproszczoną (domyślne warianty, jak w podglądzie) jako prawdziwym PDF.
+    // Przekazanie przez window.__pdMailPrefill — ScreenMail odbiera je po zamontowaniu.
+    function startClientMail(){
+      var groups=buildSimplifiedGroups(curClient);
+      if(!groups.length){alert("Brak pomieszcze\u0144 z produktami.");return;}
+      var rows=buildSimplifiedRows(curClient,computeSimplSelection(groups,makeSimplInitSel(groups)),comm);
+      var montazP=montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100};
+      var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"");
+      if(!html){alert("Brak pozycji do wyceny.");return;}
+      window.__pdMailPrefill={
+        clientId:curClient.id,
+        to:curClient.email||"",
+        templateKey:"po spotkaniu",
+        pdfHtml:html,
+        pdfName:"Wycena - "+(curClient.name||"klient")+".pdf"
+      };
+      setAppMode("mail");
+    }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
     // ── variant-aware room rendering ──
@@ -1749,7 +1768,7 @@ export function App(p){
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
         ce("button",{onClick:function(){openOfferPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena szczegółowa"),
         ce("button",{onClick:function(){openSimplifiedPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
-        ce("button",{onClick:function(){setShowEmailModal(true);},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
+        ce("button",{onClick:function(){startClientMail();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:function(){openFabricPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
         ce("button",{onClick:function(){openKarniszPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
         ce("button",{onClick:function(){openRailsPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#6b5b8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD29 Szyny do monta\u017cu"),
