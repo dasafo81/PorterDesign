@@ -4,9 +4,9 @@
   "framework": "vite",
   "redirects": [
     {
-      "source": "/:path((?!api/).*)",
+      "source": "/((?!api/).*)",
       "has": [{ "type": "host", "value": "porter-design.vercel.app" }],
-      "destination": "https://asystentdekoracji.pl/:path",
+      "destination": "https://asystentdekoracji.pl/$1",
       "permanent": true
     }
   ],
