@@ -6,7 +6,7 @@ import {
   BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES,
   SELLER, buildFabricRows, buildSewingRows, calc,
   getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
-  openPDFWindow, pdfStyles, roundTo10
+  openPDFWindow, pdfStyles, resolvePDFAssets, roundTo10
 } from '../constants/data.js';
 
 // Lista dostawców tkanin dla klienta — do wygenerowania osobnego PDF na każdego.
@@ -515,6 +515,83 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
   return buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix);
 }
 
+
+// ── HTML → PRAWDZIWY PDF (base64) — do wysyłki jako załącznik maila ─────────
+// Renderuje HTML w niewidocznym iframe o szerokości A4 (794px), żeby style PDF
+// (body{padding}, *{margin:0}) nie wyciekały do aplikacji, a obrazki base64 były
+// w obrębie "viewportu" iframe. Strony tniemy między wierszami tabel/blokami,
+// nie w połowie tekstu. Biblioteki ładowane dynamicznie (osobny chunk).
+export function htmlToPdfBase64(html){
+  var A4W=794, A4H=1123, PAD_TOP=40; // px przy 96 dpi; PAD_TOP = górny margines stron 2+
+  return Promise.all([import('html2canvas'),import('jspdf'),resolvePDFAssets(html)]).then(function(res){
+    var html2canvas=res[0].default, JsPDF=res[1].jsPDF, full=res[2];
+    var ifr=document.createElement("iframe");
+    ifr.setAttribute("aria-hidden","true");
+    ifr.style.cssText="position:fixed;left:0;top:0;width:"+A4W+"px;height:"+A4H+"px;border:0;opacity:0;pointer-events:none;z-index:-1;";
+    document.body.appendChild(ifr);
+    function cleanup(){if(ifr.parentNode)ifr.parentNode.removeChild(ifr);}
+    return new Promise(function(resolve){
+      var done=false;function fin(){if(!done){done=true;resolve();}}
+      ifr.onload=fin;
+      // Te same marginesy co w wydruku (openPDFWindow)
+      full=full.replace("</head>","<style>body{padding:14mm 12mm !important;margin:0;}</style></head>");
+      var d=ifr.contentDocument;d.open();d.write(full);d.close();
+      setTimeout(fin,4000);
+    }).then(function(){
+      var d=ifr.contentDocument;
+      var imgs=Array.prototype.slice.call(d.images).map(function(im){
+        return im.complete?Promise.resolve():new Promise(function(r){im.onload=im.onerror=r;});
+      });
+      var fonts=d.fonts&&d.fonts.ready?Promise.race([d.fonts.ready,new Promise(function(r){setTimeout(r,3000);})]):Promise.resolve();
+      return Promise.all(imgs.concat([fonts]));
+    }).then(function(){
+      var d=ifr.contentDocument, body=d.body;
+      body.style.width=A4W+"px";
+      // Wysokość = dół ostatniego elementu (bez dolnego paddingu body) — bez pustej ostatniej strony
+      var lastBottom=0;
+      Array.prototype.slice.call(body.children).forEach(function(el){lastBottom=Math.max(lastBottom,el.getBoundingClientRect().bottom);});
+      var totalH=Math.ceil(Math.min(body.scrollHeight,(lastBottom||body.scrollHeight)+16));
+      // Bezpieczne miejsca cięcia: dół każdego wiersza tabeli i bloku sekcji
+      var cuts=Array.prototype.slice.call(body.querySelectorAll("tr,table,.header,.sign-block,.footer,body>div"))
+        .map(function(el){return Math.round(el.getBoundingClientRect().bottom);})
+        .sort(function(a,b){return a-b;});
+      // Podsumowanie (montaż, suma, podpisy, stopka) trzymamy razem — nie tniemy za ostatnią tabelą
+      var tables=body.querySelectorAll("table");
+      if(tables.length){
+        var blk=tables[tables.length-1];
+        while(blk.parentNode&&blk.parentNode!==body)blk=blk.parentNode;
+        var tailStart=Math.round(blk.getBoundingClientRect().bottom);
+        cuts=cuts.filter(function(c){return c<=tailStart;});
+      }
+      return html2canvas(body,{scale:2,useCORS:true,logging:false,backgroundColor:"#ffffff",width:A4W,windowWidth:A4W,height:totalH,windowHeight:totalH})
+        .then(function(canvas){
+          var pdf=new JsPDF({unit:"px",format:[A4W,A4H],orientation:"portrait",hotfixes:["px_scaling"],compress:true});
+          var k=canvas.width/A4W, y=0, page=0;
+          while(y<totalH-2){
+            var top=page===0?0:PAD_TOP, room=A4H-top-30, end=y+room;
+            // Krótka końcówka (np. sama stopka) — zmieść na bieżącej stronie kosztem dolnego marginesu
+            if(end<totalH&&totalH-y<=A4H-top-6)end=totalH;
+            if(end<totalH){
+              var best=null;
+              cuts.forEach(function(c){if(c>y+room*0.4&&c<=end)best=c;});
+              if(best)end=best;
+            } else end=totalH;
+            var sliceH=end-y;
+            var pc=document.createElement("canvas");
+            pc.width=canvas.width;pc.height=Math.ceil(sliceH*k);
+            var ctx=pc.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,pc.width,pc.height);
+            ctx.drawImage(canvas,0,Math.floor(y*k),canvas.width,Math.ceil(sliceH*k),0,0,pc.width,pc.height);
+            if(page>0)pdf.addPage([A4W,A4H],"portrait");
+            pdf.addImage(pc.toDataURL("image/jpeg",0.92),"JPEG",0,top,A4W,sliceH);
+            y=end;page++;
+            if(page>20)break;
+          }
+          cleanup();
+          return String(pdf.output("datauristring")).split(",")[1]||"";
+        });
+    }).catch(function(e){cleanup();throw e;});
+  });
+}
 
 // ── GENEROWANIE MAILA DO KLIENTA ──────────────────────────────────────────
 export function generateClientEmail(client){
