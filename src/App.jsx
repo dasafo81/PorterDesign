@@ -2660,16 +2660,43 @@ export function ModalClientEmail(p){
   var s8=useState(null),sendErr=s8[0],setSendErr=s8[1];
   var s9=useState(null),settings=s9[0],setSettings=s9[1];
   var pdfName=p.pdfName||"Oferta.pdf";
+  var sigRef=React.useRef(null);
 
   // PDF wyceny + podpis z Ustawień poczty (ten sam co w module Mail); msal.js ładowany leniwie
   useEffect(function(){
     if(!p.pdfHtml){setPdfErr("Brak pozycji do wyceny.");return;}
     htmlToPdfBase64(p.pdfHtml).then(setPdfB64).catch(function(e){console.error("htmlToPdfBase64",e);setPdfErr("Nie uda\u0142o si\u0119 wygenerowa\u0107 PDF.");});
-    import('./msal.js').then(function(m){return m.msalGetActiveAccount();}).then(function(acc){
-      var em=acc&&(acc.username||acc.email);
-      return em?sbApi.getUserSettings(em):null;
-    }).then(function(row){setSettings(row||{});}).catch(function(){setSettings({});});
+    sigRef.current=loadSignature();
+    sigRef.current.then(function(row){setSettings(row||{});});
   },[]);
+
+  // Podpis: user_settings z Supabase (ten sam co w module Mail → Ustawienia).
+  // Adres konta bywa niedostępny/zastępczy w obiekcie brokera ("Połączone konto Microsoft"),
+  // więc sprawdzamy kolejno: konto brokera/MSAL + /me z Graph (mail, UPN).
+  function loadSignature(){
+    return import('./msal.js').then(function(m){
+      return Promise.all([
+        m.msalGetActiveAccount().catch(function(){return null;}),
+        m.msalGetToken().then(function(tok){
+          return tok?fetch("https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName",{headers:{"Authorization":"Bearer "+tok}})
+            .then(function(r){return r.ok?r.json():null;}):null;
+        }).catch(function(){return null;})
+      ]);
+    }).then(function(r){
+      var acc=r[0]||{},me=r[1]||{},seen={},list=[];
+      [acc.email,acc.username,me.mail,me.userPrincipalName].forEach(function(e){
+        e=String(e||"").trim();
+        [e,e.toLowerCase()].forEach(function(x){if(x.indexOf("@")>0&&!seen[x]){seen[x]=1;list.push(x);}});
+      });
+      function next(i){
+        if(i>=list.length)return null;
+        return sbApi.getUserSettings(list[i]).then(function(row){
+          return row&&(row.signature_html||row.signature_image_url)?row:next(i+1);
+        }).catch(function(){return next(i+1);});
+      }
+      return next(0);
+    }).catch(function(e){console.error("loadSignature",e);return null;});
+  }
 
   function previewPdf(){
     if(!pdfB64)return;
@@ -2694,10 +2721,12 @@ export function ModalClientEmail(p){
     var to=toEmail.trim();
     if(!to||!subject.trim()||!pdfB64||sending)return;
     setSending(true);setSendErr(null);
-    var st=settings||{};
-    var sigHtml=st.signature_html||"",sigImg=st.signature_image_url||"";
     var font="font-family:Montserrat,Arial,Helvetica,sans-serif;";
-    var imgP=sigImg?imgToB64(sigImg).catch(function(){return null;}):Promise.resolve(null);
+    var sigHtml="",sigImg="";
+    var imgP=(settings?Promise.resolve(settings):(sigRef.current||Promise.resolve(null))).then(function(st){
+      st=st||{};sigHtml=st.signature_html||"";sigImg=st.signature_image_url||"";
+      return sigImg?imgToB64(sigImg).catch(function(){return null;}):null;
+    });
     Promise.all([import('./msal.js').then(function(m){return m.msalGetToken();}),imgP]).then(function(r){
       var tok=r[0],img=r[1];
       if(!tok)throw new Error("MS_NO_TOKEN");
@@ -2745,7 +2774,13 @@ export function ModalClientEmail(p){
         ce("input",{type:"text",value:subject,onChange:function(ev){setSubject(ev.target.value);},style:inp})),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Tre\u015b\u0107"),
         ce(RichTextEditor,{value:body,onChange:setBody,minHeight:220,bg:"var(--bg)"}),
-        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:4}},"Podpis z Ustawie\u0144 poczty zostanie dodany automatycznie.")),
+        settings===null
+          ?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6}},"\u0141aduj\u0119 podpis\u2026")
+          :(settings.signature_html||settings.signature_image_url)
+            ?ce("div",{style:{marginTop:8,padding:"10px 12px",borderTop:"1px dashed var(--bd2)",fontFamily:"Montserrat, Arial, sans-serif",fontSize:13,color:"var(--t2)"}},
+                settings.signature_html?ce("div",{dangerouslySetInnerHTML:{__html:settings.signature_html}}):null,
+                settings.signature_image_url?ce("img",{src:settings.signature_image_url,alt:"",style:{maxWidth:250,height:"auto",display:"block",marginTop:8}}):null)
+            :ce("div",{style:{fontSize:11,color:"#b4123a",marginTop:6}},"Nie znaleziono podpisu \u2014 ustaw go w Mail \u2192 Ustawienia.")),
       ce("div",{style:{marginBottom:14}},ce("div",{style:lbl},"Za\u0142\u0105cznik"),
         ce("div",{style:{display:"inline-flex",alignItems:"center",gap:8,padding:"6px 12px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
           ce("span",null,"\uD83D\uDCC4"),
