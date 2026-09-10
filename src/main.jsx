@@ -32,6 +32,50 @@ if (SENTRY_DSN) {
 
 markBrokerCallback();
 
+// ── Ochrona przed crashem po deployu ──
+// Ekrany ladowane leniwie (Mail, Faktury, Magazyn...) maja pliki z hashem w nazwie.
+// Po kazdym deployu stare pliki znikaja z Vercela, a karta otwarta od rana
+// (np. PWA na iPadzie) probuje pobrac nieistniejacy chunk -> caly React sie
+// odmontowuje -> bialy ekran. Wykrywamy ten blad i przeladowujemy strone raz.
+function isChunkError(err){
+  var m=String((err&&(err.message||err))||"");
+  return /dynamically imported module|Importing a module script failed|ChunkLoadError|Loading chunk|Unable to preload CSS/i.test(m);
+}
+function reloadOnce(){
+  // Blokada petli: max 1 automatyczne przeladowanie na 30 s.
+  try{
+    var last=+sessionStorage.getItem("pd_chunk_reload")||0;
+    if(Date.now()-last<30000) return false;
+    sessionStorage.setItem("pd_chunk_reload",String(Date.now()));
+  }catch(e){}
+  window.location.reload();
+  return true;
+}
+window.addEventListener("vite:preloadError",function(ev){
+  if(reloadOnce()&&ev&&ev.preventDefault) ev.preventDefault();
+});
+
+// Zamiast bialego ekranu: automatyczne przeladowanie (blad chunku)
+// albo komunikat z przyciskiem odswiezenia (kazdy inny blad renderu).
+class AppErrorBoundary extends React.Component {
+  constructor(props){ super(props); this.state={err:null}; }
+  static getDerivedStateFromError(err){ return {err:err}; }
+  componentDidCatch(err,info){
+    if(isChunkError(err)&&reloadOnce()) return;
+    try{ if(SENTRY_DSN) Sentry.captureException(err,{extra:{componentStack:info&&info.componentStack}}); }catch(e){}
+    console.error("[AppErrorBoundary]",err);
+  }
+  render(){
+    if(!this.state.err) return this.props.children;
+    var ce=React.createElement;
+    return ce("div",{style:{minHeight:"60vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:24,textAlign:"center",fontFamily:"Montserrat, sans-serif"}},
+      ce("div",{style:{fontSize:15,fontWeight:700}},"Co\u015b posz\u0142o nie tak"),
+      ce("div",{style:{fontSize:12,color:"#888",maxWidth:360}},"Dane zapisane w bazie s\u0105 bezpieczne. Od\u015bwie\u017c aplikacj\u0119, aby kontynuowa\u0107."),
+      ce("button",{onClick:function(){window.location.reload();},style:{padding:"10px 22px",borderRadius:8,border:"none",background:"#7c3aed",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}},"Od\u015bwie\u017c aplikacj\u0119")
+    );
+  }
+}
+
 function Root() {
   var initial = loadSession();
   var ss = useState(!!initial); var loggedIn = ss[0]; var setLoggedIn = ss[1];
@@ -81,9 +125,11 @@ function Root() {
     });
   }
 
-  return React.createElement(App, {
-    onLogout: function() { setLoggedIn(false); }
-  });
+  return React.createElement(AppErrorBoundary, null,
+    React.createElement(App, {
+      onLogout: function() { setLoggedIn(false); }
+    })
+  );
 }
 
 ReactDOM.createRoot(document.getElementById('app-mount')).render(
