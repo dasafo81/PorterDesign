@@ -1993,40 +1993,31 @@ export function ScreenMail(p){
   },[]);
 
   // Prefill z karty "Podsumowanie" (przycisk "Mail do klienta" w App.jsx):
-  // adresat + szablon "po spotkaniu" + wycena uproszczona jako prawdziwy PDF.
-  // Czekamy na zalogowanie i załadowanie szablonów, potem zużywamy prefill jednorazowo.
+  // adresat + stały szablon "po spotkaniu" + wycena uproszczona jako prawdziwy PDF.
+  // Czekamy na zalogowanie, potem zużywamy prefill jednorazowo.
   ue(function(){
     var pf=window.__pdMailPrefill;
-    if(!pf||!logged||dbTemplates===null)return;
+    if(!pf||!logged)return;
     window.__pdMailPrefill=null;
     var cl=clients.find(function(c){return String(c.id)===String(pf.clientId);})||null;
-    var key=String(pf.templateKey||"").toLowerCase();
-    var keySlug=key.replace(/\s+/g,"_");
-    var tpl=activeTemplates.find(function(t){
-      return String(t.label||"").toLowerCase().indexOf(key)!==-1||String(t.id||"").toLowerCase().indexOf(keySlug)!==-1;
-    })||{
-      id:"po_spotkaniu",subject:"Wycena \u2013 {clientName}",suggestAttachments:[],templateFiles:[],
-      body:"Dzie\u0144 dobry,\n\nW nawi\u0105zaniu do naszego spotkania przesy\u0142am w za\u0142\u0105czeniu uproszczon\u0105 wycen\u0119 {honorific} zam\u00f3wienia."
-        +"\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wp\u0142aty zaliczki w wysoko\u015bci 50% warto\u015bci zam\u00f3wienia."
-        +"\n\nW razie pyta\u0144 pozostaj\u0119 do dyspozycji."
-    };
-    var filled=fillTemplate(tpl,cl);
-    var isHtml=/<[a-z][\s\S]*>/i.test(filled.body);
+    // Stały szablon "po spotkaniu" (HTML — akapity jak w plainToHtml, pogrubione etykiety)
+    var P=function(t){return "<div>"+t+"</div>";}, GAP="<div><br></div>";
+    var bodyHtml=[
+      P("Dzie\u0144 dobry,"),
+      P("Bardzo dzi\u0119kuj\u0119 za niezwykle mi\u0142e spotkanie. Zgodnie z naszymi ustaleniami, w za\u0142\u0105czniku przesy\u0142am ofert\u0119 oraz dok\u0142adne informacje dotycz\u0105ce aran\u017cacji okiennych."),
+      P("Poni\u017cej przesy\u0142am kluczowe informacje organizacyjne:"),
+      P("<b>Warunki p\u0142atno\u015bci:</b> Rozpocz\u0119cie zam\u00f3wienia nast\u0119puje po wp\u0142acie zaliczki w wysoko\u015bci 50% warto\u015bci zlecenia.")
+        +P("<b>Czas realizacji:</b> Wynosi ok. 4 tygodni od momentu zaksi\u0119gowania wp\u0142aty."),
+      P("Je\u015bli akceptuj\u0105 Pa\u0144stwo przedstawion\u0105 ofert\u0119 i przechodzimy do dzia\u0142ania, bardzo prosz\u0119 o potwierdzenie oraz przes\u0142anie danych do wystawienia faktury na wspomnian\u0105 zaliczk\u0119."),
+      P("W razie jakichkolwiek pyta\u0144 do za\u0142\u0105czonego projektu, pozostaj\u0119 do dyspozycji.")
+    ].join(GAP);
     setSelClientId(cl?cl.id:null);
     setToEmail(pf.to||(cl&&cl.email)||"");
-    setSubject(filled.subject||"");
-    setBody(isHtml?filled.body:plainToHtml(filled.body));
+    setSubject("Oferta aran\u017cacji okiennych");
+    setBody(bodyHtml);
     setQuotedHtml(""); setCcEmail(""); setBccEmail("");
-    // Załączniki szablonu — bez wersji HTML wyceny (dołączamy prawdziwy PDF poniżej)
-    var tplApp=(tpl.suggestAttachments||[]).filter(function(sid){return sid!=="pdf_uproszczona"&&sid!=="pdf_oferta";}).map(function(sid){
-      var opt=APP_PDF_OPTIONS.find(function(o){return o.id===sid;});
-      return opt?{id:opt.id,name:opt.label+".pdf",size:null,type:"app"}:null;
-    }).filter(Boolean);
-    var tplFiles=(tpl.templateFiles||[]).map(function(f){
-      return {id:"tplf_"+f.url,name:f.name,size:f.size||null,type:"template",url:f.url};
-    });
     var pdfId="pdfdata_uproszczona_"+Date.now();
-    setAttachments([{id:pdfId,name:pf.pdfName||"Wycena.pdf",size:null,type:"pdfdata",pending:true}].concat(tplApp,tplFiles));
+    setAttachments([{id:pdfId,name:pf.pdfName||"Wycena.pdf",size:null,type:"pdfdata",pending:true}]);
     mailNavigate("compose");
     htmlToPdfBase64(pf.pdfHtml).then(function(b64){
       setAttachments(function(prev){return prev.map(function(a){
@@ -2036,7 +2027,7 @@ export function ScreenMail(p){
       console.error("htmlToPdfBase64 error",e);
       setAttachments(function(prev){return prev.map(function(a){return a.id===pdfId?Object.assign({},a,{pending:false,error:true}):a;});});
     });
-  },[logged,dbTemplates]);
+  },[logged]);
 
   // Załaduj Kontrahentów — trzecie źródło podpowiedzi w polu "Do:" (obok wycen i historii wysyłek),
   // bo kontrahent często nie ma jeszcze wyceny ani nie dostał żadnego maila.
