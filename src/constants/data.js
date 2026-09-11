@@ -3887,7 +3887,7 @@ export function curtainHeightDesc(prod){
   var pc=prod.c||{},par=prod.par||{},sp=pc.split||"unequal";
   if(pc.hDiff&&(sp==="equal"||sp==="unequal")){
     var hL=+pc.leftH||+par.hCm||0,hR=+pc.rightH||+par.hCm||0;
-    if(hL!==hR)return "L "+hL+" / P "+hR+" cm";
+    if(hL!==hR)return "Lewa "+hL+" cm / Prawa "+hR+" cm";
   }
   return par.hCm?(par.hCm+" cm"):"-";
 }
@@ -4005,7 +4005,8 @@ export function buildSewingRows(client){
           fabW:prod.fabW||prod.fabManW||"-",
           kolor:pc.kolor||"-",
           metry:metry,
-          hCm:(pc.hDiff&&(pc.split==="equal"||(pc.split||"unequal")==="unequal")&&(+pc.leftH||+par.hCm)!==(+pc.rightH||+par.hCm))?("L "+(+pc.leftH||+par.hCm)+" / P "+(+pc.rightH||+par.hCm)):(par.hCm||"-"),
+          // Różne wysokości L/P: dwie linie w kolumnie "Wysokość" zlecenia (PDF dopisuje końcowe " cm")
+          hCm:(pc.hDiff&&(pc.split==="equal"||(pc.split||"unequal")==="unequal")&&(+pc.leftH||+par.hCm)!==(+pc.rightH||+par.hCm))?("<strong>Lewa "+(+pc.leftH||+par.hCm)+" cm</strong><br><strong>Prawa "+(+pc.rightH||+par.hCm)+"</strong>"):(par.hCm||"-"),
           wCm:par.wCm||"-",
           szStyle:sz,marszczenie:mars,
           tasma:(pc.model==="tasma"||pc.model==="falda")?(pc.szerokosc_tasmy||8)+" cm":"-",
