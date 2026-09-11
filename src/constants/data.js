@@ -3111,7 +3111,7 @@ export function calc(p){
 
   if(p.type==="zaslona"||p.type==="firana"){
     var wCm=par.wCm||0,hCm=par.hCm||0;
-    var belka=fabW,mars=+(c.mars||"1.5"),szycie=(c.sz==="wave"||c.model==="wave")?120:(c.model==="falda")?110:100;
+    var belka=fabW,mars=+(c.mars||"1.5"),szycie=(c.sz==="wave"||c.model==="wave")?(c.waveMask==="tak"?150:120):(c.model==="falda")?110:100;
     var dekro=c.dekro==="tak",hM=hCm/100;
     var podszewka=c.podszewka==="tak";
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
@@ -3645,7 +3645,7 @@ export function buildOfferDetailRows(client){
 
         if(isKurtain){
           var sz;
-          if(pc.model==="wave"||pc.sz==="wave"){sz="Wave";}
+          if(pc.model==="wave"||pc.sz==="wave"){sz="Wave"+(pc.waveMask==="tak"?" z maskownic\u0105":"");}
           else if(pc.model==="falda"){
             var foldMap={pojedyncza:"Flex I",podwojna:"Flex II",potrojna:"Flex III",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
             sz=pc.foldType?foldMap[pc.foldType]||("Fa\u0142da "+pc.foldType):"Fa\u0142da";
@@ -3962,7 +3962,7 @@ export function buildSewingRows(client){
         });
         var sz;
         if(pc.model==="wave"||pc.sz==="wave"){
-          sz="Wave";
+          sz="Wave"+(pc.waveMask==="tak"?" z maskownic\u0105":"");
         }else if(pc.model==="falda"){
           var foldMap={pojedyncza:"Flex I",podwojna:"Flex II",potrojna:"Flex III",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
           sz=pc.foldType?foldMap[pc.foldType]||("Fa\u0142da "+pc.foldType):"Fa\u0142da";
