@@ -2630,6 +2630,17 @@ export const PROD_TYPES =[
   {id:"inny",label:"Inny",icon:"📦"}
 ];
 
+// Kategorie produktu "Inny". Wybrana etykieta trafia do p.innyNazwa (nazwa
+// wyświetlana wszędzie: karta, wyceny, PDF). Dla "inny" nazwę wpisuje się ręcznie.
+export const INNY_KATEGORIE=[
+  {id:"tapeta",label:"Tapeta"},
+  {id:"dywan",label:"Dywan"},
+  {id:"panele",label:"Panele tapicerowane"},
+  {id:"narzuta",label:"Narzuta"},
+  {id:"poduszki",label:"Poduszki"},
+  {id:"inny",label:"Inny"}
+];
+
 // ── KARNISZ DEKORACYJNY IMPRESS LINE SQUARE ──────────────────────────────────
 export const KD_SZYNY = {
   20: {160:72.55, 200:90.70, 240:108.81, 300:136.01, 400:181.39, 580:262.97},
@@ -3286,6 +3297,12 @@ export function calc(p){
         if(rem){total+=rem.price;lines.push("+ "+rem.label+" +"+rem.price+" z\u0142");}
       });
     }
+  }else if(p.type==="inny"){
+    // Cena za szt. (c.innyCena, string — dopuszcza przecinek) x ilość (par.qty)
+    var inCena=+(String(c.innyCena==null?"":c.innyCena).replace(",","."))||0,inQty=par.qty||1;
+    if(!inCena)return{total:0,lines:[],warn:null};
+    total=inCena*inQty;
+    lines.push((p.innyNazwa||"Inny")+" "+formatPLN(inCena)+"/szt."+(inQty>1?" x"+inQty:""));
   }else if(p.type==="szyna"){
     var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0,qty=par.qty||1;
     if(!lenCm)return{total:0,lines:[],warn:null};
@@ -3592,7 +3609,8 @@ export function buildOfferRows(client){
         var desc=prodLabel+(detail?" \u00b7 "+detail:"")+" — "+r.name+(w.name?" / "+w.name:"")
           +(p.note?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+escOffer(p.note)+"</span>":"");
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
-        rows.push({lp:lp++,name:desc,qty:1,unit:isKurtain?"kpl.":"szt.",cenaJedn:total,total:total});
+        var rQty=p.type==="inny"?((p.par&&p.par.qty)||1):1;
+        rows.push({lp:lp++,name:desc,qty:rQty,unit:isKurtain?"kpl.":"szt.",cenaJedn:total/rQty,total:total});
       });
     });
   });
@@ -3696,11 +3714,11 @@ export function buildOfferDetailRows(client){
 
         rows.push({
           room:r.name,win:w.name,
-          qty:1,unit:isKurtain?"kpl.":"szt.",
+          qty:(p.type==="inny"?(par.qty||1):1),unit:isKurtain?"kpl.":"szt.",
           name:name,_prodLabel:prodLabel,_nameLoc:nameLoc,
           modelSzycia:modelSzycia,tkaninaKolor:tkaninaKolor,producent:producent,
           szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,
-          total:total,cenaJedn:total
+          total:total,cenaJedn:total/(p.type==="inny"?(par.qty||1):1)
         });
       });
     });
