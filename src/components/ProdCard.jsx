@@ -576,6 +576,38 @@ export function ProdCard(p){
       );
     }
 
+    // ── Różna wysokość lewej/prawej (tylko komplet) ────────────────────
+    var heightDiff=null;
+    if(split==="equal"||split==="unequal"){
+      var hBase=par.hCm||"";
+      var hInp=function(label,key){
+        var v=c[key]!=null&&c[key]!==""?c[key]:hBase;
+        return ce(Fld,{label:label},
+          ce("div",{style:{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
+            ce("button",{onClick:function(){if((+v||0)>0)sc(key,(+v||0)-1);},style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t2)",flexShrink:0}},"\u2212"),
+            ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:17,color:"var(--t1)",fontWeight:500}},
+              ce("input",{type:"text",inputMode:"numeric",value:v,onChange:function(ev){sc(key,ev.target.value);},style:{width:60,border:"none",background:"transparent",textAlign:"center",fontSize:17,color:"var(--t1)",fontWeight:500,outline:"none"}}),
+              ce("span",{style:{color:"var(--t3)",fontSize:14}},"cm")
+            ),
+            ce("button",{onClick:function(){sc(key,(+v||0)+1);},style:{width:46,height:56,border:"none",background:"none",fontSize:20,cursor:"pointer",color:"var(--t2)",flexShrink:0}},"+")
+          )
+        );
+      };
+      heightDiff=ce("div",{style:{marginTop:16}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:!!c.hDiff,onChange:function(ev){
+            var on=ev.target.checked;
+            p.onChange(mg(prod,{c:mg(c,on?{hDiff:true,leftH:c.leftH||par.hCm||"",rightH:c.rightH||par.hCm||""}:{hDiff:false})}));
+          },style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
+          ce("span",{},"R\xf3\u017cna wysoko\u015b\u0107 lewej i prawej zas\u0142ony")
+        ),
+        c.hDiff?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:14}},
+          hInp("Wysoko\u015b\u0107 lewej","leftH"),
+          hInp("Wysoko\u015b\u0107 prawej","rightH")
+        ):null
+      );
+    }
+
     // ── Procent marszczenia (stepper) ──────────────────────────────────
     var marsVal = +(c.mars||1.5);
     var marsPct = Math.round(marsVal*100);
@@ -741,7 +773,8 @@ export function ProdCard(p){
         ce("div",{style:{marginBottom:6}},
           ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:14,fontStyle:"italic"}},"(Je\u015bli wybierzesz nier\xf3wn\u0105 par\u0119, zmotoryzowane szyny nie b\u0119d\u0105 dost\u0119pne)"),
           splitSelector,
-          splitFields
+          splitFields,
+          heightDiff
         ),
         // Procent marszczenia - wszystkie modele
         marsSection,
