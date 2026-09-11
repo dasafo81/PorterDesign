@@ -951,6 +951,7 @@ function TabCatalog(p) {
   var s4 = useState("all"); var activeCat = s4[0]; var setActiveCat = s4[1];
   var s4b = useState(null); var activeMeta = s4b[0]; var setActiveMeta = s4b[1];
   var s4c = useState(null); var activeTag = s4c[0];  var setActiveTag = s4c[1];
+  var s4e = useState(null); var equivModal = s4e[0]; var setEquivModal = s4e[1]; // nazwa tkaniny lub null
   var s4d = useState(null); var sampleFilter = s4d[0]; var setSampleFilter = s4d[1]; // null | "yes" | "no"
   var s4e = useState(false); var showHidden = s4e[0]; var setShowHidden = s4e[1];
 
@@ -1224,8 +1225,13 @@ function TabCatalog(p) {
                     return ce("span", { key: tag, style: { fontSize: 9.5, fontWeight: 700, color: tc, background: tc + "18", borderRadius: 6, padding: "1px 6px" } }, tag);
                   })
                 ),
-                it.equivalents && it.equivalents.length > 0 && ce("div", { style: { fontSize: 10, color: "var(--t3)", marginTop: 3 } },
-                  "\uD83D\uDD01 Odpowiedniki: " + it.equivalents.join(", ")),
+                it.equivalents && it.equivalents.length > 0 && ce("button", {
+                  onClick: function(e) { e.stopPropagation(); setEquivModal(it.name); },
+                  title: "Poka\u017c wszystkie zamienniki",
+                  style: { display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, padding: "5px 10px",
+                    border: "1.5px solid #7c3aed", background: "rgba(124,58,237,0.10)", color: "#7c3aed",
+                    borderRadius: 9, fontSize: 11.5, fontWeight: 700, cursor: "pointer" } },
+                  "\uD83D\uDD01 " + it.equivalents.length + " odpowiednik\u00f3w \u2014 zobacz"),
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap" } },
@@ -1245,11 +1251,65 @@ function TabCatalog(p) {
       );
     }),
 
+    equivModal !== null && ce(ModalEquivalents, {
+      name: equivModal,
+      equivalents: getFabricEquivalents(equivModal),
+      fabItems: fabG ? fabG.items : [],
+      onGoTo: function(n) { setEquivModal(null); setActiveMeta(null); setActiveTag(null); setSampleFilter(null); setMissingFilter(null); setOnlyNoH(false); setSearch(n); },
+      onClose: function() { setEquivModal(null); }
+    }),
+
     editItem !== null && ce(ModalCatalogItem, {
       item: editItem, groups: groupOpts, allGroups: groups, onDelete: handleDelete,
       onSave: function() { setEditItem(null); reload(); },
       onClose: function() { setEditItem(null); }
     })
+  );
+}
+
+// ── Modal: odpowiedniki tkaniny (zamienniki innych producentów) ──────────
+// Pełna grupa z FABRIC_EQUIV_GROUPS (data.js) z danymi z katalogu: producent,
+// szerokość beli, cena, próbnik. Klik w wiersz filtruje katalog do tej tkaniny.
+function ModalEquivalents(p) {
+  var names = [p.name].concat(p.equivalents || []);
+  var rows = names.map(function(n) {
+    var found = (p.fabItems || []).filter(function(x) {
+      return String(x.name || "").trim().toLowerCase() === String(n).trim().toLowerCase();
+    })[0];
+    return { name: n, it: found || null, self: n === p.name };
+  });
+  return ce("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999, padding: 16 },
+      onClick: function(e) { if (e.target === e.currentTarget) p.onClose(); } },
+    ce("div", { style: { background: "var(--bg)", borderRadius: 16, padding: 24, width: "min(520px, 94vw)", maxHeight: "88vh", overflowY: "auto", border: "1px solid var(--bd2)", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" } },
+      ce("div", { style: { fontSize: 16, fontWeight: 700, color: "var(--t1)", marginBottom: 4 } },
+        "\uD83D\uDD01 Odpowiedniki — " + p.name),
+      ce("div", { style: { fontSize: 12, color: "var(--t3)", marginBottom: 16 } },
+        "Te tkaniny s\u0105 swoimi wzajemnymi zamiennikami. Kliknij, aby poda\u0107 klientowi inn\u0105 z tej grupy."),
+      ce("div", { style: { display: "flex", flexDirection: "column", gap: 8 } },
+        rows.map(function(r) {
+          var it = r.it;
+          var sub = it
+            ? [it.meta, it.heightCm != null ? (it.heightCm + " cm") : null, it.sklad].filter(Boolean).join(" \u00B7 ")
+            : "brak w katalogu";
+          return ce("div", { key: r.name,
+            onClick: function() { if (it) p.onGoTo(r.name); },
+            style: { display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12,
+              border: "1.5px solid " + (r.self ? "var(--violet)" : "var(--bd2)"),
+              background: r.self ? "rgba(124,58,237,0.07)" : "var(--bg2)",
+              cursor: it ? "pointer" : "default", opacity: it ? 1 : 0.55 } },
+            ce("div", { style: { flex: 1, minWidth: 0 } },
+              ce("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--t1)" } },
+                r.name, r.self ? ce("span", { style: { fontSize: 10, fontWeight: 700, color: "var(--violet)", marginLeft: 8 } }, "• ta tkanina") : null),
+              ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, sub)
+            ),
+            it && it.hasSample && ce("span", { style: { fontSize: 10, fontWeight: 700, color: "#16a34a", background: "rgba(22,163,74,0.12)", borderRadius: 8, padding: "2px 7px", whiteSpace: "nowrap" } }, "\u2713 Pr\u00f3bnik"),
+            it && it.price != null && ce("div", { style: { fontSize: 14, fontWeight: 700, color: "var(--violet)", whiteSpace: "nowrap" } }, fmtPrice(it.price) + " z\u0142")
+          );
+        })
+      ),
+      ce("button", { onClick: p.onClose,
+        style: btn({ marginTop: 18, width: "100%", padding: "12px 18px", background: "var(--bg2)", color: "var(--t2)", border: "1.5px solid var(--bd2)" }) }, "Zamknij")
+    )
   );
 }
 
