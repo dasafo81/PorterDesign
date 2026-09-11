@@ -4249,6 +4249,27 @@ export const KARNISZ_SUPPLIERS =[
   {key:"forest_polska",label:"Forest Polska, ul. Poloneza 89, 02-826 Warszawa"}
 ];
 
+// ── Geometria szyny giętej w jeden łuk (cięciwa + strzałka) ──────────────
+// chord = rozstaw końców łuku (cm), depth = wysięg/strzałka w najgłębszym punkcie (cm)
+// Zwraca {R, len, deg} (cm, cm, stopnie) lub null gdy dane niepełne.
+export function arcGeom(chord,depth){
+  var c=+chord||0,h=+depth||0;
+  if(c<=0||h<=0)return null;
+  var R=(c*c/4+h*h)/(2*h);
+  var ang=4*Math.atan(2*h/c); // pełny kąt środkowy w radianach
+  return {R:R,len:R*ang,deg:ang*180/Math.PI};
+}
+export function arcDesc(par){
+  par=par||{};
+  var g=arcGeom(par.arcChord,par.arcDepth);
+  if(!g&&!par.arc)return "";
+  var parts=["gi\u0119ta w \u0142uk"];
+  if(par.arcChord)parts.push("ci\u0119ciwa "+par.arcChord+" cm");
+  if(par.arcDepth)parts.push("g\u0142\u0119b. "+par.arcDepth+" cm");
+  if(g)parts.push("R\u2248"+Math.round(g.R)+" cm");
+  return parts.join(", ");
+}
+
 export function buildKarniszRows(client){
   var rows=[];
   (client.rooms||[]).forEach(function(r){
@@ -4277,6 +4298,7 @@ export function buildKarniszRows(client){
           qty:par.qty||1,
           arc:par.arc||0,
           arcDepth:par.arcDepth||null,
+          arcChord:par.arcChord||null,
           pts:par.pt||par.pts||0,
           motorSide:isKarnisz?(pc.motorSide||"lewo"):null,
           motorType:isKarnisz?(pc.motorType||"kurtyna"):null,
@@ -4316,7 +4338,7 @@ export function buildKarniszPDFHtmlFromRows(client,rows){
         r.len?r.len+"cm":"-",
         (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
         r.arc?r.arc+" mb":"–",
-        r.arcDepth?r.arcDepth+" cm":"–",
+        (function(){var g=arcGeom(r.arcChord,r.arcDepth);return (r.arcDepth?r.arcDepth+" cm":"–")+(r.arcChord?"<br><span style=\"font-size:8px;color:#6b6b66\">ci\u0119ciwa "+r.arcChord+" cm"+(g?", R\u2248"+Math.round(g.R)+" cm":"")+"</span>":"");})(),
         r.pts?r.pts+" szt.":"–",
         motorDesc,
         (+r.total||0)>0?(+r.total).toFixed(2).replace(".",",")+" zł":"–"
@@ -4422,6 +4444,8 @@ export function buildRailsRows(client){
         var len=par.len||0;
         var qty=par.qty||1;
         if(!len)return;
+        var aDesc=arcDesc(par);
+        if(aDesc)typLabel+=" \u2014 "+aDesc;
         rows.push({room:room.name||"",win:win.name||"",type:typLabel,len:len,qty:qty});
       });
     });
