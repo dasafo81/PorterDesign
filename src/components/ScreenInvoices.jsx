@@ -307,6 +307,7 @@ function InvoiceEditor(p){
   var [buyerNip,setBuyerNip]=useState(initContractor?(initContractor.nip||""):(initInv.buyer_nip||""));
   var [buyerAddr,setBuyerAddr]=useState(initContractor?(initContractor.address||""):(initInv.buyer_address||""));
   var [buyerPostal,setBuyerPostal]=useState(initContractor?(initContractor.postal||""):(initInv.buyer_postal||""));
+  var [postalLoading,setPostalLoading]=useState(false);
   var [buyerCity,setBuyerCity]=useState(initContractor?(initContractor.city||""):(initInv.buyer_city||""));
   var [buyerEmail,setBuyerEmail]=useState(initContractor?(initContractor.email||""):(initInv.buyer_email||""));
   var [clientId,setClientId]=useState(initInv.client_id||null);
@@ -481,6 +482,27 @@ function InvoiceEditor(p){
     });
   }
 
+  // Kod pocztowy z panstwowego rejestru adresow (GUGiK UUG przez /api/postal).
+  // silent=true: wywolanie automatyczne po wyborze klienta — bez komunikatu o bledzie
+  // i bez nadpisywania kodu, ktory ktos zdazyl wpisac recznie.
+  function lookupPostal(addr,city,silent){
+    var a=String(addr||"").trim(), ci=String(city||"").trim();
+    if(!a||!ci){if(!silent)setErr("Uzupełnij adres i miasto, żeby wyszukać kod pocztowy");return;}
+    setPostalLoading(true);
+    fetch("/api/postal?addr="+encodeURIComponent(a)+"&city="+encodeURIComponent(ci))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&d.code){
+          setBuyerPostal(function(prev){return silent&&String(prev||"").trim()?prev:d.code;});
+          if(!silent)setErr(null);
+        } else if(!silent){
+          setErr((d&&d.error)||"Nie znaleziono kodu pocztowego dla tego adresu");
+        }
+      })
+      .catch(function(){if(!silent)setErr("Błąd połączenia z usługą wyszukiwania kodów");})
+      .finally(function(){setPostalLoading(false);});
+  }
+
   function pickClient(c){
     setClientId(c.id);
     setBuyerName(c.name||buyerName);
@@ -488,6 +510,7 @@ function InvoiceEditor(p){
     setBuyerAddr(sa.addr||buyerAddr);
     setBuyerPostal(sa.postal||buyerPostal);
     setBuyerCity(sa.city||buyerCity);
+    if(!sa.postal&&sa.addr&&sa.city){setBuyerPostal("");lookupPostal(sa.addr,sa.city,true);}
     setBuyerEmail(c.email||buyerEmail);
     // Znajdź aktywny deal tego klienta jeśli istnieje
     var d=dealsList.find(function(x){return x.client_id===c.id;});
@@ -1092,8 +1115,11 @@ function InvoiceEditor(p){
       ),
       fldRow("Nazwa",ce("input",{style:inp,value:buyerName,placeholder:direction==="zakup"?"Pełna nazwa dostawcy":"Pełna nazwa firmy / imię nazwisko",onChange:function(e){setBuyerName(e.target.value);}})),
       fldRow("Adres",ce("input",{style:inp,value:buyerAddr,placeholder:"ul. Kwiatowa 1",onChange:function(e){setBuyerAddr(e.target.value);}})),
-      ce("div",{style:{display:"grid",gridTemplateColumns:"120px 1fr",gap:10,marginBottom:10,marginLeft:"150px"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"120px 44px 1fr",gap:10,marginBottom:10,marginLeft:"150px"}},
         ce("input",{style:inp,value:buyerPostal,placeholder:"00-000",onChange:function(e){setBuyerPostal(e.target.value);}}),
+        ce("button",{type:"button",title:"Znajdź kod pocztowy dla adresu (rejestr GUGiK)",disabled:postalLoading,
+          onClick:function(){lookupPostal(buyerAddr,buyerCity,false);},
+          style:Object.assign({},btnSecondary,{padding:0,fontSize:15,opacity:postalLoading?0.5:1})},postalLoading?"\u2026":"\uD83D\uDD0D"),
         ce("input",{style:inp,value:buyerCity,placeholder:"Miasto",onChange:function(e){setBuyerCity(e.target.value);}})),
       fldRow("E-mail",ce("input",{style:inp,value:buyerEmail,type:"email",placeholder:"klient@email.pl",onChange:function(e){setBuyerEmail(e.target.value);}}))
     ),
