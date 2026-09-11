@@ -2691,6 +2691,8 @@ function InvoiceDetailView(p){
   var [mailModalOpen,setMailModalOpen]=useState(false);
   var [mailSubject,setMailSubject]=useState("");
   var [mailBodyText,setMailBodyText]=useState("");
+  // Adresat maila — edytowalny, domyślnie aktualny e-mail klienta z CRM
+  var [mailTo,setMailTo]=useState("");
   var [currentInv,setCurrentInv]=useState(p.invoice||{});
   // Oficjalny URL weryfikacji KSeF (Kod QR I). Liczony async z SHA-256 XML-a przy zmianie
   // faktury/statusu. Gdy faktura sie nie kwalifikuje (nie confirmed, brak xml, zakupowa/EKO/proforma)
@@ -2751,20 +2753,31 @@ function InvoiceDetailView(p){
   }
 
   // Otwiera okno z podglądem/edycją treści maila przed wysyłką.
+  // Adresat: buyer_email z faktury to snapshot z dnia wystawienia — jeśli klient ma
+  // w CRM nowszy/poprawiony adres, podstawiamy go (pole "Do" i tak jest edytowalne).
   function openMailModal(){
-    if(!currentInv.buyer_email) return;
     setMailErr(null); setMailMsg(null);
     setMailSubject("Faktura "+(currentInv.number||""));
     setMailBodyText("Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
       +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
       +".\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design");
+    var snap=currentInv.buyer_email||"";
+    setMailTo(snap);
     setMailModalOpen(true);
+    if(currentInv.client_id){
+      sbApi.getClients().then(function(list){
+        var c=(list||[]).find(function(x){return String(x.id)===String(currentInv.client_id);});
+        // Nadpisz tylko jeśli użytkownik nie zdążył już ręcznie zmienić pola
+        if(c&&c.email) setMailTo(function(prev){return prev===snap?c.email:prev;});
+      }).catch(function(){});
+    }
   }
 
   // Wysyła fakturę mailem bezpośrednio z aplikacji, przez podłączoną skrzynkę Outlook (Microsoft Graph).
   // Wymaga wcześniejszego zalogowania w zakładce Poczta — tu tylko odświeżamy token w tle (silent).
   function sendInvoiceEmail(){
-    if(!currentInv.buyer_email) return;
+    var to=String(mailTo||"").trim();
+    if(!to) return;
     setMailBusy(true); setMailErr(null); setMailMsg(null);
     msalGetActiveAccount().then(function(acc){
       if(!acc){
@@ -2779,7 +2792,7 @@ function InvoiceDetailView(p){
       var message={
         subject:mailSubject||("Faktura "+(currentInv.number||"")),
         body:{contentType:"Text",content:mailBodyText||""},
-        toRecipients:[{emailAddress:{address:currentInv.buyer_email}}],
+        toRecipients:[{emailAddress:{address:to}}],
         attachments:[{
           "@odata.type":"#microsoft.graph.fileAttachment",
           name:fileName,
@@ -2799,7 +2812,7 @@ function InvoiceDetailView(p){
         });
       }
       setMailModalOpen(false);
-      setMailMsg("\u2705 Faktura wys\u0142ana na "+currentInv.buyer_email);
+      setMailMsg("\u2705 Faktura wys\u0142ana na "+to);
     }).catch(function(e){
       if(e&&e.code==="MS_NO_ACCOUNT") setMailErr(e.message);
       else if(e&&e.code==="MS_INTERACTION_REQUIRED") setMailErr("Sesja poczty wygas\u0142a \u2014 zaloguj si\u0119 ponownie w zak\u0142adce Poczta.");
@@ -2891,7 +2904,7 @@ function InvoiceDetailView(p){
             padding:"14px 18px",borderRadius:10,border:"1px solid var(--bd2)",
             background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:13,fontWeight:500}},
           "\uD83D\uDCE7 Otw\u00f3rz w poczcie"),
-        currentInv.buyer_email&&ce("button",{
+        (currentInv.buyer_email||currentInv.client_id)&&ce("button",{
           onClick:openMailModal,
           disabled:mailBusy,
           style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,
@@ -2944,8 +2957,11 @@ function InvoiceDetailView(p){
       },
         ce("div",{style:{fontSize:16,fontWeight:800,color:"var(--t1)",marginBottom:4}},
           "\uD83D\uDCE4 Wy\u015blij faktur\u0119 mailem"),
-        ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16}},
-          "Do: "+currentInv.buyer_email),
+        ce("label",{style:label},"Do"),
+        ce("input",{type:"email",value:mailTo,onChange:function(e){setMailTo(e.target.value);},
+          style:Object.assign({},inp,{marginBottom:mailTo.trim()!==(currentInv.buyer_email||"")?4:14})}),
+        mailTo.trim()!==(currentInv.buyer_email||"")&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:14}},
+          "Na fakturze: "+(currentInv.buyer_email||"\u2014")+" (dane nabywcy na fakturze bez zmian)"),
         ce("label",{style:label},"Temat"),
         ce("input",{value:mailSubject,onChange:function(e){setMailSubject(e.target.value);},
           style:Object.assign({},inp,{marginBottom:14})}),
@@ -2959,7 +2975,7 @@ function InvoiceDetailView(p){
         ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end"}},
           ce("button",{onClick:function(){setMailModalOpen(false);},disabled:mailBusy,
             style:btnSecondary},"Anuluj"),
-          ce("button",{onClick:sendInvoiceEmail,disabled:mailBusy||!mailSubject.trim(),
+          ce("button",{onClick:sendInvoiceEmail,disabled:mailBusy||!mailSubject.trim()||!mailTo.trim(),
             style:Object.assign({},btnPrimary,mailBusy?{opacity:0.6,cursor:"not-allowed"}:{})},
             mailBusy?"\u23F3 Wysy\u0142am...":"\uD83D\uDCE4 Wy\u015blij")
         )
