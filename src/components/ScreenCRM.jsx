@@ -212,7 +212,7 @@ export function ModalDeal(p){
     "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów",
     "Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"
   ];
-  var INSTALLER_OPTIONS=["","Darek","Rafał","Grzesiek","Damian"];
+  var INSTALLER_OPTIONS=["","Darek","Grzesiek","Damian"];
   // Rodzaje kosztow — te same wartosci co CHECK-lista w komentarzu migracji 0034
   var COST_KINDS=[
     {id:"tkanina",  label:"Tkanina",           icon:"🧵"},
@@ -601,7 +601,11 @@ export function ModalDeal(p){
     var hasTime=dateStr&&dateStr.includes("T")&&!dateStr.endsWith("T00:00")&&!dateStr.endsWith("T00:00:00");
     var hh=hasTime?pad(baseDate.getHours()):"09";
     var mm=hasTime?pad(baseDate.getMinutes()):"00";
-    var endHH=pad(Math.min(parseInt(hh,10)+1,23));
+    // Domyślny czas trwania: pomiar 1 h, montaż (i Termin 2) 3 h
+    var durMin=/pomiar/i.test(title||"")?60:180;
+    var endMinTot=Math.min(parseInt(hh,10)*60+parseInt(mm,10)+durMin,23*60+45);
+    var endHH=pad(Math.floor(endMinTot/60));
+    var endMM=pad(endMinTot%60);
     // Auto-dopasuj kalendarz montazysta po nazwie
     var autoCalId=(function(){
       if(calIdOvr)return calIdOvr;
@@ -612,7 +616,7 @@ export function ModalDeal(p){
       return (calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
     })();
     var calId=autoCalId;
-    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+mm,note:"",calId:calId,saving:false,onSave:onSave||null});
+    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+endMM,durMin:durMin,addPrimary:true,note:"",calId:calId,saving:false,onSave:onSave||null});
   }
 
   function submitGcalDraft(){
@@ -642,7 +646,8 @@ export function ModalDeal(p){
     };
     var primaryCal=(calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
     var targets=[dft.calId];
-    if(dft.calId!==primaryCal)targets.push(primaryCal);
+    // Kalendarz główny (Pauliny) — tylko gdy zaznaczone; gdy jedzie sam montażysta, można odhaczyć
+    if(dft.calId!==primaryCal&&dft.addPrimary!==false)targets.push(primaryCal);
     function postToCalendar(calId,tok){
       return fetch("https://www.googleapis.com/calendar/v3/calendars/"+encodeURIComponent(calId)+"/events",{
         method:"POST",
@@ -1167,7 +1172,18 @@ export function ModalDeal(p){
           ce("div",{style:{flex:1}},
             ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",display:"block",marginBottom:4}},"OD"),
             ce("select",{value:gcalDraft.timeFrom,style:Object.assign({},INP),
-              onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{timeFrom:ev.target.value});});}},
+              onChange:function(ev){
+                var v=ev.target.value;
+                setGcalDraft(function(d){
+                  // Przesuń godzinę końca razem ze startem (zachowaj czas trwania, domyślnie 3 h dla montażu)
+                  var toMin=function(t){var a=String(t||"").split(":");return parseInt(a[0],10)*60+parseInt(a[1]||"0",10);};
+                  var dur=toMin(d.timeTo)-toMin(d.timeFrom);
+                  if(!(dur>0))dur=d.durMin||180;
+                  var e=Math.min(toMin(v)+dur,23*60+45);
+                  var nt=String(Math.floor(e/60)).padStart(2,"0")+":"+String(e%60).padStart(2,"0");
+                  return Object.assign({},d,{timeFrom:v,timeTo:nt});
+                });
+              }},
               (function(){var opts=[];for(var h=6;h<22;h++){["00","15","30","45"].forEach(function(m){opts.push(String(h).padStart(2,"0")+":"+m);});}return opts.map(function(o){return ce("option",{key:o,value:o},o);});})())
           ),
           ce("div",{style:{flex:1}},
@@ -1192,10 +1208,20 @@ export function ModalDeal(p){
             var instCal=calList.find(function(c){return c.id===gcalDraft.calId;});
             var labels=[];
             if(instCal&&instCal.id!==primaryCal.id)labels.push(instCal.summary||installerName||gcalDraft.calId);
-            labels.push(primaryCal.summary||"primary");
+            if(!(instCal&&instCal.id!==primaryCal.id)||gcalDraft.addPrimary!==false)labels.push(primaryCal.summary||"primary");
             return labels.join(" + ");
           })()
         ),
+        // Opcja: nie dodawaj do kalendarza głównego (gdy na montaż jedzie sam montażysta)
+        (function(){
+          var primaryCal=(calList.find(function(c){return c.primary;})||calList[0]||{});
+          if(!gcalDraft.calId||gcalDraft.calId===primaryCal.id)return null;
+          return ce("label",{style:{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"var(--t2)",marginTop:-8,marginBottom:16,cursor:"pointer"}},
+            ce("input",{type:"checkbox",checked:gcalDraft.addPrimary!==false,
+              onChange:function(ev){var v=ev.target.checked;setGcalDraft(function(d){return Object.assign({},d,{addPrimary:v});});}}),
+            "Dodaj też do kalendarza "+(primaryCal.summary||"głównego")
+          );
+        })(),
         // Przyciski
         ce("div",{style:{display:"flex",gap:8}},
           ce("button",{
