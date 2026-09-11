@@ -1444,7 +1444,7 @@ export function App(p){
       // ── Multi-window mode: list all windows ──
       var winRows=roomWins.map(function(w){
         var t=wt(w);
-        var labels=(w.products||[]).map(function(p){return(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;}).join(", ");
+        var labels=(w.products||[]).map(function(p){return p.type==="inny"&&p.innyNazwa?p.innyNazwa:(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;}).join(", ");
         var isVariant=!!w.variantGroup;
         var hasCurtain=(w.products||[]).some(function(p){return p.type==="zaslona"||p.type==="firana";});
         var variantBadge=isVariant?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"var(--violet-l)",color:THEME_HEX.violet,borderRadius:6,padding:"2px 7px",marginLeft:6,verticalAlign:"middle"}},"Wariant "+w.variantLabel):null;
@@ -1659,7 +1659,7 @@ export function App(p){
       // nigdzie w UI nie dało się ich już zobaczyć ani wyczyścić.
       function winCard(w,extraStyle,hideName){
         var t=wt(w);
-        var desc=(w.products||[]).map(function(p){var l=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
+        var desc=(w.products||[]).map(function(p){var l=p.type==="inny"&&p.innyNazwa?p.innyNazwa:(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
         return ce("div",{key:w.id,style:mg({padding:"14px 16px",background:"var(--bg2)",borderRadius:12,marginBottom:6,display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,border:"1px solid var(--bd3)"},extraStyle||{})},
           ce("div",{style:{flex:1,minWidth:0}},
             hideName?null:ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:3}},"\uD83E\uDE9F "+w.name),
@@ -1686,7 +1686,7 @@ export function App(p){
             ),
             group.map(function(w,gi){
               var t=wt(w);
-              var desc=(w.products||[]).map(function(p){var l=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
+              var desc=(w.products||[]).map(function(p){var l=p.type==="inny"&&p.innyNazwa?p.innyNazwa:(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
               return ce("div",{key:w.id,style:{padding:"12px 14px",borderBottom:gi<group.length-1?"1px solid var(--bd2)":"none",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,background:gi%2===0?"var(--bg2)":"var(--bg3)"}},
                 ce("div",{style:{flex:1}},
                   ce("div",{style:{fontSize:13,fontWeight:700,color:THEME_HEX.violet,marginBottom:2}},"Wariant "+w.variantLabel),
