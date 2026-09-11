@@ -2961,7 +2961,7 @@ function InvoiceDetailView(p){
         ce("input",{type:"email",value:mailTo,onChange:function(e){setMailTo(e.target.value);},
           style:Object.assign({},inp,{marginBottom:mailTo.trim()!==(currentInv.buyer_email||"")?4:14})}),
         mailTo.trim()!==(currentInv.buyer_email||"")&&ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:14}},
-          "Na fakturze: "+(currentInv.buyer_email||"\u2014")+" (dane nabywcy na fakturze bez zmian)"),
+          "Adres zapisany przy wystawieniu faktury: "+(currentInv.buyer_email||"\u2014")),
         ce("label",{style:label},"Temat"),
         ce("input",{value:mailSubject,onChange:function(e){setMailSubject(e.target.value);},
           style:Object.assign({},inp,{marginBottom:14})}),
