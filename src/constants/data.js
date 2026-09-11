@@ -3115,9 +3115,11 @@ export function calc(p){
     var dekro=c.dekro==="tak",hM=hCm/100;
     var podszewka=c.podszewka==="tak";
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
-    var useA2=belka>0&&hCm+20>belka&&c.tasiemkaStojaco!=="tak";
     (p.panels||[]).forEach(function(pn){
       var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pw/100,z,kt,ks,kp,koszt;
+      // Wysoko\u015b\u0107 per panel (komplet z r\xf3\u017cn\u0105 wysoko\u015bci\u0105 L/P), domy\u015blnie par.hCm
+      var phCm=pn.h||hCm,hM=phCm/100;
+      var useA2=belka>0&&phCm+20>belka&&c.tasiemkaStojaco!=="tak";
       if(useA2){
         var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
         z=Math.ceil((lp*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
@@ -3133,7 +3135,7 @@ export function calc(p){
       usage.fabMb+=z; usage.fabSell+=kt;
       usage.sewMb+=z; usage.sewSell+=ks;
       if(podszewka){usage.liningMb+=z; usage.fabSell+=z*80; usage.sewSell+=ks*0.5;}
-      lines.push(pn.side+" "+pw+"cm \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":""));
+      lines.push(pn.side+" "+pw+"cm"+(pn.h&&pn.h!==hCm?" \u00d7 h"+pn.h+"cm":"")+" \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":""));
     });
   }else if(p.type==="zaluzja"){
     var wCm=par.wCm||0,lCm=par.lCm||0;
@@ -3657,7 +3659,7 @@ export function buildOfferDetailRows(client){
           tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
           producent=fabObj?fabObj.prod:"-";
           szerokosc=par.wCm?(par.wCm+" cm"):"-";
-          wysokosc=par.hCm?(par.hCm+" cm"):"-";
+          wysokosc=curtainHeightDesc(p);
           var split=pc.split||"unequal";
           if(split==="left")podzial="Lewa";
           else if(split==="right")podzial="Prawa";
@@ -3766,11 +3768,13 @@ export function getPasyParityKorekta(client){
         var c=p.c||{},par=p.par||{};
         var fabP=p.fabMan!=null?p.fabMan:(p.fabP!=null?p.fabP:null);
         var belka=p.fabW||0,mars=+(c.mars||"1.5");
-        var hCm=par.hCm||0,hM=hCm/100;
-        var useA2=belka>0&&hCm+20>belka&&c.tasiemkaStojaco!=="tak";
-        if(!useA2||fabP==null||!hCm)return;
+        var hCm0=par.hCm||0;
+        if(fabP==null||!hCm0)return;
         (getPanelsForProd(p)||[]).forEach(function(pn){
           var pw=pn.w||0;if(!pw)return;
+          var hCm=pn.h||hCm0,hM=hCm/100;
+          var useA2=belka>0&&hCm+20>belka&&c.tasiemkaStojaco!=="tak";
+          if(!useA2)return;
           var pwZ=pw+20,pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
           var fabKey=p.fabName||p.fabManName||"tkanina";
           var key=fabKey+"::"+hM.toFixed(2);
@@ -3878,14 +3882,27 @@ export function buildFabricRows(client){
   return rows;
 }
 
+// Opis wysoko\u015bci zas\u0142ony: "250 cm" albo "L 250 / P 247 cm" przy r\xf3\u017cnych wysoko\u015bciach
+export function curtainHeightDesc(prod){
+  var pc=prod.c||{},par=prod.par||{},sp=pc.split||"unequal";
+  if(pc.hDiff&&(sp==="equal"||sp==="unequal")){
+    var hL=+pc.leftH||+par.hCm||0,hR=+pc.rightH||+par.hCm||0;
+    if(hL!==hR)return "L "+hL+" / P "+hR+" cm";
+  }
+  return par.hCm?(par.hCm+" cm"):"-";
+}
+
 export function getPanelsForProd(prod){
   var pc=prod.c||{},par=prod.par||{},tw=par.wCm||0,sp=pc.split||"unequal";
   if(sp==="left") return [{side:"Zas\u0142ona lewa",w:tw}];
   if(sp==="right") return [{side:"Zas\u0142ona prawa",w:tw}];
-  if(sp==="equal"){var h=Math.floor(tw/2);return [{side:"Zas\u0142ona lewa",w:h},{side:"Zas\u0142ona prawa",w:tw-h}];}
+  // R\xf3\u017cna wysoko\u015b\u0107 lewej/prawej (tylko komplet): pn.h nadpisuje par.hCm w calc()
+  var hd=pc.hDiff&&(sp==="equal"||sp==="unequal");
+  var hL=hd?(+pc.leftH||+par.hCm||0):null,hR=hd?(+pc.rightH||+par.hCm||0):null;
+  if(sp==="equal"){var h=Math.floor(tw/2);return [{side:"Zas\u0142ona lewa",w:h,h:hL},{side:"Zas\u0142ona prawa",w:tw-h,h:hR}];}
   var out=[];
-  if(pc.leftW>0) out.push({side:"Zas\u0142ona lewa",w:pc.leftW});
-  if(pc.rightW>0) out.push({side:"Zas\u0142ona prawa",w:pc.rightW});
+  if(pc.leftW>0) out.push({side:"Zas\u0142ona lewa",w:pc.leftW,h:hL});
+  if(pc.rightW>0) out.push({side:"Zas\u0142ona prawa",w:pc.rightW,h:hR});
   return out;
 }
 
@@ -3988,7 +4005,7 @@ export function buildSewingRows(client){
           fabW:prod.fabW||prod.fabManW||"-",
           kolor:pc.kolor||"-",
           metry:metry,
-          hCm:par.hCm||"-",
+          hCm:(pc.hDiff&&(pc.split==="equal"||(pc.split||"unequal")==="unequal")&&(+pc.leftH||+par.hCm)!==(+pc.rightH||+par.hCm))?("L "+(+pc.leftH||+par.hCm)+" / P "+(+pc.rightH||+par.hCm)):(par.hCm||"-"),
           wCm:par.wCm||"-",
           szStyle:sz,marszczenie:mars,
           tasma:(pc.model==="tasma"||pc.model==="falda")?(pc.szerokosc_tasmy||8)+" cm":"-",
