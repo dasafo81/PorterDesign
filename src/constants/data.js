@@ -1204,21 +1204,21 @@ export const FABRICS =[
   {name:"ROFE",brutto:150,prod:"LART",width:300,zakup:39.7,belkowa:29.8},
   {name:"DIMOUT 310",brutto:160,prod:"LART",width:280,zakup:54,belkowa:42.6},
   {name:"BLOW",brutto:120,prod:"LART",width:300,zakup:36.9,belkowa:21.3},
-  // \u2500\u2500 CAPTURE (Kolekcja Vadain) \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
-  {name:"Aurora Capture",brutto:220,prod:"Capture",width:300,zakup:130,sklad:"80% RPET, 12% PES, 8% LI"},
-  {name:"Euphoria",brutto:250,prod:"Capture",width:300,zakup:142,sklad:"58% CO, 42% PES"},
-  {name:"Explore",brutto:240,prod:"Capture",width:300,zakup:138,sklad:"57% RPET, 23% PES, 17% PAN, 3% PA"},
-  {name:"Fame",brutto:210,prod:"Capture",width:300,zakup:122,sklad:"100% PES"},
-  {name:"Glaze",brutto:160,prod:"Capture",width:303,zakup:90,sklad:"100% RPET"},
-  {name:"Halo",brutto:210,prod:"Capture",width:300,zakup:122,sklad:"59% PES, 38% VI, 3% LI"},
-  {name:"Lucente Capture",brutto:210,prod:"Capture",width:290,zakup:129,sklad:"90% PES, 10% OT"},
-  {name:"Lumi\u00e8re",brutto:180,prod:"Capture",width:300,zakup:105,sklad:"66% PES, 34% CO"},
-  {name:"Moire",brutto:160,prod:"Capture",width:300,zakup:97,sklad:"80% RPET, 20% PES"},
-  {name:"Rumour",brutto:130,prod:"Capture",width:320,zakup:75,sklad:"100% PES"},
-  {name:"Sign",brutto:160,prod:"Capture",width:300,zakup:96,sklad:"100% PES"},
-  {name:"Thread",brutto:110,prod:"Capture",width:317,zakup:70,sklad:"55% RPET, 45% PES"},
-  {name:"Tomorrow",brutto:170,prod:"Capture",width:298,zakup:95,sklad:"100% PES"},
-  {name:"Ultimate",brutto:180,prod:"Capture",width:300,zakup:102,sklad:"100% RPET"}
+  // \u2500\u2500 VADAIN \u2014 kolekcja CAPTURE (nazwa: "<Tkanina> / Capture") \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
+  {name:"Aurora / Capture",brutto:220,prod:"Vadain",width:300,zakup:130,sklad:"80% RPET, 12% PES, 8% LI"},
+  {name:"Euphoria / Capture",brutto:250,prod:"Vadain",width:300,zakup:142,sklad:"58% CO, 42% PES"},
+  {name:"Explore / Capture",brutto:240,prod:"Vadain",width:300,zakup:138,sklad:"57% RPET, 23% PES, 17% PAN, 3% PA"},
+  {name:"Fame / Capture",brutto:210,prod:"Vadain",width:300,zakup:122,sklad:"100% PES"},
+  {name:"Glaze / Capture",brutto:160,prod:"Vadain",width:303,zakup:90,sklad:"100% RPET"},
+  {name:"Halo / Capture",brutto:210,prod:"Vadain",width:300,zakup:122,sklad:"59% PES, 38% VI, 3% LI"},
+  {name:"Lucente / Capture",brutto:210,prod:"Vadain",width:290,zakup:129,sklad:"90% PES, 10% OT"},
+  {name:"Lumi\u00e8re / Capture",brutto:180,prod:"Vadain",width:300,zakup:105,sklad:"66% PES, 34% CO"},
+  {name:"Moire / Capture",brutto:160,prod:"Vadain",width:300,zakup:97,sklad:"80% RPET, 20% PES"},
+  {name:"Rumour / Capture",brutto:130,prod:"Vadain",width:320,zakup:75,sklad:"100% PES"},
+  {name:"Sign / Capture",brutto:160,prod:"Vadain",width:300,zakup:96,sklad:"100% PES"},
+  {name:"Thread / Capture",brutto:110,prod:"Vadain",width:317,zakup:70,sklad:"55% RPET, 45% PES"},
+  {name:"Tomorrow / Capture",brutto:170,prod:"Vadain",width:298,zakup:95,sklad:"100% PES"},
+  {name:"Ultimate / Capture",brutto:180,prod:"Vadain",width:300,zakup:102,sklad:"100% RPET"}
 ];
 
 // ── TAPETY (kolekcja ARTE / Decodore) ─────────────────────────────────
@@ -2521,6 +2521,24 @@ export function isHighFabric(widthCm){
 // Cache w pamiećci procesu, wypełniany raz przy starcie apki (App.jsx wywołuje
 // primeFabricOverrides po pobraniu catalog_items z Supabase). Klucz nadpisania
 // to base_key w formacie "tkaniny::<nazwa>" (patrz ScreenWarehouse.jsx).
+// Dawne nazwy tkanin -> aktualne (zmiany nazw w FABRICS). Stare wyceny i nadpisania
+// z Katalogu trzymaja nazwe jako klucz, wiec mapujemy je na nowa nazwe.
+var FABRIC_LEGACY_NAMES = {
+  "Aurora Capture":"Aurora / Capture",
+  "Euphoria":"Euphoria / Capture",
+  "Explore":"Explore / Capture",
+  "Fame":"Fame / Capture",
+  "Glaze":"Glaze / Capture",
+  "Halo":"Halo / Capture",
+  "Lucente Capture":"Lucente / Capture",
+  "Lumi\u00e8re":"Lumi\u00e8re / Capture",
+  "Moire":"Moire / Capture",
+  "Rumour":"Rumour / Capture",
+  "Sign":"Sign / Capture",
+  "Thread":"Thread / Capture",
+  "Tomorrow":"Tomorrow / Capture",
+  "Ultimate":"Ultimate / Capture"
+};
 var _fabricOverrides = {};
 // Tkaniny wlasne (dodane recznie w Magazyn -> Katalog, bez base_key, grupa "tkaniny")
 var _customFabrics = [];
@@ -2545,7 +2563,13 @@ export function primeFabricOverrides(rows){
   _customFabrics = [];
   (rows||[]).forEach(function(r){
     if(r.base_key && r.base_key.indexOf("tkaniny::")===0){
-      _fabricOverrides[r.base_key.slice(9)] = r;
+      var k = r.base_key.slice(9);
+      if(FABRIC_LEGACY_NAMES[k]){
+        k = FABRIC_LEGACY_NAMES[k];
+        if(_fabricOverrides[k]) return; // nowszy wpis pod nowa nazwa ma pierwszenstwo
+        if(r.meta==="Capture") r = Object.assign({}, r, {meta:"Vadain"});
+      }
+      _fabricOverrides[k] = r;
     } else if(!r.base_key && r.group_id==="tkaniny" && r.name){
       _customFabrics.push(_rowToFabric(r));
     }
@@ -2568,6 +2592,7 @@ export function getAllFabrics(){
 }
 // Zwraca efektywną tkaninę (baza FABRICS + nadpisanie z katalogu, jeśli istnieje)
 export function getFabricEffective(name){
+  if(name && FABRIC_LEGACY_NAMES[name]) name = FABRIC_LEGACY_NAMES[name];
   var base = FABRICS.find(function(f){return f.name===name;});
   var ov = _fabricOverrides[name];
   if(!base && !ov){
