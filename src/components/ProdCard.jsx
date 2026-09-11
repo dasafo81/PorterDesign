@@ -13,7 +13,7 @@ import {
   JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, JZ_BA50_COLORS, JZ_BS50_COLORS,
   JZ_TASIEMKA_COLORS, jzTasWidthGroup, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
-  PROD_TYPES, RCITY, RDUO, REL,
+  PROD_TYPES, INNY_KATEGORIE, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
   RS_C, RS_D, RS_E, RS_HEIGHTS,
@@ -168,7 +168,7 @@ export function ProdCard(p){
   var lbl=(prod.type==="prestige_square"?"Karnisz Prestige SQUARE":prod.type==="prestige_round"?"Karnisz Prestige ROUND":(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label);
 
   function hasProdData(pr){
-    return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||
+    return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||
       (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm))||
       (pr.c&&Object.keys(pr.c).length>1)||
       (pr.kdSzyny&&pr.kdSzyny.length>0)||
@@ -181,7 +181,7 @@ export function ProdCard(p){
     return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
       if(prod.type===t.id)return;
       if(hasProdData(prod)){setPendingType(t);return;}
-      p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,innyNazwa:undefined}));
+      p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
     }});
   });
 
@@ -1757,16 +1757,35 @@ export function ProdCard(p){
       )
     );
   }else if(prod.type==="inny"){
+    // Legacy: stare pozycje "inny" z samą nazwą → kategoria "Inny"
+    var innyKat=prod.innyKat||(prod.innyNazwa?"inny":null);
+    var innyCenaNum=+(String(c.innyCena==null?"":c.innyCena).replace(",","."))||0;
+    var innyQty=par.qty||1;
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
-      ce(Fld,{label:"NAZWA PRODUKTU"},
+      ce(Fld,{label:"KATEGORIA"},
+        ce(Chips,{items:INNY_KATEGORIE.map(function(k){
+          return ce(Chip,{key:k.id,label:k.label,active:innyKat===k.id,onClick:function(){
+            if(innyKat===k.id)return;
+            p.onChange(mg(prod,{innyKat:k.id,innyNazwa:k.id==="inny"?undefined:k.label}));
+          }});
+        })})
+      ),
+      innyKat==="inny"?ce(Fld,{label:"NAZWA PRODUKTU"},
         ce("input",{type:"text",value:prod.innyNazwa||"",
           onChange:function(ev){p.onChange(mg(prod,{innyNazwa:ev.target.value||undefined}));},
-          placeholder:"np. Narzuta dekoracyjna, Poduszka...",
+          placeholder:"np. Baldachim, Zas\u0142ona prysznicowa...",
           style:Object.assign({},IST,{width:"100%"})
         })
-      ),
+      ):null,
+      innyKat?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"CENA ZA SZT. (z\u0142)"},ce("input",{type:"text",inputMode:"decimal",value:c.innyCena!=null?c.innyCena:"",onChange:function(ev){sc("innyCena",ev.target.value===""?null:ev.target.value);},placeholder:"np. 250",style:IST}))
+      ):null,
+      innyCenaNum>0?ce("div",{style:{fontSize:14,color:"var(--grd)",fontWeight:600}},
+        innyQty+" \xd7 "+innyCenaNum+" z\u0142 = "+(Math.round(innyQty*innyCenaNum*100)/100)+" z\u0142"
+      ):null,
       ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)"}},
-        "\u2139\uFE0F Wpisz cen\u0119 ko\u0144cow\u0105 w polu poni\u017cej \u2014 zostanie wliczona do podsumowania."
+        "\u2139\uFE0F Cena = ilo\u015b\u0107 \xd7 cena za szt. Pole \u201eW\u0142asna cena ko\u0144cowa\u201d poni\u017cej nadpisuje ca\u0142o\u015b\u0107."
       )
     );
   }else{
@@ -1811,7 +1830,7 @@ export function ProdCard(p){
       fromLabel:lbl,
       toLabel:pendingType.label,
       onConfirm:function(){
-        p.onChange(mg(prod,{type:pendingType.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined}));
+        p.onChange(mg(prod,{type:pendingType.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
       },
       onClose:function(){setPendingType(null);}
     }):null,
