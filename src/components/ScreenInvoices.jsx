@@ -324,7 +324,29 @@ function InvoiceEditor(p){
   // Lista ofert wybranego klienta (do powiązania faktury z konkretną ofertą)
   useEffect(function(){
     if(!clientId||direction==="zakup"){setClientOffers([]);return;}
-    sbApi.getClientOffers(clientId).then(function(rows){setClientOffers(rows||[]);}).catch(function(){setClientOffers([]);});
+    sbApi.getClientOffers(clientId).then(function(rows){
+      // Oferty zapisane przed numeracja OF/NN/MM/YYYY (migracja 0042) maja w offers.number
+      // snapshot starego, doraznego numeru OF-YYYYMMDD-Nazwisko. Podmieniamy go na staly
+      // numer wyceny klienta (clients.quote_no) — lokalnie i w bazie (jednorazowa samonaprawa).
+      var cl=(p.clients||[]).find(function(c){return String(c.id)===String(clientId);});
+      var qn=cl&&cl.quote_no?cl.quote_no:"";
+      var isLegacy=function(n){return /^OF-\d{8}-/.test(n||"");};
+      var fixed=(rows||[]).map(function(o){
+        if(!qn||!isLegacy(o.number))return o;
+        sbApi.updateOffer(o.id,{number:qn}).catch(function(e){console.error("Błąd aktualizacji numeru oferty:",e);});
+        return Object.assign({},o,{number:qn});
+      });
+      setClientOffers(fixed);
+      // Nowa lub robocza faktura powiazana ze starym numerem — aktualizujemy numer, Uwagi
+      // i nazwy pozycji. Faktur wystawionych / wyslanych do KSeF nie ruszamy.
+      var editable=!initInv.id||initInv.status==="draft";
+      if(editable&&qn&&offerId&&isLegacy(offerNumber)){
+        var oldNo=offerNumber;
+        setOfferNumber(qn);
+        setNotes(function(prev){return String(prev||"").split(oldNo).join(qn);});
+        setItems(function(prev){return prev.map(function(it){return it.name&&it.name.indexOf(oldNo)>=0?Object.assign({},it,{name:it.name.split(oldNo).join(qn)}):it;});});
+      }
+    }).catch(function(){setClientOffers([]);});
   },[clientId,direction]);
   var [items,setItems]=useState(
     (initInv.invoice_items&&initInv.invoice_items.length>0)
