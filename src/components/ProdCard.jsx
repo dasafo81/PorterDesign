@@ -27,7 +27,7 @@ import {
   PRESTIGE_WIDTHS,
   PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES,
   calc, formatPLN, getPanelsForProd, jzLookup,
-  lookup, mg, roundTo10, rrzLookup
+  lookup, mg, roundTo10, rrzLookup, arcGeom
 } from '../constants/data.js';
 import { generateFabricOrderPDF, generateClientEmail,
 
@@ -126,6 +126,24 @@ export function ProdCard(p){
   function sc(k,v){p.onChange(mg(prod,{c:mg(c,{[k]:v})}));}
   function tc(k,a,b){a=a||"nie";b=b||"tak";sc(k,c[k]===b?a:b);}
   function sp(k,v){var n=String(v).replace(",",".");p.onChange(mg(prod,{par:mg(par,{[k]:/[.,]$/.test(v)?v:+n||0})}));}
+  // Łuk: zmiana cięciwy/głębokości → auto-podstawienie długości (cm) i gięcia łuk (mb)
+  function spArc(k,v){
+    var n=String(v).replace(",",".");
+    var val=/[.,]$/.test(v)?v:+n||0;
+    var patch={[k]:val};
+    var ch=k==="arcChord"?val:par.arcChord,dp=k==="arcDepth"?val:par.arcDepth;
+    var g=arcGeom(ch,dp);
+    if(g&&typeof val==="number"){patch.len=Math.round(g.len);patch.arc=Math.round(g.len)/100;}
+    p.onChange(mg(prod,{par:mg(par,patch)}));
+  }
+  function arcInfo(){
+    var g=arcGeom(par.arcChord,par.arcDepth);
+    if(!g)return null;
+    return ce("div",{style:{marginBottom:16,padding:"10px 14px",borderRadius:10,background:"var(--bg2)",border:"1px solid var(--bd2)",fontSize:13,color:"var(--t2)",lineHeight:1.5}},
+      "\u25E0 \u0141uk: R \u2248 "+Math.round(g.R)+" cm, k\u0105t "+Math.round(g.deg)+"\u00b0, d\u0142ugo\u015b\u0107 po osi \u2248 "+(Math.round(g.len*10)/10).toString().replace(".",",")+" cm \u2192 podstawiono d\u0142ugo\u015b\u0107 i gi\u0119cie \u0142uk."+
+      (+par.arcDepth>+par.arcChord/2?" Uwaga: g\u0142\u0119boko\u015b\u0107 wi\u0119ksza ni\u017c po\u0142owa ci\u0119ciwy (\u0142uk ponad p\u00f3\u0142kole).":"")
+    );
+  }
   function sf(f){p.onChange(mg(prod,{fabName:f.name,fabP:f.brutto,fabW:f.width,fabMan:null,fabManName:null}));}
   function sfm(v){p.onChange(mg(prod,{fabName:null,fabP:null,fabW:prod.fabManW||null,fabMan:v}));}
   function sfmW(v){p.onChange(mg(prod,{fabManW:v,fabW:v}));}
@@ -1435,10 +1453,12 @@ export function ProdCard(p){
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){spArc("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm) — rozstaw ko\u0144c\u00f3w"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"–",style:IST})),
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
       ),
+      arcInfo(),
       ce(Chips,{items:[
         ce(Chip,{key:"fl",label:"Flex 80 z\u0142/mb",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
         ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
@@ -1456,9 +1476,11 @@ export function ProdCard(p){
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"300",style:IST})),
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){spArc("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm) — rozstaw ko\u0144c\u00f3w"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"–",style:IST})),
         ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
       ),
+      arcInfo(),
       ce(Chips,{items:[
         ce(Chip,{key:"sl",label:"SLIM",active:!c.km||c.km==="slim",onClick:function(){sc("km","slim");}}),
         ce(Chip,{key:"un",label:"UNIVERSAL",active:c.km==="universal",onClick:function(){sc("km","universal");}})
