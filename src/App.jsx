@@ -197,7 +197,7 @@ export function App(p){
   function applyOfferComm(baseRows,commVal){
     return baseRows.map(function(r){
       var t=commVal>0?roundTo10(r.total*(1+commVal)):r.total;
-      return mg(r,{total:t,cenaJedn:t,qtyUnit:r.qty+" "+r.unit,name:stripHtml(r.name)});
+      return mg(r,{total:t,cenaJedn:t/(+r.qty||1),qtyUnit:r.qty+" "+r.unit,name:stripHtml(r.name)});
     });
   }
   function buildSimplifiedGroups(client){
@@ -1403,7 +1403,7 @@ export function App(p){
         ),
         swProducts.length>=2?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14,padding:"10px 14px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd3)"}},
           swProducts.map(function(p,i){
-            var label=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;
+            var label=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;if(p.type==="inny"&&p.innyNazwa)label=p.innyNazwa;
             var sameTypeBefore=swProducts.slice(0,i).filter(function(x){return x.type===p.type;}).length;
             var totalOfType=swProducts.filter(function(x){return x.type===p.type;}).length;
             var chipLabel=totalOfType>1?label+" "+(sameTypeBefore+1):label;
@@ -1541,7 +1541,7 @@ export function App(p){
       ),
       (curWin.products||[]).length>=2?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14,padding:"10px 14px",background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd3)"}},
         (curWin.products||[]).map(function(p,i){
-          var label=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;
+          var label=(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;if(p.type==="inny"&&p.innyNazwa)label=p.innyNazwa;
           // count duplicates before this index for numbering
           var sameTypeBefore=(curWin.products||[]).slice(0,i).filter(function(x){return x.type===p.type;}).length;
           var totalOfType=(curWin.products||[]).filter(function(x){return x.type===p.type;}).length;
@@ -1837,7 +1837,7 @@ export function App(p){
               ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
                 ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){
                   var v=ev.target.value;
-                  setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{total:v,cenaJedn:v}):x;});});
+                  setOfferPreviewRows(function(prev){return prev.map(function(x,xi){return xi===i?mg(x,{total:v,cenaJedn:v/(+x.qty||1)}):x;});});
                 },style:{width:110,padding:"8px 10px",fontSize:14,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
                 ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł")
               )
