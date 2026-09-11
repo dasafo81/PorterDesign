@@ -670,6 +670,7 @@ function mergeCatalog(baseGroups, rows) {
       };
     }).filter(function(m) { return !m.hidden; });
     (customByGroup[g.id] || []).forEach(function(c) {
+      if (c.hidden) return;
       items.push({ rowId: c.id, baseKey: null, groupId: g.id, isBase: false, overridden: false,
         name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
         zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price,
@@ -867,7 +868,10 @@ function ModalCatalogItem(p) {
       ),
       isBase && hasRow && ce("button", { onClick: resetBase, disabled: busy,
         style: { marginTop: 10, width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid var(--bd2)", background: "transparent", color: "var(--t3)", fontSize: 12, fontWeight: 600, cursor: "pointer" } },
-        "\u21BA Przywr\u00f3\u0107 warto\u015bci z cennika")
+        "\u21BA Przywr\u00f3\u0107 warto\u015bci z cennika"),
+      grp === "tkaniny" && (hasRow || isBase) && p.onDelete && ce("button", { onClick: function() { p.onDelete(it); }, disabled: busy,
+        style: { marginTop: 10, width: "100%", padding: 10, borderRadius: 10, border: "1.5px solid rgba(220,38,38,0.3)", background: "rgba(220,38,38,0.06)", color: "#dc2626", fontSize: 12, fontWeight: 700, cursor: "pointer" } },
+        "\uD83D\uDDD1 Usu\u0144 tkanin\u0119 z katalogu")
     )
   );
 }
@@ -894,6 +898,7 @@ function TabCatalog(p) {
   var s4b = useState(null); var activeMeta = s4b[0]; var setActiveMeta = s4b[1];
   var s4c = useState(null); var activeTag = s4c[0];  var setActiveTag = s4c[1];
   var s4d = useState(null); var sampleFilter = s4d[0]; var setSampleFilter = s4d[1]; // null | "yes" | "no"
+  var s4e = useState(false); var showHidden = s4e[0]; var setShowHidden = s4e[1];
 
   function reload() {
     setLoading(true);
@@ -903,12 +908,48 @@ function TabCatalog(p) {
   }
   useEffect(function() { reload(); }, []);
 
+  // Wstawia/aktualizuje wiersz catalog_items w stanie bez przeładowania listy
+  // i odświeża cache tkanin, żeby zmiana od razu działała w wycenach (FabPicker).
+  function applyRow(rowId, res, patch) {
+    var row = Array.isArray(res) ? res[0] : res;
+    setRows(function(prev) {
+      var next = rowId
+        ? prev.map(function(x) { return x.id === rowId ? Object.assign({}, x, row || patch) : x; })
+        : (row ? prev.concat([row]) : prev);
+      primeFabricOverrides(next);
+      return next;
+    });
+    if (!row && !rowId) reload();
+  }
+
+  // Tkaniny: usunięcie = ukrycie (hidden). Znikają z katalogu i z wyboru w wycenach,
+  // a istniejące wyceny z tą tkaniną liczą się dalej (getFabricEffective ich nie filtruje).
+  // Pozycja z cennika bez nadpisania dostaje wiersz z base_key + hidden; flagi
+  // trudnopalna/dźwiękoszczelna kopiujemy (default false w bazie), jak w toggleSample.
+  // Produkty własne spoza tkanin — trwałe usunięcie wiersza, jak dotychczas.
   function handleDelete(it) {
-    if (!it.rowId || it.isBase) return;
-    if (!confirm("Usun\u0105\u0107 \u201E" + it.name + "\u201C?")) return;
-    sbApi.deleteCatalogItem(it.rowId)
-      .then(function() { setRows(function(prev) { return prev.filter(function(x) { return x.id !== it.rowId; }); }); })
-      .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
+    var isFab = it.groupId === "tkaniny";
+    if (!isFab) {
+      if (!it.rowId || it.isBase) return;
+      if (!confirm("Usun\u0105\u0107 \u201E" + it.name + "\u201C?")) return;
+      sbApi.deleteCatalogItem(it.rowId)
+        .then(function() { setRows(function(prev) { return prev.filter(function(x) { return x.id !== it.rowId; }); }); })
+        .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
+      return;
+    }
+    if (!confirm("Usun\u0105\u0107 tkanin\u0119 \u201E" + it.name + "\u201C z katalogu?\n\nZniknie z katalogu i z wyboru tkanin w wycenach. Istniej\u0105ce wyceny z t\u0105 tkanin\u0105 si\u0119 nie zmieni\u0105. Mo\u017cna j\u0105 przywr\u00f3ci\u0107 z listy \u201EUsuni\u0119te\u201C.")) return;
+    var op = it.rowId
+      ? sbApi.updateCatalogItem(it.rowId, { hidden: true })
+      : sbApi.addCatalogItem({ base_key: it.baseKey, group_id: it.groupId, name: it.name, hidden: true,
+          flame_retardant: !!it.flameRetardant, soundproof: !!it.soundproof });
+    op.then(function(res) { applyRow(it.rowId, res, { hidden: true }); setEditItem(null); })
+      .catch(function(e) { alert("B\u0142\u0105d usuwania: " + e.message + (/hidden/.test(e.message) ? "\n\nUruchom migracj\u0119 0046 w Supabase." : "")); });
+  }
+
+  function handleRestore(row) {
+    sbApi.updateCatalogItem(row.id, { hidden: false })
+      .then(function(res) { applyRow(row.id, res, { hidden: false }); })
+      .catch(function(e) { alert("B\u0142\u0105d przywracania: " + e.message); });
   }
 
   // Szybkie odhaczenie próbnika z karty (bez otwierania formularza).
@@ -941,6 +982,12 @@ function TabCatalog(p) {
   var noHeightCount = fabG ? fabG.items.filter(function(it) { return it.warn; }).length : 0;
   var sampleCount = fabG ? fabG.items.filter(function(it) { return it.hasSample; }).length : 0;
   var noSampleCount = fabG ? fabG.items.length - sampleCount : 0;
+  // Tkaniny usunięte (ukryte) — z cennika i własne
+  var hiddenFabrics = rows.filter(function(r) {
+    return r.hidden && (r.group_id === "tkaniny" || (r.base_key || "").indexOf("tkaniny::") === 0);
+  }).map(function(r) {
+    return { row: r, name: r.name || (r.base_key || "").slice(9), meta: r.meta || "", own: !r.base_key };
+  }).sort(function(a, b) { return a.name.localeCompare(b.name, "pl"); });
   var missingCounts = fabG ? MISSING_FIELDS.map(function(f) {
     return { k: f.k, l: f.l, count: fabG.items.filter(function(it) { return (it.missing || []).indexOf(f.k) >= 0; }).length };
   }).filter(function(x) { return x.count > 0; }) : [];
@@ -1049,11 +1096,27 @@ function TabCatalog(p) {
           style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (act ? "#16a34a" : "var(--bd2)"), background: act ? "rgba(22,163,74,0.10)" : "var(--bg2)", color: act ? "#16a34a" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
           x.l);
       }),
+      hiddenFabrics.length > 0 && (activeCat === "all" || activeCat === "tkaniny") && ce("button", { key: "hidden", onClick: function() { setShowHidden(!showHidden); },
+        style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (showHidden ? "#dc2626" : "var(--bd2)"), background: showHidden ? "rgba(220,38,38,0.08)" : "var(--bg2)", color: showHidden ? "#dc2626" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
+        "\uD83D\uDDD1 Usuni\u0119te (" + hiddenFabrics.length + ")"),
       missingCounts.map(function(x) {
         var act = missingFilter === x.k;
         return ce("button", { key: x.k, onClick: function() { setMissingFilter(act ? null : x.k); },
           style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (act ? "#d97706" : "var(--bd2)"), background: act ? "rgba(217,119,6,0.10)" : "var(--bg2)", color: act ? "#d97706" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
           "\u26A0\uFE0F " + x.l + " (" + x.count + ")");
+      })
+    ),
+
+    showHidden && hiddenFabrics.length > 0 && ce("div", { style: { border: "1.5px solid rgba(220,38,38,0.3)", background: "rgba(220,38,38,0.04)", borderRadius: 12, padding: "12px 14px", marginBottom: 16 } },
+      ce("div", { style: { fontSize: 12, fontWeight: 700, color: "var(--t2)", marginBottom: 8 } }, "\uD83D\uDDD1 Tkaniny usuni\u0119te z katalogu"),
+      hiddenFabrics.map(function(h) {
+        return ce("div", { key: h.row.id, style: { display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderTop: "0.5px solid var(--bd2)" } },
+          ce("div", { style: { flex: 1, minWidth: 0, fontSize: 13, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
+            h.name,
+            ce("span", { style: { fontSize: 11, color: "var(--t3)", marginLeft: 6 } }, [h.meta, h.own ? "w\u0142asna" : "z cennika"].filter(Boolean).join(" \u00B7 "))),
+          ce("button", { onClick: function() { handleRestore(h.row); },
+            style: { border: "1.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--violet)", borderRadius: 8, padding: "4px 10px", fontSize: 11.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
+            "\u21BA Przywr\u00f3\u0107"));
       })
     ),
 
@@ -1106,7 +1169,7 @@ function TabCatalog(p) {
                   style: { border: "1.5px solid " + (it.hasSample ? "#16a34a" : "var(--bd2)"), background: it.hasSample ? "rgba(22,163,74,0.12)" : "transparent", color: it.hasSample ? "#16a34a" : "var(--t3)", borderRadius: 8, padding: "2px 7px", fontSize: 10.5, fontWeight: 700, cursor: "pointer", opacity: it.hasSample ? 1 : 0.6 } },
                   it.hasSample ? "\u2713 Pr\u00f3bnik" : "+ Pr\u00f3bnik"),
                 ce("div", { style: { fontSize: 14, fontWeight: 800, color: "var(--violet)", marginLeft: "auto" } }, fmtPrice(it.price) + " " + (it.unit || "z\u0142")),
-                !it.isBase && ce("button", { onClick: function(e) { e.stopPropagation(); handleDelete(it); },
+                (!it.isBase || gr.id === "tkaniny") && ce("button", { onClick: function(e) { e.stopPropagation(); handleDelete(it); },
                   title: "Usu\u0144", style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 13, opacity: 0.5, padding: "0 2px" } }, "\uD83D\uDDD1")
               )
             );
@@ -1116,7 +1179,7 @@ function TabCatalog(p) {
     }),
 
     editItem !== null && ce(ModalCatalogItem, {
-      item: editItem, groups: groupOpts, allGroups: groups,
+      item: editItem, groups: groupOpts, allGroups: groups, onDelete: handleDelete,
       onSave: function() { setEditItem(null); reload(); },
       onClose: function() { setEditItem(null); }
     })
