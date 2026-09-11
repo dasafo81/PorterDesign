@@ -118,11 +118,7 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
     ${tableHTML}
     ${shipHTML}
     ${notesHTML}
-    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________&nbsp;&nbsp;&nbsp; Forma płatności: _________________&nbsp;&nbsp;&nbsp; Podpis: _________________</div>
-    <div class="sign-block" style="margin-top:8mm">
-      <div class="sign">Zamawiający<br><strong>Paulina Porter</strong></div>
-      <div class="sign">Dostawca — potwierdzenie</div>
-    </div>`;
+    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________&nbsp;&nbsp;&nbsp; Forma płatności: _________________</div>`;
 
   return '<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+supplierLabel+' — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
     +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
@@ -311,10 +307,6 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
     +"<div style=\"margin-top:"+(montaz>0?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
     +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(montaz>0?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
     +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(montaz>0?roundTo10(grandTotal2*(1+montaz)):roundTo10(grandTotal2))+" z\u0142</span></div>"
-    +"<div class=\"sign-block\">"
-    +"<div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div>"
-    +"<div class=\"sign\">Akceptacja klienta</div>"
-    +"</div>"
     +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
     +"</body></html>";
   return h;
@@ -476,7 +468,6 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
     +"<div style=\"margin-top:"+(hasMontaz?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
     +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(hasMontaz?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
     +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(hasMontaz?roundTo10(grandTotal+montazVal):roundTo10(grandTotal))+" z\u0142</span></div>"
-    +"<div class=\"sign-block\"><div class=\"sign\">Wystawi\u0142a<br><strong>Paulina Porter</strong></div><div class=\"sign\">Akceptacja klienta</div></div>"
     +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
     +"</body></html>";
   return h;
