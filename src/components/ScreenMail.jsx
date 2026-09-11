@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml, resolvePDFAssets } from '../constants/data.js';
-import { buildSimplifiedPDFHtml } from '../lib/pdf.js';
+import { buildSimplifiedPDFHtml, buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
@@ -74,10 +74,60 @@ export function getMailFlags(){
 
 var APP_PDF_OPTIONS = [
   {id:"pdf_oferta",label:"Wycena pe\u0142na",icon:"\uD83D\uDCC4"},
-  {id:"pdf_uproszczona",label:"Wycena uproszczona",icon:"\uD83D\uDCC3"},
-  {id:"pdf_zlecenie",label:"Zlecenie szycia",icon:"\u2702\uFE0F"},
-  {id:"pdf_tkanina",label:"Zam\u00f3wienie tkaniny",icon:"\uD83E\uDDF5"}
+  {id:"pdf_uproszczona",label:"Wycena uproszczona",icon:"\uD83D\uDCC3"}
+  // Zlecenie szycia / Zamówienie tkaniny usunięte — nigdy nie były generowane przy wysyłce (znikały po cichu)
 ];
+
+// ── PDF wyceny do maila — te same parametry co Podsumowanie klienta ──
+// Prowizja i montaż zapisane na kliencie (commission, install_fee, install_fee_mode).
+function clientPdfParams(cl){
+  var comm=(+cl.commission||0)/100;
+  var amount=cl.install_fee_mode==="amount";
+  var v=+cl.install_fee||0;
+  return {comm:comm,montaz:{mode:amount?"amount":"percent",value:amount?v:v/100}};
+}
+// Domyślny wybór wariantów — jak w App.jsx (makeSimplInitSel + computeSimplSelection):
+// pierwszy wariant pomieszczenia/okna wg variantLabel, pozostałe okna wszystkie.
+function defaultSimplSelection(client){
+  var byLabel=function(a,b){return (a.variantLabel||"").localeCompare(b.variantLabel||"");};
+  var rvMap={},rvOrder=[],plain=[],sel=[];
+  (client.rooms||[]).forEach(function(room){
+    if(room.variantGroup){if(!rvMap[room.variantGroup]){rvMap[room.variantGroup]=[];rvOrder.push(room.variantGroup);}rvMap[room.variantGroup].push(room);}
+    else plain.push(room);
+  });
+  rvOrder.forEach(function(g){
+    var r=rvMap[g].slice().sort(byLabel)[0];
+    if(r&&(r.windows||[]).length)sel.push({room:r,windows:r.windows});
+  });
+  plain.forEach(function(room){
+    var groups={},order=[],chosen=[];
+    (room.windows||[]).forEach(function(w){var k=w.variantGroup||("solo_"+w.id);if(!groups[k]){groups[k]={isVariant:!!w.variantGroup,wins:[]};order.push(k);}groups[k].wins.push(w);});
+    order.forEach(function(k){var g=groups[k];chosen.push(g.isVariant?g.wins.slice().sort(byLabel)[0]:g.wins[0]);});
+    if(chosen.length)sel.push({room:room,windows:chosen});
+  });
+  return sel;
+}
+function buildAppPdfHtml(id,client){
+  var pp=clientPdfParams(client);
+  if(id==="pdf_uproszczona"){
+    var rows=buildSimplifiedRows(client,defaultSimplSelection(client),pp.comm);
+    return buildSimplifiedPDFHtmlFromRows(client,rows,pp.montaz,null,"");
+  }
+  if(id==="pdf_oferta")return buildOfferPDFHtml(client,pp.comm,pp.montaz,"");
+  return null;
+}
+function appPdfName(id,client){
+  var who=(client.name||"klient").replace(/[\\/:*?"<>|]/g,"").trim();
+  var no=client.quote_no?" "+String(client.quote_no).replace(/\//g,"-"):"";
+  return (id==="pdf_oferta"?"Wycena szczeg\u00f3\u0142owa":"Oferta")+no+" - "+who+".pdf";
+}
+function previewPdfB64(b64){
+  var bin=atob(b64),arr=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+  var url=URL.createObjectURL(new Blob([arr],{type:"application/pdf"}));
+  window.open(url,"_blank");
+  setTimeout(function(){URL.revokeObjectURL(url);},60000);
+}
 
 var SYSTEM_FOLDERS = [
   {id:"inbox",label:"Skrzynka",icon:"\uD83D\uDCE5"},
@@ -321,7 +371,7 @@ function AttachmentsSection(p){
   }
 
   function addPdf(opt){
-    if(p.attachments.find(function(a){return a.id===opt.id;}))return;
+    if(p.attachments.find(function(a){return a.id===opt.id||a.srcId===opt.id;}))return;
     p.setAttachments(function(prev){
       return prev.concat([{id:opt.id,name:opt.label+".pdf",size:null,type:"app"}]);
     });
@@ -346,7 +396,13 @@ function AttachmentsSection(p){
           padding:"5px 10px 5px 8px",borderRadius:20,
           background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
           ce("span",{style:{fontSize:13}},att.type==="app"?"\uD83D\uDCC4":att.type==="template"?"\uD83D\uDCCE":"\uD83D\uDCCE"),
-          ce("span",{style:{color:"var(--t1)",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},att.name),
+          ce("span",{
+            onClick:att.type==="pdfdata"&&att.contentBytes?function(){previewPdfB64(att.contentBytes);}:undefined,
+            title:att.type==="pdfdata"&&att.contentBytes?"Kliknij, aby zobaczy\u0107 PDF":att.name,
+            style:{color:att.type==="pdfdata"&&att.contentBytes?"var(--violet)":"var(--t1)",maxWidth:att.type==="pdfdata"?320:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+              cursor:att.type==="pdfdata"&&att.contentBytes?"pointer":"default",textDecoration:att.type==="pdfdata"&&att.contentBytes?"underline":"none"}},att.name),
+          att.type==="pdfdata"&&att.contentBytes?ce("button",{onClick:function(){previewPdfB64(att.contentBytes);},
+            style:{border:"1px solid var(--bd2)",background:"var(--bg2)",borderRadius:12,cursor:"pointer",fontSize:10,fontWeight:700,color:"var(--t2)",padding:"2px 8px"}},"\uD83D\uDC41 Podgl\u0105d"):null,
           att.pending
             ?ce("span",{style:{fontSize:10,color:"var(--t3)",fontWeight:600}},"generuj\u0119 PDF\u2026")
           :att.error
@@ -387,7 +443,7 @@ function AttachmentsSection(p){
             boxShadow:"0 10px 30px rgba(0,0,0,0.22)",zIndex:400,minWidth:240,overflow:"hidden"}},
             ce("div",{style:{padding:"8px 0"}},
               APP_PDF_OPTIONS.map(function(opt){
-                var already=!!p.attachments.find(function(a){return a.id===opt.id;});
+                var already=!!p.attachments.find(function(a){return a.id===opt.id||a.srcId===opt.id;});
                 return ce("div",{key:opt.id,
                     onClick:function(){if(!already){addPdf(opt);setShowPicker(false);}},
                     style:{padding:"9px 14px",fontSize:13,
@@ -1941,6 +1997,35 @@ export function ScreenMail(p){
   var sctc=us([]),contacts=sctc[0],setContacts=sctc[1];
 
   var selClient=clients.find(function(c){return String(c.id)===String(selClientId);})||null;
+
+  // Załączniki "app" (PDF wyceny) → od razu prawdziwy PDF z nazwą i podglądem,
+  // z prowizją i montażem klienta (wcześniej szedł HTML z prowizją/montażem = 0).
+  ue(function(){
+    if(!selClient)return;
+    var todo=attachments.filter(function(a){return a.type==="app"&&(a.id==="pdf_oferta"||a.id==="pdf_uproszczona");});
+    if(!todo.length)return;
+    var cl=selClient;
+    var jobs=todo.map(function(a){
+      return {srcId:a.id,key:"pdfd_"+a.id+"_"+cl.id+"_"+Date.now(),name:appPdfName(a.id,cl),html:buildAppPdfHtml(a.id,cl)};
+    });
+    setAttachments(function(prev){
+      return prev.map(function(a){
+        var j=a.type==="app"&&jobs.find(function(x){return x.srcId===a.id;});
+        if(!j)return a;
+        return j.html?{id:j.key,srcId:j.srcId,name:j.name,type:"pdfdata",pending:true}
+                     :{id:j.key,srcId:j.srcId,name:j.name,type:"pdfdata",error:true};
+      });
+    });
+    jobs.forEach(function(j){
+      if(!j.html)return;
+      htmlToPdfBase64(j.html).then(function(b64){
+        setAttachments(function(prev){return prev.map(function(a){return a.id===j.key?{id:a.id,srcId:a.srcId,name:a.name,type:"pdfdata",contentBytes:b64,size:Math.round(b64.length*3/4)}:a;});});
+      }).catch(function(e){
+        console.error("htmlToPdfBase64",e);
+        setAttachments(function(prev){return prev.map(function(a){return a.id===j.key?{id:a.id,srcId:a.srcId,name:a.name,type:"pdfdata",error:true}:a;});});
+      });
+    });
+  },[attachments,selClientId]);
   var userEmail=msAccount&&(msAccount.username||msAccount.email)||"";
   // Aktywna lista szablonów — z bazy jeśli załadowane, fallback na MAIL_TEMPLATES
   var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
