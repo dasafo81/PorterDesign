@@ -763,7 +763,17 @@ export function ProdCard(p){
         ):null,
         // Wysokość haczyka - Fałda i Taśma (NIE Wave)
         (model==="falda"||model==="tasma")?haczSection:null,
-        model==="wave"?glideGap:null
+        model==="wave"?glideGap:null,
+        // Wave z maskownicą — szycie 150 zł/mb zamiast 120
+        model==="wave"?ce("div",{style:{marginTop:20}},
+          ce("label",{style:{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",borderRadius:10,border:"1.5px solid "+(c.waveMask==="tak"?"var(--t1)":"var(--bd2)"),cursor:"pointer",background:c.waveMask==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
+            ce("input",{type:"checkbox",checked:c.waveMask==="tak",onChange:function(ev){sc("waveMask",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
+            ce("div",{},
+              ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Z maskownic\u0105"),
+              ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"szycie 150 z\u0142/mb")
+            )
+          )
+        ):null
       ):null,
 
       // SEKCJA 4: Wykończenie
