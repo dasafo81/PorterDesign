@@ -302,7 +302,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
     +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
-    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta"+variantSuffix+"</div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta nr "+offerNo+variantSuffix+"</div>"
     +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections2
@@ -467,7 +467,7 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
     +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
-    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta"+titleSuffix+"</div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta nr "+offerNo+titleSuffix+"</div>"
     +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
     +roomSections
@@ -506,7 +506,7 @@ export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil
       notes:titleSuffix||""
     }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
   }
-  openPDFWindow(html,(client.name||"")+" - Oferta"+(titleSuffix||""));
+  openPDFWindow(html,(client.name||"")+" - Oferta "+offerNo+(titleSuffix||""));
 }
 
 export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle,validUntil){
