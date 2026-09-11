@@ -2647,6 +2647,30 @@ export function getBestsellerFabrics(prodType){
   }).filter(function(g){return g.fabrics.length>0;});
 }
 
+// ── Odpowiedniki tkanin (zamienniki różnych producentów) ──────────────
+// Każda grupa to zbiór tkanin będących swoimi wzajemnymi odpowiednikami —
+// dowolna tkanina z grupy jest zamiennikiem każdej innej z tej samej grupy.
+// Dopasowanie po znormalizowanej nazwie (bez wielkości liter i nadmiarowych
+// spacji), bo część tych tkanin to pozycje dodane ręcznie w Katalogu (HAVANA,
+// ELI — prod. LART) i pisownia bywa tam niespójna.
+export var FABRIC_EQUIV_GROUPS = [
+  ["Andrew","Mogadishu","Pixel","HAVANA","Palermo Sama","ELI","Pesto","Sola"]
+];
+function _normFabName(n){
+  return String(n||"").trim().toLowerCase().replace(/\s+/g," ");
+}
+// Zwraca nazwy odpowiedników danej tkaniny (bez niej samej), w kolejności z grupy.
+export function getFabricEquivalents(name){
+  var k = _normFabName(name);
+  if(!k) return [];
+  for(var i=0;i<FABRIC_EQUIV_GROUPS.length;i++){
+    var g = FABRIC_EQUIV_GROUPS[i];
+    var hit = g.some(function(n){ return _normFabName(n)===k; });
+    if(hit) return g.filter(function(n){ return _normFabName(n)!==k; });
+  }
+  return [];
+}
+
 export const PROD_TYPES =[
   {id:"zaslona",label:"Zas\u0142ona",icon:"🪟"},
   {id:"firana",label:"Firana",icon:"🌿"},
