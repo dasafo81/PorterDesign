@@ -3534,6 +3534,10 @@ export function formatPLN(n){return roundTo10(n).toLocaleString("pl-PL")+" zł";
 export function roundTo10(n){var r=n%10;return r<5?n-r:n+(10-r);}
 
 export function getPDFOfferNumber(client){
+  // Numer wyceny nadawany przez baze (trigger trg_clients_quote_no, migracja 0042):
+  // OF/NN/MM/YYYY, od 01 w kazdym miesiacu. Fallback ponizej tylko dla wycen
+  // zalozonych offline, ktore jeszcze nie przeszly synchronizacji.
+  if(client&&client.quote_no)return client.quote_no;
   var now=new Date();
   var y=now.getFullYear();
   var m=String(now.getMonth()+1).padStart(2,"0");
