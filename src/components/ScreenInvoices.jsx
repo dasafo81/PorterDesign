@@ -87,6 +87,20 @@ function calcLine(unit_net, qty, vat_rate){
   return {line_net, line_vat, line_gross};
 }
 // Oblicza linię faktury od strony brutto → netto.
+// Klient z CRM ma czesto caly adres w jednym polu clients.addr
+// ("ul. Majdanska 13/77 Warszawa" albo "ul. X 5, 00-950 Warszawa"), a postal/city puste.
+// Rozbijamy go na ulice / kod / miasto, zeby miasto nie zostawalo w polu Adres.
+function splitClientAddr(addr){
+  var a=String(addr||"").trim();
+  if(!a)return {addr:"",postal:"",city:""};
+  var pm=a.match(/(\d{2}-\d{3})\s*,?\s*(.*)$/);
+  if(pm)return {addr:a.slice(0,pm.index).replace(/[,\s]+$/,"").trim(),postal:pm[1],city:pm[2].trim()};
+  // Bez kodu: miasto = slowa z wielkiej litery po ostatnim numerze budynku/lokalu
+  var cm=a.match(/^(.*\d[\w\/.-]*)\s*,?\s+(\p{Lu}[\p{L}\s-]*)$/u);
+  if(cm)return {addr:cm[1].trim(),postal:"",city:cm[2].trim()};
+  return {addr:a,postal:"",city:""};
+}
+
 function calcLineFromGross(unit_gross, qty, vat_rate){
   var q=+(qty)||1, g=+(unit_gross)||0;
   var line_gross=+(g*q).toFixed(2);
@@ -470,9 +484,10 @@ function InvoiceEditor(p){
   function pickClient(c){
     setClientId(c.id);
     setBuyerName(c.name||buyerName);
-    setBuyerAddr(c.addr||buyerAddr);
-    setBuyerPostal(c.postal||buyerPostal);
-    setBuyerCity(c.city||buyerCity);
+    var sa=(c.postal||c.city)?{addr:c.addr||"",postal:c.postal||"",city:c.city||""}:splitClientAddr(c.addr);
+    setBuyerAddr(sa.addr||buyerAddr);
+    setBuyerPostal(sa.postal||buyerPostal);
+    setBuyerCity(sa.city||buyerCity);
     setBuyerEmail(c.email||buyerEmail);
     // Znajdź aktywny deal tego klienta jeśli istnieje
     var d=dealsList.find(function(x){return x.client_id===c.id;});
@@ -492,6 +507,9 @@ function InvoiceEditor(p){
     setOfferNumber(o?o.number:"");
     setOfferPctChoice("50");
     setOfferPctCustom("");
+    // Pozycja z kwota oferty wstawia sie od razu (domyslnie 50% — zaliczka);
+    // odlaczenie oferty usuwa ja z pozycji.
+    if(o)upsertOfferItem(o,50); else removeOfferItem();
     // Adnotacja o numerze oferty — niezależnie od tego, czy był rabat.
     syncOfferNote(o?(o.number||""):"");
     var disc=o?(+o.discount_amount||0):0;
@@ -525,24 +543,36 @@ function InvoiceEditor(p){
       alert("Błąd zapisu numeru oferty: "+(e.message||e));
     });
   }
-  // Wstawia pozycję faktury na X% wartości brutto powiązanej oferty (domyślnie 50% —
-  // typowa zaliczka). Jeśli faktura ma jeszcze tylko świeżą, pustą pozycję — zastępuje
-  // ją; w przeciwnym razie dopisuje nową, żeby nie skasować już wpisanych danych.
-  function applyOfferAmount(){
-    var o=clientOffers.find(function(x){return String(x.id)===String(offerId);});
-    if(!o){setErr("Najpierw wybierz ofertę");return;}
-    var pct=offerPctChoice==="100"?100:offerPctChoice==="50"?50:Math.max(0,+(String(offerPctCustom).replace(",","."))||0);
-    if(pct<=0){setErr("Podaj poprawny procent");return;}
-    setErr(null);
+  // Pozycja faktury na X% wartosci brutto powiazanej oferty. Pozycja jest ZARZADZANA:
+  // rozpoznajemy ja po nazwie ("Zaliczka N% ... wg oferty" / "Realizacja zamowienia wg
+  // oferty"), wiec zmiana procentu lub oferty ja podmienia zamiast dopisywac kolejna.
+  // Pusta, swieza pozycja jest zastepowana; inne pozycje zostaja nietkniete.
+  var OFFER_ITEM_RE=/^(Zaliczka [\d.,]+% na poczet realizacji zamówienia|Realizacja zamówienia) wg oferty /;
+  function upsertOfferItem(o,pct){
+    if(!o||!(pct>0))return;
     var vr=docType==="eko"?0:defaultVat;
     var gross=+((+(o.total_gross||0)*pct/100).toFixed(2));
     var nums=calcLineFromGross(gross,1,vr);
-    var itemName=(pct>=100?"Realizacja zamówienia wg oferty ":"Zaliczka "+pct+"% na poczet realizacji zamówienia wg oferty ")+o.number;
+    var itemName=(pct>=100?"Realizacja zamówienia wg oferty ":"Zaliczka "+String(pct).replace(".",",")+"% na poczet realizacji zamówienia wg oferty ")+o.number;
     var newItem=Object.assign({name:itemName,quantity:1,unit:settings.default_unit||"szt",vat_rate:vr},nums,{unit_gross:gross,position:1,pkwiu:""});
     setItems(function(prev){
-      if(prev.length===1&&!prev[0].name.trim()&&(+prev[0].line_gross||0)===0)return [newItem];
+      var idx=prev.findIndex(function(it){return OFFER_ITEM_RE.test(it.name||"");});
+      if(idx>=0)return prev.map(function(it,i){return i===idx?Object.assign({},newItem,{position:it.position||i+1}):it;});
+      if(prev.length===1&&!String(prev[0].name||"").trim()&&(+prev[0].line_gross||0)===0)return [newItem];
       return prev.concat([Object.assign({},newItem,{position:prev.length+1})]);
     });
+  }
+  function removeOfferItem(){
+    setItems(function(prev){
+      var rest=prev.filter(function(it){return !OFFER_ITEM_RE.test(it.name||"");});
+      if(rest.length===prev.length)return prev;
+      return rest.length?rest.map(function(it,i){return Object.assign({},it,{position:i+1});}):[freshItem()];
+    });
+  }
+  function pickOfferPct(choice,custom){
+    var o=clientOffers.find(function(x){return String(x.id)===String(offerId);});
+    var pct=choice==="100"?100:choice==="50"?50:Math.max(0,+(String(custom||"").replace(",","."))||0);
+    if(o&&pct>0)upsertOfferItem(o,pct);
   }
 
   // ── Kontrahenci (baza) — picker autouzupełniający dane nabywcy/sprzedawcy ──
@@ -1036,7 +1066,7 @@ function InvoiceEditor(p){
           ce("span",{style:{fontSize:11,color:"var(--t3)"}},"Kwota faktury:"),
           ["50","100"].map(function(v){
             var active=offerPctChoice===v;
-            return ce("button",{key:v,type:"button",onClick:function(){setOfferPctChoice(v);},
+            return ce("button",{key:v,type:"button",onClick:function(){setOfferPctChoice(v);pickOfferPct(v);},
               style:Object.assign({},btnSecondary,{padding:"5px 12px",fontSize:12},active?{background:"var(--t1)",color:"var(--bg)",borderColor:"var(--t1)"}:{})
             },v+"%");
           }),
@@ -1044,10 +1074,8 @@ function InvoiceEditor(p){
             style:Object.assign({},btnSecondary,{padding:"5px 12px",fontSize:12},offerPctChoice==="custom"?{background:"var(--t1)",color:"var(--bg)",borderColor:"var(--t1)"}:{})
           },"Inna"),
           offerPctChoice==="custom"&&ce("input",{style:Object.assign({},inpSm,{width:60,textAlign:"right"}),value:offerPctCustom,inputMode:"decimal",placeholder:"np. 30",
-            onChange:function(e){setOfferPctCustom(e.target.value);}}),
-          offerPctChoice==="custom"&&ce("span",{style:{fontSize:12,color:"var(--t3)"}},"%"),
-          ce("button",{type:"button",onClick:applyOfferAmount,
-            style:Object.assign({},btnSecondary,{padding:"5px 14px",fontSize:12,fontWeight:700})},"\u2192 Wstaw pozycj\u0119")
+            onChange:function(e){setOfferPctCustom(e.target.value);pickOfferPct("custom",e.target.value);}}),
+          offerPctChoice==="custom"&&ce("span",{style:{fontSize:12,color:"var(--t3)"}},"%")
         )
       ),
 
