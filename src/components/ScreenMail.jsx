@@ -418,8 +418,17 @@ function AttachmentsSection(p){
             ):null
           ):null
         )
-        :ce("span",{style:{fontSize:11,color:"var(--t3)",padding:"6px 4px",fontStyle:"italic"}},
-          "Wybierz klienta, by doda\u0107 PDF z wyceny")
+        :(p.clients&&p.clients.length&&p.onPickClient)
+          // Wybór klienta z wyceną — widoczny zawsze, także dla klientów bez e-maila
+          ?ce("select",{value:"",onChange:function(e){if(e.target.value)p.onPickClient(e.target.value);},
+              style:Object.assign({},BGHOST,{maxWidth:280,cursor:"pointer"})},
+            ce("option",{value:""},"\uD83D\uDCC4 Wybierz klienta z wycen\u0105\u2026"),
+            p.clients.slice().sort(function(a,b){return (a.name||"").localeCompare(b.name||"","pl");}).map(function(cl){
+              return ce("option",{key:cl.id,value:String(cl.id)},(cl.name||"(bez nazwy)")+(cl.quote_no?" \u2014 "+cl.quote_no:"")+(cl.email?"":" (brak e-mail)"));
+            })
+          )
+          :ce("span",{style:{fontSize:11,color:"var(--t3)",padding:"6px 4px",fontStyle:"italic"}},
+            "Wybierz klienta, by doda\u0107 PDF z wyceny")
     )
   );
 }
@@ -2764,7 +2773,7 @@ export function ScreenMail(p){
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Temat"),
       ce("input",{type:"text",value:subject,onChange:function(e){setSubject(e.target.value);},placeholder:"Temat wiadomo\u015bci",style:INP})
     ),
-    ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate,templates:activeTemplates}),
+    ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate,templates:activeTemplates,clients:clients,onPickClient:function(id){setSelClientId(String(id));}}),
     ce("div",{style:{flex:1,display:"flex",flexDirection:"column",marginBottom:10}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
         ce("label",{style:LSML},"Tre\u015b\u0107"),
