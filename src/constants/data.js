@@ -2556,6 +2556,7 @@ function _rowToFabric(r){
     kurczliwosc: r.shrinkage_pct!=null ? r.shrinkage_pct : null,
     flameRetardant: !!r.flame_retardant,
     soundproof: !!r.soundproof,
+    hidden: !!r.hidden,
     custom: true
   };
 }
@@ -2588,7 +2589,9 @@ export function getAllFabrics(){
   });
   var seen = {};
   out.forEach(function(f){ seen[f.name]=1; });
-  _customFabrics.forEach(function(f){ if(!seen[f.name]){ seen[f.name]=1; out.push(f); } });
+  // Tkaniny wlasne usuniete w Katalogu (hidden) znikaja z wyboru, ale getFabricEffective
+  // nadal je zwraca, wiec istniejace wyceny z ta tkanina licza sie bez zmian.
+  _customFabrics.forEach(function(f){ if(f.hidden) return; if(!seen[f.name]){ seen[f.name]=1; out.push(f); } });
   return out;
 }
 // Zwraca efektywną tkaninę (baza FABRICS + nadpisanie z katalogu, jeśli istnieje)
