@@ -978,6 +978,7 @@ export function App(p){
         },initials),
         // Info
         ce("div",{onClick:function(){openClient(cl.id);},style:{flex:1,cursor:"pointer",minWidth:0}},
+          cl.quote_no?ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",marginBottom:2,fontVariantNumeric:"tabular-nums"}},cl.quote_no):null,
           ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:2,lineHeight:1.2}},cl.name),
           cl.addr?ce("div",{style:{fontSize:12,color:"var(--t3)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(cl.addr||"").slice(0,40)):null
         ),
@@ -1015,7 +1016,7 @@ export function App(p){
     var q=(homeSearch||"").toLowerCase().trim();
     var filtered=q
       ? clients.filter(function(cl){
-          return (cl.name||"").toLowerCase().includes(q)||(cl.addr||"").toLowerCase().includes(q)||(cl.phone||"").toLowerCase().includes(q);
+          return (cl.name||"").toLowerCase().includes(q)||(cl.addr||"").toLowerCase().includes(q)||(cl.phone||"").toLowerCase().includes(q)||(cl.quote_no||"").toLowerCase().includes(q);
         })
       : clients;
 
