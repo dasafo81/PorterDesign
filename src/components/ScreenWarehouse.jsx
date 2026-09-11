@@ -663,6 +663,7 @@ function mergeCatalog(baseGroups, rows) {
         gramatura:o && o.weight_gsm != null ? o.weight_gsm : it.gramatura,
         flameRetardant: o && o.flame_retardant != null ? !!o.flame_retardant : !!it.flameRetardant,
         soundproof:     o && o.soundproof != null      ? !!o.soundproof      : !!it.soundproof,
+        hasSample:      o ? !!o.has_sample : false,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
@@ -671,7 +672,7 @@ function mergeCatalog(baseGroups, rows) {
         name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
         zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price,
         gramatura: c.weight_gsm != null ? c.weight_gsm : null,
-        flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof });
+        flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof, hasSample: !!c.has_sample });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
@@ -722,6 +723,7 @@ function ModalCatalogItem(p) {
   var sGr = useState(it.gramatura != null ? String(it.gramatura) : ""); var gram = sGr[0]; var setGram = sGr[1];
   var sFR = useState(!!it.flameRetardant);                     var flame = sFR[0]; var setFlame = sFR[1];
   var sSP = useState(!!it.soundproof);                         var sound = sSP[0]; var setSound = sSP[1];
+  var sHS = useState(!!it.hasSample);                          var sample = sHS[0]; var setSample = sHS[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
   var sE = useState("");                                      var formErr = sE[0]; var setFormErr = sE[1];
 
@@ -744,14 +746,20 @@ function ModalCatalogItem(p) {
       belka_price: num(belkowa), composition: sklad.trim() || null, weight_gsm: num(gram),
       flame_retardant: flame, soundproof: sound };
   }
+  // has_sample wysyłamy tylko przy zmianie — zapis działa też przed migracją 0043
+  function bodyFull() {
+    var b = body();
+    if (sample !== !!it.hasSample) b.has_sample = sample;
+    return b;
+  }
   function save() {
     if (!name.trim()) { setFormErr("Podaj nazw\u0119 (kod/nazw\u0119 tkaniny) \u2014 pole \u201eProducent\u201d samo nie wystarczy."); return; }
     setFormErr("");
     setBusy(true);
     var op;
-    if (hasRow) op = sbApi.updateCatalogItem(it.rowId, body());
-    else if (isBase) op = sbApi.addCatalogItem(Object.assign({ base_key: it.baseKey }, body()));
-    else op = sbApi.addCatalogItem(Object.assign({ base_key: null }, body()));
+    if (hasRow) op = sbApi.updateCatalogItem(it.rowId, bodyFull());
+    else if (isBase) op = sbApi.addCatalogItem(Object.assign({ base_key: it.baseKey }, bodyFull()));
+    else op = sbApi.addCatalogItem(Object.assign({ base_key: null }, bodyFull()));
     op.then(function() { setBusy(false); p.onSave(); })
       .catch(function(e) { setBusy(false); setFormErr("B\u0142\u0105d zapisu: " + e.message); });
   }
@@ -827,7 +835,10 @@ function ModalCatalogItem(p) {
           "\uD83D\uDD25 Trudnopalna"),
         ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
           ce("input", { type: "checkbox", checked: sound, onChange: function(e) { setSound(e.target.checked); }, style: { width: 15, height: 15 } }),
-          "\uD83D\uDD07 D\u017Awi\u0119koszczelna")
+          "\uD83D\uDD07 D\u017Awi\u0119koszczelna"),
+        ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
+          ce("input", { type: "checkbox", checked: sample, onChange: function(e) { setSample(e.target.checked); }, style: { width: 15, height: 15 } }),
+          "\u2705 Mamy pr\u00f3bnik")
       ),
       ce("div", { style: { marginBottom: 20 } },
         ce("div", { style: lbl }, "Producent / opis (inne)"),
@@ -871,6 +882,7 @@ function TabCatalog(p) {
   var s4 = useState("all"); var activeCat = s4[0]; var setActiveCat = s4[1];
   var s4b = useState(null); var activeMeta = s4b[0]; var setActiveMeta = s4b[1];
   var s4c = useState(null); var activeTag = s4c[0];  var setActiveTag = s4c[1];
+  var s4d = useState(null); var sampleFilter = s4d[0]; var setSampleFilter = s4d[1]; // null | "yes" | "no"
 
   function reload() {
     setLoading(true);
@@ -888,6 +900,26 @@ function TabCatalog(p) {
       .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
   }
 
+  // Szybkie odhaczenie próbnika z karty (bez otwierania formularza).
+  // Pozycja bazowa bez nadpisania dostaje nowy wiersz z samym base_key + flagą;
+  // flagi trudnopalna/dźwiękoszczelna kopiujemy, bo kolumny mają default false
+  // i nadpisałyby wartości z cennika. Reszta pól = null → dziedziczona z bazy.
+  function toggleSample(it) {
+    var v = !it.hasSample;
+    var op = it.rowId
+      ? sbApi.updateCatalogItem(it.rowId, { has_sample: v })
+      : sbApi.addCatalogItem({ base_key: it.baseKey, group_id: it.groupId, name: it.name, has_sample: v,
+          flame_retardant: !!it.flameRetardant, soundproof: !!it.soundproof });
+    op.then(function(res) {
+      var row = Array.isArray(res) ? res[0] : res;
+      setRows(function(prev) {
+        if (it.rowId) return prev.map(function(x) { return x.id === it.rowId ? Object.assign({}, x, row || { has_sample: v }) : x; });
+        return row ? prev.concat([row]) : prev;
+      });
+      if (!row && !it.rowId) reload();
+    }).catch(function(e) { alert("B\u0142\u0105d zapisu pr\u00f3bnika: " + e.message); });
+  }
+
   var baseGroups = buildBaseCatalog();
   var groups = mergeCatalog(baseGroups, rows);
   var groupOpts = baseGroups.map(function(g) { return { id: g.id, label: g.label }; });
@@ -896,6 +928,8 @@ function TabCatalog(p) {
   var totalItems = groups.reduce(function(a, gr) { return a + gr.items.length; }, 0);
   var fabG = groups.find(function(gr) { return gr.id === "tkaniny"; });
   var noHeightCount = fabG ? fabG.items.filter(function(it) { return it.warn; }).length : 0;
+  var sampleCount = fabG ? fabG.items.filter(function(it) { return it.hasSample; }).length : 0;
+  var noSampleCount = fabG ? fabG.items.length - sampleCount : 0;
   var missingCounts = fabG ? MISSING_FIELDS.map(function(f) {
     return { k: f.k, l: f.l, count: fabG.items.filter(function(it) { return (it.missing || []).indexOf(f.k) >= 0; }).length };
   }).filter(function(x) { return x.count > 0; }) : [];
@@ -928,6 +962,7 @@ function TabCatalog(p) {
         if (missingFilter && (it.missing || []).indexOf(missingFilter) < 0) return false;
         if (activeMeta && it.meta !== activeMeta) return false;
         if (activeTag && (it.tags || []).indexOf(activeTag) < 0) return false;
+        if (sampleFilter && (gr.id !== "tkaniny" || (sampleFilter === "yes") !== !!it.hasSample)) return false;
         if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
         return true;
       });
@@ -994,6 +1029,15 @@ function TabCatalog(p) {
       noHeightCount > 0 && ce("button", { onClick: function() { setOnlyNoH(!onlyNoH); },
         style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (onlyNoH ? "#d97706" : "var(--bd2)"), background: onlyNoH ? "rgba(217,119,6,0.10)" : "var(--bg2)", color: onlyNoH ? "#d97706" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
         "\u26A0\uFE0F Bez wysoko\u015bci (" + noHeightCount + ")"),
+      fabG && (activeCat === "all" || activeCat === "tkaniny") && [
+        { k: "yes", l: "\u2705 Mamy pr\u00f3bnik (" + sampleCount + ")" },
+        { k: "no",  l: "\u2B1C Bez pr\u00f3bnika (" + noSampleCount + ")" }
+      ].map(function(x) {
+        var act = sampleFilter === x.k;
+        return ce("button", { key: "smp-" + x.k, onClick: function() { setSampleFilter(act ? null : x.k); },
+          style: { padding: "9px 14px", borderRadius: 10, border: "1.5px solid " + (act ? "#16a34a" : "var(--bd2)"), background: act ? "rgba(22,163,74,0.10)" : "var(--bg2)", color: act ? "#16a34a" : "var(--t3)", fontSize: 12, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" } },
+          x.l);
+      }),
       missingCounts.map(function(x) {
         var act = missingFilter === x.k;
         return ce("button", { key: x.k, onClick: function() { setMissingFilter(act ? null : x.k); },
@@ -1021,7 +1065,7 @@ function TabCatalog(p) {
         ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 8 } },
           x.items.map(function(it, idx) {
             return ce("div", { key: it.rowId || it.baseKey || idx,
-              style: { background: "var(--bg2)", border: "1.5px solid " + (it.warn ? "#f0c98a" : "var(--bd2)"), borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, cursor: "pointer" },
+              style: { background: "var(--bg2)", border: "1.5px solid " + (it.warn ? "#f0c98a" : it.hasSample ? "rgba(22,163,74,0.45)" : "var(--bd2)"), borderRadius: 10, padding: "10px 12px", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 6, cursor: "pointer" },
               onClick: function() { setEditItem(it); } },
               ce("div", { style: { minWidth: 0 } },
                 ce("div", { title: it.name, style: { fontSize: 13, fontWeight: 600, color: "var(--t1)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } },
@@ -1046,6 +1090,10 @@ function TabCatalog(p) {
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap" } },
                 it.belkowa != null && ce("div", { style: { fontSize: 10, color: "var(--t3)" } }, "belka " + fmtPrice(it.belkowa) + " z\u0142"),
                 it.zakup != null && ce("div", { style: { fontSize: 10, color: "var(--t3)" } }, "zakup " + fmtPrice(it.zakup) + " z\u0142"),
+                gr.id === "tkaniny" && ce("button", { onClick: function(e) { e.stopPropagation(); toggleSample(it); },
+                  title: it.hasSample ? "Mamy pr\u00f3bnik \u2014 kliknij, aby odznaczy\u0107" : "Kliknij, je\u015bli mamy pr\u00f3bnik",
+                  style: { border: "1.5px solid " + (it.hasSample ? "#16a34a" : "var(--bd2)"), background: it.hasSample ? "rgba(22,163,74,0.12)" : "transparent", color: it.hasSample ? "#16a34a" : "var(--t3)", borderRadius: 8, padding: "2px 7px", fontSize: 10.5, fontWeight: 700, cursor: "pointer", opacity: it.hasSample ? 1 : 0.6 } },
+                  it.hasSample ? "\u2713 Pr\u00f3bnik" : "+ Pr\u00f3bnik"),
                 ce("div", { style: { fontSize: 14, fontWeight: 800, color: "var(--violet)", marginLeft: "auto" } }, fmtPrice(it.price) + " " + (it.unit || "z\u0142")),
                 !it.isBase && ce("button", { onClick: function(e) { e.stopPropagation(); handleDelete(it); },
                   title: "Usu\u0144", style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 13, opacity: 0.5, padding: "0 2px" } }, "\uD83D\uDDD1")
