@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { sbApi } from '../lib/supabase.js';
 import {
   FABRICS, primeFabricOverrides, classifyFabricComposition, classifyFabricBlackout,
-  isHighFabric, HIGH_FABRIC_MIN_CM, HIGH_FABRIC_TAG, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
+  isHighFabric, HIGH_FABRIC_MIN_CM, HIGH_FABRIC_TAG, getFabricEquivalents, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
   KD_AKCESORIA, RS_MASKS, PRICE_LISTS
 } from '../constants/data.js';
@@ -721,6 +721,8 @@ function mergeCatalog(baseGroups, rows) {
       if (m.pattern) tags.push("Wz\u00f3r");
       if (m.gloss) tags.push("B\u0142ysk");
       m.tags = tags;
+      // Odpowiedniki (zamienniki innych producentów) — z FABRIC_EQUIV_GROUPS w data.js
+      m.equivalents = g.id === "tkaniny" ? getFabricEquivalents(m.name) : [];
     });
     return { id: g.id, label: g.label, icon: g.icon, tracksHeight: g.tracksHeight, items: items };
   });
@@ -1222,6 +1224,8 @@ function TabCatalog(p) {
                     return ce("span", { key: tag, style: { fontSize: 9.5, fontWeight: 700, color: tc, background: tc + "18", borderRadius: 6, padding: "1px 6px" } }, tag);
                   })
                 ),
+                it.equivalents && it.equivalents.length > 0 && ce("div", { style: { fontSize: 10, color: "var(--t3)", marginTop: 3 } },
+                  "\uD83D\uDD01 Odpowiedniki: " + it.equivalents.join(", ")),
                 it.warn && ce("div", { style: { fontSize: 10, fontWeight: 700, color: "#d97706", marginTop: 2 } }, "\u26A0\uFE0F " + it.warn)
               ),
               ce("div", { style: { display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", whiteSpace: "nowrap" } },
