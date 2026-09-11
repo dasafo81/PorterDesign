@@ -300,6 +300,12 @@ function AttachmentsSection(p){
   var fileRef=React.useRef();
   var us=React.useState;
   var sp=us(false),showPicker=sp[0],setShowPicker=sp[1];
+  var scq=us(""),clQuery=scq[0],setClQuery=scq[1];
+  // Wyszukiwarka klienta z wyceną: nazwisko / e-mail / nr oferty / adres, od 1 znaku
+  var clQ=clQuery.trim().toLowerCase();
+  var clMatches=clQ&&p.clients?p.clients.filter(function(cl){
+    return [cl.name,cl.email,cl.quote_no,cl.addr].some(function(v){return (v||"").toLowerCase().indexOf(clQ)!==-1;});
+  }).slice(0,10):[];
   var allTpls=p.templates&&p.templates.length?p.templates:MAIL_TEMPLATES;
   var tpl=allTpls.find(function(t){return t.id===p.selTemplate;})||allTpls[0];
   var suggested=tpl?tpl.suggestAttachments||[]:[];
@@ -420,12 +426,20 @@ function AttachmentsSection(p){
         )
         :(p.clients&&p.clients.length&&p.onPickClient)
           // Wybór klienta z wyceną — widoczny zawsze, także dla klientów bez e-maila
-          ?ce("select",{value:"",onChange:function(e){if(e.target.value)p.onPickClient(e.target.value);},
-              style:Object.assign({},BGHOST,{maxWidth:280,cursor:"pointer"})},
-            ce("option",{value:""},"\uD83D\uDCC4 Wybierz klienta z wycen\u0105\u2026"),
-            p.clients.slice().sort(function(a,b){return (a.name||"").localeCompare(b.name||"","pl");}).map(function(cl){
-              return ce("option",{key:cl.id,value:String(cl.id)},(cl.name||"(bez nazwy)")+(cl.quote_no?" \u2014 "+cl.quote_no:"")+(cl.email?"":" (brak e-mail)"));
-            })
+          ?ce("div",{style:{position:"relative",flex:"1 1 240px",maxWidth:340}},
+            ce("input",{type:"text",value:clQuery,placeholder:"\uD83D\uDCC4 Klient z wycen\u0105 \u2014 wpisz nazwisko\u2026",
+              onChange:function(e){setClQuery(e.target.value);},
+              onBlur:function(){setTimeout(function(){setClQuery("");},150);},
+              style:Object.assign({},INP,{padding:"8px 12px",fontSize:12})}),
+            clMatches.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,marginTop:2,background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:9999,boxShadow:"0 10px 30px rgba(0,0,0,0.22)",maxHeight:260,overflowY:"auto"}},
+              clMatches.map(function(cl){
+                return ce("div",{key:cl.id,onMouseDown:function(e){e.preventDefault();p.onPickClient(cl.id);setClQuery("");},
+                  style:{padding:"8px 12px",fontSize:13,cursor:"pointer",borderBottom:"1px solid var(--bd3)"}},
+                  ce("div",{style:{fontWeight:600,color:"var(--t1)"}},cl.name||"(bez nazwy)"),
+                  ce("div",{style:{fontSize:11,color:"var(--t3)"}},[cl.quote_no,cl.email||"brak e-mail",cl.addr].filter(Boolean).join(" \u00b7 "))
+                );
+              })
+            ):null
           )
           :ce("span",{style:{fontSize:11,color:"var(--t3)",padding:"6px 4px",fontStyle:"italic"}},
             "Wybierz klienta, by doda\u0107 PDF z wyceny")
