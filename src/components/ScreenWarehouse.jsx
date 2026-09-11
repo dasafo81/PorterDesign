@@ -581,6 +581,7 @@ function buildBaseCatalog() {
           zakup: f.zakup != null ? f.zakup : null, sklad: f.sklad || "",
           belkowa: f.belkowa != null ? f.belkowa : null,
           gramatura: f.gramatura != null ? f.gramatura : null,
+          kurczliwosc: f.kurczliwosc != null ? f.kurczliwosc : null,
           flameRetardant: !!f.flameRetardant, soundproof: !!f.soundproof };
       }) },
     { id: "tapety", label: "Tapety", icon: "\uD83C\uDFA8",
@@ -661,6 +662,7 @@ function mergeCatalog(baseGroups, rows) {
         sklad:    o && o.composition != null ? o.composition : it.sklad,
         belkowa:  o && o.belka_price != null ? o.belka_price : it.belkowa,
         gramatura:o && o.weight_gsm != null ? o.weight_gsm : it.gramatura,
+        kurczliwosc: o && o.shrinkage_pct != null ? o.shrinkage_pct : it.kurczliwosc,
         flameRetardant: o && o.flame_retardant != null ? !!o.flame_retardant : !!it.flameRetardant,
         soundproof:     o && o.soundproof != null      ? !!o.soundproof      : !!it.soundproof,
         hasSample:      o ? !!o.has_sample : false,
@@ -672,11 +674,13 @@ function mergeCatalog(baseGroups, rows) {
         name: c.name, price: c.price, unit: c.unit || "z\u0142", meta: c.meta || "", heightCm: c.height_cm,
         zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price,
         gramatura: c.weight_gsm != null ? c.weight_gsm : null,
+        kurczliwosc: c.shrinkage_pct != null ? c.shrinkage_pct : null,
         flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof, hasSample: !!c.has_sample });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
       m.gramaturaLabel = m.gramatura != null ? (m.gramatura + " g/m\u00b2") : null;
+      m.kurczliwoscLabel = m.kurczliwosc != null ? ("kurcz. " + String(m.kurczliwosc).replace(".", ",") + "%") : null;
       m.warn = (g.tracksHeight && m.heightCm == null) ? "brak wysoko\u015bci" : null;
       // Pozostałe braki danych (poza wysokością) — tylko tkaniny
       m.missing = [];
@@ -721,6 +725,7 @@ function ModalCatalogItem(p) {
   var sBk = useState(it.belkowa != null ? String(it.belkowa) : ""); var belkowa = sBk[0]; var setBelkowa = sBk[1];
   var sK = useState(it.sklad || "");                            var sklad = sK[0]; var setSklad = sK[1];
   var sGr = useState(it.gramatura != null ? String(it.gramatura) : ""); var gram = sGr[0]; var setGram = sGr[1];
+  var sKu = useState(it.kurczliwosc != null ? String(it.kurczliwosc) : ""); var kurcz = sKu[0]; var setKurcz = sKu[1];
   var sFR = useState(!!it.flameRetardant);                     var flame = sFR[0]; var setFlame = sFR[1];
   var sSP = useState(!!it.soundproof);                         var sound = sSP[0]; var setSound = sSP[1];
   var sHS = useState(!!it.hasSample);                          var sample = sHS[0]; var setSample = sHS[1];
@@ -746,10 +751,12 @@ function ModalCatalogItem(p) {
       belka_price: num(belkowa), composition: sklad.trim() || null, weight_gsm: num(gram),
       flame_retardant: flame, soundproof: sound };
   }
-  // has_sample wysyłamy tylko przy zmianie — zapis działa też przed migracją 0043
+  // has_sample / shrinkage_pct wysyłamy tylko przy zmianie — zapis działa też przed migracjami 0043 / 0044
   function bodyFull() {
     var b = body();
     if (sample !== !!it.hasSample) b.has_sample = sample;
+    var ku = num(kurcz);
+    if (ku !== (it.kurczliwosc != null ? it.kurczliwosc : null)) b.shrinkage_pct = ku;
     return b;
   }
   function save() {
@@ -828,6 +835,10 @@ function ModalCatalogItem(p) {
       grp === "tkaniny" && ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: lbl }, "Gramatura (g/m\u00b2) \u2014 opcjonalnie"),
         ce("input", { value: gram, onChange: function(e) { setGram(e.target.value); }, placeholder: "np. 280", style: inp })
+      ),
+      grp === "tkaniny" && ce("div", { style: { marginBottom: 12 } },
+        ce("div", { style: lbl }, "Kurczliwo\u015b\u0107 (%) \u2014 opcjonalnie"),
+        ce("input", { value: kurcz, onChange: function(e) { setKurcz(e.target.value); }, placeholder: "np. 2", inputMode: "decimal", style: inp })
       ),
       grp === "tkaniny" && ce("div", { style: { display: "flex", gap: 16, marginBottom: 16 } },
         ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
@@ -1073,7 +1084,7 @@ function TabCatalog(p) {
                   !it.isBase && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "var(--violet)", background: "rgba(124,58,237,0.10)", borderRadius: 6, padding: "1px 5px" } }, "w\u0142asny"),
                   it.overridden && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#0369a1", background: "rgba(3,105,161,0.10)", borderRadius: 6, padding: "1px 5px" } }, "edyt.")
                 ),
-                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.gramaturaLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
+                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.gramaturaLabel, it.kurczliwoscLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
                 it.tags && it.tags.length > 0 && ce("div", { style: { display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4 } },
                   it.tags.map(function(tag) {
                     var tc = tag === "Trudnopalne" ? "#dc2626"
