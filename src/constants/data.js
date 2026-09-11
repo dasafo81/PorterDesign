@@ -2460,7 +2460,7 @@ function _normPl(s){
 }
 var NATURAL_FIBER_TOKENS = [
   // kody skrótowe (jak w cennikach dostawców)
-  "co","li","wo","si","ju","he",
+  "co","li","wo","si","ju","he","vi",
   // polskie nazwy i odmiany przymiotnikowe/deklinacje
   "bawelna","bawelniany","bawelniana","bawelniane","bawelny","bawelnie",
   "len","lniany","lniana","lniane","lnu","lnie",
@@ -2468,8 +2468,9 @@ var NATURAL_FIBER_TOKENS = [
   "jedwab","jedwabny","jedwabna","jedwabne","jedwabiu",
   "juta","jutowy","jutowa","jutowe","juty",
   "konopie","konopny","konopna","konopne","konopi",
+  "wiskoza","wiskozowy","wiskozowa","wiskozowe","wiskozy","wiskozie",
   // angielskie nazwy (spotykane w cennikach zagranicznych)
-  "cotton","linen","wool","silk","jute","hemp"
+  "cotton","linen","wool","silk","jute","hemp","viscose"
 ];
 export function classifyFabricComposition(sklad){
   if(!sklad) return null;
