@@ -2534,6 +2534,7 @@ function _rowToFabric(r){
     sklad: r.composition || null,
     belkowa: r.belka_price!=null ? r.belka_price : null,
     gramatura: r.weight_gsm!=null ? r.weight_gsm : null,
+    kurczliwosc: r.shrinkage_pct!=null ? r.shrinkage_pct : null,
     flameRetardant: !!r.flame_retardant,
     soundproof: !!r.soundproof,
     custom: true
@@ -2582,6 +2583,7 @@ export function getFabricEffective(name){
     sklad:  (ov && ov.composition) ? ov.composition : (base?base.sklad:null),
     belkowa:(ov && ov.belka_price!=null) ? ov.belka_price : (base?base.belkowa:null),
     gramatura:(ov && ov.weight_gsm!=null) ? ov.weight_gsm : (base?base.gramatura:null),
+    kurczliwosc:(ov && ov.shrinkage_pct!=null) ? ov.shrinkage_pct : (base && base.kurczliwosc!=null ? base.kurczliwosc : null),
     flameRetardant: (ov && ov.flame_retardant!=null) ? !!ov.flame_retardant : !!(base && base.flameRetardant),
     soundproof: (ov && ov.soundproof!=null) ? !!ov.soundproof : !!(base && base.soundproof)
   };
