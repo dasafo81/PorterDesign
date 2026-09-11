@@ -2143,7 +2143,7 @@ export function ScreenMail(p){
     setToEmail(val);
     if(val.length<2){setContactSug([]);return;}
     var q=val.toLowerCase();
-    var fc=clients.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).map(function(c){return {email:c.email,name:c.name};});
+    var fc=clients.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).map(function(c){return {email:c.email,name:c.name,clientId:c.id,quoteNo:c.quote_no||null};});
     // Kontrahenci (baza Kontrahenci) — dopisz tych, których nie ma jeszcze wśród klientów z wycen
     contacts.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).forEach(function(c){
       if(!fc.find(function(x){return x.email.toLowerCase()===c.email.toLowerCase();}))fc.push({email:c.email,name:c.name});
@@ -2731,15 +2731,25 @@ export function ScreenMail(p){
       ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},onBlur:function(){setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:INP}),
       contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:9999,boxShadow:"0 10px 30px rgba(0,0,0,0.22)",overflow:"hidden",marginTop:2,maxHeight:280,overflowY:"auto"}},
         contactSug.map(function(c){
-          return ce("div",{key:c.email,onClick:function(){setToEmail(c.email);setContactSug([]);},
+          return ce("div",{key:c.email+"|"+(c.clientId||""),onClick:function(){
+              // Klient z wyceną → powiąż (PDF z wyceny + placeholdery szablonu)
+              if(c.clientId)setSelClientId(String(c.clientId));
+              setToEmail(c.email);setContactSug([]);
+            },
             style:{padding:"9px 12px",fontSize:13,cursor:"pointer",borderBottom:"1px solid var(--bd3)",display:"flex",alignItems:"center",gap:10,background:"transparent"}},
             ce(Avatar,{size:28,bg:"#c8a96a",label:initials(c.name)}),
             ce("div",null,
               ce("div",{style:{fontWeight:600,color:"var(--t1)",fontSize:13}},c.name),
               ce("div",{style:{color:"var(--t3)",fontSize:11}},c.email)
-            )
+            ),
+            c.clientId?ce("span",{style:{marginLeft:"auto",fontSize:10,fontWeight:700,color:"var(--grd)",background:"var(--grl)",borderRadius:10,padding:"2px 8px",whiteSpace:"nowrap"}},"\uD83D\uDCC4 "+(c.quoteNo||"wycena")):null
           );
         })
+      ):null,
+      selClient?ce("div",{style:{marginTop:6,display:"inline-flex",alignItems:"center",gap:6,padding:"3px 6px 3px 10px",borderRadius:20,fontSize:11,background:"var(--grl)",border:"1px solid var(--gr)",color:"var(--grd)",fontWeight:600}},
+        "\uD83D\uDCC4 Powi\u0105zano z wycen\u0105: "+selClient.name+(selClient.quote_no?" ("+selClient.quote_no+")":""),
+        ce("button",{onClick:function(){setSelClientId(null);},title:"Od\u0142\u0105cz wycen\u0119",
+          style:{border:"none",background:"none",cursor:"pointer",color:"var(--grd)",fontSize:13,lineHeight:1,padding:"0 2px"}},"\u00d7")
       ):null
     ),
     (showCcBcc||ccEmail)?ce("div",{style:{marginBottom:10}},
