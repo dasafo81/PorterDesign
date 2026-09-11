@@ -1936,6 +1936,7 @@ export function App(p){
               karniszFieldInput(i,"qty","Ilość",70),
               karniszFieldInput(i,"arc","Gięcie łuk (mb)",110),
               karniszFieldInput(i,"arcDepth","Głęb. łuku (cm)",110),
+              karniszFieldInput(i,"arcChord","Cięciwa łuku (cm)",120),
               karniszFieldInput(i,"pts","Gięcie pkt",90),
               karniszFieldInput(i,"motorSide","Strona silnika",110),
               karniszFieldInput(i,"motorType","Typ silnika",110)
