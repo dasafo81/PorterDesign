@@ -720,9 +720,10 @@ function mergeCatalog(baseGroups, rows) {
       if (m.is3d) tags.push("3D");
       if (m.pattern) tags.push("Wz\u00f3r");
       if (m.gloss) tags.push("B\u0142ysk");
-      m.tags = tags;
       // Odpowiedniki (zamienniki innych producentów) — z FABRIC_EQUIV_GROUPS w data.js
       m.equivalents = g.id === "tkaniny" ? getFabricEquivalents(m.name) : [];
+      if (m.equivalents.length) tags.push("Odpowiedniki");
+      m.tags = tags;
     });
     return { id: g.id, label: g.label, icon: g.icon, tracksHeight: g.tracksHeight, items: items };
   });
@@ -1060,7 +1061,7 @@ function TabCatalog(p) {
   // ── Kategorie tkanin (skład / zaciemnienie / wysokość / trudnopalność / dźwięk) ──
   // Tylko w zakładce Tkaniny — reszta kategorii katalogu nie ma tych atrybutów.
   var FABRIC_TAGS = ["Naturalne", "Semi-Natural", "Blackout", "Dimout", HIGH_FABRIC_TAG,
-    "Trudnopalne", "D\u017Awi\u0119koszczelne", "Termiczne", "Bestseller", "Welur", "Basic", "Podszewka", "3D", "Wz\u00f3r", "B\u0142ysk"];
+    "Trudnopalne", "D\u017Awi\u0119koszczelne", "Termiczne", "Bestseller", "Welur", "Basic", "Podszewka", "3D", "Wz\u00f3r", "B\u0142ysk", "Odpowiedniki"];
   var fabricTagCounts = activeCat === "tkaniny" && activeGroupForMeta
     ? FABRIC_TAGS.map(function(tag) {
         return { tag: tag, count: activeGroupForMeta.items.filter(function(it) { return (it.tags || []).indexOf(tag) >= 0; }).length };
@@ -1207,7 +1208,7 @@ function TabCatalog(p) {
                 ),
                 ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.gramaturaLabel, it.kurczliwoscLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
                 it.tags && it.tags.length > 0 && ce("div", { style: { display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4 } },
-                  it.tags.map(function(tag) {
+                  it.tags.filter(function(tag) { return tag !== "Odpowiedniki"; }).map(function(tag) {
                     var tc = tag === "Trudnopalne" ? "#dc2626"
                       : tag === "D\u017Awi\u0119koszczelne" ? "#0369a1"
                       : tag === "Termiczne" ? "#c2410c"
@@ -1221,6 +1222,7 @@ function TabCatalog(p) {
                       : tag === "3D" ? "#db2777"
                       : tag === "Wz\u00f3r" ? "#4f46e5"
                       : tag === "B\u0142ysk" ? "#ca8a04"
+                      : tag === "Odpowiedniki" ? "#7c3aed"
                       : "#16a34a";
                     return ce("span", { key: tag, style: { fontSize: 9.5, fontWeight: 700, color: tc, background: tc + "18", borderRadius: 6, padding: "1px 6px" } }, tag);
                   })
