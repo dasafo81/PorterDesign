@@ -666,6 +666,11 @@ function mergeCatalog(baseGroups, rows) {
         flameRetardant: o && o.flame_retardant != null ? !!o.flame_retardant : !!it.flameRetardant,
         soundproof:     o && o.soundproof != null      ? !!o.soundproof      : !!it.soundproof,
         hasSample:      o ? !!o.has_sample : false,
+        bestseller: o ? !!o.bestseller : false,
+        welur:      o ? !!o.welur : false,
+        basic:      o ? !!o.basic : false,
+        podszewka:  o ? !!o.podszewka : false,
+        is3d:       o ? !!o.is_3d : false,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
@@ -676,7 +681,8 @@ function mergeCatalog(baseGroups, rows) {
         zakup: c.purchase_price, sklad: c.composition || "", belkowa: c.belka_price,
         gramatura: c.weight_gsm != null ? c.weight_gsm : null,
         kurczliwosc: c.shrinkage_pct != null ? c.shrinkage_pct : null,
-        flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof, hasSample: !!c.has_sample });
+        flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof, hasSample: !!c.has_sample,
+        bestseller: !!c.bestseller, welur: !!c.welur, basic: !!c.basic, podszewka: !!c.podszewka, is3d: !!c.is_3d });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
@@ -705,6 +711,11 @@ function mergeCatalog(baseGroups, rows) {
       if (m.isHighFabric) tags.push(HIGH_FABRIC_TAG);
       if (m.flameRetardant) tags.push("Trudnopalne");
       if (m.soundproof) tags.push("D\u017Awi\u0119koszczelne");
+      if (m.bestseller) tags.push("Bestseller");
+      if (m.welur) tags.push("Welur");
+      if (m.basic) tags.push("Basic");
+      if (m.podszewka) tags.push("Podszewka");
+      if (m.is3d) tags.push("3D");
       m.tags = tags;
     });
     return { id: g.id, label: g.label, icon: g.icon, tracksHeight: g.tracksHeight, items: items };
@@ -730,6 +741,11 @@ function ModalCatalogItem(p) {
   var sFR = useState(!!it.flameRetardant);                     var flame = sFR[0]; var setFlame = sFR[1];
   var sSP = useState(!!it.soundproof);                         var sound = sSP[0]; var setSound = sSP[1];
   var sHS = useState(!!it.hasSample);                          var sample = sHS[0]; var setSample = sHS[1];
+  var sBs = useState(!!it.bestseller);                         var bestseller = sBs[0]; var setBestseller = sBs[1];
+  var sWe = useState(!!it.welur);                              var welur = sWe[0]; var setWelur = sWe[1];
+  var sBa = useState(!!it.basic);                              var basic = sBa[0]; var setBasic = sBa[1];
+  var sPo = useState(!!it.podszewka);                          var podszewka = sPo[0]; var setPodszewka = sPo[1];
+  var s3d = useState(!!it.is3d);                               var is3d = s3d[0]; var setIs3d = s3d[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
   var sE = useState("");                                      var formErr = sE[0]; var setFormErr = sE[1];
 
@@ -758,6 +774,11 @@ function ModalCatalogItem(p) {
     if (sample !== !!it.hasSample) b.has_sample = sample;
     var ku = num(kurcz);
     if (ku !== (it.kurczliwosc != null ? it.kurczliwosc : null)) b.shrinkage_pct = ku;
+    if (bestseller !== !!it.bestseller) b.bestseller = bestseller;
+    if (welur !== !!it.welur) b.welur = welur;
+    if (basic !== !!it.basic) b.basic = basic;
+    if (podszewka !== !!it.podszewka) b.podszewka = podszewka;
+    if (is3d !== !!it.is3d) b.is_3d = is3d;
     return b;
   }
   function save() {
@@ -851,6 +872,22 @@ function ModalCatalogItem(p) {
         ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
           ce("input", { type: "checkbox", checked: sample, onChange: function(e) { setSample(e.target.checked); }, style: { width: 15, height: 15 } }),
           "\u2705 Mamy pr\u00f3bnik")
+      ),
+      grp === "tkaniny" && ce("div", { style: { marginBottom: 16 } },
+        ce("div", { style: lbl }, "Etykiety katalogowe"),
+        ce("div", { style: { display: "flex", gap: 14, flexWrap: "wrap" } },
+          [
+            { st: bestseller, set: setBestseller, l: "\u2B50 Bestseller" },
+            { st: welur,      set: setWelur,      l: "\uD83E\uDDF6 Welur" },
+            { st: basic,      set: setBasic,      l: "\u25AB\uFE0F Basic" },
+            { st: podszewka,  set: setPodszewka,  l: "\uD83E\uDDF5 Podszewka" },
+            { st: is3d,       set: setIs3d,       l: "\uD83E\uDDCA 3D" }
+          ].map(function(o) {
+            return ce("label", { key: o.l, style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
+              ce("input", { type: "checkbox", checked: o.st, onChange: function(e) { o.set(e.target.checked); }, style: { width: 15, height: 15 } }),
+              o.l);
+          })
+        )
       ),
       ce("div", { style: { marginBottom: 20 } },
         ce("div", { style: lbl }, "Producent / opis (inne)"),
@@ -1005,7 +1042,7 @@ function TabCatalog(p) {
   // ── Kategorie tkanin (skład / zaciemnienie / wysokość / trudnopalność / dźwięk) ──
   // Tylko w zakładce Tkaniny — reszta kategorii katalogu nie ma tych atrybutów.
   var FABRIC_TAGS = ["Naturalne", "Semi-Natural", "Blackout", "Dimout", HIGH_FABRIC_TAG,
-    "Trudnopalne", "D\u017Awi\u0119koszczelne"];
+    "Trudnopalne", "D\u017Awi\u0119koszczelne", "Bestseller", "Welur", "Basic", "Podszewka", "3D"];
   var fabricTagCounts = activeCat === "tkaniny" && activeGroupForMeta
     ? FABRIC_TAGS.map(function(tag) {
         return { tag: tag, count: activeGroupForMeta.items.filter(function(it) { return (it.tags || []).indexOf(tag) >= 0; }).length };
@@ -1155,6 +1192,11 @@ function TabCatalog(p) {
                       : tag === "Blackout" ? "#334155"
                       : tag === "Dimout" ? "#7c3aed"
                       : tag === HIGH_FABRIC_TAG ? "#0891b2"
+                      : tag === "Bestseller" ? "#ea580c"
+                      : tag === "Welur" ? "#a21caf"
+                      : tag === "Basic" ? "#64748b"
+                      : tag === "Podszewka" ? "#0d9488"
+                      : tag === "3D" ? "#db2777"
                       : "#16a34a";
                     return ce("span", { key: tag, style: { fontSize: 9.5, fontWeight: 700, color: tc, background: tc + "18", borderRadius: 6, padding: "1px 6px" } }, tag);
                   })
