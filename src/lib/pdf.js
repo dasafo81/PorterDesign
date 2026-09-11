@@ -189,7 +189,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
     var c=p.c||{};
     var sz;
     if(c.sz==="wave"||c.model==="wave"){
-      sz="Wave";
+      sz="Wave"+(c.waveMask==="tak"?" z maskownic\u0105":"");
     }else if(c.model==="falda"){
       var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podw\xf3jny",potrojna:"Flex Potr\xf3jny",plaska:"Fa\u0142da P\u0142aska",studio:"Fa\u0142da Studio"};
       sz=c.foldType?foldMap[c.foldType]||("Fa\u0142da "+c.foldType):"Fa\u0142da";
@@ -367,7 +367,7 @@ export function buildSimplifiedRows(client,selection,comm){
   comm=comm||0;
   if(!selection||!selection.length)return [];
   function calcProd(p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return comm>0?base*(1+comm):base;}
-  function sewingInfo(p){var c=p.c||{};var sz;if(c.sz==="wave"||c.model==="wave"){sz="Wave";}else if(c.model==="falda"){var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podwójny",potrojna:"Flex Potrójny",plaska:"Fałda Płaska",studio:"Fałda Studio"};sz=c.foldType?foldMap[c.foldType]||("Fałda "+c.foldType):"Fałda";}else if(c.model==="tasma"){sz=c.typMarszczenia||"Smok";}else{sz="Flex";}var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";return sz+" "+mars;}
+  function sewingInfo(p){var c=p.c||{};var sz;if(c.sz==="wave"||c.model==="wave"){sz="Wave"+(c.waveMask==="tak"?" z maskownic\u0105":"");}else if(c.model==="falda"){var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podwójny",potrojna:"Flex Potrójny",plaska:"Fałda Płaska",studio:"Fałda Studio"};sz=c.foldType?foldMap[c.foldType]||("Fałda "+c.foldType):"Fałda";}else if(c.model==="tasma"){sz=c.typMarszczenia||"Smok";}else{sz="Flex";}var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";return sz+" "+mars;}
   function buildWinRowsSel(windows){
     var typeData={};var typeOrder=[];var total=0;
     (windows||[]).forEach(function(w){(w.products||[]).forEach(function(p){
