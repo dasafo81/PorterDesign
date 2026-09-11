@@ -682,7 +682,8 @@ function mergeCatalog(baseGroups, rows) {
         gramatura: c.weight_gsm != null ? c.weight_gsm : null,
         kurczliwosc: c.shrinkage_pct != null ? c.shrinkage_pct : null,
         flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof, hasSample: !!c.has_sample,
-        bestseller: !!c.bestseller, welur: !!c.welur, basic: !!c.basic, podszewka: !!c.podszewka, is3d: !!c.is_3d });
+        bestseller: !!c.bestseller, welur: !!c.welur, basic: !!c.basic, podszewka: !!c.podszewka, is3d: !!c.is_3d,
+        thermal: !!c.thermal, pattern: !!c.pattern, gloss: !!c.gloss });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
@@ -711,11 +712,14 @@ function mergeCatalog(baseGroups, rows) {
       if (m.isHighFabric) tags.push(HIGH_FABRIC_TAG);
       if (m.flameRetardant) tags.push("Trudnopalne");
       if (m.soundproof) tags.push("D\u017Awi\u0119koszczelne");
+      if (m.thermal) tags.push("Termiczne");
       if (m.bestseller) tags.push("Bestseller");
       if (m.welur) tags.push("Welur");
       if (m.basic) tags.push("Basic");
       if (m.podszewka) tags.push("Podszewka");
       if (m.is3d) tags.push("3D");
+      if (m.pattern) tags.push("Wz\u00f3r");
+      if (m.gloss) tags.push("B\u0142ysk");
       m.tags = tags;
     });
     return { id: g.id, label: g.label, icon: g.icon, tracksHeight: g.tracksHeight, items: items };
@@ -740,12 +744,15 @@ function ModalCatalogItem(p) {
   var sKu = useState(it.kurczliwosc != null ? String(it.kurczliwosc) : ""); var kurcz = sKu[0]; var setKurcz = sKu[1];
   var sFR = useState(!!it.flameRetardant);                     var flame = sFR[0]; var setFlame = sFR[1];
   var sSP = useState(!!it.soundproof);                         var sound = sSP[0]; var setSound = sSP[1];
+  var sTh = useState(!!it.thermal);                            var thermal = sTh[0]; var setThermal = sTh[1];
   var sHS = useState(!!it.hasSample);                          var sample = sHS[0]; var setSample = sHS[1];
   var sBs = useState(!!it.bestseller);                         var bestseller = sBs[0]; var setBestseller = sBs[1];
   var sWe = useState(!!it.welur);                              var welur = sWe[0]; var setWelur = sWe[1];
   var sBa = useState(!!it.basic);                              var basic = sBa[0]; var setBasic = sBa[1];
   var sPo = useState(!!it.podszewka);                          var podszewka = sPo[0]; var setPodszewka = sPo[1];
   var s3d = useState(!!it.is3d);                               var is3d = s3d[0]; var setIs3d = s3d[1];
+  var sWz = useState(!!it.pattern);                            var pattern = sWz[0]; var setPattern = sWz[1];
+  var sBl = useState(!!it.gloss);                              var gloss = sBl[0]; var setGloss = sBl[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
   var sE = useState("");                                      var formErr = sE[0]; var setFormErr = sE[1];
 
@@ -779,6 +786,9 @@ function ModalCatalogItem(p) {
     if (basic !== !!it.basic) b.basic = basic;
     if (podszewka !== !!it.podszewka) b.podszewka = podszewka;
     if (is3d !== !!it.is3d) b.is_3d = is3d;
+    if (thermal !== !!it.thermal) b.thermal = thermal;
+    if (pattern !== !!it.pattern) b.pattern = pattern;
+    if (gloss !== !!it.gloss) b.gloss = gloss;
     return b;
   }
   function save() {
@@ -870,6 +880,9 @@ function ModalCatalogItem(p) {
           ce("input", { type: "checkbox", checked: sound, onChange: function(e) { setSound(e.target.checked); }, style: { width: 15, height: 15 } }),
           "\uD83D\uDD07 D\u017Awi\u0119koszczelna"),
         ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
+          ce("input", { type: "checkbox", checked: thermal, onChange: function(e) { setThermal(e.target.checked); }, style: { width: 15, height: 15 } }),
+          "\uD83C\uDF21\uFE0F Termiczna"),
+        ce("label", { style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
           ce("input", { type: "checkbox", checked: sample, onChange: function(e) { setSample(e.target.checked); }, style: { width: 15, height: 15 } }),
           "\u2705 Mamy pr\u00f3bnik")
       ),
@@ -881,7 +894,9 @@ function ModalCatalogItem(p) {
             { st: welur,      set: setWelur,      l: "\uD83E\uDDF6 Welur" },
             { st: basic,      set: setBasic,      l: "\u25AB\uFE0F Basic" },
             { st: podszewka,  set: setPodszewka,  l: "\uD83E\uDDF5 Podszewka" },
-            { st: is3d,       set: setIs3d,       l: "\uD83E\uDDCA 3D" }
+            { st: is3d,       set: setIs3d,       l: "\uD83E\uDDCA 3D" },
+            { st: pattern,    set: setPattern,    l: "\uD83C\uDFA8 Wz\u00f3r" },
+            { st: gloss,      set: setGloss,      l: "\u2728 B\u0142ysk" }
           ].map(function(o) {
             return ce("label", { key: o.l, style: { display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, color: "var(--t2)", cursor: "pointer" } },
               ce("input", { type: "checkbox", checked: o.st, onChange: function(e) { o.set(e.target.checked); }, style: { width: 15, height: 15 } }),
@@ -1042,7 +1057,7 @@ function TabCatalog(p) {
   // ── Kategorie tkanin (skład / zaciemnienie / wysokość / trudnopalność / dźwięk) ──
   // Tylko w zakładce Tkaniny — reszta kategorii katalogu nie ma tych atrybutów.
   var FABRIC_TAGS = ["Naturalne", "Semi-Natural", "Blackout", "Dimout", HIGH_FABRIC_TAG,
-    "Trudnopalne", "D\u017Awi\u0119koszczelne", "Bestseller", "Welur", "Basic", "Podszewka", "3D"];
+    "Trudnopalne", "D\u017Awi\u0119koszczelne", "Termiczne", "Bestseller", "Welur", "Basic", "Podszewka", "3D", "Wz\u00f3r", "B\u0142ysk"];
   var fabricTagCounts = activeCat === "tkaniny" && activeGroupForMeta
     ? FABRIC_TAGS.map(function(tag) {
         return { tag: tag, count: activeGroupForMeta.items.filter(function(it) { return (it.tags || []).indexOf(tag) >= 0; }).length };
@@ -1108,6 +1123,9 @@ function TabCatalog(p) {
         var act = activeTag === x.tag;
         var icon = x.tag === "Trudnopalne" ? "\uD83D\uDD25 "
           : x.tag === "D\u017Awi\u0119koszczelne" ? "\uD83D\uDD07 "
+          : x.tag === "Termiczne" ? "\uD83C\uDF21\uFE0F "
+          : x.tag === "Wz\u00f3r" ? "\uD83C\uDFA8 "
+          : x.tag === "B\u0142ysk" ? "\u2728 "
           : x.tag === "Blackout" ? "\uD83C\uDF11 "
           : x.tag === "Dimout" ? "\uD83C\uDF13 "
           : x.tag === HIGH_FABRIC_TAG ? "\u2195\uFE0F "
@@ -1189,6 +1207,7 @@ function TabCatalog(p) {
                   it.tags.map(function(tag) {
                     var tc = tag === "Trudnopalne" ? "#dc2626"
                       : tag === "D\u017Awi\u0119koszczelne" ? "#0369a1"
+                      : tag === "Termiczne" ? "#c2410c"
                       : tag === "Blackout" ? "#334155"
                       : tag === "Dimout" ? "#7c3aed"
                       : tag === HIGH_FABRIC_TAG ? "#0891b2"
@@ -1197,6 +1216,8 @@ function TabCatalog(p) {
                       : tag === "Basic" ? "#64748b"
                       : tag === "Podszewka" ? "#0d9488"
                       : tag === "3D" ? "#db2777"
+                      : tag === "Wz\u00f3r" ? "#4f46e5"
+                      : tag === "B\u0142ysk" ? "#ca8a04"
                       : "#16a34a";
                     return ce("span", { key: tag, style: { fontSize: 9.5, fontWeight: 700, color: tc, background: tc + "18", borderRadius: 6, padding: "1px 6px" } }, tag);
                   })
