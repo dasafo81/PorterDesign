@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
+  FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, getFabricEquivalents, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
   IMG_FALDA_POTROJNA, IMG_FALDA_STUDIO, IMG_JZ_ALUMINIUM, IMG_JZ_BAMBOO,
   IMG_JZ_BASSWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
   IMG_OKNO, IMG_ROLETA_BACK, IMG_ROLETA_CASCADE, IMG_ROLETA_DUO,
@@ -93,6 +93,9 @@ export function FabPicker(p){
       ),
       ce("span",{style:{color:"var(--t3)",fontSize:16,transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,lineHeight:1,display:"inline-block"}},"⌄")
     ),
+    (!open && p.fabName && getFabricEquivalents(p.fabName).length)?ce("div",{style:{fontSize:11,color:"var(--t3)",padding:"6px 12px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)"}},
+      "\uD83D\uDD01 Odpowiedniki: "+getFabricEquivalents(p.fabName).join(", ")
+    ):null,
     open?ce("div",null,
       ce("input",{autoFocus:true,value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny po nazwie lub dostawcy...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
       ce("div",{style:{maxHeight:280,overflowY:"auto"}},
