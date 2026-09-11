@@ -54,6 +54,7 @@ export function Section(p){
 export function FabPicker(p){
   var qs=useState("");var q=qs[0],setQ=qs[1];
   var os=useState(false);var open=os[0],setOpen=os[1];
+  var eqs=useState(false);var eqOpen=eqs[0],setEqOpen=eqs[1];
   // Nadpisania z Katalogu (Magazyn → Katalog) scalone z bazą — cena/wysokość zawsze aktualne.
   // Scalenie tutaj (a nie w handlerach onSelect w ProdCard) wystarcza dla obu
   // pikerow tkaniny (główna + warstwa 2 Roleta Duo), bo oba używają tego komponentu.
@@ -93,8 +94,25 @@ export function FabPicker(p){
       ),
       ce("span",{style:{color:"var(--t3)",fontSize:16,transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,lineHeight:1,display:"inline-block"}},"⌄")
     ),
-    (!open && p.fabName && getFabricEquivalents(p.fabName).length)?ce("div",{style:{fontSize:11,color:"var(--t3)",padding:"6px 12px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)"}},
-      "\uD83D\uDD01 Odpowiedniki: "+getFabricEquivalents(p.fabName).join(", ")
+    (!open && p.fabName && getFabricEquivalents(p.fabName).length)?ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)"}},
+      ce("button",{onClick:function(){setEqOpen(!eqOpen);},
+        style:{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 11px",border:"1.5px solid #7c3aed",background:"rgba(124,58,237,0.10)",color:"#7c3aed",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer"}},
+        "\uD83D\uDD01 "+getFabricEquivalents(p.fabName).length+" odpowiednik\u00f3w \u2014 "+(eqOpen?"ukryj":"zobacz")),
+      eqOpen?ce("div",{style:{marginTop:8,display:"flex",flexDirection:"column",gap:6}},
+        getFabricEquivalents(p.fabName).map(function(n){
+          var ef=effFabrics.find(function(x){return String(x.name||"").trim().toLowerCase()===String(n).trim().toLowerCase();});
+          return ce("div",{key:n,
+            onClick:function(){if(ef){p.onSelect(ef);setEqOpen(false);}},
+            style:{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:ef?"pointer":"default",opacity:ef?1:0.5}},
+            ce("div",{style:{flex:1,minWidth:0}},
+              ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},n),
+              ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},
+                ef?[ef.prod,ef.width?(ef.width+" cm"):null].filter(Boolean).join(" \u00B7 "):"brak w katalogu")
+            ),
+            ef&&ef.brutto!=null?ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--grd)",whiteSpace:"nowrap"}},ef.brutto+" z\u0142/mb"):null
+          );
+        })
+      ):null
     ):null,
     open?ce("div",null,
       ce("input",{autoFocus:true,value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny po nazwie lub dostawcy...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
