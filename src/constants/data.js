@@ -2658,7 +2658,8 @@ export var FABRIC_EQUIV_GROUPS = [
   ["Nocturne Dimout","SUMI"],
   ["Kelmis","Sinope 111/400"],
   ["ROFE","Liso Dimout"],
-  ["Saint Tropez","Yita"]
+  ["Saint Tropez","Yita"],
+  ["Corsica","Corsica VV"]
 ];
 function _normFabName(n){
   return String(n||"").trim().toLowerCase().replace(/\s+/g," ");
