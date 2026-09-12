@@ -2654,7 +2654,11 @@ export function getBestsellerFabrics(prodType){
 // spacji), bo część tych tkanin to pozycje dodane ręcznie w Katalogu (HAVANA,
 // ELI — prod. LART) i pisownia bywa tam niespójna.
 export var FABRIC_EQUIV_GROUPS = [
-  ["Andrew","Mogadishu","Pixel","HAVANA","Palermo Sama","ELI","Pesto","Sola"]
+  ["Andrew","Mogadishu","Pixel","HAVANA","Palermo Sama","ELI","Pesto","Sola"],
+  ["Nocturne Dimout","SUMI"],
+  ["Kelmis","Sinope 111/400"],
+  ["ROFE","Liso Dimout"],
+  ["Saint Tropez","Yita"]
 ];
 function _normFabName(n){
   return String(n||"").trim().toLowerCase().replace(/\s+/g," ");
