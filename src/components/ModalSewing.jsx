@@ -56,6 +56,9 @@ export function ModalSewing(p){
   var so=useState(null),sewOpts=so[0],setSewOpts=so[1];
   var sop=useState(false),showSewOpts=sop[0],setShowSewOpts=sop[1];
   var sopFrom=useState('single'),sewOptsFrom=sopFrom[0],setSewOptsFrom=sopFrom[1];
+  // Okno opcji szycia obsluguje obie akcje — podglad i wysylke mailem. Bez tego
+  // mail szedl do szwalni bez wypelnionych opcji (olow, tasma, ryszka, slizgi).
+  var sopAct=useState('preview'),sewOptsAction=sopAct[0],setSewOptsAction=sopAct[1];
 
   function handleFile(ev,setB64,setName){
     var file=ev.target.files&&ev.target.files[0];
@@ -82,7 +85,7 @@ export function ModalSewing(p){
   }
   function generateSingle(){
     if(hasCurtains){
-      setSewOptsFrom('single');
+      setSewOptsFrom('single');setSewOptsAction('preview');
       if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta';})));
       setShowSewOpts(true);
     }else{doGenerateSingle(null);}
@@ -99,7 +102,7 @@ export function ModalSewing(p){
   function generateSplitBatch(){
     if(!selIds.length){alert('Wybierz przynajmniej jedną pozycję.');return;}
     var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta';});
-    if(sc.length){setSewOptsFrom('split');if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));setShowSewOpts(true);return;}
+    if(sc.length){setSewOptsFrom('split');setSewOptsAction('preview');if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));setShowSewOpts(true);return;}
     doGenerateSplitBatch(null);
   }
   function doGenerateSplitBatch(opts){
@@ -127,16 +130,32 @@ export function ModalSewing(p){
     });
   }
   function mailSingle(){
+    if(hasCurtains){
+      setSewOptsFrom('single');setSewOptsAction('mail');
+      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta';})));
+      setShowSewOpts(true);
+    }else{doMailSingle(null);}
+  }
+  function doMailSingle(opts){
     var house=selHouse==='__custom__'?customHouse:selHouse;
     mailSewing(allRows,house,{sewingHouse:house,notes:notes,term:term,
       termCurtains:hasBothSewTypes?termCurtains:term,
-      termRolety:hasBothSewTypes?termRolety:term,sewOpts:sewOpts});
+      termRolety:hasBothSewTypes?termRolety:term,sewOpts:opts});
   }
   function mailSplitBatch(){
     if(!selIds.length){alert('Wybierz przynajmniej jedn\u0105 pozycj\u0119.');return;}
+    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta';});
+    if(sc.length){
+      setSewOptsFrom('split');setSewOptsAction('mail');
+      if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));
+      setShowSewOpts(true);return;
+    }
+    doMailSplitBatch(null);
+  }
+  function doMailSplitBatch(opts){
     var house=splitHouse==='__custom__'?splitCustom:splitHouse;
     mailSewing(selIds.map(function(i){return allRows[i];}),house,
-      {sewingHouse:house,notes:splitNotes,term:splitTerm,sewOpts:sewOpts});
+      {sewingHouse:house,notes:splitNotes,term:splitTerm,sewOpts:opts});
   }
 
   function toggleSel(i){
@@ -380,6 +399,11 @@ export function ModalSewing(p){
   }
   function confirmSewOpts(){
     setShowSewOpts(false);
+    if(sewOptsAction==='mail'){
+      if(sewOptsFrom==='single')doMailSingle(sewOpts);
+      else doMailSplitBatch(sewOpts);
+      return;
+    }
     if(sewOptsFrom==='single')doGenerateSingle(sewOpts);
     else doGenerateSplitBatch(sewOpts);
   }
@@ -398,7 +422,7 @@ export function ModalSewing(p){
         ce(SewOptsRow,{checkKey:'tasmyH',label:'Wysokość taśmy',textKey:'tasmyHNazwa',placeholder:'np. 8 cm'}),
         ce(SewOptsRow,{checkKey:'glide',label:'Odstępy ślizgów (Wave)',textKey:'glideNazwa',placeholder:'np. 8 cm'}),
         ce('div',{style:{display:'flex',gap:10,marginTop:14}},
-          ce('button',{onClick:confirmSewOpts,style:{flex:1,padding:'14px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83D\uDC41\ufe0f Podgl\u0105d PDF'),
+          ce('button',{onClick:confirmSewOpts,style:{flex:1,padding:'14px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},sewOptsAction==='mail'?'\u2709\ufe0f Wy\u015blij mailem':'\uD83D\uDC41\ufe0f Podgl\u0105d PDF'),
           ce('button',{onClick:function(){setShowSewOpts(false);},style:{padding:'14px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')
         )
       )
