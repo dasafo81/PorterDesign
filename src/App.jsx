@@ -1625,7 +1625,12 @@ export function App(p){
       if(!groups.length){alert("Brak pomieszcze\u0144 z produktami.");return;}
       var rows=buildSimplifiedRows(curClient,computeSimplSelection(groups,makeSimplInitSel(groups)),comm);
       var montazP=montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100};
-      var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"");
+      var mailBase0=rows.reduce(function(a,rd){return a+(rd.windows||[]).reduce(function(b,wd){return b+(wd.items||[]).reduce(function(cc,it){return cc+(+it.total||0);},0);},0);},0);
+      var mailMontazVal=montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(mailBase0*((+montazInput||0)/100));
+      var mailBase=mailBase0+mailMontazVal;
+      var mailDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(mailBase*(+discountInput)/100)):0;
+      var mailVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
+      var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"",mailDiscountVal,mailVisitFeeVal);
       if(!html){alert("Brak pozycji do wyceny.");return;}
       setEmailPdf({html:html,name:"Oferta - "+(curClient.name||"klient")+".pdf"});
       setShowEmailModal(true);
@@ -2119,7 +2124,14 @@ export function App(p){
     function doSimplGenerate(){
       var vu=null;
       if(simplValidUntil){var d=new Date(simplValidUntil+"T00:00:00");if(!isNaN(d))vu=d;}
-      generateSimplifiedPDFFromRows(curClient,simplEditableRows,montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100},vu,"");
+      var simplMontazP=montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100};
+      // Rabat i koszt wizyty ustawione w Podsumowaniu musza zejsc rowniez z wyceny
+      // uproszczonej — wczesniej trafialy tylko do wyceny szczegolowej.
+      var simplMontazVal=montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(simplGrandTotal*((+montazInput||0)/100));
+      var simplBase=simplGrandTotal+simplMontazVal;
+      var simplDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(simplBase*(+discountInput)/100)):0;
+      var simplVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
+      generateSimplifiedPDFFromRows(curClient,simplEditableRows,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal);
       setScreen("sum");
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
