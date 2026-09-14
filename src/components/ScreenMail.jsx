@@ -35,6 +35,17 @@ export const MAIL_TEMPLATES = [
   {id:"wlasny",label:"W\u0142asny",icon:"\u270F\uFE0F",subject:"",body:"",suggestAttachments:[]}
 ];
 
+// Szablon otwierany domyślnie przy nowej wiadomości.
+// Dopasowanie: najpierw po template_id, potem po nazwie (na wypadek innego id w bazie).
+export const DEFAULT_TEMPLATE_ID = "wycena_po_spotkaniu";
+export const DEFAULT_TEMPLATE_LABEL_RE = /wycena\s+po\s+spotkaniu/i;
+export function findDefaultTemplate(list){
+  var arr=list||[];
+  return arr.find(function(t){return t.id===DEFAULT_TEMPLATE_ID;})
+    ||arr.find(function(t){return DEFAULT_TEMPLATE_LABEL_RE.test(t.label||"");})
+    ||arr[0]||null;
+}
+
 // ── Flagi (kolorowe oznaczenia maili) ──────────────────────────────
 // Technicznie to kategorie Outlooka (message.categories) — dzięki temu oznaczenie
 // jest widoczne także w samym Outlooku i synchronizuje się między urządzeniami.
@@ -1971,7 +1982,10 @@ export function ScreenMail(p){
   var ssel=us(null),selThread=ssel[0],setSelThread=ssel[1];
   var sdr=us(function(){try{return JSON.parse(localStorage.getItem("pd_mail_drafts")||"[]");}catch(e){return[];}}),drafts=sdr[0],setDrafts=sdr[1];
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
-  var st=us("oferta"),selTemplate=st[0],setSelTemplate=st[1];
+  // null = jeszcze nie wybrano — efekt ustawi szablon domyślny (wycena po spotkaniu)
+  var st=us(null),selTemplate=st[0],setSelTemplate=st[1];
+  // true = użytkownik ruszył temat/treść ręcznie → szablon nie nadpisuje już kompozytora
+  var sdty=us(false),composeDirty=sdty[0],setComposeDirty=sdty[1];
   var sto=us(""),toEmail=sto[0],setToEmail=sto[1];
   var scc=us(""),ccEmail=scc[0],setCcEmail=scc[1];
   var sbcc=us(""),bccEmail=sbcc[0],setBccEmail=sbcc[1];
@@ -2029,6 +2043,8 @@ export function ScreenMail(p){
   var userEmail=msAccount&&(msAccount.username||msAccount.email)||"";
   // Aktywna lista szablonów — z bazy jeśli załadowane, fallback na MAIL_TEMPLATES
   var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
+  // Aktualnie wybrany szablon (obiekt) — etykieta w polu wyboru
+  var selTpl=activeTemplates.find(function(t){return t.id===selTemplate;})||null;
 
   // Synchronizuj widok poczty z historią przeglądarki. Dzięki temu „wstecz”
   // wraca z compose/podglądu do poprzedniego kroku zamiast do głównego ekranu.
@@ -2227,14 +2243,19 @@ export function ScreenMail(p){
 
   ue(function(){
     if(!activeTemplates.length)return;
-    var tpl=activeTemplates.find(function(t){return t.id===selTemplate;})||activeTemplates[0];
+    if(selTemplate==="__none__")return;
+    var tpl=activeTemplates.find(function(t){return t.id===selTemplate;})||findDefaultTemplate(activeTemplates);
     if(!tpl)return;
+    if(selTemplate!==tpl.id)setSelTemplate(tpl.id);
+    // Podpięcie klienta do zaczętej wiadomości uzupełnia tylko adres —
+    // temat, treść i załączniki zostają takie, jakie napisał użytkownik.
+    if(selClient&&selClient.email)setToEmail(selClient.email);
+    if(composeDirty)return;
     var filled=fillTemplate(tpl,selClient);
     setSubject(filled.subject);
     // Body szablonu może być plain text (stare) lub HTML (nowe z edytora) — konwertujemy jeśli plain
     var isHtml=/<[a-z][\s\S]*>/i.test(filled.body);
     setBody(isHtml?filled.body:plainToHtml(filled.body));
-    if(selClient&&selClient.email)setToEmail(selClient.email);
     // Attachments: pliki PDF z app + pliki szablonu z Storage
     var appAtts=(tpl.suggestAttachments||[]).map(function(sid){
       var opt=APP_PDF_OPTIONS.find(function(o){return o.id===sid;});
@@ -2245,7 +2266,7 @@ export function ScreenMail(p){
     });
     // Załączniki szablonu — niezależnie od wybranego klienta
     setAttachments(appAtts.concat(tplAtts));
-  },[selClientId,selTemplate,dbTemplates]);
+  },[selClientId,selTemplate,dbTemplates,composeDirty]);
 
   function onToChange(val){
     setToEmail(val);
@@ -2302,7 +2323,7 @@ export function ScreenMail(p){
       return next;
     });
     setToEmail(""); setSubject(""); setBody(""); setQuotedHtml(""); setAttachments([]); setSelClientId(null);
-    setCcEmail(""); setBccEmail("");
+    setCcEmail(""); setBccEmail(""); setComposeDirty(false);
   }
 
   function openDraft(d){
@@ -2312,7 +2333,23 @@ export function ScreenMail(p){
     if(d.cc||d.bcc)setShowCcBcc(true);
     setAttachments(d.attachments||[]);
     setDrafts(function(prev){return prev.filter(function(x){return x.id!==d.id;});});
+    setComposeDirty(true);
     mailNavigate("compose");
+  }
+
+  // Wybór szablonu z listy rozwijanej.
+  // Nowa wiadomość → pełne przestawienie (efekt przepisze temat/treść/załączniki).
+  // Odpowiedź/przekazanie (jest cytat) → wklejenie treści bez kasowania tematu Re:/Fwd:.
+  function pickTemplate(tpl){
+    setShowTplPicker(false);
+    setComposeDirty(false);
+    if(!tpl){
+      setSelTemplate("__none__");
+      setSubject(""); setBody(""); setAttachments([]);
+      return;
+    }
+    if(quotedHtml){ applyTemplateToCompose(tpl); return; }
+    setSelTemplate(tpl.id);
   }
 
   // Wkleja treść i załączniki szablonu do bieżącego compose
@@ -2478,7 +2515,7 @@ export function ScreenMail(p){
           sbApi.upsertMailRecipient(toEmail, toName).catch(function(){});
           setTimeout(function(){setJustSent(false);},3000);
           setToEmail(""); setSubject(""); setBody(""); setQuotedHtml(""); setAttachments([]); setSelClientId(null);
-          setCcEmail(""); setBccEmail("");
+          setCcEmail(""); setBccEmail(""); setComposeDirty(false);
         })
         .catch(function(e){setSending(false);setSendError(e.message||"Nieznany b\u0142\u0105d");});
       }).catch(function(e){
@@ -2815,19 +2852,39 @@ export function ScreenMail(p){
       )
     ),
     sendError?ce("div",{style:{marginBottom:10,padding:"10px 12px",background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:9,fontSize:12,color:"var(--red)",display:"flex",alignItems:"center",gap:8}},ce("span",{style:{fontSize:16}},"\u26a0\ufe0f"),ce("span",{style:{flex:1}},sendError),ce("button",{onClick:function(){setSendError(null);},style:{border:"none",background:"none",cursor:"pointer",color:"var(--red)",fontSize:16}},"\u00d7")):null,
-    ce("div",{style:{marginBottom:10}},
+    ce("div",{style:{marginBottom:10,position:"relative"}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Szablon"),
-      ce("div",{style:{display:"flex",gap:5,flexWrap:"wrap"}},
+      ce("div",{onClick:function(){setShowTplPicker(function(v){return !v;});},
+        style:Object.assign({},INP,{display:"flex",alignItems:"center",justifyContent:"space-between",
+          cursor:"pointer",borderColor:showTplPicker?"var(--wbd)":"var(--bd2)"})},
+        ce("span",{style:{display:"flex",alignItems:"center",gap:8,color:selTpl?"var(--t1)":"var(--t3)"}},
+          ce("span",null,selTpl?selTpl.icon:"\u2014"),
+          ce("span",null,selTpl?selTpl.label:"Bez szablonu")
+        ),
+        ce("span",{style:{color:"var(--t3)",fontSize:11}},"\u25BE")
+      ),
+      showTplPicker?ce("div",{style:{
+        position:"absolute",left:0,right:0,top:"100%",marginTop:4,zIndex:400,
+        background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,
+        boxShadow:"0 10px 30px rgba(0,0,0,0.22)",maxHeight:280,overflowY:"auto"
+      }},
         activeTemplates.map(function(tpl){
           var active=selTemplate===tpl.id;
-          return ce("button",{key:tpl.id,onClick:function(){setSelTemplate(tpl.id);},
-            style:{padding:"6px 12px",borderRadius:20,fontSize:12,fontWeight:active?700:500,
-              border:"1px solid "+(active?"var(--wbd)":"var(--bd2)"),
-              background:active?"var(--wb)":"var(--bg2)",
-              color:active?"var(--wt)":"var(--t2)",cursor:"pointer"}},
-            tpl.icon+" "+tpl.label);
-        })
-      )
+          var isDef=DEFAULT_TEMPLATE_ID===tpl.id||DEFAULT_TEMPLATE_LABEL_RE.test(tpl.label||"");
+          return ce("div",{key:tpl.id,onClick:function(){pickTemplate(tpl);},
+            style:{padding:"10px 14px",cursor:"pointer",fontSize:13,display:"flex",
+              alignItems:"center",gap:8,borderBottom:"1px solid var(--bd3)",
+              background:active?"var(--wb)":"transparent",
+              color:active?"var(--wt)":"var(--t1)",fontWeight:active?700:500}},
+            ce("span",null,tpl.icon),
+            ce("span",{style:{flex:1}},tpl.label),
+            isDef?ce("span",{style:{fontSize:10,color:active?"var(--wt)":"var(--t3)"}},"domy\u015blny"):null
+          );
+        }),
+        ce("div",{onClick:function(){pickTemplate(null);},
+          style:{padding:"10px 14px",cursor:"pointer",fontSize:12,color:"var(--t3)"}},
+          "\u2014 Bez szablonu (pusta wiadomo\u015b\u0107)")
+      ):null
     ),
     ce("div",{style:{marginBottom:10,position:"relative"}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
@@ -2870,44 +2927,14 @@ export function ScreenMail(p){
     ):null,
     ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Temat"),
-      ce("input",{type:"text",value:subject,onChange:function(e){setSubject(e.target.value);},placeholder:"Temat wiadomo\u015bci",style:INP})
+      ce("input",{type:"text",value:subject,onChange:function(e){setComposeDirty(true);setSubject(e.target.value);},placeholder:"Temat wiadomo\u015bci",style:INP})
     ),
     ce(AttachmentsSection,{attachments:attachments,setAttachments:setAttachments,selClient:selClient,selTemplate:selTemplate,templates:activeTemplates,clients:clients,onPickClient:function(id){setSelClientId(String(id));}}),
     ce("div",{style:{flex:1,display:"flex",flexDirection:"column",marginBottom:10}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}},
-        ce("label",{style:LSML},"Tre\u015b\u0107"),
-        ce("div",{style:{position:"relative"}},
-          ce("button",{
-            onClick:function(){setShowTplPicker(function(v){return !v;});},
-            style:{padding:"3px 10px",fontSize:11,fontWeight:600,borderRadius:8,cursor:"pointer",
-              border:"1px solid "+(showTplPicker?"var(--wbd)":"var(--bd2)"),
-              background:showTplPicker?"var(--wb)":"var(--bg2)",
-              color:showTplPicker?"var(--wt)":"var(--t2)",display:"flex",alignItems:"center",gap:4}
-          },"\uD83D\uDCCB Wstaw szablon \u25BE"),
-          showTplPicker?ce("div",{style:{
-            position:"absolute",right:0,top:"100%",marginTop:4,zIndex:300,
-            background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,
-            boxShadow:"0 10px 30px rgba(0,0,0,0.22)",minWidth:190,overflow:"hidden"
-          }},
-            activeTemplates.map(function(tpl){
-              return ce("div",{key:tpl.id,
-                onClick:function(){applyTemplateToCompose(tpl);},
-                style:{padding:"10px 14px",cursor:"pointer",fontSize:13,
-                  borderBottom:"1px solid var(--bd3)",display:"flex",alignItems:"center",gap:8,
-                  color:"var(--t1)"}},
-                ce("span",null,tpl.icon),
-                ce("span",{style:{fontWeight:500}},tpl.label)
-              );
-            }),
-            ce("div",{
-              onClick:function(){setShowTplPicker(false);},
-              style:{padding:"8px 14px",fontSize:12,color:"var(--t3)",cursor:"pointer",
-                textAlign:"center"}
-            },"Anuluj")
-          ):null
-        )
+        ce("label",{style:LSML},"Tre\u015b\u0107")
       ),
-      ce(RichTextEditor,{value:body,onChange:setBody,minHeight:200,bg:"var(--bg)",placeholder:"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026"}),
+      ce(RichTextEditor,{value:body,onChange:function(html){setComposeDirty(true);setBody(html);},minHeight:200,bg:"var(--bg)",placeholder:"Wpisz tre\u015b\u0107 wiadomo\u015bci\u2026"}),
       // Podpis — zawsze widoczny, bezpo\u015brednio pod tre\u015bci\u0105 aktualnie pisanej wiadomo\u015bci
       // (nie na ko\u0144cu cytowanego w\u0105tku, kt\u00f3ry renderuje si\u0119 osobno ni\u017cej). Doklejany
       // automatycznie przy wysy\u0142ce — patrz buildMailHtml.
@@ -3016,6 +3043,7 @@ export function ScreenMail(p){
             setBody("");
             setQuotedHtml(quoted);
             setAttachments([]);
+            setComposeDirty(true);
             mailNavigate("compose");
           },
           onReplyAll:function(head,bodyCache,toRecipients,ccRecipients){
@@ -3048,6 +3076,7 @@ export function ScreenMail(p){
             setBody("");
             setQuotedHtml(quoted);
             setAttachments([]);
+            setComposeDirty(true);
             mailNavigate("compose");
           },
           onForward:function(head,bodyCache){
@@ -3064,6 +3093,7 @@ export function ScreenMail(p){
             setBody("");
             setQuotedHtml(fwdBlock);
             setAttachments([]);
+            setComposeDirty(true);
             mailNavigate("compose");
           },
           onMarkRead:function(mail,val){markAsRead(mail,val);},
