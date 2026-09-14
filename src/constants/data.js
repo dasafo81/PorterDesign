@@ -350,6 +350,41 @@ export const JZ_BS50_COLORS =[
 
 // Kolory tasiemek (drabinki) do żaluzji — szerokość tasiemki [mm] i dostępność wg grubości lameli
 // z35/z50/z65 = dostępność dla Żaluzje 35/50/65mm (true/false), lub liczba = dopłata % do ceny bazowej żaluzji
+// Kolory dzwonków (obciążniki denne) — wariant standardowy, bez dopłaty
+export const JZ_DZWONKI_COLORS =[
+  {v:"white",       l:"White",       code:"C5020"},
+  {v:"pearl_white", l:"Pearl white", code:"PU5031"},
+  {v:"off_white",   l:"Off-white",   code:"C5030"},
+  {v:"shell",       l:"Shell",       code:"PU5032"},
+  {v:"vanilla",     l:"Vanilla",     code:"C5016"},
+  {v:"natural",     l:"Natural",     code:"C5010"},
+  {v:"maple",       l:"Maple",       code:"C5011"},
+  {v:"light_oak",   l:"Light oak",   code:"D5012"},
+  {v:"smoke_grey",  l:"Smoke grey",  code:"C5026"},
+  {v:"oak",         l:"Oak",         code:"D5014"},
+  {v:"tiger_eye",   l:"Tiger eye",   code:"C5027"},
+  {v:"pecan",       l:"Pecan",       code:"D5013"},
+  {v:"cherry",      l:"Cherry",      code:"C5025"},
+  {v:"walnut",      l:"Walnut",      code:"C5015"},
+  {v:"wenge",       l:"Wenge",       code:"C5022"},
+  {v:"sand",        l:"Sand",        code:"PU5033"},
+  {v:"limestone",   l:"Limestone",   code:"PU5034"},
+  {v:"cloud",       l:"Cloud",       code:"PU5035"},
+  {v:"taupe",       l:"Taupe",       code:"PU5036"},
+  {v:"antracite",   l:"Antracite",   code:"PU5037"},
+  {v:"black",       l:"Black",       code:"C5021"}
+];
+
+// Kolory dzwonków stalowych — dopłata ryczałtowa +50zł niezależnie od wykończenia
+// (cena jednostkowa dostawcy różni się per kolor — zachowana tylko informacyjnie w polu pricePerPc)
+export const JZ_DZWONKI_STALOWE =[
+  {v:"srebrne",        l:"Stalowe srebrne",        pricePerPc:11.65},
+  {v:"biale",          l:"Stalowe białe",          pricePerPc:11.65},
+  {v:"nikiel",         l:"Stalowe nikiel",         pricePerPc:16.30},
+  {v:"brazowe",        l:"Stalowe brązowe",        pricePerPc:16.30},
+  {v:"czarne_matowe",  l:"Stalowe czarne matowe",  pricePerPc:11.65}
+];
+
 export const JZ_TASIEMKA_COLORS =[
   {v:"white_10", l:"White", width:10, code:"B100", ba27:5, z35:true, bs50:true, abp50:true, z65:false, al35:5, al50:5},
   {v:"snow_10", l:"Snow", width:10, code:"11-0601", ba27:5, z35:true, bs50:true, abp50:true, z65:false, al35:5, al50:5},
@@ -3406,6 +3441,12 @@ export function calc(p){
       var bDop=120; // stawka ryczałtowa — zastępuje dawną kwotę zależną od materiału i Prowadzenie boczne
       total+=bDop;
       lines.push("Monta\u017c bezinwazyjny +"+bDop.toFixed(2)+" z\u0142");
+    }
+    if(c.dzwonkiStalowe==="tak"){
+      var dzDop=50; // stawka ryczałtowa — niezależna od konkretnego wykończenia
+      total+=dzDop;
+      var dzCol=c.dzwonkiKolor?JZ_DZWONKI_STALOWE.find(function(col){return col.v===c.dzwonkiKolor;}):null;
+      lines.push("Dzwonki stalowe"+(dzCol?" ("+dzCol.l+")":"")+" +"+dzDop.toFixed(2)+" z\u0142");
     }
     var tGroup=jzTasWidthGroup(jt);
     if(c.tasiemkaColor&&tGroup){
