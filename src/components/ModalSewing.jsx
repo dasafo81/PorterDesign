@@ -21,7 +21,7 @@ import {
 import { generateFabricOrderPDF, getFabricOrderSuppliers, generateClientEmail,
 
 
-  generateSewingOrderPDF, generateSewingOrderPDFFromRows
+  buildSewingOrderHtmlFromRows, generateSewingOrderPDF, generateSewingOrderPDFFromRows
 } from '../lib/pdf.js';
 const ce = React.createElement;
 
@@ -110,6 +110,33 @@ export function ModalSewing(p){
     setUsedIds(newUsed);setSelIds([]);
     setSplitHouse(SEWING_HOUSES[0]);setSplitCustom('');setSplitNotes('');setSplitTerm('');setSplitAttach(null);setSplitAttachName('');
     if(newUsed.length>=allRows.length) p.onClose();
+  }
+
+  // Wysyłka zlecenia mailem do szwalni — ten sam dokument co podgląd, tylko jako
+  // załącznik PDF w modalu maila (p.onMailDoc pochodzi z App i otwiera ModalClientEmail).
+  function mailSewing(rows,house,dta){
+    if(!p.onMailDoc){alert('Wysy\u0142ka maila niedost\u0119pna z tego miejsca.');return;}
+    var html=buildSewingOrderHtmlFromRows(rows,p.client,dta);
+    if(!html){alert('Brak wybranych pozycji.');return;}
+    p.onMailDoc(html,'Zlecenie szycia - '+((p.client&&p.client.name)||'klient')+'.pdf',{
+      to:'',
+      subject:'Zlecenie szycia \u2014 '+((p.client&&p.client.name)||''),
+      body:['Dzie\u0144 dobry,','W za\u0142\u0105czeniu przesy\u0142am zlecenie szycia.',
+        'Prosz\u0119 o potwierdzenie przyj\u0119cia i terminu realizacji.','Pozdrawiam serdecznie']
+        .map(function(t){return '<div>'+t+'</div>';}).join('<div><br></div>')
+    });
+  }
+  function mailSingle(){
+    var house=selHouse==='__custom__'?customHouse:selHouse;
+    mailSewing(allRows,house,{sewingHouse:house,notes:notes,term:term,
+      termCurtains:hasBothSewTypes?termCurtains:term,
+      termRolety:hasBothSewTypes?termRolety:term,sewOpts:sewOpts});
+  }
+  function mailSplitBatch(){
+    if(!selIds.length){alert('Wybierz przynajmniej jedn\u0105 pozycj\u0119.');return;}
+    var house=splitHouse==='__custom__'?splitCustom:splitHouse;
+    mailSewing(selIds.map(function(i){return allRows[i];}),house,
+      {sewingHouse:house,notes:splitNotes,term:splitTerm,sewOpts:sewOpts});
   }
 
   function toggleSel(i){
@@ -282,6 +309,7 @@ export function ModalSewing(p){
       mkAttachInput(attachB64,setAttachB64,attachName,setAttachName),
       ce('div',{style:{display:'flex',gap:10,marginTop:4}},
         ce('button',{onClick:generateSingle,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83D\uDC41\ufe0f Podgl\u0105d PDF'),
+        ce('button',{onClick:mailSingle,style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t1)',fontSize:15,fontWeight:600,cursor:'pointer'}},'\u2709\ufe0f Wy\u015blij mailem'),
         ce('button',{onClick:p.onClose,style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')
       )
     );
@@ -331,6 +359,10 @@ export function ModalSewing(p){
             background:selIds.length?'var(--t1)':'var(--grm)',color:'#fff',
             fontSize:15,fontWeight:600,cursor:selIds.length?'pointer':'not-allowed',transition:'all .15s'}
         },selIds.length?('\uD83D\uDC41\ufe0f Podgl\u0105d PDF ('+(usedIds.length+selIds.length)+'/'+allRows.length+')'):'\u2702\ufe0f Wybierz pozycje...'),
+        ce('button',{onClick:mailSplitBatch,disabled:!selIds.length,
+          style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',
+            color:selIds.length?'var(--t1)':'var(--t3)',fontSize:15,fontWeight:600,
+            cursor:selIds.length?'pointer':'not-allowed'}},'\u2709\ufe0f Wy\u015blij mailem'),
         ce('button',{onClick:p.onClose,style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Zako\u0144cz')
       )
     );
