@@ -4,13 +4,13 @@ import { sbApi } from '../lib/supabase.js';
 import {
   FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, getFabricEquivalents, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
   IMG_FALDA_POTROJNA, IMG_FALDA_STUDIO, IMG_JZ_ALUMINIUM, IMG_JZ_BAMBOO,
-  IMG_JZ_ABACHI, IMG_JZ_BASSWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
+  IMG_JZ_ABACHI, IMG_JZ_BASSWOOD, IMG_JZ_PRIMEWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
   IMG_OKNO, IMG_ROLETA_BACK, IMG_ROLETA_CASCADE, IMG_ROLETA_DUO,
   IMG_ROLETA_FRONT, IMG_ROLETA_LANCUSZEK_BIALY, IMG_ROLETA_LANCUSZEK_METALOWY, IMG_ROLETA_PODSZEWKA,
   IMG_ROLETA_PRINT, IMG_ROLETA_RELAX, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
-  JZ_LABELS, JZ_ZONES, JZ_AB35_COLORS, JZ_AB50_COLORS, JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_BA27_COLORS, JZ_BA35_COLORS, JZ_BA50_COLORS, JZ_BA65_COLORS, JZ_BS50_COLORS,
+  JZ_LABELS, JZ_ZONES, JZ_AB35_COLORS, JZ_AB50_COLORS, JZ_PW35_COLORS, JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_BA27_COLORS, JZ_BA35_COLORS, JZ_BA50_COLORS, JZ_BA65_COLORS, JZ_BS50_COLORS,
   JZ_TASIEMKA_COLORS, jzTasWidthGroup, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, INNY_KATEGORIE, RCITY, RDUO, REL,
@@ -841,11 +841,12 @@ export function ProdCard(p){
       {key:"al",label:"Aluminium",img:IMG_JZ_ALUMINIUM,sizes:["al25","al35","al50"]},
       {key:"ba",label:"Bamboo",img:IMG_JZ_BAMBOO,sizes:["ba27","ba35","ba50","ba65"]},
       {key:"bs",label:"Basswood",img:IMG_JZ_BASSWOOD,sizes:["bs35","bs50","bs65"]},
-      {key:"ab",label:"Abachi",img:IMG_JZ_ABACHI,sizes:["ab35","ab50","ab65"]}
+      {key:"ab",label:"Abachi",img:IMG_JZ_ABACHI,sizes:["ab35","ab50","ab65"]},
+      {key:"pw",label:"Prime Wood",img:IMG_JZ_PRIMEWOOD,sizes:["pw35"]}
     ];
-    var jzSizeLabels={al25:"25mm",al35:"35mm",al50:"50mm SUNSET",ba27:"27mm",ba35:"35mm",ba50:"50mm",ba65:"65mm",bs35:"35mm",bs50:"50mm",bs65:"65mm",ab35:"35mm",ab50:"50mm",ab65:"65mm"};
+    var jzSizeLabels={al25:"25mm",al35:"35mm",al50:"50mm SUNSET",ba27:"27mm",ba35:"35mm",ba50:"50mm",ba65:"65mm",bs35:"35mm",bs50:"50mm",bs65:"65mm",ab35:"35mm",ab50:"50mm",ab65:"65mm",pw35:"35mm"};
     var curJt=c.jt||"al25";
-    var curMat=curJt.startsWith("al")?"al":curJt.startsWith("ba")?"ba":curJt.startsWith("ab")?"ab":"bs";
+    var curMat=curJt.startsWith("al")?"al":curJt.startsWith("ba")?"ba":curJt.startsWith("ab")?"ab":curJt.startsWith("pw")?"pw":"bs";
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
         ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
@@ -879,7 +880,7 @@ export function ProdCard(p){
         })})
       ),
       (function(){
-        var jzColorList=curJt==="al25"?JZ_AL25_COLORS:curMat==="al"?JZ_AL50_COLORS:curJt==="ab35"?JZ_AB35_COLORS:(curJt==="ab50"||curJt==="ab65")?JZ_AB50_COLORS:curJt==="ba27"?JZ_BA27_COLORS:curJt==="ba35"?JZ_BA35_COLORS:curJt==="ba65"?JZ_BA65_COLORS:curMat==="ba"?JZ_BA50_COLORS:curMat==="bs"?JZ_BS50_COLORS:null;
+        var jzColorList=curJt==="al25"?JZ_AL25_COLORS:curMat==="al"?JZ_AL50_COLORS:curJt==="ab35"?JZ_AB35_COLORS:(curJt==="ab50"||curJt==="ab65")?JZ_AB50_COLORS:curJt==="pw35"?JZ_PW35_COLORS:curJt==="ba27"?JZ_BA27_COLORS:curJt==="ba35"?JZ_BA35_COLORS:curJt==="ba65"?JZ_BA65_COLORS:curMat==="ba"?JZ_BA50_COLORS:curMat==="bs"?JZ_BS50_COLORS:null;
         if(!jzColorList)return null;
         var jzColorTitle=curJt==="al25"?"KOLOR (ALUMINIUM 25MM)":curMat==="al"?"KOLOR (SUNSET)":"KOLOR";
         return ce("div",{style:{marginBottom:10}},
