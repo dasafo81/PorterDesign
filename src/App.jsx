@@ -159,7 +159,9 @@ export function App(p){
   var sDiscAmt=useState(""),discountInput=sDiscAmt[0],setDiscountInput=sDiscAmt[1];
   var sDiscMode=useState("amount"),discountMode=sDiscMode[0],setDiscountMode=sDiscMode[1];
   var sVisitFee=useState(false),visitFeeEnabled=sVisitFee[0],setVisitFeeEnabled=sVisitFee[1];
-  var sVisitFeeAmt=useState(""),visitFeeInput=sVisitFeeAmt[0],setVisitFeeInput=sVisitFeeAmt[1];
+  // Koszt wizyty pomiarowej — stawka standardowa 250 zł wpisana z góry, pole pozostaje
+  // edytowalne; samo odliczenie jest opcjonalne (steruje nim visitFeeEnabled).
+  var sVisitFeeAmt=useState("250"),visitFeeInput=sVisitFeeAmt[0],setVisitFeeInput=sVisitFeeAmt[1];
   var sOfferRows=useState([]),offerPreviewRows=sOfferRows[0],setOfferPreviewRows=sOfferRows[1];
   var sOfferBase=useState([]),offerBaseRows=sOfferBase[0],setOfferBaseRows=sOfferBase[1];
   var sOfferNotes=useState(""),offerNotes=sOfferNotes[0],setOfferNotes=sOfferNotes[1];
@@ -1578,8 +1580,8 @@ export function App(p){
       setOfferPreviewRows(applyOfferComm(baseRows,comm));
       setOfferNotes("");
       setOfferValidUntil(new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10));
-      setVisitFeeEnabled(false);
-      setVisitFeeInput("");
+      // Koszt wizyty ustawiany jest w Podsumowaniu — przenosimy go do oferty/PDF
+      // bez zerowania, żeby nie trzeba było zaznaczać go drugi raz.
       setScreen("offerPreview");
     }
     function openKarniszPreview(){
@@ -1738,7 +1740,10 @@ export function App(p){
         ce("span",null,(minus?"\u2212":"")+val+" z\u0142"));
     };
     var sumDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(sumBaseTotal*(+discountInput)/100)):0;
-    var sumFinalTotal=Math.max(0,roundTo10(sumBaseTotal-sumDiscountVal));
+    // Koszt wizyty pomiarowej — kwota zł odejmowana od całości (ta sama logika co
+    // previewVisitFeeVal na ekranie offerPreview, żeby podsumowanie i PDF się zgadzały).
+    var sumVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
+    var sumFinalTotal=Math.max(0,roundTo10(sumBaseTotal-sumDiscountVal-sumVisitFeeVal));
 
     content=ce(Fragment,null,
       sRooms.map(function(r){return renderRoomSummary(r);}),
@@ -1764,11 +1769,22 @@ export function App(p){
         discountEnabled?ce("input",{type:"text",inputMode:"decimal",value:discountInput,onChange:function(ev){setDiscountInput(ev.target.value);},placeholder:discountMode==="amount"?"np. 300":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
         discountEnabled&&discountInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+discountInput+(discountMode==="amount"?" zł":"%")):null
       ),
+      ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:0,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
+          ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){setVisitFeeEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
+          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83D\uDE97 Koszt wizyty pomiarowej")
+        ),
+        visitFeeEnabled?ce("input",{type:"text",inputMode:"decimal",value:visitFeeInput,onChange:function(ev){setVisitFeeInput(ev.target.value);},placeholder:"np. 250",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
+        visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł"):null,
+        visitFeeEnabled&&visitFeeInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+visitFeeInput+" zł"):null,
+        visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)",flexBasis:"100%"}},"zostanie odliczony od kosztu ca\u0142kowitego"):null
+      ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16,marginTop:0}},
         sumBarRow(hasAnyVariants?"\u0141\u0105cznie (Wariant A)":"\u0141\u0105cznie",sumProductsVal),
         sumBarRow("Polecenie"+((+commissionInput)>0?" ("+commissionInput+"%)":""),sumCommVal),
         sumBarRow("Monta\u017c"+(montazInput?" ("+(montazMode==="amount"?"kwota":montazInput+"%")+")":""),sumMontazVal),
         sumDiscountVal>0?sumBarRow("Rabat",sumDiscountVal,true):null,
+        sumVisitFeeVal>0?sumBarRow("Koszt wizyty (odliczony)",sumVisitFeeVal,true):null,
         ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid rgba(255,255,255,0.18)",paddingTop:8,marginTop:2}},
           ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},hasAnyVariants?"Razem od (Wariant A)":"Razem"),
           ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},sumFinalTotal+" z\u0142")
