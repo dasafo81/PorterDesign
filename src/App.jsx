@@ -1833,7 +1833,7 @@ export function App(p){
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCC4 Wycena szczegółowa \u2014 podgląd przed wygenerowaniem"),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
-        "Każde pole poniżej jest edytowalne \u2014 ilość, produkt, model szycia, tkanina/kolor, producent, szeroko\u015b\u0107, wysoko\u015b\u0107, podzia\u0142, cena, uwagi, ważność oferty i monta\u017c. Dopiero st\u0105d generujesz PDF."
+        "Każde pole poniżej jest edytowalne \u2014 ilość, produkt, model szycia, tkanina/kolor, producent, szeroko\u015b\u0107, wysoko\u015b\u0107, podzia\u0142, cena, uwagi, ważność oferty i monta\u017c. Dopiero st\u0105d otwierasz podgl\u0105d dokumentu."
       ),
       offerPreviewRows.length===0
         ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak pozycji do wyceny.")
@@ -1918,7 +1918,7 @@ export function App(p){
           var vu=offerValidUntil?new Date(offerValidUntil):null;
           generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu,previewDiscountVal,previewVisitFeeVal);
           setScreen("sum");
-        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
       )
     );
   }
@@ -1938,7 +1938,7 @@ export function App(p){
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83E\uDE9D Zamówienie karniszy / szyn \u2014 podgląd przed wygenerowaniem"),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
-        "Każde pole poniżej jest edytowalne, w tym dostawca \u2014 dokument zostanie pogrupowany wg wybranych dostawców. Dopiero stąd generujesz PDF."
+        "Każde pole poniżej jest edytowalne, w tym dostawca \u2014 dokument zostanie pogrupowany wg wybranych dostawców. Dopiero stąd otwierasz podgl\u0105d dokumentu."
       ),
       karniszPreviewRows.length===0
         ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak pozycji do zamówienia.")
@@ -1979,7 +1979,7 @@ export function App(p){
         ce("button",{onClick:function(){
           generateKarniszOrderPDFFromRows(curClient,karniszPreviewRows);
           setScreen("sum");
-        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
       )
     );
   }
@@ -1998,7 +1998,7 @@ export function App(p){
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDD29 Szyny do montażu \u2014 podgląd przed wygenerowaniem"),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
-        "Każde pole poniżej jest edytowalne \u2014 pomieszczenie, okno, rodzaj, długość i ilość. Dopiero stąd generujesz PDF dla montażysty."
+        "Każde pole poniżej jest edytowalne \u2014 pomieszczenie, okno, rodzaj, długość i ilość. Dopiero stąd otwierasz podgl\u0105d dokumentu dla montażysty."
       ),
       railsPreviewRows.length===0
         ?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak szyn / karniszów do wydruku.")
@@ -2020,7 +2020,7 @@ export function App(p){
         ce("button",{onClick:function(){
           generateRailsInstallPDFFromRows(curClient,railsPreviewRows);
           setScreen("sum");
-        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDDA8\uFE0F Generuj PDF")
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
       )
     );
   }
@@ -2076,7 +2076,7 @@ export function App(p){
                 ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"\uD83E\uDDF5 "+r.prod),
                 ce("div",{style:{fontSize:11,color:"var(--t3)"}},supTotal.toFixed(2).replace(".",",")+" mb")
               ),
-              ce("button",{onClick:function(){generateFabricForSupplier(r.prod);},style:{padding:"10px 16px",borderRadius:10,border:"none",background:"var(--t2)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}},"\uD83D\uDDA8\uFE0F Generuj dla "+r.prod)
+              ce("button",{onClick:function(){generateFabricForSupplier(r.prod);},style:{padding:"10px 16px",borderRadius:10,border:"none",background:"var(--t2)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}},"\uD83D\uDC41\uFE0F Podgl\u0105d \u2014 "+r.prod)
             ):null,
             ce("div",{style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",border:"1px solid var(--bd3)"}},
               fabricFieldInput(i,"fabName","Tkanina",160),
@@ -2231,7 +2231,7 @@ export function App(p){
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
-        ce("button",{onClick:doSimplGenerate,style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Generuj PDF")
+        ce("button",{onClick:doSimplGenerate,style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
       )
     );
   }
