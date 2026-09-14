@@ -683,7 +683,7 @@ function mergeCatalog(baseGroups, rows) {
         kurczliwosc: c.shrinkage_pct != null ? c.shrinkage_pct : null,
         flameRetardant: !!c.flame_retardant, soundproof: !!c.soundproof, hasSample: !!c.has_sample,
         bestseller: !!c.bestseller, welur: !!c.welur, basic: !!c.basic, podszewka: !!c.podszewka, is3d: !!c.is_3d,
-        thermal: !!c.thermal, pattern: !!c.pattern, gloss: !!c.gloss });
+        thermal: !!c.thermal, pattern: !!c.pattern, gloss: !!c.gloss, polprzezierne: !!c.polprzezierne });
     });
     items.forEach(function(m) {
       m.detail = m.heightCm != null ? (m.heightCm + " cm") : null;
@@ -716,6 +716,7 @@ function mergeCatalog(baseGroups, rows) {
       if (m.bestseller) tags.push("Bestseller");
       if (m.welur) tags.push("Welur");
       if (m.basic) tags.push("Basic");
+      if (m.polprzezierne) tags.push("P\u00f3\u0142przezierne");
       if (m.podszewka) tags.push("Podszewka");
       if (m.is3d) tags.push("3D");
       if (m.pattern) tags.push("Wz\u00f3r");
@@ -756,6 +757,7 @@ function ModalCatalogItem(p) {
   var s3d = useState(!!it.is3d);                               var is3d = s3d[0]; var setIs3d = s3d[1];
   var sWz = useState(!!it.pattern);                            var pattern = sWz[0]; var setPattern = sWz[1];
   var sBl = useState(!!it.gloss);                              var gloss = sBl[0]; var setGloss = sBl[1];
+  var sPp = useState(!!it.polprzezierne);                      var polprz = sPp[0]; var setPolprz = sPp[1];
   var sB = useState(false);                                   var busy = sB[0];   var setBusy = sB[1];
   var sE = useState("");                                      var formErr = sE[0]; var setFormErr = sE[1];
 
@@ -792,6 +794,7 @@ function ModalCatalogItem(p) {
     if (thermal !== !!it.thermal) b.thermal = thermal;
     if (pattern !== !!it.pattern) b.pattern = pattern;
     if (gloss !== !!it.gloss) b.gloss = gloss;
+    if (polprz !== !!it.polprzezierne) b.polprzezierne = polprz;
     return b;
   }
   function save() {
@@ -896,6 +899,7 @@ function ModalCatalogItem(p) {
             { st: bestseller, set: setBestseller, l: "\u2B50 Bestseller" },
             { st: welur,      set: setWelur,      l: "\uD83E\uDDF6 Welur" },
             { st: basic,      set: setBasic,      l: "\u25AB\uFE0F Basic" },
+            { st: polprz,     set: setPolprz,     l: "\uD83E\uDE9F P\u00f3\u0142przezierna" },
             { st: podszewka,  set: setPodszewka,  l: "\uD83E\uDDF5 Podszewka" },
             { st: is3d,       set: setIs3d,       l: "\uD83E\uDDCA 3D" },
             { st: pattern,    set: setPattern,    l: "\uD83C\uDFA8 Wz\u00f3r" },
@@ -1061,7 +1065,8 @@ function TabCatalog(p) {
   // ── Kategorie tkanin (skład / zaciemnienie / wysokość / trudnopalność / dźwięk) ──
   // Tylko w zakładce Tkaniny — reszta kategorii katalogu nie ma tych atrybutów.
   var FABRIC_TAGS = ["Naturalne", "Semi-Natural", "Blackout", "Dimout", HIGH_FABRIC_TAG,
-    "Trudnopalne", "D\u017Awi\u0119koszczelne", "Termiczne", "Bestseller", "Welur", "Basic", "Podszewka", "3D", "Wz\u00f3r", "B\u0142ysk", "Odpowiedniki"];
+    "Trudnopalne", "D\u017Awi\u0119koszczelne", "Termiczne", "Bestseller", "Welur", "Basic",
+    "P\u00f3\u0142przezierne", "Podszewka", "3D", "Wz\u00f3r", "B\u0142ysk", "Odpowiedniki"];
   var fabricTagCounts = activeCat === "tkaniny" && activeGroupForMeta
     ? FABRIC_TAGS.map(function(tag) {
         return { tag: tag, count: activeGroupForMeta.items.filter(function(it) { return (it.tags || []).indexOf(tag) >= 0; }).length };
@@ -1218,6 +1223,7 @@ function TabCatalog(p) {
                       : tag === "Bestseller" ? "#ea580c"
                       : tag === "Welur" ? "#a21caf"
                       : tag === "Basic" ? "#64748b"
+                      : tag === "P\u00f3\u0142przezierne" ? "#0ea5e9"
                       : tag === "Podszewka" ? "#0d9488"
                       : tag === "3D" ? "#db2777"
                       : tag === "Wz\u00f3r" ? "#4f46e5"
