@@ -74,7 +74,7 @@ export const JZ_ZONES ={
   ab35:{red:4.4,blue:null},
   ab50:{red:5.5,blue:6.6},
   ab65:{red:5.5,blue:6.6},
-  pw35:{red:null,blue:null},
+  pw35:{red:4.4,blue:null},
   ba65:{red:5,blue:6.1},
   bs35:{red:4,blue:null},
   bs50:{red:5,blue:6.1},
