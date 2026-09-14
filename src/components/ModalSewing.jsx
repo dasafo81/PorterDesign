@@ -262,7 +262,7 @@ export function ModalSewing(p){
             style:{padding:'18px 20px',borderRadius:12,border:'2px solid var(--bd2)',background:'var(--bg)',cursor:'pointer',textAlign:'left',transition:'all .15s'}
           },
             ce('div',{style:{fontSize:15,fontWeight:700,color:'var(--t1)',marginBottom:4}},'\u2702\ufe0f\u2702\ufe0f Zamówienie dzielone'),
-            ce('div',{style:{fontSize:13,color:'var(--t2)'}},'Wybierasz pozycje i generujesz osobny PDF dla ka\u017cdej szwalni.')
+            ce('div',{style:{fontSize:13,color:'var(--t2)'}},'Wybierasz pozycje i otwierasz osobny podgl\u0105d dla ka\u017cdej szwalni.')
           )
         :ce('div',{style:{padding:'14px',borderRadius:12,border:'1.5px solid var(--bd3)',background:'var(--bg2)',fontSize:13,color:'var(--t3)'}},'Wymagane co najmniej 2 pozycje szycia.')
     );
@@ -281,7 +281,7 @@ export function ModalSewing(p){
       mkNotesInput(notes,setNotes),
       mkAttachInput(attachB64,setAttachB64,attachName,setAttachName),
       ce('div',{style:{display:'flex',gap:10,marginTop:4}},
-        ce('button',{onClick:generateSingle,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\u2702\ufe0f Generuj PDF'),
+        ce('button',{onClick:generateSingle,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83D\uDC41\ufe0f Podgl\u0105d PDF'),
         ce('button',{onClick:p.onClose,style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')
       )
     );
@@ -330,7 +330,7 @@ export function ModalSewing(p){
           style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',
             background:selIds.length?'var(--t1)':'var(--grm)',color:'#fff',
             fontSize:15,fontWeight:600,cursor:selIds.length?'pointer':'not-allowed',transition:'all .15s'}
-        },selIds.length?('\u2702\ufe0f Generuj PDF ('+(usedIds.length+selIds.length)+'/'+allRows.length+')'):'\u2702\ufe0f Wybierz pozycje...'),
+        },selIds.length?('\uD83D\uDC41\ufe0f Podgl\u0105d PDF ('+(usedIds.length+selIds.length)+'/'+allRows.length+')'):'\u2702\ufe0f Wybierz pozycje...'),
         ce('button',{onClick:p.onClose,style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Zako\u0144cz')
       )
     );
@@ -366,7 +366,7 @@ export function ModalSewing(p){
         ce(SewOptsRow,{checkKey:'tasmyH',label:'Wysokość taśmy',textKey:'tasmyHNazwa',placeholder:'np. 8 cm'}),
         ce(SewOptsRow,{checkKey:'glide',label:'Odstępy ślizgów (Wave)',textKey:'glideNazwa',placeholder:'np. 8 cm'}),
         ce('div',{style:{display:'flex',gap:10,marginTop:14}},
-          ce('button',{onClick:confirmSewOpts,style:{flex:1,padding:'14px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'✂️ Generuj PDF'),
+          ce('button',{onClick:confirmSewOpts,style:{flex:1,padding:'14px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83D\uDC41\ufe0f Podgl\u0105d PDF'),
           ce('button',{onClick:function(){setShowSewOpts(false);},style:{padding:'14px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')
         )
       )
@@ -450,7 +450,7 @@ export function ModalFabricOrder(p){
         )
       ):null,
       ce('div',{style:{display:'flex',gap:10,marginTop:4}},
-        multi?null:ce('button',{onClick:generate,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t2)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83E\uDDF5 Generuj PDF'),
+        multi?null:ce('button',{onClick:generate,style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',background:'var(--t2)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},'\uD83D\uDC41\ufe0f Podgl\u0105d PDF'),
         ce('button',{onClick:p.onClose,style:{flex:multi?1:'0 0 auto',padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},multi?'Zamknij':'Anuluj')
       )
     )
