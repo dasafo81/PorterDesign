@@ -4117,11 +4117,32 @@ export function openPDFWindow(htmlContent, title, opts){
   // Marginesy dajemy paddingiem body, a @page ma margin:0 — dzięki temu przeglądarka
   // nie drukuje własnych nagłówków/stopek (data, tytuł, adres blob:, numer strony).
   var bodyPad=opts.landscape?"12mm 14mm":"14mm 12mm";
-  var printReady=htmlContent.replace("</head>",
-    "<style>@media print{@page{size:"+pageSize+";margin:0;}body{padding:"+bodyPad+" !important;margin:0;}}</style>\n"+
-    "<script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script>\n"+
-    "</head>"
-  );
+  // Okno jest wyłącznie PODGLĄDEM dokumentu — zero auto-printu i żadnego przycisku
+  // druku. Wcześniej window.print() odpalany na starcie wrzucał użytkownika od razu
+  // w "Zapisz jako PDF", więc podglądu faktycznie nie było.
+  // Reguły @media print zostają — nic ich samo nie uruchamia, ale gdy ktoś wciśnie
+  // Ctrl+P, wydruk wychodzi poprawnie (A4, bez nagłówków przeglądarki, bez paska).
+  var previewCSS=
+    "<style>"+
+    "#pd-bar{position:fixed;right:16px;bottom:16px;z-index:2147483647;"+
+    "font-family:Montserrat,Arial,Helvetica,sans-serif;}"+
+    "#pd-close{padding:12px 18px;border-radius:10px;font-size:13px;font-weight:600;"+
+    "cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.18);min-height:46px;"+
+    "background:#fff;color:#1a1a18;border:1.5px solid #c8c8c4;}"+
+    "@media print{@page{size:"+pageSize+";margin:0;}"+
+    "body{padding:"+bodyPad+" !important;margin:0;}"+
+    "#pd-bar{display:none !important;}}"+
+    "</style>";
+  var previewBar=
+    "<div id=\"pd-bar\"><button id=\"pd-close\" type=\"button\">Zamknij</button></div>"+
+    "<script>(function(){"+
+    "var c=document.getElementById('pd-close');if(c)c.onclick=function(){window.close();};"+
+    "})();<\/script>";
+  var printReady=htmlContent.replace("</head>",previewCSS+"\n</head>");
+  // Nie każdy generator kończy dokładnie na </body> — fallback dokleja pasek na końcu.
+  printReady=printReady.indexOf("</body>")>=0
+    ?printReady.replace("</body>",previewBar+"\n</body>")
+    :printReady+previewBar;
   // Okno otwieramy OD RAZU, jeszcze w stosie wywołań kliknięcia — gdybyśmy zrobili
   // to dopiero po await na import(), przeglądarka potraktowałaby popup jako
   // niepowiązany z gestem użytkownika i go zablokowała.
