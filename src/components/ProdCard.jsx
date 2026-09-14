@@ -928,18 +928,27 @@ export function ProdCard(p){
           ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}})
         ]})
       ),
-      // ── STRONA STEROWANIA ────────────────────────────────────────────
-      ce("div",{style:{marginTop:16}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA STEROWANIA"),
-        ce("div",{style:{display:"flex",gap:10}},
-          ["Lewo","Prawo"].map(function(str){
-            var isA=c.jzStrona===str||(str==="Lewo"&&!c.jzStrona);
-            return ce("button",{key:str,onClick:function(){sc("jzStrona",str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+str:str
-            );
-          })
-        )
-      ),
+      // ── PRZEKŁADNIA I HAMULEC ──────────────────────────────
+      (function(){
+        function sideRow(label,field){
+          var cur=c[field]||"Prawo";
+          return ce("div",{key:field,style:{marginTop:16}},
+            ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},label),
+            ce("div",{style:{display:"flex",gap:10}},
+              ["Lewo","Prawo"].map(function(str){
+                var isA=cur===str;
+                return ce("button",{key:str,onClick:function(){sc(field,str);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+                  isA?"\u2713 "+str:str
+                );
+              })
+            )
+          );
+        }
+        return ce(Fragment,null,
+          sideRow("PRZEKŁADNIA","jzPrzekladnia"),
+          sideRow("HAMULEC","jzHamulec")
+        );
+      })(),
       // ── TRYB STEROWANIA ─────────────────────────────────────────────
       ce("div",{style:{marginTop:16}},
         ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"STEROWANIE"),
