@@ -3374,7 +3374,7 @@ export function calc(p){
     var baz;
     if(c.ks==="wave"){baz=parseFloat((lenMb*100).toFixed(2));}
     else baz=parseFloat((lenMb*80).toFixed(2));
-    total=(baz+parseFloat((arc*100).toFixed(2))+parseFloat((pts*100).toFixed(2)))*qty;
+    total=baz*qty+parseFloat((arc*100).toFixed(2))+parseFloat((pts*100).toFixed(2));
     lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
     if(c.km==="sciana")warn="\u015acienny \u2014 dolicz uchwyty \u015bcienne.";
   }else if(p.type==="plisa"){
@@ -3406,7 +3406,7 @@ export function calc(p){
     if(!lenK)return{total:0,lines:[],warn:null};
     var st=c.km==="universal"?KUNIV:KSLIM;
     var rk=lookup(lenK,st);
-    total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+(KP[c.kc||"brak"]||0)+pt*250+arc*318)*qty;
+    total=(rk.p+(KN[c.kn||"am75"]||0)+(KP[c.kp||"brak"]||0)+(KP[c.kc||"brak"]||0))*qty+pt*250+arc*318;
     lines.push("Karnisz "+(c.km||"slim").toUpperCase()+" do "+rk.k+"cm"+(qty>1?" x"+qty:""));
   }else if(p.type==="prestige_round"||p.type==="prestige_square"){
     var lenP=parseInt(par.len)||0,qty=par.qty||1;
