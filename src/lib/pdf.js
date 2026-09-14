@@ -422,8 +422,12 @@ export function buildSimplifiedRows(client,selection,comm){
 
 // Renderuje HTML "Wyceny uproszczonej" z już gotowej (ewentualnie ręcznie
 // doedytowanej na ekranie podglądu) struktury pokój -> okno -> pozycje.
-export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix){
+export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix,discount,visitFee){
   montaz=montaz||0;
+  // Rabat i koszt wizyty pomiarowej — kwoty odejmowane od całości, tak samo jak
+  // w wycenie szczegółowej (_offerPDFHtmlCore w constants/data.js).
+  discount=(+discount>0)?roundTo10(+discount):0;
+  visitFee=(+visitFee>0)?roundTo10(+visitFee):0;
   var montazMode=montaz.mode||"percent";
   var montazInputValue=montaz.mode?montaz.value:montaz;
   montaz=montazMode==="amount"?0:montazInputValue;
@@ -454,6 +458,9 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
   if(!grandTotal)return null;
   var montazVal=montazMode==="amount"?roundTo10(montazInputValue):(montaz>0?roundTo10(grandTotal*montaz):0);
   var hasMontaz=montazVal>0;
+  var deduction=discount+visitFee;
+  var totalWithMontaz=hasMontaz?roundTo10(grandTotal+montazVal):roundTo10(grandTotal);
+  var finalTotal=Math.max(0,roundTo10(totalWithMontaz-deduction));
 
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u017c. Okiennych"+titleSuffix+"</title>"+pdfStyles()+"</head><body>"
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
@@ -465,16 +472,18 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
     +roomSections
     +(hasMontaz?"<div style=\"margin-top:6mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;\"><span style=\"font-size:12px;color:#1a1a18;\">Monta\u017c dekoracji okiennych ("+(montazMode==="amount"?montazVal.toFixed(2).replace(".",",")+" zł":Math.round(montaz*100)+"%")+"):</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">"+montazVal+" z\u0142</span></div>":"")
     +(hasMontaz?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#555;font-weight:600;\">\u0141\u0105cznie bez monta\u017cu:</span><span style=\"font-size:14px;font-weight:700;color:#555;\">"+roundTo10(grandTotal)+" z\u0142</span></div>":"")
-    +"<div style=\"margin-top:"+(hasMontaz?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
+    +(discount>0?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#1a1a18;\">Przyznany rabat:</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">\u2212"+discount+" z\u0142</span></div>":"")
+    +(visitFee>0?"<div style=\"margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\"><span style=\"font-size:12px;color:#1a1a18;\">Koszt wizyty (odliczony od zam\u00f3wienia):</span><span style=\"font-size:14px;font-weight:700;color:#1a1a18;\">\u2212"+visitFee+" z\u0142</span></div>":"")
+    +"<div style=\"margin-top:"+((hasMontaz||deduction>0)?"0":"6mm")+";padding:12px 16px;background:#1a1a18;border-radius:8px;display:flex;justify-content:space-between;align-items:center;\">"
     +"<span style=\"font-size:13px;color:#fff;letter-spacing:0.04em;\">"+(hasMontaz?"\u0141\u0105cznie z monta\u017cem":"\u0141\u0105cznie ca\u0142a realizacja")+"</span>"
-    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+(hasMontaz?roundTo10(grandTotal+montazVal):roundTo10(grandTotal))+" z\u0142</span></div>"
+    +"<span style=\"font-size:20px;font-weight:700;color:#fff;\">"+finalTotal+" z\u0142</span></div>"
     +"<div class=\"footer\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>"+offerNo+"</span></div>"
     +"</body></html>";
   return h;
 }
 
-export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil,titleSuffix){
-  var html=buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix);
+export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil,titleSuffix,discount,visitFee){
+  var html=buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix,discount,visitFee);
   if(!html){alert("Brak pozycji do wyceny.");return;}
   var offerNo=getPDFOfferNumber(client);
   var offerTotal=(roomsData||[]).reduce(function(a,rd){return a+(+rd.total||0);},0);
@@ -494,16 +503,17 @@ export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil
       client_id:client.id, number:offerNo, kind:"uproszczona",
       total_gross:roundTo10((offerTotal+montazAmount)||0),
       valid_until:((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil.toISOString().slice(0,10):null,
-      notes:titleSuffix||""
+      notes:titleSuffix||"",
+      discount_amount:roundTo10(+discount>0?+discount:0)
     }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
   }
   openPDFWindow(html,(client.name||"")+" - Oferta "+offerNo+(titleSuffix||""));
 }
 
-export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle,validUntil){
+export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,setTitle,validUntil,discount,visitFee){
   var roomsData=buildSimplifiedRows(client,selection,comm);
   var titleSuffix=setTitle?" \u2014 "+setTitle:"";
-  return buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix);
+  return buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix,discount,visitFee);
 }
 
 
