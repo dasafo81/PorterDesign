@@ -11,7 +11,7 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
   JZ_LABELS, JZ_ZONES, JZ_AB35_COLORS, JZ_AB50_COLORS, JZ_PW35_COLORS, JZ_PW50_COLORS, JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_BA27_COLORS, JZ_BA35_COLORS, JZ_BA50_COLORS, JZ_BA65_COLORS, JZ_BS50_COLORS,
-  JZ_TASIEMKA_COLORS, jzTasWidthGroup, KARNISZ_SUPPLIERS, KN,
+  JZ_TASIEMKA_COLORS, jzTasWidthGroup, JZ_DZWONKI_COLORS, JZ_DZWONKI_STALOWE, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, INNY_KATEGORIE, RCITY, RDUO, REL,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
@@ -928,6 +928,34 @@ export function ProdCard(p){
           ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}})
         ]})
       ),
+      // ── DZWONKI ────────────────────────────────────────
+      (function(){
+        var dzSteel=c.dzwonkiStalowe==="tak";
+        var dzList=dzSteel?JZ_DZWONKI_STALOWE:JZ_DZWONKI_COLORS;
+        return ce(Fragment,null,
+          ce("div",{style:{marginTop:10}},
+            ce(Chips,{items:[
+              ce(Chip,{key:"dz",label:"Dzwonki stalowe (+50 z\u0142)",active:dzSteel,onClick:function(){
+                var next=dzSteel?"nie":"tak";
+                p.onChange(mg(prod,{c:mg(c,{dzwonkiStalowe:next==="tak"?"tak":undefined,dzwonkiKolor:null})}));
+              }})
+            ]})
+          ),
+          ce("div",{style:{marginTop:10}},
+            ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"KOLOR DZWONKA"),
+            ce("select",{
+              value:c.dzwonkiKolor||"",
+              onChange:function(ev){sc("dzwonkiKolor",ev.target.value||null);},
+              style:IST
+            },
+              ce("option",{value:""},"Wybierz kolor..."),
+              dzList.map(function(col){
+                return ce("option",{key:col.v,value:col.v},col.l);
+              })
+            )
+          )
+        );
+      })(),
       // ── PRZEKŁADNIA I HAMULEC ──────────────────────────────
       (function(){
         function sideRow(label,field){
