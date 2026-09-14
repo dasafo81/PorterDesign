@@ -6,11 +6,12 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
   buildFabricRows, buildKarniszRows, buildOfferDetailRows, buildRailsRows, buildSewingRows, calc,
+  buildKarniszPDFHtmlFromRows, buildOfferPDFHtmlFromRows, buildRailsInstallHtmlFromRows,
   formatPLN, generateKarniszOrderPDF, generateKarniszOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows, generateRailsInstallPDF, generateRailsInstallPDFFromRows,
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
-  buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
+  buildFabricOrderHtmlFromRows, buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
 } from './lib/pdf.js';
 import { RichTextEditor } from './components/MailShared.jsx';
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
@@ -868,6 +869,21 @@ export function App(p){
     persistWin(curWin);
     winDirtyRef.current=false;
     setScreen("windows");
+  }
+
+  // Wysyłka dowolnego dokumentu (oferta, zamówienie, zlecenie) mailem prosto
+  // z ekranu podglądu — ten sam modal co "Mail do klienta" (Microsoft Graph +
+  // htmlToPdfBase64), tylko z innym tematem, treścią i adresatem. Dzięki temu
+  // zamówienia do dostawców i szwalni nie wymagają przechodzenia do modułu Mail.
+  function mailDoc(html,name,opts){
+    if(!html){alert("Brak tre\u015bci dokumentu do wys\u0142ania.");return;}
+    opts=opts||{};
+    setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:opts.to,title:opts.title});
+    setShowEmailModal(true);
+  }
+  // Prosta treść maila dla dokumentów roboczych (zamówienia, zlecenia).
+  function docMailBody(lines){
+    return lines.map(function(t){return "<div>"+t+"</div>";}).join("<div><br></div>");
   }
 
   function addProd(){setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([{id:Date.now(),type:"zaslona",c:{},par:{},panels:[{side:"Zasłona lewa",w:""}],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});}
@@ -1918,7 +1934,12 @@ export function App(p){
           var vu=offerValidUntil?new Date(offerValidUntil):null;
           generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu,previewDiscountVal,previewVisitFeeVal);
           setScreen("sum");
-        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF"),
+        ce("button",{onClick:function(){
+          var vu2=offerValidUntil?new Date(offerValidUntil):null;
+          mailDoc(buildOfferPDFHtmlFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu2,previewDiscountVal,previewVisitFeeVal),
+            "Wycena - "+(curClient.name||"klient")+".pdf");
+        },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
   }
@@ -1979,7 +2000,16 @@ export function App(p){
         ce("button",{onClick:function(){
           generateKarniszOrderPDFFromRows(curClient,karniszPreviewRows);
           setScreen("sum");
-        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF"),
+        ce("button",{onClick:function(){
+          mailDoc(buildKarniszPDFHtmlFromRows(curClient,karniszPreviewRows),
+            "Zamowienie karniszy - "+(curClient.name||"klient")+".pdf",
+            {to:"",subject:"Zam\u00f3wienie karniszy / szyn \u2014 "+(curClient.name||""),
+             body:docMailBody(["Dzie\u0144 dobry,",
+               "W za\u0142\u0105czeniu przesy\u0142am zam\u00f3wienie karniszy / szyn.",
+               "Prosz\u0119 o potwierdzenie terminu dostawy.",
+               "Pozdrawiam serdecznie"])});
+        },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
   }
@@ -2020,7 +2050,15 @@ export function App(p){
         ce("button",{onClick:function(){
           generateRailsInstallPDFFromRows(curClient,railsPreviewRows);
           setScreen("sum");
-        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
+        },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF"),
+        ce("button",{onClick:function(){
+          mailDoc(buildRailsInstallHtmlFromRows(curClient,railsPreviewRows),
+            "Szyny do montazu - "+(curClient.name||"klient")+".pdf",
+            {to:"",subject:"Szyny do monta\u017cu \u2014 "+(curClient.name||""),
+             body:docMailBody(["Dzie\u0144 dobry,",
+               "W za\u0142\u0105czeniu lista szyn / karniszy do monta\u017cu.",
+               "Pozdrawiam serdecznie"])});
+        },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
   }
@@ -2045,6 +2083,18 @@ export function App(p){
       var supRows=fabricPreviewRows.filter(function(r){return r.prod===sup;});
       var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
       generateFabricOrderPDFFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes});
+    }
+    // Ten sam dokument co podgląd, tylko wysyłany mailem do dostawcy tkaniny.
+    function mailFabricForSupplier(sup){
+      var supRows=fabricPreviewRows.filter(function(r){return r.prod===sup;});
+      var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
+      mailDoc(buildFabricOrderHtmlFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes}),
+        "Zamowienie tkaniny - "+sup+".pdf",
+        {to:"",subject:"Zam\u00f3wienie tkaniny \u2014 "+sup,
+         body:docMailBody(["Dzie\u0144 dobry,",
+           "W za\u0142\u0105czeniu przesy\u0142am zam\u00f3wienie tkaniny.",
+           "Prosz\u0119 o potwierdzenie dost\u0119pno\u015bci i terminu wysy\u0142ki.",
+           "Pozdrawiam serdecznie"])});
     }
 
     content=ce(Fragment,null,
@@ -2076,7 +2126,10 @@ export function App(p){
                 ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"\uD83E\uDDF5 "+r.prod),
                 ce("div",{style:{fontSize:11,color:"var(--t3)"}},supTotal.toFixed(2).replace(".",",")+" mb")
               ),
-              ce("button",{onClick:function(){generateFabricForSupplier(r.prod);},style:{padding:"10px 16px",borderRadius:10,border:"none",background:"var(--t2)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}},"\uD83D\uDC41\uFE0F Podgl\u0105d \u2014 "+r.prod)
+              ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+                ce("button",{onClick:function(){generateFabricForSupplier(r.prod);},style:{padding:"10px 16px",borderRadius:10,border:"none",background:"var(--t2)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}},"\uD83D\uDC41\uFE0F Podgl\u0105d \u2014 "+r.prod),
+                ce("button",{onClick:function(){mailFabricForSupplier(r.prod);},style:{padding:"10px 16px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer"}},"\u2709\uFE0F Wy\u015blij mailem")
+              )
             ):null,
             ce("div",{style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",border:"1px solid var(--bd3)"}},
               fabricFieldInput(i,"fabName","Tkanina",160),
@@ -2133,6 +2186,18 @@ export function App(p){
       var simplVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
       generateSimplifiedPDFFromRows(curClient,simplEditableRows,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal);
       setScreen("sum");
+    }
+    // Ta sama wycena uproszczona co w podglądzie, wysyłana mailem do klienta.
+    function doSimplMail(){
+      var vu=null;
+      if(simplValidUntil){var d=new Date(simplValidUntil+"T00:00:00");if(!isNaN(d))vu=d;}
+      var simplMontazP=montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100};
+      var simplMontazVal=montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(simplGrandTotal*((+montazInput||0)/100));
+      var simplBase=simplGrandTotal+simplMontazVal;
+      var simplDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(simplBase*(+discountInput)/100)):0;
+      var simplVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
+      mailDoc(buildSimplifiedPDFHtmlFromRows(curClient,simplEditableRows,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal),
+        "Oferta - "+(curClient.name||"klient")+".pdf");
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
 
@@ -2231,12 +2296,13 @@ export function App(p){
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
-        ce("button",{onClick:doSimplGenerate,style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF")
+        ce("button",{onClick:doSimplGenerate,style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF"),
+        ce("button",{onClick:doSimplMail,style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
   }
   else if(screen==="sewingPreview"&&curClient){
-    content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");}});
+    content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");},onMailDoc:mailDoc});
   }
 
   if(billingBlocked){
@@ -2369,7 +2435,7 @@ export function App(p){
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
+    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
@@ -2682,6 +2748,9 @@ function ModalOfflineQuotes(p){
 export function ModalClientEmail(p){
   // Wysyłka maila "po spotkaniu" prosto z karty Podsumowanie (Microsoft Graph),
   // z wyceną uproszczoną jako prawdziwym PDF-em. Treść/temat/adresat edytowalne.
+  // Props to/subject/body/title pozwalają użyć tego samego modala dla dokumentów
+  // roboczych (zamówienia tkanin, karniszy, szyn, zlecenia szycia) — bez nich
+  // zachowuje się dokładnie jak wcześniej, czyli jako mail ofertowy do klienta.
   var useState=React.useState,useEffect=React.useEffect;
   var client=p.client||{};
   function P(t){return "<div>"+t+"</div>";}
@@ -2694,9 +2763,9 @@ export function ModalClientEmail(p){
     P("Je\u015bli akceptuj\u0105 Pa\u0144stwo przedstawion\u0105 ofert\u0119 i przechodzimy do dzia\u0142ania, bardzo prosz\u0119 o potwierdzenie oraz przes\u0142anie danych do wystawienia faktury na wspomnian\u0105 zaliczk\u0119."),
     P("W razie jakichkolwiek pyta\u0144 do za\u0142\u0105czonego projektu, pozostaj\u0119 do dyspozycji.")
   ].join("<div><br></div>");
-  var s1=useState(client.email||""),toEmail=s1[0],setToEmail=s1[1];
-  var s2=useState("Oferta aran\u017cacji okiennych"),subject=s2[0],setSubject=s2[1];
-  var s3=useState(DEFAULT_BODY),body=s3[0],setBody=s3[1];
+  var s1=useState(p.to!=null?p.to:(client.email||"")),toEmail=s1[0],setToEmail=s1[1];
+  var s2=useState(p.subject||"Oferta aran\u017cacji okiennych"),subject=s2[0],setSubject=s2[1];
+  var s3=useState(p.body||DEFAULT_BODY),body=s3[0],setBody=s3[1];
   var s4=useState(null),pdfB64=s4[0],setPdfB64=s4[1];
   var s5=useState(null),pdfErr=s5[0],setPdfErr=s5[1];
   var s6=useState(false),sending=s6[0],setSending=s6[1];
@@ -2708,7 +2777,7 @@ export function ModalClientEmail(p){
 
   // PDF wyceny + podpis z Ustawień poczty (ten sam co w module Mail); msal.js ładowany leniwie
   useEffect(function(){
-    if(!p.pdfHtml){setPdfErr("Brak pozycji do wyceny.");return;}
+    if(!p.pdfHtml){setPdfErr("Brak tre\u015bci dokumentu.");return;}
     htmlToPdfBase64(p.pdfHtml).then(setPdfB64).catch(function(e){console.error("htmlToPdfBase64",e);setPdfErr("Nie uda\u0142o si\u0119 wygenerowa\u0107 PDF.");});
     sigRef.current=loadSignature();
     sigRef.current.then(function(row){setSettings(row||{});});
@@ -2809,11 +2878,11 @@ export function ModalClientEmail(p){
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:"16px"}},
     ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"24px",width:"100%",maxWidth:640,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 8px 40px rgba(0,0,0,0.22)"}},
       ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}},
-        ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},"\u2709\uFE0F Mail do klienta"),
+        ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},p.title||"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",lineHeight:1,padding:"0 4px"}},"\u00d7")
       ),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Do"),
-        ce("input",{type:"email",value:toEmail,onChange:function(ev){setToEmail(ev.target.value);},placeholder:"adres e-mail klienta",style:inp})),
+        ce("input",{type:"email",value:toEmail,onChange:function(ev){setToEmail(ev.target.value);},placeholder:p.to!=null?"adres e-mail odbiorcy":"adres e-mail klienta",style:inp})),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Temat"),
         ce("input",{type:"text",value:subject,onChange:function(ev){setSubject(ev.target.value);},style:inp})),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Tre\u015b\u0107"),
