@@ -3940,7 +3940,7 @@ export function buildOfferDetailRows(client){
           tkaninaKolor=jzParts.length?jzParts.join(" / "):"-";
           szerokosc=par.wCm?(par.wCm+" cm"):"-";
           wysokosc=par.lCm?(par.lCm+" cm"):"-";
-          podzial=pc.jzStrona||"Lewo";
+          podzial="Przek\u0142adnia: "+(pc.jzPrzekladnia||"Prawo")+", Hamulec: "+(pc.jzHamulec||"Prawo");
         } else if(p.type==="szyna"){
           modelSzycia=pc.ks==="wave"?"Wave":"Flex";
           tkaninaKolor=pc.ks==="wave"?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):"-";
