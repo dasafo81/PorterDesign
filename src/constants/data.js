@@ -2621,15 +2621,17 @@ export function getFabricEffective(name){
 // (FabPicker w ProdCard.jsx), pogrupowane wg kategorii; osobne zestawy dla zasłon i firan.
 export const FABRIC_BESTSELLERS = {
   zaslona: [
-    {cat:"A'la naturalne, strukturalne", names:["34280","Wave","Corsica","Riki"]},
-    {cat:"Welury", names:["Velvet","Spring"]},
-    {cat:"100% Naturalne", names:["Nam"]},
-    {cat:"Gładkie", names:["34200","Wonder"]}
+    {cat:"Blackout", names:["Night Blackout"]},
+    {cat:"Dimout", names:["Minos Dimout","Skyfall Dim Out"]},
+    {cat:"Semi-Natural", names:["Aisha"]},
+    {cat:"Naturalne", names:["Nam"]},
+    {cat:"Basic", names:["Paroh"]},
+    {cat:"Welur", names:["Misam Velvet"]},
+    {cat:"Półprzezierne", names:["Mogadishu"]}
   ],
+  // Firany: bez podziału na kategorie — po prostu najczęściej wybierane pozycje.
   firana: [
-    {cat:"Strukturalne, naturalne", names:["Yita"]},
-    {cat:"Gładkie", names:["David"]},
-    {cat:"100% Natural", names:["Pallino"]}
+    {cat:"Najczęściej wybierane", names:["Yita","David"]}
   ]
 };
 // Zwraca bestsellery dla danego typu produktu ("zaslona" | "firana") jako [{cat, fabrics:[...]}],
