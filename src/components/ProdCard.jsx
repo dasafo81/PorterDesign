@@ -10,7 +10,7 @@ import {
   IMG_ROLETA_PRINT, IMG_ROLETA_RELAX, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, IST,
   InlineEdit, JZ, JZALUZJA_MOTORS, JZALUZJA_REMOTES,
-  JZ_LABELS, JZ_ZONES, JZ_AL50_COLORS, JZ_BA50_COLORS, JZ_BS50_COLORS,
+  JZ_LABELS, JZ_ZONES, JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_BA50_COLORS, JZ_BS50_COLORS,
   JZ_TASIEMKA_COLORS, jzTasWidthGroup, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
   PROD_TYPES, INNY_KATEGORIE, RCITY, RDUO, REL,
@@ -878,9 +878,9 @@ export function ProdCard(p){
         })})
       ),
       (function(){
-        var jzColorList=curMat==="al"?JZ_AL50_COLORS:curMat==="ba"?JZ_BA50_COLORS:curMat==="bs"?JZ_BS50_COLORS:null;
+        var jzColorList=curJt==="al25"?JZ_AL25_COLORS:curMat==="al"?JZ_AL50_COLORS:curMat==="ba"?JZ_BA50_COLORS:curMat==="bs"?JZ_BS50_COLORS:null;
         if(!jzColorList)return null;
-        var jzColorTitle=curMat==="al"?"KOLOR (SUNSET)":"KOLOR";
+        var jzColorTitle=curJt==="al25"?"KOLOR (ALUMINIUM 25MM)":curMat==="al"?"KOLOR (SUNSET)":"KOLOR";
         return ce("div",{style:{marginBottom:10}},
           ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},jzColorTitle),
           ce("select",{
@@ -890,9 +890,7 @@ export function ProdCard(p){
           },
             ce("option",{value:""},"Wybierz kolor..."),
             jzColorList.map(function(col){
-              return ce("option",{key:col.v,value:col.v},
-                col.l+" ("+col.code+", maks. "+col.maxWidth+"cm"+(col.surchargePct>0?", +"+col.surchargePct+"%":"")+")"
-              );
+              return ce("option",{key:col.v,value:col.v},col.l);
             })
           ),
           (function(){
@@ -903,14 +901,7 @@ export function ProdCard(p){
           })()
         );
       })(),
-      ce("div",{style:{marginTop:8}},
-        ce(Chips,{items:[
-          ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}}),
-          (par.wCm&&par.wCm>=60)?ce(Chip,{key:"ts",label:"Tasiemka",active:c.tasiemka==="tak",onClick:function(){tc("tasiemka");}}):null
-        ]})
-      ),
       (function(){
-        if(c.tasiemka!=="tak")return null;
         var tGroup=jzTasWidthGroup(curJt);
         if(!tGroup)return null;
         var tasOptions=JZ_TASIEMKA_COLORS.filter(function(col){return col[tGroup];});
@@ -924,14 +915,17 @@ export function ProdCard(p){
           },
             ce("option",{value:""},"Wybierz kolor..."),
             tasOptions.map(function(col){
-              var pct=col[tGroup];
-              return ce("option",{key:col.v,value:col.v},
-                col.l+" ("+col.code+", "+col.width+"mm"+(pct===10?", +10%":"")+")"
-              );
+              return ce("option",{key:col.v,value:col.v},col.l);
             })
-          )
+          ),
+          (!par.wCm||par.wCm<60)?ce("div",{style:{fontSize:12,color:"var(--red)",marginTop:4}},"\u26a0\ufe0f Tasiemka niedost\u0119pna dla szer. < 60 cm."):null
         );
       })(),
+      ce("div",{style:{marginTop:8}},
+        ce(Chips,{items:[
+          ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}})
+        ]})
+      ),
       // ── STRONA STEROWANIA ────────────────────────────────────────────
       ce("div",{style:{marginTop:16}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA STEROWANIA"),
