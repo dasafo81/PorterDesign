@@ -760,8 +760,11 @@ export function generateSewingOrderPDF(client, modalData){
 
 // ── UI COMPONENTS ──────────────────────────────────────────────────────────
 
-export function generateSewingOrderPDFFromRows(rows, client, modalData){
-  if(!rows.length){alert('Brak wybranych pozycji.');return;}
+// Buduje HTML zlecenia szycia z gotowych wierszy. Wydzielone z generateSewingOrderPDFFromRows,
+// zeby ten sam dokument dalo sie nie tylko podejrzec, ale tez wyslac mailem (zalacznik PDF).
+export function buildSewingOrderHtmlFromRows(rows, client, modalData){
+  if(!rows||!rows.length)return null;
+  modalData=modalData||{};
   var sewingHouse=modalData.sewingHouse||'';
   var notes=modalData.notes||'';
   var termStr=modalData.term||'________________';
@@ -823,7 +826,14 @@ export function generateSewingOrderPDFFromRows(rows, client, modalData){
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,'Rolety rzymskie \u2014 specyfikacja szycia',['3%','10%','11%','12%','8%','5%','5%','6%','7%','8%','8%','17%'])+romanOptsHTML2+notesFieldHTML2:'')
     +notesBlock
     +'</body></html>';
-  openPDFWindow(h,'Zlecenie szycia - '+(client.name||''),{landscape:true});
+  return h;
+}
+
+export function generateSewingOrderPDFFromRows(rows, client, modalData){
+  var h=buildSewingOrderHtmlFromRows(rows,client,modalData);
+  if(!h){alert('Brak wybranych pozycji.');return;}
+  openPDFWindow(h,'Zlecenie szycia - '+((client&&client.name)||''),{landscape:true});
+  var attachB64=(modalData||{}).attachB64||null;
   if(attachB64){
     setTimeout(function(){
       var w2=window.open('','_blank','width=900,height=700');
