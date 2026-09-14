@@ -88,7 +88,7 @@ export function FabPicker(p){
     },
       ce("span",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:open?"var(--grd)":"var(--t2)",textTransform:"uppercase",flexShrink:0}},"Tkanina"),
       hasSelection?ce("span",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:6,padding:"4px 10px",color:"var(--grd)",fontSize:12,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
-        sf?(p.fabName+" · "+sf.brutto+" zł/mb"):(p.fabManName?p.fabManName+" · ręczna "+p.fabMan+" zł/mb":"tkanina")
+        sf?(p.fabName+(sf.width!=null?" · "+sf.width+" cm":"")+" · "+sf.brutto+" zł/mb"):(p.fabManName?p.fabManName+(p.fabManW!=null?" · "+p.fabManW+" cm":"")+" · ręczna "+p.fabMan+" zł/mb":"tkanina")
       ):ce("span",{style:{color:"var(--t3)",fontSize:13,flex:1}},
         "nie wybrano — kliknij aby wybrać"
       ),
