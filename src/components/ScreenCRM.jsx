@@ -235,7 +235,7 @@ export function ModalDeal(p){
     if(n.indexOf("szyny")>=0||n.indexOf("szyn ks")>=0||n.indexOf("karnisz")>=0)return "osprzet";
     return "inne";
   }
-  var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant"];
+  var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant","Oferteo"];
 
   var clientName=cl?cl.name:"(brak klienta)";
   var quoteBreak=dealQuoteBreakdown(cl);
