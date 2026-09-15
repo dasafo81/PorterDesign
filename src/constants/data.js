@@ -2904,6 +2904,7 @@ export const PROD_TYPES =[
   {id:"szyna",label:"Szyna KS",icon:"📏"},
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
   {id:"prestige_round",label:"Karnisz Prestige",icon:"⚡"},
+  {id:"shuttle",label:"Karnisz Shuttle",icon:"⚡"},
   {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
   {id:"karnisz_dek",label:"Karnisz dekoracyjny",icon:"📏"},
   {id:"plisa",label:"Plisa okienna",icon:"🪟"},
@@ -3032,6 +3033,71 @@ export const PRESTIGE_CENTRALKI =[
   {v:"zigbee", l:"Centralka ZigBee",      c:495.44}
 ];
 export const PRESTIGE_LADOWARKA =200.79; // dla AM75 Akumulator
+
+// ── KARNISZ SHUTTLE (Forest Shuttle L / Forest Polska) ───────────────────────
+// Cennik Forest Polska 07-2023 — ceny ZAKUPU NETTO. Detal = netto x VAT 1.23
+// x marza 2 = SHUTTLE_MULT (identycznie jak Prestige). W tabelach trzymamy
+// czyste netto z cennika, zeby podmiana przy nowym cenniku byla przepisaniem 1:1.
+export const SHUTTLE_MULT =1.23*2;
+export const SHUTTLE_WIDTHS =[150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000,1050,1100,1150,1200,1250,1300,1350,1400];
+// Kompletna szyna FMS z suwakami i napedem Forest Shuttle L, kolor bialy.
+// Komplet: szyna z suwakami co 8 cm, rozsuwanie jednostronne, naped 'L'
+// z wbudowanym zasilaczem i odbiornikiem RF. Uchwyty i pilot osobno.
+export const SHUTTLE_BASE ={150:957,200:1022,250:1080,300:1146,350:1204,400:1269,450:1335,500:1393,550:1458,600:1523,650:1582,700:1659,750:1735,800:1811,850:1886,900:1962,950:2038,1000:2114,1050:2189,1100:2265,1150:2341,1200:2417,1250:2492,1300:2568,1350:2644,1400:2720};
+// System fala FES (Wave zamiast suwakow) — doplata. Powyzej 700 cm cennik
+// podaje regule: kazde nastepne 50 cm +28 zl.
+export const SHUTTLE_FES ={150:95,200:114,250:144,300:166,350:196,400:217,450:240,500:273,550:293,600:315,650:345,700:369};
+export const SHUTTLE_FES_STEP =28;
+export function shuttleFes(lenCm){
+  var len=+lenCm||0;
+  if(len<=0)return 0;
+  if(len<=700)return lookup(len,SHUTTLE_FES).p;
+  return SHUTTLE_FES[700]+SHUTTLE_FES_STEP*Math.ceil((len-700)/50);
+}
+// Uchwyty mocujace — cennik podaje cene kompletu dla sugerowanej ilosci
+// (3 szt. do 150 cm ... 14 szt. do 700 cm, czyli ilosc = szerokosc/50).
+// Cena za sztuke jest w kazdym wierszu stala, wiec trzymamy ja per sztuka
+// i mnozymy przez ilosc — dziala tez powyzej 700 cm.
+export const SHUTTLE_UCHWYTY =[
+  {id:"sk1",   label:"Sufitowy SMART KLICK 1 tor + za\u015blepka",  cena:3.57},
+  {id:"sk2",   label:"Sufitowy SMART KLICK 2 tory + za\u015blepka", cena:11.79},
+  {id:"alu75", label:"\u015acienny ALU 7,5 cm + za\u015blepka",     cena:20.43},
+  {id:"alu15", label:"\u015acienny ALU 15 cm + za\u015blepka",      cena:31.57}
+];
+export function shuttleUchwytyQty(lenCm){
+  var len=+lenCm||0;
+  if(len<=0)return 0;
+  return Math.max(3,Math.ceil(len/50));
+}
+// Sterowanie napedem — pozycje ilosciowe
+export const SHUTTLE_STEROWANIE =[
+  {id:"pilot_ds", label:"Pilot radiowy Forest DIAMOND SENSE 15-kan.",  cena:225},
+  {id:"led_rf",   label:"W\u0142\u0105cznik \u015bcienny MULTI RF 2-kan. (LED RF)", cena:120},
+  {id:"wifi",     label:"Modu\u0142 WiFi Forest Connect",                cena:255},
+  {id:"ac_set",   label:"AC Control SET",                              cena:175},
+  {id:"ac_unit",  label:"AC Control \u2014 jednostka wt\u00f3rna",       cena:105}
+];
+// Doplaty. typ:"check" = tak/nie, typ:"qty" = ilosc sztuk.
+export const SHUTTLE_DOPLATY =[
+  {id:"dwustronne", label:"Rozsuwanie dwustronne / kurtynowe",             cena:65,  typ:"check"},
+  {id:"stf",        label:"Usztywniacz STF",                               cena:8,   typ:"qty"},
+  {id:"demontaz",   label:"Demonta\u017c / korekta wymiaru szyn",           cena:250, typ:"check"},
+  {id:"silnik_m",   label:"Silnik z hamulcem Shuttle M (skosy)",           cena:890, typ:"qty"},
+  {id:"zasilacz_m", label:"Zasilacz Shuttle M",                            cena:180, typ:"qty"},
+  {id:"mocowanie",  label:"Mocowanie silnika regulowane (skosy)",          cena:410, typ:"qty"},
+  {id:"ramie_zach", label:"FMS EasyFlex rami\u0119 zachodz\u0105ce ko\u0144cowe", cena:46,  typ:"qty"},
+  {id:"ramie_kat",  label:"FES EasyFOLD rami\u0119 k\u0105towe 90\u00b0",     cena:24,  typ:"qty"},
+  {id:"zblocze",    label:"FMS Zblocze EasyFlex",                          cena:28,  typ:"qty"}
+];
+// Giecie szyn: 1-2 giecia 90/135 st. po 100 zl/szt, od 3 giec 150 zl/szt,
+// luk ciagly 100 zl/mb. Do wykonania giecia wymagany jest szablon.
+export const SHUTTLE_GIECIE_1 =100;
+export const SHUTTLE_GIECIE_3 =150;
+export const SHUTTLE_LUK_MB   =100;
+// Limity techniczne z karty produktu — sluza do ostrzezen, nie blokuja wyceny
+export const SHUTTLE_MAX_LEN =1400;          // powyzej: wycena indywidualna
+export const SHUTTLE_MAX_BEZ_LACZENIA =700;  // maks. dl. szyny bez laczenia (7 m)
+export const SHUTTLE_MIN_R_LUK =50;          // min. promien luku ciaglego (cm)
 
 // ── ROLETA SHADOW ────────────────────────────────────────────────────────────
 // Wymiary dokładne: szerokość (kolumny) i wysokość (wiersze) w cm
@@ -3659,6 +3725,62 @@ export function calc(p){
     // Ładowarka (tylko dla akumulatora)
     if(nap==="am75_aku"&&c.lad){lineSum+=PRESTIGE_LADOWARKA;lines.push("Ładowarka do silnika akumulatorowego");}
     total=lineSum*qty;
+  }else if(p.type==="shuttle"){
+    // Forest Shuttle L. Wszystkie skladniki liczymy w cenach ZAKUPU NETTO,
+    // a sume mnozymy raz przez SHUTTLE_MULT (VAT + marza) — tak jak Prestige.
+    var lenS=parseInt(par.len)||0,qtyS=par.qty||1;
+    if(!lenS)return{total:0,lines:[],warn:null};
+    var shNet=0;
+    var shB=lookup(lenS,SHUTTLE_BASE);
+    shNet+=shB.p;
+    lines.push("Forest Shuttle L \u2014 szyna FMS z nap\u0119dem, do "+shB.k+" cm"+(qtyS>1?" x"+qtyS:""));
+    // System fala FES zamiast suwakow
+    var shFes=c.shFes||"brak";
+    if(shFes!=="brak"){
+      var shFesC=shuttleFes(lenS);
+      shNet+=shFesC;
+      lines.push("System fala FES "+(shFes==="snap"?"SNAP (napy)":"FLEX (haczyki)")+" "+(c.shFesKrot||100)+"% = "+formatPLN(Math.round(shFesC*SHUTTLE_MULT)));
+    }
+    // Uchwyty mocujace
+    var shUchT=SHUTTLE_UCHWYTY.find(function(u){return u.id===(c.shUch||"sk1");});
+    var shUchQ=(par.shUchQty!=null&&par.shUchQty!=="")?(parseInt(par.shUchQty)||0):shuttleUchwytyQty(lenS);
+    if(shUchT&&shUchQ>0){
+      shNet+=shUchT.cena*shUchQ;
+      lines.push(shUchT.label+" x"+shUchQ+" = "+formatPLN(Math.round(shUchT.cena*shUchQ*SHUTTLE_MULT)));
+    }
+    // Doplaty
+    var shD=c.shDop||{};
+    SHUTTLE_DOPLATY.forEach(function(d){
+      var q=d.typ==="check"?(shD[d.id]?1:0):(parseInt(shD[d.id])||0);
+      if(q>0){shNet+=d.cena*q;lines.push(d.label+(q>1?" x"+q:"")+" = "+formatPLN(Math.round(d.cena*q*SHUTTLE_MULT)));}
+    });
+    // Giecia punktowe (par.pt) i luk ciagly (par.arcChord/arcDepth)
+    var shPts=parseInt(par.pt)||0;
+    if(shPts>0){
+      var shStawka=shPts>=3?SHUTTLE_GIECIE_3:SHUTTLE_GIECIE_1;
+      shNet+=shStawka*shPts;
+      lines.push("Gi\u0119cie 90\u00b0/135\u00b0 x"+shPts+" = "+formatPLN(Math.round(shStawka*shPts*SHUTTLE_MULT)));
+    }
+    var shArc=arcGeom(par.arcChord,par.arcDepth);
+    if(shArc){
+      var shLukMb=shArc.len/100;
+      shNet+=SHUTTLE_LUK_MB*shLukMb;
+      lines.push("\u0141uk ci\u0105g\u0142y "+shLukMb.toFixed(2)+" mb (R\u2248"+Math.round(shArc.R)+" cm) = "+formatPLN(Math.round(SHUTTLE_LUK_MB*shLukMb*SHUTTLE_MULT)));
+    }
+    // Sterowanie
+    var shSt=c.shSter||{};
+    SHUTTLE_STEROWANIE.forEach(function(s){
+      var q=parseInt(shSt[s.id])||0;
+      if(q>0){shNet+=s.cena*q;lines.push(s.label+(q>1?" x"+q:"")+" = "+formatPLN(Math.round(s.cena*q*SHUTTLE_MULT)));}
+    });
+    total=shNet*SHUTTLE_MULT*qtyS;
+    var shWarn=[];
+    if(lenS>SHUTTLE_MAX_LEN)shWarn.push("Powy\u017cej "+SHUTTLE_MAX_LEN+" cm \u2014 wycena indywidualna u Forest.");
+    else if(lenS>SHUTTLE_MAX_BEZ_LACZENIA)shWarn.push("Szyna \u0142\u0105czona (maks. 7 m bez \u0142\u0105czenia); powy\u017cej 710 cm komplet zawiera \u0142\u0105cznik.");
+    if(shArc&&shArc.R<SHUTTLE_MIN_R_LUK)shWarn.push("\u0141uk ci\u0105g\u0142y wymaga min. promienia 50 cm.");
+    if(shFes!=="brak")shWarn.push("FES: uchwyt sufitowy 2-torowy musi by\u0107 w wersji 10,5 cm.");
+    shWarn.push("Wymiaruj z 3 cm luzu; maks. obci\u0105\u017cenie tkanin\u0105 10 kg/m szyny.");
+    warn=shWarn.join(" ");
   }else if(p.type==="karnisz_dek"){
     // p.kdRozmiar: 20|30, p.kdSzyny: [{dlugosc:160,qty:1},...], p.kdAkc: {id:qty}, p.kdKolor: id
     var kdR=p.kdRozmiar||20;
@@ -3988,7 +4110,7 @@ export function buildOfferDetailRows(client){
           szerokosc=par.len?(par.len+" cm"):"-";
           // Szyny KS \u2014 producent zawsze Forest
           producent=p.karniszSupplier||"Forest";
-        } else if(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"){
+        } else if(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"||p.type==="shuttle"){
           szerokosc=par.len?(par.len+" cm"):"-";
           producent=p.karniszSupplier||"-";
         } else if(p.type==="plisa"){
@@ -4599,11 +4721,13 @@ export function buildKarniszRows(client){
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
-        if(p.type!=="karnisz"&&p.type!=="szyna"&&p.type!=="prestige_round"&&p.type!=="prestige_square")return;
+        if(p.type!=="karnisz"&&p.type!=="szyna"&&p.type!=="prestige_round"&&p.type!=="prestige_square"&&p.type!=="shuttle")return;
         var pc=p.c||{},par=p.par||{};
         var typLabel;
         if(p.type==="karnisz"){
           typLabel="Karnisz elektryczny "+(pc.km||"slim").toUpperCase();
+        }else if(p.type==="shuttle"){
+          typLabel="Karnisz Shuttle L"+((pc.shFes&&pc.shFes!=="brak")?(" FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):" (suwaki)");
         }else if(p.type==="prestige_round"){
           typLabel="Karnisz Prestige ROUND ("+(pc.pn||"am75_3w")+")";
         }else if(p.type==="prestige_square"){
@@ -4613,7 +4737,7 @@ export function buildKarniszRows(client){
         }
         var len=par.len||0;
         var res=calc(p);
-        var isKarnisz=(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square");
+        var isKarnisz=(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"||p.type==="shuttle");
         rows.push({
           room:r.name,
           win:w.name,
@@ -4750,11 +4874,13 @@ export function buildRailsRows(client){
   (client.rooms||[]).forEach(function(room){
     (room.windows||[]).forEach(function(win){
       (win.products||[]).forEach(function(p){
-        if(p.type!=="szyna"&&p.type!=="karnisz"&&p.type!=="prestige_round"&&p.type!=="prestige_square"&&p.type!=="karnisz_dek")return;
+        if(p.type!=="szyna"&&p.type!=="karnisz"&&p.type!=="prestige_round"&&p.type!=="prestige_square"&&p.type!=="karnisz_dek"&&p.type!=="shuttle")return;
         var pc=p.c||{},par=p.par||{};
         var typLabel;
         if(p.type==="karnisz"){
           typLabel="Karnisz el. "+(pc.km==="univ"?"Universal":(pc.km||"Slim").toUpperCase());
+        }else if(p.type==="shuttle"){
+          typLabel="Karnisz Shuttle L";
         }else if(p.type==="prestige_round"){
           typLabel="Karnisz Prestige ROUND";
         }else if(p.type==="prestige_square"){
