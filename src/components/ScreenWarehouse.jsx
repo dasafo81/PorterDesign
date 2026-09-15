@@ -4,7 +4,8 @@ import {
   FABRICS, primeFabricOverrides, classifyFabricComposition, classifyFabricBlackout,
   isHighFabric, HIGH_FABRIC_MIN_CM, HIGH_FABRIC_TAG, getFabricEquivalents, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
-  KD_AKCESORIA, RS_MASKS, PRICE_LISTS
+  KD_AKCESORIA, RS_MASKS, PRICE_LISTS,
+  SHUTTLE_STEROWANIE, SHUTTLE_DOPLATY, SHUTTLE_UCHWYTY, SHUTTLE_MULT
 } from '../constants/data.js';
 const ce = React.createElement;
 
@@ -562,7 +563,8 @@ function TabWarehouse(p) {
 // dlatego domyślnie 1 (parytet z wyceniarką). Zmień per grupa jeśli lista jest hurtowa.
 var CATALOG_FACTOR = {
   tkaniny: 1, tapety: 1, silniki_shadow: 1, sterowanie_shadow: 1, silniki_karnisz: 1,
-  piloty_karnisz: 1, prestige: 1, acc_somfy: 1, acc_premium: 1, uchwyty_kd: 1, maskownice: 1
+  piloty_karnisz: 1, prestige: 1, acc_somfy: 1, acc_premium: 1, uchwyty_kd: 1, maskownice: 1,
+  shuttle: SHUTTLE_MULT
 };
 function fx(gid, price) {
   if (price == null) return null;
@@ -613,6 +615,11 @@ function buildBaseCatalog() {
     { id: "prestige", label: "Automatyka \u2014 Karnisz Prestige", icon: "\u26A1",
       items: PRESTIGE_PILOTY.concat(PRESTIGE_CENTRALKI).filter(function(x) { return x.c; }).map(function(x) {
         return { baseKey: "prestige::" + x.v, name: x.l, price: fx("prestige", x.c),
+          unit: "z\u0142", meta: "", heightCm: null };
+      }) },
+    { id: "shuttle", label: "Sterowanie i akcesoria \u2014 Karnisz Shuttle", icon: "\u26A1",
+      items: SHUTTLE_STEROWANIE.concat(SHUTTLE_UCHWYTY).concat(SHUTTLE_DOPLATY).map(function(x) {
+        return { baseKey: "shuttle::" + x.id, name: x.label, price: fx("shuttle", x.cena),
           unit: "z\u0142", meta: "", heightCm: null };
       }) },
     { id: "acc_somfy", label: "Akcesoria \u2014 Roleta rzymska (Somfy)", icon: "\uD83E\uDDF0",
