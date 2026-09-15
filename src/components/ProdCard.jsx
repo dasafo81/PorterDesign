@@ -25,6 +25,8 @@ import {
   PRESTIGE_ROUND, PRESTIGE_ROUND_TANDEM, PRESTIGE_ROUND_W60, PRESTIGE_ROUND_W80,
   PRESTIGE_SQUARE, PRESTIGE_SQUARE_TANDEM, PRESTIGE_SQUARE_W60, PRESTIGE_SQUARE_W80,
   PRESTIGE_WIDTHS,
+  SHUTTLE_BASE, SHUTTLE_DOPLATY, SHUTTLE_STEROWANIE, SHUTTLE_UCHWYTY,
+  SHUTTLE_WIDTHS, shuttleUchwytyQty,
   PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES,
   calc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup, arcGeom
@@ -1749,6 +1751,99 @@ export function ProdCard(p){
           ce("label",{htmlFor:"prestige-lad",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"\u0141adowarka do silnika akumulatorowego (+"+Math.round(PRESTIGE_LADOWARKA)+" z\u0142)")
         )
       ):null
+    );
+  }else if(prod.type==="shuttle"){
+    var shFes=c.shFes||"brak";
+    var shDop=c.shDop||{};
+    var shSter=c.shSter||{};
+    var shUchSug=shuttleUchwytyQty(parseInt(par.len)||0);
+    function setShDop(id,v){sc("shDop",Object.assign({},shDop,(function(){var o={};o[id]=v;return o;})()));}
+    function setShSter(id,v){sc("shSter",Object.assign({},shSter,(function(){var o={};o[id]=v;return o;})()));}
+    var LBL={fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8};
+    form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 SZYNY (cm)"},
+          ce("select",{value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},style:Object.assign({},IST,{cursor:"pointer"})},
+            ce("option",{value:""},"\u2014 wybierz \u2014"),
+            SHUTTLE_WIDTHS.map(function(w){return ce("option",{key:w,value:w},"do "+w+" cm");})
+          )
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"SYSTEM PROWADZENIA"),
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          [{v:"brak",l:"Suwaki standard"},{v:"snap",l:"FES SNAP (napy)"},{v:"flex",l:"FES FLEX (haczyki)"}].map(function(s){
+            return ce(Chip,{key:s.v,label:s.l,active:shFes===s.v,onClick:function(){sc("shFes",s.v);}});
+          })
+        )
+      ),
+      shFes!=="brak"?ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"KROTNO\u015a\u0106 FALI"),
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          [60,80,100].map(function(k){
+            return ce(Chip,{key:k,label:k+"%",active:(c.shFesKrot||100)===k,onClick:function(){sc("shFesKrot",k);}});
+          })
+        )
+      ):null,
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"STRONA NAP\u0118DU"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
+            var isA=(c.motorSide||"lewo")===s.key;
+            return ce("div",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
+              isA?"\u2713 "+s.label:s.label
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"UCHWYTY MOCUJ\u0104CE"),
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}},
+          SHUTTLE_UCHWYTY.map(function(u){
+            return ce(Chip,{key:u.id,label:u.label,active:(c.shUch||"sk1")===u.id,onClick:function(){sc("shUch",u.id);}});
+          })
+        ),
+        ce(Fld,{label:"ILO\u015a\u0106 UCHWYT\u00d3W (szt.)"},
+          ce("input",{type:"text",inputMode:"numeric",value:par.shUchQty||"",onChange:function(ev){sp("shUchQty",ev.target.value);},placeholder:shUchSug?("sugerowana: "+shUchSug):"\u2013",style:IST})
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"GI\u0118CIE SZYNY"),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}},
+          ce(Fld,{label:"GI\u0118\u0106 90\u00b0/135\u00b0"},ce("input",{type:"text",inputMode:"numeric",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
+          ce(Fld,{label:"\u0141UK \u2014 CI\u0118CIWA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){sp("arcChord",ev.target.value);},placeholder:"\u2013",style:IST})),
+          ce(Fld,{label:"\u0141UK \u2014 G\u0141\u0118BOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){sp("arcDepth",ev.target.value);},placeholder:"\u2013",style:IST}))
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"DOP\u0141ATY"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          SHUTTLE_DOPLATY.map(function(d){
+            if(d.typ==="check"){
+              return ce("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12}},
+                ce("input",{type:"checkbox",id:"sh-"+d.id,checked:!!shDop[d.id],onChange:function(ev){setShDop(d.id,ev.target.checked?1:undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+                ce("label",{htmlFor:"sh-"+d.id,style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},d.label)
+              );
+            }
+            return ce("div",{key:d.id,style:{display:"flex",alignItems:"center",gap:12}},
+              ce("input",{type:"text",inputMode:"numeric",value:shDop[d.id]||"",onChange:function(ev){setShDop(d.id,ev.target.value);},placeholder:"0",style:Object.assign({},IST,{width:70,textAlign:"center"})}),
+              ce("span",{style:{fontSize:14,color:"var(--t1)"}},d.label)
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:LBL},"STEROWANIE"),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+          SHUTTLE_STEROWANIE.map(function(s){
+            return ce("div",{key:s.id,style:{display:"flex",alignItems:"center",gap:12}},
+              ce("input",{type:"text",inputMode:"numeric",value:shSter[s.id]||"",onChange:function(ev){setShSter(s.id,ev.target.value);},placeholder:"0",style:Object.assign({},IST,{width:70,textAlign:"center"})}),
+              ce("span",{style:{fontSize:14,color:"var(--t1)"}},s.label)
+            );
+          })
+        )
+      )
     );
   }else if(prod.type==="karnisz_dek"){
     var kdR=prod.kdRozmiar||20;
