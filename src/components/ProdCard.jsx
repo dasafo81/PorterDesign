@@ -1764,7 +1764,14 @@ export function ProdCard(p){
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 SZYNY (cm)"},
-          ce("select",{value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},style:Object.assign({},IST,{cursor:"pointer"})},
+          ce("select",{value:par.len||"",onChange:function(ev){
+            var nowaLen=ev.target.value;
+            var stareSug=shuttleUchwytyQty(parseInt(par.len)||0);
+            var teraz=par.shUchQty;
+            var recznie=(teraz!=null&&teraz!==""&&(parseInt(teraz)||0)!==stareSug);
+            var nowaSug=shuttleUchwytyQty(parseInt(nowaLen)||0);
+            p.onChange(mg(prod,{par:mg(par,{len:nowaLen,shUchQty:recznie?teraz:(nowaSug||"")})}));
+          },style:Object.assign({},IST,{cursor:"pointer"})},
             ce("option",{value:""},"\u2014 wybierz \u2014"),
             SHUTTLE_WIDTHS.map(function(w){return ce("option",{key:w,value:w},"do "+w+" cm");})
           )
@@ -1804,8 +1811,8 @@ export function ProdCard(p){
             return ce(Chip,{key:u.id,label:u.label,active:(c.shUch||"sk1")===u.id,onClick:function(){sc("shUch",u.id);}});
           })
         ),
-        ce(Fld,{label:"ILO\u015a\u0106 UCHWYT\u00d3W (szt.)"},
-          ce("input",{type:"text",inputMode:"numeric",value:par.shUchQty||"",onChange:function(ev){sp("shUchQty",ev.target.value);},placeholder:shUchSug?("sugerowana: "+shUchSug):"\u2013",style:IST})
+        ce(Fld,{label:"ILO\u015a\u0106 UCHWYT\u00d3W (szt.)"+(shUchSug?" \u2014 sugerowana: "+shUchSug:"")},
+          ce("input",{type:"text",inputMode:"numeric",value:par.shUchQty||"",onChange:function(ev){sp("shUchQty",ev.target.value);},placeholder:shUchSug?String(shUchSug):"\u2013",style:IST})
         )
       ),
       ce("div",{style:{marginBottom:14}},
