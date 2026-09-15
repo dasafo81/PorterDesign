@@ -181,6 +181,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
     if(type==="zaluzja")return count===1?"\u017baluzje":count<5?"\u017baluzje":"\u017baluzji";
     if(type==="plisa")return count===1?"Plisa":"Plisy";
     if(type==="karnisz")return count===1?"Karnisz":"Karnisze";
+    if(type==="shuttle")return count===1?"Karnisz Shuttle":"Karnisze Shuttle";
     if(type==="szyna")return count===1?"Szyna":"Szyny";
     var lbl=(PROD_TYPES.find(function(t){return t.id===type;})||{label:type}).label;
     return lbl;
@@ -215,6 +216,8 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
         }else if(p.type==="karnisz"){
           var kmMode=(p.c||{}).km||"slim";
           subtypeLabel="Karnisz elektryczny "+(kmMode==="slim"?"Slim":kmMode==="univ"?"Universal":kmMode.toUpperCase());
+        }else if(p.type==="shuttle"){
+          subtypeLabel="Karnisz Shuttle";
         }else if(p.type==="prestige_round"){
           subtypeLabel="Karnisz Prestige ROUND";
         }else if(p.type==="prestige_square"){
@@ -244,7 +247,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||pluralProd(d.type,d.count));
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=(d.type==="zaslona"||d.type==="firana");
-      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow"||d.type==="inny");
+      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow"||d.type==="shuttle"||d.type==="inny");
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
       var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
       items.push({label:labelHTML,total:d.total});
@@ -378,6 +381,7 @@ export function buildSimplifiedRows(client,selection,comm){
       else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba35:"Bamboo 35mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
       else if(p.type==="szyna"){subtypeLabel="Szyna KS "+((p.c||{}).ks==="wave"?"Wave":"Flex");}
       else if(p.type==="karnisz"){var km=(p.c||{}).km||"slim";subtypeLabel="Karnisz elektryczny "+(km==="slim"?"Slim":km==="univ"?"Universal":km.toUpperCase());}
+      else if(p.type==="shuttle")subtypeLabel="Karnisz Shuttle";
       else if(p.type==="prestige_round")subtypeLabel="Karnisz Prestige ROUND";
       else if(p.type==="prestige_square")subtypeLabel="Karnisz Prestige SQUARE";
       else if(p.type==="karnisz_dek")subtypeLabel="Karnisz dekoracyjny";
@@ -392,7 +396,7 @@ export function buildSimplifiedRows(client,selection,comm){
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
       var extra=d.sewings.length>0?" ("+d.sewings.join(", ")+")":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
-      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow"||d.type==="inny";
+      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow"||d.type==="shuttle"||d.type==="inny";
       var qtyTag=hasQty&&d.count>1?" ("+d.count+" szt.)":"";
       var label=lbl+(isKpl?" (kpl.)":"")+qtyTag+extra;
       items.push({label:label,total:d.total});
