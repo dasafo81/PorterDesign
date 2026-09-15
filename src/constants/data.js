@@ -501,55 +501,30 @@ export function jzTasWidthGroup(jt){
 
 // ── SILNIKI DO ŻALUZJI ────────────────────────────────────────────────────
 export const JZALUZJA_MOTORS = [
-  {id:"somfy_sonesse2_40_r1_zigbee", label:"Somfy Sonesse2 40 R1 Zigbee 9/12 UN",       tech:"Zigbee 3.0", nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1848.30},
-  {id:"somfy_sonesse2_40_wirefree",  label:"Somfy Sonesse2 40 WireFree Zigbee Li-Ion",   tech:"Zigbee 3.0", nm:4,   maxKg:20, minWidthMm:750, weightKg:1.10, power:"Akumulator", price:2032.57},
-  {id:"somfy_sonesse_rts",           label:"Somfy SONESSE RTS",                           tech:"RTS",        nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1863.91},
-  {id:"somfy_sonesse_io",            label:"Somfy SONESSE io-homecontrol\u00ae",          tech:"IO",         nm:9,   maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:1952.67},
-  {id:"somfy_sonesse_switch",        label:"Somfy SONESSE switch",                        tech:"Switch/V/T", nm:9,   maxKg:20, minWidthMm:610, weightKg:1.35, power:"230V",       price:1405.95},
-  {id:"somfy_j4_io_10nm",            label:"Somfy J4 io-homecontrol\u00ae 10Nm",         tech:"IO",         nm:10,  maxKg:26, minWidthMm:800, weightKg:1.70, power:"230V",       price:1970.45},
-  {id:"somfy_j4_io_18nm",            label:"Somfy J4 io-homecontrol\u00ae 18Nm",         tech:"IO",         nm:18,  maxKg:26, minWidthMm:800, weightKg:2.20, power:"230V",       price:2246.27},
-  {id:"somfy_j4_switch_10nm",        label:"Somfy J4 switch 10Nm",                       tech:"Switch/WT",  nm:10,  maxKg:26, minWidthMm:800, weightKg:1.70, power:"230V",       price:1246.07},
-  {id:"somfy_j4_switch_18nm",        label:"Somfy J4 switch 18Nm",                       tech:"Switch/WT",  nm:18,  maxKg:26, minWidthMm:800, weightKg:2.20, power:"230V",       price:1333.31},
-  {id:"somfy_tilt_only_50wf_zigbee", label:"Somfy TILT ONLY 50 WF ZIGBEE",               tech:"RTS",        nm:1,   maxKg:25, minWidthMm:480, weightKg:0.484,power:"Bateria",    price:976.55},
-  {id:"brel_blemq35_13",             label:"Brel BLEMQ35-13",                             tech:"RTS",        nm:13,  maxKg:20, minWidthMm:790, weightKg:1.50, power:"Akumulator", price:1620.04},
-  {id:"brel_bte50_tilt",             label:"Brel BTE50 tilt only",                        tech:"RTS",        nm:0.6, maxKg:25, minWidthMm:550, weightKg:0.40, power:"Bateria",    price:933.78},
-  {id:"brel_meq35_10",               label:"Brel MEQ35-10",                               tech:"RTS",        nm:10,  maxKg:20, minWidthMm:700, weightKg:1.50, power:"230V",       price:924.09},
-  {id:"brel_beq35_10",               label:"Brel BEQ35-10",                               tech:"RTS",        nm:10,  maxKg:20, minWidthMm:700, weightKg:1.50, power:"230V",       price:1061.67},
-  {id:"coulisse_cm06",               label:"Coulisse CM-06",                              tech:"RTS",        nm:6,   maxKg:17, minWidthMm:830, weightKg:1.50, power:"Akumulator", price:1644.82},
-  {id:"coulisse_cm06_e_v",           label:"Coulisse CM-06-E-V",                          tech:"RTS",        nm:6,   maxKg:17, minWidthMm:830, weightKg:1.50, power:"Akumulator", price:1890.86},
-  {id:"coulisse_cm10_qc",            label:"Coulisse CM-10-QC",                           tech:"RTS",        nm:8,   maxKg:23, minWidthMm:720, weightKg:1.70, power:"230V",       price:1292.72}
+  {id:"somfy_sonesse_io_homecontrol", label:"Somfy SONESSE io-homecontrol\u00ae", tech:"IO",         nm:9,  maxKg:20, minWidthMm:650, weightKg:1.35, power:"230V",       price:2011.25},
+  {id:"somfy_sonesse_switch",         label:"Somfy SONESSE switch",                tech:"Switch/WT",  nm:9,  maxKg:20, minWidthMm:610, weightKg:1.35, power:"230V",       price:1448.13},
+  {id:"somfy_j4_switch_10nm",         label:"Somfy J4 switch 10Nm",                tech:"Switch/WT",  nm:10, maxKg:26, minWidthMm:740, weightKg:1.70, power:"230V",       price:1283.45},
+  {id:"coulisse_cm06_e_v",            label:"Coulisse CM-06-E-V",                  tech:"RTS",        nm:6,  maxKg:17, minWidthMm:830, weightKg:1.50, power:"Akumulator", price:1919.23},
+  {id:"sunshade_am35_mel_rts_6nm",    label:"Sun & Shade AM35 MEL RTS 6Nm",        tech:"RTS",        nm:6,  maxKg:17, minWidthMm:600, weightKg:1.20, power:"230V",       price:920.02},
+  {id:"sunshade_am35_mel_rts_10nm",   label:"Sun & Shade AM35 MEL RTS 10Nm",       tech:"RTS",        nm:10, maxKg:28, minWidthMm:600, weightKg:1.20, power:"230V",       price:920.02},
+  {id:"sunshade_am35_switch_6nm",     label:"Sun & Shade AM35 switch 6Nm",         tech:"Switch/WT",  nm:6,  maxKg:17, minWidthMm:600, weightKg:1.10, power:"230V",       price:766.36},
+  {id:"sunshade_am35_switch_10nm",    label:"Sun & Shade AM35 switch 10Nm",        tech:"Switch/WT",  nm:10, maxKg:28, minWidthMm:600, weightKg:1.10, power:"230V",       price:766.36},
+  {id:"sunshade_am35_zigbee_6nm",     label:"Sun & Shade AM35 Zigbee 6Nm",         tech:"Zigbee 3.0", nm:6,  maxKg:17, minWidthMm:710, weightKg:1.22, power:"Akumulator", price:1185.51}
 ];
 
 // ── PILOTY DO ŻALUZJI ─────────────────────────────────────────────────────
 export const JZALUZJA_REMOTES = [
-  {id:"somfy_situo1_rts_pure",     label:"Somfy Situo 1 RTS \u2013 Pure II (1 \u017ealuzja)",       price:296.77},
-  {id:"somfy_situo1_rts_arctic",   label:"Somfy Situo 1 RTS \u2013 Arctic II (1 \u017ealuzja)",     price:427.34},
-  {id:"somfy_situo1_rts_natural",  label:"Somfy Situo 1 RTS \u2013 Natural II (1 \u017ealuzja)",    price:427.34},
-  {id:"somfy_situo1_rts_iron",     label:"Somfy Situo 1 RTS \u2013 Iron II (1 \u017ealuzja)",       price:427.34},
-  {id:"somfy_situo5_io_pure",      label:"Somfy Situo 5 io II \u2013 Pure II (do 5 \u017ealuzji)",  price:500.42},
-  {id:"somfy_situo5_io_arctic",    label:"Somfy Situo 5 io II \u2013 Arctic II (do 5)",             price:595.50},
-  {id:"somfy_situo5_io_natural",   label:"Somfy Situo 5 io II \u2013 Natural II (do 5)",            price:595.50},
-  {id:"somfy_situo5_io_iron",      label:"Somfy Situo 5 io II \u2013 Iron II (do 5)",               price:595.50},
-  {id:"somfy_telis16_rts",         label:"Somfy Telis 16 RTS \u2013 Pure (do 16 \u017ealuzji)",     price:1055.49},
-  {id:"somfy_zasilacz_rts",        label:"Zasilacz Somfy \u2013 p\u00f3\u0142 elektryczna RTS",    price:128.75},
-  {id:"brel_thw2001_1ch",          label:"Brel THW2001 1ch (1 \u017ealuzja)",                       price:165.36},
-  {id:"brel_dd2710_1ch",           label:"Brel DD-2710 1ch (1 \u017ealuzja)",                       price:168.31},
-  {id:"brel_thw2015_15ch",         label:"Brel THW2015 15ch (do 15 \u017ealuzji)",                  price:176.49},
-  {id:"brel_dd2712_15ch",          label:"Brel DD-2712 15ch (do 15 \u017ealuzji)",                  price:207.87},
-  {id:"brel_dc306_5ch_white",      label:"Brel DC-306 5ch White (do 5 \u017ealuzji)",               price:165.36},
-  {id:"brel_dc306_5ch_black",      label:"Brel DC-306 5ch Black (do 5 \u017ealuzji)",               price:165.36},
-  {id:"brel_dc305_1ch_white",      label:"Brel DC-305 1ch White (1 \u017ealuzja)",                  price:154.36},
-  {id:"brel_dc305_1ch_black",      label:"Brel DC-305 1ch Black (1 \u017ealuzja)",                  price:154.36},
-  {id:"brel_thb3001_1ch",          label:"Brel THB3001 1ch (1 \u017ealuzja)",                       price:336.63},
-  {id:"brel_thb3015_15ch",         label:"Brel THB3015 15ch (do 15 \u017ealuzji)",                  price:376.19},
-  {id:"brel_ysia1_variation_emea", label:"Pilot Ysia 1 Variation Zigbee EMEA",                      price:346.73},
-  {id:"brel_ysia5_variation_emea", label:"Pilot Ysia 5 Variation Zigbee EMEA",                      price:412.97},
-  {id:"brel_ysia1_zigbee_b",       label:"Pilot Ysia 1 Zigbee B",                                   price:205.97},
-  {id:"brel_ysia5_zigbee_b",       label:"Pilot Ysia 5 Zigbee B",                                   price:284.63},
-  {id:"brel_usb_dc220",            label:"Zasilacz USB DC-220 EU z kablem magnetycznym",             price:143.28},
-  {id:"coulisse_cm11_bk_1ch",      label:"Pilot Coulisse CM-11-BK 1ch (1 \u017ealuzja)",            price:105.81},
-  {id:"coulisse_cm12_bk_5ch",      label:"Pilot Coulisse CM-12-BK 5ch (do 5)",                      price:165.97},
-  {id:"coulisse_cm13_bk_15ch",     label:"Pilot Coulisse CM-13-BK 15ch (do 15)",                    price:267.08}
+  {id:"somfy_situo1_rts_pure",     label:"Somfy Situo 1 RTS \u2013 Pure II (1 \u017ealuzja)",       price:305.67},
+  {id:"somfy_situo1_rts_arctic",   label:"Somfy Situo 1 RTS \u2013 Arctic II (1 \u017ealuzja)",     price:440.16},
+  {id:"somfy_situo1_rts_natural",  label:"Somfy Situo 1 RTS \u2013 Natural II (1 \u017ealuzja)",    price:440.16},
+  {id:"somfy_situo1_rts_iron",     label:"Somfy Situo 1 RTS \u2013 Iron II (1 \u017ealuzja)",       price:440.16},
+  {id:"somfy_situo5_rts_pure",     label:"Somfy Situo 5 RTS \u2013 Pure II (do 5 \u017ealuzji)",    price:484.19},
+  {id:"somfy_situo5_rts_iron",     label:"Somfy Situo 5 RTS \u2013 Iron II (do 5 \u017ealuzji)",    price:576.18},
+  {id:"coulisse_cm11_bk_1ch",      label:"Pilot Coulisse CM-11-BK 1ch (1 \u017ealuzja)",             price:107.40},
+  {id:"coulisse_cm12_bk_5ch",      label:"Pilot Coulisse CM-12-BK 5ch (do 5 \u017ealuzji)",          price:168.46},
+  {id:"ac123_white",               label:"Pilot AC123 white (do 6 \u017ealuzji)",                    price:133.01},
+  {id:"ac123_black",               label:"Pilot AC123 black (do 6 \u017ealuzji)",                    price:150.57},
+  {id:"ac127_white",               label:"Pilot AC127 white (1 \u017ealuzja)",                       price:167.08}
 ];
 
 export function jzLookup(type, wCm, lCm){
