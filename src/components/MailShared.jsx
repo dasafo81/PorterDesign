@@ -19,6 +19,47 @@ export function fillTemplate(tpl,client){
   };
 }
 
+// ── Sanityzacja wklejanego HTML (Word/Gmail) ──────────────────────────
+// Zostawiamy tylko podstawowe formatowanie, usuwamy class/MSO-style/komentarze.
+function rtePasteFilterStyle(styleStr){
+  if(!styleStr)return "";
+  var allowedProps=["color","font-weight","font-style","text-decoration","background-color"];
+  var out=[];
+  styleStr.split(";").forEach(function(decl){
+    var parts=decl.split(":");
+    if(parts.length<2)return;
+    var prop=parts[0].trim().toLowerCase();
+    var val=parts.slice(1).join(":").trim();
+    if(allowedProps.indexOf(prop)>=0&&val)out.push(prop+":"+val);
+  });
+  return out.join(";");
+}
+function rtePasteCleanNode(node){
+  var ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,A:1,BR:1,P:1,DIV:1,SPAN:1};
+  Array.prototype.slice.call(node.childNodes).forEach(function(child){
+    if(child.nodeType===8){node.removeChild(child);return;} // komentarze MSO
+    if(child.nodeType!==1)return; // zwykły tekst — bez zmian
+    rtePasteCleanNode(child);
+    var tag=child.tagName;
+    if(!ALLOWED[tag]){
+      while(child.firstChild)node.insertBefore(child.firstChild,child);
+      node.removeChild(child);
+      return;
+    }
+    var style=rtePasteFilterStyle(child.getAttribute("style"));
+    var href=tag==="A"?child.getAttribute("href"):null;
+    Array.prototype.slice.call(child.attributes).forEach(function(a){child.removeAttribute(a.name);});
+    if(style)child.setAttribute("style",style);
+    if(href){child.setAttribute("href",href);child.setAttribute("target","_blank");}
+  });
+}
+function sanitizePastedHtml(html){
+  var tmp=document.createElement("div");
+  tmp.innerHTML=html;
+  rtePasteCleanNode(tmp);
+  return tmp.innerHTML;
+}
+
 export function RichTextEditor(p){
   var ur=React.useRef, us=React.useState, ue=React.useEffect;
   var ref=ur(null);
@@ -83,18 +124,25 @@ export function RichTextEditor(p){
   }
 
   function onPaste(e){
-    // Wymuszamy wklejanie jako plain text — bez śmieci ze stylami z Worda/Gmaila,
-    // ale jeśli wklejony tekst zawiera adres URL, zamieniamy go na klikalny <a>
-    // (inaczej link wklejony np. do oferty trafiał do maila jako martwy tekst).
+    // Wklejamy jako HTML zachowując proste formatowanie (pogrubienie, kursywa,
+    // podkreślenie, listy, kolor, linki) — sanitizePastedHtml usuwa śmieci
+    // Worda/Gmaila (class, MSO-style, komentarze). Gdy w schowku nie ma HTML,
+    // działamy jak wcześniej: plain text z automatyczną linkifikacją URL-i.
     e.preventDefault();
-    var text=(e.clipboardData||window.clipboardData).getData("text/plain");
+    var cd=(e.clipboardData||window.clipboardData);
+    var html=cd.getData("text/html");
+    if(html){
+      document.execCommand("insertHTML", false, sanitizePastedHtml(html));
+      return;
+    }
+    var text=cd.getData("text/plain");
     var urlRe=/(https?:\/\/[^\s<]+)/gi;
     if(urlRe.test(text)){
       var esc=text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      var html=esc.replace(/(https?:\/\/[^\s<]+)/gi,function(m){
+      var htmlOut=esc.replace(/(https?:\/\/[^\s<]+)/gi,function(m){
         return '<a href="'+m+'" target="_blank">'+m+'</a>';
       }).replace(/\n/g,"<br>");
-      document.execCommand("insertHTML", false, html);
+      document.execCommand("insertHTML", false, htmlOut);
     } else {
       document.execCommand("insertText", false, text);
     }
