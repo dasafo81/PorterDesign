@@ -3990,30 +3990,38 @@ export function calc(p){
     var lenP=parseInt(par.len)||0,qty=par.qty||1;
     if(!lenP)return{total:0,lines:[],warn:null};
     var seria=p.type==="prestige_round"?"ROUND":"SQUARE";
-    var TAB =p.type==="prestige_round"?PRESTIGE_ROUND:PRESTIGE_SQUARE;
+    var isSomfyPrestige=c.kBrand==="somfy";
+    var napedyListP=isSomfyPrestige?MD_NAPEDY:PRESTIGE_NAPEDY;
+    var defaultNapP=isSomfyPrestige?"movelite_wt":"am75_3w";
+    var TAB =isSomfyPrestige?(p.type==="prestige_round"?PRESTIGE_ROUND_SOMFY:PRESTIGE_SQUARE_SOMFY):(p.type==="prestige_round"?PRESTIGE_ROUND:PRESTIGE_SQUARE);
+    if(!TAB)return{total:0,lines:[],warn:"Brak cennika Prestige "+seria+" dla Somfy — czekamy na cennik."};
     var TW60=p.type==="prestige_round"?PRESTIGE_ROUND_W60:PRESTIGE_SQUARE_W60;
     var TW80=p.type==="prestige_round"?PRESTIGE_ROUND_W80:PRESTIGE_SQUARE_W80;
-    var TT  =p.type==="prestige_round"?PRESTIGE_ROUND_TANDEM:PRESTIGE_SQUARE_TANDEM;
-    var nap=c.pn||"am75_3w";
-    var motorTab=TAB[nap]||TAB.am75_3w;
+    var TT  =isSomfyPrestige?PRESTIGE_SOMFY_TANDEM:(p.type==="prestige_round"?PRESTIGE_ROUND_TANDEM:PRESTIGE_SQUARE_TANDEM);
+    var PILOTY_P=isSomfyPrestige?PRESTIGE_PILOTY_SOMFY:PRESTIGE_PILOTY;
+    var CENTRALKI_P=isSomfyPrestige?PRESTIGE_CENTRALKI_SOMFY:PRESTIGE_CENTRALKI;
+    var LADOWARKA_P=isSomfyPrestige?PRESTIGE_LADOWARKA_SOMFY:PRESTIGE_LADOWARKA;
+    var akuKeyP=isSomfyPrestige?"movelite_rts_aku":"am75_aku";
+    var nap=c.pn||defaultNapP;
+    var motorTab=TAB[nap]||TAB[defaultNapP];
     var bazaP=motorTab[lenP]||0;
     var lineSum=bazaP;
-    var napLabel=(PRESTIGE_NAPEDY.find(function(x){return x.v===nap;})||{l:nap}).l;
+    var napLabel=(napedyListP.find(function(x){return x.v===nap;})||{l:nap}).l;
     var kolObj=PRESTIGE_KOLORY.find(function(x){return x.v===c.pKolor;});
-    lines.push("Karnisz Prestige "+seria+" "+lenP+"cm — "+napLabel+(kolObj?" — "+kolObj.l+(kolObj.std?"":" (na zam\u00f3wienie)"):"")+(qty>1?" x"+qty:""));
-    // WAVE (dopłata)
+    lines.push("Karnisz Prestige "+seria+(isSomfyPrestige?" (Somfy)":"")+" "+lenP+"cm — "+napLabel+(kolObj?" — "+kolObj.l+(kolObj.std?"":" (na zam\u00f3wienie)"):"")+(qty>1?" x"+qty:""));
+    // WAVE (dopłata) — niezalezna od marki silnika
     if(c.wave==="w60"){var w=TW60[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 60 mm");}
     else if(c.wave==="w80"){var w=TW80[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 80 mm");}
     // Tandem
     if(c.tandem){var t=TT[nap]||0;lineSum+=t;if(t>0)lines.push("Tandem (rozsuwanie dwustronne synchroniczne)");}
     // Pilot
-    var pil=PRESTIGE_PILOTY.find(function(x){return x.v===(c.pp||"brak");});
+    var pil=PILOTY_P.find(function(x){return x.v===(c.pp||"brak");});
     if(pil&&pil.c>0){lineSum+=pil.c;lines.push(pil.l);}
     // Centralka
-    var cen=PRESTIGE_CENTRALKI.find(function(x){return x.v===(c.pcn||"brak");});
+    var cen=CENTRALKI_P.find(function(x){return x.v===(c.pcn||"brak");});
     if(cen&&cen.c>0){lineSum+=cen.c;lines.push(cen.l);}
     // Ładowarka (tylko dla akumulatora)
-    if(nap==="am75_aku"&&c.lad){lineSum+=PRESTIGE_LADOWARKA;lines.push("Ładowarka do silnika akumulatorowego");}
+    if(nap===akuKeyP&&c.lad){lineSum+=LADOWARKA_P;lines.push("Ładowarka do silnika akumulatorowego");}
     total=lineSum*qty;
   }else if(p.type==="shuttle"){
     // Forest Shuttle L. Wszystkie skladniki liczymy w cenach ZAKUPU NETTO,
@@ -5010,6 +5018,36 @@ export function arcDesc(par){
   if(g)parts.push("R\u2248"+Math.round(g.R)+" cm");
   return parts.join(", ");
 }
+
+// ── PRESTIGE ROUND/SQUARE z napędami Somfy (MD-LINE PLUS Glydea & Movelite) ──
+// Ceny juz brutto (netto x2), zgodnie z konwencja istniejacych tabel PRESTIGE_*.
+// SQUARE_SOMFY czeka na cennik — patrz warn w calc().
+export const PRESTIGE_ROUND_SOMFY ={
+  movelite_wt:{100:2380,150:2470,200:2558,250:2644,300:2732,350:2822,400:2910,450:2996,500:3084,550:3174,600:3262,650:3350,700:3440,750:3528,800:3614,850:3702,900:3792,950:3876,1000:3970},
+  movelite_rts:{100:2758,150:2846,200:2932,250:3020,300:3106,350:3198,400:3280,450:3372,500:3462,550:3550,600:3638,650:3724,700:3816,750:3898,800:3986,850:4076,900:4164,950:4250,1000:4342},
+  movelite_rts_aku:{100:3664,150:3758,200:3844,250:3930,300:4020,350:4106,400:4194,450:4284,500:4370,550:4460,600:4550,650:4636,700:4722,750:4812,800:4898,850:4988,900:5074,950:5164,1000:5254},
+  glydea35_wt:{100:3856,150:3956,200:4046,250:4138,300:4232,350:4322,400:4414,450:4508,500:4600,550:4694,600:4788,650:4880,700:4970,750:5066,800:5156,850:5252,900:5342,950:5436,1000:5532},
+  glydea35_rts:{100:4482,150:4580,200:4672,250:4762,300:4858,350:4948,400:5038,450:5134,500:5224,550:5320,600:5414,650:5504,700:5596,750:5690,800:5782,850:5876,900:5968,950:6062,1000:6156},
+  glydea60_wt:{100:4462,150:4546,200:4632,250:4712,300:4794,350:4878,400:4964,450:5046,500:5130,550:5214,600:5296,650:5380,700:5466,750:5548,800:5632,850:5714,900:5798,950:5880,1000:5964,1050:6050,1100:6130,1150:6216,1200:6300},
+  glydea60_rts:{100:5034,150:5116,200:5202,250:5282,300:5366,350:5448,400:5534,450:5618,500:5700,550:5784,600:5866,650:5950,700:6036,750:6120,800:6202,850:6286,900:6368,950:6452,1000:6534,1050:6620,1100:6700,1150:6786,1200:6870}
+};
+export const PRESTIGE_SQUARE_SOMFY =null; // czeka na cennik Prestige Square + Somfy
+// Tandem, WAVE 60/80 i wsporniki sa niezalezne od marki silnika (ten sam wozek/szyna),
+// wiec PRESTIGE_ROUND_W60/W80 i SQUARE_W60/W80 juz obowiazuja dla obu marek —
+// tandem trzeba jednak podac osobno, bo klucze motorow sa inne (Somfy vs A-OK).
+export const PRESTIGE_SOMFY_TANDEM ={movelite_wt:956,movelite_rts:1094,movelite_rts_aku:1898,glydea35_wt:2014,glydea35_rts:2080,glydea60_wt:2154,glydea60_rts:2458};
+// Piloty/centralka/ladowarka Somfy — te same ceny co w MD Line, jako gotowe brutto.
+export const PRESTIGE_PILOTY_SOMFY =[
+  {v:"brak", l:"Bez pilota",                    c:0},
+  {v:"s1",   l:"Pilot SITUO 1-kana\u0142owy",   c:294.68},
+  {v:"s5",   l:"Pilot SITUO 5-kana\u0142owy",   c:468.52},
+  {v:"t16",  l:"Pilot TELIS 16-kana\u0142owy",  c:1210.52}
+];
+export const PRESTIGE_CENTRALKI_SOMFY =[
+  {v:"brak",  l:"Brak",                            c:0},
+  {v:"tahoma",l:"Centralka Smart Home Tahoma",     c:1583.64}
+];
+export const PRESTIGE_LADOWARKA_SOMFY =159.00;
 
 export function karniszBrandLabel(pc){
   pc=pc||{};
