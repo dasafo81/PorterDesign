@@ -4487,7 +4487,10 @@ export function buildOfferDetailRows(client){
           var karMotorTypeLbl=(pc.motorType||"kurtyna");karMotorTypeLbl=karMotorTypeLbl.charAt(0).toUpperCase()+karMotorTypeLbl.slice(1);
           podzial=karMotorSideLbl+" / "+karMotorTypeLbl+(karAccessories.length?" \u00b7 "+karAccessories.join(", "):"");
           szerokosc=par.len?(par.len+" cm"):"-";
-          producent=p.karniszSupplier||"-";
+          // p.karniszSupplier nigdy nie jest ustawiane z poziomu formularza produktu
+          // (nie ma tam takiego pola) — zawsze wychodziło "-". Wg Damiana: Producent
+          // to marka szyny, nie dostawca — Forest dla Shuttle, inaczej Premium Line/Somfy.
+          producent=p.type==="shuttle"?"Forest":(pc.kBrand==="somfy"?"Somfy":"Premium Line");
         } else if(p.type==="plisa"){
           // Plisy okienne \u2014 producent zawsze Hanarol
           producent="Hanarol";
