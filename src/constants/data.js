@@ -2941,6 +2941,33 @@ export const PROD_TYPES =[
   {id:"inny",label:"Inny",icon:"📦"}
 ];
 
+// ── GRUPY W SELEKTORZE TYPU PRODUKTU ────────────────────────────────────────
+export const PROD_GROUPS =[
+  {id:"tkaniny", label:"Tkaniny",  types:["zaslona","firana","zaluzja","roleta","plisa"]},
+  {id:"karnisze",label:"Karnisze", types:["szyna","karnisz_dek"], brands:"karnisz_el"},
+  {id:"rolety",  label:"Rolety",   types:["shadow"]},
+  {id:"inne",    label:"Inne",     types:["inny"]}
+];
+
+// Karnisze elektryczne: marka (= szyna) -> model. Kazdy model wskazuje istniejacy
+// p.type, a `set` trafia do p.c. Naped wybiera sie osobno w formularzu — silniki
+// A-OK i Somfy mozna laczyc z dowolna szyna.
+export const KARNISZ_EL_BRANDS =[
+  {id:"premium", label:"Premium Line", models:[
+    {id:"pl",     label:"Premium Line",    type:"karnisz",         set:{kBrand:"premium"}},
+    {id:"round",  label:"Prestige Round",  type:"prestige_round",  set:{kBrand:"premium"}},
+    {id:"square", label:"Prestige Square", type:"prestige_square", set:{kBrand:"premium"}}
+  ]},
+  {id:"somfy", label:"Somfy", models:[
+    {id:"md",     label:"MD Line",         type:"karnisz",         set:{kBrand:"somfy"}},
+    {id:"round",  label:"Prestige Round",  type:"prestige_round",  set:{kBrand:"somfy"}},
+    {id:"square", label:"Prestige Square", type:"prestige_square", set:{kBrand:"somfy"}}
+  ]},
+  {id:"forest", label:"Forest Shuttle", models:[
+    {id:"shuttle",label:"Forest Shuttle",  type:"shuttle",         set:{}}
+  ]}
+];
+
 // Kategorie produktu "Inny". Wybrana etykieta trafia do p.innyNazwa (nazwa
 // wyświetlana wszędzie: karta, wyceny, PDF). Dla "inny" nazwę wpisuje się ręcznie.
 export const INNY_KATEGORIE=[
@@ -3015,6 +3042,71 @@ export const KN_CENTRALKI=[
   {v:"brak",   l:"Bez centralki"},
   {v:"tahoma", l:"Somfy TaHoma Switch",     cena:Math.round(1390*2)}
 ];
+
+// ── KARNISZ ELEKTRYCZNY — PREMIUM LINE ──────────────────────────
+// Cennik hurtowy Premium-Line — ceny ZAKUPU NETTO (jak Shuttle, nie jak Prestige).
+// Brutto dla klienta = netto x PL_MULT. Nasz realny koszt = netto x (1-PL_RABAT).
+// W cenie zestawu: uzbrojona szyna, slizgi, silnik, wsporniki (bez pilota).
+// Realizujemy wylacznie w wersji SLIM, wiec doplata SLIM jest doliczana zawsze.
+export const PL_MULT  =2;
+export const PL_RABAT =0.15;   // rabat producenta — tylko Premium Line
+export const PL_WIDTHS=[100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000,1050,1100,1150,1200];
+
+export const PL_NAPEDY =[
+  {v:"am75_3w_wifi",   l:"AM75 3W WiFi"},
+  {v:"am70_3w_zigbee", l:"AM70 3W ZigBee"},
+  {v:"am75_3w",        l:"AM75 3W (radio)"},
+  {v:"am75_5w",        l:"AM75 5W (radio + \u015bcienny)"},
+  {v:"am75_aku",       l:"AM75 Akumulator"}
+];
+
+export const PL_BASE ={
+  am75_3w_wifi:{100:582,150:609,200:637,250:663,300:687,350:718,400:743,450:769,500:797,550:823,600:848,650:876,700:901,750:928,800:957,850:982,900:1009,950:1034,1000:1062,1050:1087,1100:1114,1150:1140,1200:1167},
+  am70_3w_zigbee:{100:589,150:616,200:644,250:670,300:694,350:724,400:750,450:776,500:804,550:830,600:855,650:883,700:908,750:935,800:964,850:989,900:1016,950:1041,1000:1069,1050:1094,1100:1121,1150:1147,1200:1174},
+  am75_3w:{100:537,150:564,200:592,250:618,300:642,350:672,400:698,450:724,500:752,550:778,600:803,650:831,700:856,750:883,800:912,850:937,900:964,950:989,1000:1017,1050:1042,1100:1069,1150:1095,1200:1122},
+  am75_5w:{100:727,150:757,200:788,250:817,300:847,350:877,400:907,450:937,500:967,550:997,600:1028,650:1057,700:1087,750:1117,800:1147,850:1177,900:1207,950:1237,1000:1269,1050:1298,1100:1328,1150:1358,1200:1388},
+  am75_aku:{100:870,150:897,200:924,250:951,300:975,350:1005,400:1031,450:1057,500:1085,550:1110,600:1136,650:1163,700:1189,750:1215,800:1244,850:1270,900:1296,950:1322,1000:1350,1050:1375,1100:1402,1150:1428,1200:1455}
+};
+export const PL_TANDEM ={am75_3w_wifi:426,am70_3w_zigbee:429,am75_3w:414,am75_5w:391,am75_aku:591};
+
+export const PL_SLIM ={100:85,150:92,200:100,250:107,300:114,350:122,400:129,450:137,500:144,550:152,600:159,650:166,700:174,750:181,800:189,850:196,900:204,950:211,1000:218,1050:226,1100:233,1150:241,1200:248};
+// Ilosc wspornikow wg cennika — doliczana automatycznie (wersja SLIM).
+export const PL_WSPORNIKI ={100:2,150:3,200:3,250:3,300:4,350:4,400:5,450:5,500:6,550:6,600:7,650:7,700:8,750:8,800:9,850:9,900:10,950:10,1000:11,1050:11,1100:12,1150:13,1200:13};
+export const PL_WSPORNIK =10.28;
+
+export const PL_W60 ={100:43.1,150:65,200:86,250:108,300:129,350:150,400:172.2,450:193.7,500:215.3,550:236.8,600:258.3,650:279.8,700:301.4,750:322.9,800:344.4,850:365.9,900:387.5,950:409,1000:430.5,1050:452,1100:473.6,1150:495.1,1200:517};
+export const PL_W80 ={100:33.5,150:50,200:66,250:84,300:101,350:117,400:133.9,450:150.7,500:167.4,550:184.2,600:200.9,650:217.6,700:234.4,750:251.1,800:267.9,850:284.6,900:301.4,950:318.1,1000:334.8,1050:351.6,1100:368.3,1150:385.1,1200:402};
+
+export const PL_PILOTY =[
+  {v:"brak", l:"Bez pilota",              c:0},
+  {v:"p1",   l:"Pilot 1-kana\u0142owy",   c:75.26},
+  {v:"p6",   l:"Pilot 6-kana\u0142owy",   c:95.40}
+];
+export const PL_PILOT_KOLORY =[{v:"bialy",l:"Bia\u0142y"},{v:"czarny",l:"Czarny"}];
+export const PL_PRZELACZNIKI =[
+  {v:"brak", l:"Brak",                          c:0},
+  {v:"uno",  l:"SMOOVE UNO pojedynczy",         c:55.12},
+  {v:"duo",  l:"SMOOVE DUO podw\u00f3jny",      c:83.74}
+];
+// Centralka: cennik netto 201,40 (x2 = 402,80). Decyzja Damiana: 360 zl brutto,
+// dlatego netto "cenowe" (180) trzymamy osobno od realnego kosztu zakupu.
+export const PL_CENTRALKA ={l:"Centralka Smart Home ZigBee", c:180, zakupNetto:201.40};
+export const PL_LADOWARKA =81.62;  // netto, tylko dla AM75 Akumulator
+// Giecie punktowe: pierwsze 122 zl/szt, kazde nastepne 244 zl/szt (wg cennika).
+export const PL_GIECIE_PKT_1 =122;
+export const PL_GIECIE_PKT_N =244;
+export const PL_GIECIE_LUK   =122; // zl/mb, luk ciagly
+
+// Nasz koszt zakupu netto dla Premium Line (rabat producenta -15%).
+// Centralka ma cene sprzedazy ustalona recznie — koszt liczymy z cennika.
+export function plZakupNetto(p){
+  if(!p||p.type!=="karnisz"||!(p.c||{})||((p.c||{}).kBrand)!=="premium")return null;
+  var r=calc(p);
+  if(!r.total)return null;
+  var netto=r.total/PL_MULT;
+  if((p.c||{}).plCentralka)netto+=PL_CENTRALKA.zakupNetto-PL_CENTRALKA.c;
+  return Math.round(netto*(1-PL_RABAT)*100)/100;
+}
 
 // ── KARNISZ PRESTIGE ROUND / SQUARE (Premium-Line) ───────────────────────────
 // Tabele = cennik hurtowy netto × 2. Nasza cena brutto = cena zakupu netto × 2.
@@ -3720,6 +3812,49 @@ export function calc(p){
       total+=plDrab;
       lines.push("+ Drabinka podtrzymuj\u0105ca tkanin\u0119 +"+plDrab+" z\u0142");
     }
+  }else if(p.type==="karnisz"&&(p.c||{}).kBrand==="premium"){
+    // PREMIUM LINE \u2014 cennik 2026. Stare pozycje bez c.kBrand licza sie dalej
+    // stara sciezka (KSLIM/KUNIV + KN) ponizej, zeby nie przeliczyc archiwum.
+    var lenPL=parseInt(par.len)||0,qtyPL=par.qty||1;
+    if(!lenPL)return{total:0,lines:[],warn:null};
+    var napPL=c.plNap||"am75_3w";
+    var tabPL=PL_BASE[napPL]||PL_BASE.am75_3w;
+    var bPL=lookup(lenPL,tabPL);
+    var netPL=bPL.p;
+    var napLblPL=(PL_NAPEDY.find(function(x){return x.v===napPL;})||{l:napPL}).l;
+    lines.push("Premium Line SLIM do "+bPL.k+" cm \u2014 "+napLblPL+(qtyPL>1?" x"+qtyPL:""));
+    var slimPL=lookup(lenPL,PL_SLIM).p;
+    netPL+=slimPL;
+    lines.push("Szyna SLIM = "+formatPLN(Math.round(slimPL*PL_MULT)));
+    var wspQ=lookup(lenPL,PL_WSPORNIKI).p;
+    netPL+=PL_WSPORNIK*wspQ;
+    lines.push("Wsporniki x"+wspQ+" = "+formatPLN(Math.round(PL_WSPORNIK*wspQ*PL_MULT)));
+    if(c.wave==="w60"){var wPL=lookup(lenPL,PL_W60).p;netPL+=wPL;lines.push("WAVE u\u0142o\u017cyskowany 60 mm = "+formatPLN(Math.round(wPL*PL_MULT)));}
+    else if(c.wave==="w80"){var wPL2=lookup(lenPL,PL_W80).p;netPL+=wPL2;lines.push("WAVE u\u0142o\u017cyskowany 80 mm = "+formatPLN(Math.round(wPL2*PL_MULT)));}
+    if(c.tandem){var tPL=PL_TANDEM[napPL]||0;netPL+=tPL;if(tPL>0)lines.push("Tandem (rozsuwanie dwustronne)");}
+    var pilPL=PL_PILOTY.find(function(x){return x.v===(c.plPilot||"brak");});
+    if(pilPL&&pilPL.c>0){
+      var qPil=parseInt(par.plPilotQty)||1;
+      netPL+=pilPL.c*qPil;
+      lines.push(pilPL.l+(c.plPilotKolor==="czarny"?" (czarny)":" (bia\u0142y)")+(qPil>1?" x"+qPil:""));
+    }
+    var przPL=PL_PRZELACZNIKI.find(function(x){return x.v===(c.plPrzel||"brak");});
+    if(przPL&&przPL.c>0){
+      var qPrz=parseInt(par.plPrzelQty)||1;
+      netPL+=przPL.c*qPrz;
+      lines.push(przPL.l+(qPrz>1?" x"+qPrz:""));
+    }
+    if(c.plCentralka){netPL+=PL_CENTRALKA.c;lines.push(PL_CENTRALKA.l);}
+    if(napPL==="am75_aku"&&c.lad){netPL+=PL_LADOWARKA;lines.push("\u0141adowarka do silnika akumulatorowego");}
+    var gPkt=parseInt(par.pt)||0;
+    if(gPkt>0){
+      var gC=PL_GIECIE_PKT_1+(gPkt-1)*PL_GIECIE_PKT_N;
+      netPL+=gC;
+      lines.push("Gi\u0119cie punktowe x"+gPkt+" = "+formatPLN(Math.round(gC*PL_MULT)));
+    }
+    var gLuk=+(par.arc||0);
+    if(gLuk>0){var gL=PL_GIECIE_LUK*gLuk;netPL+=gL;lines.push("Gi\u0119cie promieniowe \u0142uk "+gLuk+" mb = "+formatPLN(Math.round(gL*PL_MULT)));}
+    total=Math.round(netPL*PL_MULT)*qtyPL;
   }else if(p.type==="karnisz"){
     var lenK=par.len||0,pt=par.pt||0,arc=par.arc||0,qty=par.qty||1;
     if(!lenK)return{total:0,lines:[],warn:null};
