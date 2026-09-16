@@ -1962,6 +1962,15 @@ export function ScreenMail(p){
   var us=React.useState, ue=React.useEffect;
   var clients=p.clients||[];
 
+  // ── Widok mobilny (telefon): panele jeden na raz zamiast 3 kolumn obok siebie ──
+  var smob=us(function(){return typeof window!=="undefined"&&window.innerWidth<720;}),isMobile=smob[0],setIsMobile=smob[1];
+  var smdrw=us(false),mobileFoldersOpen=smdrw[0],setMobileFoldersOpen=smdrw[1];
+  ue(function(){
+    function onResize(){setIsMobile(window.innerWidth<720);}
+    window.addEventListener("resize",onResize);
+    return function(){window.removeEventListener("resize",onResize);};
+  },[]);
+
   var sa=us(false),logged=sa[0],setLogged=sa[1];
   var stok=us(null),accessToken=stok[0],setAccessToken=stok[1];
   var sacc=us(null),msAccount=sacc[0],setMsAccount=sacc[1];
@@ -2240,6 +2249,8 @@ export function ScreenMail(p){
 
   // Zmiana folderu → wyczyść aktywne wyszukiwanie
   ue(function(){ setSearchResults(null); setSearchNextLink(null); }, [activeFolder]);
+  // Zmiana folderu na mobile → zamknij nakładkę z folderami
+  ue(function(){ setMobileFoldersOpen(false); }, [activeFolder]);
 
   ue(function(){
     if(!activeTemplates.length)return;
@@ -3010,8 +3021,11 @@ export function ScreenMail(p){
   } else {
     var folderMails=allMails.filter(function(m){return m.folder===activeFolder;});
     var loaderActive=loadingMails&&(activeFolder==="sent"||activeFolder==="inbox"||activeFolder==="trash"||activeFolder==="spam");
+    var mobileShowingThread=isMobile&&!!selThread;
     rightContent=ce("div",{style:{display:"flex",height:"100%",minHeight:0}},
-      ce("div",{style:{width:280,flexShrink:0,borderRight:"1px solid var(--bd2)",paddingRight:12,display:"flex",flexDirection:"column"}},
+      ce("div",{style:isMobile?{
+          width:"100%",flexShrink:0,display:mobileShowingThread?"none":"flex",flexDirection:"column"
+        }:{width:280,flexShrink:0,borderRight:"1px solid var(--bd2)",paddingRight:12,display:"flex",flexDirection:"column"}},
         loaderActive
           ?ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:8,color:"var(--t3)",fontSize:13}},"\u23F3 Wczytywanie\u2026")
           :ce(MailList,{key:activeFolder,mails:folderMails,folder:activeFolder,onSelect:function(t){
@@ -3023,7 +3037,8 @@ export function ScreenMail(p){
             onLoadMoreSearch:loadMoreSearch,searchHasMore:!!searchNextLink,
             flags:mailFlags,onToggleFlag:toggleFlag})
       ),
-      ce("div",{style:{flex:1,minWidth:0,overflow:"hidden"}},
+      ce("div",{style:isMobile?{width:"100%",display:mobileShowingThread?"flex":"none",flexDirection:"column",minWidth:0,overflow:"hidden"}:{flex:1,minWidth:0,overflow:"hidden"}},
+        isMobile?ce("button",{onClick:function(){setSelThread(null);},style:{flexShrink:0,alignSelf:"flex-start",margin:"0 0 8px",padding:"6px 12px",borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"\u2039 Wr\u00f3\u0107 do listy"):null,
         ce(MailPreview,{thread:selThread,accessToken:accessToken,onTokenRefresh:function(tok){setAccessToken(tok);},onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
           flags:mailFlags,onToggleFlag:toggleFlag,
           onReply:function(head,bodyCache){
@@ -3106,6 +3121,7 @@ export function ScreenMail(p){
   return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:"var(--bg2)",borderRadius:16,padding:16,border:"1px solid var(--bd2)",boxSizing:"border-box"}},
     ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:"var(--bg2)",borderRadius:10,marginBottom:12,border:"1px solid var(--bd2)",flexShrink:0,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
       ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
+        isMobile?ce("button",{onClick:function(){setMobileFoldersOpen(true);},style:{border:"1px solid var(--bd2)",background:"var(--bg)",borderRadius:8,width:30,height:30,fontSize:15,cursor:"pointer",flexShrink:0}},"\u2630"):null,
         ce("div",{style:{width:8,height:8,borderRadius:"50%",background:"#10b981",flexShrink:0,boxShadow:"0 0 0 2px rgba(16,185,129,0.2)"}}),
         ce("span",{style:{fontSize:12,color:"var(--t2)"}},"Zalogowano jako\u00a0",ce("strong",{style:{color:"var(--t1)"}},accountEmail))
       ),
@@ -3119,8 +3135,13 @@ export function ScreenMail(p){
       ce("button",{onClick:function(){setCalSaved(null);},style:{marginLeft:"auto",border:"none",background:"var(--grl)",borderRadius:6,cursor:"pointer",color:"var(--gr)",fontSize:16,width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center"}},"\u00d7")
     ):null,
 
-    ce("div",{style:{display:"flex",flex:1,minHeight:0}},
-      ce("div",{style:{width:186,flexShrink:0,display:"flex",flexDirection:"column",borderRight:"1px solid var(--bd2)",paddingRight:8,marginRight:14,overflowY:"auto"}},
+    ce("div",{style:{display:"flex",flex:1,minHeight:0,position:"relative"}},
+      isMobile&&mobileFoldersOpen?ce("div",{onClick:function(){setMobileFoldersOpen(false);},style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.4)",zIndex:499}}):null,
+      ce("div",{style:isMobile?{
+          position:"fixed",top:0,left:0,bottom:0,width:"78%",maxWidth:280,zIndex:500,
+          background:"var(--bg2)",display:mobileFoldersOpen?"flex":"none",flexDirection:"column",
+          padding:"14px 10px",overflowY:"auto",boxShadow:"6px 0 24px rgba(0,0,0,0.25)"
+        }:{width:186,flexShrink:0,display:"flex",flexDirection:"column",borderRight:"1px solid var(--bd2)",paddingRight:8,marginRight:14,overflowY:"auto"}},
         SYSTEM_FOLDERS.map(function(f){
           var active=activeFolder===f.id;
           var badge=f.id==="drafts"&&drafts.length>0?drafts.length:null;
