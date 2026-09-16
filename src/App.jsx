@@ -173,15 +173,34 @@ export function App(p){
   offerDraftRef.current={baseRows:offerBaseRows,rows:offerPreviewRows,notes:offerNotes,validUntil:offerValidUntil};
   var offerDraftDirtyRef=React.useRef(false);
   var sKarniszRows=useState([]),karniszPreviewRows=sKarniszRows[0],setKarniszPreviewRows=sKarniszRows[1];
+  var sKarniszBase=useState([]),karniszBaseRows=sKarniszBase[0],setKarniszBaseRows=sKarniszBase[1];
+  var karniszDraftRef=React.useRef(null);
+  karniszDraftRef.current={baseRows:karniszBaseRows,rows:karniszPreviewRows};
+  var karniszDraftDirtyRef=React.useRef(false);
   var sRailsRows=useState([]),railsPreviewRows=sRailsRows[0],setRailsPreviewRows=sRailsRows[1];
+  var sRailsBase=useState([]),railsBaseRows=sRailsBase[0],setRailsBaseRows=sRailsBase[1];
+  var railsDraftRef=React.useRef(null);
+  railsDraftRef.current={baseRows:railsBaseRows,rows:railsPreviewRows};
+  var railsDraftDirtyRef=React.useRef(false);
   var sFabricRows=useState([]),fabricPreviewRows=sFabricRows[0],setFabricPreviewRows=sFabricRows[1];
+  var sFabricBase=useState([]),fabricBaseRows=sFabricBase[0],setFabricBaseRows=sFabricBase[1];
   var sFabricHouse=useState("TRINITAS — ul. Składowa 9, 86-300 Grudziądz"),fabricSewingHouse=sFabricHouse[0],setFabricSewingHouse=sFabricHouse[1];
   var sFabricHouseC=useState(""),fabricSewingHouseCustom=sFabricHouseC[0],setFabricSewingHouseCustom=sFabricHouseC[1];
   var sFabricNotes=useState(""),fabricNotes=sFabricNotes[0],setFabricNotes=sFabricNotes[1];
+  var fabricDraftRef=React.useRef(null);
+  fabricDraftRef.current={baseRows:fabricBaseRows,rows:fabricPreviewRows,notes:fabricNotes,sewingHouse:fabricSewingHouse,sewingHouseCustom:fabricSewingHouseCustom};
+  var fabricDraftDirtyRef=React.useRef(false);
   var sSimplGroups=useState([]),simplRoomGroups=sSimplGroups[0],setSimplRoomGroups=sSimplGroups[1];
   var sSimplSel=useState({}),simplSel=sSimplSel[0],setSimplSel=sSimplSel[1];
   var sSimplValid=useState(""),simplValidUntil=sSimplValid[0],setSimplValidUntil=sSimplValid[1];
   var sSimplRows=useState([]),simplEditableRows=sSimplRows[0],setSimplEditableRows=sSimplRows[1];
+  var simplDraftRef=React.useRef(null);
+  simplDraftRef.current={groups:simplRoomGroups,sel:simplSel,validUntil:simplValidUntil,rows:simplEditableRows};
+  var simplDraftDirtyRef=React.useRef(false);
+  // Ustawiany na true tuz przed przywroceniem draftu z bazy — jednorazowo gasi
+  // ponizszy efekt przeliczajacy simplEditableRows z wyboru wariantow, zeby nie
+  // nadpisal wlasnie przywroconych recznych edycji wierszy.
+  var simplSkipRebuildRef=React.useRef(false);
   var s9=useState(true),loading=s9[0],setLoading=s9[1];
   var s10=useState(null),saveStatus=s10[0],setSaveStatus=s10[1];
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
@@ -376,6 +395,10 @@ export function App(p){
   React.useEffect(function(){
     if(!curClient)return;
     if(!simplRoomGroups.length)return;
+    // Zaraz po przywroceniu draftu (openSimplifiedPreview) ten efekt i tak by
+    // odpalil przez zmiane simplRoomGroups/simplSel — i nadpisal recznie
+    // wpisane etykiety/ceny swiezym przeliczeniem. Gasimy go jednorazowo.
+    if(simplSkipRebuildRef.current){simplSkipRebuildRef.current=false;return;}
     var c=(+commissionInput||0)/100;
     setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(simplRoomGroups,simplSel),c));
   },[simplSel,simplRoomGroups,commissionInput,curClient]);
@@ -500,7 +523,7 @@ export function App(p){
           var ok=window.confirm("UWAGA \u2014 ta zmiana usuwa "+(before-after)+" z "+before+" produkt\u00f3w tego klienta.\n\nJe\u015bli to nie by\u0142o zamierzone, kliknij Anuluj i od\u015bwie\u017c stron\u0119 (F5).\n\nZapisa\u0107 mimo to?");
           if(!ok)return cs;
         }
-        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null});
+        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null,karnisz_draft:newCl.karnisz_draft||null,rails_draft:newCl.rails_draft||null,fabric_draft:newCl.fabric_draft||null,simpl_draft:newCl.simpl_draft||null});
       }
       return updated;
     });
@@ -892,6 +915,110 @@ export function App(p){
     return function(){
       document.removeEventListener("visibilitychange",onHide);
       window.removeEventListener("beforeunload",onBeforeUnloadOfferDraft);
+    };
+  },[]);
+
+  // ── AUTOSAVE PODGLĄDÓW: karnisze / szyny / tkanina / Wycena Uproszczona ──
+  // Ten sam mechanizm i to samo uzasadnienie co przy offer_draft powyżej —
+  // powielone na pozostałe ekrany "podgląd przed wygenerowaniem".
+
+  var karniszDraftFlushRef=React.useRef(function(){});
+  karniszDraftFlushRef.current=function(){
+    if(!karniszDraftDirtyRef.current||!curClientId)return;
+    updateClient(curClientId,function(cl){return mg(cl,{karnisz_draft:karniszDraftRef.current});});
+    karniszDraftDirtyRef.current=false;
+  };
+  React.useEffect(function(){
+    if(screen!=="karniszPreview"||!curClientId)return;
+    var cl=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
+    var saved=cl?cl.karnisz_draft:null;
+    var current=karniszDraftRef.current;
+    if(saved&&JSON.stringify(saved)===JSON.stringify(current)){karniszDraftDirtyRef.current=false;return;}
+    karniszDraftDirtyRef.current=true;
+    var t=setTimeout(function(){karniszDraftFlushRef.current();},1500);
+    return function(){clearTimeout(t);};
+  },[karniszPreviewRows,screen,curClientId]);
+
+  var railsDraftFlushRef=React.useRef(function(){});
+  railsDraftFlushRef.current=function(){
+    if(!railsDraftDirtyRef.current||!curClientId)return;
+    updateClient(curClientId,function(cl){return mg(cl,{rails_draft:railsDraftRef.current});});
+    railsDraftDirtyRef.current=false;
+  };
+  React.useEffect(function(){
+    if(screen!=="railsPreview"||!curClientId)return;
+    var cl=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
+    var saved=cl?cl.rails_draft:null;
+    var current=railsDraftRef.current;
+    if(saved&&JSON.stringify(saved)===JSON.stringify(current)){railsDraftDirtyRef.current=false;return;}
+    railsDraftDirtyRef.current=true;
+    var t=setTimeout(function(){railsDraftFlushRef.current();},1500);
+    return function(){clearTimeout(t);};
+  },[railsPreviewRows,screen,curClientId]);
+
+  var fabricDraftFlushRef=React.useRef(function(){});
+  fabricDraftFlushRef.current=function(){
+    if(!fabricDraftDirtyRef.current||!curClientId)return;
+    updateClient(curClientId,function(cl){return mg(cl,{fabric_draft:fabricDraftRef.current});});
+    fabricDraftDirtyRef.current=false;
+  };
+  React.useEffect(function(){
+    if(screen!=="fabricPreview"||!curClientId)return;
+    var cl=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
+    var saved=cl?cl.fabric_draft:null;
+    var current=fabricDraftRef.current;
+    if(saved&&JSON.stringify(saved)===JSON.stringify(current)){fabricDraftDirtyRef.current=false;return;}
+    fabricDraftDirtyRef.current=true;
+    var t=setTimeout(function(){fabricDraftFlushRef.current();},1500);
+    return function(){clearTimeout(t);};
+  },[fabricPreviewRows,fabricNotes,fabricSewingHouse,fabricSewingHouseCustom,screen,curClientId]);
+
+  var simplDraftFlushRef=React.useRef(function(){});
+  simplDraftFlushRef.current=function(){
+    if(!simplDraftDirtyRef.current||!curClientId)return;
+    updateClient(curClientId,function(cl){return mg(cl,{simpl_draft:simplDraftRef.current});});
+    simplDraftDirtyRef.current=false;
+  };
+  React.useEffect(function(){
+    if(screen!=="simplifiedPreview"||!curClientId)return;
+    var cl=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
+    var saved=cl?cl.simpl_draft:null;
+    var current=simplDraftRef.current;
+    if(saved&&JSON.stringify(saved)===JSON.stringify(current)){simplDraftDirtyRef.current=false;return;}
+    simplDraftDirtyRef.current=true;
+    var t=setTimeout(function(){simplDraftFlushRef.current();},1500);
+    return function(){clearTimeout(t);};
+  },[simplEditableRows,simplSel,simplValidUntil,screen,curClientId]);
+
+  // Flush przy ukryciu karty / zamknieciu dla wszystkich czterech powyzej —
+  // tak samo jak przy oknie i offer_draft.
+  React.useEffect(function(){
+    function onHide(){
+      if(!document.hidden)return;
+      karniszDraftFlushRef.current();
+      railsDraftFlushRef.current();
+      fabricDraftFlushRef.current();
+      simplDraftFlushRef.current();
+    }
+    function onPageHide(){
+      karniszDraftFlushRef.current();
+      railsDraftFlushRef.current();
+      fabricDraftFlushRef.current();
+      simplDraftFlushRef.current();
+    }
+    function onBeforeUnloadPreviewDrafts(e){
+      var dirty=karniszDraftDirtyRef.current||railsDraftDirtyRef.current||fabricDraftDirtyRef.current||simplDraftDirtyRef.current;
+      if(!dirty)return;
+      onPageHide();
+      e.preventDefault();e.returnValue="";return "";
+    }
+    document.addEventListener("visibilitychange",onHide);
+    window.addEventListener("pagehide",onPageHide);
+    window.addEventListener("beforeunload",onBeforeUnloadPreviewDrafts);
+    return function(){
+      document.removeEventListener("visibilitychange",onHide);
+      window.removeEventListener("pagehide",onPageHide);
+      window.removeEventListener("beforeunload",onBeforeUnloadPreviewDrafts);
     };
   },[]);
 
@@ -1662,13 +1789,20 @@ export function App(p){
     function openKarniszPreview(){
       var rows=buildKarniszRows(curClient);
       if(!rows.length){alert("Brak karniszów / szyn do zamówienia.");return;}
-      setKarniszPreviewRows(rows.map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||"marcin_dekor"});}));
+      var baseRows=rows.map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||"marcin_dekor"});});
+      var draft=curClient.karnisz_draft;
+      var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(baseRows);
+      setKarniszBaseRows(baseRows);
+      setKarniszPreviewRows(baseUnchanged&&draft.rows?draft.rows:baseRows);
       setScreen("karniszPreview");
     }
     function openRailsPreview(){
       var rows=buildRailsRows(curClient);
       if(!rows.length){alert("Brak szyn / karniszów do wydruku.");return;}
-      setRailsPreviewRows(rows);
+      var draft=curClient.rails_draft;
+      var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(rows);
+      setRailsBaseRows(rows);
+      setRailsPreviewRows(baseUnchanged&&draft.rows?draft.rows:rows);
       setScreen("railsPreview");
     }
     function openFabricPreview(){
@@ -1679,18 +1813,36 @@ export function App(p){
         if(prod==="-")prod="Bez producenta";
         return mg(r,{prod:prod,roomWin:r.room+" / "+r.win});
       });
-      setFabricPreviewRows(prepped);
-      setFabricNotes("");
+      var draft=curClient.fabric_draft;
+      var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(prepped);
+      setFabricBaseRows(prepped);
+      setFabricPreviewRows(baseUnchanged&&draft.rows?draft.rows:prepped);
+      setFabricNotes(draft?(draft.notes||""):"");
+      setFabricSewingHouse(draft&&draft.sewingHouse?draft.sewingHouse:"TRINITAS — ul. Składowa 9, 86-300 Grudziądz");
+      setFabricSewingHouseCustom(draft?(draft.sewingHouseCustom||""):"");
       setScreen("fabricPreview");
     }
     function openSimplifiedPreview(){
       var groups=buildSimplifiedGroups(curClient);
       if(!groups.length){alert("Brak pomieszczeń z produktami.");return;}
-      var initSel=makeSimplInitSel(groups);
-      setSimplRoomGroups(groups);
-      setSimplSel(initSel);
-      setSimplValidUntil("");
-      setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(groups,initSel),comm));
+      var draft=curClient.simpl_draft;
+      var baseUnchanged=draft&&JSON.stringify(draft.groups)===JSON.stringify(groups);
+      if(baseUnchanged){
+        var sel=draft.sel||makeSimplInitSel(groups);
+        // Gasimy jednorazowo efekt przeliczajacy wiersze z selekcji — inaczej
+        // natychmiast nadpisalby przywrocone recznie wpisane etykiety/ceny.
+        simplSkipRebuildRef.current=true;
+        setSimplRoomGroups(groups);
+        setSimplSel(sel);
+        setSimplValidUntil(draft.validUntil||"");
+        setSimplEditableRows(draft.rows||buildSimplifiedRows(curClient,computeSimplSelection(groups,sel),comm));
+      } else {
+        var initSel=makeSimplInitSel(groups);
+        setSimplRoomGroups(groups);
+        setSimplSel(initSel);
+        setSimplValidUntil(draft?(draft.validUntil||""):"");
+        setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(groups,initSel),comm));
+      }
       setScreen("simplifiedPreview");
     }
     // Mail do klienta: pop-up z wysyłką maila "po spotkaniu" + wycena uproszczona
@@ -2022,6 +2174,12 @@ export function App(p){
     function karniszFieldInput(i,key,placeholder,width){
       return ce("input",{type:"text",value:karniszPreviewRows[i][key]||"",onChange:function(ev){setKarniszField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
     }
+    function resetKarniszPreviewFromSource(){
+      if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny?\n\nNadpisze to zmiany wprowadzone na tym ekranie."))return;
+      var freshRows=buildKarniszRows(curClient).map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||"marcin_dekor"});});
+      setKarniszBaseRows(freshRows);
+      setKarniszPreviewRows(freshRows);
+    }
 
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83E\uDE9D Zamówienie karniszy / szyn \u2014 podgląd przed wygenerowaniem"),
@@ -2064,6 +2222,7 @@ export function App(p){
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:resetKarniszPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD04 Wype\u0142nij od nowa"),
         ce("button",{onClick:function(){
           generateKarniszOrderPDFFromRows(curClient,karniszPreviewRows);
           setScreen("sum");
@@ -2090,6 +2249,12 @@ export function App(p){
     function railsFieldInput(i,key,placeholder,width){
       return ce("input",{type:"text",value:railsPreviewRows[i][key]||"",onChange:function(ev){setRailsField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
     }
+    function resetRailsPreviewFromSource(){
+      if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny?\n\nNadpisze to zmiany wprowadzone na tym ekranie."))return;
+      var freshRows=buildRailsRows(curClient);
+      setRailsBaseRows(freshRows);
+      setRailsPreviewRows(freshRows);
+    }
 
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDD29 Szyny do montażu \u2014 podgląd przed wygenerowaniem"),
@@ -2113,6 +2278,7 @@ export function App(p){
         }),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}},
         Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:resetRailsPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD04 Wype\u0142nij od nowa"),
         ce("button",{onClick:function(){
           generateRailsInstallPDFFromRows(curClient,railsPreviewRows);
           setScreen("sum");
@@ -2143,6 +2309,16 @@ export function App(p){
     }
     function fabricFieldInput(i,key,placeholder,width){
       return ce("input",{type:"text",value:fabricPreviewRows[i][key]||"",onChange:function(ev){setFabricRowField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
+    }
+    function resetFabricPreviewFromSource(){
+      if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny?\n\nNadpisze to zmiany wprowadzone na tym ekranie (szwalnia i uwagi zostaną)."))return;
+      var freshRows=buildFabricRows(curClient).filter(function(r){return r.metry&&r.metry>0;}).map(function(r){
+        var prod=r.prod||"Inny";
+        if(prod==="-")prod="Bez producenta";
+        return mg(r,{prod:prod,roomWin:r.room+" / "+r.win});
+      });
+      setFabricBaseRows(freshRows);
+      setFabricPreviewRows(freshRows);
     }
     function generateFabricForSupplier(sup){
       var supRows=fabricPreviewRows.filter(function(r){return r.prod===sup;});
@@ -2205,7 +2381,8 @@ export function App(p){
           );
         }),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}},
-        Btn("\u2190 Wstecz",function(){setScreen("sum");},false)
+        Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:resetFabricPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD04 Wype\u0142nij od nowa")
       )
     );
   }
@@ -2264,6 +2441,13 @@ export function App(p){
         "Oferta - "+(curClient.name||"klient")+".pdf");
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
+    function resetSimplPreviewFromSource(){
+      if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny (wg bieżących wariantów)?\n\nNadpisze to zmiany etykiet i cen wprowadzone na tym ekranie."))return;
+      var freshGroups=buildSimplifiedGroups(curClient);
+      var c=(+commissionInput||0)/100;
+      setSimplRoomGroups(freshGroups);
+      setSimplEditableRows(buildSimplifiedRows(curClient,computeSimplSelection(freshGroups,simplSel),c));
+    }
 
     content=ce(Fragment,null,
       ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCCB Wycena Uproszczona \u2014 podgląd przed wygenerowaniem"),
@@ -2360,6 +2544,7 @@ export function App(p){
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:resetSimplPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD04 Wype\u0142nij od nowa"),
         ce("button",{onClick:doSimplGenerate,style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDC41\uFE0F Podgl\u0105d PDF"),
         ce("button",{onClick:doSimplMail,style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
