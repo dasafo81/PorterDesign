@@ -570,13 +570,13 @@ function InvoiceEditor(p){
   // rozpoznajemy ja po nazwie ("Zaliczka N% ... wg oferty" / "Realizacja zamowienia wg
   // oferty"), wiec zmiana procentu lub oferty ja podmienia zamiast dopisywac kolejna.
   // Pusta, swieza pozycja jest zastepowana; inne pozycje zostaja nietkniete.
-  var OFFER_ITEM_RE=/^(Zaliczka [\d.,]+% na poczet realizacji zamówienia|Realizacja zamówienia) wg oferty /;
+  var OFFER_ITEM_RE=/^Aranżacje okienne wg oferty /;
   function upsertOfferItem(o,pct){
     if(!o||!(pct>0))return;
     var vr=docType==="eko"?0:defaultVat;
     var gross=+((+(o.total_gross||0)*pct/100).toFixed(2));
     var nums=calcLineFromGross(gross,1,vr);
-    var itemName=(pct>=100?"Realizacja zamówienia wg oferty ":"Zaliczka "+String(pct).replace(".",",")+"% na poczet realizacji zamówienia wg oferty ")+o.number;
+    var itemName="Aranżacje okienne wg oferty "+o.number;
     var newItem=Object.assign({name:itemName,quantity:1,unit:settings.default_unit||"szt",vat_rate:vr},nums,{unit_gross:gross,position:1,pkwiu:""});
     setItems(function(prev){
       var idx=prev.findIndex(function(it){return OFFER_ITEM_RE.test(it.name||"");});
