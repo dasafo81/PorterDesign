@@ -13,7 +13,9 @@ import {
   JZ_LABELS, JZ_ZONES, JZ_AB35_COLORS, JZ_AB50_COLORS, JZ_PW35_COLORS, JZ_PW50_COLORS, JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_BA27_COLORS, JZ_BA35_COLORS, JZ_BA50_COLORS, JZ_BA65_COLORS, JZ_BS50_COLORS,
   JZ_TASIEMKA_COLORS, jzTasWidthGroup, JZ_DZWONKI_COLORS, JZ_DZWONKI_STALOWE, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
-  PROD_TYPES, INNY_KATEGORIE, RCITY, RDUO, REL,
+  PROD_TYPES, PROD_GROUPS, KARNISZ_EL_BRANDS, INNY_KATEGORIE, RCITY, RDUO, REL,
+  PL_NAPEDY, PL_PILOTY, PL_PILOT_KOLORY, PL_PRZELACZNIKI, PL_CENTRALKA,
+  PL_LADOWARKA, PL_WIDTHS, PL_MULT,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
   RS_C, RS_D, RS_E, RS_HEIGHTS,
@@ -218,13 +220,82 @@ export function ProdCard(p){
   }
   var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
-  var typeChips=PROD_TYPES.map(function(t){
-    return ce(Chip,{key:t.id,label:t.label,active:prod.type===t.id,onClick:function(){
-      if(prod.type===t.id)return;
-      if(hasProdData(prod)){setPendingType(t);return;}
-      p.onChange(mg(prod,{type:t.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
-    }});
-  });
+  // \u2500\u2500 SELEKTOR TYPU: grupy + marka/model dla karniszy elektrycznych \u2500\u2500\u2500\u2500\u2500\u2500
+  var KARN_EL_IDS=["karnisz","prestige_round","prestige_square","shuttle"];
+  var isKarnEl=KARN_EL_IDS.indexOf(prod.type)>=0;
+  var curBrand=!isKarnEl?null:(prod.type==="shuttle"?"forest":(c.kBrand==="somfy"?"somfy":"premium"));
+
+  function applyType(t){
+    if(prod.type===t.type&&(!t.set||!t.set.kBrand||curBrand===t.set.kBrand))return;
+    if(hasProdData(prod)){setPendingType(t);return;}
+    p.onChange(mg(prod,{type:t.type,c:mg({split:"unequal"},t.set||{}),par:{},panels:[],
+      fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,
+      innyNazwa:undefined,innyKat:undefined}));
+  }
+
+  function TypeCard(key,label,sub,active,accent,onClick){
+    return ce("button",{key:key,onClick:onClick,
+      style:{padding:"13px 10px",borderRadius:10,
+        border:"1.5px solid "+(active?(accent||"var(--gr)"):"var(--bd3)"),
+        background:active?(accent?"var(--violet-l)":"var(--grl)"):"var(--bg)",
+        color:active&&!accent?"var(--grd)":"var(--t1)",
+        fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"center",transition:"all .15s"}},
+      label,
+      sub?ce("div",{style:{fontSize:10,fontWeight:400,color:active?(accent||"var(--gr)"):"var(--t3)",marginTop:3}},sub):null
+    );
+  }
+
+  var typeSelector=ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+    PROD_GROUPS.map(function(g){
+      var cards=g.types.map(function(id){
+        var t=PROD_TYPES.find(function(x){return x.id===id;});
+        if(!t)return null;
+        return TypeCard(t.id,t.label,null,prod.type===t.id,null,function(){
+          applyType({id:t.id,label:t.label,type:t.id,set:{}});
+        });
+      }).filter(Boolean);
+
+      if(g.brands==="karnisz_el"){
+        cards.push(TypeCard("karnisz_el","Karnisze elektryczne","3 marki \u203a",isKarnEl,"var(--violet)",function(){
+          if(isKarnEl)return;
+          var d0=KARNISZ_EL_BRANDS[0].models[0];
+          applyType({id:"karnisz_el",label:"Karnisze elektryczne",type:d0.type,set:d0.set});
+        }));
+      }
+
+      var brandBox=null;
+      if(g.brands==="karnisz_el"&&isKarnEl){
+        var bObj=KARNISZ_EL_BRANDS.find(function(b){return b.id===curBrand;})||KARNISZ_EL_BRANDS[0];
+        brandBox=ce("div",{style:{marginTop:10,paddingLeft:12,borderLeft:"2px solid var(--violet-border)"}},
+          ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:6}},"Karnisze elektryczne \u2014 marka"),
+          ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+            KARNISZ_EL_BRANDS.map(function(b){
+              return ce(Chip,{key:b.id,label:b.label,active:curBrand===b.id,onClick:function(){
+                var d1=b.models[0];
+                applyType({id:b.id+"_"+d1.id,label:b.label+" \u2014 "+d1.label,type:d1.type,set:d1.set});
+              }});
+            })
+          ),
+          bObj.models.length>1?ce("div",{style:{marginTop:10}},
+            ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:6}},bObj.label+" \u2014 model"),
+            ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+              bObj.models.map(function(m){
+                return ce(Chip,{key:m.id,label:m.label,active:prod.type===m.type,onClick:function(){
+                  applyType({id:bObj.id+"_"+m.id,label:bObj.label+" \u2014 "+m.label,type:m.type,set:m.set});
+                }});
+              })
+            )
+          ):null
+        );
+      }
+
+      return ce("div",{key:g.id,style:{background:"var(--bd3)",borderRadius:12,padding:10}},
+        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--violet)",marginBottom:8,paddingLeft:4}},g.label),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}},cards),
+        brandBox
+      );
+    })
+  );
 
   var panOpts=["Zas\u0142ona lewa","Zas\u0142ona prawa","Firana \u015brodkowa","Panel lewy","Panel prawy","Ca\u0142o\u015b\u0107"];
   var form=null;
@@ -1566,6 +1637,110 @@ export function ProdCard(p){
         ce(Chip,{key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
       ]})
     );
+  }else if(prod.type==="karnisz"&&c.kBrand==="premium"){
+    // \u2500\u2500 PREMIUM LINE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    var plNap=c.plNap||"am75_3w";
+    var PLBL={fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8};
+    form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},
+          ce("select",{value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},style:Object.assign({},IST,{cursor:"pointer"})},
+            ce("option",{value:""},"\u2014 wybierz \u2014"),
+            PL_WIDTHS.map(function(w){return ce("option",{key:w,value:w},w+" cm");})
+          )
+        )
+      ),
+      ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",fontSize:12,color:"var(--t2)"}},
+        "\u2139\ufe0f Realizujemy wy\u0142\u0105cznie w wersji SLIM \u2014 dop\u0142ata za szyn\u0119 SLIM i wsporniki s\u0105 doliczane automatycznie."),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:PLBL},"NAP\u0118D"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          PL_NAPEDY.map(function(n){
+            return ce(Chip,{key:n.v,label:n.l,active:plNap===n.v,onClick:function(){sc("plNap",n.v);}});
+          })
+        )
+      ),
+      plNap==="am75_aku"?ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
+        ce("input",{type:"checkbox",id:"pl-lad",checked:!!c.lad,onChange:function(ev){sc("lad",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+        ce("label",{htmlFor:"pl-lad",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"\u0141adowarka do silnika akumulatorowego (+"+Math.round(PL_LADOWARKA*PL_MULT)+" z\u0142)")
+      ):null,
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:PLBL},"SYSTEM FALI (WAVE)"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          [{v:null,l:"Standard (\u015blizgi)"},{v:"w60",l:"WAVE 60 mm"},{v:"w80",l:"WAVE 80 mm"}].map(function(w){
+            return ce(Chip,{key:w.v||"std",label:w.l,active:(c.wave||null)===w.v,onClick:function(){sc("wave",w.v);}});
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
+        ce("input",{type:"checkbox",id:"pl-tandem",checked:!!c.tandem,onChange:function(ev){sc("tandem",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+        ce("label",{htmlFor:"pl-tandem",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"Tandem \u2014 rozsuwanie dwustronne synchroniczne")
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:PLBL},"PILOT"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          PL_PILOTY.map(function(pl){
+            return ce(Chip,{key:pl.v,label:pl.l+(pl.c>0?" "+Math.round(pl.c*PL_MULT)+" z\u0142":""),active:(c.plPilot||"brak")===pl.v,onClick:function(){sc("plPilot",pl.v);}});
+          })
+        ),
+        (c.plPilot&&c.plPilot!=="brak")?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:10}},
+          ce(Fld,{label:"KOLOR PILOTA"},
+            ce("div",{style:{display:"flex",gap:8}},
+              PL_PILOT_KOLORY.map(function(k){
+                return ce(Chip,{key:k.v,label:k.l,active:(c.plPilotKolor||"bialy")===k.v,onClick:function(){sc("plPilotKolor",k.v);}});
+              })
+            )
+          ),
+          ce(Fld,{label:"ILO\u015a\u0106 (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.plPilotQty||"",onChange:function(ev){sp("plPilotQty",ev.target.value);},placeholder:"1",style:IST}))
+        ):null
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:PLBL},"PRZE\u0141\u0104CZNIK \u015aCIENNY"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          PL_PRZELACZNIKI.map(function(pz){
+            return ce(Chip,{key:pz.v,label:pz.l+(pz.c>0?" "+Math.round(pz.c*PL_MULT)+" z\u0142":""),active:(c.plPrzel||"brak")===pz.v,onClick:function(){sc("plPrzel",pz.v);}});
+          })
+        ),
+        (c.plPrzel&&c.plPrzel!=="brak")?ce("div",{style:{marginTop:10,maxWidth:200}},
+          ce(Fld,{label:"ILO\u015a\u0106 (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.plPrzelQty||"",onChange:function(ev){sp("plPrzelQty",ev.target.value);},placeholder:"1",style:IST}))
+        ):null
+      ),
+      ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
+        ce("input",{type:"checkbox",id:"pl-centralka",checked:!!c.plCentralka,onChange:function(ev){sc("plCentralka",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+        ce("label",{htmlFor:"pl-centralka",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},PL_CENTRALKA.l+" (+"+Math.round(PL_CENTRALKA.c*PL_MULT)+" z\u0142)")
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:PLBL},"GI\u0118CIE"),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+          ce(Fld,{label:"PUNKTOWE (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
+          ce(Fld,{label:"\u0141UK CI\u0104G\u0141Y (mb)"},ce("input",{type:"text",inputMode:"numeric",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST}))
+        ),
+        (parseInt(par.pt)||0)>1?ce("div",{style:{marginTop:6,fontSize:11,color:"var(--t3)"}},"Pierwsze gi\u0119cie "+Math.round(122*PL_MULT)+" z\u0142, ka\u017cde nast\u0119pne "+Math.round(244*PL_MULT)+" z\u0142 (wg cennika)."):null
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:PLBL},"STRONA SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
+            var isA=(c.motorSide||"lewo")===s.key;
+            return ce("button",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+s.label:s.label
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:4}},
+        ce("label",{style:PLBL},"TYP"),
+        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
+            var isA=(c.motorType||"kurtyna")===t.key;
+            return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+t.label:t.label
+            );
+          })
+        )
+      )
+    );
   }else if(prod.type==="karnisz"){
     var kPow=c.kpow||"siec";
     var knFiltered=KN_LIST.filter(function(x){return x.power===kPow;});
@@ -2023,8 +2198,8 @@ export function ProdCard(p){
     ce("div",{style:{padding:"16px 20px 4px"}},
       ce("div",{style:{marginBottom:16}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:10}},"TYP PRODUKTU"),
-        ce("div",{style:{border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
-          ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",padding:"8px"}},typeChips)
+        ce("div",{style:{border:"1px solid var(--bd2)",borderRadius:14,padding:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
+          typeSelector
         )
       )
     ),
@@ -2051,7 +2226,7 @@ export function ProdCard(p){
       fromLabel:lbl,
       toLabel:pendingType.label,
       onConfirm:function(){
-        p.onChange(mg(prod,{type:pendingType.id,c:{split:"unequal"},par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
+        p.onChange(mg(prod,{type:pendingType.type||pendingType.id,c:mg({split:"unequal"},pendingType.set||{}),par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
       },
       onClose:function(){setPendingType(null);}
     }):null,
