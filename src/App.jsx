@@ -167,6 +167,11 @@ export function App(p){
   var sOfferBase=useState([]),offerBaseRows=sOfferBase[0],setOfferBaseRows=sOfferBase[1];
   var sOfferNotes=useState(""),offerNotes=sOfferNotes[0],setOfferNotes=sOfferNotes[1];
   var sOfferValid=useState(""),offerValidUntil=sOfferValid[0],setOfferValidUntil=sOfferValid[1];
+  // Ref na aktualny stan podglądu oferty — do odczytu przez flush (beforeunload/hide)
+  // bez stale closure, tym samym wzorcem co curWinRef.
+  var offerDraftRef=React.useRef(null);
+  offerDraftRef.current={baseRows:offerBaseRows,rows:offerPreviewRows,notes:offerNotes,validUntil:offerValidUntil};
+  var offerDraftDirtyRef=React.useRef(false);
   var sKarniszRows=useState([]),karniszPreviewRows=sKarniszRows[0],setKarniszPreviewRows=sKarniszRows[1];
   var sRailsRows=useState([]),railsPreviewRows=sRailsRows[0],setRailsPreviewRows=sRailsRows[1];
   var sFabricRows=useState([]),fabricPreviewRows=sFabricRows[0],setFabricPreviewRows=sFabricRows[1];
@@ -495,7 +500,7 @@ export function App(p){
           var ok=window.confirm("UWAGA \u2014 ta zmiana usuwa "+(before-after)+" z "+before+" produkt\u00f3w tego klienta.\n\nJe\u015bli to nie by\u0142o zamierzone, kliknij Anuluj i od\u015bwie\u017c stron\u0119 (F5).\n\nZapisa\u0107 mimo to?");
           if(!ok)return cs;
         }
-        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent'});
+        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null});
       }
       return updated;
     });
@@ -842,6 +847,51 @@ export function App(p){
     return function(){
       document.removeEventListener("visibilitychange",onHide);
       window.removeEventListener("beforeunload",onBeforeUnload);
+    };
+  },[]);
+
+  // ── AUTOSAVE PODGLĄDU WYCENY SZCZEGÓŁOWEJ (offerPreview) ───────────
+  // Do 2026-09-16 wiersze/uwagi/ważność oferty na ekranie "Wycena szczegółowa —
+  // podgląd" żyły wyłącznie w lokalnym stanie: powrót do "sum" i ponowne wejście
+  // w podgląd (albo odświeżenie strony / zawieszona karta na tablecie) kasowało
+  // wszystkie ręczne poprawki bez ostrzeżenia. Zapisujemy teraz draft do
+  // offer_draft klienta, tym samym wzorcem debounce co edycja okna (curWin).
+  var offerDraftFlushRef=React.useRef(function(){});
+  offerDraftFlushRef.current=function(){
+    if(!offerDraftDirtyRef.current||!curClientId)return;
+    updateClient(curClientId,function(cl){return mg(cl,{offer_draft:offerDraftRef.current});});
+    offerDraftDirtyRef.current=false;
+  };
+  React.useEffect(function(){
+    if(screen!=="offerPreview"||!curClientId)return;
+    // Porownanie z wersja juz zapisana — chroni przed zbednym PATCH-em tuz po
+    // otwarciu ekranu (openOfferPreview odtwarza draft identyczny z zapisanym).
+    var cl=(clientsRef.current||[]).find(function(c){return c.id===curClientId;});
+    var saved=cl?cl.offer_draft:null;
+    var current=offerDraftRef.current;
+    if(saved&&JSON.stringify(saved)===JSON.stringify(current)){
+      offerDraftDirtyRef.current=false;
+      return;
+    }
+    offerDraftDirtyRef.current=true;
+    var t=setTimeout(function(){offerDraftFlushRef.current();},1500);
+    return function(){clearTimeout(t);};
+  },[offerPreviewRows,offerNotes,offerValidUntil,screen,curClientId]);
+
+  // Flush przy ukryciu karty / zamknieciu, tak samo jak przy oknie.
+  React.useEffect(function(){
+    function onHide(){if(document.hidden)offerDraftFlushRef.current();}
+    function onBeforeUnloadOfferDraft(e){
+      if(!offerDraftDirtyRef.current)return;
+      offerDraftFlushRef.current();
+      e.preventDefault();e.returnValue="";return "";
+    }
+    document.addEventListener("visibilitychange",onHide);
+    window.addEventListener("pagehide",function(){offerDraftFlushRef.current();});
+    window.addEventListener("beforeunload",onBeforeUnloadOfferDraft);
+    return function(){
+      document.removeEventListener("visibilitychange",onHide);
+      window.removeEventListener("beforeunload",onBeforeUnloadOfferDraft);
     };
   },[]);
 
@@ -1592,10 +1642,19 @@ export function App(p){
     function openOfferPreview(){
       var baseRows=buildOfferDetailRows(curClient);
       if(!baseRows.length){alert("Brak wycenionych produktów.");return;}
+      var draft=curClient.offer_draft;
+      var defaultValidUntil=new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10);
+      // Jeśli nic się nie zmieniło w wycenie od ostatniego zapisu draftu (wszedłeś
+      // tylko sprawdzić coś w pomieszczeniach i wróciłeś) — odtwarzamy 1:1 to, co
+      // było: wiersze, ceny, uwagi, ważność oferty. Jeśli dane źródłowe faktycznie
+      // się zmieniły (dodałeś/usunąłeś produkt, zmieniłeś wymiar), wiersze liczymy
+      // na nowo z aktualnej wyceny — ale uwagi i ważność oferty to niezależny
+      // tekst i mimo to zostają.
+      var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(baseRows);
       setOfferBaseRows(baseRows);
-      setOfferPreviewRows(applyOfferComm(baseRows,comm));
-      setOfferNotes("");
-      setOfferValidUntil(new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10));
+      setOfferPreviewRows(baseUnchanged&&draft.rows?draft.rows:applyOfferComm(baseRows,comm));
+      setOfferNotes(draft?(draft.notes||""):"");
+      setOfferValidUntil(draft&&draft.validUntil?draft.validUntil:defaultValidUntil);
       // Koszt wizyty ustawiany jest w Podsumowaniu — przenosimy go do oferty/PDF
       // bez zerowania, żeby nie trzeba było zaznaczać go drugi raz.
       setScreen("offerPreview");
@@ -1835,6 +1894,13 @@ export function App(p){
       var c=(+commissionInput||0)/100;
       setOfferPreviewRows(applyOfferComm(offerBaseRows,c));
     }
+    function resetOfferPreviewFromSource(){
+      if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny?\n\nNadpisze to zmiany cen i etykiet wprowadzone na tym ekranie. Uwagi i ważność oferty zostaną bez zmian."))return;
+      var freshBase=buildOfferDetailRows(curClient);
+      var c=(+commissionInput||0)/100;
+      setOfferBaseRows(freshBase);
+      setOfferPreviewRows(applyOfferComm(freshBase,c));
+    }
     function setRowField(i,key,v){
       setOfferPreviewRows(function(prev){return prev.map(function(x,xi){
         if(xi!==i)return x;
@@ -1930,6 +1996,7 @@ export function App(p){
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Wstecz",function(){setScreen("sum");},false),
+        ce("button",{onClick:resetOfferPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD04 Wype\u0142nij od nowa"),
         ce("button",{onClick:function(){
           var vu=offerValidUntil?new Date(offerValidUntil):null;
           generateOfferPDFFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu,previewDiscountVal,previewVisitFeeVal);
