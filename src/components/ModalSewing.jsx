@@ -32,33 +32,97 @@ export function ModalSewing(p){
     'MARCIN DEKOR — ul. Terespolska 75, 05-074 Halinów',
     'NITECZKAMI — Troszyn Polski 38B, 09-530 Troszyn'
   ];
-  var ms=useState('choose'),mode=ms[0],setMode=ms[1];
-  var ss=useState(SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
-  var cs=useState(''),customHouse=cs[0],setCustomHouse=cs[1];
-  var ns=useState(''),notes=ns[0],setNotes=ns[1];
-  var ts=useState(''),term=ts[0],setTerm=ts[1];
-  var tc=useState(''),termCurtains=tc[0],setTermCurtains=tc[1];
-  var tr=useState(''),termRolety=tr[0],setTermRolety=tr[1];
+  // ── DRAFT: ten sam mechanizm co w App.jsx (offer_draft i in.) — ekran
+  // "Zlecenie szycia — podgląd" jest osobnym komponentem, wiec traci caly stan
+  // przy kazdym odmontowaniu (powrot do Podsumowania i ponowne wejscie). Zamiast
+  // porownywac zbudowane wiersze jak przy ofercie, odcisk palca bierzemy wprost
+  // z rooms klienta — to i tak jedyne zrodlo, z ktorego buildSewingRows liczy.
+  // Zalacznikow PDF (attachB64/splitAttach) swiadomie NIE utrwalamy — to duze
+  // base64 w kazdym PATCH-u co 1.5 s byloby zbyt kosztowne; nazwa pliku zostaje
+  // jako przypomnienie, ale trzeba dolaczyc go ponownie.
+  var sourceFingerprint=JSON.stringify((p.client&&p.client.rooms)||[]);
+  var savedDraft=(p.client&&p.client.sewing_draft&&p.client.sewing_draft.sourceFingerprint===sourceFingerprint)?p.client.sewing_draft:null;
+
+  var ms=useState(savedDraft?savedDraft.mode:'choose'),mode=ms[0],setMode=ms[1];
+  var ss=useState(savedDraft&&savedDraft.selHouse?savedDraft.selHouse:SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
+  var cs=useState(savedDraft?(savedDraft.customHouse||''):''),customHouse=cs[0],setCustomHouse=cs[1];
+  var ns=useState(savedDraft?(savedDraft.notes||''):''),notes=ns[0],setNotes=ns[1];
+  var ts=useState(savedDraft?(savedDraft.term||''):''),term=ts[0],setTerm=ts[1];
+  var tc=useState(savedDraft?(savedDraft.termCurtains||''):''),termCurtains=tc[0],setTermCurtains=tc[1];
+  var tr=useState(savedDraft?(savedDraft.termRolety||''):''),termRolety=tr[0],setTermRolety=tr[1];
   var as=useState(null),attachB64=as[0],setAttachB64=as[1];
-  var fns=useState(''),attachName=fns[0],setAttachName=fns[1];
+  var fns=useState(savedDraft?(savedDraft.attachName||''):''),attachName=fns[0],setAttachName=fns[1];
   var allRows=buildSewingRows(p.client);
   var hasCurtains=allRows.some(function(r){return r._type!=='roleta';});
   var hasRolety=allRows.some(function(r){return r._type==='roleta';});
   var hasBothSewTypes=hasCurtains&&hasRolety;
-  var used=useState([]),usedIds=used[0],setUsedIds=used[1];
-  var sel=useState([]),selIds=sel[0],setSelIds=sel[1];
-  var sh=useState(SEWING_HOUSES[0]),splitHouse=sh[0],setSplitHouse=sh[1];
-  var sc2=useState(''),splitCustom=sc2[0],setSplitCustom=sc2[1];
-  var sn=useState(''),splitNotes=sn[0],setSplitNotes=sn[1];
-  var st2=useState(''),splitTerm=st2[0],setSplitTerm=st2[1];
+  var used=useState(savedDraft&&savedDraft.usedIds?savedDraft.usedIds:[]),usedIds=used[0],setUsedIds=used[1];
+  var sel=useState(savedDraft&&savedDraft.selIds?savedDraft.selIds:[]),selIds=sel[0],setSelIds=sel[1];
+  var sh=useState(savedDraft&&savedDraft.splitHouse?savedDraft.splitHouse:SEWING_HOUSES[0]),splitHouse=sh[0],setSplitHouse=sh[1];
+  var sc2=useState(savedDraft?(savedDraft.splitCustom||''):''),splitCustom=sc2[0],setSplitCustom=sc2[1];
+  var sn=useState(savedDraft?(savedDraft.splitNotes||''):''),splitNotes=sn[0],setSplitNotes=sn[1];
+  var st2=useState(savedDraft?(savedDraft.splitTerm||''):''),splitTerm=st2[0],setSplitTerm=st2[1];
   var sa=useState(null),splitAttach=sa[0],setSplitAttach=sa[1];
-  var sfn=useState(''),splitAttachName=sfn[0],setSplitAttachName=sfn[1];
-  var so=useState(null),sewOpts=so[0],setSewOpts=so[1];
+  var sfn=useState(savedDraft?(savedDraft.splitAttachName||''):''),splitAttachName=sfn[0],setSplitAttachName=sfn[1];
+  var so=useState(savedDraft?(savedDraft.sewOpts||null):null),sewOpts=so[0],setSewOpts=so[1];
   var sop=useState(false),showSewOpts=sop[0],setShowSewOpts=sop[1];
   var sopFrom=useState('single'),sewOptsFrom=sopFrom[0],setSewOptsFrom=sopFrom[1];
   // Okno opcji szycia obsluguje obie akcje — podglad i wysylke mailem. Bez tego
   // mail szedl do szwalni bez wypelnionych opcji (olow, tasma, ryszka, slizgi).
   var sopAct=useState('preview'),sewOptsAction=sopAct[0],setSewOptsAction=sopAct[1];
+
+  // Autosave draftu — debounce 1.5 s + flush przy ukryciu karty/zamknieciu,
+  // tym samym wzorcem co curWin/offer_draft w App.jsx.
+  var sewingDraftRef=useRef(null);
+  sewingDraftRef.current={
+    sourceFingerprint:sourceFingerprint,
+    mode:mode,selHouse:selHouse,customHouse:customHouse,notes:notes,term:term,
+    termCurtains:termCurtains,termRolety:termRolety,attachName:attachName,
+    usedIds:usedIds,selIds:selIds,splitHouse:splitHouse,splitCustom:splitCustom,
+    splitNotes:splitNotes,splitTerm:splitTerm,splitAttachName:splitAttachName,
+    sewOpts:sewOpts
+  };
+  var sewingDraftDirtyRef=useRef(false);
+  var sewingDraftFlushRef=useRef(function(){});
+  sewingDraftFlushRef.current=function(){
+    if(!sewingDraftDirtyRef.current||!p.client||!p.client.id||!p.updateClient)return;
+    p.updateClient(p.client.id,function(cl){return mg(cl,{sewing_draft:sewingDraftRef.current});});
+    sewingDraftDirtyRef.current=false;
+  };
+  useEffect(function(){
+    if(!p.client||!p.client.id||!p.updateClient)return;
+    var saved=p.client.sewing_draft;
+    var current=sewingDraftRef.current;
+    if(saved&&JSON.stringify(saved)===JSON.stringify(current)){sewingDraftDirtyRef.current=false;return;}
+    sewingDraftDirtyRef.current=true;
+    var t=setTimeout(function(){sewingDraftFlushRef.current();},1500);
+    return function(){clearTimeout(t);};
+  },[mode,selHouse,customHouse,notes,term,termCurtains,termRolety,attachName,
+     usedIds,selIds,splitHouse,splitCustom,splitNotes,splitTerm,splitAttachName,sewOpts]);
+  useEffect(function(){
+    function onHide(){if(document.hidden)sewingDraftFlushRef.current();}
+    function onBeforeUnload(e){
+      if(!sewingDraftDirtyRef.current)return;
+      sewingDraftFlushRef.current();
+      e.preventDefault();e.returnValue='';return '';
+    }
+    document.addEventListener('visibilitychange',onHide);
+    window.addEventListener('pagehide',function(){sewingDraftFlushRef.current();});
+    window.addEventListener('beforeunload',onBeforeUnload);
+    return function(){
+      document.removeEventListener('visibilitychange',onHide);
+      window.removeEventListener('beforeunload',onBeforeUnload);
+    };
+  },[]);
+  function resetSewingDraft(){
+    if(!window.confirm('Zacząć zlecenie szycia od nowa?\n\nWyczyści to wszystkie dane wpisane na tym ekranie.'))return;
+    setMode('choose');
+    setSelHouse(SEWING_HOUSES[0]);setCustomHouse('');setNotes('');setTerm('');setTermCurtains('');setTermRolety('');
+    setAttachB64(null);setAttachName('');
+    setUsedIds([]);setSelIds([]);
+    setSplitHouse(SEWING_HOUSES[0]);setSplitCustom('');setSplitNotes('');setSplitTerm('');setSplitAttach(null);setSplitAttachName('');
+    setSewOpts(null);
+  }
 
   function handleFile(ev,setB64,setName){
     var file=ev.target.files&&ev.target.files[0];
@@ -315,7 +379,10 @@ export function ModalSewing(p){
 
   }else if(mode==='single'){
     content=ce('div',{style:{display:'flex',flexDirection:'column',gap:16}},
-      ce('button',{onClick:function(){setMode('choose');},style:{border:'none',background:'none',cursor:'pointer',fontSize:13,color:'var(--t2)',textAlign:'left',padding:0}},'\u2190 Wr\xf3\u0107'),
+      ce('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+        ce('button',{onClick:function(){setMode('choose');},style:{border:'none',background:'none',cursor:'pointer',fontSize:13,color:'var(--t2)',textAlign:'left',padding:0}},'\u2190 Wr\xf3\u0107'),
+        ce('button',{onClick:resetSewingDraft,style:{border:'none',background:'none',cursor:'pointer',fontSize:12,color:'var(--t3)',padding:0}},'\uD83D\uDD04 Zacznij od nowa')
+      ),
       mkHouseSelect(selHouse,setSelHouse,customHouse,setCustomHouse),
       hasBothSewTypes
         ?ce('div',{style:{display:'flex',flexDirection:'column',gap:12}},
@@ -336,7 +403,10 @@ export function ModalSewing(p){
   }else if(mode==='split'){
     var remaining=allRows.length-usedIds.length;
     content=ce('div',{style:{display:'flex',flexDirection:'column',gap:16}},
-      usedIds.length===0?ce('button',{onClick:function(){setMode('choose');},style:{border:'none',background:'none',cursor:'pointer',fontSize:13,color:'var(--t2)',textAlign:'left',padding:0}},'\u2190 Wr\xf3\u0107'):null,
+      ce('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
+        usedIds.length===0?ce('button',{onClick:function(){setMode('choose');},style:{border:'none',background:'none',cursor:'pointer',fontSize:13,color:'var(--t2)',textAlign:'left',padding:0}},'\u2190 Wr\xf3\u0107'):ce('span',null),
+        ce('button',{onClick:resetSewingDraft,style:{border:'none',background:'none',cursor:'pointer',fontSize:12,color:'var(--t3)',padding:0}},'\uD83D\uDD04 Zacznij od nowa')
+      ),
       ce('div',{style:{background:'var(--bg2)',border:'1px solid var(--bd2)',borderRadius:10,padding:'10px 14px',fontSize:13}},
         ce('span',{style:{fontWeight:700,color:'var(--t1)'}},'Zlecenie '+(usedIds.length>0?'kolejne':'pierwsze')),
         ce('span',{style:{color:'var(--t2)'}},' \u2014 pozosta\u0142o '+remaining+' pozycji')
