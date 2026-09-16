@@ -3108,6 +3108,65 @@ export function plZakupNetto(p){
   return Math.round(netto*(1-PL_RABAT)*100)/100;
 }
 
+// ── KARNISZ ELEKTRYCZNY — MD LINE (Somfy: Movelite / Glydea Ultra) ────────────
+// Cennik hurtowy MD-LINE PLUS Glydea & Movelite (powered by Somfy) — ceny
+// ZAKUPU NETTO. Brutto dla klienta = netto x MD_MULT. Kazdy silnik ma wlasny
+// zakres szerokosci (MD_NAPEDY[].maxW) — Movelite i Glydea 35 do 1000 cm,
+// Glydea 60 do 1200 cm.
+export const MD_MULT  =2;
+export const MD_WIDTHS=[100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000,1050,1100,1150,1200];
+
+export const MD_NAPEDY =[
+  {v:"movelite_wt",     l:"Movelite 35 WT",       maxW:1000},
+  {v:"movelite_rts",    l:"Movelite 35 RTS",      maxW:1000},
+  {v:"movelite_rts_aku",l:"Movelite 35 RTS AKU",  maxW:1000},
+  {v:"glydea35_wt",     l:"Glydea Ultra 35 WT",   maxW:1000},
+  {v:"glydea35_rts",    l:"Glydea Ultra 35 RTS",  maxW:1000},
+  {v:"glydea60_wt",     l:"Glydea Ultra 60 WT",   maxW:1200},
+  {v:"glydea60_rts",    l:"Glydea Ultra 60 RTS",  maxW:1200}
+];
+
+export const MD_BASE ={
+  movelite_wt:      {100:804,150:834.5,200:864,250:893.4,300:922.8,350:953.6,400:983,450:1012,500:1042,550:1073,600:1102,650:1131,700:1162,750:1192,800:1221,850:1251,900:1281,950:1309,1000:1341},
+  movelite_rts:     {100:932,150:961.2,200:990.7,250:1020,300:1050,350:1080,400:1108,450:1139,500:1170,550:1199,600:1229,650:1258,700:1289,750:1317,800:1347,850:1377,900:1407,950:1436,1000:1467},
+  movelite_rts_aku: {100:1238,150:1269,200:1299,250:1328,300:1358,350:1387,400:1417,450:1447,500:1476,550:1507,600:1537,650:1566,700:1595,750:1626,800:1655,850:1685,900:1714,950:1745,1000:1775},
+  glydea35_wt:      {100:1303,150:1336,200:1367,250:1398,300:1430,350:1460,400:1491,450:1523,500:1554,550:1586,600:1618,650:1649,700:1679,750:1711,800:1742,850:1774,900:1805,950:1837,1000:1869},
+  glydea35_rts:     {100:1514,150:1547,200:1578,250:1609,300:1641,350:1672,400:1702,450:1734,500:1765,550:1797,600:1829,650:1860,700:1890,750:1922,800:1953,850:1985,900:2016,950:2048,1000:2080},
+  glydea60_wt:      {100:1508,150:1536,200:1565,250:1592,300:1620,350:1648,400:1677,450:1705,500:1733,550:1761,600:1789,650:1817,700:1846,750:1875,800:1903,850:1931,900:1959,950:1987,1000:2015,1050:2044,1100:2071,1150:2100,1200:2128},
+  glydea60_rts:     {100:1700,150:1728,200:1758,250:1785,300:1813,350:1841,400:1870,450:1898,500:1926,550:1954,600:1982,650:2010,700:2039,750:2067,800:2095,850:2123,900:2151,950:2180,1000:2208,1050:2237,1100:2264,1150:2293,1200:2321}
+};
+export const MD_TANDEM ={movelite_wt:478,movelite_rts:547,movelite_rts_aku:949,glydea35_wt:1007,glydea35_rts:1040,glydea60_wt:1077,glydea60_rts:1229};
+
+// SLIM i wersja podtynkowa to opcjonalne doplaty (w odroznieniu od Premium Line,
+// gdzie SLIM jest obowiazkowy).
+export const MD_SLIM ={100:84.8,150:92.22,200:99.64,250:107.1,300:114.5,350:121.9,400:129.3,450:136.7,500:144.2,550:151.6,600:159,650:166.4,700:173.8,750:181.3,800:188.7,850:196.1,900:203.5,950:210.9,1000:218.4,1050:225.8,1100:233.2,1150:240.6,1200:248};
+export const MD_PODTYNK ={100:575,150:630.7,200:685.8,250:742,300:797.1,350:853.3,400:908.4,450:964.6,500:1020,550:1077,600:1131,650:1187,700:1243,750:1299,800:1355,850:1410,900:1466,950:1521,1000:1577,1050:1632,1100:1690,1150:1745,1200:1800};
+export const MD_WSPORNIKI ={100:2,150:3,200:3,250:3,300:4,350:4,400:5,450:5,500:6,550:6,600:7,650:7,700:8,750:8,800:9,850:9,900:10,950:10,1000:11,1050:11,1100:12,1150:13,1200:13};
+export const MD_WSPORNIK =10.28;
+
+export const MD_W60 ={100:43,150:65,200:86,250:108,300:129,350:150,400:172,450:194,500:215,550:237,600:258,650:280,700:301,750:323,800:344,850:366,900:387,950:409,1000:431,1050:452,1100:474,1150:495,1200:517};
+export const MD_W80 ={100:33,150:50,200:66,250:84,300:101,350:117,400:134,450:151,500:167,550:184,600:201,650:218,700:234,750:251,800:268,850:285,900:301,950:318,1000:335,1050:352,1100:368,1150:385,1200:402};
+
+export const MD_PILOTY =[
+  {v:"brak",  l:"Bez pilota",                     c:0},
+  {v:"s1",    l:"Pilot SITUO 1-kana\u0142owy",     c:147.34},
+  {v:"s5",    l:"Pilot SITUO 5-kana\u0142owy",     c:234.26},
+  {v:"t16",   l:"Pilot TELIS 16-kana\u0142owy",    c:605.26}
+];
+export const MD_SCIENNE =[
+  {v:"brak", l:"Brak",                                  c:0},
+  {v:"sm1",  l:"Pilot \u015bcienny SMOOVE 1-kana\u0142owy", c:153.70},
+  {v:"sm2",  l:"Pilot \u015bcienny SMOOVE 2-kana\u0142owy", c:239.56},
+  {v:"sm4",  l:"Pilot \u015bcienny SMOOVE 4-kana\u0142owy", c:298.92}
+];
+export const MD_PRZELACZNIKI =[
+  {v:"brak", l:"Brak",                          c:0},
+  {v:"uno",  l:"SMOOVE UNO pojedynczy",         c:47.70},
+  {v:"duo",  l:"SMOOVE DUO podw\u00f3jny",      c:73.14}
+];
+export const MD_LADOWARKA  =79.50;   // netto, tylko Movelite RTS AKU
+export const MD_CENTRALKA ={l:"Centralka Smart Home Tahoma", c:791.82};
+
 // ── KARNISZ PRESTIGE ROUND / SQUARE (Premium-Line) ───────────────────────────
 // Tabele = cennik hurtowy netto × 2. Nasza cena brutto = cena zakupu netto × 2.
 export const PRESTIGE_WIDTHS =[100,150,200,250,300,350,400,450,500,550,600,650,700,750,800,850,900,950,1000,1050,1100,1150,1200];
@@ -3825,6 +3884,58 @@ export function calc(p){
       total+=plDrab;
       lines.push("+ Drabinka podtrzymuj\u0105ca tkanin\u0119 +"+plDrab+" z\u0142");
     }
+  }else if(p.type==="karnisz"&&(p.c||{}).kBrand==="somfy"){
+    // MD LINE (Somfy Movelite / Glydea Ultra) \u2014 cennik 2026.
+    var lenMD=parseInt(par.len)||0,qtyMD=par.qty||1;
+    if(!lenMD)return{total:0,lines:[],warn:null};
+    var napMD=c.mdNap||"movelite_wt";
+    var napObjMD=MD_NAPEDY.find(function(x){return x.v===napMD;})||MD_NAPEDY[0];
+    var tabMD=MD_BASE[napMD]||MD_BASE.movelite_wt;
+    var bMD=lookup(lenMD,tabMD);
+    var netMD=bMD.p;
+    var warnMD=null;
+    if(lenMD>napObjMD.maxW)warnMD="Silnik "+napObjMD.l+" dost\u0119pny tylko do "+napObjMD.maxW+" cm \u2014 wybierz inny nap\u0119d dla tej szeroko\u015bci.";
+    lines.push("MD Line "+napObjMD.l+" do "+bMD.k+" cm"+(qtyMD>1?" x"+qtyMD:""));
+    if(c.mdSlim){var slimMD=lookup(lenMD,MD_SLIM).p;netMD+=slimMD;lines.push("Szyna SLIM = "+formatPLN(Math.round(slimMD*MD_MULT)));}
+    if(c.mdPodtynk){var podMD=lookup(lenMD,MD_PODTYNK).p;netMD+=podMD;lines.push("Wersja podtynkowa = "+formatPLN(Math.round(podMD*MD_MULT)));}
+    if(c.wave==="w60"){var wMD=lookup(lenMD,MD_W60).p;netMD+=wMD;lines.push("WAVE u\u0142o\u017cyskowany 60 mm = "+formatPLN(Math.round(wMD*MD_MULT)));}
+    else if(c.wave==="w80"){var wMD2=lookup(lenMD,MD_W80).p;netMD+=wMD2;lines.push("WAVE u\u0142o\u017cyskowany 80 mm = "+formatPLN(Math.round(wMD2*MD_MULT)));}
+    if(c.tandem){var tMD=MD_TANDEM[napMD]||0;netMD+=tMD;if(tMD>0)lines.push("Tandem (rozsuwanie dwustronne)");}
+    var pilMD=MD_PILOTY.find(function(x){return x.v===(c.mdPilot||"brak");});
+    if(pilMD&&pilMD.c>0){
+      var qPilMD=parseInt(par.mdPilotQty)||1;
+      netMD+=pilMD.c*qPilMD;
+      lines.push(pilMD.l+(qPilMD>1?" x"+qPilMD:""));
+    }
+    var scMD=MD_SCIENNE.find(function(x){return x.v===(c.mdScienny||"brak");});
+    if(scMD&&scMD.c>0){
+      var qScMD=parseInt(par.mdScQty)||1;
+      netMD+=scMD.c*qScMD;
+      lines.push(scMD.l+(qScMD>1?" x"+qScMD:""));
+    }
+    var przMD=MD_PRZELACZNIKI.find(function(x){return x.v===(c.mdPrzel||"brak");});
+    if(przMD&&przMD.c>0){
+      var qPrzMD=parseInt(par.mdPrzelQty)||1;
+      netMD+=przMD.c*qPrzMD;
+      lines.push(przMD.l+(qPrzMD>1?" x"+qPrzMD:""));
+    }
+    if(c.mdCentralka){netMD+=MD_CENTRALKA.c;lines.push(MD_CENTRALKA.l);}
+    if(napMD==="movelite_rts_aku"&&c.lad){netMD+=MD_LADOWARKA;lines.push("\u0141adowarka do akumulatora Movelite");}
+    var gPktMD=parseInt(par.pt)||0;
+    if(gPktMD>0){
+      var gCMD=PL_GIECIE_PKT_1+(gPktMD-1)*PL_GIECIE_PKT_N;
+      netMD+=gCMD;
+      lines.push("Gi\u0119cie punktowe x"+gPktMD+" = "+formatPLN(Math.round(gCMD*MD_MULT)));
+    }
+    var gLukMD=+(par.arc||0);
+    if(gLukMD>0){var gLMD=PL_GIECIE_LUK*gLukMD;netMD+=gLMD;lines.push("Gi\u0119cie promieniowe \u0142uk "+gLukMD+" mb = "+formatPLN(Math.round(gLMD*MD_MULT)));}
+    if(c.km==="sciana"){
+      var qWMD=parseInt(par.mdWspQty)||lookup(lenMD,MD_WSPORNIKI).p;
+      netMD+=MD_WSPORNIK*qWMD;
+      lines.push("Wsporniki \u015bcienne x"+qWMD);
+    }
+    total=Math.round(netMD*MD_MULT)*qtyMD;
+    warn=warnMD;
   }else if(p.type==="karnisz"&&(p.c||{}).kBrand==="premium"){
     // PREMIUM LINE \u2014 cennik 2026. Stare pozycje bez c.kBrand licza sie dalej
     // stara sciezka (KSLIM/KUNIV + KN) ponizej, zeby nie przeliczyc archiwum.
@@ -4900,6 +5011,13 @@ export function arcDesc(par){
   return parts.join(", ");
 }
 
+export function karniszBrandLabel(pc){
+  pc=pc||{};
+  if(pc.kBrand==="premium"){var n=PL_NAPEDY.find(function(x){return x.v===(pc.plNap||"am75_3w");});return "Premium Line \u2014 "+(n?n.l:"");}
+  if(pc.kBrand==="somfy"){var m=MD_NAPEDY.find(function(x){return x.v===(pc.mdNap||"movelite_wt");});return "MD Line \u2014 "+(m?m.l:"");}
+  return "Karnisz elektryczny "+(pc.km||"slim").toUpperCase();
+}
+
 function prestigeKolorTag(pc){
   var k=PRESTIGE_KOLORY.find(function(x){return x.v===(pc||{}).pKolor;});
   return k?" — "+k.l:"";
@@ -4914,7 +5032,7 @@ export function buildKarniszRows(client){
         var pc=p.c||{},par=p.par||{};
         var typLabel;
         if(p.type==="karnisz"){
-          typLabel="Karnisz elektryczny "+(pc.km||"slim").toUpperCase();
+          typLabel=karniszBrandLabel(pc);
         }else if(p.type==="shuttle"){
           typLabel="Karnisz Shuttle L"+((pc.shFes&&pc.shFes!=="brak")?(" FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):" (suwaki)");
         }else if(p.type==="prestige_round"){
