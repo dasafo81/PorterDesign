@@ -4917,11 +4917,11 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
     tr:nth-child(even) td{background:#fafaf8;}
   `;
 
-  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Wycena szczegółowa ${offerNo}</title>${pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;').replace('</style>',extraStyles+'</style>')}</head><body>
+  var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie ${offerNo}</title>${pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;').replace('</style>',extraStyles+'</style>')}</head><body>
   <div class="header">
     <div><img src="${LOGO_PDF_G}" style="height:50px;width:auto;" alt="Porter Design"/></div>
-    <div style="text-align:right"><div style="font-size:20px;font-weight:700">Wycena szczegółowa nr ${offerNo}</div>
-      <div style="font-size:9px;color:#6b6b66;margin-top:4px">Data wystawienia: ${dateStr} &nbsp;|&nbsp; Ważne do: ${validStr}</div>
+    <div style="text-align:right"><div style="font-size:20px;font-weight:700">Zamówienie nr ${offerNo}</div>
+      <div style="font-size:9px;color:#6b6b66;margin-top:4px">Data wystawienia: ${dateStr} &nbsp;|&nbsp; Termin realizacji: ${validStr}</div>
     </div>
   </div>
   <div class="meta">
