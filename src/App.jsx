@@ -19,7 +19,7 @@ import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
-import { ScreenCRM, CRMKalendarz } from './components/ScreenCRM.jsx';
+import { ScreenCRM, CRMKalendarz, CRM_STAGES } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 const ce = React.createElement;
 
@@ -1119,12 +1119,32 @@ export function App(p){
       odrzucone:   {label:"Odrzucone",   color:THEME_HEX.red,    bg:THEME_HEX.red+"1A",     dot:THEME_HEX.red}
     };
 
-    // ── Aggregate stats ──
-    var totalValue=clients.reduce(function(a,cl){return a+clientTotal(cl);},0);
-    var cl_nowe_all=clients.filter(function(cl){return (cl.status||"nowe")==="nowe";});
-    var cl_zreal_all=clients.filter(function(cl){return cl.status==="zrealizowane";});
-    var cl_odrz_all=clients.filter(function(cl){return cl.status==="odrzucone";});
-    var activeValue=cl_nowe_all.reduce(function(a,cl){return a+clientTotal(cl);},0);
+    // ── Pipeline CRM w nagłówku: Wycena / Zamówienie / Realizacja / Montaż ──
+    // Liczba + wartość + najbliższy termin per etap, liczone z faktycznych
+    // deali w CRM (nie z całej listy wycen, jak wcześniej).
+    var clientsById={};
+    clients.forEach(function(cl){clientsById[cl.id]=cl;});
+    var PIPELINE_IDS=["wycena","zamowienie","realizacja","montaz"];
+    var PIPELINE_STAGES=CRM_STAGES.filter(function(s){return PIPELINE_IDS.indexOf(s.id)>=0;});
+    // Najbliższy NADCHODZĄCY termin dealu (pomiar/dostawa/dostawa2) — brane
+    // z pól bezpośrednio na dealu, bez dodatkowego zapytania do bazy.
+    function nearestFutureDate(d){
+      var now=Date.now();
+      var cands=[d.visit_date,d.delivery_date,d.delivery_date2]
+        .filter(Boolean).map(function(v){return new Date(v).getTime();})
+        .filter(function(t){return !isNaN(t)&&t>=now;});
+      return cands.length?Math.min.apply(null,cands):null;
+    }
+    function fmtHeroDate(ts){
+      var d=new Date(ts);
+      return String(d.getDate()).padStart(2,"0")+"."+String(d.getMonth()+1).padStart(2,"0");
+    }
+    var stageStats=PIPELINE_STAGES.map(function(st){
+      var stDeals=(deals||[]).filter(function(d){return d.stage===st.id;});
+      var value=stDeals.reduce(function(a,d){var cl=clientsById[d.client_id];return a+(cl?clientTotal(cl):0);},0);
+      var dates=stDeals.map(nearestFutureDate).filter(function(t){return t!=null;});
+      return {id:st.id,label:st.label,color:st.color,count:stDeals.length,value:value,nearest:dates.length?Math.min.apply(null,dates):null};
+    });
 
     function StatCard(sp){
       return ce("div",{className:"stat-card glass",style:{
@@ -1245,32 +1265,19 @@ export function App(p){
             "Porter Design"
           ),
           ce("div",{style:{fontSize:13,color:"var(--hero-text-2)",marginBottom:20}},"Panel sprzeda\u017cy i wycen"),
-          // Stat row
+          // Stat row — pipeline CRM: Wycena / Zamówienie / Realizacja / Montaż
           ce("div",{style:{display:"flex",gap:12,flexWrap:"wrap"}},
-            ce("div",{style:{
-              background:"rgba(255,255,255,0.12)",backdropFilter:"blur(12px)",
-              border:"1px solid rgba(255,255,255,0.22)",borderRadius:14,
-              padding:"12px 18px",minWidth:110
-            }},
-              ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Łączna wartość"),
-              ce("div",{style:{fontSize:22,fontWeight:800,color:"#fff"}},formatPLN(totalValue)+" z\u0142")
-            ),
-            ce("div",{style:{
-              background:"var(--hero-stat-a-bg)",backdropFilter:"blur(12px)",
-              border:"1px solid var(--hero-stat-a-border)",borderRadius:14,
-              padding:"12px 18px",minWidth:110
-            }},
-              ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Aktywne"),
-              ce("div",{style:{fontSize:22,fontWeight:800,color:"var(--hero-stat-a-text)"}},(cl_nowe_all.length)+" klient\xf3w")
-            ),
-            ce("div",{style:{
-              background:"var(--hero-stat-b-bg)",backdropFilter:"blur(12px)",
-              border:"1px solid var(--hero-stat-b-border)",borderRadius:14,
-              padding:"12px 18px",minWidth:110
-            }},
-              ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},"Zrealizowane"),
-              ce("div",{style:{fontSize:22,fontWeight:800,color:"var(--hero-stat-b-text)"}},(cl_zreal_all.length)+" klient\xf3w")
-            )
+            stageStats.map(function(st){
+              return ce("div",{key:st.id,style:{
+                background:st.color+"26",backdropFilter:"blur(12px)",
+                border:"1px solid "+st.color+"55",borderRadius:14,
+                padding:"12px 18px",minWidth:130,flex:"1 1 130px"
+              }},
+                ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},st.label),
+                ce("div",{style:{fontSize:20,fontWeight:800,color:"#fff"}},st.count+" \u2022 "+formatPLN(st.value)),
+                ce("div",{style:{fontSize:11,color:"var(--hero-text-3)",marginTop:2}},st.nearest?("\uD83D\uDCC5 "+fmtHeroDate(st.nearest)):"Brak termin\xf3w")
+              );
+            })
           )
         )
       ),
@@ -2061,11 +2068,7 @@ export function App(p){
       });});
     }
     function rowFieldInput(i,key,placeholder,width){
-      var val=offerPreviewRows[i][key]||"";
-      // title = natywny tooltip przegladarki po najechaniu — bezpiecznik na
-      // wypadek, gdy wartosc (np. marka+model silnika karnisza) jest dluzsza
-      // niz waskie, edytowalne pole potrafi pomiescic.
-      return ce("input",{type:"text",value:val,title:val,onChange:function(ev){setRowField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
+      return ce("input",{type:"text",value:offerPreviewRows[i][key]||"",onChange:function(ev){setRowField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
     }
 
     content=ce(Fragment,null,
@@ -2103,12 +2106,12 @@ export function App(p){
               )
             ),
             ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
-              rowFieldInput(i,"modelSzycia","Model szycia",150),
-              rowFieldInput(i,"tkaninaKolor","Tkanina / Kolor / Osprzęt",210),
+              rowFieldInput(i,"modelSzycia","Model szycia",120),
+              rowFieldInput(i,"tkaninaKolor","Tkanina / Kolor / Osprzęt",190),
               rowFieldInput(i,"producent","Producent",110),
               rowFieldInput(i,"szerokosc","Szerokość",90),
               rowFieldInput(i,"wysokosc","Wysokość",90),
-              rowFieldInput(i,"podzial","Podział / Sterowanie",170)
+              rowFieldInput(i,"podzial","Podział / Sterowanie",140)
             )
           )
           );
