@@ -2061,7 +2061,11 @@ export function App(p){
       });});
     }
     function rowFieldInput(i,key,placeholder,width){
-      return ce("input",{type:"text",value:offerPreviewRows[i][key]||"",onChange:function(ev){setRowField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
+      var val=offerPreviewRows[i][key]||"";
+      // title = natywny tooltip przegladarki po najechaniu — bezpiecznik na
+      // wypadek, gdy wartosc (np. marka+model silnika karnisza) jest dluzsza
+      // niz waskie, edytowalne pole potrafi pomiescic.
+      return ce("input",{type:"text",value:val,title:val,onChange:function(ev){setRowField(i,key,ev.target.value);},placeholder:placeholder,style:{width:width,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}});
     }
 
     content=ce(Fragment,null,
@@ -2099,12 +2103,12 @@ export function App(p){
               )
             ),
             ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}},
-              rowFieldInput(i,"modelSzycia","Model szycia",120),
-              rowFieldInput(i,"tkaninaKolor","Tkanina / Kolor / Osprzęt",190),
+              rowFieldInput(i,"modelSzycia","Model szycia",150),
+              rowFieldInput(i,"tkaninaKolor","Tkanina / Kolor / Osprzęt",210),
               rowFieldInput(i,"producent","Producent",110),
               rowFieldInput(i,"szerokosc","Szerokość",90),
               rowFieldInput(i,"wysokosc","Wysokość",90),
-              rowFieldInput(i,"podzial","Podział / Sterowanie",140)
+              rowFieldInput(i,"podzial","Podział / Sterowanie",170)
             )
           )
           );
