@@ -17,6 +17,7 @@ import {
   PL_NAPEDY, PL_PILOTY, PL_PILOT_KOLORY, PL_PRZELACZNIKI, PL_CENTRALKA,
   PL_LADOWARKA, PL_WIDTHS, PL_MULT,
   PRESTIGE_KOLORY,
+  RAIL_SLIM_KOLORY,
   MD_NAPEDY, MD_PILOTY, MD_SCIENNE, MD_PRZELACZNIKI, MD_CENTRALKA,
   MD_LADOWARKA, MD_WIDTHS, MD_MULT,
   PRESTIGE_PILOTY_SOMFY, PRESTIGE_CENTRALKI_SOMFY,
@@ -1662,6 +1663,14 @@ export function ProdCard(p){
       ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",fontSize:12,color:"var(--t2)"}},
         "\u2139\ufe0f Realizujemy wy\u0142\u0105cznie w wersji SLIM \u2014 dop\u0142ata za szyn\u0119 SLIM i wsporniki s\u0105 doliczane automatycznie."),
       ce("div",{style:{marginBottom:14}},
+        ce("label",{style:PLBL},"KOLOR SZYNY SLIM"),
+        ce("div",{style:{display:"flex",gap:8}},
+          RAIL_SLIM_KOLORY.map(function(k){
+            return ce(Chip,{key:k.v,label:k.l,active:(c.plKolor||"bialy")===k.v,onClick:function(){sc("plKolor",k.v);}});
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
         ce("label",{style:PLBL},"NAP\u0118D"),
         ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
           PL_NAPEDY.map(function(n){
@@ -1784,6 +1793,14 @@ export function ProdCard(p){
           ce("input",{type:"checkbox",checked:!!c.mdSlim,onChange:function(ev){sc("mdSlim",ev.target.checked||undefined);}}),
           "Szyna SLIM (dop\u0142ata opcjonalna)"
         ),
+        c.mdSlim?ce("div",{style:{marginLeft:28,marginTop:4}},
+          ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:6}},"KOLOR SZYNY SLIM"),
+          ce("div",{style:{display:"flex",gap:8}},
+            RAIL_SLIM_KOLORY.map(function(k){
+              return ce(Chip,{key:k.v,label:k.l,active:(c.mdKolor||"bialy")===k.v,onClick:function(){sc("mdKolor",k.v);}});
+            })
+          )
+        ):null,
         ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:"var(--t1)"}},
           ce("input",{type:"checkbox",checked:!!c.mdPodtynk,onChange:function(ev){sc("mdPodtynk",ev.target.checked||undefined);}}),
           "Wersja podtynkowa"
