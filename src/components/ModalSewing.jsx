@@ -125,7 +125,7 @@ export function ModalSewing(p){
       to:'',
       subject:'Zlecenie szycia \u2014 '+((p.client&&p.client.name)||''),
       body:['Dzie\u0144 dobry,','W za\u0142\u0105czeniu przesy\u0142am zlecenie szycia.',
-        'Prosz\u0119 o potwierdzenie przyj\u0119cia i terminu realizacji.','Pozdrawiam serdecznie']
+        'Prosz\u0119 o potwierdzenie przyj\u0119cia i terminu realizacji.']
         .map(function(t){return '<div>'+t+'</div>';}).join('<div><br></div>')
     });
   }
