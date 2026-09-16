@@ -2007,8 +2007,7 @@ export function App(p){
             {to:"",subject:"Zam\u00f3wienie karniszy / szyn \u2014 "+(curClient.name||""),
              body:docMailBody(["Dzie\u0144 dobry,",
                "W za\u0142\u0105czeniu przesy\u0142am zam\u00f3wienie karniszy / szyn.",
-               "Prosz\u0119 o potwierdzenie terminu dostawy.",
-               "Pozdrawiam serdecznie"])});
+               "Prosz\u0119 o potwierdzenie terminu dostawy."])});
         },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
@@ -2056,8 +2055,7 @@ export function App(p){
             "Szyny do montazu - "+(curClient.name||"klient")+".pdf",
             {to:"",subject:"Szyny do monta\u017cu \u2014 "+(curClient.name||""),
              body:docMailBody(["Dzie\u0144 dobry,",
-               "W za\u0142\u0105czeniu lista szyn / karniszy do monta\u017cu.",
-               "Pozdrawiam serdecznie"])});
+               "W za\u0142\u0105czeniu lista szyn / karniszy do monta\u017cu."])});
         },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
@@ -2090,11 +2088,10 @@ export function App(p){
       var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
       mailDoc(buildFabricOrderHtmlFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes}),
         "Zamowienie tkaniny - "+sup+".pdf",
-        {to:"",subject:"Zam\u00f3wienie tkaniny \u2014 "+sup,
+        {to:"",subject:"Zam\u00f3wienie tkaniny \u2014 "+(curClient.name||""),
          body:docMailBody(["Dzie\u0144 dobry,",
            "W za\u0142\u0105czeniu przesy\u0142am zam\u00f3wienie tkaniny.",
-           "Prosz\u0119 o potwierdzenie dost\u0119pno\u015bci i terminu wysy\u0142ki.",
-           "Pozdrawiam serdecznie"])});
+           "Prosz\u0119 o potwierdzenie dost\u0119pno\u015bci i terminu wysy\u0142ki."])});
     }
 
     content=ce(Fragment,null,
