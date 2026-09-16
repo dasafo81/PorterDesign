@@ -1962,7 +1962,7 @@ export function App(p){
         ce("textarea",{value:offerNotes,onChange:function(ev){setOfferNotes(ev.target.value);},placeholder:"np. cena obejmuje montaż w ciągu 4 tygodni od wpłaty zaliczki...",rows:3,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12}},
-        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDCC5 Ważne do"),
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83D\uDCC5 Termin realizacji"),
         ce("input",{type:"date",value:offerValidUntil,onChange:function(ev){setOfferValidUntil(ev.target.value);},style:{padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}})
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
