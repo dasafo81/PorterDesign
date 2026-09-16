@@ -242,15 +242,19 @@ export function ProdCard(p){
       innyNazwa:undefined,innyKat:undefined}));
   }
 
-  function TypeCard(key,label,sub,active,accent,onClick){
+  // Jeden spojny kolor "wybrane" (zielony, jak Chip w calej apce) — karty maja
+  // stala wysokosc niezaleznie od tego czy maja podtytul, zeby rzedy nie lamaly sie
+  // nierowno (np. "Karnisze elektryczne" z "3 marki" obok kart bez podtytulu).
+  function TypeCard(key,label,sub,active,onClick){
     return ce("button",{key:key,onClick:onClick,
-      style:{padding:"13px 10px",borderRadius:10,
-        border:"1.5px solid "+(active?(accent||"var(--gr)"):"var(--bd3)"),
-        background:active?(accent?"var(--violet-l)":"var(--grl)"):"var(--bg)",
-        color:active&&!accent?"var(--grd)":"var(--t1)",
+      style:{minHeight:56,padding:"10px 12px",borderRadius:10,
+        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
+        border:"1.5px solid "+(active?"var(--gr)":"var(--bd3)"),
+        background:active?"var(--grl)":"var(--bg)",
+        color:active?"var(--grd)":"var(--t1)",
         fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"center",transition:"all .15s"}},
       label,
-      sub?ce("div",{style:{fontSize:10,fontWeight:400,color:active?(accent||"var(--gr)"):"var(--t3)",marginTop:3}},sub):null
+      sub?ce("div",{style:{fontSize:10,fontWeight:400,color:active?"var(--gr)":"var(--t3)"}},sub):null
     );
   }
 
@@ -259,24 +263,26 @@ export function ProdCard(p){
       var cards=g.types.map(function(id){
         var t=PROD_TYPES.find(function(x){return x.id===id;});
         if(!t)return null;
-        return TypeCard(t.id,t.label,null,prod.type===t.id,null,function(){
+        return TypeCard(t.id,t.label,null,prod.type===t.id,function(){
           applyType({id:t.id,label:t.label,type:t.id,set:{}});
         });
       }).filter(Boolean);
 
       if(g.brands==="karnisz_el"){
-        cards.push(TypeCard("karnisz_el","Karnisze elektryczne","3 marki \u203a",isKarnEl,"var(--violet)",function(){
+        cards.push(TypeCard("karnisz_el","Karnisze elektryczne","3 marki \u203a",isKarnEl,function(){
           if(isKarnEl)return;
           var d0=KARNISZ_EL_BRANDS[0].models[0];
           applyType({id:"karnisz_el",label:"Karnisze elektryczne",type:d0.type,set:d0.set});
         }));
       }
 
+      // Panel marki/modelu jako pelnoszerokosciowa, wypelniona sekcja (nie wiszaca
+      // kreska z lewej) — wizualnie "w srodku" karty Karnisze elektryczne, nie obok.
       var brandBox=null;
       if(g.brands==="karnisz_el"&&isKarnEl){
         var bObj=KARNISZ_EL_BRANDS.find(function(b){return b.id===curBrand;})||KARNISZ_EL_BRANDS[0];
-        brandBox=ce("div",{style:{marginTop:10,paddingLeft:12,borderLeft:"2px solid var(--violet-border)"}},
-          ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:6}},"Karnisze elektryczne \u2014 marka"),
+        brandBox=ce("div",{style:{marginTop:10,background:"var(--bg)",border:"1px solid var(--bd3)",borderRadius:10,padding:12}},
+          ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MARKA"),
           ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
             KARNISZ_EL_BRANDS.map(function(b){
               return ce(Chip,{key:b.id,label:b.label,active:curBrand===b.id,onClick:function(){
@@ -285,8 +291,8 @@ export function ProdCard(p){
               }});
             })
           ),
-          bObj.models.length>1?ce("div",{style:{marginTop:10}},
-            ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:6}},bObj.label+" \u2014 model"),
+          bObj.models.length>1?ce("div",{style:{marginTop:12,paddingTop:12,borderTop:"1px solid var(--bd3)"}},
+            ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MODEL"),
             ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
               bObj.models.map(function(m){
                 return ce(Chip,{key:m.id,label:m.label,active:prod.type===m.type,onClick:function(){
@@ -300,7 +306,7 @@ export function ProdCard(p){
 
       return ce("div",{key:g.id,style:{background:"var(--bd3)",borderRadius:12,padding:10}},
         ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--violet)",marginBottom:8,paddingLeft:4}},g.label),
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8}},cards),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,alignItems:"stretch"}},cards),
         brandBox
       );
     })
