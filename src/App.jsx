@@ -2772,6 +2772,9 @@ export function ModalClientEmail(p){
   var s7=useState(false),sent=s7[0],setSent=s7[1];
   var s8=useState(null),sendErr=s8[0],setSendErr=s8[1];
   var s9=useState(null),settings=s9[0],setSettings=s9[1];
+  var s10=useState([]),toSuggestions=s10[0],setToSuggestions=s10[1];
+  var s11=useState(false),showToSugg=s11[0],setShowToSugg=s11[1];
+  var toSuggTimer=React.useRef(null);
   var pdfName=p.pdfName||"Oferta.pdf";
   var sigRef=React.useRef(null);
 
@@ -2871,6 +2874,32 @@ export function ModalClientEmail(p){
     });
   }
 
+  // Podpowiedzi w polu "Do" — historia odbiorców z Supabase (ten sam mechanizm co
+  // w module Poczta) + Kontrahenci z bazy PD. Bez Graph People API — nie wymaga
+  // dodatkowego scope'u/zgody na koncie Microsoft, bo nie dotyka Outlooka.
+  function fetchToSuggestions(q){
+    q=String(q||"").trim();
+    if(q.length<2){setToSuggestions([]);setShowToSugg(false);return;}
+    var ql=q.toLowerCase();
+    Promise.all([
+      sbApi.searchMailRecipients(q).catch(function(){return [];}),
+      sbApi.getContacts().then(function(rows){
+        return (rows||[]).filter(function(c){
+          return c.email&&((c.name||"").toLowerCase().indexOf(ql)>=0||c.email.toLowerCase().indexOf(ql)>=0);
+        }).slice(0,8).map(function(c){return {name:c.name||c.email,email:c.email};});
+      }).catch(function(){return [];})
+    ]).then(function(results){
+      var hist=(results[0]||[]).map(function(r){return {name:r.name||r.email,email:r.email};});
+      var seen={},merged=[];
+      hist.concat(results[1]).forEach(function(s){
+        var key=s.email.toLowerCase();
+        if(!seen[key]){seen[key]=1;merged.push(s);}
+      });
+      setToSuggestions(merged.slice(0,8));
+      setShowToSugg(merged.length>0);
+    });
+  }
+
   var canSend=!!toEmail.trim()&&!!subject.trim()&&!!pdfB64&&!sending&&!sent;
   var lbl={fontSize:11,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:6};
   var inp={width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"var(--bg)",color:"var(--t1)",fontSize:14,boxSizing:"border-box",outline:"none"};
@@ -2881,8 +2910,27 @@ export function ModalClientEmail(p){
         ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)"}},p.title||"\u2709\uFE0F Mail do klienta"),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",lineHeight:1,padding:"0 4px"}},"\u00d7")
       ),
-      ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Do"),
-        ce("input",{type:"email",value:toEmail,onChange:function(ev){setToEmail(ev.target.value);},placeholder:p.to!=null?"adres e-mail odbiorcy":"adres e-mail klienta",style:inp})),
+      ce("div",{style:{marginBottom:12,position:"relative"}},ce("div",{style:lbl},"Do"),
+        ce("input",{type:"email",value:toEmail,
+          onChange:function(ev){
+            var v=ev.target.value;setToEmail(v);
+            if(toSuggTimer.current)clearTimeout(toSuggTimer.current);
+            toSuggTimer.current=setTimeout(function(){fetchToSuggestions(v);},300);
+          },
+          onFocus:function(){if(toSuggestions.length)setShowToSugg(true);},
+          onBlur:function(){setTimeout(function(){setShowToSugg(false);},150);},
+          placeholder:p.to!=null?"adres e-mail odbiorcy":"adres e-mail klienta",style:inp}),
+        showToSugg&&toSuggestions.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,zIndex:20,
+            background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,marginTop:4,
+            maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.18)"}},
+          toSuggestions.map(function(s){
+            return ce("div",{key:s.email,onMouseDown:function(e){e.preventDefault();setToEmail(s.email);setShowToSugg(false);},
+              style:{padding:"9px 12px",cursor:"pointer",fontSize:13,borderBottom:"1px solid var(--bd3)"}},
+              ce("div",{style:{fontWeight:600,color:"var(--t1)"}},s.name),
+              ce("div",{style:{fontSize:11,color:"var(--t3)"}},s.email)
+            );
+          })
+        ):null),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Temat"),
         ce("input",{type:"text",value:subject,onChange:function(ev){setSubject(ev.target.value);},style:inp})),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Tre\u015b\u0107"),
