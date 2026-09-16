@@ -3149,9 +3149,22 @@ export const PRESTIGE_PILOTY =[
   {v:"p16",   l:"Pilot 16-kanałowy",   c:258.64}
 ];
 
+// Kolory systemu Prestige. std=true -> w standardzie, reszta na zamowienie.
+export const PRESTIGE_KOLORY =[
+  {v:"bialy_mat",   l:"Bia\u0142y mat",            std:true},
+  {v:"czarny_mat",  l:"Czarny mat",                std:true},
+  {v:"srebrny",     l:"Srebrny po\u0142ysk",       std:true},
+  {v:"zloty",       l:"Z\u0142oty po\u0142ysk",    std:true},
+  {v:"antracyt",    l:"Antracyt",                  std:false},
+  {v:"szampanski",  l:"Szampa\u0144ski",           std:false},
+  {v:"braz",        l:"Br\u0105z",                 std:false},
+  {v:"nikiel_szcz", l:"Nikiel szczotkowany",       std:false},
+  {v:"zloty_szcz",  l:"Z\u0142oty szczotkowany",   std:false}
+];
+
 export const PRESTIGE_CENTRALKI =[
   {v:"brak",   l:"Brak",                  c:0},
-  {v:"smarth", l:"Centralka SMART HOME",  c:438.84},
+  {v:"smarth", l:"Centralka SMART HOME AC 520-01",  c:438.84},
   {v:"zigbee", l:"Centralka ZigBee",      c:402.8}
 ];
 export const PRESTIGE_LADOWARKA =163.24; // dla AM75 Akumulator
@@ -3875,7 +3888,8 @@ export function calc(p){
     var bazaP=motorTab[lenP]||0;
     var lineSum=bazaP;
     var napLabel=(PRESTIGE_NAPEDY.find(function(x){return x.v===nap;})||{l:nap}).l;
-    lines.push("Karnisz Prestige "+seria+" "+lenP+"cm — "+napLabel+(qty>1?" x"+qty:""));
+    var kolObj=PRESTIGE_KOLORY.find(function(x){return x.v===c.pKolor;});
+    lines.push("Karnisz Prestige "+seria+" "+lenP+"cm — "+napLabel+(kolObj?" — "+kolObj.l+(kolObj.std?"":" (na zam\u00f3wienie)"):"")+(qty>1?" x"+qty:""));
     // WAVE (dopłata)
     if(c.wave==="w60"){var w=TW60[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 60 mm");}
     else if(c.wave==="w80"){var w=TW80[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 80 mm");}
@@ -4163,6 +4177,11 @@ export function productDetailText(p){
   if(p.type==="karnisz_dek"&&p.kdKolor){
     var kd=KD_KOLORY.find(function(k){return k.id===p.kdKolor;});
     if(kd)parts.push("kolor: "+kd.label);
+  }
+  // Karnisz Prestige: kolor systemu
+  if((p.type==="prestige_round"||p.type==="prestige_square")&&pc.pKolor){
+    var pk=PRESTIGE_KOLORY.find(function(k){return k.v===pc.pKolor;});
+    if(pk)parts.push("kolor: "+pk.l);
   }
   // Roleta rzymska: kolor łańcuszka (jeśli metalowy)
   if(p.type==="roleta"&&pc.lancuszek==="metalowy"&&pc.kolorLancuszka){
@@ -4881,6 +4900,11 @@ export function arcDesc(par){
   return parts.join(", ");
 }
 
+function prestigeKolorTag(pc){
+  var k=PRESTIGE_KOLORY.find(function(x){return x.v===(pc||{}).pKolor;});
+  return k?" — "+k.l:"";
+}
+
 export function buildKarniszRows(client){
   var rows=[];
   (client.rooms||[]).forEach(function(r){
@@ -4894,9 +4918,9 @@ export function buildKarniszRows(client){
         }else if(p.type==="shuttle"){
           typLabel="Karnisz Shuttle L"+((pc.shFes&&pc.shFes!=="brak")?(" FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):" (suwaki)");
         }else if(p.type==="prestige_round"){
-          typLabel="Karnisz Prestige ROUND ("+(pc.pn||"am75_3w")+")";
+          typLabel="Karnisz Prestige ROUND ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
         }else if(p.type==="prestige_square"){
-          typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")";
+          typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
         }else{
           typLabel="Szyna KS "+(pc.ks||"flex");
         }
