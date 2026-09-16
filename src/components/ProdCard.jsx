@@ -19,6 +19,7 @@ import {
   PRESTIGE_KOLORY,
   MD_NAPEDY, MD_PILOTY, MD_SCIENNE, MD_PRZELACZNIKI, MD_CENTRALKA,
   MD_LADOWARKA, MD_WIDTHS, MD_MULT,
+  PRESTIGE_PILOTY_SOMFY, PRESTIGE_CENTRALKI_SOMFY,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
   RS_C, RS_D, RS_E, RS_HEIGHTS,
@@ -1949,10 +1950,14 @@ export function ProdCard(p){
     );
   }else if(prod.type==="prestige_round"||prod.type==="prestige_square"){
     var isPrestigeRound=prod.type==="prestige_round";
-    var presNapedy=PRESTIGE_NAPEDY;
-    var presWidths=PRESTIGE_WIDTHS;
-    var napAktywny=c.pn||"am75_3w";
-    var isAku=napAktywny==="am75_aku";
+    var isSomfyPrestige=c.kBrand==="somfy";
+    var presNapedy=isSomfyPrestige?MD_NAPEDY:PRESTIGE_NAPEDY;
+    var presWidths=isSomfyPrestige?MD_WIDTHS:PRESTIGE_WIDTHS;
+    var presPiloty=isSomfyPrestige?PRESTIGE_PILOTY_SOMFY:PRESTIGE_PILOTY;
+    var presCentralki=isSomfyPrestige?PRESTIGE_CENTRALKI_SOMFY:PRESTIGE_CENTRALKI;
+    var akuKeyPres=isSomfyPrestige?"movelite_rts_aku":"am75_aku";
+    var napAktywny=c.pn||(isSomfyPrestige?"movelite_wt":"am75_3w");
+    var isAku=napAktywny===akuKeyPres;
     form=ce(Fragment,null,
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"SERIA"),
@@ -2036,7 +2041,7 @@ export function ProdCard(p){
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"PILOT"),
         ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
-          PRESTIGE_PILOTY.map(function(pl){
+          presPiloty.map(function(pl){
             var isA=(c.pp||"brak")===pl.v;
             return ce(Chip,{key:pl.v,label:pl.l+(pl.c>0?" "+Math.round(pl.c)+" z\u0142":""),active:isA,onClick:function(){sc("pp",pl.v);}});
           })
@@ -2045,7 +2050,7 @@ export function ProdCard(p){
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"CENTRALKA"),
         ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
-          PRESTIGE_CENTRALKI.map(function(cn){
+          presCentralki.map(function(cn){
             var isA=(c.pcn||"brak")===cn.v;
             return ce(Chip,{key:cn.v,label:cn.l+(cn.c>0?" "+Math.round(cn.c)+" z\u0142":""),active:isA,onClick:function(){sc("pcn",cn.v);}});
           })
@@ -2054,7 +2059,7 @@ export function ProdCard(p){
       isAku?ce("div",{style:{marginBottom:14}},
         ce("div",{style:{display:"flex",alignItems:"center",gap:12}},
           ce("input",{type:"checkbox",id:"prestige-lad",checked:!!c.lad,onChange:function(ev){sc("lad",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
-          ce("label",{htmlFor:"prestige-lad",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"\u0141adowarka do silnika akumulatorowego (+"+Math.round(PRESTIGE_LADOWARKA)+" z\u0142)")
+          ce("label",{htmlFor:"prestige-lad",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"\u0141adowarka do silnika akumulatorowego (+"+Math.round(isSomfyPrestige?159:PRESTIGE_LADOWARKA)+" z\u0142)")
         )
       ):null
     );
