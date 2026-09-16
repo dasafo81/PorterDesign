@@ -215,9 +215,13 @@ export function ProdCard(p){
   var lbl=(prod.type==="prestige_square"?"Karnisz Prestige SQUARE":prod.type==="prestige_round"?"Karnisz Prestige ROUND":(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label);
 
   function hasProdData(pr){
+    // split/kBrand sa zapisywane automatycznie przy kazdym wyborze typu/marki
+    // (patrz applyType) — same w sobie nie licza sie jako "wpisane dane",
+    // inaczej samo przeklikanie marek na pustym produkcie odpalaloby modal.
+    var meaningfulC=Object.keys(pr.c||{}).filter(function(k){return k!=="split"&&k!=="kBrand";});
     return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||
       (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm))||
-      (pr.c&&Object.keys(pr.c).length>1)||
+      meaningfulC.length>0||
       (pr.kdSzyny&&pr.kdSzyny.length>0)||
       (pr.kdAkc&&Object.keys(pr.kdAkc).length>0)||
       (pr.par&&pr.par.len));
