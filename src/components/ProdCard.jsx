@@ -17,6 +17,8 @@ import {
   PL_NAPEDY, PL_PILOTY, PL_PILOT_KOLORY, PL_PRZELACZNIKI, PL_CENTRALKA,
   PL_LADOWARKA, PL_WIDTHS, PL_MULT,
   PRESTIGE_KOLORY,
+  MD_NAPEDY, MD_PILOTY, MD_SCIENNE, MD_PRZELACZNIKI, MD_CENTRALKA,
+  MD_LADOWARKA, MD_WIDTHS, MD_MULT,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
   RS_C, RS_D, RS_E, RS_HEIGHTS,
@@ -1732,6 +1734,125 @@ export function ProdCard(p){
       ),
       ce("div",{style:{marginBottom:4}},
         ce("label",{style:PLBL},"TYP"),
+        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
+            var isA=(c.motorType||"kurtyna")===t.key;
+            return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+t.label:t.label
+            );
+          })
+        )
+      )
+    );
+  }else if(prod.type==="karnisz"&&c.kBrand==="somfy"){
+    // \u2500\u2500 MD LINE (Somfy) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+    var mdNap=c.mdNap||"movelite_wt";
+    var mdNapObj=MD_NAPEDY.find(function(x){return x.v===mdNap;})||MD_NAPEDY[0];
+    var mdLenNum=parseInt(par.len)||0;
+    var MDBL={fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8};
+    form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
+        ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},
+          ce("select",{value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},style:Object.assign({},IST,{cursor:"pointer"})},
+            ce("option",{value:""},"\u2014 wybierz \u2014"),
+            MD_WIDTHS.map(function(w){return ce("option",{key:w,value:w},w+" cm");})
+          )
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:MDBL},"NAP\u0118D"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          MD_NAPEDY.map(function(n){
+            return ce(Chip,{key:n.v,label:n.l+" (do "+n.maxW+" cm)",active:mdNap===n.v,onClick:function(){sc("mdNap",n.v);}});
+          })
+        ),
+        (mdLenNum&&mdLenNum>mdNapObj.maxW)?ce("div",{style:{marginTop:8,padding:"8px 12px",background:"var(--wb)",border:"1px solid var(--wbd)",borderRadius:8,fontSize:12,color:"var(--wt)"}},
+          "\u26A0\ufe0f "+mdNapObj.l+" dost\u0119pny tylko do "+mdNapObj.maxW+" cm."):null
+      ),
+      mdNap==="movelite_rts_aku"?ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
+        ce("input",{type:"checkbox",id:"md-lad",checked:!!c.lad,onChange:function(ev){sc("lad",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+        ce("label",{htmlFor:"md-lad",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"\u0141adowarka do akumulatora Movelite (+"+Math.round(MD_LADOWARKA*MD_MULT)+" z\u0142)")
+      ):null,
+      ce("div",{style:{marginBottom:14,display:"flex",flexDirection:"column",gap:10}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:!!c.mdSlim,onChange:function(ev){sc("mdSlim",ev.target.checked||undefined);}}),
+          "Szyna SLIM (dop\u0142ata opcjonalna)"
+        ),
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:!!c.mdPodtynk,onChange:function(ev){sc("mdPodtynk",ev.target.checked||undefined);}}),
+          "Wersja podtynkowa"
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:MDBL},"SYSTEM FALI (WAVE)"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          [{v:null,l:"Standard (\u015blizgi)"},{v:"w60",l:"WAVE 60 mm"},{v:"w80",l:"WAVE 80 mm"}].map(function(w){
+            return ce(Chip,{key:w.v||"std",label:w.l,active:(c.wave||null)===w.v,onClick:function(){sc("wave",w.v);}});
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
+        ce("input",{type:"checkbox",id:"md-tandem",checked:!!c.tandem,onChange:function(ev){sc("tandem",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+        ce("label",{htmlFor:"md-tandem",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"Tandem \u2014 rozsuwanie dwustronne synchroniczne")
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:MDBL},"PILOT"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          MD_PILOTY.map(function(pl){
+            return ce(Chip,{key:pl.v,label:pl.l+(pl.c>0?" "+Math.round(pl.c*MD_MULT)+" z\u0142":""),active:(c.mdPilot||"brak")===pl.v,onClick:function(){sc("mdPilot",pl.v);}});
+          })
+        ),
+        (c.mdPilot&&c.mdPilot!=="brak")?ce("div",{style:{marginTop:10,maxWidth:200}},
+          ce(Fld,{label:"ILO\u015a\u0106 (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.mdPilotQty||"",onChange:function(ev){sp("mdPilotQty",ev.target.value);},placeholder:"1",style:IST}))
+        ):null
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:MDBL},"PILOT \u015aCIENNY SMOOVE"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          MD_SCIENNE.map(function(sc2){
+            return ce(Chip,{key:sc2.v,label:sc2.l+(sc2.c>0?" "+Math.round(sc2.c*MD_MULT)+" z\u0142":""),active:(c.mdScienny||"brak")===sc2.v,onClick:function(){sc("mdScienny",sc2.v);}});
+          })
+        ),
+        (c.mdScienny&&c.mdScienny!=="brak")?ce("div",{style:{marginTop:10,maxWidth:200}},
+          ce(Fld,{label:"ILO\u015a\u0106 (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.mdScQty||"",onChange:function(ev){sp("mdScQty",ev.target.value);},placeholder:"1",style:IST}))
+        ):null
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:MDBL},"PRZE\u0141\u0104CZNIK \u015aCIENNY"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          MD_PRZELACZNIKI.map(function(pz){
+            return ce(Chip,{key:pz.v,label:pz.l+(pz.c>0?" "+Math.round(pz.c*MD_MULT)+" z\u0142":""),active:(c.mdPrzel||"brak")===pz.v,onClick:function(){sc("mdPrzel",pz.v);}});
+          })
+        ),
+        (c.mdPrzel&&c.mdPrzel!=="brak")?ce("div",{style:{marginTop:10,maxWidth:200}},
+          ce(Fld,{label:"ILO\u015a\u0106 (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.mdPrzelQty||"",onChange:function(ev){sp("mdPrzelQty",ev.target.value);},placeholder:"1",style:IST}))
+        ):null
+      ),
+      ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
+        ce("input",{type:"checkbox",id:"md-centralka",checked:!!c.mdCentralka,onChange:function(ev){sc("mdCentralka",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
+        ce("label",{htmlFor:"md-centralka",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},MD_CENTRALKA.l+" (+"+Math.round(MD_CENTRALKA.c*MD_MULT)+" z\u0142)")
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:MDBL},"GI\u0118CIE"),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}},
+          ce(Fld,{label:"PUNKTOWE (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
+          ce(Fld,{label:"\u0141UK CI\u0104G\u0141Y (mb)"},ce("input",{type:"text",inputMode:"numeric",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST}))
+        )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:MDBL},"STRONA SILNIKA"),
+        ce("div",{style:{display:"flex",gap:10}},
+          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
+            var isA=(c.motorSide||"lewo")===s.key;
+            return ce("button",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+              isA?"\u2713 "+s.label:s.label
+            );
+          })
+        )
+      ),
+      ce("div",{style:{marginBottom:4}},
+        ce("label",{style:MDBL},"TYP"),
         ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
           [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
             var isA=(c.motorType||"kurtyna")===t.key;
