@@ -523,7 +523,7 @@ export function App(p){
           var ok=window.confirm("UWAGA \u2014 ta zmiana usuwa "+(before-after)+" z "+before+" produkt\u00f3w tego klienta.\n\nJe\u015bli to nie by\u0142o zamierzone, kliknij Anuluj i od\u015bwie\u017c stron\u0119 (F5).\n\nZapisa\u0107 mimo to?");
           if(!ok)return cs;
         }
-        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null,karnisz_draft:newCl.karnisz_draft||null,rails_draft:newCl.rails_draft||null,fabric_draft:newCl.fabric_draft||null,simpl_draft:newCl.simpl_draft||null});
+        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null,karnisz_draft:newCl.karnisz_draft||null,rails_draft:newCl.rails_draft||null,fabric_draft:newCl.fabric_draft||null,simpl_draft:newCl.simpl_draft||null,sewing_draft:newCl.sewing_draft||null});
       }
       return updated;
     });
@@ -2551,7 +2551,7 @@ export function App(p){
     );
   }
   else if(screen==="sewingPreview"&&curClient){
-    content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");},onMailDoc:mailDoc});
+    content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");},onMailDoc:mailDoc,updateClient:updateClient});
   }
 
   if(billingBlocked){
