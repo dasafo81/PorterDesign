@@ -3,7 +3,7 @@ import { sbApi } from './supabase.js';
 const ce = React.createElement;
 
 import {
-  BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES,
+  BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES, karniszBrandLabel,
   SELLER, buildFabricRows, buildSewingRows, calc,
   getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
   openPDFWindow, pdfStyles, resolvePDFAssets, roundTo10
@@ -214,8 +214,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
           var ksLbl=ksMode==="manual"?"Szyna KS Manualna":ksMode==="flex"?"Szyna KS Flex":ksMode==="wave"?"Szyna KS Wave":("Szyna KS "+ksMode);
           subtypeLabel=ksLbl;
         }else if(p.type==="karnisz"){
-          var kmMode=(p.c||{}).km||"slim";
-          subtypeLabel="Karnisz elektryczny "+(kmMode==="slim"?"Slim":kmMode==="univ"?"Universal":kmMode.toUpperCase());
+          subtypeLabel=karniszBrandLabel(p.c);
         }else if(p.type==="shuttle"){
           subtypeLabel="Karnisz Shuttle";
         }else if(p.type==="prestige_round"){
@@ -380,7 +379,7 @@ export function buildSimplifiedRows(client,selection,comm){
       else if(p.type==="roleta_shadow"){subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");}
       else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba35:"Bamboo 35mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
       else if(p.type==="szyna"){subtypeLabel="Szyna KS "+((p.c||{}).ks==="wave"?"Wave":"Flex");}
-      else if(p.type==="karnisz"){var km=(p.c||{}).km||"slim";subtypeLabel="Karnisz elektryczny "+(km==="slim"?"Slim":km==="univ"?"Universal":km.toUpperCase());}
+      else if(p.type==="karnisz"){subtypeLabel=karniszBrandLabel(p.c);}
       else if(p.type==="shuttle")subtypeLabel="Karnisz Shuttle";
       else if(p.type==="prestige_round")subtypeLabel="Karnisz Prestige ROUND";
       else if(p.type==="prestige_square")subtypeLabel="Karnisz Prestige SQUARE";
