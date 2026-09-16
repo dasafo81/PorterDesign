@@ -3209,6 +3209,13 @@ export const PRESTIGE_PILOTY =[
 ];
 
 // Kolory systemu Prestige. std=true -> w standardzie, reszta na zamowienie.
+// Kolory szyny SLIM (Premium Line i MD Line) — bez doplaty, wg cennikow.
+export const RAIL_SLIM_KOLORY =[
+  {v:"bialy",  l:"Bia\u0142y"},
+  {v:"szary",  l:"Szary"},
+  {v:"czarny", l:"Czarny"}
+];
+
 export const PRESTIGE_KOLORY =[
   {v:"bialy_mat",   l:"Bia\u0142y mat",            std:true},
   {v:"czarny_mat",  l:"Czarny mat",                std:true},
@@ -3896,7 +3903,11 @@ export function calc(p){
     var warnMD=null;
     if(lenMD>napObjMD.maxW)warnMD="Silnik "+napObjMD.l+" dost\u0119pny tylko do "+napObjMD.maxW+" cm \u2014 wybierz inny nap\u0119d dla tej szeroko\u015bci.";
     lines.push("MD Line "+napObjMD.l+" do "+bMD.k+" cm"+(qtyMD>1?" x"+qtyMD:""));
-    if(c.mdSlim){var slimMD=lookup(lenMD,MD_SLIM).p;netMD+=slimMD;lines.push("Szyna SLIM = "+formatPLN(Math.round(slimMD*MD_MULT)));}
+    if(c.mdSlim){
+      var slimMD=lookup(lenMD,MD_SLIM).p;netMD+=slimMD;
+      var kolMD=RAIL_SLIM_KOLORY.find(function(x){return x.v===(c.mdKolor||"bialy");});
+      lines.push("Szyna SLIM \u2014 "+(kolMD?kolMD.l:"Bia\u0142y")+" = "+formatPLN(Math.round(slimMD*MD_MULT)));
+    }
     if(c.mdPodtynk){var podMD=lookup(lenMD,MD_PODTYNK).p;netMD+=podMD;lines.push("Wersja podtynkowa = "+formatPLN(Math.round(podMD*MD_MULT)));}
     if(c.wave==="w60"){var wMD=lookup(lenMD,MD_W60).p;netMD+=wMD;lines.push("WAVE u\u0142o\u017cyskowany 60 mm = "+formatPLN(Math.round(wMD*MD_MULT)));}
     else if(c.wave==="w80"){var wMD2=lookup(lenMD,MD_W80).p;netMD+=wMD2;lines.push("WAVE u\u0142o\u017cyskowany 80 mm = "+formatPLN(Math.round(wMD2*MD_MULT)));}
@@ -3949,7 +3960,8 @@ export function calc(p){
     lines.push("Premium Line SLIM do "+bPL.k+" cm \u2014 "+napLblPL+(qtyPL>1?" x"+qtyPL:""));
     var slimPL=lookup(lenPL,PL_SLIM).p;
     netPL+=slimPL;
-    lines.push("Szyna SLIM = "+formatPLN(Math.round(slimPL*PL_MULT)));
+    var kolPL=RAIL_SLIM_KOLORY.find(function(x){return x.v===(c.plKolor||"bialy");});
+    lines.push("Szyna SLIM — "+(kolPL?kolPL.l:"Bia\u0142y")+" = "+formatPLN(Math.round(slimPL*PL_MULT)));
     var wspQ=lookup(lenPL,PL_WSPORNIKI).p;
     netPL+=PL_WSPORNIK*wspQ;
     lines.push("Wsporniki x"+wspQ+" = "+formatPLN(Math.round(PL_WSPORNIK*wspQ*PL_MULT)));
