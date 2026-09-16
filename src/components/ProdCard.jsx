@@ -16,6 +16,7 @@ import {
   PROD_TYPES, PROD_GROUPS, KARNISZ_EL_BRANDS, INNY_KATEGORIE, RCITY, RDUO, REL,
   PL_NAPEDY, PL_PILOTY, PL_PILOT_KOLORY, PL_PRZELACZNIKI, PL_CENTRALKA,
   PL_LADOWARKA, PL_WIDTHS, PL_MULT,
+  PRESTIGE_KOLORY,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
   RS_C, RS_D, RS_E, RS_HEIGHTS,
@@ -1842,6 +1843,15 @@ export function ProdCard(p){
             );
           })
         )
+      ),
+      ce("div",{style:{marginBottom:14}},
+        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"KOLOR SYSTEMU"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          PRESTIGE_KOLORY.map(function(k){
+            return ce(Chip,{key:k.v,label:k.l+(k.std?"":" *"),active:c.pKolor===k.v,onClick:function(){sc("pKolor",c.pKolor===k.v?null:k.v);}});
+          })
+        ),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6}},"* kolor na zam\u00f3wienie \u2014 d\u0142u\u017cszy termin realizacji")
       ),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
