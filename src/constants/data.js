@@ -2943,10 +2943,10 @@ export const PROD_TYPES =[
 
 // ── GRUPY W SELEKTORZE TYPU PRODUKTU ────────────────────────────────────────
 export const PROD_GROUPS =[
-  {id:"tkaniny", label:"Tkaniny",  types:["zaslona","firana","zaluzja","roleta","plisa"]},
-  {id:"karnisze",label:"Karnisze", types:["szyna","karnisz_dek"], brands:"karnisz_el"},
-  {id:"rolety",  label:"Rolety",   types:["shadow"]},
-  {id:"inne",    label:"Inne",     types:["inny"]}
+  {id:"tkaniny",       label:"Tkaniny",          types:["zaslona","firana"]},
+  {id:"zaluzje_rolety",label:"\u017baluzje i rolety", types:["zaluzja","roleta","shadow","plisa"]},
+  {id:"karnisze",      label:"Karnisze",         types:["szyna","karnisz_dek"], brands:"karnisz_el"},
+  {id:"inne",          label:"Inne",             types:["inny"]}
 ];
 
 // Karnisze elektryczne: marka (= szyna) -> model. Kazdy model wskazuje istniejacy
