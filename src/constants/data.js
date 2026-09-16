@@ -4432,6 +4432,11 @@ export function buildOfferDetailRows(client){
           // modelSzycia, model silnika obok koloru w tkaninaKolor) \u2014 to w\u0105skie,
           // edytowalne pola, a pe\u0142en opis z cenami (calc().lines) i tak jest dla
           // dostawcy, nie dla klienta.
+          // Sterowanie (pilot / przelacznik scienny / centralka Smart Home) — cale
+          // to wyposazenie znikalo z wyceny, mimo ze faktycznie wchodzi w zamowienie
+          // i klient je widzi w zestawieniu. Bez cen (jak reszta opisu) — dopisujemy
+          // do "Podzial / Sterowanie", bo to doslownie ten sam kolumnowy sens.
+          var karAccessories=[];
           if(p.type==="karnisz"){
             var karIsSomfy=pc.kBrand==="somfy";
             modelSzycia=karIsSomfy?"MD Line (Somfy)":pc.kBrand==="premium"?"Premium Line":("Karnisz "+(pc.km||"slim").toUpperCase());
@@ -4440,6 +4445,21 @@ export function buildOfferDetailRows(client){
             var karKolCode=karIsSomfy?pc.mdKolor:pc.plKolor;
             var karKolObj=pc.kBrand?RAIL_SLIM_KOLORY.find(function(k){return k.v===(karKolCode||"bialy");}):null;
             tkaninaKolor=[karKolObj?karKolObj.l:null,karNapObj?karNapObj.l:null].filter(Boolean).join(" \u00b7 ")||"-";
+            if(karIsSomfy){
+              var mdPil=MD_PILOTY.find(function(x){return x.v===(pc.mdPilot||"brak");});
+              if(mdPil&&mdPil.v!=="brak")karAccessories.push(mdPil.l);
+              var mdSc=MD_SCIENNE.find(function(x){return x.v===(pc.mdScienny||"brak");});
+              if(mdSc&&mdSc.v!=="brak")karAccessories.push(mdSc.l);
+              var mdPrz=MD_PRZELACZNIKI.find(function(x){return x.v===(pc.mdPrzel||"brak");});
+              if(mdPrz&&mdPrz.v!=="brak")karAccessories.push(mdPrz.l);
+              if(pc.mdCentralka)karAccessories.push(MD_CENTRALKA.l);
+            } else if(pc.kBrand==="premium"){
+              var plPil=PL_PILOTY.find(function(x){return x.v===(pc.plPilot||"brak");});
+              if(plPil&&plPil.v!=="brak")karAccessories.push(plPil.l);
+              var plPrz=PL_PRZELACZNIKI.find(function(x){return x.v===(pc.plPrzel||"brak");});
+              if(plPrz&&plPrz.v!=="brak")karAccessories.push(plPrz.l);
+              if(pc.plCentralka)karAccessories.push(PL_CENTRALKA.l);
+            }
           } else if(p.type==="prestige_round"||p.type==="prestige_square"){
             var presSeria=p.type==="prestige_round"?"ROUND":"SQUARE";
             var presIsSomfy=pc.kBrand==="somfy";
@@ -4448,13 +4468,24 @@ export function buildOfferDetailRows(client){
             modelSzycia="Prestige "+presSeria+(presIsSomfy?" (Somfy)":"");
             var presKolObj=PRESTIGE_KOLORY.find(function(x){return x.v===pc.pKolor;});
             tkaninaKolor=[presKolObj?presKolObj.l:null,presNapObj?presNapObj.l:null].filter(Boolean).join(" \u00b7 ")||"-";
+            var presPilotyLista=presIsSomfy?PRESTIGE_PILOTY_SOMFY:PRESTIGE_PILOTY;
+            var presCentralkiLista=presIsSomfy?PRESTIGE_CENTRALKI_SOMFY:PRESTIGE_CENTRALKI;
+            var presPil=presPilotyLista.find(function(x){return x.v===(pc.pp||"brak");});
+            if(presPil&&presPil.v!=="brak")karAccessories.push(presPil.l);
+            var presCen=presCentralkiLista.find(function(x){return x.v===(pc.pcn||"brak");});
+            if(presCen&&presCen.v!=="brak")karAccessories.push(presCen.l);
           } else {
             modelSzycia="Forest Shuttle";
             tkaninaKolor=(pc.shFes&&pc.shFes!=="brak")?("FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):"-";
+            var shSter=pc.shSter||{};
+            SHUTTLE_STEROWANIE.forEach(function(s){
+              var q=parseInt(shSter[s.id])||0;
+              if(q>0)karAccessories.push(s.label+(q>1?" x"+q:""));
+            });
           }
           var karMotorSideLbl=(pc.motorSide||"lewo");karMotorSideLbl=karMotorSideLbl.charAt(0).toUpperCase()+karMotorSideLbl.slice(1);
           var karMotorTypeLbl=(pc.motorType||"kurtyna");karMotorTypeLbl=karMotorTypeLbl.charAt(0).toUpperCase()+karMotorTypeLbl.slice(1);
-          podzial=karMotorSideLbl+" / "+karMotorTypeLbl;
+          podzial=karMotorSideLbl+" / "+karMotorTypeLbl+(karAccessories.length?" \u00b7 "+karAccessories.join(", "):"");
           szerokosc=par.len?(par.len+" cm"):"-";
           producent=p.karniszSupplier||"-";
         } else if(p.type==="plisa"){
