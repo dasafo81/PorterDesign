@@ -18,7 +18,7 @@ import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.j
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
-import { ProdCard, Chip, Chips, Fld, Section, FabPicker } from './components/ProdCard.jsx';
+import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
 import { ScreenCRM, CRMKalendarz } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 const ce = React.createElement;
@@ -2772,6 +2772,8 @@ export function ModalClientEmail(p){
   var s10=useState([]),toSuggestions=s10[0],setToSuggestions=s10[1];
   var s11=useState(false),showToSugg=s11[0],setShowToSugg=s11[1];
   var toSuggTimer=React.useRef(null);
+  var s12=useState([]),extraAtts=s12[0],setExtraAtts=s12[1];
+  var extraAttInputRef=React.useRef(null);
   var pdfName=p.pdfName||"Oferta.pdf";
   var sigRef=React.useRef(null);
 
@@ -2830,6 +2832,31 @@ export function ModalClientEmail(p){
     });
   }
 
+  // Zamienia plain-textowy szablon (MAIL_TEMPLATES, \n\n między akapitami) na HTML
+  // w tym samym formacie co DEFAULT_BODY, żeby RichTextEditor renderował go poprawnie.
+  function plainToHtmlSimple(txt){
+    return String(txt||"").split(/\n\n+/).map(function(para){
+      return "<div>"+para.split("\n").join("<br>")+"</div>";
+    }).join("<div><br></div>");
+  }
+  // Wybór gotowego szablonu treści (Oferta / Potwierdzenie / Przypomnienie).
+  // "Własny" nic nie nadpisuje — zostawia to, co Paulina już napisała.
+  function applyMailTemplate(tpl){
+    if(!tpl||tpl.id==="wlasny")return;
+    var filled=fillTemplate(tpl,client);
+    setSubject(filled.subject);
+    setBody(plainToHtmlSimple(filled.body));
+  }
+  // Dodatkowe załączniki — obok automatycznego PDF-u wyceny. Czytane bezpośrednio
+  // z obiektu File przy wysyłce (jak w Kompozytorze modułu Mail).
+  function addExtraAtt(file){
+    if(!file)return;
+    setExtraAtts(function(prev){return prev.concat([{id:"ea_"+Date.now()+"_"+file.name,name:file.name,size:file.size,file:file}]);});
+  }
+  function removeExtraAtt(id){
+    setExtraAtts(function(prev){return prev.filter(function(a){return a.id!==id;});});
+  }
+
   function send(){
     var to=toEmail.trim();
     if(!to||!subject.trim()||!pdfB64||sending)return;
@@ -2840,8 +2867,16 @@ export function ModalClientEmail(p){
       st=st||{};sigHtml=st.signature_html||"";sigImg=st.signature_image_url||"";
       return sigImg?imgToB64(sigImg).catch(function(){return null;}):null;
     });
-    Promise.all([import('./msal.js').then(function(m){return m.msalGetToken();}),imgP]).then(function(r){
-      var tok=r[0],img=r[1];
+    // Dodatkowe załączniki (extraAtts) — czytane z File → base64, równolegle z tokenem/podpisem
+    var extraAttsP=Promise.all(extraAtts.map(function(a){
+      return a.file.arrayBuffer().then(function(ab){
+        var bytes=new Uint8Array(ab),binary="";
+        for(var i=0;i<bytes.byteLength;i++)binary+=String.fromCharCode(bytes[i]);
+        return {"@odata.type":"#microsoft.graph.fileAttachment",name:a.name,contentType:a.file.type||"application/octet-stream",contentBytes:btoa(binary)};
+      });
+    }));
+    Promise.all([import('./msal.js').then(function(m){return m.msalGetToken();}),imgP,extraAttsP]).then(function(r){
+      var tok=r[0],img=r[1],extraGraphAtts=r[2];
       if(!tok)throw new Error("MS_NO_TOKEN");
       var sig="";
       if(sigHtml||img){
@@ -2849,7 +2884,7 @@ export function ModalClientEmail(p){
           +(img?(sigHtml?"<br>":"")+"<img src=\"cid:signature-image\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">":"")+"</div>";
       }
       var html="<div style=\""+font+"font-size:14px;color:#222;\">"+body+"</div>"+sig;
-      var atts=[{"@odata.type":"#microsoft.graph.fileAttachment",name:pdfName,contentType:"application/pdf",contentBytes:pdfB64}];
+      var atts=[{"@odata.type":"#microsoft.graph.fileAttachment",name:pdfName,contentType:"application/pdf",contentBytes:pdfB64}].concat(extraGraphAtts);
       if(img)atts.push({"@odata.type":"#microsoft.graph.fileAttachment",name:"signature.png",contentType:img.ct,contentBytes:img.b64,isInline:true,contentId:"signature-image"});
       var recips=to.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean).map(function(a){return {emailAddress:{address:a}};});
       if(recips.length===1&&client.name)recips[0].emailAddress.name=client.name;
@@ -2928,6 +2963,14 @@ export function ModalClientEmail(p){
             );
           })
         ):null),
+      ce("div",{style:{marginBottom:12,display:"flex",gap:6,flexWrap:"wrap"}},
+        MAIL_TEMPLATES.map(function(tpl){
+          return ce("button",{key:tpl.id,type:"button",onClick:function(){applyMailTemplate(tpl);},
+            style:{padding:"5px 11px",borderRadius:20,border:"1.5px solid var(--bd2)",background:"transparent",
+              color:"var(--t2)",fontSize:11,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}},
+            tpl.icon+" "+tpl.label);
+        })
+      ),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Temat"),
         ce("input",{type:"text",value:subject,onChange:function(ev){setSubject(ev.target.value);},style:inp})),
       ce("div",{style:{marginBottom:12}},ce("div",{style:lbl},"Tre\u015b\u0107"),
@@ -2939,13 +2982,30 @@ export function ModalClientEmail(p){
                 settings.signature_html?ce("div",{dangerouslySetInnerHTML:{__html:settings.signature_html}}):null,
                 settings.signature_image_url?ce("img",{src:settings.signature_image_url,alt:"",style:{maxWidth:250,height:"auto",display:"block",marginTop:8}}):null)
             :ce("div",{style:{fontSize:11,color:"#b4123a",marginTop:6}},"Nie znaleziono podpisu \u2014 ustaw go w Mail \u2192 Ustawienia.")),
-      ce("div",{style:{marginBottom:14}},ce("div",{style:lbl},"Za\u0142\u0105cznik"),
-        ce("div",{style:{display:"inline-flex",alignItems:"center",gap:8,padding:"6px 12px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
-          ce("span",null,"\uD83D\uDCC4"),
-          ce("span",{style:{color:"var(--t1)"}},pdfName),
-          pdfErr?ce("span",{style:{color:"#e11d48",fontWeight:600}},pdfErr)
-            :!pdfB64?ce("span",{style:{color:"var(--t3)",fontWeight:600}},"generuj\u0119 PDF\u2026")
-            :ce("button",{onClick:previewPdf,style:{border:"none",background:"none",color:"var(--gr)",fontWeight:600,cursor:"pointer",fontSize:12,padding:0}},"podgl\u0105d")
+      ce("div",{style:{marginBottom:14}},ce("div",{style:lbl},"Za\u0142\u0105czniki"),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}},
+          ce("div",{style:{display:"inline-flex",alignItems:"center",gap:8,padding:"6px 12px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
+            ce("span",null,"\uD83D\uDCC4"),
+            ce("span",{style:{color:"var(--t1)"}},pdfName),
+            pdfErr?ce("span",{style:{color:"#e11d48",fontWeight:600}},pdfErr)
+              :!pdfB64?ce("span",{style:{color:"var(--t3)",fontWeight:600}},"generuj\u0119 PDF\u2026")
+              :ce("button",{onClick:previewPdf,style:{border:"none",background:"none",color:"var(--gr)",fontWeight:600,cursor:"pointer",fontSize:12,padding:0}},"podgl\u0105d")
+          ),
+          extraAtts.map(function(a){
+            return ce("div",{key:a.id,style:{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:20,background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
+              ce("span",null,"\uD83D\uDCCE"),
+              ce("span",{style:{color:"var(--t1)"}},a.name),
+              ce("button",{onClick:function(){removeExtraAtt(a.id);},style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:14,padding:0,lineHeight:1}},"\u00d7")
+            );
+          }),
+          ce("button",{type:"button",onClick:function(){extraAttInputRef.current&&extraAttInputRef.current.click();},
+            style:{padding:"6px 12px",borderRadius:20,border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,fontWeight:600,cursor:"pointer"}},
+            "+ Dodaj za\u0142\u0105cznik"),
+          ce("input",{ref:extraAttInputRef,type:"file",multiple:true,style:{display:"none"},
+            onChange:function(ev){
+              Array.prototype.slice.call(ev.target.files||[]).forEach(addExtraAtt);
+              ev.target.value="";
+            }})
         )),
       sendErr?ce("div",{style:{marginBottom:12,padding:"10px 14px",background:"#fde8ec",color:"#b4123a",borderRadius:10,fontSize:12}},sendErr):null,
       ce("div",{style:{display:"flex",gap:10}},
