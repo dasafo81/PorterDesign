@@ -4426,6 +4426,30 @@ export function buildOfferDetailRows(client){
           // Szyny KS \u2014 producent zawsze Forest
           producent=p.karniszSupplier||"Forest";
         } else if(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"||p.type==="shuttle"){
+          // Do 2026-09 ta ga\u0142\u0105\u017a zostawia\u0142a model szycia / kolor / podzia\u0142 na "-" \u2014
+          // marka, model silnika, wariant Prestige i strona monta\u017cu s\u0105 w pc (kBrand,
+          // plNap/mdNap/pn, motorSide, motorType), tym samym \u017ar\u00f3d\u0142em co w Zam\u00f3wieniu
+          // karniszy (karniszBrandLabel), tylko nigdy tu nie by\u0142y czytane. Bez cen w
+          // opisie (w odr\u00f3\u017cnieniu od calc().lines) \u2014 to wycena dla klienta, nie dla dostawcy.
+          if(p.type==="karnisz"){
+            modelSzycia=karniszBrandLabel(pc);
+            var karKolCode=pc.kBrand==="somfy"?pc.mdKolor:pc.plKolor;
+            var karKolObj=pc.kBrand?RAIL_SLIM_KOLORY.find(function(k){return k.v===(karKolCode||"bialy");}):null;
+            tkaninaKolor=karKolObj?("Szyna: "+karKolObj.l):"-";
+          } else if(p.type==="prestige_round"||p.type==="prestige_square"){
+            var presSeria=p.type==="prestige_round"?"ROUND":"SQUARE";
+            var presIsSomfy=pc.kBrand==="somfy";
+            var presNapLista=presIsSomfy?MD_NAPEDY:PRESTIGE_NAPEDY;
+            var presNapObj=presNapLista.find(function(x){return x.v===pc.pn;})||presNapLista[0];
+            modelSzycia="Prestige "+presSeria+(presIsSomfy?" \u2014 Somfy":" \u2014 Premium Line")+(presNapObj?" ("+presNapObj.l+")":"");
+            var presKolObj=PRESTIGE_KOLORY.find(function(x){return x.v===pc.pKolor;});
+            tkaninaKolor=presKolObj?presKolObj.l:"-";
+          } else {
+            modelSzycia="Forest Shuttle"+((pc.shFes&&pc.shFes!=="brak")?(" FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):" (suwaki)");
+          }
+          var karMotorSideLbl=(pc.motorSide||"lewo");karMotorSideLbl=karMotorSideLbl.charAt(0).toUpperCase()+karMotorSideLbl.slice(1);
+          var karMotorTypeLbl=(pc.motorType||"kurtyna");karMotorTypeLbl=karMotorTypeLbl.charAt(0).toUpperCase()+karMotorTypeLbl.slice(1);
+          podzial="Silnik: "+karMotorSideLbl+" / "+karMotorTypeLbl;
           szerokosc=par.len?(par.len+" cm"):"-";
           producent=p.karniszSupplier||"-";
         } else if(p.type==="plisa"){
