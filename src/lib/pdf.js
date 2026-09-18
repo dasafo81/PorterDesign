@@ -211,8 +211,12 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
         var subtypeLabel=null;
         if(p.type==="szyna"){
           var ksMode=(p.c||{}).ks||"flex";
-          var ksLbl=ksMode==="manual"?"Szyna KS Manualna":ksMode==="flex"?"Szyna KS Flex":ksMode==="wave"?"Szyna KS Wave":("Szyna KS "+ksMode);
-          subtypeLabel=ksLbl;
+          if((p.c||{}).ksBrand==="msigma"){
+            subtypeLabel="Szyna mSigma "+(ksMode==="wave"?"Wave":"Flex");
+          }else{
+            var ksLbl=ksMode==="manual"?"Szyna KS Manualna":ksMode==="flex"?"Szyna KS Flex":ksMode==="wave"?"Szyna KS Wave":("Szyna KS "+ksMode);
+            subtypeLabel=ksLbl;
+          }
         }else if(p.type==="karnisz"){
           subtypeLabel=karniszBrandLabel(p.c);
         }else if(p.type==="shuttle"){
@@ -378,7 +382,7 @@ export function buildSimplifiedRows(client,selection,comm){
       if(p.type==="roleta"){var m=(p.c||{}).rModel||"relax";var ML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};subtypeLabel="Roleta "+(ML[m]||m);}
       else if(p.type==="roleta_shadow"){subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");}
       else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba35:"Bamboo 35mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
-      else if(p.type==="szyna"){subtypeLabel="Szyna KS "+((p.c||{}).ks==="wave"?"Wave":"Flex");}
+      else if(p.type==="szyna"){subtypeLabel=((p.c||{}).ksBrand==="msigma"?"Szyna mSigma ":"Szyna KS ")+((p.c||{}).ks==="wave"?"Wave":"Flex");}
       else if(p.type==="karnisz"){subtypeLabel=karniszBrandLabel(p.c);}
       else if(p.type==="shuttle")subtypeLabel="Karnisz Shuttle";
       else if(p.type==="prestige_round")subtypeLabel="Karnisz Prestige ROUND";
