@@ -3877,7 +3877,7 @@ export function calc(p){
     if(isMSigma){
       lines.push("Szyna mSigma (Mio Decor) "+(c.ks==="wave"?"Wave":"Flex")+" "+(c.kk==="czarna"?"czarna":"bia\u0142a")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb) \xd7 "+KS_MSIGMA_PRICE+" z\u0142/mb"+(qty>1?" x"+qty:""));
       if(c.ksWysiegnik==="tak"){
-        var wysCount=Math.max(2,Math.ceil(lenCm/KS_WYSIEGNIK_ROZSTAW)+1)*qty;
+        var wysCount=Math.max(2,Math.ceil(lenCm/KS_WYSIEGNIK_ROZSTAW))*qty;
         var wysSuma=parseFloat((wysCount*KS_WYSIEGNIK_PRICE).toFixed(2));
         total+=wysSuma;
         lines.push("Wysi\u0119gnik sufitowy mFix (co "+KS_WYSIEGNIK_ROZSTAW+"cm) x"+wysCount+" \xd7 "+formatPLN(KS_WYSIEGNIK_PRICE)+" = "+formatPLN(wysSuma));
