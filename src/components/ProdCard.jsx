@@ -294,7 +294,7 @@ export function ProdCard(p){
         if(!t)return null;
         return TypeCard(t.id,t.label,null,prod.type===t.id,function(){
           applyType({id:t.id,label:t.label,type:t.id,set:{}});
-        });
+        },t.id);
       }).filter(Boolean);
 
       if(g.brands==="karnisz_el"){
