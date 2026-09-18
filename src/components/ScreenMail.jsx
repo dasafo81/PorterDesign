@@ -1963,10 +1963,16 @@ export function ScreenMail(p){
   var clients=p.clients||[];
 
   // ── Widok mobilny (telefon): panele jeden na raz zamiast 3 kolumn obok siebie ──
-  var smob=us(function(){return typeof window!=="undefined"&&window.innerWidth<720;}),isMobile=smob[0],setIsMobile=smob[1];
+  // Szerokosc dostepna dla Maila = okno minus pasek boczny (232px + 16px odstepu),
+  // ale tylko od 1050px — ponizej progu pasek stoi na gorze i nic nie zabiera.
+  function mailAvailW(){
+    if(typeof window==="undefined")return 9999;
+    return window.innerWidth>=1050?window.innerWidth-248:window.innerWidth;
+  }
+  var smob=us(function(){return mailAvailW()<720;}),isMobile=smob[0],setIsMobile=smob[1];
   var smdrw=us(false),mobileFoldersOpen=smdrw[0],setMobileFoldersOpen=smdrw[1];
   ue(function(){
-    function onResize(){setIsMobile(window.innerWidth<720);}
+    function onResize(){setIsMobile(mailAvailW()<720);}
     window.addEventListener("resize",onResize);
     return function(){window.removeEventListener("resize",onResize);};
   },[]);
