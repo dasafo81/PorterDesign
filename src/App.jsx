@@ -116,6 +116,19 @@ export function App(p){
   // Demo, super-admin oraz stan przed pierwszym fetchem (billing===null) nigdy nie sa blokowane.
   var trialExpired=!!(billing&&billing.status==="trialing"&&billing.trialEndsAt&&new Date(billing.trialEndsAt).getTime()<Date.now());
   var billingBlocked=!isDemo&&!isSuperAdmin&&!!billing&&(billing.status==="canceled"||trialExpired);
+  // Zwiniecie paska bocznego do samych ikon — wybor uzytkownika, wiec zapisywany
+  // w localStorage (przezywa przeladowanie i zmiane zakladki). Dziala tylko przy
+  // ukladzie z paskiem po lewej; ponizej 1050px pasek i tak jest na gorze.
+  var sRailCol=useState(function(){
+    try{return localStorage.getItem("pd_rail_collapsed")==="1";}catch(x){return false;}
+  }),railCollapsed=sRailCol[0],setRailCollapsed=sRailCol[1];
+  function toggleRail(){
+    setRailCollapsed(function(prev){
+      var next=!prev;
+      try{localStorage.setItem("pd_rail_collapsed",next?"1":"0");}catch(x){}
+      return next;
+    });
+  }
   // GCal token – żyje na poziomie App żeby przeżywać przełączanie zakładek
   var sGcalTok=useState(function(){
     try{var t=localStorage.getItem("pd_gcal_token");var e=localStorage.getItem("pd_gcal_token_exp");if(t&&e&&Date.now()<Number(e))return t;}catch(x){}return null;
@@ -2574,12 +2587,17 @@ export function App(p){
     // Powloka: pasek (logo + nawigacja + kontrolki) obok tresci.
     // Od 1050px pasek stoi pionowo po lewej, ponizej wraca na gore — patrz .pd-shell w index.css.
     ce("div",{className:"pd-shell"},
-    ce("div",{className:"pd-rail",style:{"--pd-navcols":isSuperAdmin?9:8}},
+    ce("div",{className:"pd-rail"+(railCollapsed?" pd-rail--collapsed":""),style:{"--pd-navcols":isSuperAdmin?9:8}},
       ce("div",{className:"pd-brand"},
         ce("div",{className:"pd-brandbox"},
           ce("img",{src:brandLogo,alt:brandName,title:brandName})
         ),
         ce("div",{className:"pd-brandname"},brandName)
+      ),
+      ce("button",{className:"pd-railtoggle",onClick:toggleRail,
+        title:railCollapsed?"Rozwiń menu":"Zwiń menu do ikon",
+        "aria-label":railCollapsed?"Rozwiń menu":"Zwiń menu do ikon"},
+        railCollapsed?"\u00bb":"\u00ab"
       ),
       ce("div",{className:"pd-rail-foot"},
         // Motyw: jasny / ciemny / bezowy
@@ -2611,13 +2629,13 @@ export function App(p){
           onClick:function(){setShowAIModal(true);},
           disabled:offlineMode,
           style:{border:"1.5px solid var(--violet-border)",background:offlineMode?"var(--bd3)":"var(--bd3)",cursor:offlineMode?"not-allowed":"pointer",padding:"6px 11px",borderRadius:10,color:offlineMode?"var(--t3)":"var(--violet)",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:5,flexShrink:0,opacity:offlineMode?0.4:1}
-        },"\uD83E\uDD16 AI"):null,
+        },"\uD83E\uDD16",ce("span",null,"AI")):null,
         // Logout
         ce("button",{
           onClick:function(){signOut().finally(function(){onLogout();});},
           title:"Wyloguj",
           style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t3)",fontSize:12,fontWeight:500,display:"flex",alignItems:"center",gap:4,flexShrink:0}
-        },"Wyloguj")
+        },"\u23FB",ce("span",null,"Wyloguj"))
       ),
       // Main nav tabs
       ce("div",{className:"pd-nav"},
@@ -2634,6 +2652,7 @@ export function App(p){
         var active=appMode===tab.id;
         return ce("button",{key:tab.id,
           onClick:function(){if(!tab.soon)setAppMode(tab.id);},
+          title:tab.label,
           className:"nav-tab pd-navbtn"+(active?" active":""),
           style:{
             color:active?"var(--violet-dark)":tab.soon?"var(--bd2)":"var(--t3)",
