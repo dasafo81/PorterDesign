@@ -1983,9 +1983,21 @@ export function App(p){
     var sumMontazVal=installValue(sumWithCommVal);
     var sumBaseTotal=roundTo10(sumWithCommVal+sumMontazVal);
     var sumBarRow=function(label,val,minus){
-      return ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--bg)",opacity:0.75}},
+      return ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--t2)"}},
         ce("span",null,label),
-        ce("span",null,(minus?"\u2212":"")+val+" z\u0142"));
+        ce("span",{style:{fontVariantNumeric:"tabular-nums"}},(minus?"\u2212":"")+val+" z\u0142"));
+    };
+    // Przyciski akcji pod podsumowaniem. Wczesniej kazdy miał wlasny kolor (7 roznych),
+    // przez co nic sie nie wyroznialo. Teraz kolor niesie hierarchie: akcent = oferta
+    // dla klienta, reszta jednolicie soft-UI.
+    var sumActBtn=function(primary){
+      return {
+        padding:"14px 20px",borderRadius:12,border:"none",minHeight:52,
+        fontSize:14,fontWeight:primary?700:600,cursor:"pointer",letterSpacing:"0.02em",
+        background:primary?"var(--violet)":"var(--bg)",
+        color:primary?"#fff":"var(--t1)",
+        boxShadow:primary?"var(--nm-out)":"var(--nm-out-sm)"
+      };
     };
     var sumDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(sumBaseTotal*(+discountInput)/100)):0;
     // Koszt wizyty pomiarowej — kwota zł odejmowana od całości (ta sama logika co
@@ -1997,7 +2009,7 @@ export function App(p){
       sRooms.map(function(r){return renderRoomSummary(r);}),
       sRooms.length===0?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"12px 0"}},"Brak okien do podsumowania."):null,
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:12,display:"flex",alignItems:"center",gap:12}},
-        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"\uD83E\uDD1D Polecenie (%)"),
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",flex:1}},"Polecenie (%)"),
         ce("input",{type:"text",inputMode:"numeric",min:0,max:100,step:1,value:commissionInput,onChange:function(ev){var v=ev.target.value;setCommissionInput(v);if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{commission:v});});},placeholder:"np. 7",style:{width:80,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}),
         commissionInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"+"+commissionInput+"%"):null,
         commissionInput?ce("button",{onClick:function(){setCommissionInput("");if(curClientId)updateClient(curClientId,function(cl){return mg(cl,{commission:""});});},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"},title:"Wyczy\u015b\u0107"},"\u2715"):null
@@ -2020,33 +2032,33 @@ export function App(p){
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:0,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
           ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){setVisitFeeEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
-          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83D\uDE97 Koszt wizyty pomiarowej")
+          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"Koszt wizyty pomiarowej")
         ),
         visitFeeEnabled?ce("input",{type:"text",inputMode:"decimal",value:visitFeeInput,onChange:function(ev){setVisitFeeInput(ev.target.value);},placeholder:"np. 250",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
         visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł"):null,
         visitFeeEnabled&&visitFeeInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+visitFeeInput+" zł"):null,
         visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)",flexBasis:"100%"}},"zostanie odliczony od kosztu ca\u0142kowitego"):null
       ),
-      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16,marginTop:0}},
+      ce("div",{style:{background:"var(--bg)",boxShadow:"var(--nm-out)",borderRadius:16,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16,marginTop:0}},
         sumBarRow(hasAnyVariants?"\u0141\u0105cznie (Wariant A)":"\u0141\u0105cznie",sumProductsVal),
         sumBarRow("Polecenie"+((+commissionInput)>0?" ("+commissionInput+"%)":""),sumCommVal),
         sumBarRow("Monta\u017c"+(montazInput?" ("+(montazMode==="amount"?"kwota":montazInput+"%")+")":""),sumMontazVal),
         sumDiscountVal>0?sumBarRow("Rabat",sumDiscountVal,true):null,
         sumVisitFeeVal>0?sumBarRow("Koszt wizyty (odliczony)",sumVisitFeeVal,true):null,
-        ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid rgba(255,255,255,0.18)",paddingTop:8,marginTop:2}},
-          ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},hasAnyVariants?"Razem od (Wariant A)":"Razem"),
-          ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},sumFinalTotal+" z\u0142")
+        ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid var(--bd2)",paddingTop:10,marginTop:4}},
+          ce("span",{style:{fontSize:14,color:"var(--t2)",letterSpacing:"0.04em"}},hasAnyVariants?"Razem od (Wariant A)":"Razem"),
+          ce("span",{style:{fontSize:22,fontWeight:800,color:"var(--t1)"}},sumFinalTotal+" z\u0142")
         )
       ),
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
-        ce("button",{onClick:function(){openOfferPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCC4 Wycena szczegółowa"),
-        ce("button",{onClick:function(){openSimplifiedPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#c8956c",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDCCB Wycena Uproszczona"),
-        ce("button",{onClick:function(){startClientMail();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#4a7c8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Mail do klienta"),
-        ce("button",{onClick:function(){openFabricPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t2)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDDF5 Zamówienie tkaniny"),
-        ce("button",{onClick:function(){openKarniszPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#5a7a9a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83E\uDE9D Zamówienie karniszy"),
-        ce("button",{onClick:function(){openRailsPreview();},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"#6b5b8a",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\uD83D\uDD29 Szyny do monta\u017cu"),
-        ce("button",{onClick:function(){setScreen("sewingPreview");},style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2702\uFE0F Zlecenie szycia")
+        ce("button",{onClick:function(){openOfferPreview();},style:sumActBtn(true)},"Wycena szczegółowa"),
+        ce("button",{onClick:function(){openSimplifiedPreview();},style:sumActBtn(false)},"Wycena uproszczona"),
+        ce("button",{onClick:function(){startClientMail();},style:sumActBtn(false)},"Mail do klienta"),
+        ce("button",{onClick:function(){openFabricPreview();},style:sumActBtn(false)},"Zamówienie tkaniny"),
+        ce("button",{onClick:function(){openKarniszPreview();},style:sumActBtn(false)},"Zamówienie karniszy"),
+        ce("button",{onClick:function(){openRailsPreview();},style:sumActBtn(false)},"Szyny do monta\u017cu"),
+        ce("button",{onClick:function(){setScreen("sewingPreview");},style:sumActBtn(false)},"Zlecenie szycia")
       )
     );
   }
