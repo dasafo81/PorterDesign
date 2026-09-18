@@ -242,19 +242,48 @@ export function ProdCard(p){
       innyNazwa:undefined,innyKat:undefined}));
   }
 
-  // Jeden spojny kolor "wybrane" (zielony, jak Chip w calej apce) — karty maja
-  // stala wysokosc niezaleznie od tego czy maja podtytul, zeby rzedy nie lamaly sie
-  // nierowno (np. "Karnisze elektryczne" z "3 marki" obok kart bez podtytulu).
-  function TypeCard(key,label,sub,active,onClick){
+  // Sep 2026 redesign: karta soft-UI z ikona. Domyslnie wypukla (--nm-out,
+  // "mozna kliknac"), po wybraniu wklesla (--nm-in, "juz wybrane") — ta sama
+  // regula co reszta przebudowanego UI, zamiast plaskiej ramki + koloru.
+  // Ikony: mapa po id typu z PROD_TYPES (linia, nie emoji — spojne na kazdym
+  // systemie/tablecie, w odroznieniu od emoji ktore renderuja sie inaczej wszedzie).
+  var TYPE_ICON_SVGS={
+    zaslona:'M4 4h16M6 4v16c2 0 3-1.4 3-3.2M18 4v16c-2 0-3-1.4-3-3.2',
+    firana:'M4 5h16M7 5c0 4-2 4-2 8s2 4 2 6M12 5c0 4-2 4-2 8s2 4 2 6M17 5c0 4-2 4-2 8s2 4 2 6',
+    zaluzja:'M4 4h16v16H4zM4 9h16M4 14h16',
+    roleta:'M4 4h16v16H4zM4 10h16M4 15h16',
+    shadow:'M4 4h16v16H4zM4 8.5h16M4 12h16M4 15.5h16',
+    plisa:'M4 6h16M4 12h16M4 18h16',
+    szyna:'M3 7h18M5 7v10M19 7v10',
+    karnisz:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
+    prestige_round:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
+    shuttle:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
+    karnisz_dek:'M3 7h18M5 7v10M19 7v10',
+    karnisz_el:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
+    inny:'M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10'
+  };
+  function TypeIcon(iconId,active){
+    var d=TYPE_ICON_SVGS[iconId]||TYPE_ICON_SVGS.inny;
+    return ce("span",{style:{width:32,height:32,borderRadius:10,flexShrink:0,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        boxShadow:active?"none":"var(--nm-in-sm)",
+        background:active?"var(--violet)":"transparent",
+        color:active?"#fff":"var(--t2)"}},
+      ce("svg",{viewBox:"0 0 24 24",width:17,height:17,fill:"none",stroke:"currentColor",strokeWidth:1.6,strokeLinecap:"round",strokeLinejoin:"round"},
+        ce("path",{d:d}))
+    );
+  }
+  function TypeCard(key,label,sub,active,onClick,iconId){
     return ce("button",{key:key,onClick:onClick,
-      style:{minHeight:56,padding:"10px 12px",borderRadius:10,
-        display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
-        border:"1.5px solid "+(active?"var(--violet)":"var(--bd3)"),
-        background:active?"var(--violet-l)":"var(--bg)",
+      style:{minHeight:78,padding:"12px 14px",borderRadius:14,border:"none",
+        display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center",gap:8,
+        boxShadow:active?"var(--nm-in)":"var(--nm-out)",
+        background:"var(--bg)",
         color:active?"var(--violet-dark)":"var(--t1)",
-        fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"center",transition:"all .15s"}},
-      label,
-      sub?ce("div",{style:{fontSize:10,fontWeight:400,color:active?"var(--violet)":"var(--t3)"}},sub):null
+        fontSize:13,fontWeight:active?700:500,cursor:"pointer",textAlign:"left",transition:"box-shadow .15s"}},
+      TypeIcon(iconId,active),
+      ce("span",null,label),
+      sub?ce("span",{style:{fontSize:10,fontWeight:400,color:active?"var(--violet)":"var(--t3)",marginTop:-4}},sub):null
     );
   }
 
@@ -273,7 +302,7 @@ export function ProdCard(p){
           if(isKarnEl)return;
           var d0=KARNISZ_EL_BRANDS[0].models[0];
           applyType({id:"karnisz_el",label:"Karnisze elektryczne",type:d0.type,set:d0.set});
-        }));
+        },"karnisz_el"));
       }
 
       // Panel marki/modelu jako pelnoszerokosciowa, wypelniona sekcja (nie wiszaca
@@ -306,7 +335,7 @@ export function ProdCard(p){
 
       return ce("div",{key:g.id,style:{background:"var(--bd3)",borderRadius:12,padding:10}},
         ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--violet)",marginBottom:8,paddingLeft:4}},g.label),
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,alignItems:"stretch"}},cards),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(168px,1fr))",gap:10,alignItems:"stretch"}},cards),
         brandBox
       );
     })
