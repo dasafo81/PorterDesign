@@ -172,7 +172,9 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
   function calcProd(p){
     var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
     var base=p.mp!=null?p.mp:(calc(pfc).total||0);
-    return comm>0?base*(1+comm):base;
+    // Zaokraglenie do groszy — bez niego base*(1+comm) daje ogony typu
+    // 3432.0000000000005, ktore wychodza na wierzch w polach kwot.
+    return comm>0?Math.round(base*(1+comm)*100)/100:base;
   }
   function pluralProd(type,count){
     if(type==="zaslona")return "Zas\u0142ony";
@@ -372,7 +374,7 @@ function roomBaseName(room){
 export function buildSimplifiedRows(client,selection,comm){
   comm=comm||0;
   if(!selection||!selection.length)return [];
-  function calcProd(p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return comm>0?base*(1+comm):base;}
+  function calcProd(p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;var base=p.mp!=null?p.mp:(calc(pfc).total||0);return comm>0?Math.round(base*(1+comm)*100)/100:base;}
   function sewingInfo(p){var c=p.c||{};var sz;if(c.sz==="wave"||c.model==="wave"){sz="Wave"+(c.waveMask==="tak"?" z maskownic\u0105":"");}else if(c.model==="falda"){var foldMap={pojedyncza:"Flex Pojedynczy",podwojna:"Flex Podwójny",potrojna:"Flex Potrójny",plaska:"Fałda Płaska",studio:"Fałda Studio"};sz=c.foldType?foldMap[c.foldType]||("Fałda "+c.foldType):"Fałda";}else if(c.model==="tasma"){sz=c.typMarszczenia||"Smok";}else{sz="Flex";}var mars=c.mars?(Math.round(+(c.mars)*100))+"%":"150%";return sz+" "+mars;}
   function buildWinRowsSel(windows){
     var typeData={};var typeOrder=[];var total=0;
