@@ -2576,12 +2576,12 @@ export function App(p){
     // Save status
     saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"var(--red)":"var(--t2)",color:"var(--bg)",fontSize:12,padding:"6px 20px",borderRadius:"0 0 12px 12px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 4px 16px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuj\u0119...":saveStatus==="ok"?"\u2713 Zapisano":"\u26a0 B\u0142\u0105d zapisu"):null,
     // Topbar (always visible)
-    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",padding:"10px 14px",borderRadius:18,background:"var(--panel-bg)",border:"1.5px solid var(--panel-border)",boxShadow:"var(--glass-shadow)",backdropFilter:"blur(22px)",WebkitBackdropFilter:"blur(22px)"}},
+    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",padding:"14px 18px",borderRadius:18,background:"var(--bg)",boxShadow:"var(--glass-shadow)"}},
       appMode==="wyceniarka"&&screen!=="home"
         ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
         :ce("div",{style:{width:20}}),
       ce("div",{style:{display:"flex",alignItems:"center",gap:9}},
-        ce("img",{src:brandLogo,alt:"logo",style:{height:22,opacity:0.9}}),
+        ce("img",{src:brandLogo,alt:"logo",style:{height:38,opacity:1}}),
         ce("span",{style:{fontSize:10,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--t3)",fontWeight:600}},brandName)
       ),
       ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
@@ -2624,7 +2624,7 @@ export function App(p){
       )
     ),
     // ── Main nav tabs ──
-    ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+(isSuperAdmin?9:8)+",1fr)",gap:4,marginBottom:"1.2rem",background:"var(--panel-bg)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:18,padding:"5px",border:"1.5px solid var(--panel-border)",boxShadow:"var(--glass-shadow)"}},
+    ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+(isSuperAdmin?9:8)+",1fr)",gap:4,marginBottom:"1.2rem",background:"var(--bg)",borderRadius:18,padding:"7px",boxShadow:"var(--glass-shadow)"}},
       [
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
@@ -2641,13 +2641,13 @@ export function App(p){
           className:"nav-tab"+(active?" active":""),
           style:{
             padding:"9px 0 8px",borderRadius:12,border:"none",
-            background:active?"var(--panel-active-bg)":"transparent",
-            color:active?"var(--violet)":tab.soon?"var(--bd2)":"var(--t3)",
+            background:"transparent",
+            color:active?"var(--violet-dark)":tab.soon?"var(--bd2)":"var(--t3)",
             fontWeight:active?700:400,fontSize:11,cursor:tab.soon?"default":"pointer",
-            boxShadow:active?"0 2px 10px var(--violet-l)":"none",
+            boxShadow:active?"inset 2px 2px 5px rgba(158,168,186,0.45), inset -2px -2px 5px rgba(255,255,255,0.9)":"none",
             transition:"all .18s",letterSpacing:"0.01em",
             display:"flex",flexDirection:"column",alignItems:"center",gap:3,
-            borderBottom:active?"2px solid var(--violet)":"2px solid transparent"
+            borderBottom:"2px solid transparent"
           }
         },
           ce("span",{style:{fontSize:16,lineHeight:1}},tab.icon),
