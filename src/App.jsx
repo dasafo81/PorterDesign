@@ -2571,17 +2571,17 @@ export function App(p){
     offlineMode?ce("div",{style:{position:"fixed",bottom:20,right:20,fontSize:10,fontWeight:700,letterSpacing:"0.10em",color:"rgba(245,158,11,0.28)",pointerEvents:"none",zIndex:1,textTransform:"uppercase"}},"Tryb offline"):null,
     // Save status
     saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"var(--red)":"var(--t2)",color:"var(--bg)",fontSize:12,padding:"6px 20px",borderRadius:"0 0 12px 12px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 4px 16px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuj\u0119...":saveStatus==="ok"?"\u2713 Zapisano":"\u26a0 B\u0142\u0105d zapisu"):null,
-    // Topbar (always visible)
-    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:"1rem",padding:"14px 18px",borderRadius:18,background:"var(--bg)",boxShadow:"var(--glass-shadow)"}},
-      appMode==="wyceniarka"&&screen!=="home"
-        ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
-        :ce("div",{style:{width:20}}),
-      ce("div",{style:{display:"flex",alignItems:"center"}},
-        ce("div",{style:{width:64,height:64,borderRadius:18,background:"var(--bg)",boxShadow:"var(--nm-out)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:5,boxSizing:"border-box"}},
-          ce("img",{src:brandLogo,alt:brandName,title:brandName,style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",opacity:1}})
-        )
+    // Powloka: pasek (logo + nawigacja + kontrolki) obok tresci.
+    // Od 1050px pasek stoi pionowo po lewej, ponizej wraca na gore — patrz .pd-shell w index.css.
+    ce("div",{className:"pd-shell"},
+    ce("div",{className:"pd-rail",style:{"--pd-navcols":isSuperAdmin?9:8}},
+      ce("div",{className:"pd-brand"},
+        ce("div",{className:"pd-brandbox"},
+          ce("img",{src:brandLogo,alt:brandName,title:brandName})
+        ),
+        ce("div",{className:"pd-brandname"},brandName)
       ),
-      ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+      ce("div",{className:"pd-rail-foot"},
         // Motyw: jasny / ciemny / bezowy
         ce("div",{style:{display:"flex",alignItems:"center",gap:2,background:"var(--bd3)",borderRadius:10,padding:2,flexShrink:0}},
           [{id:"light",icon:"\u2600\uFE0F",title:"Jasny"},{id:"dark",icon:"\uD83C\uDF19",title:"Ciemny (w trakcie dopracowywania — nie wszystkie ekrany gotowe)"},{id:"beige",icon:"\u2615",title:"Kawowy (w trakcie dopracowywania — nie wszystkie ekrany gotowe)"}].map(function(th){
@@ -2618,10 +2618,9 @@ export function App(p){
           title:"Wyloguj",
           style:{border:"1.5px solid var(--bd2)",background:"var(--bg2)",cursor:"pointer",padding:"6px 10px",borderRadius:10,color:"var(--t3)",fontSize:12,fontWeight:500,display:"flex",alignItems:"center",gap:4,flexShrink:0}
         },"Wyloguj")
-      )
-    ),
-    // ── Main nav tabs ──
-    ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+(isSuperAdmin?9:8)+",1fr)",gap:4,marginBottom:"1.2rem",background:"var(--bg)",borderRadius:18,padding:"7px",boxShadow:"var(--glass-shadow)"}},
+      ),
+      // Main nav tabs
+      ce("div",{className:"pd-nav"},
       [
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
@@ -2635,25 +2634,25 @@ export function App(p){
         var active=appMode===tab.id;
         return ce("button",{key:tab.id,
           onClick:function(){if(!tab.soon)setAppMode(tab.id);},
-          className:"nav-tab"+(active?" active":""),
+          className:"nav-tab pd-navbtn"+(active?" active":""),
           style:{
-            padding:"9px 0 8px",borderRadius:12,border:"none",
-            background:"transparent",
             color:active?"var(--violet-dark)":tab.soon?"var(--bd2)":"var(--t3)",
-            fontWeight:active?700:400,fontSize:11,cursor:tab.soon?"default":"pointer",
-            boxShadow:active?"inset 2px 2px 5px rgba(158,168,186,0.45), inset -2px -2px 5px rgba(255,255,255,0.9)":"none",
-            transition:"all .18s",letterSpacing:"0.01em",
-            display:"flex",flexDirection:"column",alignItems:"center",gap:3,
-            borderBottom:"2px solid transparent"
+            fontWeight:active?700:400,cursor:tab.soon?"default":"pointer",
+            boxShadow:active?"inset 2px 2px 5px rgba(158,168,186,0.45), inset -2px -2px 5px rgba(255,255,255,0.9)":"none"
           }
         },
-          ce("span",{style:{fontSize:16,lineHeight:1,filter:active?"none":"grayscale(1)",opacity:active?1:0.5}},tab.icon),
-          ce("span",null,tab.label),
+          ce("span",{style:{fontSize:16,lineHeight:1,filter:active?"none":"grayscale(1)",opacity:active?1:0.5,flexShrink:0}},tab.icon),
+          ce("span",{className:"pd-navlabel"},tab.label),
           tab.soon?ce("span",{style:{fontSize:8,color:"var(--t3)",letterSpacing:"0.05em",opacity:0.6}},"wkr\u00f3tce"):null
         );
       })
+      )
     ),
-    // Treść główna
+    // Tresc glowna
+    ce("div",{className:"pd-main"},
+    appMode==="wyceniarka"&&screen!=="home"
+      ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s",marginBottom:12}},"\u2190","Wstecz")
+      :null,
     ce(React.Suspense,{fallback:LazyScreenFallback},
     appMode==="crm"
       ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,
@@ -2663,7 +2662,7 @@ export function App(p){
           }
         })
       : appMode==="mail"
-        ? ce("div",{style:{height:"calc(100vh - 190px)",overflow:"hidden"}},
+        ? ce("div",{className:"pd-mail-h",style:{overflow:"hidden"}},
             ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId})
           )
       : appMode==="kalendarz"
@@ -2682,6 +2681,8 @@ export function App(p){
             screen!=="home"?ce(BC,{}):null,
             content
           )
+    )
+    )
     ),
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
     showNewQuoteModal?ce(ModalNewQuoteFromClient,{clients:clients,onOk:addClient,onClose:function(){setShowNewQuoteModal(false);}}):null,
