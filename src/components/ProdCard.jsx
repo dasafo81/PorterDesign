@@ -723,12 +723,12 @@ export function ProdCard(p){
     var marsSection = ce("div",{style:{marginTop:20}},
       ce(Fld,{label:"PROCENT MARSZCZENIA FA\u0141DY"},
         ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:52,background:"var(--bg)",maxWidth:200}},
-          ce("button",{onClick:function(){if(marsPct>100)sc("mars",((marsPct-25)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
+          ce("button",{onClick:function(){if(marsPct>100)sc("mars",((marsPct-10)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
           ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:2,fontSize:17,color:"var(--t1)",fontWeight:500}},
             ce("input",{type:"text",inputMode:"numeric",value:marsPct,onChange:function(ev){sc("mars",(+(ev.target.value||100)/100).toFixed(2));},style:{width:52,border:"none",background:"transparent",textAlign:"center",fontSize:17,outline:"none",fontWeight:500}}),
             ce("span",{style:{color:"var(--t3)",fontSize:14}},"%")
           ),
-          ce("button",{onClick:function(){sc("mars",((marsPct+25)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
+          ce("button",{onClick:function(){sc("mars",((marsPct+10)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
         )
       )
     );
