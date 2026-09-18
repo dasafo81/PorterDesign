@@ -2652,7 +2652,7 @@ export function App(p){
             borderBottom:"2px solid transparent"
           }
         },
-          ce("span",{style:{fontSize:16,lineHeight:1,filter:"grayscale(1)",opacity:active?0.85:0.5}},tab.icon),
+          ce("span",{style:{fontSize:16,lineHeight:1,filter:active?"none":"grayscale(1)",opacity:active?1:0.5}},tab.icon),
           ce("span",null,tab.label),
           tab.soon?ce("span",{style:{fontSize:8,color:"var(--t3)",letterSpacing:"0.05em",opacity:0.6}},"wkr\u00f3tce"):null
         );
