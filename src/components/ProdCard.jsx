@@ -46,7 +46,7 @@ import { generateFabricOrderPDF, generateClientEmail,
 const ce = React.createElement;
 
 export function Chip(p){
-  return ce("button",{onClick:p.onClick,style:{padding:"12px 22px",borderRadius:24,border:"1.5px solid "+(p.active?"var(--violet)":"var(--bd2)"),background:p.active?"var(--violet-l)":"transparent",color:p.active?"var(--violet-dark)":"var(--t1)",fontSize:15,cursor:"pointer",marginBottom:6,transition:"all .15s",minHeight:50,fontWeight:p.active?600:400}},p.label);
+  return ce("button",{onClick:p.onClick,style:{padding:"12px 20px",borderRadius:12,border:"none",background:"var(--bg)",boxShadow:p.active?"var(--nm-in)":"var(--nm-out-sm)",color:p.active?"var(--violet-dark)":"var(--t1)",fontSize:15,cursor:"pointer",marginBottom:6,transition:"box-shadow .15s,color .15s",minHeight:48,fontWeight:p.active?700:500}},p.label);
 }
 export function Chips(p){return ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}},p.items.filter(Boolean));}
 export function Fld(p){return ce("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:p.noMb?0:4}},ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase"}},(p.label||"").toUpperCase()),p.children);}
@@ -248,28 +248,37 @@ export function ProdCard(p){
   // Ikony: mapa po id typu z PROD_TYPES (linia, nie emoji — spojne na kazdym
   // systemie/tablecie, w odroznieniu od emoji ktore renderuja sie inaczej wszedzie).
   var TYPE_ICON_SVGS={
-    zaslona:'M4 4h16M6 4v16c2 0 3-1.4 3-3.2M18 4v16c-2 0-3-1.4-3-3.2',
-    firana:'M4 5h16M7 5c0 4-2 4-2 8s2 4 2 6M12 5c0 4-2 4-2 8s2 4 2 6M17 5c0 4-2 4-2 8s2 4 2 6',
-    zaluzja:'M4 4h16v16H4zM4 9h16M4 14h16',
-    roleta:'M4 4h16v16H4zM4 10h16M4 15h16',
-    shadow:'M4 4h16v16H4zM4 8.5h16M4 12h16M4 15.5h16',
-    plisa:'M4 6h16M4 12h16M4 18h16',
-    szyna:'M3 7h18M5 7v10M19 7v10',
-    karnisz:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
-    prestige_round:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
-    shuttle:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
-    karnisz_dek:'M3 7h18M5 7v10M19 7v10',
-    karnisz_el:'M3 7h18M5 7v10M19 7v10M7 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8ZM17 5.4a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Z',
+    // Zaslona: karnisz + dwa panele z faldami rozchodzacymi sie na boki
+    zaslona:'M3 4.5h18M7 4.5v15M7 4.5c1.7 3.2 1.7 7.8 0 11M17 4.5v15M17 4.5c-1.7 3.2-1.7 7.8 0 11',
+    // Firana: gesciejsze, drobne fale — lzejsza tkanina
+    firana:'M3 4.5h18M6.5 5v14.5M6.5 5c1.1 2.6 1.1 6.2 0 8.8M12 5v14.5M12 5c1.1 2.6 1.1 6.2 0 8.8M17.5 5v14.5M17.5 5c1.1 2.6 1.1 6.2 0 8.8',
+    // Zaluzje: poziome lamelki + pret do przekrecania po prawej
+    zaluzja:'M4 4.5h16M5.5 8h13M5.5 11h13M5.5 14h13M5.5 17h13M20 4.5v12.5',
+    // Roleta rzymska: panel + poprzeczne zakladki + dwa sznurki na calej wysokosci
+    roleta:'M4.5 4h15v16h-15zM4.5 12.5h15M4.5 16h15M9.5 4v8.5M14.5 4v8.5',
+    // Roleta Shadow (wolnowiszaca): walek u gory, tkanina, listwa obciazajaca u dolu
+    shadow:'M4 4h16v3.2H4zM5.6 7.2v10.4M18.4 7.2v10.4M4.8 17.6h14.4v2.2H4.8zM12 19.8v1.6',
+    // Plisa: harmonijka — linia lamana, nie rownolegle paski
+    plisa:'M4 4.5l16 3.6-16 3.6 16 3.6-16 3.6',
+    // Szyna KS: plaska szyna z wozkami (bez ozdobnych koncowek)
+    szyna:'M3 8h18v3H3zM7 11v3.4M12 11v3.4M17 11v3.4',
+    // Karnisz dekoracyjny: drazek z kulami na koncach + kolka
+    karnisz_dek:'M2.4 8a1.7 1.7 0 1 0 3.4 0 1.7 1.7 0 1 0-3.4 0M18.2 8a1.7 1.7 0 1 0 3.4 0 1.7 1.7 0 1 0-3.4 0M5.8 8h12.4M9 8v3.6M12.5 8v3.6M16 8v3.6',
+    // Karnisze elektryczne: szyna + silnik na koncu
+    karnisz:'M3 8.5h18v2.6H3zM15.4 11.1h5.4v4.6h-5.4zM6.5 11.1v2.8M10.5 11.1v2.8',
+    prestige_round:'M3 8.5h18v2.6H3zM15.4 11.1h5.4v4.6h-5.4zM6.5 11.1v2.8M10.5 11.1v2.8',
+    shuttle:'M3 8.5h18v2.6H3zM15.4 11.1h5.4v4.6h-5.4zM6.5 11.1v2.8M10.5 11.1v2.8',
+    karnisz_el:'M3 8.5h18v2.6H3zM15.4 11.1h5.4v4.6h-5.4zM6.5 11.1v2.8M10.5 11.1v2.8',
     inny:'M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10'
   };
   function TypeIcon(iconId,active){
     var d=TYPE_ICON_SVGS[iconId]||TYPE_ICON_SVGS.inny;
-    return ce("span",{style:{width:32,height:32,borderRadius:10,flexShrink:0,
+    return ce("span",{style:{width:34,height:34,borderRadius:11,flexShrink:0,
         display:"flex",alignItems:"center",justifyContent:"center",
         boxShadow:active?"none":"var(--nm-in-sm)",
         background:active?"var(--violet)":"transparent",
         color:active?"#fff":"var(--t2)"}},
-      ce("svg",{viewBox:"0 0 24 24",width:17,height:17,fill:"none",stroke:"currentColor",strokeWidth:1.6,strokeLinecap:"round",strokeLinejoin:"round"},
+      ce("svg",{viewBox:"0 0 24 24",width:19,height:19,fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},
         ce("path",{d:d}))
     );
   }
