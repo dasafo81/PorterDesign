@@ -1633,6 +1633,7 @@ export function ProdCard(p){
 
 
     }else if(prod.type==="szyna"){
+    var isMSigma=c.ksBrand==="msigma";
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
@@ -1644,13 +1645,25 @@ export function ProdCard(p){
         ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
       ),
       arcInfo(),
+      ce("div",{style:{marginBottom:12}},
+        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",marginBottom:6,textTransform:"uppercase"}},"PRODUCENT SZYNY"),
+        ce(Chips,{items:[
+          ce(Chip,{key:"forest",label:"Forest KS",active:!isMSigma,onClick:function(){sc("ksBrand","forest");}}),
+          ce(Chip,{key:"msigma",label:"Mio Decor mSigma \u2014 120 z\u0142/mb",active:isMSigma,onClick:function(){sc("ksBrand","msigma");}})
+        ]})
+      ),
       ce(Chips,{items:[
-        ce(Chip,{key:"fl",label:"Flex 80 z\u0142/mb",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
+        ce(Chip,{key:"fl",label:isMSigma?"Flex":"Flex 80 z\u0142/mb",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
         ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
-        c.ks==="wave"?ce(Chip,{key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}):null,
-        c.ks==="wave"?ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}):null,
+        (isMSigma||c.ks==="wave")?ce(Chip,{key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}):null,
+        (isMSigma||c.ks==="wave")?ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}):null,
         ce(Chip,{key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
-      ]})
+      ]}),
+      isMSigma?ce("div",{style:{marginTop:12}},
+        ce(Chips,{items:[
+          ce(Chip,{key:"wys",label:"Monta\u017c na wysi\u0119gnikach mFix (+180 z\u0142/szt. co 70cm)",active:c.ksWysiegnik==="tak",onClick:function(){tc("ksWysiegnik","nie","tak");}})
+        ]})
+      ):null
     );
   }else if(prod.type==="karnisz"&&c.kBrand==="premium"){
     // \u2500\u2500 PREMIUM LINE \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
