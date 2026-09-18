@@ -109,7 +109,17 @@ function ModalContact(p){
       notes: notes.trim()
     };
     var prom=isNew?sbApi.addContact(payload):sbApi.updateContact(p.contact.id,payload);
-    prom.then(function(){ p.onSave(); })
+    prom.then(function(){
+        // Nowy kontrahent nie ma jeszcze powiazanych wycen — synchronizacja
+        // dotyczy tylko edycji istniejacego.
+        if(!isNew){
+          return sbApi.syncContactToQuotes(p.contact.id,{
+            name:payload.name, addr:payload.street, postal:payload.postal,
+            city:payload.city, phone:payload.phone, email:payload.email
+          });
+        }
+      })
+      .then(function(){ p.onSave(); })
       .catch(function(e){ setErr((e&&e.message)||"Błąd zapisu"); setBusy(false); });
   }
 
