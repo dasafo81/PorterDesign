@@ -2580,9 +2580,11 @@ export function App(p){
       appMode==="wyceniarka"&&screen!=="home"
         ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
         :ce("div",{style:{width:20}}),
-      ce("div",{style:{display:"flex",alignItems:"center",gap:9}},
-        ce("img",{src:brandLogo,alt:"logo",style:{height:38,opacity:1}}),
-        ce("span",{style:{fontSize:10,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--t3)",fontWeight:600}},brandName)
+      ce("div",{style:{display:"flex",alignItems:"center",gap:13}},
+        ce("div",{style:{width:52,height:52,borderRadius:16,background:"var(--bg)",boxShadow:"var(--nm-out)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:8,boxSizing:"border-box"}},
+          ce("img",{src:brandLogo,alt:"logo",style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",opacity:1}})
+        ),
+        ce("span",{style:{fontSize:11,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--t3)",fontWeight:600}},brandName)
       ),
       ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
         // Motyw: jasny / ciemny / bezowy
@@ -2650,7 +2652,7 @@ export function App(p){
             borderBottom:"2px solid transparent"
           }
         },
-          ce("span",{style:{fontSize:16,lineHeight:1}},tab.icon),
+          ce("span",{style:{fontSize:16,lineHeight:1,filter:"grayscale(1)",opacity:active?0.85:0.5}},tab.icon),
           ce("span",null,tab.label),
           tab.soon?ce("span",{style:{fontSize:8,color:"var(--t3)",letterSpacing:"0.05em",opacity:0.6}},"wkr\u00f3tce"):null
         );
