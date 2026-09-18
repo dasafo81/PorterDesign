@@ -1254,10 +1254,6 @@ export function App(p){
     content=ce(Fragment,null,
       // ── Hero Banner ──
       ce("div",{className:"hero-banner",style:{marginBottom:20,padding:"24px 24px 20px"}},
-        // Orbs
-        ce("div",{className:"holo-orb",style:{width:120,height:120,background:"var(--orb-1)",top:-30,right:60,animationDelay:"0s"}}),
-        ce("div",{className:"holo-orb",style:{width:80,height:80,background:"var(--orb-2)",bottom:-10,right:20,animationDelay:"2.5s"}}),
-        ce("div",{className:"holo-orb",style:{width:60,height:60,background:"var(--orb-3)",top:10,right:180,animationDelay:"1.5s"}}),
         // Content
         ce("div",{style:{position:"relative",zIndex:1}},
           ce("div",{style:{fontSize:11,color:"var(--hero-text-1)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}},dateStr),
@@ -1269,10 +1265,11 @@ export function App(p){
           ce("div",{style:{display:"flex",gap:12,flexWrap:"wrap"}},
             stageStats.map(function(st){
               return ce("div",{key:st.id,style:{
-                background:st.color+"26",backdropFilter:"blur(12px)",
-                border:"1px solid "+st.color+"55",borderRadius:14,
+                background:"var(--hero-stat-a-bg)",position:"relative",overflow:"hidden",
+                border:"1px solid var(--hero-stat-a-border)",borderRadius:14,
                 padding:"12px 18px",minWidth:130,flex:"1 1 130px"
               }},
+                ce("div",{style:{position:"absolute",top:0,left:0,right:0,height:3,background:st.color,opacity:0.7}}),
                 ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},st.label),
                 ce("div",{style:{fontSize:20,fontWeight:800,color:"#fff"}},st.count+" \u2022 "+formatPLN(st.value)),
                 ce("div",{style:{fontSize:11,color:"var(--hero-text-3)",marginTop:2}},st.nearest?("\uD83D\uDCC5 "+fmtHeroDate(st.nearest)):"Brak termin\xf3w")
