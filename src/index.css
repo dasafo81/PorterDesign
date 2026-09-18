@@ -206,30 +206,57 @@
        wysokosc tego chrome — wartosc przeniesiona 1:1 ze starego inline style
        w App.jsx, zeby na tablecie w pionie nic sie nie zmienilo. */
     .pd-mail-h{height:calc(100vh - 190px);}
+    .pd-railtoggle{display:none;}
 
     @media (min-width:1050px){
       .pd-shell{flex-direction:row;align-items:flex-start;gap:16px;}
       .pd-rail{
-        width:232px;flex-shrink:0;display:flex;flex-direction:column;gap:0;
-        padding:16px 12px 14px;position:sticky;top:1.2rem;max-height:calc(100vh - 2.4rem);
+        width:186px;flex-shrink:0;display:flex;flex-direction:column;gap:0;
+        padding:14px 10px 12px;position:sticky;top:1.2rem;max-height:calc(100vh - 2.4rem);
+        transition:width .18s ease;
       }
-      .pd-brand{flex-direction:column;gap:8px;margin-bottom:6px;}
-      .pd-brandbox{width:100%;height:124px;padding:14px;}
+      .pd-brand{flex-direction:column;gap:7px;margin-bottom:4px;}
+      .pd-brandbox{width:100%;height:104px;padding:12px;}
       .pd-brandname{
-        display:block;font-size:9.5px;letter-spacing:0.2em;text-transform:uppercase;
+        display:block;font-size:9px;letter-spacing:0.18em;text-transform:uppercase;
         color:var(--t3);font-weight:700;text-align:center;
       }
       .pd-nav{display:flex;flex-direction:column;gap:3px;overflow-y:auto;min-height:0;
-        margin-top:10px;padding-top:10px;border-top:1px solid var(--bd3);}
+        margin-top:8px;padding-top:8px;border-top:1px solid var(--bd3);}
       .pd-navbtn{
-        flex-direction:row;align-items:center;gap:11px;height:44px;padding:0 12px;
-        font-size:14px;text-align:left;flex-shrink:0;
+        flex-direction:row;align-items:center;gap:10px;height:42px;padding:0 10px;
+        font-size:13.5px;text-align:left;flex-shrink:0;
       }
       .pd-navlabel{flex:1;text-align:left;}
       .pd-rail-foot{
-        flex-direction:column;align-items:stretch;gap:7px;
-        margin-top:12px;padding-top:12px;border-top:1px solid var(--bd3);
+        flex-direction:column;align-items:stretch;gap:6px;
+        margin-top:10px;padding-top:10px;border-top:1px solid var(--bd3);
       }
+      /* Przycisk zwijania — pasek na sam wymiar ikon i z powrotem */
+      .pd-railtoggle{
+        display:block;align-self:flex-end;border:none;background:transparent;cursor:pointer;
+        font-family:inherit;font-size:13px;line-height:1;color:var(--t3);
+        padding:5px 8px;border-radius:9px;margin:2px 0 0;box-shadow:var(--nm-out-sm);
+      }
+      .pd-railtoggle:hover{color:var(--t1);}
+
+      /* ── Wariant zwiniety: same ikony ───────────────────────────────── */
+      .pd-rail--collapsed{width:68px;padding-left:8px;padding-right:8px;}
+      .pd-rail--collapsed .pd-brandbox{height:52px;padding:6px;}
+      .pd-rail--collapsed .pd-brandname{display:none;}
+      .pd-rail--collapsed .pd-railtoggle{align-self:center;}
+      .pd-rail--collapsed .pd-navbtn{justify-content:center;padding:0;gap:0;}
+      .pd-rail--collapsed .pd-navlabel{display:none;}
+      /* Kontrolki na dole (motyw, online, AI, wyloguj) maja wlasne inline style
+         z tekstem — po zwinieciu chowamy ich zawartosc tekstowa i centrujemy. */
+      .pd-rail--collapsed .pd-rail-foot{gap:5px;}
+      .pd-rail--collapsed .pd-rail-foot > *{justify-content:center;}
+      .pd-rail--collapsed .pd-rail-foot span{display:none;}
+      .pd-rail--collapsed .pd-rail-foot button{padding-left:0;padding-right:0;}
+      /* Przelacznik motywu: 3 emoji nie mieszcza sie w rzedzie przy 68px — zawijamy */
+      .pd-rail--collapsed .pd-rail-foot > div:first-child{flex-wrap:wrap;justify-content:center;}
+      /* Suwak offline/online: sam przelacznik zostaje, napis chowa regula wyzej */
+      .pd-rail--collapsed .pd-rail-foot > div{padding-left:4px;padding-right:4px;}
       .pd-main{flex:1;}
       /* Pasek stoi obok tresci, wiec nad Mailem nie ma juz topbara ani zakladek —
          odejmujemy tylko padding powloki (2 x 1.2rem). */
