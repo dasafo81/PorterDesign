@@ -143,6 +143,14 @@ export const sbApi = {
   updateContact: function(id,data){
     return sbFetch("PATCH","contacts?id=eq."+id,data);
   },
+  // Po zapisie kontrahenta nadpisuje dane teleadresowe (name/addr/postal/city/
+  // phone/email) we wszystkich powiazanych z nim wycenach (clients.contact_id).
+  // Celowo NIE dotyka faktur — tam seller_snapshot/buyer_* musza zostac
+  // zamrozone (wymog KSeF), zapis kontrahenta ich nie zmienia.
+  syncContactToQuotes: function(contactId,data){
+    if(!contactId)return Promise.resolve();
+    return sbFetch("PATCH","clients?contact_id=eq."+contactId,data);
+  },
   deleteContact: function(id){
     return sbFetch("DELETE","contacts?id=eq."+id);
   },
