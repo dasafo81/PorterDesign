@@ -1253,26 +1253,25 @@ export function App(p){
 
     content=ce(Fragment,null,
       // ── Hero Banner ──
-      ce("div",{className:"hero-banner",style:{marginBottom:20,padding:"24px 24px 20px"}},
-        // Content
-        ce("div",{style:{position:"relative",zIndex:1}},
-          ce("div",{style:{fontSize:11,color:"var(--hero-text-1)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}},dateStr),
-          ce("div",{style:{fontSize:28,fontWeight:900,color:"#fff",lineHeight:1.15,marginBottom:4}},
+      ce("div",{style:{marginBottom:20,padding:"24px 24px 20px",borderRadius:22,background:"var(--bg)",boxShadow:"var(--nm-out)"}},
+        ce("div",null,
+          ce("div",{style:{fontSize:11,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6,fontWeight:600}},dateStr),
+          ce("div",{style:{fontSize:28,fontWeight:900,color:"var(--t1)",lineHeight:1.15,marginBottom:4}},
             "Porter Design"
           ),
-          ce("div",{style:{fontSize:13,color:"var(--hero-text-2)",marginBottom:20}},"Panel sprzeda\u017cy i wycen"),
+          ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:20}},"Panel sprzeda\u017cy i wycen"),
           // Stat row — pipeline CRM: Wycena / Zamówienie / Realizacja / Montaż
           ce("div",{style:{display:"flex",gap:12,flexWrap:"wrap"}},
             stageStats.map(function(st){
               return ce("div",{key:st.id,style:{
-                background:"var(--hero-stat-a-bg)",position:"relative",overflow:"hidden",
-                border:"1px solid var(--hero-stat-a-border)",borderRadius:14,
+                background:"var(--bg)",boxShadow:"var(--nm-in)",position:"relative",overflow:"hidden",
+                borderRadius:14,
                 padding:"12px 18px",minWidth:130,flex:"1 1 130px"
               }},
-                ce("div",{style:{position:"absolute",top:0,left:0,right:0,height:3,background:st.color,opacity:0.7}}),
-                ce("div",{style:{fontSize:10,color:"var(--hero-text-3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}},st.label),
-                ce("div",{style:{fontSize:20,fontWeight:800,color:"#fff"}},st.count+" \u2022 "+formatPLN(st.value)),
-                ce("div",{style:{fontSize:11,color:"var(--hero-text-3)",marginTop:2}},st.nearest?("\uD83D\uDCC5 "+fmtHeroDate(st.nearest)):"Brak termin\xf3w")
+                ce("div",{style:{position:"absolute",top:0,left:0,right:0,height:3,background:st.color,opacity:0.65}}),
+                ce("div",{style:{fontSize:10,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4,fontWeight:600}},st.label),
+                ce("div",{style:{fontSize:20,fontWeight:800,color:"var(--t1)"}},st.count+" \u2022 "+formatPLN(st.value)),
+                ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},st.nearest?("\uD83D\uDCC5 "+fmtHeroDate(st.nearest)):"Brak termin\xf3w")
               );
             })
           )
