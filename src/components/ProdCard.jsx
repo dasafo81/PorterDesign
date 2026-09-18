@@ -46,7 +46,7 @@ import { generateFabricOrderPDF, generateClientEmail,
 const ce = React.createElement;
 
 export function Chip(p){
-  return ce("button",{onClick:p.onClick,style:{padding:"12px 22px",borderRadius:24,border:"1.5px solid "+(p.active?"var(--gr)":"var(--bd2)"),background:p.active?"var(--grl)":"transparent",color:p.active?"var(--grd)":"var(--t1)",fontSize:15,cursor:"pointer",marginBottom:6,transition:"all .15s",minHeight:50,fontWeight:p.active?600:400}},p.label);
+  return ce("button",{onClick:p.onClick,style:{padding:"12px 22px",borderRadius:24,border:"1.5px solid "+(p.active?"var(--violet)":"var(--bd2)"),background:p.active?"var(--violet-l)":"transparent",color:p.active?"var(--violet-dark)":"var(--t1)",fontSize:15,cursor:"pointer",marginBottom:6,transition:"all .15s",minHeight:50,fontWeight:p.active?600:400}},p.label);
 }
 export function Chips(p){return ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:4}},p.items.filter(Boolean));}
 export function Fld(p){return ce("div",{style:{display:"flex",flexDirection:"column",gap:8,marginBottom:p.noMb?0:4}},ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase"}},(p.label||"").toUpperCase()),p.children);}
@@ -249,12 +249,12 @@ export function ProdCard(p){
     return ce("button",{key:key,onClick:onClick,
       style:{minHeight:56,padding:"10px 12px",borderRadius:10,
         display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
-        border:"1.5px solid "+(active?"var(--gr)":"var(--bd3)"),
-        background:active?"var(--grl)":"var(--bg)",
-        color:active?"var(--grd)":"var(--t1)",
+        border:"1.5px solid "+(active?"var(--violet)":"var(--bd3)"),
+        background:active?"var(--violet-l)":"var(--bg)",
+        color:active?"var(--violet-dark)":"var(--t1)",
         fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"center",transition:"all .15s"}},
       label,
-      sub?ce("div",{style:{fontSize:10,fontWeight:400,color:active?"var(--gr)":"var(--t3)"}},sub):null
+      sub?ce("div",{style:{fontSize:10,fontWeight:400,color:active?"var(--violet)":"var(--t3)"}},sub):null
     );
   }
 
@@ -2365,7 +2365,7 @@ export function ProdCard(p){
   }
 
   return ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
-    ce("div",{style:{padding:"14px 20px",background:"#2a7a8a",display:"flex",alignItems:"center",gap:10,borderBottom:"none"}},
+    ce("div",{style:{padding:"14px 20px",background:"var(--hero-gradient)",display:"flex",alignItems:"center",gap:10,borderBottom:"none"}},
       ce("span",{style:{fontSize:16,fontWeight:700,color:"#fff",flex:1,letterSpacing:"0.01em"}},prod.type==="inny"?(prod.innyNazwa?prod.innyNazwa:lbl):lbl),
       ce("span",{style:{fontSize:14,fontWeight:700,color:"#fff",background:"rgba(0,0,0,0.25)",padding:"4px 12px",borderRadius:20,whiteSpace:"nowrap"}},eff?roundTo10(eff)+" z\u0142":""),
       ce("button",{onClick:function(ev){ev.stopPropagation();if(p.onMoveUp)p.onMoveUp();},disabled:!p.onMoveUp,title:"Przesuń w górę",style:{border:"none",background:"rgba(255,255,255,0.15)",cursor:p.onMoveUp?"pointer":"not-allowed",fontSize:11,color:"#fff",padding:"4px 7px",borderRadius:7,lineHeight:1,opacity:p.onMoveUp?0.85:0.3}},"▲"),ce("button",{onClick:function(ev){ev.stopPropagation();if(p.onMoveDown)p.onMoveDown();},disabled:!p.onMoveDown,title:"Przesuń w dół",style:{border:"none",background:"rgba(255,255,255,0.15)",cursor:p.onMoveDown?"pointer":"not-allowed",fontSize:11,color:"#fff",padding:"4px 7px",borderRadius:7,lineHeight:1,opacity:p.onMoveDown?0.85:0.3}},"▼"),ce("button",{onClick:p.onDuplicate,title:"Kopiuj produkt",style:{border:"none",background:"rgba(255,255,255,0.15)",cursor:"pointer",fontSize:15,color:"#fff",padding:"5px 9px",borderRadius:7,lineHeight:1}},"⧉"),
