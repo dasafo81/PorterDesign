@@ -3015,6 +3015,13 @@ export const REL ={80:346.42,100:391.83,120:419.84,140:476.13,160:504.14,180:549
 export const RPOLAUTO ={80:486,100:506,120:564,140:594,160:646,180:680,200:720,220:754,240:806,250:818,260:838,270:852,280:860,290:904,300:916};
 export const RPOLAUTO_DUO ={80:904,100:1042,120:1114,140:1166,160:1274,180:1322,200:1426,220:1496,240:1590,250:1626};
 
+// Szyna KS mSigma (Mio Decor) — cena brutto/mb dla klienta, ta sama dla Flex i Wave,
+// dostępna w kolorze białym lub czarnym. Wysięgnik sufitowy mFix — dopłata za szt.,
+// liczona co ~70 cm długości szyny (montaż odsunięty od sufitu).
+export const KS_MSIGMA_PRICE=120;
+export const KS_WYSIEGNIK_PRICE=180;
+export const KS_WYSIEGNIK_ROZSTAW=70;
+
 export const KSLIM ={150:658,200:704,250:750,300:816,350:862,400:952,450:1016,500:1108,550:1148,600:1308,650:1354,700:1400};
 export const KUNIV ={150:648,200:722,250:796,300:880,350:954,400:1028,450:1092,500:1166,550:1230,600:1304,650:1378,700:1452};
 export const KN ={am75:644,am50:1000,mdct:902,mrts:1056,glydea:2268,irismo:2181.9};
@@ -3861,11 +3868,23 @@ export function calc(p){
     var lenCm=par.len||0,arc=par.arc||0,pts=par.pts||0,qty=par.qty||1;
     if(!lenCm)return{total:0,lines:[],warn:null};
     var lenMb=lenCm/100;
+    var isMSigma=c.ksBrand==="msigma";
     var baz;
-    if(c.ks==="wave"){baz=parseFloat((lenMb*100).toFixed(2));}
+    if(isMSigma){baz=parseFloat((lenMb*KS_MSIGMA_PRICE).toFixed(2));}
+    else if(c.ks==="wave"){baz=parseFloat((lenMb*100).toFixed(2));}
     else baz=parseFloat((lenMb*80).toFixed(2));
     total=baz*qty+parseFloat((arc*100).toFixed(2))+parseFloat((pts*100).toFixed(2));
-    lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
+    if(isMSigma){
+      lines.push("Szyna mSigma (Mio Decor) "+(c.ks==="wave"?"Wave":"Flex")+" "+(c.kk==="czarna"?"czarna":"bia\u0142a")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb) \xd7 "+KS_MSIGMA_PRICE+" z\u0142/mb"+(qty>1?" x"+qty:""));
+      if(c.ksWysiegnik==="tak"){
+        var wysCount=Math.max(2,Math.ceil(lenCm/KS_WYSIEGNIK_ROZSTAW)+1)*qty;
+        var wysSuma=parseFloat((wysCount*KS_WYSIEGNIK_PRICE).toFixed(2));
+        total+=wysSuma;
+        lines.push("Wysi\u0119gnik sufitowy mFix (co "+KS_WYSIEGNIK_ROZSTAW+"cm) x"+wysCount+" \xd7 "+formatPLN(KS_WYSIEGNIK_PRICE)+" = "+formatPLN(wysSuma));
+      }
+    }else{
+      lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
+    }
     if(c.km==="sciana")warn="\u015acienny \u2014 dolicz uchwyty \u015bcienne.";
   }else if(p.type==="plisa"){
     var wMm=par.wMm||0,hMm=par.hMm||0;
@@ -4420,11 +4439,13 @@ export function buildOfferDetailRows(client){
           wysokosc=par.lCm?(par.lCm+" cm"):"-";
           podzial="Przek\u0142adnia: "+(pc.jzPrzekladnia||"Prawo")+", Hamulec: "+(pc.jzHamulec||"Prawo");
         } else if(p.type==="szyna"){
-          modelSzycia=pc.ks==="wave"?"Wave":"Flex";
-          tkaninaKolor=pc.ks==="wave"?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):"-";
+          var szMSigma=pc.ksBrand==="msigma";
+          modelSzycia=(szMSigma?"mSigma ":"")+(pc.ks==="wave"?"Wave":"Flex");
+          tkaninaKolor=szMSigma?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):(pc.ks==="wave"?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):"-");
           szerokosc=par.len?(par.len+" cm"):"-";
-          // Szyny KS \u2014 producent zawsze Forest
-          producent=p.karniszSupplier||"Forest";
+          // Szyny KS Forest \u2014 producent zawsze Forest; mSigma \u2014 Mio Decor
+          producent=szMSigma?"Mio Decor":(p.karniszSupplier||"Forest");
+          if(szMSigma&&pc.ksWysiegnik==="tak")podzial="Monta\u017c na wysi\u0119gnikach mFix";
         } else if(p.type==="karnisz"||p.type==="prestige_round"||p.type==="prestige_square"||p.type==="shuttle"){
           // Do 2026-09 ta ga\u0142\u0105\u017a zostawia\u0142a model szycia / kolor / podzia\u0142 na "-" \u2014
           // marka, model silnika, wariant Prestige i strona monta\u017cu s\u0105 w pc (kBrand,
@@ -5070,7 +5091,8 @@ export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUnti
 // ── Suppliers for karnisze / szyny ─────────────────────────────────────────
 export const KARNISZ_SUPPLIERS =[
   {key:"marcin_dekor", label:"Marcin Dekor"},
-  {key:"forest_polska",label:"Forest Polska, ul. Poloneza 89, 02-826 Warszawa"}
+  {key:"forest_polska",label:"Forest Polska, ul. Poloneza 89, 02-826 Warszawa"},
+  {key:"mio_decor",    label:"Mio Decor"}
 ];
 
 // ── Geometria szyny giętej w jeden łuk (cięciwa + strzałka) ──────────────
@@ -5160,6 +5182,8 @@ export function buildKarniszRows(client){
           typLabel="Karnisz Prestige ROUND ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
         }else if(p.type==="prestige_square"){
           typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
+        }else if(pc.ksBrand==="msigma"){
+          typLabel="Szyna mSigma (Mio Decor) "+(pc.ks==="wave"?"Wave":"Flex")+" "+(pc.kk==="czarna"?"czarna":"bia\u0142a")+(pc.ksWysiegnik==="tak"?" \u2014 na wysi\u0119gnikach mFix":"");
         }else{
           typLabel="Szyna KS "+(pc.ks||"flex");
         }
@@ -5315,6 +5339,8 @@ export function buildRailsRows(client){
           typLabel="Karnisz Prestige SQUARE";
         }else if(p.type==="karnisz_dek"){
           typLabel="Karnisz dekoracyjny";
+        }else if(pc.ksBrand==="msigma"){
+          typLabel="Szyna mSigma "+(pc.ks==="wave"?"Wave":"Flex")+" "+(pc.kk==="czarna"?"czarna":"bia\u0142a")+(pc.ksWysiegnik==="tak"?" (wysi\u0119gniki)":"");
         }else{
           var ksMode=pc.ks||"flex";
           typLabel="Szyna KS "+(ksMode==="wave"?"Wave":ksMode==="manual"?"Manualna":"Flex");
