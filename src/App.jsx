@@ -2576,11 +2576,10 @@ export function App(p){
       appMode==="wyceniarka"&&screen!=="home"
         ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz")
         :ce("div",{style:{width:20}}),
-      ce("div",{style:{display:"flex",alignItems:"center",gap:13}},
-        ce("div",{style:{width:52,height:52,borderRadius:16,background:"var(--bg)",boxShadow:"var(--nm-out)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:8,boxSizing:"border-box"}},
-          ce("img",{src:brandLogo,alt:"logo",style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",opacity:1}})
-        ),
-        ce("span",{style:{fontSize:11,letterSpacing:"0.13em",textTransform:"uppercase",color:"var(--t3)",fontWeight:600}},brandName)
+      ce("div",{style:{display:"flex",alignItems:"center"}},
+        ce("div",{style:{width:64,height:64,borderRadius:18,background:"var(--bg)",boxShadow:"var(--nm-out)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:5,boxSizing:"border-box"}},
+          ce("img",{src:brandLogo,alt:brandName,title:brandName,style:{maxWidth:"100%",maxHeight:"100%",objectFit:"contain",opacity:1}})
+        )
       ),
       ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
         // Motyw: jasny / ciemny / bezowy
