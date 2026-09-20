@@ -980,6 +980,10 @@ export function ProdCard(p){
         ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.lCm||"",onChange:function(ev){sp("lCm",ev.target.value);},placeholder:"np. 160",style:IST}))
       ),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"WYSOKO\u015a\u0106 NADPRO\u017bA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.nadprozeCm||"",onChange:function(ev){sp("nadprozeCm",ev.target.value);},placeholder:"np. 15",style:IST})),
+        ce(Fld,{label:"KOLOR RAMY OKIENNEJ"},ce("input",{type:"text",value:c.ramaKolor==null?"Bia\u0142y":c.ramaKolor,onChange:function(ev){sc("ramaKolor",ev.target.value);},placeholder:"np. bia\u0142y, antracyt",style:IST}))
+      ),
       ce("div",{style:{marginBottom:10}},
         ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"MATERIA\u0141"),
         ce("div",{style:{display:"flex",gap:8}},
@@ -1053,7 +1057,8 @@ export function ProdCard(p){
       })(),
       ce("div",{style:{marginTop:8}},
         ce(Chips,{items:[
-          ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}})
+          ce(Chip,{key:"bi",label:"Monta\u017c bezinwazyjny",active:c.bezinw==="tak",onClick:function(){tc("bezinw");}}),
+          ce(Chip,{key:"wsz",label:"Monta\u017c w szybie",active:c.wszybie==="tak",onClick:function(){tc("wszybie");}})
         ]})
       ),
       // ── DZWONKI ────────────────────────────────────────
