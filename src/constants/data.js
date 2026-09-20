@@ -1397,6 +1397,7 @@ export const FABRICS =[
   {name:"ROFE",brutto:150,prod:"LART",width:300,zakup:39.7,belkowa:29.8},
   {name:"DIMOUT 310",brutto:160,prod:"LART",width:280,zakup:54,belkowa:42.6},
   {name:"BLOW",brutto:120,prod:"LART",width:300,zakup:36.9,belkowa:21.3},
+  {name:"Blackout 03",brutto:80,prod:"LART",width:280,zakup:28.4,belkowa:18.4},
   // \u2500\u2500 VADAIN \u2014 kolekcja CAPTURE (nazwa: "<Tkanina> / Capture") \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
   {name:"Aurora / Capture",brutto:220,prod:"Vadain",width:300,zakup:130,sklad:"80% RPET, 12% PES, 8% LI"},
   {name:"Euphoria / Capture",brutto:250,prod:"Vadain",width:300,zakup:142,sklad:"58% CO, 42% PES"},
@@ -2865,6 +2866,11 @@ export function getFabricEffective(name){
     soundproof: (ov && ov.soundproof!=null) ? !!ov.soundproof : !!(base && base.soundproof)
   };
 }
+// ── Tkaniny podszewkowe (opcja "Podszewka" w zasłonie) — cena z katalogu ──
+export const LINING_FABRICS = [
+  {name:"Blackout Uni", label:"Uni Blackout (Lart)"},
+  {name:"Blackout 03",  label:"Blackout 03 (Lart)"}
+];
 // Bestsellery tkanin — pokazywane jako pierwsza sekcja po otwarciu listy tkanin w wycenach
 // (FabPicker w ProdCard.jsx), pogrupowane wg kategorii; osobne zestawy dla zasłon i firan.
 export const FABRIC_BESTSELLERS = {
@@ -3669,6 +3675,10 @@ export function calc(p){
     var dekro=c.dekro==="tak",hM=hCm/100;
     var podszewka=c.podszewka==="tak";
     if(!wCm||!(p.panels||[]).length||fabP==null)return{total:0,lines:[],warn:fabP==null&&wCm?"Wybierz tkanin\u0119":null};
+    // Podszewka: cena z katalogu wg wybranej tkaniny; brak wyboru = stara stawka 80 z\u0142/mb
+    var linFab=(podszewka&&c.podszewkaTkanina)?getFabricEffective(c.podszewkaTkanina):null;
+    var linP=(linFab&&linFab.brutto!=null)?linFab.brutto:80;
+    if(podszewka&&c.podszewkaTkanina&&!(linFab&&linFab.brutto!=null))lines.push("Podszewka: brak ceny w katalogu \u2014 liczono stawk\u0119 domy\u015bln\u0105");
     (p.panels||[]).forEach(function(pn){
       var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pw/100,z,kt,ks,kp,koszt;
       // Wysoko\u015b\u0107 per panel (komplet z r\xf3\u017cn\u0105 wysoko\u015bci\u0105 L/P), domy\u015blnie par.hCm
@@ -3684,11 +3694,11 @@ export function calc(p){
         var sv2=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv2).toFixed(2):+(z*szycie).toFixed(2);
       }
-      kp=podszewka?+(z*80+ks*0.5).toFixed(2):0;
+      kp=podszewka?+(z*linP+ks*0.5).toFixed(2):0;
       koszt=kt+ks+kp;total+=koszt;
       usage.fabMb+=z; usage.fabSell+=kt;
       usage.sewMb+=z; usage.sewSell+=ks;
-      if(podszewka){usage.liningMb+=z; usage.fabSell+=z*80; usage.sewSell+=ks*0.5;}
+      if(podszewka){usage.liningMb+=z; usage.fabSell+=z*linP; usage.sewSell+=ks*0.5;}
       lines.push(pn.side+" "+pw+"cm"+(pn.h&&pn.h!==hCm?" \u00d7 h"+pn.h+"cm":"")+" \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":""));
     });
   }else if(p.type==="zaluzja"){
@@ -4636,6 +4646,21 @@ export function buildFabricRows(client){
             win:w.name,
             note:p.note||""
           });
+          // ── Podszewka: osobna pozycja w zamówieniu tkanin (metraż = jak tkanina główna) ──
+          if(pc.podszewka==="tak"&&pc.podszewkaTkanina&&metry>0){
+            var linFab=getFabricEffective(pc.podszewkaTkanina);
+            rows.push({
+              fabName:pc.podszewkaTkanina,
+              prod:(linFab&&linFab.prod)||"-",
+              kolor:"-",
+              brutto:(linFab&&linFab.brutto)||0,
+              width:(linFab&&linFab.width)||null,
+              metry:metry,
+              room:r.name,
+              win:(w.name||"")+" \u2014 podszewka",
+              note:"Podszewka"+(p.note?" — "+p.note:"")
+            });
+          }
           return;
         }
         // ── rolety rzymskie ───────────────────────────────────────
@@ -4820,7 +4845,7 @@ export function buildSewingRows(client){
           split:splitDesc,bottom:bottomDesc,
           glide:sz==="Wave"?"Odst\u0119p "+(pc.glideGap||8)+" cm":"-",
           leadInSides:pc.leadInSides?"tak":"nie",
-          podszewka:pc.podszewka==="tak"?"TAK":"nie",
+          podszewka:pc.podszewka==="tak"?(pc.podszewkaTkanina||"TAK"):"nie",
           tasmaNaStojaco:pc.tasmaNaStojaco?"tak":"nie",
           note:prod.note||""
         });
