@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, getFabricEquivalents, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
+  FABRICS, LINING_FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, getFabricEquivalents, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
   IMG_FALDA_POTROJNA, IMG_FALDA_STUDIO, IMG_JZ_ALUMINIUM, IMG_JZ_BAMBOO,
   IMG_JZ_ABACHI, IMG_JZ_BASSWOOD, IMG_JZ_PRIMEWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
   IMG_OKNO, IMG_ROLETA_BACK, IMG_ROLETA_CASCADE, IMG_ROLETA_DUO,
@@ -863,12 +863,22 @@ export function ProdCard(p){
       ),
       ce("div",{style:{marginTop:16}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.podszewka==="tak"?"var(--t1)":"var(--bd2)"),background:c.podszewka==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
-          ce("input",{type:"checkbox",checked:c.podszewka==="tak",onChange:function(ev){sc("podszewka",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
+          ce("input",{type:"checkbox",checked:c.podszewka==="tak",onChange:function(ev){var on=ev.target.checked;p.onChange(mg(prod,{c:mg(c,{podszewka:on?"tak":"nie",podszewkaTkanina:on?(c.podszewkaTkanina||LINING_FABRICS[0].name):null})}));},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
           ce("div",{},
             ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Podszewka"),
-            ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"materia\u0142 80 z\u0142/mb + 50% do szycia")
+            ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"materia\u0142 wg tkaniny + 50% do szycia")
           )
-        )
+        ),
+        c.podszewka==="tak"?ce("div",{style:{marginTop:10,display:"flex",gap:10,flexWrap:"wrap"}},
+          LINING_FABRICS.map(function(lf){
+            var f=getFabricEffective(lf.name),act=c.podszewkaTkanina===lf.name;
+            return ce("button",{key:lf.name,type:"button",onClick:function(){sc("podszewkaTkanina",lf.name);},
+              style:{flex:"1 1 200px",padding:"12px 16px",borderRadius:10,border:"2px solid "+(act?"var(--t1)":"var(--bd2)"),background:act?"var(--grl)":"var(--bg)",color:"var(--t1)",cursor:"pointer",textAlign:"left",minHeight:52,transition:"all .18s"}},
+              ce("span",{style:{fontSize:15,fontWeight:600}},lf.label),
+              ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},(f&&f.brutto!=null)?(f.brutto+" z\u0142/mb"):"brak w katalogu")
+            );
+          })
+        ):null
       )
     );
 
