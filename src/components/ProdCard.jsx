@@ -1107,7 +1107,7 @@ export function ProdCard(p){
       ce("div",{style:{marginTop:16}},
         ce("div",{style:{fontSize:10,fontWeight:600,color:"var(--t3)",letterSpacing:"0.08em",marginBottom:6}},"STEROWANIE"),
         ce(Chips,{items:[
-          ce(Chip,{key:"m",label:"\ud83d\udd27 Manual",active:!c.jzMode||c.jzMode==="manual",onClick:function(){sc("jzMode","manual");sc("jzMotorId",null);sc("jzRemoteId",null);}}),
+          ce(Chip,{key:"m",label:"\ud83d\udd27 Manual",active:!c.jzMode||c.jzMode==="manual",onClick:function(){p.onChange(mg(prod,{c:mg(c,{jzMode:"manual",jzMotorId:null,jzRemoteId:null})}));}}),
           ce(Chip,{key:"a",label:"\u26a1 Automatyka",active:c.jzMode==="auto",onClick:function(){sc("jzMode","auto");}})
         ]})
       ),
