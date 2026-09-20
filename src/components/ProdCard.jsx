@@ -2409,6 +2409,16 @@ export function ProdCard(p){
     form=ce("div",{style:{fontSize:14,color:"var(--t2)",padding:"16px 0"}},"Cennik wkr\xf3tce.");
   }
 
+  // ▼ NOWE: szerokość pomieszczenia — wszystkie karnisze/szyny
+  if(["szyna","karnisz","prestige_round","prestige_square","shuttle","karnisz_dek"].indexOf(prod.type)>=0){
+    form=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}},
+        ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST}))
+      ),
+      form
+    );
+  }
+
   return ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}},
     ce("div",{style:{padding:"14px 20px",background:"var(--hero-gradient)",display:"flex",alignItems:"center",gap:10,borderBottom:"none"}},
       ce("span",{style:{fontSize:16,fontWeight:700,color:"#fff",flex:1,letterSpacing:"0.01em"}},prod.type==="inny"?(prod.innyNazwa?prod.innyNazwa:lbl):lbl),
