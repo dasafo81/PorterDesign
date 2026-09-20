@@ -199,11 +199,12 @@ export function ProdCard(p){
   }
   function onTotalWChange(v){
     var tw = +v||0;
-    sp("wCm", v);
     // Recalculate panels based on split
     if(split==="unequal" && tw>0 && c.leftW>0){
       var newR = Math.max(0, tw - c.leftW);
-      p.onChange(mg(prod,{par:mg(par,{wCm:tw}), c:mg(c,{rightW:newR})}));
+      p.onChange(mg(prod,{par:mg(par,{wCm:/[.,]$/.test(v)?v:tw}), c:mg(c,{rightW:newR})}));
+    }else{
+      sp("wCm", v);
     }
   }
 
@@ -576,10 +577,11 @@ export function ProdCard(p){
     }
     function onTotalWChange(v){
       var tw=+v||0;
-      sp("wCm",v);
       if(split==="unequal"&&tw>0&&c.leftW>0){
         var newR=Math.max(0,tw-c.leftW);
-        p.onChange(mg(prod,{par:mg(par,{wCm:tw}),c:mg(c,{rightW:newR})}));
+        p.onChange(mg(prod,{par:mg(par,{wCm:/[.,]$/.test(v)?v:tw}),c:mg(c,{rightW:newR})}));
+      }else{
+        sp("wCm",v);
       }
     }
 
@@ -1532,7 +1534,7 @@ export function ProdCard(p){
         ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
           [{k:"oval",l:"Oval 27,56 z\u0142"},{k:"kwadro",l:"Kwadro 33,92 z\u0142"},{k:"cube",l:"Cube 38,16 z\u0142"}].map(function(o){
             var isA=c.smask===o.k;
-            return ce("button",{key:o.k,onClick:function(){sc("smask",isA?null:o.k);if(isA)sc("smaskKolor",null);},style:{padding:"10px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer"}},isA?"\u2713 "+o.l:o.l);
+            return ce("button",{key:o.k,onClick:function(){p.onChange(mg(prod,{c:mg(c,isA?{smask:null,smaskKolor:null}:{smask:o.k})}));},style:{padding:"10px 16px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer"}},isA?"\u2713 "+o.l:o.l);
           })
         )
       ),
