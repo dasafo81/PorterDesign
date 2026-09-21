@@ -9,7 +9,7 @@ function imgUrl(path) {
 }
 
 // Logo
-export const LOGO_SRC          = imgUrl("logo.png");
+export const LOGO_SRC          = "/logo-porter.svg?v=1";  // przezroczyste SVG z /public (czarne; w motywie ciemnym odwracane CSS-em, klasa pd-logo-def)
 
 // Pokoje
 export const IMG_ROOM_SALON    = imgUrl("rooms/salon.jpg");
