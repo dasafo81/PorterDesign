@@ -3064,6 +3064,27 @@ export function ModalClientEmail(p){
   var extraAttInputRef=React.useRef(null);
   var pdfName=p.pdfName||"Oferta.pdf";
   var sigRef=React.useRef(null);
+  // Odpowiedź w wątku klienta: ostatni mail od klienta w Odebranych (Graph createReply)
+  var sRM=useState(null),replyMsg=sRM[0],setReplyMsg=sRM[1];   // {id,subject,date}
+  var sAR=useState(true),asReply=sAR[0],setAsReply=sAR[1];
+  useEffect(function(){
+    var addr=String(client.email||"").trim();
+    if(p.to!=null||!addr)return;   // dokumenty dla dostawc\u00f3w \u2014 bez w\u0105tku
+    var dead=false;
+    import('./msal.js').then(function(m){return m.msalGetToken();}).then(function(tok){
+      if(!tok)return null;
+      return fetch("https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$search="+encodeURIComponent('"from:'+addr+'"')+"&$top=10&$select=id,subject,receivedDateTime,from",
+        {headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
+    }).then(function(data){
+      if(dead||!data)return;
+      var list=(data.value||[]).filter(function(m){
+        return m.from&&m.from.emailAddress&&String(m.from.emailAddress.address||"").toLowerCase()===addr.toLowerCase();
+      });
+      list.sort(function(a,b){return String(b.receivedDateTime).localeCompare(String(a.receivedDateTime));});   // $search nie \u0142\u0105czy si\u0119 z $orderby
+      if(list[0])setReplyMsg({id:list[0].id,subject:list[0].subject||"",date:list[0].receivedDateTime});
+    }).catch(function(){});
+    return function(){dead=true;};
+  },[]);
 
   // PDF wyceny + podpis z Ustawień poczty (ten sam co w module Mail); msal.js ładowany leniwie
   useEffect(function(){
@@ -3145,6 +3166,37 @@ export function ModalClientEmail(p){
     setExtraAtts(function(prev){return prev.filter(function(a){return a.id!==id;});});
   }
 
+  // Wysy\u0142ka jako odpowied\u017a w w\u0105tku klienta: createReply \u2192 PATCH (tre\u015b\u0107 nad cytatem) \u2192 za\u0142\u0105czniki \u2192 send
+  function gJson(tok,method,url,body){
+    return fetch("https://graph.microsoft.com/v1.0"+url,{
+      method:method,headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
+      body:body?JSON.stringify(body):undefined
+    }).then(function(r){
+      if(!r.ok)return r.json().catch(function(){return {};}).then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d Graph ("+r.status+")");});
+      return r.status===202||r.status===204?null:r.json().catch(function(){return null;});
+    });
+  }
+  function sendAsReply(tok,origId,html,recips,atts){
+    var draftId=null;
+    return gJson(tok,"POST","/me/messages/"+origId+"/createReply").then(function(d){
+      draftId=d.id;
+      var qc=(d.body&&d.body.content)||"";
+      if(d.body&&String(d.body.contentType).toLowerCase()==="text")
+        qc="<pre style=\"font-family:inherit;white-space:pre-wrap;margin:0\">"+qc.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>";
+      var full=/<body[^>]*>/i.test(qc)?qc.replace(/<body[^>]*>/i,function(m){return m+html+"<br>";}):html+"<br>"+qc;
+      return gJson(tok,"PATCH","/me/messages/"+draftId,{body:{contentType:"HTML",content:full},toRecipients:recips});
+    }).then(function(){
+      return atts.reduce(function(chain,a){
+        return chain.then(function(){return gJson(tok,"POST","/me/messages/"+draftId+"/attachments",a);});
+      },Promise.resolve());
+    }).then(function(){
+      return gJson(tok,"POST","/me/messages/"+draftId+"/send");
+    }).then(function(){return {ok:true};}).catch(function(e){
+      if(draftId)fetch("https://graph.microsoft.com/v1.0/me/messages/"+draftId,{method:"DELETE",headers:{"Authorization":"Bearer "+tok}}).catch(function(){});
+      throw e;
+    });
+  }
+
   function send(){
     var to=toEmail.trim();
     if(!to||!subject.trim()||!pdfB64||sending)return;
@@ -3176,10 +3228,13 @@ export function ModalClientEmail(p){
       if(img)atts.push({"@odata.type":"#microsoft.graph.fileAttachment",name:"signature.png",contentType:img.ct,contentBytes:img.b64,isInline:true,contentId:"signature-image"});
       var recips=to.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean).map(function(a){return {emailAddress:{address:a}};});
       if(recips.length===1&&client.name)recips[0].emailAddress.name=client.name;
-      return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
-        method:"POST",headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
-        body:JSON.stringify({message:{subject:subject,body:{contentType:"HTML",content:html},toRecipients:recips,attachments:atts},saveToSentItems:true})
-      }).then(function(res){
+      var sendReq=(asReply&&replyMsg)
+        ? sendAsReply(tok,replyMsg.id,html,recips,atts)
+        : fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+            method:"POST",headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
+            body:JSON.stringify({message:{subject:subject,body:{contentType:"HTML",content:html},toRecipients:recips,attachments:atts},saveToSentItems:true})
+          });
+      return sendReq.then(function(res){
         if(!res.ok)return res.json().catch(function(){return {};}).then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+res.status+")");});
         sbApi.upsertMailRecipient(to,client.name||"").catch(function(){});
         setSending(false);setSent(true);
@@ -3251,6 +3306,14 @@ export function ModalClientEmail(p){
             );
           })
         ):null),
+      replyMsg?ce("div",{style:{marginBottom:12,padding:"10px 12px",borderRadius:10,border:"1.5px solid var(--bd2)"}},
+        ce("label",{style:{display:"flex",gap:8,alignItems:"center",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:asReply,onChange:function(ev){setAsReply(ev.target.checked);}}),
+          "Odpowiedz w w\u0105tku klienta"),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:4}},
+          "\u201E"+replyMsg.subject+"\u201D \u00b7 "+new Date(replyMsg.date).toLocaleDateString("pl-PL")
+          +(asReply?" \u2014 temat zostanie z w\u0105tku (pole Temat pomini\u0119te)":""))
+      ):null,
       ce("div",{style:{marginBottom:12,display:"flex",gap:6,flexWrap:"wrap"}},
         MAIL_TEMPLATES.map(function(tpl){
           return ce("button",{key:tpl.id,type:"button",onClick:function(){applyMailTemplate(tpl);},
