@@ -1132,15 +1132,15 @@ export function App(p){
       odrzucone:   {label:"Odrzucone",   color:THEME_HEX.red,    bg:THEME_HEX.red+"1A",     dot:THEME_HEX.red}
     };
 
-    // ── Pipeline CRM w nagłówku: Wycena / Zamówienie / Realizacja / Montaż ──
+    // ── Pipeline CRM w nagłówku: Zamówienie / Realizacja / Montaż ──
     // Liczba + wartość + najbliższy termin per etap, liczone z faktycznych
     // deali w CRM (nie z całej listy wycen, jak wcześniej).
     var clientsById={};
     clients.forEach(function(cl){clientsById[cl.id]=cl;});
-    var PIPELINE_IDS=["wycena","zamowienie","realizacja","montaz"];
+    var PIPELINE_IDS=["zamowienie","realizacja","montaz"];
     var PIPELINE_STAGES=CRM_STAGES.filter(function(s){return PIPELINE_IDS.indexOf(s.id)>=0;});
     // Najbliższy NADCHODZĄCY termin dealu — te same pola, które pokazuje karta w Kanbanie:
-    // Zamówienie/Realizacja → deadline; Montaż → deadline + terminy montażu. Wycena nie ma terminu.
+    // Zamówienie/Realizacja → deadline; Montaż → deadline + terminy montażu.
     function nearestFutureDate(d){
       var sod=new Date();sod.setHours(0,0,0,0); // deadline to sama data (bez godziny) — porównujemy od początku dnia
       var raw=[];
@@ -1275,7 +1275,7 @@ export function App(p){
             "Porter Design"
           ),
           ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:20}},"Panel sprzeda\u017cy i wycen"),
-          // Stat row — pipeline CRM: Wycena / Zamówienie / Realizacja / Montaż
+          // Stat row — pipeline CRM: Zamówienie / Realizacja / Montaż
           ce("div",{style:{display:"flex",gap:12,flexWrap:"wrap"}},
             stageStats.map(function(st){
               return ce("div",{key:st.id,style:{
