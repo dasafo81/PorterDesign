@@ -4425,8 +4425,18 @@ export function buildOfferDetailRows(client){
             :(pc.lancuszek==="metalowy"
               ?"\u0142a\u0144cuszek "+(rLancuszekKolorMap[pc.kolorLancuszka]||"srebrny").toLowerCase()
               :"\u0142a\u0144cuszek bia\u0142y");
-          tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"")+(rLancuszekLbl?" / "+rLancuszekLbl:"");
-          producent=fabObjR?fabObjR.prod:"-";
+          if(pc.rModel==="duo"){
+            // Duo: dwie tkaniny — ① pierwsza warstwa, ② druga (jak w buildSewingRows)
+            var fab2ObjR=p.fab2Name?getFabricEffective(p.fab2Name):null;
+            var duoT1=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
+            var duoT2=(p.fab2Name||p.fab2ManName||"tkanina")+(pc.kolor2?" / "+pc.kolor2:"");
+            tkaninaKolor="\u2460 "+duoT1+" + \u2461 "+duoT2+(rLancuszekLbl?" / "+rLancuszekLbl:"");
+            var duoProd1=fabObjR?fabObjR.prod:"-",duoProd2=fab2ObjR?fab2ObjR.prod:"-";
+            producent=(duoProd1===duoProd2)?duoProd1:duoProd1+" / "+duoProd2;
+          }else{
+            tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"")+(rLancuszekLbl?" / "+rLancuszekLbl:"");
+            producent=fabObjR?fabObjR.prod:"-";
+          }
           szerokosc=par.wCm?(par.wCm+" cm"):"-";
           wysokosc=par.hCm?(par.hCm+" cm"):"-";
           podzial=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo")
