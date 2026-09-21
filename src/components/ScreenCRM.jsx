@@ -21,9 +21,9 @@ export const CRM_STAGES =[
 // Kroki zamówienia widoczne jako "paseczki" na karcie w kolumnie Zamówienie.
 // Po zaznaczeniu wszystkich trzech deal automatycznie przechodzi do Realizacji.
 export const ORDER_STEPS=[
-  {field:"order_hardware",label:"Osprz\u0119t", icon:"\uD83D\uDD29"},
-  {field:"order_fabric",  label:"Tkanina", icon:"\uD83E\uDDF5"},
-  {field:"order_sewing",  label:"Szycie",  icon:"\u2702\uFE0F"}
+  {field:"order_hardware",label:"Osprz\u0119t", icon:"\uD83D\uDD29", doneLabel:"Osprz\u0119t zam\u00f3wiony"},
+  {field:"order_fabric",  label:"Tkanina", icon:"\uD83E\uDDF5", doneLabel:"Tkanina zam\u00f3wiona"},
+  {field:"order_sewing",  label:"Szycie",  icon:"\u2702\uFE0F", doneLabel:"Szycie zlecone"}
 ];
 export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane"};
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
@@ -190,7 +190,6 @@ export function ModalDeal(p){
   var sdl=useState(d.deadline?String(d.deadline).slice(0,10):""),deadline=sdl[0],setDeadline=sdl[1];
   var ssh=useState(d.sewing_house||""),sewingHouse=ssh[0],setSewingHouse=ssh[1];
   var ssd=useState(d.sewing_sent_date?d.sewing_sent_date.slice(0,10):""),sewingSentDate=ssd[0],setSewingSentDate=ssd[1];
-  var ssc=useState(!!d.sewing_confirmed),sewingConfirmed=ssc[0],setSewingConfirmed=ssc[1];
   var srev=useState(!!d.review_sent),reviewSent=srev[0],setReviewSent=srev[1];
   var sinv=useState(!!d.invoice_sent),invoiceSent=sinv[0],setInvoiceSent=sinv[1];
   var swash=useState(!!d.washing_sent),washingSent=swash[0],setWashingSent=swash[1];
@@ -433,7 +432,6 @@ export function ModalDeal(p){
       acquisition:acquisition||null,
       sewing_house:sewingHouse||null,
       sewing_sent_date:sewingSentDate||null,
-      sewing_confirmed:sewingConfirmed,
       review_sent:reviewSent,
       invoice_sent:invoiceSent,
       washing_sent:washingSent,
@@ -467,6 +465,18 @@ export function ModalDeal(p){
         if(p.onPatch)p.onPatch(patch);
       })
       .catch(function(e){alert("Termin zapisany w kalendarzu, ale nie udało się zapisać go w dealu: "+e.message);});
+  }
+
+  // Kroki zamówienia (osprzęt / tkanina / szycie) — w CRM przez toggleOrder z tablicy (auto-przejście
+  // do Realizacji); w widoku bez tablicy (np. kalendarz) zapis bezpośredni z tym samym przeskokiem.
+  function toggleOrderStep(field){
+    if(p.onToggleOrder){p.onToggleOrder(field);return;}
+    var patch={updated_at:new Date().toISOString()};
+    patch[field]=!d[field];
+    var next=Object.assign({},d,patch);
+    if(d.stage==="zamowienie"&&ORDER_STEPS.every(function(s){return !!next[s.field];}))patch.stage="realizacja";
+    sbApi.updateDeal(d.id,patch).then(function(){if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){alert("Błąd zapisu: "+e.message);});
   }
 
   function deleteAttach(id){
@@ -1038,7 +1048,18 @@ export function ModalDeal(p){
           )
         ),
 
-        ce(SectionCard,{icon:"✂️",title:"Zamówienie szycia",done:sewingConfirmed},
+        ce(SectionCard,{icon:"📦",title:"Etapy zamówienia",done:ORDER_STEPS.every(function(s){return !!d[s.field];})},
+          ORDER_STEPS.map(function(st){
+            return ce(CheckRow,{key:st.field,checked:!!d[st.field],onChange:function(){toggleOrderStep(st.field);},
+              label:st.icon+" "+st.doneLabel,
+              sublabel:st.field==="order_sewing"&&sewingHouse&&sewingHouse!=="__custom__"?sewingHouse:null});
+          }),
+          (ORDER_STEPS.every(function(s){return !!d[s.field];})&&d.stage==="realizacja")
+            ?ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.4}},"✓ Wszystko zamówione — deal przeniesiony do Realizacji")
+            :null
+        ),
+
+        ce(SectionCard,{icon:"✂️",title:"Zamówienie szycia",done:!!d.order_sewing},
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SZWALNIA"),
             ce("select",{value:sewingHouse,onChange:function(ev){setSewingHouse(ev.target.value);},style:INP},
@@ -1051,8 +1072,7 @@ export function ModalDeal(p){
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA WYSŁANIA ZLECENIA"),
             ce("input",{type:"date",value:sewingSentDate,onChange:function(ev){setSewingSentDate(ev.target.value);},style:INP})
-          ),
-          ce(CheckRow,{checked:sewingConfirmed,onChange:setSewingConfirmed,label:"Zlecenie szycia potwierdzone przez szwalnię",sublabel:sewingHouse&&sewingHouse!=="__custom__"?sewingHouse:null})
+          )
         ),
 
         ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent&&washingSent},
@@ -2553,6 +2573,7 @@ export function ScreenCRM(p){
     // Zaliczka 50% i OWS → Zamówienie: deadline automatycznie +4 tygodnie (edytowalny w karcie deala)
     if(deal&&deal.stage==="zaliczka"&&stage==="zamowienie")patch.deadline=deadlineFromNow();
     setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,patch):d;});});
+    setModalDeal(function(md){return md&&String(md.id)===String(dealId)?Object.assign({},md,patch):md;});
     sbApi.updateDeal(dealId,patch);
     // Zaktualizuj status klienta
     if(deal&&stageObj){
@@ -2562,7 +2583,7 @@ export function ScreenCRM(p){
     }
   }
 
-  // Odklikanie kroku zamówienia (osprzęt / tkanina / szycie) z karty deala.
+  // Odklikanie kroku zamówienia (osprzęt / tkanina / szycie) — z karty na tablicy i z otwartego deala.
   // Gdy zaznaczone są wszystkie trzy, a deal jest w Zamówieniu — automatycznie do Realizacji.
   function toggleOrder(dealId,field){
     var deal=(deals||[]).find(function(d){return String(d.id)===String(dealId);});
@@ -2570,14 +2591,18 @@ export function ScreenCRM(p){
     var prevVal=!!deal[field];
     var patch={updated_at:new Date().toISOString()};
     patch[field]=!prevVal;
-    setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,patch):d;});});
+    function applyPatch(pt){
+      setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,pt):d;});});
+      setModalDeal(function(md){return md&&String(md.id)===String(dealId)?Object.assign({},md,pt):md;});
+    }
+    applyPatch(patch);
     sbApi.updateDeal(dealId,patch).then(function(){
       var next=Object.assign({},deal,patch);
       var allDone=ORDER_STEPS.every(function(s){return !!next[s.field];});
       if(deal.stage==="zamowienie"&&allDone)moveStage(dealId,"realizacja");
     }).catch(function(e){
       var back={};back[field]=prevVal;
-      setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,back):d;});});
+      applyPatch(back);
       alert("Błąd zapisu: "+(e&&e.message?e.message:e));
     });
   }
@@ -2661,6 +2686,7 @@ export function ScreenCRM(p){
       calList:calList,
       onSave:function(data){onDealSave(modalDeal.id,data);},
       onPatch:function(data){onDealPatch(modalDeal.id,data);},
+      onToggleOrder:function(field){toggleOrder(modalDeal.id,field);},
       onDelete:function(){onDealDelete(modalDeal.id);},
       onClose:function(){setModalDeal(null);},
       onGoToClient:function(){goToClient(modalDeal.client_id);},
