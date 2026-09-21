@@ -89,6 +89,13 @@ export function fmtDate(iso){
   return d.toLocaleDateString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric"});
 }
 
+// Deadline zamówienia: 4 tygodnie od dziś, jako lokalna data YYYY-MM-DD
+export function deadlineFromNow(){
+  var t=new Date();
+  t.setDate(t.getDate()+28);
+  return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+}
+
 export function gcalLink(title,date,desc){
   if(!date)return null;
   var d=new Date(date);
@@ -173,6 +180,7 @@ export function ModalDeal(p){
   var sinstcal2=useState(d.installer_calendar_id2||""),installerCalId2=sinstcal2[0],setInstallerCalId2=sinstcal2[1];
   var sinslbl2=useState(d.install_label2||""),installLabel2=sinslbl2[0],setInstallLabel2=sinslbl2[1];
   var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
+  var sdl=useState(d.deadline?String(d.deadline).slice(0,10):""),deadline=sdl[0],setDeadline=sdl[1];
   var ssh=useState(d.sewing_house||""),sewingHouse=ssh[0],setSewingHouse=ssh[1];
   var ssd=useState(d.sewing_sent_date?d.sewing_sent_date.slice(0,10):""),sewingSentDate=ssd[0],setSewingSentDate=ssd[1];
   var ssc=useState(!!d.sewing_confirmed),sewingConfirmed=ssc[0],setSewingConfirmed=ssc[1];
@@ -993,6 +1001,33 @@ export function ModalDeal(p){
               ),
      null
             )
+          )
+        ),
+
+        ce(SectionCard,{icon:"⏳",title:"Deadline"},
+          ce("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
+            deadline?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1,minWidth:110}},"⏳ "+fmtDate(deadline))
+              :ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1,minWidth:110}},"Brak terminu"),
+            ce("input",{
+              type:"date",value:deadline,
+              onChange:function(ev){
+                var v=ev.target.value;
+                // zapis dopiero przy pełnej, sensownej dacie (nie przy wpisywaniu roku z klawiatury)
+                if(v===""||/^20\d\d-\d\d-\d\d$/.test(v))persistDealDate("deadline",v,setDeadline);else setDeadline(v);
+              },
+              title:"Deadline zamówienia (zapisywany od razu w dealu)",
+              style:Object.assign({},INP,{flex:"0 0 160px",width:"auto"})
+            }),
+            ce("button",{
+              onClick:function(){persistDealDate("deadline",deadlineFromNow(),setDeadline);},
+              title:"Ustaw deadline na 4 tygodnie od dziś",
+              style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
+            },"+4 tyg."),
+            deadline?ce("button",{
+              onClick:function(){persistDealDate("deadline","",setDeadline);},
+              title:"Usuń deadline",
+              style:{padding:"8px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,flexShrink:0,color:"var(--t3)"}
+            },"✕"):null
           )
         ),
 
@@ -2294,7 +2329,12 @@ function DealCard(cp){
   var montazRate=cl?(cl.install_fee_mode==="amount"?0:((parseFloat(cl.install_fee)||0)/100)):0;
   var montazAmount=cl&&cl.install_fee_mode==="amount"?(parseFloat(cl.install_fee)||0):0;
   var total=roundTo10(baseTotal+(montazAmount>0?montazAmount:(montazRate>0?baseTotal*montazRate:0)));
-  var hasVisit=deal.visit_date; var hasDelivery=deal.delivery_date;
+  // Terminy na karcie zależne od etapu: Pomiar → termin pomiaru; Zamówienie/Realizacja → deadline;
+  // Montaż → deadline + termin montażu
+  var sid=stage.id;
+  var hasVisit=sid==="pomiar"&&deal.visit_date;
+  var hasDeadline=(sid==="zamowienie"||sid==="realizacja"||sid==="montaz")&&deal.deadline;
+  var hasDelivery=sid==="montaz"&&deal.delivery_date;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
       ref:provided.innerRef
@@ -2316,12 +2356,15 @@ function DealCard(cp){
     }),
       ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
       total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" z\u0142"):null,
-      (hasVisit||hasDelivery)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
+      (hasVisit||hasDeadline||hasDelivery)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
         hasVisit?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
           ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
         ):null,
+        hasDeadline?ce("div",{style:{fontSize:10,color:"var(--t2)",fontWeight:600,display:"flex",alignItems:"center",gap:3}},
+          ce("span",null,"\u23F3"),ce("span",null,"Deadline: "+fmtDate(deal.deadline))
+        ):null,
         hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
-          ce("span",null,"\uD83D\uDE9A"),ce("span",null,"Dostawa: "+fmtDate(deal.delivery_date))
+          ce("span",null,"\uD83D\uDD27"),ce("span",null,"Monta\u017c: "+fmtDate(deal.delivery_date))
         ):null
       ):null,
       deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
@@ -2481,8 +2524,11 @@ export function ScreenCRM(p){
   function moveStage(dealId,stage){
     var deal=(deals||[]).find(function(d){return String(d.id)===String(dealId);});
     var stageObj=CRM_STAGES.find(function(s){return s.id===stage;});
-    setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,{stage:stage}):d;});});
-    sbApi.updateDeal(dealId,{stage:stage,updated_at:new Date().toISOString()});
+    var patch={stage:stage,updated_at:new Date().toISOString()};
+    // Zaliczka 50% i OWS → Zamówienie: deadline automatycznie +4 tygodnie (edytowalny w karcie deala)
+    if(deal&&deal.stage==="zaliczka"&&stage==="zamowienie")patch.deadline=deadlineFromNow();
+    setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,patch):d;});});
+    sbApi.updateDeal(dealId,patch);
     // Zaktualizuj status klienta
     if(deal&&stageObj){
       var newStatus=stageObj.clientStatus||"nowe";
