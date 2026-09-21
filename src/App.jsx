@@ -1068,7 +1068,7 @@ export function App(p){
   function mailDoc(html,name,opts){
     if(!html){alert("Brak tre\u015bci dokumentu do wys\u0142ania.");return;}
     opts=opts||{};
-    setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:opts.to,title:opts.title});
+    setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:opts.to,title:opts.title,template:opts.template});
     setShowEmailModal(true);
   }
   // Prosta treść maila dla dokumentów roboczych (zamówienia, zlecenia).
@@ -2466,7 +2466,7 @@ export function App(p){
       var simplDiscountVal=(discountEnabled&&(+discountInput)>0)?(discountMode==="amount"?roundTo10(+discountInput):roundTo10(simplBase*(+discountInput)/100)):0;
       var simplVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
       mailDoc(buildSimplifiedPDFHtmlFromRows(curClient,simplEditableRows,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal),
-        "Oferta - "+(curClient.name||"klient")+".pdf");
+        "Oferta - "+(curClient.name||"klient")+".pdf",{template:"wstepna"});
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
     function resetSimplPreviewFromSource(){
@@ -2720,7 +2720,7 @@ export function App(p){
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
+    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
@@ -3048,9 +3048,30 @@ export function ModalClientEmail(p){
     P("Je\u015bli akceptuj\u0105 Pa\u0144stwo przedstawion\u0105 ofert\u0119 i przechodzimy do dzia\u0142ania, bardzo prosz\u0119 o potwierdzenie oraz przes\u0142anie danych do wystawienia faktury na wspomnian\u0105 zaliczk\u0119."),
     P("W razie jakichkolwiek pyta\u0144 do za\u0142\u0105czonego projektu, pozostaj\u0119 do dyspozycji.")
   ].join("<div><br></div>");
+  // Szablon "Wstępna wycena" — odpowiedź na zapytanie klienta; domyślny w wycenie uproszczonej.
+  // Pliki (rodzaje szycia) leżą w public/mail-att/ i są dołączane automatycznie jako dodatkowe załączniki.
+  var TPL_WSTEPNA={
+    id:"wstepna",label:"Wst\u0119pna wycena",icon:"\uD83D\uDCE8",
+    subject:"Wycena aran\u017cacji okiennych",
+    html:[
+      P("Dzie\u0144 dobry,"),
+      P("Dzi\u0119kuj\u0119 za przes\u0142ane zapytanie, w odpowiedzi przesy\u0142am wst\u0119pn\u0105, orientacyjn\u0105 wycen\u0119 oraz informacje odno\u015bnie rodzaj\u00f3w szycia i rolet rzymskich w ofercie."),
+      P("Podane ceny s\u0105 cenami brutto, wyszczeg\u00f3lniony jest r\u00f3wnie\u017c koszt monta\u017cu, obejmuj\u0105cy monta\u017c osprz\u0119tu, powieszenie, wyprasowanie i u\u0142o\u017cenie dekoracji."),
+      P("Informacje organizacyjne:"),
+      P("<b>Spotkanie:</b> W przypadku zainteresowania, umawiamy si\u0119 na spotkanie u Pa\u0144stwa na dob\u00f3r tkanin i wykonanie dok\u0142adnego pomiaru. Koszt spotkania wynosi 250 z\u0142 i jest odejmowany od ca\u0142o\u015bci zam\u00f3wienia. Po spotkaniu przesy\u0142am dok\u0142adn\u0105 wycen\u0119.")
+      +P("<b>Warunki p\u0142atno\u015bci:</b> Rozpocz\u0119cie zam\u00f3wienia nast\u0119puje po wp\u0142acie zaliczki w wysoko\u015bci 50% warto\u015bci zlecenia.")
+      +P("<b>Czas realizacji:</b> Wynosi ok. 4 tygodni od momentu zaksi\u0119gowania wp\u0142aty, od po\u0142owy pa\u017adziernika, ze wzgl\u0119du na okres przed\u015bwi\u0105teczny, termin ten mo\u017ce wyd\u0142u\u017cy\u0107 si\u0119 do ok. 6 tygodni."),
+      P("W razie jakichkolwiek pyta\u0144, pozostaj\u0119 do dyspozycji.")
+    ].join("<div><br></div>"),
+    files:[
+      {name:"Zas\u0142ony-Firany_PD.pdf",url:"/mail-att/Zaslony-Firany_PD.pdf"},
+      {name:"Rolety_rzymskie_PD.pdf",url:"/mail-att/Rolety_rzymskie_PD.pdf"}
+    ]
+  };
+  var isWstepna=p.template==="wstepna";
   var s1=useState(p.to!=null?p.to:(client.email||"")),toEmail=s1[0],setToEmail=s1[1];
-  var s2=useState(p.subject||"Oferta aran\u017cacji okiennych"),subject=s2[0],setSubject=s2[1];
-  var s3=useState(p.body||DEFAULT_BODY),body=s3[0],setBody=s3[1];
+  var s2=useState(p.subject||(isWstepna?TPL_WSTEPNA.subject:"Oferta aran\u017cacji okiennych")),subject=s2[0],setSubject=s2[1];
+  var s3=useState(p.body||(isWstepna?TPL_WSTEPNA.html:DEFAULT_BODY)),body=s3[0],setBody=s3[1];
   var s4=useState(null),pdfB64=s4[0],setPdfB64=s4[1];
   var s5=useState(null),pdfErr=s5[0],setPdfErr=s5[1];
   var s6=useState(false),sending=s6[0],setSending=s6[1];
@@ -3064,6 +3085,8 @@ export function ModalClientEmail(p){
   var extraAttInputRef=React.useRef(null);
   var pdfName=p.pdfName||"Oferta.pdf";
   var sigRef=React.useRef(null);
+  // Domyślne załączniki szablonu "Wstępna wycena" (PDF-y z public/mail-att/) — użytkownik może je usunąć
+  useEffect(function(){ if(isWstepna)addTemplateFiles(TPL_WSTEPNA); },[]);
   // Odpowiedź w wątku klienta: ostatni mail od klienta w Odebranych (Graph createReply)
   var sRM=useState(null),replyMsg=sRM[0],setReplyMsg=sRM[1];   // {id,subject,date}
   var sAR=useState(true),asReply=sAR[0],setAsReply=sAR[1];
@@ -3150,8 +3173,24 @@ export function ModalClientEmail(p){
   }
   // Wybór gotowego szablonu treści (Oferta / Potwierdzenie / Przypomnienie).
   // "Własny" nic nie nadpisuje — zostawia to, co Paulina już napisała.
+  function addTemplateFiles(tpl){
+    (tpl.files||[]).forEach(function(f){
+      fetch(f.url).then(function(r){
+        // SPA-rewrite oddaje index.html (200) dla brakującego pliku — sprawdzamy typ
+        if(!r.ok||String(r.headers.get("content-type")||"").indexOf("pdf")<0)throw new Error("HTTP "+r.status);
+        return r.blob();
+      }).then(function(b){
+        var file=new File([b],f.name,{type:"application/pdf"});
+        setExtraAtts(function(prev){
+          if(prev.some(function(a){return a.name===f.name;}))return prev;
+          return prev.concat([{id:"tf_"+f.name,name:f.name,size:file.size,file:file}]);
+        });
+      }).catch(function(e){console.error("template file",f.name,e);setSendErr("Nie uda\u0142o si\u0119 do\u0142\u0105czy\u0107 pliku: "+f.name);});
+    });
+  }
   function applyMailTemplate(tpl){
     if(!tpl||tpl.id==="wlasny")return;
+    if(tpl.html){setSubject(tpl.subject);setBody(tpl.html);addTemplateFiles(tpl);return;}
     var filled=fillTemplate(tpl,client);
     setSubject(filled.subject);
     setBody(plainToHtmlSimple(filled.body));
@@ -3176,16 +3215,19 @@ export function ModalClientEmail(p){
       return r.status===202||r.status===204?null:r.json().catch(function(){return null;});
     });
   }
-  function sendAsReply(tok,origId,html,recips,atts){
+  function sendViaDraft(tok,origId,subj,html,recips,atts){
     var draftId=null;
-    return gJson(tok,"POST","/me/messages/"+origId+"/createReply").then(function(d){
-      draftId=d.id;
-      var qc=(d.body&&d.body.content)||"";
-      if(d.body&&String(d.body.contentType).toLowerCase()==="text")
-        qc="<pre style=\"font-family:inherit;white-space:pre-wrap;margin:0\">"+qc.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>";
-      var full=/<body[^>]*>/i.test(qc)?qc.replace(/<body[^>]*>/i,function(m){return m+html+"<br>";}):html+"<br>"+qc;
-      return gJson(tok,"PATCH","/me/messages/"+draftId,{body:{contentType:"HTML",content:full},toRecipients:recips});
-    }).then(function(){
+    var start=origId
+      ? gJson(tok,"POST","/me/messages/"+origId+"/createReply").then(function(d){
+          draftId=d.id;
+          var qc=(d.body&&d.body.content)||"";
+          if(d.body&&String(d.body.contentType).toLowerCase()==="text")
+            qc="<pre style=\"font-family:inherit;white-space:pre-wrap;margin:0\">"+qc.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</pre>";
+          var full=/<body[^>]*>/i.test(qc)?qc.replace(/<body[^>]*>/i,function(m){return m+html+"<br>";}):html+"<br>"+qc;
+          return gJson(tok,"PATCH","/me/messages/"+draftId,{body:{contentType:"HTML",content:full},toRecipients:recips});
+        })
+      : gJson(tok,"POST","/me/messages",{subject:subj,body:{contentType:"HTML",content:html},toRecipients:recips}).then(function(d){draftId=d.id;});
+    return start.then(function(){
       return atts.reduce(function(chain,a){
         return chain.then(function(){return gJson(tok,"POST","/me/messages/"+draftId+"/attachments",a);});
       },Promise.resolve());
@@ -3228,8 +3270,11 @@ export function ModalClientEmail(p){
       if(img)atts.push({"@odata.type":"#microsoft.graph.fileAttachment",name:"signature.png",contentType:img.ct,contentBytes:img.b64,isInline:true,contentId:"signature-image"});
       var recips=to.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean).map(function(a){return {emailAddress:{address:a}};});
       if(recips.length===1&&client.name)recips[0].emailAddress.name=client.name;
-      var sendReq=(asReply&&replyMsg)
-        ? sendAsReply(tok,replyMsg.id,html,recips,atts)
+      var attBytes=atts.reduce(function(a,x){return a+Math.round(String(x.contentBytes||"").length*0.75);},0);
+      var inThread=!!(asReply&&replyMsg);
+      // Wątek klienta albo duże załączniki (pojedyncze żądanie sendMail bywa ograniczone do ~4 MB) → szkic + załączniki osobno
+      var sendReq=(inThread||attBytes>2500000)
+        ? sendViaDraft(tok,inThread?replyMsg.id:null,subject,html,recips,atts)
         : fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
             method:"POST",headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
             body:JSON.stringify({message:{subject:subject,body:{contentType:"HTML",content:html},toRecipients:recips,attachments:atts},saveToSentItems:true})
@@ -3315,7 +3360,7 @@ export function ModalClientEmail(p){
           +(asReply?" \u2014 temat zostanie z w\u0105tku (pole Temat pomini\u0119te)":""))
       ):null,
       ce("div",{style:{marginBottom:12,display:"flex",gap:6,flexWrap:"wrap"}},
-        MAIL_TEMPLATES.map(function(tpl){
+        [TPL_WSTEPNA].concat(MAIL_TEMPLATES).map(function(tpl){
           return ce("button",{key:tpl.id,type:"button",onClick:function(){applyMailTemplate(tpl);},
             style:{padding:"5px 11px",borderRadius:20,border:"1.5px solid var(--bd2)",background:"transparent",
               color:"var(--t2)",fontSize:11,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}},
