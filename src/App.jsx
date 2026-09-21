@@ -1103,7 +1103,7 @@ export function App(p){
           style:{marginLeft:"auto",padding:"7px 16px",borderRadius:20,border:"none",background:"var(--violet)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"0 2px 8px var(--violet-l)"}
         },"\uD83D\uDCCB Podsumowanie \u2197")
       :null;
-    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",marginBottom:0,paddingBottom:0,borderBottom:"none"}},parts.concat([quickSum]));
+    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",marginBottom:quickSum?12:0,paddingBottom:0,borderBottom:"none"}},parts.concat([quickSum]));
   }
 
   // Wartość montażu (kwota lub % od bazy) — używana w kilku ekranach
