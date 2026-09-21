@@ -1121,7 +1121,7 @@ export function App(p){
   if(screen==="home"){
     if(loading){
       content=ce("div",{style:{textAlign:"center",padding:"4rem 0",color:"var(--t3)"}},
-        ce("img",{src:LOGO_SRC,alt:"Porter Design",style:{width:35,opacity:0.4,marginBottom:12,display:"block",margin:"0 auto 12px"}}),
+        ce("img",{src:LOGO_SRC,className:"pd-logo-def",alt:"Porter Design",style:{width:35,opacity:0.4,marginBottom:12,display:"block",margin:"0 auto 12px"}}),
         ce("div",{style:{fontSize:12,letterSpacing:"0.08em"}},"\u0141adowanie...")
       );
     } else {
@@ -2602,7 +2602,7 @@ export function App(p){
     ce("div",{className:"pd-rail"+(railCollapsed?" pd-rail--collapsed":""),style:{"--pd-navcols":isSuperAdmin?9:8}},
       ce("div",{className:"pd-brand"},
         ce("div",{className:"pd-brandbox"},
-          ce("img",{src:brandLogo,alt:brandName,title:brandName})
+          ce("img",{src:brandLogo,alt:brandName,title:brandName,className:brandLogo===LOGO_SRC?"pd-logo-def":undefined})
         ),
         ce("div",{className:"pd-brandname"},brandName)
       ),
@@ -2787,7 +2787,7 @@ function ScreenBillingGate(p){
   }
   return ce("div",{style:{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"24px"}},
     ce("div",{style:{maxWidth:520,width:"100%",background:"var(--glass-bg)",backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",borderRadius:20,border:"1.5px solid var(--glass-border)",boxShadow:"var(--glass-shadow)",padding:"32px 28px",textAlign:"center"}},
-      ce("img",{src:brandLogo,alt:"logo",style:{height:26,opacity:0.9,marginBottom:14}}),
+      ce("img",{src:brandLogo,alt:"logo",className:brandLogo===LOGO_SRC?"pd-logo-def":undefined,style:{height:26,opacity:0.9,marginBottom:14}}),
       ce("h2",{style:{fontSize:20,fontWeight:700,color:"var(--t1)",margin:"0 0 8px"}},title),
       ce("p",{style:{fontSize:13.5,color:"var(--t3)",lineHeight:1.6,margin:"0 0 22px"}},sub),
       err?ce("div",{style:{fontSize:12,color:"var(--red)",marginBottom:14}},err):null,
