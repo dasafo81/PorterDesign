@@ -21,6 +21,22 @@ export function fillTemplate(tpl,client){
 
 // ── Sanityzacja wklejanego HTML (Word/Gmail) ──────────────────────────
 // Zostawiamy tylko podstawowe formatowanie, usuwamy class/MSO-style/komentarze.
+// Kolory neutralne (szarości, czerń, biel) to zwykle kolor motywu strony źródłowej — np. jasny
+// tekst z ciemnego trybu Claude/Gemini. Nie przenosimy ich: byłyby niewidoczne na białym tle maila.
+// Kolory "prawdziwe" (czerwony, niebieski...) zostają.
+function rteIsNeutralColor(val){
+  var s=String(val||"").trim();
+  var m=s.match(/^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i);
+  var r,g,b;
+  if(m){r=+m[1];g=+m[2];b=+m[3];}
+  else{
+    var h=s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if(!h)return /^(black|white|gr[ae]y|inherit|initial|unset|transparent|currentcolor)$/i.test(s);
+    var x=h[1].length===3?h[1].replace(/./g,function(c){return c+c;}):h[1];
+    r=parseInt(x.substr(0,2),16);g=parseInt(x.substr(2,2),16);b=parseInt(x.substr(4,2),16);
+  }
+  return Math.max(r,g,b)-Math.min(r,g,b)<24;
+}
 function rtePasteFilterStyle(styleStr){
   if(!styleStr)return "";
   var allowedProps=["color","font-weight","font-style","text-decoration","background-color"];
@@ -30,25 +46,65 @@ function rtePasteFilterStyle(styleStr){
     if(parts.length<2)return;
     var prop=parts[0].trim().toLowerCase();
     var val=parts.slice(1).join(":").trim();
-    if(allowedProps.indexOf(prop)>=0&&val)out.push(prop+":"+val);
+    if(allowedProps.indexOf(prop)<0||!val)return;
+    if((prop==="color"||prop==="background-color")&&rteIsNeutralColor(val))return;
+    out.push(prop+":"+val);
   });
   return out.join(";");
 }
+// Tagi całkowicie usuwane (razem z zawartością) — inaczej np. treść <style> wyciekłaby jako tekst
+var RTE_DROP={STYLE:1,SCRIPT:1,META:1,TITLE:1,LINK:1,HEAD:1,IMG:1,SVG:1,BUTTON:1,NOSCRIPT:1,TEMPLATE:1};
+var RTE_KEEP={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,A:1,BR:1,P:1,DIV:1,SPAN:1,HR:1,BLOCKQUOTE:1,TABLE:1,THEAD:1,TBODY:1,TR:1,TD:1,TH:1};
+var RTE_HEAD={H1:1,H2:1,H3:1,H4:1,H5:1,H6:1};
+var RTE_MONO="font-family:Consolas,Menlo,monospace";
+// Globalny reset (*{margin:0;padding:0}) kasuje odstępy akapitów i wcięcia list, a odbiorcy
+// mają różne domyślne style — dlatego odstępy zapisujemy inline, żeby wyglądały tak samo wszędzie.
+function rteRename(node,child,tag,style){
+  var el=document.createElement(tag);
+  while(child.firstChild)el.appendChild(child.firstChild);
+  if(style)el.setAttribute("style",style);
+  node.replaceChild(el,child);
+  return el;
+}
 function rtePasteCleanNode(node){
-  var ALLOWED={B:1,STRONG:1,I:1,EM:1,U:1,UL:1,OL:1,LI:1,A:1,BR:1,P:1,DIV:1,SPAN:1};
   Array.prototype.slice.call(node.childNodes).forEach(function(child){
     if(child.nodeType===8){node.removeChild(child);return;} // komentarze MSO
     if(child.nodeType!==1)return; // zwykły tekst — bez zmian
-    rtePasteCleanNode(child);
     var tag=child.tagName;
-    if(!ALLOWED[tag]){
+    if(RTE_DROP[tag]){node.removeChild(child);return;}
+    rtePasteCleanNode(child);
+    if(RTE_HEAD[tag]){ // nagłówki → pogrubiony akapit
+      var hp=rteRename(node,child,"p","margin:0 0 1em");
+      var hb=document.createElement("b");
+      while(hp.firstChild)hb.appendChild(hp.firstChild);
+      hp.appendChild(hb);
+      return;
+    }
+    if(tag==="PRE"){rteRename(node,child,"div",RTE_MONO+";white-space:pre-wrap;margin:0 0 1em");return;}
+    if(tag==="CODE"){rteRename(node,child,"span",RTE_MONO);return;}
+    var own=rtePasteFilterStyle(child.getAttribute("style"));
+    // <b style="font-weight:normal"> to opakowanie z Google Docs/Gemini — nie jest pogrubieniem
+    if((tag==="B"||tag==="STRONG")&&/font-weight:\s*(normal|[1-4]00)\b/i.test(own)){
       while(child.firstChild)node.insertBefore(child.firstChild,child);
       node.removeChild(child);
       return;
     }
-    var style=rtePasteFilterStyle(child.getAttribute("style"));
+    if(!RTE_KEEP[tag]){
+      while(child.firstChild)node.insertBefore(child.firstChild,child);
+      node.removeChild(child);
+      return;
+    }
     var href=tag==="A"?child.getAttribute("href"):null;
     Array.prototype.slice.call(child.attributes).forEach(function(a){child.removeAttribute(a.name);});
+    var inLi=node.tagName==="LI";
+    var extra="";
+    if(tag==="P")extra=inLi?"margin:0":"margin:0 0 1em";
+    else if(tag==="UL"||tag==="OL")extra=(inLi?"margin:0":"margin:0 0 1em")+";padding-left:1.6em";
+    else if(tag==="BLOCKQUOTE")extra="margin:0 0 1em;padding-left:12px;border-left:3px solid #ccc";
+    else if(tag==="TABLE")extra="border-collapse:collapse;margin:0 0 1em";
+    else if(tag==="TD")extra="border:1px solid #ccc;padding:6px 10px;vertical-align:top";
+    else if(tag==="TH")extra="border:1px solid #ccc;padding:6px 10px;vertical-align:top;font-weight:700";
+    var style=[own,extra].filter(Boolean).join(";");
     if(style)child.setAttribute("style",style);
     if(href){child.setAttribute("href",href);child.setAttribute("target","_blank");}
   });
