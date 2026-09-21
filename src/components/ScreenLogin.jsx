@@ -85,7 +85,8 @@ export function ScreenLogin(p) {
               borderRadius: 16, padding: '10px 16px', marginBottom: '1.6rem'
             }
           },
-            ce('img', { src: LOGO_SRC, alt: 'Porter Design', style: { height: 34, objectFit: 'contain' } })
+            // Panel z logo ma zawsze ciemne tlo (--hero-gradient) — czarne SVG odwracamy na biale
+            ce('img', { src: LOGO_SRC, alt: 'Porter Design', style: { height: 34, objectFit: 'contain', filter: 'invert(1)' } })
           ),
 
           ce('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--hero-text-1)', marginBottom: 10 } },
