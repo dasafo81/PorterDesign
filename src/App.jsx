@@ -2654,8 +2654,8 @@ export function App(p){
       [
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
         {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
-        {id:"kontrahenci",label:"Kontrah.",icon:"\uD83D\uDC65"},
-        {id:"kalendarz", label:"Kalen.",icon:"\uD83D\uDCC5"},
+        {id:"kontrahenci",label:"Kontrahenci",icon:"\uD83D\uDC65"},
+        {id:"kalendarz", label:"Kalendarz",icon:"\uD83D\uDCC5"},
         {id:"mail",      label:"Mail",  icon:"\uD83D\uDCE8"},
         {id:"zadania",   label:"Zadania",icon:"\u2705"},
         {id:"faktury",   label:"Faktury", icon:"\uD83D\uDCB0"},
