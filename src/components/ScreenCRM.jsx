@@ -5,6 +5,7 @@ import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffec
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
+import { buildInvoicePDFHtml } from './ScreenInvoices.jsx';
 const ce = React.createElement;
 
 
@@ -25,6 +26,9 @@ export const ORDER_STEPS=[
   {field:"order_fabric",  label:"Tkanina", icon:"\uD83E\uDDF5", doneLabel:"Tkanina zam\u00f3wiona"},
   {field:"order_sewing",  label:"Szycie",  icon:"\u2702\uFE0F", doneLabel:"Szycie zlecone"}
 ];
+// Plik OWU dołączany do maila z fakturą zaliczkową (public/mail-att/)
+export const OWU_URL="/mail-att/Porter_Design_OWU.pdf";
+export const OWU_NAME="Porter_Design_OWU.pdf";
 export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane"};
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
 
@@ -212,7 +216,12 @@ export function ModalDeal(p){
   var persistedDatesRef=useRef({});
   // Szablony maili "Opinia - swobodna" / "Instrukcja prania i czyszczenia" oraz stan modala wysyłki
   var smt=useState(null),mailTpls=smt[0],setMailTpls=smt[1];
-  var smk=useState(null),mailKind=smk[0],setMailKind=smk[1]; // "opinia" | "instrukcja" | null
+  var smk=useState(null),mailKind=smk[0],setMailKind=smk[1]; // "opinia" | "instrukcja" | "zaliczka" | null
+  // Zaliczka 50% i OWU: faktury kandydujące do wysyłki, wybrana faktura, stan przygotowania maila
+  var sadvL=useState([]),advInvoices=sadvL[0],setAdvInvoices=sadvL[1];
+  var sadvI=useState(""),advInvoiceId=sadvI[0],setAdvInvoiceId=sadvI[1];
+  var sadvB=useState(false),advBusy=sadvB[0],setAdvBusy=sadvB[1];
+  var sadvE=useState(null),advErr=sadvE[0],setAdvErr=sadvE[1];
   var smb=useState(false),mailBusy=smb[0],setMailBusy=smb[1];
   var sme=useState(null),mailErr=sme[0],setMailErr=sme[1];
   var smm=useState(null),mailMsg=smm[0],setMailMsg=smm[1];
@@ -263,6 +272,30 @@ export function ModalDeal(p){
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
   },[d.id]);
+
+  // Etap "Zaliczka 50% i OWU": faktury sprzedażowe tego zlecenia (deal_id), a gdy brak — klienta.
+  // Domyślnie wybierana ta, której kwota brutto jest najbliższa 50% wyceny.
+  React.useEffect(function(){
+    if(d.stage!=="zaliczka")return;
+    var alive=true;
+    sbApi.getInvoices().then(function(list){
+      if(!alive)return;
+      var mine=(list||[]).filter(function(x){
+        var dir=(x&&x.direction)||(x&&x.doc_type==="zakup"?"zakup":"sprzedaz");
+        if(dir==="zakup"||x.doc_type==="korekta")return false;
+        return String(x.deal_id||"")===String(d.id)||(cl&&x.client_id&&String(x.client_id)===String(cl.id));
+      });
+      var byDeal=mine.filter(function(x){return String(x.deal_id||"")===String(d.id);});
+      var cands=byDeal.length?byDeal:mine;
+      setAdvInvoices(cands);
+      var half=clientTotal/2,best=null;
+      cands.forEach(function(x){
+        if(!best||Math.abs((+x.total_gross||0)-half)<Math.abs((+best.total_gross||0)-half))best=x;
+      });
+      if(best)setAdvInvoiceId(function(prev){return prev||String(best.id);});
+    }).catch(function(){});
+    return function(){alive=false;};
+  },[d.id,d.stage]);
 
   // Koszty zlecenia. Blad (np. brak tabeli przed uruchomieniem migracji 0034)
   // nie moze wywalic calego modala — panel po prostu pokazuje komunikat.
@@ -480,6 +513,59 @@ export function ModalDeal(p){
       .catch(function(e){alert("Błąd zapisu: "+e.message);});
   }
 
+  // Przygotowuje mail "faktura zaliczkowa + OWU": pobiera fakturę wraz z pozycjami, buduje jej HTML
+  // (ten sam generator co w module Faktury) i dołącza plik OWU z public/mail-att/.
+  function openAdvanceMail(){
+    var inv=advInvoices.find(function(x){return String(x.id)===String(advInvoiceId);});
+    if(!inv){setAdvErr("Wybierz fakturę do wysłania.");return;}
+    setAdvBusy(true);setAdvErr(null);
+    Promise.all([
+      sbApi.getInvoice(inv.id),
+      sbApi.getInvoiceSettings().catch(function(){return null;}),
+      // brak pliku OWU nie może przejść po cichu (załączniki szablonu są best-effort) — sprawdzamy z góry;
+      // hosting potrafi zwrócić index.html zamiast 404, więc sprawdzamy też typ zawartości
+      fetch(OWU_URL,{cache:"no-store"}).then(function(r){
+        return r.ok&&/pdf/i.test(r.headers.get("content-type")||"");
+      }).catch(function(){return false;})
+    ]).then(function(res){
+      var full=res[0];
+      if(!full)throw new Error("Nie udało się pobrać faktury.");
+      if(!res[2])throw new Error("Brak pliku OWU na serwerze ("+OWU_URL+").");
+      var html=buildInvoicePDFHtml(full,res[1]||{},null);
+      var number=full.number||"";
+      var fname="Faktura-"+(number||"dokument").replace(/[^\w-]+/g,"_")+".html";
+      var gross=(+full.total_gross||0).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
+      var P=function(t){return "<div>"+t+"</div>";};
+      var body=[
+        P("Dzień dobry,"),
+        P("w załączeniu przesyłam fakturę zaliczkową"+(number?" nr <b>"+number+"</b>":"")+" na kwotę <b>"+gross+"</b> (50% wartości zamówienia) oraz Ogólne Warunki Umowy (OWU)."),
+        P("<b>Rozpoczęcie zamówienia</b> następuje po wpłacie zaliczki w terminie wskazanym na fakturze. Zgodnie z OWU dokonanie zapłaty zadatku jest równoznaczne z zapoznaniem się z ich treścią i pełną akceptacją."),
+        P("<b>Czas realizacji</b> wynosi ok. 4 tygodni od momentu zaksięgowania wpłaty."),
+        P("W razie jakichkolwiek pytań pozostaję do dyspozycji."),
+        P("Pozdrawiam serdecznie,<br>Paulina Porter<br>Porter Design")
+      ].join("<div><br></div>");
+      var invFile=new File([html],fname,{type:"text/html"});
+      setMailErr(null);setMailMsg(null);
+      setMailSubject("Faktura zaliczkowa"+(number?" nr "+number:"")+" i Ogólne Warunki Umowy");
+      setMailBodyText(body);
+      setMailTo((cl&&cl.email)||"");
+      setMailAttachments([
+        {id:"adv_inv_"+Date.now(),name:fname,size:invFile.size,type:"upload",file:invFile},
+        {id:"adv_owu_"+Date.now(),name:OWU_NAME,size:null,type:"template",url:OWU_URL}
+      ]);
+      setMailKind("zaliczka");
+    }).catch(function(e){
+      setAdvErr((e&&e.message)||"Nie udało się przygotować wiadomości.");
+    }).finally(function(){setAdvBusy(false);});
+  }
+
+  // Znacznik wysłania maila z fakturą zaliczkową (deals.advance_sent_at, migracja 0053)
+  function markAdvanceSent(){
+    var patch={advance_sent_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+    sbApi.updateDeal(d.id,patch).then(function(){if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){alert("Mail został wysłany, ale nie udało się zapisać znacznika wysyłki (czy uruchomiona migracja 0053?): "+e.message);});
+  }
+
   function deleteAttach(id){
     sbApi.deleteAttachment(id).then(function(){
       setAttachments(function(a){return a.filter(function(x){return x.id!==id;});});
@@ -608,6 +694,7 @@ export function ModalDeal(p){
       }
       if(mailKind==="opinia")setReviewSent(true);
       else if(mailKind==="instrukcja")setWashingSent(true);
+      else if(mailKind==="zaliczka")markAdvanceSent();
       setMailMsg("\u2705 Wiadomo\u015b\u0107 wys\u0142ana na "+toList.join(", "));
       setMailKind(null);
     }).catch(function(e){
@@ -937,6 +1024,39 @@ export function ModalDeal(p){
           )
         ),
 
+        d.stage==="zaliczka"?ce(SectionCard,{icon:"💳",title:"Zaliczka 50% i OWU",done:!!d.advance_sent_at},
+          advInvoices.length===0
+            ?ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
+              "Nie znaleziono faktury powiązanej z tym zleceniem ani klientem. Wystaw fakturę na 50% w module Faktury (wybierz klienta i ofertę), potem wróć tutaj.")
+            :ce("div",null,
+              ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"FAKTURA DO WYSŁANIA"),
+              ce("select",{value:advInvoiceId,onChange:function(ev){setAdvInvoiceId(ev.target.value);},style:INP},
+                advInvoices.map(function(x){
+                  var tl={vat:"VAT",proforma:"proforma",zaliczka:"zaliczkowa",eko:"EKO"}[x.doc_type]||x.doc_type||"";
+                  return ce("option",{key:x.id,value:String(x.id)},
+                    (x.number||"—")+" · "+(+x.total_gross||0).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł"+(tl?" · "+tl:""));
+                })
+              ),
+              (function(){
+                var sel=advInvoices.find(function(x){return String(x.id)===String(advInvoiceId);});
+                if(!sel||!(clientTotal>0))return null;
+                var half=clientTotal/2,diff=Math.abs((+sel.total_gross||0)-half);
+                var ok=diff<=10;
+                return ce("div",{style:{fontSize:11,marginTop:6,lineHeight:1.4,color:ok?"var(--gr)":"var(--red, #ef4444)"}},
+                  ok?"✓ Kwota zgodna z 50% wyceny ("+half.toLocaleString("pl-PL",{maximumFractionDigits:0})+" zł)"
+                    :"⚠ Kwota faktury różni się od 50% wyceny ("+half.toLocaleString("pl-PL",{maximumFractionDigits:0})+" zł) o "+diff.toLocaleString("pl-PL",{maximumFractionDigits:0})+" zł");
+              })()
+            ),
+          advErr?ce("div",{style:{fontSize:12,color:"var(--red, #ef4444)"}},"⚠️ "+advErr):null,
+          d.advance_sent_at?ce("div",{style:{fontSize:12,color:"var(--gr)"}},
+            "✓ Wysłano "+new Date(d.advance_sent_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})):null,
+          ce("button",{
+            onClick:openAdvanceMail,disabled:advBusy||!advInvoiceId,
+            style:{padding:"10px 14px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",fontSize:13,fontWeight:700,
+              cursor:(advBusy||!advInvoiceId)?"not-allowed":"pointer",opacity:(advBusy||!advInvoiceId)?0.5:1}
+          },advBusy?"⏳ Przygotowuję…":(d.advance_sent_at?"✉ Wyślij ponownie fakturę + OWU":"✉ Wyślij fakturę + OWU"))
+        ):null,
+
         ce(SectionCard,{icon:"📅",title:"Spotkanie",done:visitDone},
           ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
             visitDate?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
@@ -1157,7 +1277,7 @@ export function ModalDeal(p){
           }},"📤"),
           ce("div",{style:{flex:1,minWidth:0}},
             ce("div",{style:{fontSize:15,fontWeight:800,color:"var(--t1)"}},
-              mailKind==="opinia"?"Prośba o opinię":"Instrukcja prania i czyszczenia"
+              mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":"Instrukcja prania i czyszczenia"
             ),
             ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:1}},"Wysyłka przez Outlooka (Microsoft Graph)")
           ),
