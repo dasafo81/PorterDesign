@@ -148,6 +148,7 @@ function SectionCard(rp){
   return ce("div",{style:{
     border:"1.5px solid "+(rp.done?"var(--t1)":"var(--bd2)"),
     borderRadius:14,overflow:"hidden",marginBottom:12,
+    breakInside:"avoid",WebkitColumnBreakInside:"avoid",pageBreakInside:"avoid",
     background:rp.done?"rgba(124,58,237,0.04)":"var(--bg2,#f8f8f6)",
     transition:"all .2s"
   }},
@@ -701,7 +702,7 @@ export function ModalDeal(p){
   var INP={padding:"10px 12px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:9,background:"var(--bg)",color:"var(--t1)",width:"100%",boxSizing:"border-box",outline:"none"};
 
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"}},
-    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:660,borderRadius:18,maxHeight:"94vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}},
+    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:"none",borderRadius:18,maxHeight:"96vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}},
 
       ce("div",{style:{
         background:"linear-gradient(135deg,var(--t1) 0%,#0d9488 100%)",
@@ -731,6 +732,9 @@ export function ModalDeal(p){
       ),
 
       ce("div",{style:{padding:"18px 20px 24px"}},
+
+        // Sekcje układają się w kolumny (do 3, min. 360 px każda) — na szerokim ekranie widać więcej naraz
+        ce("div",{style:{columnCount:3,columnWidth:360,columnGap:16}},
 
         quoteBreak.rooms.length>0?ce(SectionCard,{icon:"📋",title:"Podgląd wyceny"},
           ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
@@ -1095,12 +1099,12 @@ export function ModalDeal(p){
           ce(CheckRow,{checked:invoiceSent,onChange:setInvoiceSent,label:"Wysłano fakturę (FV)",sublabel:"Dokument księgowy do klienta"})
         ),
 
-        ce("div",{style:{marginBottom:12}},
+        ce("div",{style:{marginBottom:12,breakInside:"avoid",WebkitColumnBreakInside:"avoid"}},
           ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"NOTATKI"),
           ce("textarea",{value:notes,onChange:function(ev){setNotes(ev.target.value);},rows:3,placeholder:"Uwagi, szczegóły rozmowy...",style:Object.assign({},INP,{resize:"vertical",lineHeight:1.6})})
         ),
 
-        ce("div",{style:{marginBottom:16}},
+        ce("div",{style:{marginBottom:16,breakInside:"avoid",WebkitColumnBreakInside:"avoid"}},
           ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",marginBottom:8}},"ZAŁĄCZNIKI"),
           attachments.map(function(a){
             return ce("div",{key:a.id,style:{display:"flex",alignItems:"center",gap:8,marginBottom:6}},
@@ -1112,12 +1116,13 @@ export function ModalDeal(p){
             ce("input",{type:"file",style:{display:"none"},onChange:function(ev){var f=ev.target.files&&ev.target.files[0];if(f)uploadFile(f);ev.target.value="";}}),
             uploading?"⏳ Wgrywam...":"⬆ Dodaj plik PDF / zdjęcie"
           )
+        )
         ),
 
-        ce("div",{style:{display:"flex",gap:8}},
+        ce("div",{style:{display:"flex",gap:8,justifyContent:"flex-end",position:"sticky",bottom:0,zIndex:5,background:"var(--bg)",padding:"12px 0 4px",marginTop:4,borderTop:"1px solid var(--bd2)"}},
           ce("button",{
             onClick:save,disabled:busy,
-            style:{flex:1,padding:"13px",borderRadius:11,border:"none",background:"var(--t1)",color:"#fff",fontSize:14,fontWeight:700,cursor:busy?"not-allowed":"pointer",opacity:busy?0.6:1}
+            style:{flex:"0 1 320px",padding:"13px",borderRadius:11,border:"none",background:"var(--t1)",color:"#fff",fontSize:14,fontWeight:700,cursor:busy?"not-allowed":"pointer",opacity:busy?0.6:1}
           },busy?"⏳ Zapisuję...":"Zapisz zmiany"),
           ce("button",{
             onClick:function(){if(confirm("Usunąć tego deala?"))p.onDelete();},
