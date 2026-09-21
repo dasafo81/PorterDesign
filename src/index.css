@@ -253,7 +253,9 @@
 
       /* ── Wariant zwiniety: same ikony ───────────────────────────────── */
       .pd-rail--collapsed{width:62px;padding-left:7px;padding-right:7px;}
-      .pd-rail--collapsed .pd-brandbox{height:48px;padding:5px;}
+      /* Logo jest pionowe (ok. 1:2) — w kwadratowym kafelku 48px wychodzil waski paseczek w ramce.
+         Po zwinieciu zdejmujemy kafelek (tlo + cien) i dajemy logo wiecej wysokosci. */
+      .pd-rail--collapsed .pd-brandbox{height:56px;padding:2px;background:transparent;box-shadow:none;}
       .pd-rail--collapsed .pd-brandname{display:none;}
       .pd-rail--collapsed .pd-railtoggle{align-self:center;}
       .pd-rail--collapsed .pd-navbtn{justify-content:center;padding:0;gap:0;}
