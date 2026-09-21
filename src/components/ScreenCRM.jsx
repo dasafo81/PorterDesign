@@ -794,7 +794,8 @@ export function ModalDeal(p){
     ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:"none",borderRadius:18,maxHeight:"96vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}},
 
       ce("div",{style:{
-        background:"var(--hero-gradient)",
+        background:"radial-gradient(ellipse at 75% 30%,var(--hero-glow-1) 0%,transparent 65%),radial-gradient(ellipse at 15% 90%,var(--hero-glow-2) 0%,transparent 55%),var(--hero-gradient)",
+        borderBottom:"3px solid var(--violet)",
         padding:"20px 22px 18px",borderRadius:"18px 18px 0 0",position:"relative"
       }},
         ce("button",{onClick:p.onClose,style:{position:"absolute",top:14,right:16,border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,width:30,height:30,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}},"×"),
