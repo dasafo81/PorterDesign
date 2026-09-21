@@ -230,6 +230,42 @@ export function ProdCard(p){
   }
   var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
+  // Wymiary przenoszone przy "Zmien, zachowujac wymiary" (zmiana typu).
+  // Rodziny: kurt (zaslona/firana), okno (roleta/shadow/zaluzja/plisa), rail (szyny/karnisze).
+  // Miedzy rodzinami nic nie przenosimy (szer. okna != dlugosc karnisza) -> null -> brak trzeciej opcji.
+  function carryDims(fromT,toT,pr,cc){
+    var RAIL=["szyna","karnisz","prestige_round","prestige_square","shuttle"];
+    function fam(t){
+      if(t==="zaslona"||t==="firana")return "kurt";
+      if(t==="roleta"||t==="shadow"||t==="zaluzja"||t==="plisa")return "okno";
+      return RAIL.indexOf(t)>=0?"rail":null;
+    }
+    var ff=fam(fromT),tf=fam(toT);
+    if(!ff||ff!==tf)return null;
+    pr=pr||{};cc=cc||{};
+    function n(v){var x=parseFloat(String(v==null?"":v).replace(",","."));return x>0?x:0;}
+    var np={},nc={};
+    if(ff==="rail"){
+      if(!n(pr.len))return null;
+      np=Object.assign({},pr);
+    }else if(ff==="kurt"){
+      if(!n(pr.wCm)&&!n(pr.hCm))return null;
+      np=Object.assign({},pr);
+      ["split","leftW","rightW","hDiff","leftH","rightH"].forEach(function(k){if(cc[k]!=null)nc[k]=cc[k];});
+    }else{
+      var w,h;
+      if(fromT==="plisa"){w=Math.round(n(pr.wMm)/10);h=Math.round(n(pr.hMm)/10);}
+      else{w=n(pr.wCm);h=n(fromT==="zaluzja"?pr.lCm:pr.hCm);}
+      if(!w&&!h)return null;
+      if(toT==="plisa"){if(w)np.wMm=w*10;if(h)np.hMm=h*10;}
+      else{if(w)np.wCm=w;if(h)np[toT==="zaluzja"?"lCm":"hCm"]=h;}
+    }
+    var info=np.len?(np.len+" cm")
+      :np.wMm?((np.wMm||"?")+"\u00d7"+(np.hMm||"?")+" mm")
+      :((np.wCm||"?")+"\u00d7"+(np.hCm||np.lCm||"?")+" cm");
+    return {par:np,c:nc,info:info};
+  }
+  var keep=pendingType?carryDims(prod.type,pendingType.type||pendingType.id,par,c):null;
   // \u2500\u2500 SELEKTOR TYPU: grupy + marka/model dla karniszy elektrycznych \u2500\u2500\u2500\u2500\u2500\u2500
   var KARN_EL_IDS=["karnisz","prestige_round","prestige_square","shuttle"];
   var isKarnEl=KARN_EL_IDS.indexOf(prod.type)>=0;
@@ -2466,6 +2502,13 @@ export function ProdCard(p){
     pendingType?ce(ModalConfirmTypeChange,{
       fromLabel:lbl,
       toLabel:pendingType.label,
+      keepDimsInfo:keep?keep.info:null,
+      onKeepDims:keep?function(){
+        var t=pendingType;
+        p.onChange(mg(prod,{type:t.type||t.id,c:mg(mg({split:"unequal"},t.set||{}),keep.c),par:keep.par,panels:[],
+          fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,
+          innyNazwa:undefined,innyKat:undefined}));
+      }:null,
       onConfirm:function(){
         p.onChange(mg(prod,{type:pendingType.type||pendingType.id,c:mg({split:"unequal"},pendingType.set||{}),par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
       },
