@@ -1997,8 +1997,8 @@ export function ScreenMail(p){
   var ssel=us(null),selThread=ssel[0],setSelThread=ssel[1];
   var sdr=us(function(){try{return JSON.parse(localStorage.getItem("pd_mail_drafts")||"[]");}catch(e){return[];}}),drafts=sdr[0],setDrafts=sdr[1];
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
-  // null = jeszcze nie wybrano — efekt ustawi szablon domyślny (wycena po spotkaniu)
-  var st=us(null),selTemplate=st[0],setSelTemplate=st[1];
+  // "__none__" = domyślnie bez szablonu — szablon wkleja się dopiero po wyborze z listy
+  var st=us("__none__"),selTemplate=st[0],setSelTemplate=st[1];
   // true = użytkownik ruszył temat/treść ręcznie → szablon nie nadpisuje już kompozytora
   var sdty=us(false),composeDirty=sdty[0],setComposeDirty=sdty[1];
   var sto=us(""),toEmail=sto[0],setToEmail=sto[1];
@@ -2259,8 +2259,12 @@ export function ScreenMail(p){
   ue(function(){ setMobileFoldersOpen(false); }, [activeFolder]);
 
   ue(function(){
+    // Bez szablonu nic nie wklejamy, ale adres klienta nadal uzupełniamy
+    if(selTemplate==="__none__"){
+      if(selClient&&selClient.email)setToEmail(selClient.email);
+      return;
+    }
     if(!activeTemplates.length)return;
-    if(selTemplate==="__none__")return;
     var tpl=activeTemplates.find(function(t){return t.id===selTemplate;})||findDefaultTemplate(activeTemplates);
     if(!tpl)return;
     if(selTemplate!==tpl.id)setSelTemplate(tpl.id);
