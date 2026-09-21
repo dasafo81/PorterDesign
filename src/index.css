@@ -212,10 +212,13 @@
       .pd-shell{flex-direction:row;align-items:flex-start;gap:16px;}
       .pd-rail{
         width:152px;flex-shrink:0;display:flex;flex-direction:column;gap:0;
-        padding:14px 9px 12px;position:sticky;top:1.2rem;
+        padding:14px 9px 12px;
+        /* Menu przypiete do okna (fixed) — nie jedzie razem ze scrollem tresci.
+           2.2rem = 1.2rem (padding App) + 1rem (.app-inner), czyli ta sama pozycja co w spoczynku. */
+        position:fixed;top:2.2rem;left:2.2rem;
         /* Stala wysokosc zamiast "tyle, ile tresci" — inaczej pasek urywal sie
            w polowie strony i nie pasowal do dlugiej listy obok. */
-        height:calc(100vh - 2.4rem);
+        height:calc(100vh - 4.4rem);
         transition:width .18s ease;
       }
       .pd-brand{flex-direction:column;gap:7px;margin-bottom:4px;}
@@ -262,8 +265,13 @@
       .pd-rail--collapsed .pd-rail-foot > div:first-child{flex-wrap:wrap;justify-content:center;}
       /* Suwak offline/online: sam przelacznik zostaje, napis chowa regula wyzej */
       .pd-rail--collapsed .pd-rail-foot > div{padding-left:4px;padding-right:4px;}
-      .pd-main{flex:1;}
+      /* Menu jest fixed (poza ukladem), wiec tresc odsuwamy marginesem = szerokosc menu + 16px odstepu */
+      .pd-main{flex:1;margin-left:168px;transition:margin-left .18s ease;}
+      .pd-rail--collapsed ~ .pd-main{margin-left:78px;}
       /* Pasek stoi obok tresci, wiec nad Mailem nie ma juz topbara ani zakladek —
-         odejmujemy tylko padding powloki (2 x 1.2rem). */
-      .pd-mail-h{height:calc(100vh - 2.4rem);}
+         odejmujemy padding powloki: 2 x (1.2rem App + 1rem .app-inner) = 4.4rem. */
+      .pd-mail-h{height:calc(100vh - 4.4rem);}
+      /* W Mailu wysokosc jest sztywna = okno, wiec strona nie ma czego przewijac —
+         blokujemy scroll dokumentu (stopka z wersja chowa sie pod krawedzia okna). */
+      html:has(.pd-mail-h){overflow:hidden;}
     }
