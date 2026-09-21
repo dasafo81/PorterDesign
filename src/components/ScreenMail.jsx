@@ -2082,6 +2082,23 @@ export function ScreenMail(p){
     return function(){window.removeEventListener("popstate",onPop);};
   },[]);
 
+  // Po wejściu do modułu otwórz domyślnie najnowszy wątek z Odebranych (zamiast pustego
+  // "Wybierz wiadomość"). Tylko raz na wejście, tylko gdy lista i podgląd są obok siebie
+  // (na telefonie podgląd zasłania listę) i tylko gdy nic jeszcze nie wybrano.
+  // Świadomie NIE oznacza jako przeczytane — to robi dopiero kliknięcie w wątek na liście.
+  var autoOpenedRef=React.useRef(false);
+  ue(function(){
+    if(autoOpenedRef.current||loadingMails||isMobile||selThread||activeFolder!=="inbox")return;
+    var inbox=allMails.filter(function(m){return m.folder==="inbox";});
+    if(!inbox.length)return;
+    var newest=inbox.reduce(function(a,b){return new Date(b.date)>new Date(a.date)?b:a;});
+    var key=newest.conversationId||("solo_"+newest.id);
+    var tMails=inbox.filter(function(m){return (m.conversationId||("solo_"+m.id))===key;})
+      .sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    autoOpenedRef.current=true;
+    setSelThread({key:key,mails:tMails,head:tMails[0],count:tMails.length});
+  },[allMails,loadingMails,isMobile,activeFolder,selThread]);
+
   // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
   ue(function(){
     var returnedFromMicrosoft = consumeBrokerCallback('microsoft');
