@@ -61,6 +61,15 @@ export function clientTotal2(cl){
   return comm>0?sum*(1+comm/100):sum;
 }
 
+// Wartość deala tak jak na karcie w Kanbanie: wycena (warianty A + prowizja) + montaż, zaokrąglone do 10 zł
+export function dealTotal(cl){
+  if(!cl)return 0;
+  var base=clientTotal2(cl);
+  var fee=parseFloat(cl.install_fee)||0;
+  var add=cl.install_fee_mode==="amount"?fee:(fee>0?base*fee/100:0);
+  return roundTo10(base+add);
+}
+
 // Rozbicie wyceny na pomieszczenia — do podglądu w karcie deala.
 // Zwraca surowe (niezaokrąglone) sumy; zaokrąglanie ma miejsce raz, na końcu,
 // tak samo jak w PDF (pdf.js), żeby wartości w Kanbanie / karcie deala / PDF się zgadzały.
@@ -2658,6 +2667,11 @@ export function ScreenCRM(p){
       setLoadingDeals(false);
     }).catch(function(){setDeals([]);setLoadingDeals(false);});
   },[]);
+
+  // Hero na stronie głównej (App) trzyma własną kopię deali — przekazujemy mu każdą zmianę z Kanbanu
+  React.useEffect(function(){
+    if(deals&&p.onDealsSync)p.onDealsSync(deals);
+  },[deals]);
 
   // Pobierz listę kalendarzy gdy mamy token
   React.useEffect(function(){
