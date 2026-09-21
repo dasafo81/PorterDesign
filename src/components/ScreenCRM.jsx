@@ -992,21 +992,21 @@ export function ModalDeal(p){
           ce(CheckRow,{checked:installDone,onChange:setInstallDone,label:"Montaż zrealizowany",sublabel:delivDate?("Zaplanowany: "+fmtDate(delivDate)+(installerName?" — "+installerName:"")):null}),
 
           ce("div",{style:{borderTop:"1px dashed var(--bd2)",marginTop:4,paddingTop:10}},
-            ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--t2)",textTransform:"uppercase",marginBottom:8}},"TERMIN 2 (np. elektryk / inny)"),
+            ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--t2)",textTransform:"uppercase",marginBottom:8}},"TERMIN 2 — WIESZANIE I PRASOWANIE"),
             ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
               delivDate2?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
                 "📅 "+fmtDate(delivDate2)+(delivDate2.length>10?" "+delivDate2.slice(11,16):"")
               ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
               gcalToken?ce("button",{
-                onClick:function(){addToGcal(installLabel2||"Montaż 2",delivDate2,installerCalId2||installerCalId,function(dt){persistDealDate("delivery_date2",dt,setDelivDate2);});},
+                onClick:function(){addToGcal(installLabel2||"Wieszanie",delivDate2,installerCalId2||installerCalId,function(dt){persistDealDate("delivery_date2",dt,setDelivDate2);});},
                 title:"Ustaw termin i dodaj do Google Calendar",
                 style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
               },"📅 "+(delivDate2?"Zmień":"Ustaw termin")):null
             ),
             ce("div",{style:{display:"flex",gap:8}},
               ce("div",{style:{flex:1}},
-                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"OPIS (np. elektryk, prasowanie)"),
-                ce("input",{type:"text",value:installLabel2,onChange:function(ev){setInstallLabel2(ev.target.value);},placeholder:"np. Elektryk, Prasowanie...",style:INP})
+                ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"OPIS (domyślnie: Wieszanie)"),
+                ce("input",{type:"text",value:installLabel2,onChange:function(ev){setInstallLabel2(ev.target.value);},placeholder:"Wieszanie",style:INP})
               )
             ),
             ce("div",{style:{display:"flex",gap:8}},
@@ -1459,7 +1459,7 @@ export function CRMKalendarz(p){
     var name=cl?cl.name:"Klient";
     if(deal.visit_date){dealEvents.push({date:new Date(deal.visit_date),label:"\uD83D\uDCCF Pomiar",client:name,deal:deal,color:"#3b82f6",type:"visit"});}
     if(deal.delivery_date){dealEvents.push({date:new Date(deal.delivery_date),label:"\uD83D\uDE9A Realizacja",client:name,deal:deal,color:"#10b981",type:"delivery"});}
-    if(deal.delivery_date2){dealEvents.push({date:new Date(deal.delivery_date2),label:"\uD83D\uDD27 "+(deal.install_label2||"Termin 2"),client:name,deal:deal,color:"#8b5cf6",type:"delivery2"});}
+    if(deal.delivery_date2){dealEvents.push({date:new Date(deal.delivery_date2),label:"\uD83D\uDD27 "+(deal.install_label2||"Wieszanie"),client:name,deal:deal,color:"#8b5cf6",type:"delivery2"});}
     if(deal.followup_date){dealEvents.push({date:new Date(deal.followup_date),label:"\u23F0 Follow-up",client:name,deal:deal,color:"#f59e0b",type:"followup"});}
   });
   dealEvents.sort(function(a,b){return a.date-b.date;});
@@ -2362,6 +2362,7 @@ function DealCard(cp){
   var hasVisit=sid==="pomiar"&&deal.visit_date;
   var hasDeadline=(sid==="zamowienie"||sid==="realizacja"||sid==="montaz")&&deal.deadline;
   var hasDelivery=sid==="montaz"&&deal.delivery_date;
+  var hasDelivery2=sid==="montaz"&&deal.delivery_date2;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
       ref:provided.innerRef
@@ -2383,7 +2384,7 @@ function DealCard(cp){
     }),
       ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
       total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" z\u0142"):null,
-      (hasVisit||hasDeadline||hasDelivery)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
+      (hasVisit||hasDeadline||hasDelivery||hasDelivery2)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
         hasVisit?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
           ce("span",null,"\uD83D\uDCCF"),ce("span",null,"Pomiar: "+fmtDate(deal.visit_date))
         ):null,
@@ -2392,6 +2393,9 @@ function DealCard(cp){
         ):null,
         hasDelivery?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
           ce("span",null,"\uD83D\uDD27"),ce("span",null,"Monta\u017c: "+fmtDate(deal.delivery_date))
+        ):null,
+        hasDelivery2?ce("div",{style:{fontSize:10,color:"var(--t3)",display:"flex",alignItems:"center",gap:3}},
+          ce("span",null,"\uD83E\uDE9D"),ce("span",null,(deal.install_label2||"Wieszanie")+": "+fmtDate(deal.delivery_date2))
         ):null
       ):null,
       sid==="zamowienie"?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:4,marginTop:7}},
