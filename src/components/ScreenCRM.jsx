@@ -18,6 +18,13 @@ export const CRM_STAGES =[
   {id:"montaz",     label:"Monta\u017c",     color:"#f97316", clientStatus:"nowe"},
   {id:"posprzedazowa", label:"Obs\u0142uga posprzeda\u017cowa", color:"#14b8a6", clientStatus:"zrealizowane"}
 ];
+// Kroki zamówienia widoczne jako "paseczki" na karcie w kolumnie Zamówienie.
+// Po zaznaczeniu wszystkich trzech deal automatycznie przechodzi do Realizacji.
+export const ORDER_STEPS=[
+  {field:"order_hardware",label:"Osprz\u0119t", icon:"\uD83D\uDD29"},
+  {field:"order_fabric",  label:"Tkanina", icon:"\uD83E\uDDF5"},
+  {field:"order_sewing",  label:"Szycie",  icon:"\u2702\uFE0F"}
+];
 export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane"};
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
 
@@ -2367,6 +2374,24 @@ function DealCard(cp){
           ce("span",null,"\uD83D\uDD27"),ce("span",null,"Monta\u017c: "+fmtDate(deal.delivery_date))
         ):null
       ):null,
+      sid==="zamowienie"?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:4,marginTop:7}},
+        ORDER_STEPS.map(function(st){
+          var on=!!deal[st.field];
+          return ce("button",{
+            key:st.field,type:"button",
+            onClick:function(ev){ev.stopPropagation();if(cp.toggleOrder)cp.toggleOrder(deal.id,st.field);},
+            title:st.label+(on?" \u2014 zam\u00f3wione (kliknij, aby cofn\u0105\u0107)":" \u2014 kliknij, gdy zam\u00f3wione"),
+            style:{
+              flex:"1 1 auto",display:"flex",alignItems:"center",justifyContent:"center",gap:3,
+              padding:"4px 6px",borderRadius:20,cursor:"pointer",fontFamily:"inherit",
+              fontSize:10,fontWeight:700,lineHeight:1.2,whiteSpace:"nowrap",
+              border:"1.5px solid "+(on?stage.color:"var(--bd2)"),
+              background:on?stage.color:"transparent",
+              color:on?"#fff":"var(--t3)"
+            }
+          },ce("span",null,st.icon),ce("span",null,st.label),on?ce("span",null,"\u2713"):null);
+        })
+      ):null,
       deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
     );
   });
@@ -2404,7 +2429,7 @@ function KanbanCol(kp){
             return ce(DealCard,{
               key:deal.id,deal:deal,stage:stage,index:i,
               clients:clients,openDeal:openDeal,
-              fmtDate:fmtDate,clientTotal2:clientTotal2
+              fmtDate:fmtDate,clientTotal2:clientTotal2,toggleOrder:kp.toggleOrder
             });
           }),
           provided.placeholder,
@@ -2429,7 +2454,7 @@ function KanbanBoard(kp){
     moveStage(dealId,toStage);
   }
 
-  var colProps={deals:deals,clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2};
+  var colProps={deals:deals,clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2,toggleOrder:kp.toggleOrder};
   var mainStages=CRM_STAGES.filter(function(s){return s.id!=="posprzedazowa";});
   var stagePosprz=CRM_STAGES.find(function(s){return s.id==="posprzedazowa";});
   // Symetryczny układ górnego rzędu: 6 / 3 / 2 / 1 kolumn wg szerokości samej tablicy
@@ -2537,6 +2562,26 @@ export function ScreenCRM(p){
     }
   }
 
+  // Odklikanie kroku zamówienia (osprzęt / tkanina / szycie) z karty deala.
+  // Gdy zaznaczone są wszystkie trzy, a deal jest w Zamówieniu — automatycznie do Realizacji.
+  function toggleOrder(dealId,field){
+    var deal=(deals||[]).find(function(d){return String(d.id)===String(dealId);});
+    if(!deal)return;
+    var prevVal=!!deal[field];
+    var patch={updated_at:new Date().toISOString()};
+    patch[field]=!prevVal;
+    setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,patch):d;});});
+    sbApi.updateDeal(dealId,patch).then(function(){
+      var next=Object.assign({},deal,patch);
+      var allDone=ORDER_STEPS.every(function(s){return !!next[s.field];});
+      if(deal.stage==="zamowienie"&&allDone)moveStage(dealId,"realizacja");
+    }).catch(function(e){
+      var back={};back[field]=prevVal;
+      setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,back):d;});});
+      alert("Błąd zapisu: "+(e&&e.message?e.message:e));
+    });
+  }
+
   function openDeal(deal){setModalDeal(deal);}
 
   function onDealSave(dealId,data){
@@ -2603,7 +2648,7 @@ export function ScreenCRM(p){
     ),
     // Kanban
     ce(KanbanBoard,{
-      deals:deals,clients:p.clients,moveStage:moveStage,
+      deals:deals,clients:p.clients,moveStage:moveStage,toggleOrder:toggleOrder,
       openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2
     }),
     // Modall
