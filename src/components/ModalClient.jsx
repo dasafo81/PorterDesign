@@ -52,11 +52,40 @@ export function ModalClient(p){
     setContactId(null); setCSearch("");
   }
 
+  // ── Wykrywanie duplikatów wśród kontrahentów (imię i nazwisko / telefon / e-mail) ──
+  var dps=useState(null),dupe=dps[0],setDupe=dps[1];
+  function normName(s){return String(s||"").toLowerCase().split(/\s+/).filter(Boolean).sort().join(" ");}
+  function normPhone(s){var d=String(s||"").replace(/\D/g,"");return d.length>=9?d.slice(-9):"";}
+  function findDupe(){
+    var n=normName(name),ph=normPhone(phone),em=email.trim().toLowerCase();
+    for(var i=0;i<contacts.length;i++){
+      var c=contacts[i],why=[];
+      if(c.role==="dostawca")continue;
+      if(n&&normName(c.name)===n)why.push("imi\u0119 i nazwisko");
+      if(ph&&normPhone(c.phone)===ph)why.push("telefon");
+      if(em&&(c.email||"").trim().toLowerCase()===em)why.push("e-mail");
+      if(why.length)return {c:c,why:why};
+    }
+    return null;
+  }
+  function useExisting(){
+    var c=dupe.c;
+    p.onOk(c.name||"",c.street||"",c.phone||"",c.email||"",c.postal||"",c.city||"",c.id);
+    p.onClose();
+  }
+
   function finish(cid){ p.onOk(name.trim(),addr.trim(),phone.trim(),email.trim(),postal.trim(),city.trim(),cid||null); p.onClose(); }
 
   function submit(){
     if(!name.trim()||busy)return;
     if(contactId){ finish(contactId); return; }
+    var d=findDupe();
+    setDupe(d);
+    if(d)return;
+    createNew();
+  }
+
+  function createNew(){
     if(saveAsNew){
       setBusy(true);
       var payload={
@@ -115,6 +144,17 @@ export function ModalClient(p){
       !contactId&&ce("label",{style:{display:"flex",alignItems:"center",gap:8,fontSize:12,color:"var(--t2)",marginBottom:14,cursor:"pointer"}},
         ce("input",{type:"checkbox",checked:saveAsNew,onChange:function(ev){setSaveAsNew(ev.target.checked);},style:{width:15,height:15,cursor:"pointer"}}),
         "Zapisz te dane jako nowego kontrahenta w bazie"),
+
+      // ── Ostrzeżenie o duplikacie ──
+      dupe&&!contactId&&ce("div",{style:{border:"1px solid var(--bd2)",borderRadius:10,padding:"12px 14px",marginBottom:14,background:"var(--bg2)"}},
+        ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4}},"Taki klient ju\u017c istnieje w bazie"),
+        ce("div",{style:{fontSize:12,color:"var(--t2)",marginBottom:10,lineHeight:1.4}},
+          [dupe.c.name,dupe.c.phone,dupe.c.city].filter(Boolean).join(" \u00B7 ")+" \u2014 zgodne: "+dupe.why.join(", ")+"."),
+        ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+          ce("button",{onClick:useExisting,style:{width:"100%",padding:"10px",borderRadius:8,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:"pointer"}},"Nowa wycena dla istniej\u0105cego klienta"),
+          ce("button",{onClick:function(){setDupe(null);createNew();},style:{width:"100%",padding:"10px",borderRadius:8,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer"}},"Dodaj mimo to jako nowego")
+        )
+      ),
 
       ce("div",{style:{display:"flex",gap:10,marginTop:4}},
         ce("button",{onClick:submit,disabled:busy,style:{flex:1,padding:"8px",borderRadius:7,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:"pointer",letterSpacing:"0.04em",opacity:busy?0.6:1}},busy?"ZAPISUJ\u0118\u2026":"DODAJ"),
