@@ -29,6 +29,8 @@ export const ORDER_STEPS=[
 // Plik OWU dołączany do maila z fakturą zaliczkową (public/mail-att/)
 export const OWU_URL="/mail-att/Porter_Design_OWU.pdf";
 export const OWU_NAME="Porter_Design_OWU.pdf";
+// Wstrzymane do czasu finalnej wersji OWU (uzupełnienie e-maila Wykonawcy w § 1). Zmień na true, aby włączyć sekcję.
+export const ADVANCE_MAIL_ENABLED=false;
 export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane"};
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
 
@@ -276,7 +278,7 @@ export function ModalDeal(p){
   // Etap "Zaliczka 50% i OWU": faktury sprzedażowe tego zlecenia (deal_id), a gdy brak — klienta.
   // Domyślnie wybierana ta, której kwota brutto jest najbliższa 50% wyceny.
   React.useEffect(function(){
-    if(d.stage!=="zaliczka")return;
+    if(!ADVANCE_MAIL_ENABLED||d.stage!=="zaliczka")return;
     var alive=true;
     sbApi.getInvoices().then(function(list){
       if(!alive)return;
@@ -1024,7 +1026,7 @@ export function ModalDeal(p){
           )
         ),
 
-        d.stage==="zaliczka"?ce(SectionCard,{icon:"💳",title:"Zaliczka 50% i OWU",done:!!d.advance_sent_at},
+        (ADVANCE_MAIL_ENABLED&&d.stage==="zaliczka")?ce(SectionCard,{icon:"💳",title:"Zaliczka 50% i OWU",done:!!d.advance_sent_at},
           advInvoices.length===0
             ?ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
               "Nie znaleziono faktury powiązanej z tym zleceniem ani klientem. Wystaw fakturę na 50% w module Faktury (wybierz klienta i ofertę), potem wróć tutaj.")
