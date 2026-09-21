@@ -2592,7 +2592,7 @@ export function App(p){
     });
   }
 
-  return ce("div",{style:{padding:"1.2rem",maxWidth:"100%",margin:"0 auto",background:"transparent",minHeight:"100vh",position:"relative",transition:"background 0.3s"}},
+  return ce("div",{style:{padding:"1.2rem",maxWidth:"100%",margin:"0 auto",background:"transparent",position:"relative",transition:"background 0.3s"}},
     offlineMode?ce("div",{style:{position:"fixed",bottom:20,right:20,fontSize:10,fontWeight:700,letterSpacing:"0.10em",color:"rgba(245,158,11,0.28)",pointerEvents:"none",zIndex:1,textTransform:"uppercase"}},"Tryb offline"):null,
     // Save status
     saveStatus?ce("div",{style:{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",background:saveStatus==="ok"?"var(--gr)":saveStatus==="error"?"var(--red)":"var(--t2)",color:"var(--bg)",fontSize:12,padding:"6px 20px",borderRadius:"0 0 12px 12px",zIndex:9999,letterSpacing:"0.04em",boxShadow:"0 4px 16px rgba(0,0,0,0.15)"}},saveStatus==="saving"?"Zapisuj\u0119...":saveStatus==="ok"?"\u2713 Zapisano":"\u26a0 B\u0142\u0105d zapisu"):null,
