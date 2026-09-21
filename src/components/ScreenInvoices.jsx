@@ -2490,7 +2490,7 @@ async function buildKsefQrUrl(inv, settings){
   return "https://"+host+"/invoice/"+nip+"/"+ddmmyyyy+"/"+inv.ksef_invoice_hash;
 }
 
-function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
+export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
   var s=settings||{};
   var items=inv.invoice_items||[];
   var isZakup=invDirection(inv)==="zakup";
