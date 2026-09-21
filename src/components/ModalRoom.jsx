@@ -232,7 +232,7 @@ export function ModalConfirmRemove(p){
 }
 
 export function ModalConfirmTypeChange(p){
-  // p.fromLabel, p.toLabel, p.onConfirm, p.onClose
+  // p.fromLabel, p.toLabel, p.onConfirm, p.onClose, [p.onKeepDims, p.keepDimsInfo]
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1200,padding:"16px"}},
     ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"2rem",width:340,maxWidth:"100%",border:"1px solid var(--bd2)",boxShadow:"0 20px 60px rgba(0,0,0,0.22)"}},
       ce("div",{style:{fontSize:28,textAlign:"center",marginBottom:12}},"⚠️"),
@@ -246,9 +246,16 @@ export function ModalConfirmTypeChange(p){
         ce("strong",{style:{color:"var(--t1)"}},"\u201e"+p.toLabel+"\u201d"),
         "?",
         ce("br",null),
-        ce("span",{style:{color:"var(--red)",fontWeight:600}},"Wszystkie wpisane dane zostaną bezpowrotnie usunięte.")
+        ce("span",{style:{color:"var(--red)",fontWeight:600}},p.onKeepDims?"Pozostałe wpisane dane (tkanina, model, opcje) zostaną usunięte.":"Wszystkie wpisane dane zostaną bezpowrotnie usunięte.")
       ),
       ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        p.onKeepDims?ce("button",{
+          onClick:function(){p.onKeepDims();p.onClose();},
+          style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"var(--t1)",color:"var(--bg)",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
+        },
+          ce("span",null,"Zmień, zachowując wymiary"),
+          p.keepDimsInfo?ce("span",{style:{display:"block",fontSize:11,fontWeight:400,opacity:0.8,marginTop:2}},p.keepDimsInfo):null
+        ):null,
         ce("button",{
           onClick:function(){p.onConfirm();p.onClose();},
           style:{width:"100%",padding:"12px",borderRadius:10,border:"none",background:"var(--red)",color:"var(--bg)",fontSize:13,fontWeight:700,cursor:"pointer",letterSpacing:"0.03em"}
