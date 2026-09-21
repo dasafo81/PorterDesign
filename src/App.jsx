@@ -19,7 +19,7 @@ import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
-import { ScreenCRM, CRMKalendarz, CRM_STAGES } from './components/ScreenCRM.jsx';
+import { ScreenCRM, CRMKalendarz, CRM_STAGES, dealTotal } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 const ce = React.createElement;
 
@@ -1139,13 +1139,15 @@ export function App(p){
     clients.forEach(function(cl){clientsById[cl.id]=cl;});
     var PIPELINE_IDS=["wycena","zamowienie","realizacja","montaz"];
     var PIPELINE_STAGES=CRM_STAGES.filter(function(s){return PIPELINE_IDS.indexOf(s.id)>=0;});
-    // Najbliższy NADCHODZĄCY termin dealu (pomiar/dostawa/dostawa2) — brane
-    // z pól bezpośrednio na dealu, bez dodatkowego zapytania do bazy.
+    // Najbliższy NADCHODZĄCY termin dealu — te same pola, które pokazuje karta w Kanbanie:
+    // Zamówienie/Realizacja → deadline; Montaż → deadline + terminy montażu. Wycena nie ma terminu.
     function nearestFutureDate(d){
-      var now=Date.now();
-      var cands=[d.visit_date,d.delivery_date,d.delivery_date2]
-        .filter(Boolean).map(function(v){return new Date(v).getTime();})
-        .filter(function(t){return !isNaN(t)&&t>=now;});
+      var sod=new Date();sod.setHours(0,0,0,0); // deadline to sama data (bez godziny) — porównujemy od początku dnia
+      var raw=[];
+      if(d.stage==="zamowienie"||d.stage==="realizacja")raw=[d.deadline];
+      else if(d.stage==="montaz")raw=[d.deadline,d.delivery_date,d.delivery_date2];
+      var cands=raw.filter(Boolean).map(function(v){return new Date(v).getTime();})
+        .filter(function(t){return !isNaN(t)&&t>=sod.getTime();});
       return cands.length?Math.min.apply(null,cands):null;
     }
     function fmtHeroDate(ts){
@@ -1154,7 +1156,7 @@ export function App(p){
     }
     var stageStats=PIPELINE_STAGES.map(function(st){
       var stDeals=(deals||[]).filter(function(d){return d.stage===st.id;});
-      var value=stDeals.reduce(function(a,d){var cl=clientsById[d.client_id];return a+(cl?clientTotal(cl):0);},0);
+      var value=stDeals.reduce(function(a,d){var cl=clientsById[d.client_id];return a+(cl?dealTotal(cl):0);},0);
       var dates=stDeals.map(nearestFutureDate).filter(function(t){return t!=null;});
       return {id:st.id,label:st.label,color:st.color,count:stDeals.length,value:value,nearest:dates.length?Math.min.apply(null,dates):null};
     });
@@ -2688,6 +2690,7 @@ export function App(p){
     appMode==="crm"
       ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,
           gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady,
+          onDealsSync:setDeals,
           onClientStatusChange:function(clientId,status){
             setClients(function(cs){return cs.map(function(c){return String(c.id)===String(clientId)?Object.assign({},c,{status:status}):c;});});
           }
