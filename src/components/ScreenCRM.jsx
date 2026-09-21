@@ -10,9 +10,9 @@ const ce = React.createElement;
 
 
 export const CRM_STAGES =[
-  {id:"zapytanie",  label:"Zapytanie",  color:"#6366f1", clientStatus:"nowe"},
   {id:"pomiar",     label:"Pomiar",     color:"#f59e0b", clientStatus:"nowe"},
   {id:"wycena",     label:"Wycena",     color:"#3b82f6", clientStatus:"nowe"},
+  {id:"zaliczka",   label:"Zaliczka 50% i OWS", color:"#ec4899", clientStatus:"nowe"},
   {id:"zamowienie", label:"Zamówienie", color:"#8b5cf6", clientStatus:"nowe"},
   {id:"realizacja", label:"Realizacja", color:"#10b981", clientStatus:"nowe"},
   {id:"montaz",     label:"Monta\u017c",     color:"#f97316", clientStatus:"nowe"},
@@ -2334,8 +2334,9 @@ function KanbanCol(kp){
   var clients=kp.clients; var openDeal=kp.openDeal;
   var fmtDate=kp.fmtDate; var clientTotal2=kp.clientTotal2;
   var wide=!!kp.wide;
+  var full=!!kp.full; var inGrid=!!kp.grid;
   var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
-  return ce("div",{style:wide?{flex:"1 1 0",minWidth:280}:{flex:"1 1 0",minWidth:190,maxWidth:280}},
+  return ce("div",{style:full?{width:"100%"}:inGrid?{minWidth:0}:wide?{flex:"1 1 0",minWidth:280}:{flex:"1 1 0",minWidth:190,maxWidth:280}},
     ce("div",{style:{
       background:"var(--bg2)",border:"1px solid var(--bd2)",
       borderRadius:14,padding:"10px 8px",height:"100%"
@@ -2348,13 +2349,13 @@ function KanbanCol(kp){
       ce(Droppable,{droppableId:stage.id},function(provided,snapshot){
         return ce("div",Object.assign({
           ref:provided.innerRef,
-          style:{
+          style:Object.assign({
             minHeight:60,
             background:snapshot.isDraggingOver?"rgba(99,102,241,0.06)":"transparent",
             borderRadius:8,
             transition:"background .15s",
             padding:"2px 0"
-          }
+          },full?{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",columnGap:8}:null)
         },provided.droppableProps),
           stageDeals.map(function(deal,i){
             return ce(DealCard,{
@@ -2365,7 +2366,7 @@ function KanbanCol(kp){
           }),
           provided.placeholder,
           stageDeals.length===0&&!snapshot.isDraggingOver?
-            ce("div",{style:{fontSize:11,color:"var(--t3)",textAlign:"center",padding:"18px 0",opacity:0.5}},"Brak"):null
+            ce("div",{style:{fontSize:11,color:"var(--t3)",textAlign:"center",padding:"18px 0",opacity:0.5,gridColumn:"1 / -1"}},"Brak"):null
         );
       })
     )
@@ -2386,13 +2387,30 @@ function KanbanBoard(kp){
   }
 
   var colProps={deals:deals,clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2};
+  var mainStages=CRM_STAGES.filter(function(s){return s.id!=="posprzedazowa";});
+  var stagePosprz=CRM_STAGES.find(function(s){return s.id==="posprzedazowa";});
+  // Symetryczny układ górnego rzędu: 6 / 3 / 2 / 1 kolumn wg szerokości samej tablicy
+  var boardRef=useRef(null);
+  var sBoardW=useState(1200),boardW=sBoardW[0],setBoardW=sBoardW[1];
+  useEffect(function(){
+    var el=boardRef.current;
+    if(!el||typeof ResizeObserver==="undefined")return;
+    var ro=new ResizeObserver(function(es){setBoardW(es[0].contentRect.width);});
+    ro.observe(el);
+    return function(){ro.disconnect();};
+  },[]);
+  var cols=boardW>=1150?6:boardW>=700?3:boardW>=460?2:1;
   return ce(DragDropContext,{onDragEnd:onDragEnd},
     ce(Fragment,null,
-      ce("div",{style:{display:"flex",gap:10,paddingBottom:12,marginLeft:-4,paddingLeft:4,flexWrap:"wrap"}},
-        CRM_STAGES.map(function(stage){
-          return ce(KanbanCol,Object.assign({key:stage.id,stage:stage},colProps));
+      ce("div",{ref:boardRef,style:{display:"grid",gridTemplateColumns:"repeat("+cols+",minmax(0,1fr))",gap:10,paddingBottom:12,marginLeft:-4,paddingLeft:4}},
+        mainStages.map(function(stage){
+          return ce(KanbanCol,Object.assign({key:stage.id,stage:stage,grid:true},colProps));
         })
       ),
+      // Obsługa posprzedażowa — na całą szerokość
+      stagePosprz?ce("div",{style:{paddingBottom:4,marginLeft:-4,paddingLeft:4}},
+        ce(KanbanCol,Object.assign({stage:stagePosprz,full:true},colProps))
+      ):null,
       ce("div",{style:{margin:"16px 0 10px",height:1,background:"var(--bd2)"}}),
       ce("div",{style:{display:"flex",gap:10,paddingBottom:4,marginLeft:-4,paddingLeft:4}},
         ce(KanbanCol,Object.assign({stage:STAGE_ZAKONCZONE,wide:true},colProps)),
