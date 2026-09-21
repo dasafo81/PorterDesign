@@ -184,7 +184,7 @@ export const sbApi = {
     return sbFetch("GET","deals?select=*&order=created_at.asc");
   },
   addDeal: function(clientId){
-    return sbFetch("POST","deals",{client_id:clientId,stage:"zapytanie",notes:"",visit_date:null,delivery_date:null,followup_date:null,acquisition:null});
+    return sbFetch("POST","deals",{client_id:clientId,stage:"pomiar",notes:"",visit_date:null,delivery_date:null,followup_date:null,acquisition:null});
   },
   updateDeal: function(id,data){
     return sbFetch("PATCH","deals?id=eq."+id,data);
