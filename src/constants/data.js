@@ -4686,7 +4686,7 @@ export function buildFabricRows(client){
           var rWcm=isBezMech?(par.wCm||0)+30:(par.wCm||0)+20;
           var rTunele=isBezMech?0:Math.floor((par.hCm||0)/23);
           var rHcm=isBezMech?(par.hCm||0):(par.hCm||0)+5+10+rTunele*2;
-          var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
+          var rMetry=parseFloat((rWcm/100).toFixed(3));
           var fabObj=p.fabName?getFabricEffective(p.fabName):null;
           rows.push({
             fabName:p.fabName||(p.fabManName||"tkanina"),
@@ -4769,7 +4769,7 @@ export function buildSewingRows(client){
           var rWcm=isBezMech?(par.wCm||0)+30:(par.wCm||0)+20;
           var rTunele=isBezMech?0:Math.floor((par.hCm||0)/23);
           var rHcm=isBezMech?(par.hCm||0):(par.hCm||0)+5+10+rTunele*2;
-          var rMetry=parseFloat(((rWcm/100)*(rHcm/100)).toFixed(3));
+          var rMetry=parseFloat((rWcm/100).toFixed(3));
           var rModelMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
           var rModelLbl=rModelMap[pc.rModel]||pc.rModel||"-";
           if(pc.rModel==="duo"&&pc.rDuoModel){
