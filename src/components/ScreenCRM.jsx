@@ -2583,7 +2583,7 @@ function DealCard(cp){
   var hasDelivery=sid==="montaz"&&deal.delivery_date;
   var hasDelivery2=sid==="montaz"&&deal.delivery_date2;
   // Przypomnienie: deal wisi w Realizacji ≥10 dni — sprawdzić status zamówienia w szwalni
-  var daysInRealizacja=sid==="realizacja"&&deal.updated_at?Math.floor((Date.now()-new Date(deal.updated_at).getTime())/86400000):0;
+  var daysInRealizacja=sid==="realizacja"&&deal.realizacja_since?Math.floor((Date.now()-new Date(deal.realizacja_since).getTime())/86400000):0;
   var showStuckWarning=sid==="realizacja"&&daysInRealizacja>=10;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
@@ -2815,6 +2815,11 @@ export function ScreenCRM(p){
     var patch={stage:stage,updated_at:new Date().toISOString()};
     // Zaliczka 50% i OWS → Zamówienie: deadline automatycznie +4 tygodnie (edytowalny w karcie deala)
     if(deal&&deal.stage==="zaliczka"&&stage==="zamowienie")patch.deadline=deadlineFromNow();
+    // Znacznik wejścia do Realizacji (przypomnienie na kafelku po 10 dniach) —
+    // ustawiany WYŁĄCZNIE tutaj, więc notatki/zmiana przypisanej osoby go nie zerują.
+    // Przy zejściu z Realizacji do innego etapu czyścimy, żeby ewentualny powrót liczył od nowa.
+    if(stage==="realizacja")patch.realizacja_since=new Date().toISOString();
+    else if(deal&&deal.stage==="realizacja")patch.realizacja_since=null;
     setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,patch):d;});});
     setModalDeal(function(md){return md&&String(md.id)===String(dealId)?Object.assign({},md,patch):md;});
     sbApi.updateDeal(dealId,patch);
