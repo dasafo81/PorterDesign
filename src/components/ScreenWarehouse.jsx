@@ -31,6 +31,9 @@ function stockBadge(item) {
 var inp = { fontSize: 13, border: "1.5px solid var(--bd2)", borderRadius: 9, background: "var(--bg)", color: "var(--t1)", padding: "9px 12px", width: "100%", boxSizing: "border-box", outline: "none" };
 var btn = function(extra) { return Object.assign({ border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13 }, extra); };
 
+// ── Parsowanie liczb z przecinkiem jako separatorem dziesiętnym (PL) ────────
+function pnum(v) { return parseFloat(String(v || "").replace(",", ".")) || 0; }
+
 // ── Modal dodaj/edytuj pozycję magazynową ────────────────────────────────────
 function ModalItem(p) {
   var isNew = !p.item || !p.item.id;
@@ -43,6 +46,10 @@ function ModalItem(p) {
   var s6 = useState(def.supplier || "");        var supplier = s6[0]; var setSupplier = s6[1];
   var s7 = useState(def.location || "");        var location = s7[0]; var setLocation = s7[1];
   var s8 = useState(def.notes || "");           var notes = s8[0]; var setNotes = s8[1];
+  // ── Tryb wymiarów ścinka (tylko dla kategorii "tkanina") ─────────────────
+  var sDM = useState(false);                    var dimMode = sDM[0]; var setDimMode = sDM[1];
+  var sDW = useState("");                       var dimW = sDW[0]; var setDimW = sDW[1];
+  var sDL = useState("");                       var dimL = sDL[0]; var setDimL = sDL[1];
   var s9 = useState(false);                     var busy = s9[0]; var setBusy = s9[1];
   var s10 = useState(null);                     var err = s10[0]; var setErr = s10[1];
 
@@ -54,7 +61,18 @@ function ModalItem(p) {
   function save() {
     if (!name.trim()) { setErr("Podaj nazw\u0119"); return; }
     setBusy(true); setErr(null);
-    var payload = { name: name.trim(), category: cat, quantity: parseFloat(qty) || 0, unit: unit, color: color.trim(), supplier: supplier.trim(), location: location.trim(), notes: notes.trim() };
+    var qtyVal = parseFloat(qty) || 0;
+    var unitVal = unit;
+    var notesVal = notes.trim();
+    if (cat === "tkanina" && dimMode) {
+      var w = pnum(dimW), l = pnum(dimL);
+      if (!w || !l) { setErr("Podaj oba wymiary \u015bcinka (szeroko\u015b\u0107 i d\u0142ugo\u015b\u0107)"); setBusy(false); return; }
+      qtyVal = Math.round(w * l * 100) / 100;
+      unitVal = "m\u00B2";
+      var dimTag = "\u015Acinek: " + String(w).replace(".", ",") + " \u00D7 " + String(l).replace(".", ",") + " m";
+      notesVal = (notesVal.replace(/\u015Acinek:\s*[\d.,]+\s*\u00D7\s*[\d.,]+\s*m\.?/g, "").trim() + "\n" + dimTag).trim();
+    }
+    var payload = { name: name.trim(), category: cat, quantity: qtyVal, unit: unitVal, color: color.trim(), supplier: supplier.trim(), location: location.trim(), notes: notesVal };
     var prom = isNew ? sbApi.addWarehouseItem(payload) : sbApi.updateWarehouseItem(p.item.id, payload);
     prom.then(function() { p.onSave(); }).catch(function(e) { setErr(e.message || "B\u0142\u0105d zapisu"); setBusy(false); });
   }
@@ -80,16 +98,34 @@ function ModalItem(p) {
         ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Nazwa *"),
         ce("input", { value: name, onChange: function(e) { setName(e.target.value); }, placeholder: "np. Velvet Monaco, Silent 19mm biały...", style: inp })
       ),
-      ce("div", { style: { display: "flex", gap: 10, marginBottom: 12 } },
-        ce("div", { style: { flex: 2 } },
-          ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Ilo\u015B\u0107"),
-          ce("input", { type: "number", min: "0", step: cat === "tkanina" ? "0.5" : "1", value: qty, placeholder: "0", onChange: function(e) { setQty(e.target.value); }, style: inp })
-        ),
-        ce("div", { style: { flex: 1 } },
-          ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Jednostka"),
-          ce("input", { value: unit, onChange: function(e) { setUnit(e.target.value); }, style: inp })
-        )
+      cat === "tkanina" && ce("div", { style: { marginBottom: 10 } },
+        ce("button", { type: "button", onClick: function() { setDimMode(!dimMode); },
+          style: { border: "none", background: "none", padding: 0, cursor: "pointer", fontSize: 11.5, fontWeight: 700, color: "var(--violet)" } },
+          dimMode ? "\u2190 Wr\u00F3\u0107 do ilo\u015bci w mb" : "\uD83D\uDCD0 To \u015bcinek \u2014 podaj dwa wymiary")
       ),
+      (dimMode && cat === "tkanina")
+        ? ce("div", { style: { display: "flex", gap: 10, marginBottom: 12, alignItems: "flex-end" } },
+            ce("div", { style: { flex: 1 } },
+              ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Szeroko\u015b\u0107 \u015bcinka (m)"),
+              ce("input", { type: "text", inputMode: "decimal", value: dimW, placeholder: "np. 1,4", onChange: function(e) { setDimW(e.target.value); }, style: inp })
+            ),
+            ce("div", { style: { flex: 1 } },
+              ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "D\u0142ugo\u015b\u0107 \u015bcinka (m)"),
+              ce("input", { type: "text", inputMode: "decimal", value: dimL, placeholder: "np. 1,1", onChange: function(e) { setDimL(e.target.value); }, style: inp })
+            ),
+            ce("div", { style: { flex: "0 0 auto", fontSize: 12, color: "var(--t3)", paddingBottom: 10, whiteSpace: "nowrap" } },
+              "= " + (pnum(dimW) * pnum(dimL)).toFixed(2).replace(".", ",") + " m\u00B2")
+          )
+        : ce("div", { style: { display: "flex", gap: 10, marginBottom: 12 } },
+            ce("div", { style: { flex: 2 } },
+              ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Ilo\u015B\u0107"),
+              ce("input", { type: "number", min: "0", step: cat === "tkanina" ? "0.5" : "1", value: qty, placeholder: "0", onChange: function(e) { setQty(e.target.value); }, style: inp })
+            ),
+            ce("div", { style: { flex: 1 } },
+              ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Jednostka"),
+              ce("input", { value: unit, onChange: function(e) { setUnit(e.target.value); }, style: inp })
+            )
+          ),
       ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Kolor / wariant"),
         ce("input", { value: color, onChange: function(e) { setColor(e.target.value); }, placeholder: "np. Beige 02, ecru...", style: inp })
