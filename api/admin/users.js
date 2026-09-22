@@ -37,6 +37,7 @@ async function verifyAdmin(req) {
 function mapUser(u) {
   if (!u) return null;
   const m = u.app_metadata || {};
+  const um = u.user_metadata || {};
   return {
     id: u.id,
     email: u.email,
@@ -46,6 +47,8 @@ function mapUser(u) {
     is_super_admin: m.is_super_admin === true,
     is_tenant_admin: m.is_tenant_admin === true,
     banned_until: u.banned_until || null,
+    display_name: um.display_name || '',
+    color: um.color || '',
   };
 }
 
@@ -81,6 +84,8 @@ export default async function handler(req) {
     const password = (body && body.password) || '';
     const tenantId = (body && body.tenant_id) || '';
     const isTenantAdmin = !!(body && body.is_tenant_admin);
+    const displayName = ((body && body.display_name) || '').trim();
+    const color = ((body && body.color) || '').trim();
     if (!email || !password || !tenantId) return json({ error: 'email, password and tenant_id are required' }, 400);
     if (password.length < 8) return json({ error: 'password must be at least 8 characters' }, 400);
 
@@ -105,6 +110,10 @@ export default async function handler(req) {
         app_metadata: {
           tenant_id: tenantId,
           is_tenant_admin: isTenantAdmin,
+        },
+        user_metadata: {
+          display_name: displayName,
+          color: color,
         },
       }),
     });
@@ -142,7 +151,22 @@ export default async function handler(req) {
     const userId = body && body.user_id;
     const action = body && body.action;
     if (!userId || !action) return json({ error: 'user_id and action required' }, 400);
-    if (action !== 'suspend' && action !== 'reactivate') return json({ error: "action must be 'suspend' or 'reactivate'" }, 400);
+    if (action !== 'suspend' && action !== 'reactivate' && action !== 'update_profile') {
+      return json({ error: "action must be 'suspend', 'reactivate' or 'update_profile'" }, 400);
+    }
+
+    if (action === 'update_profile') {
+      const displayName = ((body && body.display_name) || '').trim();
+      const color = ((body && body.color) || '').trim();
+      const resp = await fetch(`${SB_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify({ user_metadata: { display_name: displayName, color: color } }),
+      });
+      if (!resp.ok) return json({ error: 'failed to update profile', detail: await resp.text() }, resp.status);
+      const updated = await resp.json();
+      return json(mapUser(updated));
+    }
 
     const banDur = action === 'suspend' ? '876000h' : 'none';
     const resp = await fetch(`${SB_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
