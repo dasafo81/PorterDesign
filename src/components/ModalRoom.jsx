@@ -103,67 +103,124 @@ export function ModalRoom(p){
 // rolet rzymskich — to samo co ręczne "Wariant" + FabPicker w każdym
 // pomieszczeniu, tylko zrobione hurtowo w jednym oknie.
 export function ModalVariantAdvisor(p){
+  var SEL_STYLE={width:"100%",padding:"9px 10px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box"};
   var rooms=(p.client&&p.client.rooms)||[];
   var sSel=useState({}),selRooms=sSel[0],setSelRooms=sSel[1];
+
   var sCurtOn=useState(false),curtOn=sCurtOn[0],setCurtOn=sCurtOn[1];
   var sCurtFrom=useState(""),curtFrom=sCurtFrom[0],setCurtFrom=sCurtFrom[1];
   var sCurtTo=useState(""),curtTo=sCurtTo[0],setCurtTo=sCurtTo[1];
+
+  var sCurtColOn=useState(false),curtColOn=sCurtColOn[0],setCurtColOn=sCurtColOn[1];
+  var sCurtColFrom=useState(""),curtColFrom=sCurtColFrom[0],setCurtColFrom=sCurtColFrom[1];
+  var sCurtColTo=useState(""),curtColTo=sCurtColTo[0],setCurtColTo=sCurtColTo[1];
+
+  var sModelOn=useState(false),modelOn=sModelOn[0],setModelOn=sModelOn[1];
+  var sModelTo=useState("falda"),modelTo=sModelTo[0],setModelTo=sModelTo[1];
+
+  var sMarsOn=useState(false),marsOn=sMarsOn[0],setMarsOn=sMarsOn[1];
+  var sMarsTo=useState("150"),marsTo=sMarsTo[0],setMarsTo=sMarsTo[1];
+
   var sRolOn=useState(false),rolOn=sRolOn[0],setRolOn=sRolOn[1];
   var sRolFrom=useState(""),rolFrom=sRolFrom[0],setRolFrom=sRolFrom[1];
   var sRolTo=useState(""),rolTo=sRolTo[0],setRolTo=sRolTo[1];
 
+  var sRolColOn=useState(false),rolColOn=sRolColOn[0],setRolColOn=sRolColOn[1];
+  var sRolColFrom=useState(""),rolColFrom=sRolColFrom[0],setRolColFrom=sRolColFrom[1];
+  var sRolColTo=useState(""),rolColTo=sRolColTo[0],setRolColTo=sRolColTo[1];
+
   var allFabrics=getAllFabrics();
-  var curtainFabricNames={},roletaFabricNames={};
+  var curtainFabricNames={},roletaFabricNames={},curtainColors={},roletaColors={};
   rooms.forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(pr){
         var fn=pr.fabName||pr.fabManName;
-        if(!fn)return;
-        if(pr.type==="zaslona"||pr.type==="firana")curtainFabricNames[fn]=true;
-        else if(pr.type==="roleta")roletaFabricNames[fn]=true;
+        var kol=pr.c&&pr.c.kolor;
+        if(pr.type==="zaslona"||pr.type==="firana"){
+          if(fn)curtainFabricNames[fn]=true;
+          if(kol)curtainColors[kol]=true;
+        }else if(pr.type==="roleta"){
+          if(fn)roletaFabricNames[fn]=true;
+          if(kol)roletaColors[kol]=true;
+        }
       });
     });
   });
   var curtainFromOptions=Object.keys(curtainFabricNames).sort();
   var roletaFromOptions=Object.keys(roletaFabricNames).sort();
+  var curtainColorOptions=Object.keys(curtainColors).sort();
+  var roletaColorOptions=Object.keys(roletaColors).sort();
   var allFabricNames=allFabrics.map(function(f){return f.name;});
 
   function toggleRoom(id){
     setSelRooms(function(s){var n=Object.assign({},s);n[id]=!n[id];return n;});
   }
   var selectedIds=Object.keys(selRooms).filter(function(id){return selRooms[id];});
-  var canSubmit=selectedIds.length>0&&((curtOn&&curtFrom&&curtTo)||(rolOn&&rolFrom&&rolTo));
+  var canSubmit=selectedIds.length>0&&(
+    (curtOn&&curtFrom&&curtTo)||
+    (curtColOn&&curtColFrom&&curtColTo)||
+    (modelOn&&modelTo)||
+    (marsOn&&+marsTo>0)||
+    (rolOn&&rolFrom&&rolTo)||
+    (rolColOn&&rolColFrom&&rolColTo)
+  );
 
   function submit(){
     if(!canSubmit)return;
-    var curtSwap=null,rolSwap=null;
+    var ops={};
     if(curtOn&&curtFrom&&curtTo){
       var tf=allFabrics.find(function(f){return f.name===curtTo;});
-      if(tf)curtSwap={from:curtFrom,to:tf};
+      if(tf)ops.curtainFabric={from:curtFrom,to:tf};
     }
+    if(curtColOn&&curtColFrom&&curtColTo)ops.curtainColor={from:curtColFrom,to:curtColTo};
+    if(modelOn&&modelTo)ops.curtainModel=modelTo;
+    if(marsOn&&+marsTo>0)ops.curtainMars=(+marsTo/100).toFixed(2);
     if(rolOn&&rolFrom&&rolTo){
       var tf2=allFabrics.find(function(f){return f.name===rolTo;});
-      if(tf2)rolSwap={from:rolFrom,to:tf2};
+      if(tf2)ops.roletaFabric={from:rolFrom,to:tf2};
     }
-    p.onApply(selectedIds,curtSwap,rolSwap);
+    if(rolColOn&&rolColFrom&&rolColTo)ops.roletaColor={from:rolColFrom,to:rolColTo};
+    p.onApply(selectedIds,ops);
     p.onClose();
   }
 
-  function fabSelect(value,onChange,options,placeholder){
-    return ce("select",{value:value,onChange:function(ev){onChange(ev.target.value);},
-      style:{width:"100%",padding:"9px 10px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)"}},
+  function selInput(value,onChange,options,placeholder){
+    return ce("select",{value:value,onChange:function(ev){onChange(ev.target.value);},style:SEL_STYLE},
       ce("option",{value:""},placeholder),
       options.map(function(n){return ce("option",{key:n,value:n},n);})
     );
   }
+  function fixedSelect(value,onChange,pairs){
+    return ce("select",{value:value,onChange:function(ev){onChange(ev.target.value);},style:SEL_STYLE},
+      pairs.map(function(o){return ce("option",{key:o.v,value:o.v},o.l);})
+    );
+  }
+  function txtInput(value,onChange,placeholder){
+    return ce("input",{type:"text",value:value,onChange:function(ev){onChange(ev.target.value);},placeholder:placeholder,style:SEL_STYLE});
+  }
+  function section(title,on,setOn,body){
+    return ce("div",{style:{border:"1px solid var(--bd3)",borderRadius:10,padding:"10px 12px",marginBottom:10}},
+      ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",marginBottom:on?10:0}},
+        ce("input",{type:"checkbox",checked:on,onChange:function(ev){setOn(ev.target.checked);}}),
+        ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},title)
+      ),
+      on?body:null
+    );
+  }
+  function twoCol(labelA,fieldA,labelB,fieldB){
+    return ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+      ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},labelA),fieldA),
+      ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},labelB),fieldB)
+    );
+  }
 
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"16px"}},
-    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"1.6rem",width:440,maxWidth:"100%",maxHeight:"88vh",overflowY:"auto",border:"1px solid var(--bd2)",boxShadow:"0 16px 48px rgba(0,0,0,0.18)"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"1.6rem",width:460,maxWidth:"100%",maxHeight:"88vh",overflowY:"auto",border:"1px solid var(--bd2)",boxShadow:"0 16px 48px rgba(0,0,0,0.18)"}},
       ce("div",{style:{fontSize:15,fontWeight:700,marginBottom:4,color:"var(--t1)"}},"🪄 Doradca wariantów"),
-      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16,lineHeight:1.5}},"Tworzy kolejny wariant dla zaznaczonych pomieszczeń i od razu podmienia w nim wybraną tkaninę."),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16,lineHeight:1.5}},"Tworzy kolejny wariant dla zaznaczonych pomieszczeń i od razu wprowadza wybrane zmiany."),
 
       ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8}},"Pomieszczenia"),
-      ce("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:18,maxHeight:180,overflowY:"auto",border:"1px solid var(--bd3)",borderRadius:10,padding:8}},
+      ce("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:18,maxHeight:150,overflowY:"auto",border:"1px solid var(--bd3)",borderRadius:10,padding:8}},
         rooms.map(function(r){
           var lbl=r.name+(r.variantLabel?" — Wariant "+r.variantLabel:"");
           return ce("label",{key:r.id,style:{display:"flex",alignItems:"center",gap:10,padding:"6px 4px",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
@@ -173,29 +230,32 @@ export function ModalVariantAdvisor(p){
         })
       ),
 
-      ce("div",{style:{border:"1px solid var(--bd3)",borderRadius:10,padding:"10px 12px",marginBottom:12}},
-        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",marginBottom:curtOn?10:0}},
-          ce("input",{type:"checkbox",checked:curtOn,onChange:function(ev){setCurtOn(ev.target.checked);}}),
-          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},"Zmień tkaninę zasłon / firan")
-        ),
-        curtOn?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Z tkaniny"),fabSelect(curtFrom,setCurtFrom,curtainFromOptions,"wybierz")),
-          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Na tkaninę"),fabSelect(curtTo,setCurtTo,allFabricNames,"wybierz"))
-        ):null
+      ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8}},"Zasłony / firany"),
+      section("Zmień tkaninę",curtOn,setCurtOn,
+        twoCol("Z tkaniny",selInput(curtFrom,setCurtFrom,curtainFromOptions,"wybierz"),"Na tkaninę",selInput(curtTo,setCurtTo,allFabricNames,"wybierz"))
+      ),
+      section("Zmień kolor",curtColOn,setCurtColOn,
+        twoCol("Z koloru",selInput(curtColFrom,setCurtColFrom,curtainColorOptions,"wybierz"),"Na kolor",txtInput(curtColTo,setCurtColTo,"np. Ivory White"))
+      ),
+      section("Zmień model szycia (wszystkie zasłony/firany)",modelOn,setModelOn,
+        fixedSelect(modelTo,setModelTo,[{v:"falda",l:"Fałda"},{v:"wave",l:"Zasłona Wave"},{v:"tasma",l:"Taśma marszcząca"}])
+      ),
+      section("Zmień % marszczenia (wszystkie zasłony/firany)",marsOn,setMarsOn,
+        ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          ce("div",{style:{flex:1}},txtInput(marsTo,setMarsTo,"np. 150")),
+          ce("span",{style:{fontSize:13,color:"var(--t2)"}},"%")
+        )
       ),
 
-      ce("div",{style:{border:"1px solid var(--bd3)",borderRadius:10,padding:"10px 12px",marginBottom:18}},
-        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",marginBottom:rolOn?10:0}},
-          ce("input",{type:"checkbox",checked:rolOn,onChange:function(ev){setRolOn(ev.target.checked);}}),
-          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},"Zmień tkaninę rolet rzymskich")
-        ),
-        rolOn?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Z tkaniny"),fabSelect(rolFrom,setRolFrom,roletaFromOptions,"wybierz")),
-          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Na tkaninę"),fabSelect(rolTo,setRolTo,allFabricNames,"wybierz"))
-        ):null
+      ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8,marginTop:6}},"Rolety rzymskie"),
+      section("Zmień tkaninę",rolOn,setRolOn,
+        twoCol("Z tkaniny",selInput(rolFrom,setRolFrom,roletaFromOptions,"wybierz"),"Na tkaninę",selInput(rolTo,setRolTo,allFabricNames,"wybierz"))
+      ),
+      section("Zmień kolor",rolColOn,setRolColOn,
+        twoCol("Z koloru",selInput(rolColFrom,setRolColFrom,roletaColorOptions,"wybierz"),"Na kolor",txtInput(rolColTo,setRolColTo,"np. Ecru"))
       ),
 
-      ce("div",{style:{display:"flex",gap:8}},
+      ce("div",{style:{display:"flex",gap:8,marginTop:8}},
         ce("button",{onClick:submit,disabled:!canSubmit,
           style:{flex:1,padding:"11px",borderRadius:9,border:"none",background:canSubmit?"var(--t1)":"var(--bd1)",color:"var(--bg)",fontSize:13,fontWeight:600,cursor:canSubmit?"pointer":"default"}
         },"Utwórz wariant"),
