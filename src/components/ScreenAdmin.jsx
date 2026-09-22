@@ -141,10 +141,44 @@ function EditTenantModal(p) {
   );
 }
 
+// ── Awatary userow (kolor + inicjaly) — do przypisywania dealow w CRM ────────
+var USER_COLORS = ['#6366f1', '#db2777', '#059669', '#d97706', '#0ea5e9', '#8b5cf6', '#dc2626', '#0d9488'];
+function userInitials(name, email) {
+  var n = (name || '').trim();
+  if (n) {
+    var parts = n.split(/\s+/);
+    return parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : n[0].toUpperCase();
+  }
+  return ((email || '?')[0] || '?').toUpperCase();
+}
+function UserAvatar(p) {
+  var size = p.size || 26;
+  return ce('div', { style: { width: size, height: size, borderRadius: '50%',
+                                background: p.color || 'var(--t3)', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                fontSize: size * 0.42, fontWeight: 700, color: '#fff',
+                                flexShrink: 0, userSelect: 'none' } },
+    userInitials(p.name, p.email));
+}
+function ColorPicker(p) {
+  return ce('div', { style: { display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' } },
+    USER_COLORS.map(function(c) {
+      return ce('div', {
+        key: c, onClick: function() { p.onChange(c); },
+        style: { width: 26, height: 26, borderRadius: '50%', background: c, cursor: 'pointer',
+                  border: p.value === c ? '2.5px solid var(--t1)' : '2.5px solid transparent',
+                  boxSizing: 'border-box' }
+      });
+    })
+  );
+}
+
 // ── Create-user modal ─────────────────────────────────────────
 function CreateUserModal(p) {
   var sEmail = useState(''), email = sEmail[0], setEmail = sEmail[1];
   var sPass = useState(''), pass = sPass[0], setPass = sPass[1];
+  var sName = useState(''), displayName = sName[0], setDisplayName = sName[1];
+  var sColor = useState(USER_COLORS[0]), color = sColor[0], setColor = sColor[1];
   var sIsAdmin = useState(false), isAdmin = sIsAdmin[0], setIsAdmin = sIsAdmin[1];
   var sBusy = useState(false), busy = sBusy[0], setBusy = sBusy[1];
   var sErr = useState(null), err = sErr[0], setErr = sErr[1];
@@ -157,7 +191,9 @@ function CreateUserModal(p) {
       email: email.trim().toLowerCase(),
       password: pass,
       tenant_id: p.tenant.id,
-      is_tenant_admin: isAdmin
+      is_tenant_admin: isAdmin,
+      display_name: displayName.trim(),
+      color: color
     }).then(function() {
       p.onCreated();
     }).catch(function(e) {
@@ -179,6 +215,21 @@ function CreateUserModal(p) {
       placeholder: 'user@firma.pl',
       style: inputStyle
     }),
+    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
+                            letterSpacing: '0.08em', color: 'var(--t3)',
+                            textTransform: 'uppercase', marginBottom: 6, marginTop: 14 } },
+      'Imie (widoczne jako awatar w CRM)'),
+    ce('input', {
+      type: 'text', value: displayName,
+      onChange: function(e) { setDisplayName(e.target.value); },
+      placeholder: 'np. Paulina',
+      style: inputStyle
+    }),
+    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
+                            letterSpacing: '0.08em', color: 'var(--t3)',
+                            textTransform: 'uppercase', marginBottom: 6, marginTop: 14 } },
+      'Kolor awatara'),
+    ce(ColorPicker, { value: color, onChange: setColor }),
     ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
                             letterSpacing: '0.08em', color: 'var(--t3)',
                             textTransform: 'uppercase', marginBottom: 6, marginTop: 14 } },
@@ -209,6 +260,51 @@ function CreateUserModal(p) {
   );
 }
 
+// ── Edit-user-profile modal (imie/kolor awatara) ──────────────────────────
+function EditUserProfileModal(p) {
+  var sName = useState(p.user.display_name || ''), displayName = sName[0], setDisplayName = sName[1];
+  var sColor = useState(p.user.color || USER_COLORS[0]), color = sColor[0], setColor = sColor[1];
+  var sBusy = useState(false), busy = sBusy[0], setBusy = sBusy[1];
+  var sErr = useState(null), err = sErr[0], setErr = sErr[1];
+
+  function submit() {
+    setBusy(true); setErr(null);
+    adminApi.updateUserProfile(p.user.id, { display_name: displayName.trim(), color: color }).then(function() {
+      p.onSaved();
+    }).catch(function(e) {
+      setErr(e.message || 'Blad zapisu');
+      setBusy(false);
+    });
+  }
+
+  return ce(ModalShell, { title: 'Profil \u2014 ' + p.user.email, onClose: p.onClose },
+    err ? ce('div', { style: { padding: 10, marginBottom: 12, background: 'rgba(239,68,68,0.08)',
+                                border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8,
+                                color: '#ef4444', fontSize: 13 } }, err) : null,
+    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
+                            letterSpacing: '0.08em', color: 'var(--t3)',
+                            textTransform: 'uppercase', marginBottom: 6 } },
+      'Imie (widoczne jako awatar w CRM)'),
+    ce('input', {
+      autoFocus: true, type: 'text', value: displayName,
+      onChange: function(e) { setDisplayName(e.target.value); },
+      onKeyDown: function(e) { if (e.key === 'Enter') submit(); },
+      placeholder: 'np. Paulina',
+      style: inputStyle
+    }),
+    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
+                            letterSpacing: '0.08em', color: 'var(--t3)',
+                            textTransform: 'uppercase', marginBottom: 6, marginTop: 14 } },
+      'Kolor awatara'),
+    ce(ColorPicker, { value: color, onChange: setColor }),
+    ce('div', { style: { display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' } },
+      ce('button', { onClick: p.onClose, disabled: busy, style: secondaryButtonStyle }, 'Anuluj'),
+      ce('button', { onClick: submit, disabled: busy, style: primaryButtonStyle(busy) },
+        busy ? 'Zapisuje...' : 'Zapisz')
+    )
+  );
+}
+
 // ── Main admin screen ──────────────────────────────────────────────────────
 export function ScreenAdmin() {
   var sTenants = useState(null), tenants = sTenants[0], setTenants = sTenants[1];
@@ -219,6 +315,7 @@ export function ScreenAdmin() {
   var sShowCT = useState(false), showCT = sShowCT[0], setShowCT = sShowCT[1];
   var sShowCU = useState(false), showCU = sShowCU[0], setShowCU = sShowCU[1];
   var sShowET = useState(false), showET = sShowET[0], setShowET = sShowET[1];
+  var sEditUser = useState(null), editUser = sEditUser[0], setEditUser = sEditUser[1];
 
   function loadTenants() {
     setErr(null);
@@ -336,6 +433,7 @@ export function ScreenAdmin() {
                   : ce('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: 13 } },
                       ce('thead', null,
                         ce('tr', { style: { borderBottom: '1px solid var(--bd2)' } },
+                          ce('th', { style: thStyle }, 'Zespol'),
                           ce('th', { style: thStyle }, 'Email'),
                           ce('th', { style: thStyle }, 'Utworzony'),
                           ce('th', { style: thStyle }, 'Ostatnie logowanie'),
@@ -352,6 +450,12 @@ export function ScreenAdmin() {
                           if (u.is_tenant_admin) roles.push('Admin firmy');
                           var rolesStr = roles.join(', ') || '\u2014';
                           return ce('tr', { key: u.id, style: { borderBottom: '0.5px solid var(--bd3)', opacity: banned ? 0.5 : 1 } },
+                            ce('td', { style: { padding: '10px 6px' } },
+                              ce('div', { style: { display: 'flex', alignItems: 'center', gap: 8 } },
+                                ce(UserAvatar, { name: u.display_name, email: u.email, color: u.color }),
+                                ce('span', { style: { fontSize: 12, color: 'var(--t2)' } }, u.display_name || '\u2014')
+                              )
+                            ),
                             ce('td', { style: { padding: '10px 6px', color: 'var(--t1)' } }, u.email),
                             ce('td', { style: { padding: '10px 6px', color: 'var(--t3)', fontSize: 12 } },
                               u.created_at ? new Date(u.created_at).toLocaleDateString('pl-PL') : '\u2014'),
@@ -368,25 +472,33 @@ export function ScreenAdmin() {
                                                           fontSize: 11, fontWeight: 600 } }, 'Aktywny')
                             ),
                             ce('td', { style: { padding: '10px 6px', textAlign: 'right' } },
-                              u.is_super_admin
-                                ? ce('span', { style: { color: 'var(--t3)', fontSize: 11 } }, '\u2014')
-                                : ce('button', {
-                                    onClick: function() {
-                                      var action = banned ? 'reactivate' : 'suspend';
-                                      var label = banned
-                                        ? 'Reaktywowac usera ' + u.email + '?'
-                                        : 'Zawiesic usera ' + u.email + '? Stracze dostep natychmiast.';
-                                      if (!window.confirm(label)) return;
-                                      adminApi.setUserBan(u.id, action).then(function() {
-                                        loadUsers(selectedId);
-                                        loadTenants();
-                                      }).catch(function(e) { setErr(e.message || 'Blad'); });
-                                    },
-                                    style: { border: '1px solid var(--bd2)', background: 'var(--bg)',
-                                              borderRadius: 8, padding: '5px 12px', fontSize: 11,
-                                              cursor: 'pointer',
-                                              color: banned ? '#059669' : '#ef4444', fontWeight: 600 }
-                                  }, banned ? 'Reaktywuj' : 'Zawies')
+                              ce('div', { style: { display: 'flex', gap: 6, justifyContent: 'flex-end' } },
+                                ce('button', {
+                                  onClick: function() { setEditUser(u); },
+                                  style: { border: '1px solid var(--bd2)', background: 'var(--bg)',
+                                            borderRadius: 8, padding: '5px 12px', fontSize: 11,
+                                            cursor: 'pointer', color: 'var(--t2)', fontWeight: 600 }
+                                }, '\u270E Profil'),
+                                u.is_super_admin
+                                  ? null
+                                  : ce('button', {
+                                      onClick: function() {
+                                        var action = banned ? 'reactivate' : 'suspend';
+                                        var label = banned
+                                          ? 'Reaktywowac usera ' + u.email + '?'
+                                          : 'Zawiesic usera ' + u.email + '? Stracze dostep natychmiast.';
+                                        if (!window.confirm(label)) return;
+                                        adminApi.setUserBan(u.id, action).then(function() {
+                                          loadUsers(selectedId);
+                                          loadTenants();
+                                        }).catch(function(e) { setErr(e.message || 'Blad'); });
+                                      },
+                                      style: { border: '1px solid var(--bd2)', background: 'var(--bg)',
+                                                borderRadius: 8, padding: '5px 12px', fontSize: 11,
+                                                cursor: 'pointer',
+                                                color: banned ? '#059669' : '#ef4444', fontWeight: 600 }
+                                    }, banned ? 'Reaktywuj' : 'Zawies')
+                              )
                             )
                           );
                         })
@@ -411,6 +523,11 @@ export function ScreenAdmin() {
       tenant: selectedTenant,
       onClose: function() { setShowET(false); },
       onSaved: function() { setShowET(false); loadTenants(); }
+    }) : null,
+    editUser ? ce(EditUserProfileModal, {
+      user: editUser,
+      onClose: function() { setEditUser(null); },
+      onSaved: function() { setEditUser(null); loadUsers(selectedId); }
     }) : null
   );
 }
