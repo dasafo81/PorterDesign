@@ -52,11 +52,21 @@ function ModalItem(p) {
   var sDL = useState("");                       var dimL = sDL[0]; var setDimL = sDL[1];
   var s9 = useState(false);                     var busy = s9[0]; var setBusy = s9[1];
   var s10 = useState(null);                     var err = s10[0]; var setErr = s10[1];
+  var fabricCatalog = p.fabricCatalog || [];
 
   useEffect(function() {
     var cat_obj = CATEGORIES.find(function(c) { return c.id === cat; });
     if (cat_obj) setUnit(cat_obj.unit);
   }, [cat]);
+
+  // Podpowiedź z katalogu tkanin: gdy nazwa dokładnie pasuje do pozycji katalogowej
+  // i pole "Dostawca" jest jeszcze puste, uzupełniamy producenta automatycznie —
+  // nie nadpisujemy, jeśli Paulina już coś tam wpisała ręcznie.
+  useEffect(function() {
+    if (cat !== "tkanina" || !name.trim() || supplier.trim()) return;
+    var match = fabricCatalog.find(function(f) { return f.name.trim().toLowerCase() === name.trim().toLowerCase(); });
+    if (match && match.meta) setSupplier(match.meta);
+  }, [name, cat]);
 
   function save() {
     if (!name.trim()) { setErr("Podaj nazw\u0119"); return; }
@@ -96,7 +106,10 @@ function ModalItem(p) {
       ),
       ce("div", { style: { marginBottom: 12 } },
         ce("div", { style: { fontSize: 11, fontWeight: 700, color: "var(--t3)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 6 } }, "Nazwa *"),
-        ce("input", { value: name, onChange: function(e) { setName(e.target.value); }, placeholder: "np. Velvet Monaco, Silent 19mm biały...", style: inp })
+        ce("input", { value: name, onChange: function(e) { setName(e.target.value); }, placeholder: "np. Velvet Monaco, Silent 19mm biały...",
+          list: cat === "tkanina" ? "warehouse-fabric-suggestions" : undefined, style: inp }),
+        cat === "tkanina" && ce("datalist", { id: "warehouse-fabric-suggestions" },
+          fabricCatalog.map(function(f) { return ce("option", { key: f.name, value: f.name }); }))
       ),
       cat === "tkanina" && ce("div", { style: { marginBottom: 10 } },
         ce("button", { type: "button", onClick: function() { setDimMode(!dimMode); },
@@ -496,6 +509,7 @@ function TabWarehouse(p) {
   var s5 = useState("");    var search = s5[0]; var setSearch = s5[1];
   var s6 = useState(null);  var editItem = s6[0]; var setEditItem = s6[1];
   var s7 = useState(false); var showLow = s7[0]; var setShowLow = s7[1];
+  var s8 = useState([]);    var fabricCatalog = s8[0]; var setFabricCatalog = s8[1];
 
   function reload() {
     setLoading(true);
@@ -504,6 +518,20 @@ function TabWarehouse(p) {
       .catch(function(e) { setErr(e.message); setLoading(false); });
   }
   useEffect(function() { reload(); }, []);
+
+  // Katalog tkanin (baza z data.js + nadpisania Supabase) — tylko do podpowiedzi
+  // nazwy/producenta przy dodawaniu pozycji magazynowej, nie do edycji katalogu.
+  useEffect(function() {
+    sbApi.getCatalogItems()
+      .then(function(rows) {
+        var fabGroup = mergeCatalog(buildBaseCatalog(), rows || []).find(function(g) { return g.id === "tkaniny"; });
+        var list = (fabGroup ? fabGroup.items : [])
+          .filter(function(it) { return it.name; })
+          .map(function(it) { return { name: it.name, meta: it.meta || "" }; });
+        setFabricCatalog(list);
+      })
+      .catch(function() { /* podpowiedzi opcjonalne — brak nie blokuje magazynu */ });
+  }, []);
 
   function handleAdjust(item, delta) {
     var newQty = Math.max(0, (+(item.quantity) || 0) + delta);
@@ -587,6 +615,7 @@ function TabWarehouse(p) {
 
     editItem !== null && ce(ModalItem, {
       item: editItem,
+      fabricCatalog: fabricCatalog,
       onSave: function() { setEditItem(null); reload(); },
       onClose: function() { setEditItem(null); }
     })
