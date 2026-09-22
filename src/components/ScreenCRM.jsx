@@ -2582,6 +2582,9 @@ function DealCard(cp){
   var hasDeadline=(sid==="zamowienie"||sid==="realizacja"||sid==="montaz")&&deal.deadline;
   var hasDelivery=sid==="montaz"&&deal.delivery_date;
   var hasDelivery2=sid==="montaz"&&deal.delivery_date2;
+  // Przypomnienie: deal wisi w Realizacji ≥10 dni — sprawdzić status zamówienia w szwalni
+  var daysInRealizacja=sid==="realizacja"&&deal.updated_at?Math.floor((Date.now()-new Date(deal.updated_at).getTime())/86400000):0;
+  var showStuckWarning=sid==="realizacja"&&daysInRealizacja>=10;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
       ref:provided.innerRef
@@ -2603,6 +2606,10 @@ function DealCard(cp){
       })
     }),
       ce(AssignedAvatars,{deal:deal,teamUsers:cp.teamUsers,onToggle:cp.onToggleAssigned}),
+      showStuckWarning?ce("div",{
+        title:"W realizacji od "+daysInRealizacja+" dni \u2014 sprawd\u017a status zam\u00f3wienia w szwalni",
+        style:{position:"absolute",top:8,left:8,fontSize:14,lineHeight:1,zIndex:1}
+      },"\u26A0\uFE0F"):null,
       ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
       total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" z\u0142"):null,
       (hasVisit||hasDeadline||hasDelivery||hasDelivery2)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
