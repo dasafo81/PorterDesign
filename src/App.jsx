@@ -772,13 +772,13 @@ export function App(p){
   }
 
   // Wsadowy wariant: dla listy pomieszczeń robi to co duplicateRoomAsVariant,
-  // dodatkowo podmieniając wskazaną tkaninę (zasłony/firany i/lub rolety) —
-  // patrz ModalVariantAdvisor.
-  // Wsadowy wariant: dla listy pomieszczeń robi to co duplicateRoomAsVariant,
   // dodatkowo wprowadzając wybrane zmiany (ops) w produktach — patrz
   // ModalVariantAdvisor. ops (wszystkie pola opcjonalne):
   //   curtainFabric:{from,to}, curtainColor:{from,to}, curtainModel:"falda"|"wave"|"tasma",
-  //   curtainMars:"1.50", roletaFabric:{from,to}, roletaColor:{from,to}
+  //   curtainMars:"1.50", roletaFabric:{from,to}, roletaColor:{from,to},
+  //   roletaModel:"relax"|"print"|"back"|"front"|"cascade"|"duo",
+  //   jzColor:{jt,from,to}, prestigeColor:<v z PRESTIGE_KOLORY>,
+  //   kdColor:<id z KD_KOLORY>, szynaBrand:""|"msigma", clearMp:true
   // Kolejna "rzecz do wariowania" = nowe pole w ops + nowy warunek tutaj, bez
   // ruszania reszty (patrz też ModalVariantAdvisor w ModalRoom.jsx).
   function applyVariantAdvisor(roomIds,ops){
@@ -825,6 +825,24 @@ export function App(p){
             }
             if(isRoleta&&ops.roletaColor&&(next.c&&next.c.kolor)===ops.roletaColor.from){
               next=mg(next,{c:mg(next.c||{},{kolor:ops.roletaColor.to})});
+            }
+            if(isRoleta&&ops.roletaModel){
+              next=mg(next,{c:mg(next.c||{},{rModel:ops.roletaModel})});
+            }
+            if(pr.type==="zaluzja"&&ops.jzColor&&((next.c&&next.c.jt)||"al25")===ops.jzColor.jt&&(next.c&&next.c.jzColor)===ops.jzColor.from){
+              next=mg(next,{c:mg(next.c||{},{jzColor:ops.jzColor.to})});
+            }
+            if((pr.type==="prestige_round"||pr.type==="prestige_square")&&ops.prestigeColor){
+              next=mg(next,{c:mg(next.c||{},{pKolor:ops.prestigeColor})});
+            }
+            if(pr.type==="karnisz_dek"&&ops.kdColor){
+              next=mg(next,{kdKolor:ops.kdColor});
+            }
+            if(pr.type==="szyna"&&ops.szynaBrand!=null){
+              next=mg(next,{c:mg(next.c||{},{ksBrand:ops.szynaBrand})});
+            }
+            if(ops.clearMp){
+              next=mg(next,{mp:null});
             }
             return next;
           });
