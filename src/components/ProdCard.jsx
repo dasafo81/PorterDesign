@@ -937,9 +937,15 @@ export function ProdCard(p){
             )
           )
         ),
-        prod.type==="zaslona"?ce("div",{style:{marginTop:4,marginBottom:20}},
+        prod.type==="zaslona"?ce("div",{style:{marginTop:4,marginBottom:20,display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,maxWidth:540}},
+          ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZENIA (opcjonalnie)"},
+            ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
+              ce("span",{style:{padding:"0 14px",color:"var(--t3)",fontSize:14,flexShrink:0}},"cm"),
+              ce("input",{type:"text",inputMode:"numeric",value:par.wPomieszczenia||"",onChange:function(ev){sp("wPomieszczenia",ev.target.value);},placeholder:"np. 350",style:{flex:1,padding:"16px 14px 16px 0",fontSize:17,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:56}})
+            )
+          ),
           ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (opcjonalnie)"},
-            ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56,maxWidth:260}},
+            ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:56}},
               ce("span",{style:{padding:"0 14px",color:"var(--t3)",fontSize:14,flexShrink:0}},"cm"),
               ce("input",{type:"text",inputMode:"numeric",value:par.hPomieszczenia||"",onChange:function(ev){sp("hPomieszczenia",ev.target.value);},placeholder:"np. 270",style:{flex:1,padding:"16px 14px 16px 0",fontSize:17,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:56}})
             )
