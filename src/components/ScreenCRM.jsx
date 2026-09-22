@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
-import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective } from '../constants/data.js';
+import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
@@ -182,6 +182,47 @@ function SectionCard(rp){
   );
 }
 
+// Widok "Do montażu" — checklista z Wyceny szczegółowej (buildOfferDetailRows):
+// wszystkie produkty pogrupowane wg pomieszczenia, z wymiarami i uwagami przy
+// pozycji, bez cen — do szybkiego podglądu przez ekipę montażową z poziomu karty deala.
+// Zdefiniowany poza ModalDeal z tego samego powodu co CheckRow/SectionCard powyżej.
+function ModalMontazPodglad(p){
+  var cl=p.client||{};
+  var rows=buildOfferDetailRows(cl);
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2200,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"}},
+    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:720,borderRadius:18,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}},
+      ce("div",{style:{padding:"18px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg)",zIndex:1}},
+        ce("div",null,
+          ce("div",{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--t3)",marginBottom:2}},"🔧 Do montażu"),
+          ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},cl.name||"")
+        ),
+        ce("button",{onClick:p.onClose,style:{border:"none",background:"var(--bg2)",borderRadius:8,width:30,height:30,fontSize:16,cursor:"pointer",color:"var(--t2)"}},"×")
+      ),
+      ce("div",{style:{padding:"16px 20px 24px"}},
+        !rows.length
+          ?ce("div",{style:{fontSize:13,color:"var(--t3)",textAlign:"center",padding:"24px 0"}},"Brak pozycji w wycenie.")
+          :rows.map(function(r,i){
+            var prevRoom=i>0?rows[i-1].room:null;
+            var isNewRoom=r.room!==prevRoom;
+            var wymiary=[r.szerokosc&&r.szerokosc!=="-"?r.szerokosc:null,r.wysokosc&&r.wysokosc!=="-"?r.wysokosc:null].filter(Boolean).join(" × ");
+            return ce(Fragment,{key:i},
+              isNewRoom?ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginTop:i===0?0:18,marginBottom:8,paddingBottom:6,borderBottom:"1px solid var(--bd2)"}},r.room):null,
+              ce("div",{style:{padding:"10px 0",borderBottom:"1px dashed var(--bd2)"}},
+                ce("div",{style:{display:"flex",justifyContent:"space-between",gap:10,alignItems:"baseline"}},
+                  ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},r.name),
+                  r.qty>1?ce("div",{style:{fontSize:12,color:"var(--t3)",whiteSpace:"nowrap"}},r.qty+" "+(r.unit||"szt.")):null
+                ),
+                wymiary?ce("div",{style:{fontSize:12,color:"var(--t2)",marginTop:3}},wymiary):null,
+                r.podzial&&r.podzial!=="-"?ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:2}},r.podzial):null,
+                r.note?ce("div",{style:{fontSize:12,color:"#a86b00",marginTop:4,fontStyle:"italic"}},"Uwaga: "+r.note):null
+              )
+            );
+          })
+      )
+    )
+  );
+}
+
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
 export function ModalDeal(p){
   var d=p.deal;
@@ -190,6 +231,9 @@ export function ModalDeal(p){
   var gsiReady=!!p.gsiReady;
   var calList=p.calList||[];
   var cl=p.client;
+  // Widok "Do montażu" — lista wszystkich produktów z wyceny szczegółowej
+  // (wymiary, podział, uwagi), bez cen — do wydruku/podglądu dla ekipy montażowej.
+  var smz=useState(false),showMontaz=smz[0],setShowMontaz=smz[1];
 
   var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
   var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
@@ -821,6 +865,11 @@ export function ModalDeal(p){
             ce("button",{onClick:p.onGoToClient,style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
               "→ Karta klienta"
             ),
+            // Lista wszystkich produktow z wyceny szczegolowej (wymiary + uwagi,
+            // bez cen) — checklista dla ekipy montazowej, bez wychodzenia z karty deala.
+            cl?ce("button",{onClick:function(){setShowMontaz(true);},style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
+              "🔧 Do montażu"
+            ):null,
             // Wyrazisty (bialy, pelny) przycisk — glowne CTA karty deala, zeby bylo
             // od razu widac skrot do wyceny bez szukania w tle nagłówka.
             ce("button",{onClick:p.onGoToSummary,style:{background:"#fff",border:"none",borderRadius:8,color:"var(--t1)",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",boxShadow:"0 1px 4px rgba(0,0,0,0.2)"}},
@@ -1456,7 +1505,8 @@ export function ModalDeal(p){
           },gcalDraft.saving?"⏳ Dodaję...":"✅ Dodaj do kalendarza")
         )
       )
-    ):null
+    ):null,
+    showMontaz?ce(ModalMontazPodglad,{client:cl,deal:d,onClose:function(){setShowMontaz(false);}}):null
   );
 }
 
