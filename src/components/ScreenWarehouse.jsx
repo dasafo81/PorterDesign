@@ -546,7 +546,7 @@ function TabWarehouse(p) {
         ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCE6 Stan magazynu"),
         ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } }, items.length + " pozycji" + (lowCount > 0 ? " \u00B7 \u26A0\uFE0F " + lowCount + " wymaga uzupe\u0142nienia" : ""))
       ),
-      ce("button", { onClick: function() { setEditItem({}); },
+      ce("button", { onClick: function() { setEditItem(activeCat !== "all" ? { category: activeCat } : {}); },
         style: btn({ padding: "10px 18px", background: "var(--violet)", color: "#fff", display: "flex", alignItems: "center", gap: 6 }) },
         ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj pozycj\u0119")
     ),
