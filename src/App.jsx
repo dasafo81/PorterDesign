@@ -774,8 +774,16 @@ export function App(p){
   // Wsadowy wariant: dla listy pomieszczeń robi to co duplicateRoomAsVariant,
   // dodatkowo podmieniając wskazaną tkaninę (zasłony/firany i/lub rolety) —
   // patrz ModalVariantAdvisor.
-  function applyVariantAdvisor(roomIds,curtainSwap,roletaSwap){
+  // Wsadowy wariant: dla listy pomieszczeń robi to co duplicateRoomAsVariant,
+  // dodatkowo wprowadzając wybrane zmiany (ops) w produktach — patrz
+  // ModalVariantAdvisor. ops (wszystkie pola opcjonalne):
+  //   curtainFabric:{from,to}, curtainColor:{from,to}, curtainModel:"falda"|"wave"|"tasma",
+  //   curtainMars:"1.50", roletaFabric:{from,to}, roletaColor:{from,to}
+  // Kolejna "rzecz do wariowania" = nowe pole w ops + nowy warunek tutaj, bez
+  // ruszania reszty (patrz też ModalVariantAdvisor w ModalRoom.jsx).
+  function applyVariantAdvisor(roomIds,ops){
     if(!curClientId||!roomIds||!roomIds.length)return;
+    ops=ops||{};
     updateClient(curClientId,function(cl){
       var rooms=(cl.rooms||[]).slice();
       var letters="ABCDEFGHIJ";
@@ -797,13 +805,28 @@ export function App(p){
         newVariant.windows=(newVariant.windows||[]).map(function(w){
           var nw=mg(w,{id:Date.now()+"_"+Math.random().toString(36).slice(2,7)});
           nw.products=(nw.products||[]).map(function(pr){
-            if(curtainSwap&&(pr.type==="zaslona"||pr.type==="firana")&&(pr.fabName||pr.fabManName)===curtainSwap.from){
-              return mg(pr,{fabName:curtainSwap.to.name,fabP:curtainSwap.to.brutto,fabW:curtainSwap.to.width,fabMan:null,fabManName:null});
+            var isCurtain=pr.type==="zaslona"||pr.type==="firana";
+            var isRoleta=pr.type==="roleta";
+            var next=pr;
+            if(isCurtain&&ops.curtainFabric&&(next.fabName||next.fabManName)===ops.curtainFabric.from){
+              next=mg(next,{fabName:ops.curtainFabric.to.name,fabP:ops.curtainFabric.to.brutto,fabW:ops.curtainFabric.to.width,fabMan:null,fabManName:null});
             }
-            if(roletaSwap&&pr.type==="roleta"&&(pr.fabName||pr.fabManName)===roletaSwap.from){
-              return mg(pr,{fabName:roletaSwap.to.name,fabP:roletaSwap.to.brutto,fabW:roletaSwap.to.width,fabMan:null,fabManName:null});
+            if(isCurtain&&ops.curtainColor&&(next.c&&next.c.kolor)===ops.curtainColor.from){
+              next=mg(next,{c:mg(next.c||{},{kolor:ops.curtainColor.to})});
             }
-            return pr;
+            if(isCurtain&&ops.curtainModel){
+              next=mg(next,{c:mg(next.c||{},{model:ops.curtainModel})});
+            }
+            if(isCurtain&&ops.curtainMars){
+              next=mg(next,{c:mg(next.c||{},{mars:ops.curtainMars})});
+            }
+            if(isRoleta&&ops.roletaFabric&&(next.fabName||next.fabManName)===ops.roletaFabric.from){
+              next=mg(next,{fabName:ops.roletaFabric.to.name,fabP:ops.roletaFabric.to.brutto,fabW:ops.roletaFabric.to.width,fabMan:null,fabManName:null});
+            }
+            if(isRoleta&&ops.roletaColor&&(next.c&&next.c.kolor)===ops.roletaColor.from){
+              next=mg(next,{c:mg(next.c||{},{kolor:ops.roletaColor.to})});
+            }
+            return next;
           });
           return nw;
         });
