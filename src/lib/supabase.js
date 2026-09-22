@@ -192,6 +192,11 @@ export const sbApi = {
   deleteDeal: function(id){
     return sbFetch("DELETE","deals?id=eq."+id);
   },
+  // Pracownicy wlasnego tenanta (userzy z kontem) — do przypisywania dealow w CRM.
+  // Endpoint sam bierze tenant_id z JWT wywolujacego, nie trzeba go podawac.
+  getTenantUsers: function(){
+    return adminFetch("GET","/api/tenant/users");
+  },
   // \u2500\u2500 KOSZTY ZLECENIA (strona kosztowa deala) \u2500\u2500
   // Jeden wiersz = jedno realne wydanie: zam\u00f3wienie u dostawcy albo wyp\u0142ata
   // dla monta\u017cysty. Nie myli\u0107 z clients.install_fee, kt\u00f3re jest kwot\u0105 p\u0142acon\u0105
@@ -775,6 +780,10 @@ export const adminApi = {
   // Ban/unban: action = "suspend" | "reactivate"
   setUserBan: function(userId, action){
     return adminFetch("PATCH","/api/admin/users",{user_id:userId,action:action});
+  },
+  // Edytuje display_name/color istniejacego usera (widoczne jako awatar w CRM)
+  updateUserProfile: function(userId, data){
+    return adminFetch("PATCH","/api/admin/users",{user_id:userId,action:"update_profile",display_name:data.display_name,color:data.color});
   },
   // Aktualizuje config (branding) tenanta. config = {brand_name, logo_url}
   updateTenant: function(tenantId, config){
