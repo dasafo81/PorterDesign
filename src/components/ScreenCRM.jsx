@@ -2342,12 +2342,12 @@ export function CRMKalendarz(p){
     ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:12,overflow:"hidden"}},
 
       // Toolbar
-      ce("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg2)"}},
+      ce("div",{style:{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg2)",flexWrap:"wrap",rowGap:8}},
         ce("button",{onClick:goToday,style:BTN},"Dzisiaj"),
         ce("button",{onClick:prevPeriod,style:{...BTN,padding:"7px 10px"}},"\u2039"),
         ce("button",{onClick:nextPeriod,style:{...BTN,padding:"7px 10px"}},"\u203a"),
-        ce("span",{style:{flex:1,fontSize:14,fontWeight:700,color:"var(--t1)",textAlign:"center"}},periodLabel()),
-        ce("div",{style:{display:"flex",gap:4}},
+        ce("span",{style:{flex:"1 1 100%",fontSize:14,fontWeight:700,color:"var(--t1)",textAlign:"center"}},periodLabel()),
+        ce("div",{style:{display:"flex",gap:4,flexWrap:"wrap",flex:"1 1 100%",justifyContent:"center"}},
           ce("button",{onClick:function(){setCalView("month");},style:calView==="month"?BTN_ACT:BTN},"Miesi\u0105c"),
           ce("button",{onClick:function(){setCalView("week");},style:calView==="week"?BTN_ACT:BTN},"Tydzie\u0144"),
           ce("button",{onClick:function(){setCalView("day");},style:calView==="day"?BTN_ACT:BTN},"Dzie\u0144"),
