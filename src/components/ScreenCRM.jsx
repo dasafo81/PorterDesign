@@ -212,6 +212,10 @@ function ModalMontazPodglad(p){
                   ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},r.name),
                   r.qty>1?ce("div",{style:{fontSize:12,color:"var(--t3)",whiteSpace:"nowrap"}},r.qty+" "+(r.unit||"szt.")):null
                 ),
+                // Rodzaj szycia (Wave/Flex/Fałda/taśma dla zasłon i firan, Flex/Wave dla
+                // szyn KS) — kluczowe, żeby wiedzieć jaki osprzęt (maskownica, suwaki,
+                // haczyki) przygotować przed montażem.
+                r.modelSzycia&&r.modelSzycia!=="-"?ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)",marginTop:3}},r.modelSzycia):null,
                 wymiary?ce("div",{style:{fontSize:12,color:"var(--t2)",marginTop:3}},wymiary):null,
                 r.podzial&&r.podzial!=="-"?ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:2}},r.podzial):null,
                 r.note?ce("div",{style:{fontSize:12,color:"#a86b00",marginTop:4,fontStyle:"italic"}},"Uwaga: "+r.note):null
