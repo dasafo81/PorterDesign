@@ -4526,7 +4526,7 @@ export function buildOfferDetailRows(client){
           }
           var karMotorSideLbl=(pc.motorSide||"lewo");karMotorSideLbl=karMotorSideLbl.charAt(0).toUpperCase()+karMotorSideLbl.slice(1);
           var karMotorTypeLbl=(pc.motorType||"kurtyna");karMotorTypeLbl=karMotorTypeLbl.charAt(0).toUpperCase()+karMotorTypeLbl.slice(1);
-          podzial=karMotorSideLbl+" / "+karMotorTypeLbl+(karAccessories.length?" \u00b7 "+karAccessories.join(", "):"");
+          podzial=karMotorSideLbl+" / "+karMotorTypeLbl+(karAccessories.length?" \u00b7 Dodatki: "+karAccessories.join(", "):"");
           szerokosc=par.len?(par.len+" cm"):"-";
           // p.karniszSupplier nigdy nie jest ustawiane z poziomu formularza produktu
           // (nie ma tam takiego pola) — zawsze wychodziło "-". Wg Damiana: Producent
