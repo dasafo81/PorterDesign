@@ -4778,8 +4778,8 @@ export function buildSewingRows(client){
           var rLancuszek=pc.lancuszek==="metalowy"
             ?"Metalowy"+(pc.kolorLancuszka?" ("+pc.kolorLancuszka+")":"")
             :"Biały";
-          var // elektryk: stronaSilnika | manual Duo: obie strony | półautomat/manual: stronaObslugi
-          rStrona=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.rModel==="duo"&&pc.rSystem==="manual"?"Obie strony":(pc.stronaObslugi||"Lewo"));
+          var // elektryk: stronaSilnika | manual Duo: obie strony | półautomat/manual: stronaObslugi | bez mechanizmu: brak
+          rStrona=isBezMech?"-":(pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo"):(pc.rModel==="duo"&&pc.rSystem==="manual"?"Obie strony":(pc.stronaObslugi||"Lewo")));
           var fab2Obj=prod.fab2Name?getFabricEffective(prod.fab2Name):null;
           var fabricDesc=prod.fabName||(prod.fabManName||"tkanina");
           if(pc.rModel==="duo"){
@@ -4798,7 +4798,7 @@ export function buildSewingRows(client){
             nadprozeCm:par.hNadproza||"-",
             boczki:pc.rMask==="tak"?"TAK":"nie",
             podszewka:pc.rPodszewka==="tak"?"TAK":"nie",
-            rSystem:pc.rSystem==="elektryk"?"elektryczny":pc.rSystem==="polautomatyczny"?"półautomatyczny":"manualny",
+            rSystem:isBezMech?"bez mechanizmu":pc.rSystem==="elektryk"?"elektryczny":pc.rSystem==="polautomatyczny"?"półautomatyczny":"manualny",
             stronaObslugi:rStrona,
             lancuszek:pc.rSystem==="elektryk"?"-":pc.rSystem==="bez_mechanizmu"?"":rLancuszek,
             kolorLancuszka:(function(){
