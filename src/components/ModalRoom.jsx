@@ -15,7 +15,7 @@ import {
   RS_D, RS_E, RS_HEIGHTS, RS_OB_B,
   RS_OB_C, RS_OB_D, RS_PROFIL, RS_SUPP_WIDTHS,
   RS_WIDTHS, SB_STORAGE, WIN_PRESETS, calc,
-  jzLookup, mg, roundTo10
+  getAllFabrics, jzLookup, mg, roundTo10
 } from '../constants/data.js';
 const ce = React.createElement;
 
@@ -92,6 +92,114 @@ export function ModalRoom(p){
           style:{flex:1,padding:"9px",borderRadius:7,border:"none",background:canSubmit?"var(--t1)":"var(--bd1)",color:"var(--bg)",fontSize:12,fontWeight:600,cursor:canSubmit?"pointer":"default",letterSpacing:"0.04em"}
         },"DODAJ"),
         ce("button",{onClick:p.onClose,style:{padding:"9px 16px",borderRadius:7,border:"0.5px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"Anuluj")
+      )
+    )
+  );
+}
+
+// ── MODAL DORADCA WARIANTÓW ─────────────────────────────────────────
+// Tworzy kolejny wariant (B/C/...) dla zaznaczonych pomieszczeń CAŁEJ wyceny
+// naraz i od razu podmienia w nim jedną konkretną tkaninę zasłon/firan i/lub
+// rolet rzymskich — to samo co ręczne "Wariant" + FabPicker w każdym
+// pomieszczeniu, tylko zrobione hurtowo w jednym oknie.
+export function ModalVariantAdvisor(p){
+  var rooms=(p.client&&p.client.rooms)||[];
+  var sSel=useState({}),selRooms=sSel[0],setSelRooms=sSel[1];
+  var sCurtOn=useState(false),curtOn=sCurtOn[0],setCurtOn=sCurtOn[1];
+  var sCurtFrom=useState(""),curtFrom=sCurtFrom[0],setCurtFrom=sCurtFrom[1];
+  var sCurtTo=useState(""),curtTo=sCurtTo[0],setCurtTo=sCurtTo[1];
+  var sRolOn=useState(false),rolOn=sRolOn[0],setRolOn=sRolOn[1];
+  var sRolFrom=useState(""),rolFrom=sRolFrom[0],setRolFrom=sRolFrom[1];
+  var sRolTo=useState(""),rolTo=sRolTo[0],setRolTo=sRolTo[1];
+
+  var allFabrics=getAllFabrics();
+  var curtainFabricNames={},roletaFabricNames={};
+  rooms.forEach(function(r){
+    (r.windows||[]).forEach(function(w){
+      (w.products||[]).forEach(function(pr){
+        var fn=pr.fabName||pr.fabManName;
+        if(!fn)return;
+        if(pr.type==="zaslona"||pr.type==="firana")curtainFabricNames[fn]=true;
+        else if(pr.type==="roleta")roletaFabricNames[fn]=true;
+      });
+    });
+  });
+  var curtainFromOptions=Object.keys(curtainFabricNames).sort();
+  var roletaFromOptions=Object.keys(roletaFabricNames).sort();
+  var allFabricNames=allFabrics.map(function(f){return f.name;});
+
+  function toggleRoom(id){
+    setSelRooms(function(s){var n=Object.assign({},s);n[id]=!n[id];return n;});
+  }
+  var selectedIds=Object.keys(selRooms).filter(function(id){return selRooms[id];});
+  var canSubmit=selectedIds.length>0&&((curtOn&&curtFrom&&curtTo)||(rolOn&&rolFrom&&rolTo));
+
+  function submit(){
+    if(!canSubmit)return;
+    var curtSwap=null,rolSwap=null;
+    if(curtOn&&curtFrom&&curtTo){
+      var tf=allFabrics.find(function(f){return f.name===curtTo;});
+      if(tf)curtSwap={from:curtFrom,to:tf};
+    }
+    if(rolOn&&rolFrom&&rolTo){
+      var tf2=allFabrics.find(function(f){return f.name===rolTo;});
+      if(tf2)rolSwap={from:rolFrom,to:tf2};
+    }
+    p.onApply(selectedIds,curtSwap,rolSwap);
+    p.onClose();
+  }
+
+  function fabSelect(value,onChange,options,placeholder){
+    return ce("select",{value:value,onChange:function(ev){onChange(ev.target.value);},
+      style:{width:"100%",padding:"9px 10px",fontSize:13,border:"1px solid var(--bd2)",borderRadius:7,background:"var(--bg)",color:"var(--t1)"}},
+      ce("option",{value:""},placeholder),
+      options.map(function(n){return ce("option",{key:n,value:n},n);})
+    );
+  }
+
+  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"16px"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"1.6rem",width:440,maxWidth:"100%",maxHeight:"88vh",overflowY:"auto",border:"1px solid var(--bd2)",boxShadow:"0 16px 48px rgba(0,0,0,0.18)"}},
+      ce("div",{style:{fontSize:15,fontWeight:700,marginBottom:4,color:"var(--t1)"}},"🪄 Doradca wariantów"),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16,lineHeight:1.5}},"Tworzy kolejny wariant dla zaznaczonych pomieszczeń i od razu podmienia w nim wybraną tkaninę."),
+
+      ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8}},"Pomieszczenia"),
+      ce("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:18,maxHeight:180,overflowY:"auto",border:"1px solid var(--bd3)",borderRadius:10,padding:8}},
+        rooms.map(function(r){
+          var lbl=r.name+(r.variantLabel?" — Wariant "+r.variantLabel:"");
+          return ce("label",{key:r.id,style:{display:"flex",alignItems:"center",gap:10,padding:"6px 4px",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
+            ce("input",{type:"checkbox",checked:!!selRooms[r.id],onChange:function(){toggleRoom(r.id);}}),
+            lbl
+          );
+        })
+      ),
+
+      ce("div",{style:{border:"1px solid var(--bd3)",borderRadius:10,padding:"10px 12px",marginBottom:12}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",marginBottom:curtOn?10:0}},
+          ce("input",{type:"checkbox",checked:curtOn,onChange:function(ev){setCurtOn(ev.target.checked);}}),
+          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},"Zmień tkaninę zasłon / firan")
+        ),
+        curtOn?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Z tkaniny"),fabSelect(curtFrom,setCurtFrom,curtainFromOptions,"wybierz")),
+          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Na tkaninę"),fabSelect(curtTo,setCurtTo,allFabricNames,"wybierz"))
+        ):null
+      ),
+
+      ce("div",{style:{border:"1px solid var(--bd3)",borderRadius:10,padding:"10px 12px",marginBottom:18}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",marginBottom:rolOn?10:0}},
+          ce("input",{type:"checkbox",checked:rolOn,onChange:function(ev){setRolOn(ev.target.checked);}}),
+          ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},"Zmień tkaninę rolet rzymskich")
+        ),
+        rolOn?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
+          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Z tkaniny"),fabSelect(rolFrom,setRolFrom,roletaFromOptions,"wybierz")),
+          ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},"Na tkaninę"),fabSelect(rolTo,setRolTo,allFabricNames,"wybierz"))
+        ):null
+      ),
+
+      ce("div",{style:{display:"flex",gap:8}},
+        ce("button",{onClick:submit,disabled:!canSubmit,
+          style:{flex:1,padding:"11px",borderRadius:9,border:"none",background:canSubmit?"var(--t1)":"var(--bd1)",color:"var(--bg)",fontSize:13,fontWeight:600,cursor:canSubmit?"pointer":"default"}
+        },"Utwórz wariant"),
+        ce("button",{onClick:p.onClose,style:{padding:"11px 18px",borderRadius:9,border:"1px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:13,cursor:"pointer"}},"Anuluj")
       )
     )
   );
