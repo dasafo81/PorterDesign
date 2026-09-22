@@ -4544,13 +4544,19 @@ export function buildOfferDetailRows(client){
           wysokosc=par.hMm?(Math.round(par.hMm/10)+" cm"):"-";
         }
 
+        // Ilosc sztuk (par.qty) jest realnym mnoznikiem ceny w calc() dla tych
+        // typow (m.in. Szyna KS, Karnisz elektryczny) - wczesniej tu zawsze wychodzilo
+        // 1 (poza "inny"), wiec "Wycena szczegolowa" pokazywala zla ilosc i
+        // zawyzona cene jednostkowa (total dzielony przez 1 zamiast przez qty).
+        var QTY_TYPES=["szyna","karnisz","prestige_round","prestige_square","shuttle","inny"];
+        var rowQty=QTY_TYPES.indexOf(p.type)>=0?(par.qty||1):1;
         rows.push({
           room:r.name,win:w.name,
-          qty:(p.type==="inny"?(par.qty||1):1),unit:isKurtain?"kpl.":"szt.",
+          qty:rowQty,unit:isKurtain?"kpl.":"szt.",
           name:name,_prodLabel:prodLabel,_nameLoc:nameLoc,
           modelSzycia:modelSzycia,tkaninaKolor:tkaninaKolor,producent:producent,
-          szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,
-          total:total,cenaJedn:total/(p.type==="inny"?(par.qty||1):1)
+          szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,note:p.note||null,
+          total:total,cenaJedn:total/rowQty
         });
       });
     });
