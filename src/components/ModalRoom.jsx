@@ -15,8 +15,30 @@ import {
   RS_D, RS_E, RS_HEIGHTS, RS_OB_B,
   RS_OB_C, RS_OB_D, RS_PROFIL, RS_SUPP_WIDTHS,
   RS_WIDTHS, SB_STORAGE, WIN_PRESETS, calc,
-  getAllFabrics, jzLookup, mg, roundTo10
+  getAllFabrics, jzLookup, mg, roundTo10,
+  JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_AB35_COLORS, JZ_AB50_COLORS,
+  JZ_PW35_COLORS, JZ_PW50_COLORS, JZ_BA27_COLORS, JZ_BA35_COLORS,
+  JZ_BA50_COLORS, JZ_BA65_COLORS, JZ_BS50_COLORS,
+  PRESTIGE_KOLORY, KD_KOLORY
 } from '../constants/data.js';
+
+// Lista kolorów lameli dla danego systemu żaluzji (jt) — ta sama logika co w
+// calc()/productDetailText (constants/data.js), zduplikowana tu celowo: to
+// tylko wybór listy do selecta w Doradcy wariantów, nie cennik.
+function jzColorListForJt(jt){
+  if(jt==="al25")return JZ_AL25_COLORS;
+  if(jt.indexOf("al")===0)return JZ_AL50_COLORS;
+  if(jt==="ab35")return JZ_AB35_COLORS;
+  if(jt==="ab50"||jt==="ab65")return JZ_AB50_COLORS;
+  if(jt==="pw35")return JZ_PW35_COLORS;
+  if(jt==="pw50")return JZ_PW50_COLORS;
+  if(jt==="ba27")return JZ_BA27_COLORS;
+  if(jt==="ba35")return JZ_BA35_COLORS;
+  if(jt==="ba65")return JZ_BA65_COLORS;
+  if(jt.indexOf("ba")===0)return JZ_BA50_COLORS;
+  if(jt.indexOf("bs")===0)return JZ_BS50_COLORS;
+  return null;
+}
 const ce = React.createElement;
 
 export function ModalRoom(p){
@@ -129,8 +151,26 @@ export function ModalVariantAdvisor(p){
   var sRolColFrom=useState(""),rolColFrom=sRolColFrom[0],setRolColFrom=sRolColFrom[1];
   var sRolColTo=useState(""),rolColTo=sRolColTo[0],setRolColTo=sRolColTo[1];
 
+  var sRolModelOn=useState(false),rolModelOn=sRolModelOn[0],setRolModelOn=sRolModelOn[1];
+  var sRolModelTo=useState("relax"),rolModelTo=sRolModelTo[0],setRolModelTo=sRolModelTo[1];
+
+  var sJzOn=useState(false),jzOn=sJzOn[0],setJzOn=sJzOn[1];
+  var sJzFromKey=useState(""),jzFromKey=sJzFromKey[0],setJzFromKey=sJzFromKey[1];
+  var sJzTo=useState(""),jzTo=sJzTo[0],setJzTo=sJzTo[1];
+
+  var sPrestOn=useState(false),prestOn=sPrestOn[0],setPrestOn=sPrestOn[1];
+  var sPrestTo=useState(PRESTIGE_KOLORY[0].v),prestTo=sPrestTo[0],setPrestTo=sPrestTo[1];
+
+  var sKdOn=useState(false),kdOn=sKdOn[0],setKdOn=sKdOn[1];
+  var sKdTo=useState(KD_KOLORY[0].id),kdTo=sKdTo[0],setKdTo=sKdTo[1];
+
+  var sBrandOn=useState(false),brandOn=sBrandOn[0],setBrandOn=sBrandOn[1];
+  var sBrandTo=useState(""),brandTo=sBrandTo[0],setBrandTo=sBrandTo[1];
+
+  var sClearMpOn=useState(false),clearMpOn=sClearMpOn[0],setClearMpOn=sClearMpOn[1];
+
   var allFabrics=getAllFabrics();
-  var curtainFabricNames={},roletaFabricNames={},curtainColors={},roletaColors={};
+  var curtainFabricNames={},roletaFabricNames={},curtainColors={},roletaColors={},jzCombos={};
   rooms.forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(pr){
@@ -142,6 +182,15 @@ export function ModalVariantAdvisor(p){
         }else if(pr.type==="roleta"){
           if(fn)roletaFabricNames[fn]=true;
           if(kol)roletaColors[kol]=true;
+        }else if(pr.type==="zaluzja"){
+          var jt=(pr.c&&pr.c.jt)||"al25";
+          var code=pr.c&&pr.c.jzColor;
+          if(code){
+            var list=jzColorListForJt(jt);
+            var colObj=list?list.find(function(x){return x.v===code;}):null;
+            var key=jt+"::"+code;
+            if(!jzCombos[key])jzCombos[key]={key:key,jt:jt,code:code,label:(JZ_LABELS[jt]||jt)+" — "+(colObj?colObj.l:code)};
+          }
         }
       });
     });
@@ -151,6 +200,9 @@ export function ModalVariantAdvisor(p){
   var curtainColorOptions=Object.keys(curtainColors).sort();
   var roletaColorOptions=Object.keys(roletaColors).sort();
   var allFabricNames=allFabrics.map(function(f){return f.name;});
+  var jzComboList=Object.keys(jzCombos).map(function(k){return jzCombos[k];}).sort(function(a,b){return a.label.localeCompare(b.label);});
+  var jzFromJt=jzFromKey?jzFromKey.split("::")[0]:null;
+  var jzToOptions=jzFromJt?(jzColorListForJt(jzFromJt)||[]):[];
 
   function toggleRoom(id){
     setSelRooms(function(s){var n=Object.assign({},s);n[id]=!n[id];return n;});
@@ -162,7 +214,13 @@ export function ModalVariantAdvisor(p){
     (modelOn&&modelTo)||
     (marsOn&&+marsTo>0)||
     (rolOn&&rolFrom&&rolTo)||
-    (rolColOn&&rolColFrom&&rolColTo)
+    (rolColOn&&rolColFrom&&rolColTo)||
+    (rolModelOn&&rolModelTo)||
+    (jzOn&&jzFromKey&&jzTo)||
+    (prestOn&&prestTo)||
+    (kdOn&&kdTo)||
+    brandOn||
+    clearMpOn
   );
 
   function submit(){
@@ -180,6 +238,12 @@ export function ModalVariantAdvisor(p){
       if(tf2)ops.roletaFabric={from:rolFrom,to:tf2};
     }
     if(rolColOn&&rolColFrom&&rolColTo)ops.roletaColor={from:rolColFrom,to:rolColTo};
+    if(rolModelOn&&rolModelTo)ops.roletaModel=rolModelTo;
+    if(jzOn&&jzFromKey&&jzTo)ops.jzColor={jt:jzFromJt,from:jzFromKey.split("::")[1],to:jzTo};
+    if(prestOn&&prestTo)ops.prestigeColor=prestTo;
+    if(kdOn&&kdTo)ops.kdColor=kdTo;
+    if(brandOn)ops.szynaBrand=brandTo;
+    if(clearMpOn)ops.clearMp=true;
     p.onApply(selectedIds,ops);
     p.onClose();
   }
@@ -213,14 +277,17 @@ export function ModalVariantAdvisor(p){
       ce("div",null,ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:4}},labelB),fieldB)
     );
   }
+  function groupTitle(t){
+    return ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8,marginTop:6}},t);
+  }
 
   return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"16px"}},
-    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"1.6rem",width:460,maxWidth:"100%",maxHeight:"88vh",overflowY:"auto",border:"1px solid var(--bd2)",boxShadow:"0 16px 48px rgba(0,0,0,0.18)"}},
+    ce("div",{style:{background:"var(--bg)",borderRadius:18,padding:"1.6rem",width:480,maxWidth:"100%",maxHeight:"88vh",overflowY:"auto",border:"1px solid var(--bd2)",boxShadow:"0 16px 48px rgba(0,0,0,0.18)"}},
       ce("div",{style:{fontSize:15,fontWeight:700,marginBottom:4,color:"var(--t1)"}},"🪄 Doradca wariantów"),
       ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:16,lineHeight:1.5}},"Tworzy kolejny wariant dla zaznaczonych pomieszczeń i od razu wprowadza wybrane zmiany."),
 
-      ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8}},"Pomieszczenia"),
-      ce("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:18,maxHeight:150,overflowY:"auto",border:"1px solid var(--bd3)",borderRadius:10,padding:8}},
+      groupTitle("Pomieszczenia"),
+      ce("div",{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:18,maxHeight:140,overflowY:"auto",border:"1px solid var(--bd3)",borderRadius:10,padding:8}},
         rooms.map(function(r){
           var lbl=r.name+(r.variantLabel?" — Wariant "+r.variantLabel:"");
           return ce("label",{key:r.id,style:{display:"flex",alignItems:"center",gap:10,padding:"6px 4px",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
@@ -230,7 +297,7 @@ export function ModalVariantAdvisor(p){
         })
       ),
 
-      ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8}},"Zasłony / firany"),
+      groupTitle("Zasłony / firany"),
       section("Zmień tkaninę",curtOn,setCurtOn,
         twoCol("Z tkaniny",selInput(curtFrom,setCurtFrom,curtainFromOptions,"wybierz"),"Na tkaninę",selInput(curtTo,setCurtTo,allFabricNames,"wybierz"))
       ),
@@ -247,12 +314,42 @@ export function ModalVariantAdvisor(p){
         )
       ),
 
-      ce("div",{style:{fontSize:11,fontWeight:600,color:"var(--t2)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:8,marginTop:6}},"Rolety rzymskie"),
+      groupTitle("Rolety rzymskie"),
       section("Zmień tkaninę",rolOn,setRolOn,
         twoCol("Z tkaniny",selInput(rolFrom,setRolFrom,roletaFromOptions,"wybierz"),"Na tkaninę",selInput(rolTo,setRolTo,allFabricNames,"wybierz"))
       ),
       section("Zmień kolor",rolColOn,setRolColOn,
         twoCol("Z koloru",selInput(rolColFrom,setRolColFrom,roletaColorOptions,"wybierz"),"Na kolor",txtInput(rolColTo,setRolColTo,"np. Ecru"))
+      ),
+      section("Zmień model rolety (wszystkie rolety)",rolModelOn,setRolModelOn,
+        fixedSelect(rolModelTo,setRolModelTo,[{v:"relax",l:"Relax"},{v:"print",l:"Print"},{v:"back",l:"Back"},{v:"front",l:"Front"},{v:"cascade",l:"Cascade"},{v:"duo",l:"Duo"}])
+      ),
+
+      jzComboList.length?groupTitle("Żaluzje"):null,
+      jzComboList.length?section("Zmień kolor lameli",jzOn,setJzOn,
+        ce(Fragment,null,
+          twoCol(
+            "Z koloru",selInput(jzFromKey,function(v){setJzFromKey(v);setJzTo("");},jzComboList.map(function(x){return x.key;}),"wybierz"),
+            "Na kolor",jzFromJt?fixedSelect(jzTo,setJzTo,jzToOptions.map(function(x){return {v:x.v,l:x.l};})):ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"9px 0"}},"najpierw wybierz „Z koloru”")
+          ),
+          ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:4}},"Lista „Z koloru” pokazuje etykietę jako system żaluzji + kolor.")
+        )
+      ):null,
+
+      groupTitle("Karnisze"),
+      section("Zmień kolor systemu Prestige (wszystkie Prestige Round/Square)",prestOn,setPrestOn,
+        fixedSelect(prestTo,setPrestTo,PRESTIGE_KOLORY.map(function(k){return {v:k.v,l:k.l};}))
+      ),
+      section("Zmień kolor karnisza dekoracyjnego (wszystkie)",kdOn,setKdOn,
+        fixedSelect(kdTo,setKdTo,KD_KOLORY.map(function(k){return {v:k.id,l:k.label};}))
+      ),
+      section("Zmień markę Szyny KS (wszystkie Szyny KS)",brandOn,setBrandOn,
+        fixedSelect(brandTo,setBrandTo,[{v:"",l:"KS (standard)"},{v:"msigma",l:"mSigma"}])
+      ),
+
+      groupTitle("Inne"),
+      section("Wyczyść ręczne nadpisania cen (wszystkie produkty)",clearMpOn,setClearMpOn,
+        ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Produkty z ręcznie wpisaną „Własną ceną końcową” wrócą do ceny wyliczonej automatycznie.")
       ),
 
       ce("div",{style:{display:"flex",gap:8,marginTop:8}},
