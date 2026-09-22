@@ -780,7 +780,7 @@ export function App(p){
       var rooms=(cl.rooms||[]).slice();
       var letters="ABCDEFGHIJ";
       roomIds.forEach(function(roomId){
-        var idx=rooms.findIndex(function(r){return r.id===roomId;});
+        var idx=rooms.findIndex(function(r){return String(r.id)===String(roomId);});
         if(idx<0)return;
         var room=rooms[idx];
         var grpId=room.variantGroup||("rvg_"+room.id);
