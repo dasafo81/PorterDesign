@@ -16,7 +16,7 @@ import {
 import { RichTextEditor } from './components/MailShared.jsx';
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
-import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple } from './components/ModalRoom.jsx';
+import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple, ModalVariantAdvisor } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
 import { ScreenCRM, CRMKalendarz, CRM_STAGES, dealTotal } from './components/ScreenCRM.jsx';
@@ -162,6 +162,7 @@ export function App(p){
   var s6b=useState(false),showNewQuoteModal=s6b[0],setShowNewQuoteModal=s6b[1];
   var s7=useState(false),showRoomModal=s7[0],setShowRoomModal=s7[1];
   var s8=useState(false),showWinModal=s8[0],setShowWinModal=s8[1];
+  var sVarAdv=useState(false),showVariantAdvisor=sVarAdv[0],setShowVariantAdvisor=sVarAdv[1];
   var s11b=useState(false),showFabricModal=s11b[0],setShowFabricModal=s11b[1];
   var s12=useState(false),showAIModal=s12[0],setShowAIModal=s12[1];
   var s13=useState(""),commissionInput=s13[0],setCommissionInput=s13[1];
@@ -767,6 +768,52 @@ export function App(p){
       newVariant.variantBaseName=baseName;
       newVariant.name=baseName;
       return mg(cl,{rooms:newRooms.concat([newVariant])});
+    });
+  }
+
+  // Wsadowy wariant: dla listy pomieszczeń robi to co duplicateRoomAsVariant,
+  // dodatkowo podmieniając wskazaną tkaninę (zasłony/firany i/lub rolety) —
+  // patrz ModalVariantAdvisor.
+  function applyVariantAdvisor(roomIds,curtainSwap,roletaSwap){
+    if(!curClientId||!roomIds||!roomIds.length)return;
+    updateClient(curClientId,function(cl){
+      var rooms=(cl.rooms||[]).slice();
+      var letters="ABCDEFGHIJ";
+      roomIds.forEach(function(roomId){
+        var idx=rooms.findIndex(function(r){return r.id===roomId;});
+        if(idx<0)return;
+        var room=rooms[idx];
+        var grpId=room.variantGroup||("rvg_"+room.id);
+        if(!room.variantGroup){
+          var baseName0=room.name;
+          room=mg(room,{variantGroup:grpId,variantLabel:"A",variantBaseName:baseName0,name:baseName0});
+          rooms[idx]=room;
+        }
+        var countInGroup=rooms.filter(function(r){return r.variantGroup===grpId;}).length;
+        var nextLetter=letters[countInGroup]||"?";
+        var baseName=room.variantBaseName||room.name;
+        var newVariant=JSON.parse(JSON.stringify(room));
+        newVariant.id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+        newVariant.windows=(newVariant.windows||[]).map(function(w){
+          var nw=mg(w,{id:Date.now()+"_"+Math.random().toString(36).slice(2,7)});
+          nw.products=(nw.products||[]).map(function(pr){
+            if(curtainSwap&&(pr.type==="zaslona"||pr.type==="firana")&&(pr.fabName||pr.fabManName)===curtainSwap.from){
+              return mg(pr,{fabName:curtainSwap.to.name,fabP:curtainSwap.to.brutto,fabW:curtainSwap.to.width,fabMan:null,fabManName:null});
+            }
+            if(roletaSwap&&pr.type==="roleta"&&(pr.fabName||pr.fabManName)===roletaSwap.from){
+              return mg(pr,{fabName:roletaSwap.to.name,fabP:roletaSwap.to.brutto,fabW:roletaSwap.to.width,fabMan:null,fabManName:null});
+            }
+            return pr;
+          });
+          return nw;
+        });
+        newVariant.variantGroup=grpId;
+        newVariant.variantLabel=nextLetter;
+        newVariant.variantBaseName=baseName;
+        newVariant.name=baseName;
+        rooms.push(newVariant);
+      });
+      return mg(cl,{rooms:rooms});
     });
   }
 
@@ -1548,7 +1595,10 @@ export function App(p){
           ce("span",{style:{fontSize:22,lineHeight:1,fontWeight:300}},"+"),ce("span",{style:{fontSize:14,fontWeight:500}},"Dodaj pomieszczenie")
         )
       ),
-      ce("div",{style:{display:"flex",gap:10,marginTop:4}},Btn("Podsumowanie \u2197",function(){setScreen("sum");},true))
+      ce("div",{style:{display:"flex",gap:10,marginTop:4}},
+        rooms.length?Btn("\uD83E\uDE84 Doradca wariant\u00f3w",function(){setShowVariantAdvisor(true);},false):null,
+        Btn("Podsumowanie \u2197",function(){setScreen("sum");},true)
+      )
     );
   }
 
@@ -2722,6 +2772,7 @@ export function App(p){
     showNewQuoteModal?ce(ModalNewQuoteFromClient,{clients:clients,onOk:addClient,onClose:function(){setShowNewQuoteModal(false);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
+    showVariantAdvisor&&curClient?ce(ModalVariantAdvisor,{client:curClient,onApply:applyVariantAdvisor,onClose:function(){setShowVariantAdvisor(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
     showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
