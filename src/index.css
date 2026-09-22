@@ -139,7 +139,7 @@
         linear-gradient(160deg, #f2e8d8 0%, #ecdfc8 50%, #e6d6ba 100%);
     }
     body{
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
       color:var(--t1);min-height:100vh;
       background:var(--body-bg);
       background-attachment:fixed;
