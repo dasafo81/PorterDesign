@@ -203,6 +203,7 @@
       padding:9px 0 8px;border-radius:12px;border:none;background:transparent;cursor:pointer;
       font-family:inherit;font-size:11px;letter-spacing:0.01em;transition:all .18s;
       display:flex;flex-direction:column;align-items:center;gap:3px;
+      min-width:0;
     }
     .pd-navlabel{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     /* Ponizej progu uklad jest jak byl: topbar + zakladki nad trescia. 190px to
