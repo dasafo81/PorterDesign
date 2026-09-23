@@ -3721,7 +3721,7 @@ export function ModalAIValuation(p){
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":"Bearer "+(getAccessToken()||"")},
       body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
+        model:"claude-sonnet-5",
         max_tokens:3000,
         system:buildSystemPrompt(),
         messages:apiMessages
@@ -3869,7 +3869,7 @@ export function ModalAIValuation(p){
       });
       fetch("/api/claude",{
         method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(getAccessToken()||"")},
-        body:JSON.stringify({model:"claude-sonnet-4-20250514",system:buildSystemPrompt(),messages:apiMessages,max_tokens:3000})
+        body:JSON.stringify({model:"claude-sonnet-5",system:buildSystemPrompt(),messages:apiMessages,max_tokens:3000})
       }).then(function(r){return r.json();}).then(function(d){
         if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
         var raw=d.content&&d.content[0]?d.content[0].text:"";
