@@ -31,8 +31,8 @@ export const OWU_URL="/mail-att/Porter_Design_OWU.pdf";
 export const OWU_NAME="Porter_Design_OWU.pdf";
 // Wstrzymane do czasu finalnej wersji OWU (uzupełnienie e-maila Wykonawcy w § 1). Zmień na true, aby włączyć sekcję.
 export const ADVANCE_MAIL_ENABLED=false;
-export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane"};
-export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone"};
+export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane",archiveDays:30};
+export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone",archiveDays:30};
 
 export function clientTotal2(cl){
   if(!cl||!cl.rooms)return 0;
@@ -2709,7 +2709,17 @@ function KanbanCol(kp){
   var fmtDate=kp.fmtDate; var clientTotal2=kp.clientTotal2;
   var wide=!!kp.wide;
   var full=!!kp.full; var inGrid=!!kp.grid;
-  var stageDeals=(deals||[]).filter(function(d){return d.stage===stage.id;});
+  var stageDeals=(deals||[]).filter(function(d){
+    if(d.stage!==stage.id)return false;
+    // Zakonczone/Odrzucone: deale starsze niz archiveDays chowamy z widoku,
+    // zeby kolumna nie rosla w nieskonczonosc. Dane zostaja w bazie —
+    // to filtr tylko na froncie.
+    if(stage.archiveDays&&d.closed_at){
+      var ageDays=(Date.now()-new Date(d.closed_at).getTime())/86400000;
+      if(ageDays>stage.archiveDays)return false;
+    }
+    return true;
+  });
   return ce("div",{style:full?{width:"100%"}:inGrid?{minWidth:0}:wide?{flex:"1 1 0",minWidth:280}:{flex:"1 1 0",minWidth:190,maxWidth:280}},
     ce("div",{style:{
       background:"var(--bg2)",border:"1px solid var(--bd2)",
@@ -2874,6 +2884,11 @@ export function ScreenCRM(p){
     // Przy zejściu z Realizacji do innego etapu czyścimy, żeby ewentualny powrót liczył od nowa.
     if(stage==="realizacja")patch.realizacja_since=new Date().toISOString();
     else if(deal&&deal.stage==="realizacja")patch.realizacja_since=null;
+    // Znacznik wejscia do Zakonczone/Odrzucone — do automatycznego chowania starych
+    // deali w Kanbanie (patrz KanbanCol -> archiveDays). Ten sam wzorzec co wyzej:
+    // ustawiany tylko tutaj, zeby edycja karty po zamknieciu deala go nie zerowala.
+    if(stage==="zakonczone"||stage==="odrzucone")patch.closed_at=new Date().toISOString();
+    else if(deal&&(deal.stage==="zakonczone"||deal.stage==="odrzucone"))patch.closed_at=null;
     setDeals(function(prev){return prev.map(function(d){return String(d.id)===String(dealId)?Object.assign({},d,patch):d;});});
     setModalDeal(function(md){return md&&String(md.id)===String(dealId)?Object.assign({},md,patch):md;});
     sbApi.updateDeal(dealId,patch);
