@@ -114,7 +114,7 @@ export default async function handler(req) {
     );
     if (!messages) return json({ error: { message: 'Nieprawidłowa historia rozmowy.' } }, 400, cors);
     const safePayload = {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-5',
       max_tokens: Math.min(Math.max(Number(payload.max_tokens) || 3000, 1), 4000),
       system: payload.system,
       messages: payload.messages,
