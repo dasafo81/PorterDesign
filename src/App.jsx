@@ -3728,7 +3728,7 @@ export function ModalAIValuation(p){
       })
     }).then(function(r){return r.json();}).then(function(d){
       if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
-      var raw=d.content&&d.content[0]?d.content[0].text:"";
+      var textBlock=d.content&&d.content.filter(function(b){return b.type==="text";})[0];var raw=textBlock?textBlock.text:"";
       var parsed=parseAIResponse(raw);
       var assistantMsg={role:"assistant",text:parsed.chatText,rawText:raw,calcResult:parsed.calcResult,questions:parsed.questions||null};
       setMessages(function(prev){return prev.concat([assistantMsg]);});
@@ -3872,7 +3872,7 @@ export function ModalAIValuation(p){
         body:JSON.stringify({model:"claude-sonnet-5",system:buildSystemPrompt(),messages:apiMessages,max_tokens:3000})
       }).then(function(r){return r.json();}).then(function(d){
         if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
-        var raw=d.content&&d.content[0]?d.content[0].text:"";
+        var textBlock=d.content&&d.content.filter(function(b){return b.type==="text";})[0];var raw=textBlock?textBlock.text:"";
         var resp=parseAIResponse(raw);
         var aMsg={role:"assistant",text:resp.chatText,rawText:raw,calcResult:resp.calcResult,questions:resp.questions||null};
         setMessages(function(prev){return prev.concat([aMsg]);});
