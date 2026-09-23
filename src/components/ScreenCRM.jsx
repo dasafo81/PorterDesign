@@ -194,7 +194,10 @@ function ModalMontazPodglad(p){
       ce("div",{style:{padding:"18px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg)",zIndex:1}},
         ce("div",null,
           ce("div",{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--t3)",marginBottom:2}},"🔧 Do montażu"),
-          ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},cl.name||"")
+          ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},cl.name||""),
+          (cl.addr||cl.city)?ce("div",{style:{fontSize:13,color:"var(--t2)",marginTop:2}},
+            "📍 "+[cl.addr,[cl.postal,cl.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")
+          ):null
         ),
         ce("button",{onClick:p.onClose,style:{border:"none",background:"var(--bg2)",borderRadius:8,width:30,height:30,fontSize:16,cursor:"pointer",color:"var(--t2)"}},"×")
       ),
