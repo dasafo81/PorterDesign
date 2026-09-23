@@ -353,7 +353,17 @@ export function App(p){
           // Klienci zalozeni offline nie istnieja jeszcze na serwerze \u2014 bez tego
           // odswiezenie listy skasowaloby ich razem z pomiarami.
           var tmp=(cs||[]).filter(function(cl){return typeof cl.id==="string"&&cl.id.indexOf("tmp_")===0;});
-          return tmp.concat(merged);
+          // Klient zapisany w ciagu ostatnich ~20s moze jeszcze nie byc widoczny w tym
+          // GET (wyscig timingiem miedzy zapisem a tym odswiezeniem w tle) \u2014 bez tego
+          // np. klient dopiero co utworzony przez Asystenta AI znikal z listy tuz przed
+          // przejsciem do jego karty (ekran "rooms" renderuje sie tylko gdy curClient!=null).
+          var justAdded=(cs||[]).filter(function(cl){
+            if(typeof cl.id==="string"&&cl.id.indexOf("tmp_")===0)return false;
+            if(fresh.some(function(f){return f.id===cl.id;}))return false;
+            var ts=cl.created_at?new Date(cl.created_at).getTime():0;
+            return ts&&(Date.now()-ts)<20000;
+          });
+          return tmp.concat(justAdded).concat(merged);
         });
         setDeals(res[1]||[]);
       }).catch(function(){});
