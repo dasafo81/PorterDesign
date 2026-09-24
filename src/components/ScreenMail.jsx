@@ -2364,6 +2364,34 @@ export function ScreenMail(p){
     setCcEmail(""); setBccEmail(""); setComposeDirty(false);
   }
 
+  // Dociąga oryginalne załączniki przekazywanej wiadomości (Przekaż) i dokłada je do kompozytora.
+  // GET .../attachments zwraca metadane + contentBytes od razu dla plików <3MB; większe pliki
+  // wymagają osobnego GET na pojedynczy załącznik (tak jak downloadAttachment w MailPreview).
+  function forwardOriginalAttachments(mid){
+    msalGetToken().then(function(tok){
+      var useTok=tok||accessToken;
+      if(tok)setAccessToken(tok);
+      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
+        headers:{"Authorization":"Bearer "+useTok}
+      }).then(function(r){return r.ok?r.json():null;}).then(function(data){
+        var list=(data&&data.value||[]).filter(function(a){return !a.isInline;});
+        return Promise.all(list.map(function(a){
+          if(a.contentBytes)return a;
+          return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+a.id,{
+            headers:{"Authorization":"Bearer "+useTok}
+          }).then(function(r2){return r2.ok?r2.json():null;})
+            .then(function(full){return full&&full.contentBytes?Object.assign({},a,{contentBytes:full.contentBytes}):null;})
+            .catch(function(){return null;});
+        }));
+      });
+    }).then(function(list){
+      var fwdAtts=(list||[]).filter(function(a){return a&&a.contentBytes;}).map(function(a){
+        return {id:"fwd_"+a.id,name:a.name,size:a.size,type:"fwd",contentBytes:a.contentBytes,contentType:a.contentType||"application/octet-stream"};
+      });
+      if(fwdAtts.length)setAttachments(function(prev){return prev.concat(fwdAtts);});
+    }).catch(function(){});
+  }
+
   function openDraft(d){
     setToEmail(d.to||""); setSubject(d.subject||""); setBody(d.body||"");
     setQuotedHtml(d.quote||"");
@@ -2577,6 +2605,12 @@ export function ScreenMail(p){
       return {"@odata.type":"#microsoft.graph.fileAttachment",name:a.name,contentType:"application/pdf",contentBytes:a.contentBytes};
     });
     if(pdfDataAtts.length)promises.push(Promise.resolve(pdfDataAtts));
+    // Oryginalne załączniki z przekazywanej wiadomości (type="fwd") — contentBytes już
+    // dociągnięte przy kliknięciu "Przekaż" (forwardOriginalAttachments), tu tylko mapujemy na Graph
+    var fwdAtts=attachments.filter(function(a){return a.type==="fwd"&&a.contentBytes;}).map(function(a){
+      return {"@odata.type":"#microsoft.graph.fileAttachment",name:a.name,contentType:a.contentType||"application/octet-stream",contentBytes:a.contentBytes};
+    });
+    if(fwdAtts.length)promises.push(Promise.resolve(fwdAtts));
     // Template files (type="template") — pobieramy z Supabase Storage URL
     var templateFiles=attachments.filter(function(a){return a.type==="template"&&a.url;});
     if(templateFiles.length>0){
@@ -3137,6 +3171,10 @@ export function ScreenMail(p){
             setAttachments([]);
             setComposeDirty(true);
             mailNavigate("compose");
+            // Oryginał ma załączniki — zapytaj, czy dołączyć je do przekazywanej wiadomości
+            if(head.hasAttachments&&window.confirm("Ta wiadomość ma załączniki. Czy dołączyć je do przekazywanej wiadomości?")){
+              forwardOriginalAttachments(head.id);
+            }
           },
           onMarkRead:function(mail,val){markAsRead(mail,val);},
           onToggleImportant:function(mail){toggleImportant(mail);},
