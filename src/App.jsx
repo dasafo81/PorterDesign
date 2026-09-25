@@ -68,6 +68,8 @@ export function App(p){
   }),appMode=sMode[0],setAppMode=sMode[1];
   // Super-admin flaga z JWT — pokazuje zakladke Admin tylko gdy is_super_admin: true
   var sIsSuper=useState(false),isSuperAdmin=sIsSuper[0],setIsSuperAdmin=sIsSuper[1];
+  // Faktura przygotowana w karcie deala (np. "Wystaw drugie 50%") — ScreenInvoices otwiera ją w edytorze
+  var sPendInv=useState(null),pendingInvoice=sPendInv[0],setPendingInvoice=sPendInv[1];
   React.useEffect(function(){
     try{
       var raw=localStorage.getItem("sb_session");
@@ -2792,6 +2794,7 @@ export function App(p){
       ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,
           gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady,
           onDealsSync:setDeals,
+          onIssueInvoice:function(prefill){setPendingInvoice(prefill);setAppMode("faktury");},
           onClientStatusChange:function(clientId,status){
             setClients(function(cs){return cs.map(function(c){return String(c.id)===String(clientId)?Object.assign({},c,{status:status}):c;});});
           }
@@ -2805,7 +2808,7 @@ export function App(p){
       : appMode==="zadania"
         ? ce(ScreenTasks,{})
       : appMode==="faktury"
-        ? ce(ScreenInvoices,{})
+        ? ce(ScreenInvoices,{prefill:pendingInvoice,onPrefillUsed:function(){setPendingInvoice(null);}})
       : appMode==="magazyn"
         ? ce(ScreenWarehouse,{})
       : appMode==="kontrahenci"
