@@ -3086,6 +3086,14 @@ function KanbanCol(kp){
     }
     return true;
   });
+  if(stage.id==="zakonczone"){
+    stageDeals=stageDeals.slice().sort(function(a,b){
+      if(!a.closed_at&&!b.closed_at)return 0;
+      if(!a.closed_at)return 1;
+      if(!b.closed_at)return -1;
+      return new Date(b.closed_at).getTime()-new Date(a.closed_at).getTime();
+    });
+  }
   return ce("div",{style:full?{width:"100%"}:inGrid?{minWidth:0}:wide?{flex:"1 1 0",minWidth:280}:{flex:"1 1 0",minWidth:190,maxWidth:280}},
     ce("div",{style:{
       background:"var(--bg2)",border:"1px solid var(--bd2)",
