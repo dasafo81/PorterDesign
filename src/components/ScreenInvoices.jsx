@@ -298,7 +298,7 @@ function InvoiceEditor(p){
   // a bez tego bywala pomijana recznie. Nie dotyczy faktur zakupowych (tam w
   // Uwagach nie opisujemy statusu VAT wlasnego podmiotu) ani edycji istniejacej
   // faktury — tam notatka zostaje taka, jaka zapisano przy wystawieniu.
-  var [notes,setNotes]=useState(isNew&&entVatExempt&&direction!=="zakup"
+  var [notes,setNotes]=useState(isNew&&entVatExempt&&direction!=="zakup"&&!initInv.notes
     ? "Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT"
     : (initInv.notes||""));
   var initSnap=initInv.seller_snapshot||{};
@@ -3027,6 +3027,8 @@ export function ScreenInvoices(p){
         setDealsAll(results[3]||[]);
         setEntities(results[4]||[]);
         setLoading(false);
+        // Faktura przygotowana w karcie deala ("Wystaw drugie 50%") — edytor jak przy Duplikuj
+        if(p.prefill){ setEditInv(p.prefill); invoiceNavigate("editor"); if(p.onPrefillUsed)p.onPrefillUsed(); }
       })
       .catch(function(e){
         setErr(e.message||"Błąd ładowania");
