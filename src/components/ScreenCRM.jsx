@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
+import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
-import { buildInvoicePDFHtml } from './ScreenInvoices.jsx';
+import { buildInvoicePDFHtml, InvoiceEditor, calcLineFromGross, splitClientAddr } from './ScreenInvoices.jsx';
 const ce = React.createElement;
 
 
@@ -292,6 +292,10 @@ export function ModalDeal(p){
   // Wysyłka faktury z sekcji Rozliczenie: id faktury w przygotowaniu + jej pozycja na liście (0 = zaliczka)
   var sbilM=useState(null),billMailId=sbilM[0],setBillMailId=sbilM[1];
   var sbilX=useState(null),billMailIdx=sbilX[0],setBillMailIdx=sbilX[1];
+  var sbilT=useState(null),billMailInvId=sbilT[0],setBillMailInvId=sbilT[1]; // faktura w otwartym mailu
+  var sbilS=useState(null),billSettings=sbilS[0],setBillSettings=sbilS[1];
+  var sbilEd=useState(null),billEditor=sbilEd[0],setBillEditor=sbilEd[1]; // {invoice, entity} — popup edytora faktury
+  var sbilK=useState(null),billKsefId=sbilK[0],setBillKsefId=sbilK[1];
   var smb=useState(false),mailBusy=smb[0],setMailBusy=smb[1];
   var sme=useState(null),mailErr=sme[0],setMailErr=sme[1];
   var smm=useState(null),mailMsg=smm[0],setMailMsg=smm[1];
@@ -370,10 +374,12 @@ export function ModalDeal(p){
   // ── ROZLICZENIE Z KLIENTEM ────────────────────────────────────────────────
   // Faktury sprzedażowe zlecenia (deal_id). Fallback na klienta — ale tylko faktury BEZ deal_id,
   // żeby nie wciągać faktur z innego zlecenia tego samego klienta. Proformy i korekty pomijamy.
-  React.useEffect(function(){
-    var alive=true;
-    Promise.all([sbApi.getInvoices(),sbApi.getEntities().catch(function(){return [];})]).then(function(res){
-      if(!alive)return;
+  function loadBill(){
+    return Promise.all([
+      sbApi.getInvoices(),
+      sbApi.getEntities().catch(function(){return [];}),
+      sbApi.getInvoiceSettings().catch(function(){return null;})
+    ]).then(function(res){
       var sales=(res[0]||[]).filter(function(x){
         var dir=x.direction||(x.doc_type==="zakup"?"zakup":"sprzedaz");
         return dir!=="zakup"&&x.doc_type!=="korekta"&&x.doc_type!=="proforma"&&x.status!=="cancelled";
@@ -385,9 +391,10 @@ export function ModalDeal(p){
       list.sort(function(a,b){return String(a.issue_date||a.created_at||"").localeCompare(String(b.issue_date||b.created_at||""));});
       setBillInvoices(list);
       setBillEntities(res[1]||[]);
-    }).catch(function(){if(alive)setBillInvoices([]);});
-    return function(){alive=false;};
-  },[d.id]);
+      setBillSettings(res[2]||{});
+    }).catch(function(){setBillInvoices(function(prev){return prev||[];});});
+  }
+  React.useEffect(function(){loadBill();},[d.id]);
 
   function billFmt(v){return (+v||0).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";}
   function billPaidAmount(x){
@@ -402,14 +409,14 @@ export function ModalDeal(p){
   var billDone=clientTotal>0&&billPaid>=clientTotal-10;
   // Druga faktura: gdy jest już pierwsza, a do zafakturowania zostało > 10 zł
   // (bez wyceny: gdy jest dokładnie jedna faktura).
-  var canIssueSecond=!!p.onIssueInvoice&&billList.length>0&&
+  var canIssueSecond=billList.length>0&&
     (billRemaining===null?billList.length===1:billRemaining>10);
 
   // "Wystaw drugie 50%": kopia pierwszej faktury (ten sam podmiot, nabywca, pozycje i stawki VAT)
   // jako zwykła Faktura VAT. Otwiera edytor w module Faktury — numer, daty i KSeF jak przy Duplikuj.
   function issueSecondHalf(){
     var first=billList[0];
-    if(!first||!p.onIssueInvoice)return;
+    if(!first)return;
     setBillBusy(true);setBillErr(null);
     sbApi.getInvoice(first.id).then(function(full){
       if(!full)throw new Error("Nie udało się pobrać pierwszej faktury.");
@@ -419,7 +426,8 @@ export function ModalDeal(p){
       });
       var ref="Pozostałe 50% wartości zamówienia. Zaliczka 50% rozliczona fakturą nr "+(full.number||"—")+".";
       var notes=(full.notes?String(full.notes).replace(/\s*$/,"")+"\n":"")+ref;
-      p.onIssueInvoice({
+      var ent=billEntities.find(function(e){return e.id===full.entity_id;})||{};
+      setBillEditor({entity:ent,invoice:{
         doc_type:"vat", direction:"sprzedaz", payment_method:full.payment_method,
         client_id:full.client_id||(cl&&cl.id)||null, deal_id:d.id,
         offer_id:full.offer_id||null, offer_number:full.offer_number||"",
@@ -428,7 +436,7 @@ export function ModalDeal(p){
         buyer_city:full.buyer_city, buyer_email:full.buyer_email,
         seller_snapshot:full.seller_snapshot, entity_id:full.entity_id,
         notes:notes, invoice_items:items
-      });
+      }});
     }).catch(function(e){
       setBillErr((e&&e.message)||"Nie udało się przygotować faktury.");
     }).finally(function(){setBillBusy(false);});
@@ -466,10 +474,67 @@ export function ModalDeal(p){
       setMailTo((cl&&cl.email)||full.buyer_email||"");
       setMailAttachments([{id:"inv_"+Date.now(),name:fname,size:invFile.size,type:"upload",file:invFile}]);
       setBillMailIdx(idx);
+      setBillMailInvId(inv.id);
       setMailKind("faktura");
     }).catch(function(e){
       setBillErr((e&&e.message)||"Nie udało się przygotować wiadomości.");
     }).finally(function(){setBillMailId(null);});
+  }
+
+  // Pierwsza faktura (50% wyceny) wystawiana z karty deala — wybrany podmiot decyduje o VAT
+  // (Paulina: stawka domyślna, Damian: zw. z art. 113). Nabywca z klienta, oferta = najnowsza oferta klienta.
+  function issueFirstHalf(ent){
+    if(!cl||!(clientTotal>0))return;
+    setBillBusy(true);setBillErr(null);
+    sbApi.getClientOffers(cl.id).catch(function(){return [];}).then(function(offers){
+      var o=(offers||[])[0]||null;
+      var s=billSettings||{};
+      var exempt=!!(ent&&ent.vat_status==="zwolniony");
+      var vr=exempt?-1:(+(s.default_vat)||23);
+      var gross=+(clientTotal/2).toFixed(2);
+      var item=Object.assign({position:1,name:"Aranżacje okienne",quantity:1,unit:s.default_unit||"szt",vat_rate:vr,pkwiu:""},
+        calcLineFromGross(gross,1,vr),{unit_gross:gross});
+      var sa=(cl.postal||cl.city)?{addr:cl.addr||"",postal:cl.postal||"",city:cl.city||""}:splitClientAddr(cl.addr);
+      var notes=[
+        exempt?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"",
+        "Zaliczka 50% wartości zamówienia.",
+        o&&o.number?"Dotyczy oferty nr "+o.number+".":""
+      ].filter(Boolean).join("\n");
+      setBillEditor({entity:ent||{},invoice:{
+        doc_type:"vat", direction:"sprzedaz", payment_method:s.default_payment_method||"przelew",
+        client_id:cl.id, deal_id:d.id, contact_id:cl.contact_id||null,
+        offer_id:o?o.id:null, offer_number:o?(o.number||""):"",
+        buyer_name:cl.name||"", buyer_nip:cl.nip||"",
+        buyer_address:sa.addr||"", buyer_postal:sa.postal||"", buyer_city:sa.city||"",
+        buyer_email:cl.email||"",
+        entity_id:ent&&ent.id?ent.id:undefined,
+        notes:notes, invoice_items:[item]
+      }});
+    }).finally(function(){setBillBusy(false);});
+  }
+
+  // Po wystawieniu w popupie: zamknij edytor i odśwież listę faktur w karcie
+  function onBillInvoiceSaved(){
+    setBillEditor(null);
+    loadBill();
+  }
+
+  // Znacznik wysyłki na samej fakturze (invoices.sent_at, migracja 0054) — ten sam, który ustawia moduł Faktury
+  function markBillInvoiceSent(id){
+    if(!id)return;
+    var at=new Date().toISOString();
+    setBillInvoices(function(prev){return (prev||[]).map(function(x){return x.id===id?Object.assign({},x,{sent_at:at}):x;});});
+    sbApi.updateInvoice(id,{sent_at:at}).catch(function(e){console.error("[deal] sent_at (migracja 0054?)",e);});
+  }
+
+  // Wysyłka do KSeF z karty deala — ta sama ścieżka co przycisk w szczególe faktury
+  function sendBillToKsef(x){
+    setBillKsefId(x.id);setBillErr(null);
+    ksefApi.openSession(x.entity_id)
+      .then(function(sess){return ksefApi.sendInvoice(x.id,sess.accessToken,sess.baseUrl);})
+      .then(function(){return loadBill();})
+      .catch(function(e){setBillErr("KSeF: "+((e&&e.message)||"błąd wysyłki"));})
+      .finally(function(){setBillKsefId(null);});
   }
 
   // Znacznik wysłania faktury końcowej (deals.invoice_sent) — zapis od razu, nie dopiero przy "Zapisz"
@@ -878,7 +943,7 @@ export function ModalDeal(p){
       if(mailKind==="opinia")setReviewSent(true);
       else if(mailKind==="instrukcja")setWashingSent(true);
       else if(mailKind==="zaliczka")markAdvanceSent();
-      else if(mailKind==="faktura"){if(billMailIdx===0)markAdvanceSent();else markInvoiceSent();}
+      else if(mailKind==="faktura"){if(billMailIdx===0)markAdvanceSent();else markInvoiceSent();markBillInvoiceSent(billMailInvId);}
       setMailMsg("\u2705 Wiadomo\u015b\u0107 wys\u0142ana na "+toList.join(", "));
       setMailKind(null);
     }).catch(function(e){
@@ -1214,9 +1279,21 @@ export function ModalDeal(p){
           )
         ),
 
-        (billInvoices&&(billList.length>0||["pomiar","wycena"].indexOf(d.stage)<0))?ce(SectionCard,{icon:"🧾",title:"Rozliczenie z klientem",done:billDone},
+        (billInvoices&&(billList.length>0||d.stage!=="pomiar"))?ce(SectionCard,{icon:"🧾",title:"Rozliczenie z klientem",done:billDone},
           billList.length===0
-            ?ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},"Brak faktur sprzedażowych powiązanych z tym zleceniem.")
+            ?ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+              ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
+                "Brak faktur sprzedażowych powiązanych z tym zleceniem."+(clientTotal>0
+                  ?" Zaliczka 50%: "+billFmt(clientTotal/2)+"."
+                  :" Brak kwoty wyceny — uzupełnij wycenę, aby wystawić zaliczkę.")),
+              (clientTotal>0&&cl)?(billEntities.length?billEntities:[{}]).map(function(ent){
+                return ce("button",{key:ent.id||"def",onClick:function(){issueFirstHalf(ent);},disabled:billBusy||!billSettings,
+                  style:{padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
+                    fontSize:12,fontWeight:700,cursor:(billBusy||!billSettings)?"not-allowed":"pointer",opacity:(billBusy||!billSettings)?0.6:1}},
+                  billBusy?"⏳ Przygotowuję...":"🧾 Wystaw fakturę 50%"+(ent.name?" — "+ent.name:"")+(ent.vat_status==="zwolniony"?" (zw. VAT)":""));
+              }):null,
+              billErr?ce("div",{style:{fontSize:11,color:"var(--red, #ef4444)"}},billErr):null
+            )
             :ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
               billList.map(function(x){
                 var ent=billEntities.find(function(e){return e.id===x.entity_id;});
@@ -1239,16 +1316,26 @@ export function ModalDeal(p){
                   ),
                   (function(){
                     var isFirst=billList[0]&&billList[0].id===x.id;
-                    var sentAt=isFirst?d.advance_sent_at:null;
-                    var sent=isFirst?!!sentAt:(billList.length>1&&invoiceSent);
+                    // Źródło prawdy: invoices.sent_at (moduł Faktury i karta deala). Fallback: stare znaczniki deala.
+                    var sentAt=x.sent_at||(isFirst?d.advance_sent_at:null);
+                    var sent=!!x.sent_at||(isFirst?!!d.advance_sent_at:(billList.length>1&&invoiceSent));
+                    var needKsef=x.doc_type!=="eko"&&["confirmed","sent","pending"].indexOf(x.ksef_status)<0;
+                    var btn=function(extra){return Object.assign({padding:"5px 10px",borderRadius:8,border:"1px solid var(--bd2)",background:"transparent",
+                      color:"var(--t1)",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},extra||{});};
                     return ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:6}},
-                      ce("span",{style:{fontSize:11,color:sent?"var(--gr)":"var(--t3)"}},
-                        sent?("✓ Wysłano klientowi"+(sentAt?" "+new Date(sentAt).toLocaleDateString("pl-PL"):"")):"Nie wysłano"),
-                      ce("button",{onClick:function(){openInvoiceMail(x);},disabled:!!billMailId||!cl,
-                        style:{padding:"5px 10px",borderRadius:8,border:"1px solid var(--bd2)",background:"transparent",
-                          color:"var(--t1)",fontSize:11,fontWeight:700,cursor:billMailId?"not-allowed":"pointer",
-                          opacity:billMailId&&billMailId!==x.id?0.5:1,whiteSpace:"nowrap"}},
-                        billMailId===x.id?"⏳ Przygotowuję...":(sent?"📤 Wyślij ponownie":"📤 Wyślij klientowi"))
+                      sent
+                        ?ce("span",{style:{fontSize:11,color:"var(--gr)"}},"✓ Wysłano klientowi"+(sentAt?" "+new Date(sentAt).toLocaleDateString("pl-PL"):""))
+                        :ce("span",{title:"Kliknij, jeśli faktura została wysłana poza aplikacją",
+                            onClick:function(){if(confirm("Oznaczyć fakturę "+(x.number||"")+" jako wysłaną do klienta?"))markBillInvoiceSent(x.id);},
+                            style:{fontSize:11,color:"var(--t3)",cursor:"pointer",textDecoration:"underline dotted"}},"Nie wysłano"),
+                      ce("div",{style:{display:"flex",gap:6,flexShrink:0}},
+                        needKsef?ce("button",{onClick:function(){sendBillToKsef(x);},disabled:!!billKsefId,
+                          style:btn({opacity:billKsefId&&billKsefId!==x.id?0.5:1,cursor:billKsefId?"not-allowed":"pointer"})},
+                          billKsefId===x.id?"⏳ KSeF...":((x.ksef_status==="error"||x.ksef_status==="offline")?"↻ KSeF":"→ KSeF")):null,
+                        ce("button",{onClick:function(){openInvoiceMail(x);},disabled:!!billMailId||!cl,
+                          style:btn({opacity:billMailId&&billMailId!==x.id?0.5:1,cursor:billMailId?"not-allowed":"pointer"})},
+                          billMailId===x.id?"⏳ Przygotowuję...":(sent?"📤 Wyślij ponownie":"📤 Wyślij klientowi"))
+                      )
                     );
                   })()
                 );
@@ -1606,6 +1693,23 @@ export function ModalDeal(p){
     ):null
 
     ,
+
+    // Popup: edytor faktury (pierwsze / drugie 50%) — ten sam InvoiceEditor co w module Faktury.
+    // Kliknięcie tła celowo nie zamyka (żeby nie stracić wpisanych danych) — tylko Anuluj / Wróć.
+    billEditor?ce("div",{
+      style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:3000,display:"flex",
+        alignItems:"flex-start",justifyContent:"center",padding:"16px",overflowY:"auto"}
+    },
+      ce("div",{style:{background:"var(--bg)",borderRadius:18,width:"100%",maxWidth:960,padding:"20px 22px",
+        boxShadow:"0 24px 64px rgba(0,0,0,0.3)",boxSizing:"border-box"}},
+        ce(InvoiceEditor,{
+          invoice:billEditor.invoice, settings:billSettings||{}, entity:billEditor.entity||{},
+          clients:cl?[cl]:[], deals:[d],
+          onSave:onBillInvoiceSaved,
+          onClose:function(){setBillEditor(null);}
+        })
+      )
+    ):null,
 
     gcalDraft?ce("div",{
       style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:3100,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"},
