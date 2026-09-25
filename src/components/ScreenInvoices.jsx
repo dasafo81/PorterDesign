@@ -90,7 +90,7 @@ function calcLine(unit_net, qty, vat_rate){
 // Klient z CRM ma czesto caly adres w jednym polu clients.addr
 // ("ul. Majdanska 13/77 Warszawa" albo "ul. X 5, 00-950 Warszawa"), a postal/city puste.
 // Rozbijamy go na ulice / kod / miasto, zeby miasto nie zostawalo w polu Adres.
-function splitClientAddr(addr){
+export function splitClientAddr(addr){
   var a=String(addr||"").trim();
   if(!a)return {addr:"",postal:"",city:""};
   var pm=a.match(/(\d{2}-\d{3})\s*,?\s*(.*)$/);
@@ -101,7 +101,7 @@ function splitClientAddr(addr){
   return {addr:a,postal:"",city:""};
 }
 
-function calcLineFromGross(unit_gross, qty, vat_rate){
+export function calcLineFromGross(unit_gross, qty, vat_rate){
   var q=+(qty)||1, g=+(unit_gross)||0;
   var line_gross=+(g*q).toFixed(2);
   var divisor = vat_rate===-1 ? 1 : (1 + (+(vat_rate)/100));
@@ -224,7 +224,7 @@ function ItemRow(p){
 }
 
 // ── EDYTOR FAKTURY ──────────────────────────────────────────────────────────
-function InvoiceEditor(p){
+export function InvoiceEditor(p){
   // p: invoice (lub null = nowa), settings, clients, onSave, onClose
   var isNew=!p.invoice||!p.invoice.id;
   var isDraft=!isNew&&p.invoice.status==="draft";
@@ -1187,6 +1187,8 @@ function InvoiceEditor(p){
     ce("div",{style:card},
       ce("span",{style:label},"Uwagi / dodatkowe informacje"),
       ce("textarea",{style:Object.assign({},inp,{minHeight:72,resize:"vertical"}),
+        // Pole rosnie z liczba linii — dopiski na koncu Uwag nie chowaja sie pod krawedzia
+        rows:Math.max(3,String(notes||"").split("\n").length+1),
         value:notes, onChange:function(e){setNotes(e.target.value);},
         placeholder:"Np. słowna kwota do zapłaty, numer umowy..."})
     ),
@@ -2812,6 +2814,10 @@ function InvoiceDetailView(p){
         });
       }
       setMailModalOpen(false);
+      // Znacznik wysylki do klienta (invoices.sent_at, migracja 0054) — widoczny tez w karcie deala
+      var sentAt=new Date().toISOString();
+      setCurrentInv(function(ci){return Object.assign({},ci,{sent_at:sentAt});});
+      sbApi.updateInvoice(currentInv.id,{sent_at:sentAt}).catch(function(e){console.error("[invoice] sent_at (migracja 0054?)",e);});
       setMailMsg("\u2705 Faktura wys\u0142ana na "+to);
     }).catch(function(e){
       if(e&&e.code==="MS_NO_ACCOUNT") setMailErr(e.message);
