@@ -296,6 +296,12 @@ export function ModalDeal(p){
   var sbilS=useState(null),billSettings=sbilS[0],setBillSettings=sbilS[1];
   var sbilEd=useState(null),billEditor=sbilEd[0],setBillEditor=sbilEd[1]; // {invoice, entity} — popup edytora faktury
   var sbilK=useState(null),billKsefId=sbilK[0],setBillKsefId=sbilK[1];
+  // Wyszukiwarka niepowiązanych faktur (bez deal_id) — do ręcznego podpięcia pod to zlecenie,
+  // np. faktur wystawionych zanim istniała ta sekcja albo bez wyboru klienta z CRM.
+  var sblAll=useState([]),billUnlinked=sblAll[0],setBillUnlinked=sblAll[1];
+  var sblO=useState(false),billLinkOpen=sblO[0],setBillLinkOpen=sblO[1];
+  var sblQ=useState(""),billLinkQuery=sblQ[0],setBillLinkQuery=sblQ[1];
+  var sblB=useState(null),billLinkBusyId=sblB[0],setBillLinkBusyId=sblB[1];
   var smb=useState(false),mailBusy=smb[0],setMailBusy=smb[1];
   var sme=useState(null),mailErr=sme[0],setMailErr=sme[1];
   var smm=useState(null),mailMsg=smm[0],setMailMsg=smm[1];
@@ -392,9 +398,26 @@ export function ModalDeal(p){
       setBillInvoices(list);
       setBillEntities(res[1]||[]);
       setBillSettings(res[2]||{});
+      // Faktury bez deal_id, jeszcze nieprzypisane do żadnego zlecenia — kandydaci do ręcznego
+      // powiązania (np. wystawione przed wprowadzeniem tej sekcji, bez wyboru klienta z CRM).
+      setBillUnlinked(sales.filter(function(x){return !x.deal_id&&list.indexOf(x)<0;}));
     }).catch(function(){setBillInvoices(function(prev){return prev||[];});});
   }
   React.useEffect(function(){loadBill();},[d.id]);
+
+  // Powiązanie istniejącej, dotąd niepodpiętej faktury z tym zleceniem (deal_id), a gdy
+  // faktura nie miała wybranego klienta w CRM — uzupełnienie też client_id.
+  function linkExistingInvoice(inv){
+    setBillLinkBusyId(inv.id);setBillErr(null);
+    var patch={deal_id:d.id};
+    if(!inv.client_id&&cl)patch.client_id=cl.id;
+    sbApi.updateInvoice(inv.id,patch).then(function(){
+      setBillLinkOpen(false);setBillLinkQuery("");
+      loadBill();
+    }).catch(function(e){
+      setBillErr("Nie udało się powiązać faktury: "+((e&&e.message)||e));
+    }).finally(function(){setBillLinkBusyId(null);});
+  }
 
   function billFmt(v){return (+v||0).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";}
   function billPaidAmount(x){
@@ -1377,7 +1400,41 @@ export function ModalDeal(p){
                   fontSize:12,fontWeight:700,cursor:billBusy?"not-allowed":"pointer",opacity:billBusy?0.6:1}},
                 billBusy?"⏳ Przygotowuję...":"🧾 Wystaw drugie 50%"):null,
               billErr?ce("div",{style:{fontSize:11,color:"var(--red, #ef4444)"}},billErr):null
-            )
+            ),
+          billUnlinked.length>0?ce("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid var(--bd3)"}},
+            billLinkOpen
+              ? ce("div",null,
+                  ce("input",{value:billLinkQuery,autoFocus:true,
+                    placeholder:"Szukaj po numerze faktury lub nazwisku klienta...",
+                    onChange:function(ev){setBillLinkQuery(ev.target.value);},
+                    style:Object.assign({},INP,{marginBottom:6})}),
+                  (function(){
+                    var q=billLinkQuery.trim().toLowerCase();
+                    if(!q)return null;
+                    var results=billUnlinked.filter(function(x){
+                      return (x.number||"").toLowerCase().indexOf(q)>=0||(x.buyer_name||"").toLowerCase().indexOf(q)>=0;
+                    }).slice(0,8);
+                    if(results.length===0)return ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Brak wyników.");
+                    return ce("div",{style:{display:"flex",flexDirection:"column",gap:4}},
+                      results.map(function(x){
+                        return ce("div",{key:x.id,style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,
+                          padding:"6px 8px",borderRadius:7,background:"var(--bg2, #f4f4f2)",fontSize:11}},
+                          ce("span",null,(x.number||"—")+" · "+(x.buyer_name||"—")+" · "+billFmt(x.total_gross)),
+                          ce("button",{onClick:function(){linkExistingInvoice(x);},disabled:!!billLinkBusyId,
+                            style:{padding:"4px 8px",borderRadius:7,border:"1px solid var(--bd2)",background:"transparent",
+                              color:"var(--t1)",fontSize:11,fontWeight:700,cursor:billLinkBusyId?"not-allowed":"pointer"}},
+                            billLinkBusyId===x.id?"⏳":"🔗 Powiąż")
+                        );
+                      })
+                    );
+                  })(),
+                  ce("button",{onClick:function(){setBillLinkOpen(false);setBillLinkQuery("");},
+                    style:{marginTop:6,fontSize:11,color:"var(--t3)",background:"none",border:"none",cursor:"pointer",padding:0}},"Anuluj")
+                )
+              : ce("button",{onClick:function(){setBillLinkOpen(true);},
+                  style:{fontSize:11,color:"var(--t2)",background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline dotted"}},
+                  "🔎 Powiąż istniejącą fakturę ("+billUnlinked.length+" niepowiązanych)")
+          ):null
         ):null,
         (ADVANCE_MAIL_ENABLED&&d.stage==="zaliczka")?ce(SectionCard,{icon:"💳",title:"Zaliczka 50% i OWU",done:!!d.advance_sent_at},
           advInvoices.length===0
