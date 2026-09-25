@@ -446,6 +446,18 @@ export function ModalDeal(p){
 
   // Mail z fakturą do klienta — ten sam modal i wysyłka co Opinia / Instrukcja / Zaliczka.
   // Załącznik: HTML faktury z tego samego generatora co moduł Faktury (jak w openAdvanceMail).
+  // Podgląd dowolnego załącznika w oknie wysyłki maila — plik wgrany ręcznie (html faktury,
+  // zdjęcie) otwiera się z lokalnego Blobu, plik szablonu (OWU) z jego URL w Storage.
+  function previewMailAttachment(a){
+    if(a.type==="upload"&&a.file){
+      var url=URL.createObjectURL(a.file);
+      window.open(url,"_blank");
+      setTimeout(function(){URL.revokeObjectURL(url);},60000);
+    } else if(a.url){
+      window.open(a.url,"_blank");
+    }
+  }
+
   function openInvoiceMail(inv){
     var idx=billList.findIndex(function(x){return x.id===inv.id;});
     setBillMailId(inv.id);setBillErr(null);
@@ -533,6 +545,20 @@ export function ModalDeal(p){
       .then(function(){return loadBill();})
       .catch(function(e){setBillErr("KSeF: "+((e&&e.message)||"błąd wysyłki"));})
       .finally(function(){setBillKsefId(null);});
+  }
+
+  // Podgląd faktury w nowej karcie (ten sam generator HTML co PDF/mail) — dostępny
+  // niezależnie od tego, czy faktura została już wysłana klientowi.
+  function previewBillInvoice(inv){
+    setBillErr(null);
+    sbApi.getInvoice(inv.id).then(function(full){
+      if(!full)throw new Error("Nie udało się pobrać faktury.");
+      var html=buildInvoicePDFHtml(full,billSettings||{},null);
+      var w=window.open("","_blank");
+      if(!w){alert("Zablokowano popup. Zezwól na wyskakujące okna.");return;}
+      w.document.write(html);
+      w.document.close();
+    }).catch(function(e){setBillErr((e&&e.message)||"Nie udało się otworzyć podglądu.");});
   }
 
   // Znacznik wysłania faktury końcowej (deals.invoice_sent) — zapis od razu, nie dopiero przy "Zapisz"
@@ -1327,6 +1353,8 @@ export function ModalDeal(p){
                             onClick:function(){if(confirm("Oznaczyć fakturę "+(x.number||"")+" jako wysłaną do klienta?"))markBillInvoiceSent(x.id);},
                             style:{fontSize:11,color:"var(--t3)",cursor:"pointer",textDecoration:"underline dotted"}},"Nie wysłano"),
                       ce("div",{style:{display:"flex",gap:6,flexShrink:0}},
+                        ce("button",{onClick:function(){previewBillInvoice(x);},
+                          style:btn()},"👁 Podgląd"),
                         needKsef?ce("button",{onClick:function(){sendBillToKsef(x);},disabled:!!billKsefId,
                           style:btn({opacity:billKsefId&&billKsefId!==x.id?0.5:1,cursor:billKsefId?"not-allowed":"pointer"})},
                           billKsefId===x.id?"⏳ KSeF...":((x.ksef_status==="error"||x.ksef_status==="offline")?"↻ KSeF":"→ KSeF")):null,
@@ -1663,6 +1691,8 @@ export function ModalDeal(p){
                   ce("span",{style:{fontSize:14}},a.type==="upload"?"📎":"📄"),
                   ce("span",{style:{flex:1,fontSize:12,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},a.name),
                   a.size?ce("span",{style:{fontSize:11,color:"var(--t3)",flexShrink:0}},Math.round(a.size/1024)+" KB"):null,
+                  ce("button",{onClick:function(){previewMailAttachment(a);},title:"Podgląd",
+                    style:{border:"none",background:"none",color:"var(--t2)",cursor:"pointer",fontSize:14,padding:"2px 4px",flexShrink:0}},"👁"),
                   ce("button",{onClick:function(){removeMailAttachment(a.id);},
                     style:{border:"none",background:"none",color:"var(--t3)",cursor:"pointer",fontSize:15,padding:"2px 4px",flexShrink:0}},"×")
                 );
