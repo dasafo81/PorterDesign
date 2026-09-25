@@ -420,13 +420,15 @@ export function ModalDeal(p){
     setBillBusy(true);setBillErr(null);
     sbApi.getInvoice(first.id).then(function(full){
       if(!full)throw new Error("Nie udało się pobrać pierwszej faktury.");
+      // Nazwa i Uwagi zawsze wg tego samego standardu co pierwsza faktura (issueFirstHalf) —
+      // niezależnie od tego, jak nazwana była pozycja na pierwszej fakturze.
       var items=(full.invoice_items||[]).map(function(it){
-        return {position:it.position,name:it.name,quantity:it.quantity,unit:it.unit,unit_net:it.unit_net,
+        return {position:it.position,name:"Aranżacje okienne",quantity:it.quantity,unit:it.unit,unit_net:it.unit_net,
           vat_rate:it.vat_rate,line_net:it.line_net,line_vat:it.line_vat,line_gross:it.line_gross,pkwiu:it.pkwiu||""};
       });
-      var ref="Pozostałe 50% wartości zamówienia. Zaliczka 50% rozliczona fakturą nr "+(full.number||"—")+".";
-      var notes=(full.notes?String(full.notes).replace(/\s*$/,"")+"\n":"")+ref;
       var ent=billEntities.find(function(e){return e.id===full.entity_id;})||{};
+      var exempt2=!!(ent.vat_status==="zwolniony");
+      var notes=exempt2?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"";
       setBillEditor({entity:ent,invoice:{
         doc_type:"vat", direction:"sprzedaz", payment_method:full.payment_method,
         client_id:full.client_id||(cl&&cl.id)||null, deal_id:d.id,
@@ -495,11 +497,7 @@ export function ModalDeal(p){
       var item=Object.assign({position:1,name:"Aranżacje okienne",quantity:1,unit:s.default_unit||"szt",vat_rate:vr,pkwiu:""},
         calcLineFromGross(gross,1,vr),{unit_gross:gross});
       var sa=(cl.postal||cl.city)?{addr:cl.addr||"",postal:cl.postal||"",city:cl.city||""}:splitClientAddr(cl.addr);
-      var notes=[
-        exempt?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"",
-        "Zaliczka 50% wartości zamówienia.",
-        o&&o.number?"Dotyczy oferty nr "+o.number+".":""
-      ].filter(Boolean).join("\n");
+      var notes=exempt?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"";
       setBillEditor({entity:ent||{},invoice:{
         doc_type:"vat", direction:"sprzedaz", payment_method:s.default_payment_method||"przelew",
         client_id:cl.id, deal_id:d.id, contact_id:cl.contact_id||null,
