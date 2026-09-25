@@ -325,7 +325,14 @@ export function InvoiceEditor(p){
   // ale "100" i "custom" (dowolny %) pozostają dostępne jednym klikiem.
   var [offerPctChoice,setOfferPctChoice]=useState("50");
   var [offerPctCustom,setOfferPctCustom]=useState("");
-  var [clientSearch,setClientSearch]=useState("");
+  // Gdy faktura przychodzi z gotowym client_id (np. z karty deala albo z "Duplikuj") pole
+  // wyszukiwania musi od razu pokazywać nazwę klienta — inaczej wygląda na puste mimo
+  // zielonego "✓ Powiązano z klientem CRM" poniżej.
+  var [clientSearch,setClientSearch]=useState(function(){
+    if(!initInv.client_id)return "";
+    var c0=(p.clients||[]).find(function(x){return String(x.id)===String(initInv.client_id);});
+    return c0?(c0.name||""):"";
+  });
   var [clientDropOpen,setClientDropOpen]=useState(false);
   // Powiązanie z bazą kontrahentów (Faza 2)
   var [contacts,setContacts]=useState([]);
