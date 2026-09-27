@@ -430,10 +430,11 @@ export function ModalDeal(p){
   var billPaid=billList.reduce(function(a,x){return a+billPaidAmount(x);},0);
   var billRemaining=clientTotal>0?Math.max(0,clientTotal-billInvoiced):null;
   var billDone=clientTotal>0&&billPaid>=clientTotal-10;
-  // Druga faktura: gdy jest już pierwsza, a do zafakturowania zostało > 10 zł
-  // (bez wyceny: gdy jest dokładnie jedna faktura).
-  var canIssueSecond=billList.length>0&&
-    (billRemaining===null?billList.length===1:billRemaining>10);
+  // Druga faktura: tylko gdy jest dokładnie jedna faktura (jeszcze nie wystawiono drugiej)
+  // i — przy znanej wycenie — zostało do zafakturowania > 10 zł. Po wystawieniu drugiej
+  // przycisk znika (na ewentualną dopłatę wystawia się fakturę wprost w module Faktury).
+  var canIssueSecond=billList.length===1&&
+    (billRemaining===null||billRemaining>10);
 
   // "Wystaw drugie 50%": kopia pierwszej faktury (ten sam podmiot, nabywca, pozycje i stawki VAT)
   // jako zwykła Faktura VAT. Otwiera edytor w module Faktury — numer, daty i KSeF jak przy Duplikuj.
@@ -558,6 +559,10 @@ export function ModalDeal(p){
     var at=new Date().toISOString();
     setBillInvoices(function(prev){return (prev||[]).map(function(x){return x.id===id?Object.assign({},x,{sent_at:at}):x;});});
     sbApi.updateInvoice(id,{sent_at:at}).catch(function(e){console.error("[deal] sent_at (migracja 0054?)",e);});
+    // Druga (i kolejne) faktura wysłana klientowi — niezależnie czy mailem z tej karty, czy
+    // ręcznym oznaczeniem "Nie wysłano" — odhaczamy też ogólny checkbox "Wysłano fakturę (FV)".
+    var idx=billList.findIndex(function(x){return x.id===id;});
+    if(idx>0)markInvoiceSent();
   }
 
   // Wysyłka do KSeF z karty deala — ta sama ścieżka co przycisk w szczególe faktury
@@ -990,7 +995,7 @@ export function ModalDeal(p){
       if(mailKind==="opinia")setReviewSent(true);
       else if(mailKind==="instrukcja")setWashingSent(true);
       else if(mailKind==="zaliczka")markAdvanceSent();
-      else if(mailKind==="faktura"){if(billMailIdx===0)markAdvanceSent();else markInvoiceSent();markBillInvoiceSent(billMailInvId);}
+      else if(mailKind==="faktura"){if(billMailIdx===0)markAdvanceSent();markBillInvoiceSent(billMailInvId);}
       setMailMsg("\u2705 Wiadomo\u015b\u0107 wys\u0142ana na "+toList.join(", "));
       setMailKind(null);
     }).catch(function(e){
