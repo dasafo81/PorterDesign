@@ -405,6 +405,15 @@ export function ModalDeal(p){
   }
   React.useEffect(function(){loadBill();},[d.id]);
 
+  // Domknięcie "Wysłano fakturę (FV)" dla dealów sprzed tej poprawki: jeśli druga (lub kolejna)
+  // faktura ma już zapisane sent_at, a ogólny checkbox nie był wtedy odhaczony, uzupełniamy go
+  // przy pierwszym załadowaniu listy faktur — bez czekania na kolejną wysyłkę.
+  React.useEffect(function(){
+    if(!billInvoices||invoiceSent)return;
+    var hasLaterSent=billInvoices.some(function(x,i){return i>0&&!!x.sent_at;});
+    if(hasLaterSent)markInvoiceSent();
+  },[billInvoices]);
+
   // Powiązanie istniejącej, dotąd niepodpiętej faktury z tym zleceniem (deal_id), a gdy
   // faktura nie miała wybranego klienta w CRM — uzupełnienie też client_id.
   function linkExistingInvoice(inv){
