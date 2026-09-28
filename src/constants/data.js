@@ -5272,9 +5272,11 @@ export function buildHardwareRows(client){
         var pc=p.c||{},par=p.par||{};
         var typLabel;
         var category;
+        var kolor=null; // tylko szyna KS i karnisz elektryczny \u2014 kolor do wyboru na zam\u00f3wieniu
         if(p.type==="karnisz"){
           typLabel=karniszBrandLabel(pc);
           category="karnisz_elektryczny";
+          kolor=pc.kBrand==="premium"?(pc.plKolor||"bialy"):pc.kBrand==="somfy"?(pc.mdSlim?(pc.mdKolor||"bialy"):"bialy"):"bialy";
         }else if(p.type==="shuttle"){
           typLabel="Karnisz Shuttle L"+((pc.shFes&&pc.shFes!=="brak")?(" FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):" (suwaki)");
           category="karnisz_dekoracyjny";
@@ -5285,11 +5287,13 @@ export function buildHardwareRows(client){
           typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
           category="karnisz_dekoracyjny";
         }else if(pc.ksBrand==="msigma"){
-          typLabel="Szyna mSigma (Mio Decor) "+(pc.ks==="wave"?"Wave":"Flex")+" "+(pc.kk==="czarna"?"czarna":"bia\u0142a")+(pc.ksWysiegnik==="tak"?" \u2014 na wysi\u0119gnikach mFix":"");
+          typLabel="Szyna mSigma (Mio Decor) "+(pc.ks==="wave"?"Wave":"Flex")+(pc.ksWysiegnik==="tak"?" \u2014 na wysi\u0119gnikach mFix":"");
           category="szyna_ks";
+          kolor=pc.kk==="czarna"?"czarny":"bialy";
         }else{
           typLabel="Szyna KS "+(pc.ks||"flex");
           category="szyna_ks";
+          kolor=pc.kk==="czarna"?"czarny":"bialy";
         }
         var len=par.len||0;
         var res=calc(p);
@@ -5307,6 +5311,7 @@ export function buildHardwareRows(client){
           motorSide:isKarnisz?(pc.motorSide||"lewo"):null,
           motorType:isKarnisz?(pc.motorType||"kurtyna"):null,
           category:category,
+          kolor:kolor,
           supplier:p.karniszSupplier||"",
           total:res.total||0,
           lines:(res.lines||[]).join("; ")
@@ -5339,9 +5344,10 @@ export function buildHardwarePDFHtmlFromRows(client,rows){
     var supRows=bySupplier[sup.key];
     var tableRows=supRows.map(function(r){
       var motorDesc=r.motorSide?(String(r.motorSide).charAt(0).toUpperCase()+String(r.motorSide).slice(1))+(r.motorType?" / "+(String(r.motorType).charAt(0).toUpperCase()+String(r.motorType).slice(1)):""):"–";
+      var kolorLbl=(RAIL_SLIM_KOLORY.find(function(k){return k.v===r.kolor;})||{}).l;
       return [
         r.roomWin||((r.room||"")+" / "+(r.win||"")),
-        r.type,
+        r.type+(kolorLbl?" — kolor: "+kolorLbl:""),
         r.len?r.len+"cm":"-",
         (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
         r.arc?r.arc+" mb":"–",

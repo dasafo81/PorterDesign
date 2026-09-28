@@ -4,7 +4,7 @@ import { signOut, getAccessToken } from './lib/auth.js';
 import {
   FABRICS, getAllFabrics, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
-  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, primeFabricOverrides, SELLER,
+  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, SELLER,
   buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
   buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
@@ -2316,11 +2316,17 @@ export function App(p){
               karniszFieldInput(i,"motorSide","Strona silnika",110),
               karniszFieldInput(i,"motorType","Typ silnika",110)
             ),
-            ce("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
               ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t2)"}},"Dostawca:"),
               ce("select",{value:r.supplier,onChange:function(ev){setKarniszField(i,"supplier",ev.target.value);},style:{padding:"7px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
                 catSuppliers.map(function(s){return ce("option",{key:s.key,value:s.key},s.label);})
-              )
+              ),
+              (r.category==="szyna_ks"||r.category==="karnisz_elektryczny")?ce(Fragment,null,
+                ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t2)",marginLeft:6}},"Kolor:"),
+                ce("select",{value:r.kolor||"bialy",onChange:function(ev){setKarniszField(i,"kolor",ev.target.value);},style:{padding:"7px 10px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
+                  RAIL_SLIM_KOLORY.map(function(k){return ce("option",{key:k.v,value:k.v},k.l);})
+                )
+              ):null
             )
           );
         }),
