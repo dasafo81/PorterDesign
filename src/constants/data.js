@@ -3701,6 +3701,10 @@ export function calc(p){
       if(podszewka){usage.liningMb+=z; usage.fabSell+=z*linP; usage.sewSell+=ks*0.5;}
       lines.push(pn.side+" "+pw+"cm"+(pn.h&&pn.h!==hCm?" \u00d7 h"+pn.h+"cm":"")+" \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":""));
     });
+    if(c.leadInSides){
+      total+=10;
+      lines.push("O\u0142\xf3w w bokach +10,00 z\u0142");
+    }
   }else if(p.type==="zaluzja"){
     var wCm=par.wCm||0,lCm=par.lCm||0;
     var jt=c.jt||"al25";
