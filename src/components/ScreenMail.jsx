@@ -97,23 +97,40 @@ function clientPdfParams(cl){
   var v=+cl.install_fee||0;
   return {comm:comm,montaz:{mode:amount?"amount":"percent",value:amount?v:v/100}};
 }
-// Domyślny wybór wariantów — jak w App.jsx (makeSimplInitSel + computeSimplSelection):
-// pierwszy wariant pomieszczenia/okna wg variantLabel, pozostałe okna wszystkie.
+// Wybór wariantów do PDF-a z modułu Mail — jak w App.jsx (makeSimplInitSel +
+// computeSimplSelection), ale najpierw respektuje zapisany w karcie klienta wybór
+// z podglądu "Wycena uproszczona" (simpl_draft.sel), żeby mail wysyłał dokładnie
+// to, co realnie wybrano, a nie zawsze pierwszy wariant alfabetycznie (wcześniej
+// to rozjeżdżało się z podglądem/Podsumowaniem — inny produkt, inna cena).
 function defaultSimplSelection(client){
   var byLabel=function(a,b){return (a.variantLabel||"").localeCompare(b.variantLabel||"");};
+  var savedSel=(client.simpl_draft&&client.simpl_draft.sel)||{};
   var rvMap={},rvOrder=[],plain=[],sel=[];
   (client.rooms||[]).forEach(function(room){
     if(room.variantGroup){if(!rvMap[room.variantGroup]){rvMap[room.variantGroup]=[];rvOrder.push(room.variantGroup);}rvMap[room.variantGroup].push(room);}
     else plain.push(room);
   });
   rvOrder.forEach(function(g){
-    var r=rvMap[g].slice().sort(byLabel)[0];
+    var opts=rvMap[g];
+    var savedId=savedSel["rv__"+g];
+    var r=(savedId&&opts.find(function(x){return x.id===savedId;}))||opts.slice().sort(byLabel)[0];
     if(r&&(r.windows||[]).length)sel.push({room:r,windows:r.windows});
   });
   plain.forEach(function(room){
     var groups={},order=[],chosen=[];
     (room.windows||[]).forEach(function(w){var k=w.variantGroup||("solo_"+w.id);if(!groups[k]){groups[k]={isVariant:!!w.variantGroup,wins:[]};order.push(k);}groups[k].wins.push(w);});
-    order.forEach(function(k){var g=groups[k];chosen.push(g.isVariant?g.wins.slice().sort(byLabel)[0]:g.wins[0]);});
+    order.forEach(function(k){
+      var g=groups[k];
+      var selKey=room.id+"__"+k;
+      if(!g.isVariant){
+        if(savedSel.hasOwnProperty(selKey)&&savedSel[selKey]!==true)return;
+        chosen.push(g.wins[0]);
+        return;
+      }
+      var savedId=savedSel[selKey];
+      var w=(savedId&&g.wins.find(function(x){return x.id===savedId;}))||g.wins.slice().sort(byLabel)[0];
+      chosen.push(w);
+    });
     if(chosen.length)sel.push({room:room,windows:chosen});
   });
   return sel;

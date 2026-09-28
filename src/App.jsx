@@ -1965,11 +1965,17 @@ export function App(p){
       setScreen("simplifiedPreview");
     }
     // Mail do klienta: pop-up z wysyłką maila "po spotkaniu" + wycena uproszczona
-    // (domyślne warianty, jak w podglądzie) jako prawdziwy PDF.
+    // jako prawdziwy PDF. Warianty: jeśli w podglądzie "Wycena uproszczona" zapisany
+    // jest wybór (simpl_draft.sel) i baza się nie zmieniła — używamy go, żeby mail
+    // pokazywał dokładnie to, co realnie wybrano w podglądzie, a nie zawsze pierwszy
+    // wariant alfabetycznie (wcześniej to rozjeżdżało się z podglądem/Podsumowaniem).
     function startClientMail(){
       var groups=buildSimplifiedGroups(curClient);
       if(!groups.length){alert("Brak pomieszcze\u0144 z produktami.");return;}
-      var rows=buildSimplifiedRows(curClient,computeSimplSelection(groups,makeSimplInitSel(groups)),comm);
+      var draft=curClient.simpl_draft;
+      var baseUnchanged=draft&&JSON.stringify(draft.groups)===JSON.stringify(groups);
+      var sel=baseUnchanged&&draft.sel?draft.sel:makeSimplInitSel(groups);
+      var rows=buildSimplifiedRows(curClient,computeSimplSelection(groups,sel),comm);
       var montazP=montazMode==="amount"?{mode:"amount",value:+montazInput||0}:{mode:"percent",value:(+montazInput||0)/100};
       var mailBase0=rows.reduce(function(a,rd){return a+(rd.windows||[]).reduce(function(b,wd){return b+(wd.items||[]).reduce(function(cc,it){return cc+(+it.total||0);},0);},0);},0);
       var mailMontazVal=montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(mailBase0*((+montazInput||0)/100));
