@@ -3103,6 +3103,25 @@ export function ModalClientEmail(p){
     ]
   };
   var isWstepna=p.template==="wstepna";
+  // Szablony z bazy (Poczta → Szablony, sbApi.getMailTemplates) — ten sam mechanizm
+  // co w module Poczta (ScreenMail.jsx), żeby tu również pokazywały się WSZYSTKIE
+  // zapisane przez Paulinę szablony, a nie tylko cztery wbudowane (MAIL_TEMPLATES).
+  var sDbTpl=useState(null),dbTemplates=sDbTpl[0],setDbTemplates=sDbTpl[1];
+  useEffect(function(){
+    sbApi.getMailTemplates().then(function(rows){
+      var mapped=(rows||[]).map(function(r){return {
+        id:r.template_id,dbId:r.id,label:r.label||"",icon:r.icon||"📋",
+        subject:r.subject||"",body:r.body||"",
+        suggestAttachments:r.suggest_attachments||[],
+        templateFiles:r.template_files||[],
+        isSystem:r.is_system||false,sortOrder:r.sort_order||0
+      };});
+      setDbTemplates(mapped);
+    }).catch(function(e){console.error("getMailTemplates error",e);setDbTemplates([]);});
+  },[]);
+  var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
+  var hasWstepnaInList=activeTemplates.some(function(t){return t.id==="wstepna";});
+  var templateButtons=hasWstepnaInList?activeTemplates:[TPL_WSTEPNA].concat(activeTemplates);
   var s1=useState(p.to!=null?p.to:(client.email||"")),toEmail=s1[0],setToEmail=s1[1];
   var s2=useState(p.subject||(isWstepna?TPL_WSTEPNA.subject:"Oferta aran\u017cacji okiennych")),subject=s2[0],setSubject=s2[1];
   var s3=useState(p.body||(isWstepna?TPL_WSTEPNA.html:DEFAULT_BODY)),body=s3[0],setBody=s3[1];
@@ -3208,7 +3227,7 @@ export function ModalClientEmail(p){
   // Wybór gotowego szablonu treści (Oferta / Potwierdzenie / Przypomnienie).
   // "Własny" nic nie nadpisuje — zostawia to, co Paulina już napisała.
   function addTemplateFiles(tpl){
-    (tpl.files||[]).forEach(function(f){
+    (tpl.files||tpl.templateFiles||[]).forEach(function(f){
       fetch(f.url).then(function(r){
         // SPA-rewrite oddaje index.html (200) dla brakującego pliku — sprawdzamy typ
         if(!r.ok||String(r.headers.get("content-type")||"").indexOf("pdf")<0)throw new Error("HTTP "+r.status);
@@ -3228,6 +3247,7 @@ export function ModalClientEmail(p){
     var filled=fillTemplate(tpl,client);
     setSubject(filled.subject);
     setBody(plainToHtmlSimple(filled.body));
+    addTemplateFiles(tpl);
   }
   // Dodatkowe załączniki — obok automatycznego PDF-u wyceny. Czytane bezpośrednio
   // z obiektu File przy wysyłce (jak w Kompozytorze modułu Mail).
@@ -3394,7 +3414,7 @@ export function ModalClientEmail(p){
           +(asReply?" \u2014 temat zostanie z w\u0105tku (pole Temat pomini\u0119te)":""))
       ):null,
       ce("div",{style:{marginBottom:12,display:"flex",gap:6,flexWrap:"wrap"}},
-        [TPL_WSTEPNA].concat(MAIL_TEMPLATES).map(function(tpl){
+        templateButtons.map(function(tpl){
           return ce("button",{key:tpl.id,type:"button",onClick:function(){applyMailTemplate(tpl);},
             style:{padding:"5px 11px",borderRadius:20,border:"1.5px solid var(--bd2)",background:"transparent",
               color:"var(--t2)",fontSize:11,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:5}},
