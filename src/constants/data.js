@@ -3683,7 +3683,7 @@ export function calc(p){
       var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pw/100,z,kt,ks,kp,koszt;
       // Wysoko\u015b\u0107 per panel (komplet z r\xf3\u017cn\u0105 wysoko\u015bci\u0105 L/P), domy\u015blnie par.hCm
       var phCm=pn.h||hCm,hM=phCm/100;
-      var useA2=belka>0&&phCm+20>belka&&c.tasiemkaStojaco!=="tak";
+      var useA2=belka>0&&phCm+20>belka&&!c.tasmaNaStojaco;
       if(useA2){
         var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
         z=Math.ceil((lp*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
@@ -4615,7 +4615,7 @@ export function getPasyParityKorekta(client){
         (getPanelsForProd(p)||[]).forEach(function(pn){
           var pw=pn.w||0;if(!pw)return;
           var hCm=pn.h||hCm0,hM=hCm/100;
-          var useA2=belka>0&&hCm+20>belka&&c.tasiemkaStojaco!=="tak";
+          var useA2=belka>0&&hCm+20>belka&&!c.tasmaNaStojaco;
           if(!useA2)return;
           var pwZ=pw+20,pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
           var fabKey=p.fabName||p.fabManName||"tkanina";

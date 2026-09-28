@@ -897,6 +897,12 @@ export function ProdCard(p){
           )
         )
       ),
+      ce("div",{style:{marginBottom:16}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"14px 0",fontSize:15,color:"var(--t1)"}},
+          ce("input",{type:"checkbox",checked:c.tasmaNaStojaco||false,onChange:function(ev){sc("tasmaNaStojaco",ev.target.checked);},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
+          ce("span",{},"Ta\u015bma na stoj\u0105co")
+        )
+      ),
       ce("div",{style:{marginTop:16}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.podszewka==="tak"?"var(--t1)":"var(--bd2)"),background:c.podszewka==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
           ce("input",{type:"checkbox",checked:c.podszewka==="tak",onChange:function(ev){var on=ev.target.checked;p.onChange(mg(prod,{c:mg(c,{podszewka:on?"tak":"nie",podszewkaTkanina:on?(c.podszewkaTkanina||LINING_FABRICS[0].name):null})}));},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
