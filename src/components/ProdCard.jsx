@@ -2489,10 +2489,10 @@ export function ProdCard(p){
     ce("div",{style:{padding:"4px 20px 20px",display:"flex",flexDirection:"column"}},
       form,
       warn?ce("div",{style:{background:"var(--wb)",border:"1px solid var(--wbd)",borderRadius:8,padding:"10px 14px",fontSize:13,color:"var(--wt)",marginTop:16}},warn):null,
-      (total>0&&prod.mp==null)?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:10,padding:"14px 16px",marginTop:16}},
+      total>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:10,padding:"14px 16px",marginTop:16}},
         lines.map(function(l,i){return ce("div",{key:i,style:{fontSize:13,color:"var(--gr)",marginBottom:4}},l);}),
         ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:700,color:"var(--grd)",marginTop:8,paddingTop:10,borderTop:"1px solid var(--grm)"}},
-          ce("span",{},"Razem"),ce("span",{},total.toFixed(2).replace(".",",")+"\u00a0z\u0142"))
+          ce("span",{},prod.mp!=null?"Wyliczono (przed w\u0142asn\u0105 cen\u0105)":"Razem"),ce("span",{},total.toFixed(2).replace(".",",")+"\u00a0z\u0142"))
       ):null,
       ce("div",{style:{display:"flex",alignItems:"center",gap:10,paddingTop:16,marginTop:16,borderTop:"1px solid var(--bd3)"}},
         ce("label",{style:{fontSize:13,color:"var(--t2)",flex:1}},"W\u0142asna cena ko\u0144cowa:"),
