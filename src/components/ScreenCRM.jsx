@@ -3030,7 +3030,14 @@ function DealCard(cp){
         borderRadius:11,
         padding:"10px 11px",
         marginBottom:8,
-        position:"relative",
+        // Podczas przeciągania @hello-pangea/dnd ustawia position:"fixed" (i transform
+        // liczony właśnie dla fixed), żeby kafelek unosił się nad stroną i śledził kursor.
+        // Odznaczanie tego na sztywno na "relative" (jak było wcześniej) łamało to
+        // pozycjonowanie — kafelek "teleportował się" w róg zamiast jechać za kursorem,
+        // a drop działał tylko na widocznym placeholderze w kolumnie (który jest osobnym
+        // elementem, więc pozycjonował się poprawnie). "relative" potrzebne jest tylko
+        // w spoczynku, dla znaczka ⚠️ pozycjonowanego position:"absolute" wewnątrz karty.
+        position:snapshot.isDragging?provided.draggableProps.style.position:"relative",
         cursor:snapshot.isDragging?"grabbing":"grab",
         boxShadow:snapshot.isDragging?"0 8px 24px rgba(0,0,0,0.18)":"0 1px 4px rgba(0,0,0,0.05)",
         borderLeft:"3px solid "+stage.color,
