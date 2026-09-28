@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml, resolvePDFAssets } from '../constants/data.js';
-import { buildSimplifiedPDFHtml, buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
+import { buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
@@ -2641,9 +2641,7 @@ export function ScreenMail(p){
     var appItems=attachments.filter(function(a){return a.type==="app";});
     if(appItems.length>0&&selClient){
       var appPdfPromises=appItems.map(function(att){
-        var html=null;
-        if(att.id==="pdf_uproszczona")html=buildSimplifiedPDFHtml(selClient,0,0,null);
-        else if(att.id==="pdf_oferta")html=buildOfferPDFHtml(selClient,0,0,"");
+        var html=buildAppPdfHtml(att.id,selClient);
         if(!html)return Promise.resolve(null);
         var finalHtml=html.replace("</head>",
           "<style>@media print{@page{size:A4;margin:0;}body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}</style>\n</head>"
