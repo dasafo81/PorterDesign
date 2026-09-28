@@ -774,6 +774,7 @@ export function generateSewingOrderPDF(client, modalData){
 // zeby ten sam dokument dalo sie nie tylko podejrzec, ale tez wyslac mailem (zalacznik PDF).
 export function buildSewingOrderHtmlFromRows(rows, client, modalData){
   if(!rows||!rows.length)return null;
+  client=client||{};
   modalData=modalData||{};
   var sewingHouse=modalData.sewingHouse||'';
   var notes=modalData.notes||'';
