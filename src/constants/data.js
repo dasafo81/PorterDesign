@@ -5133,8 +5133,19 @@ export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUnti
 export const KARNISZ_SUPPLIERS =[
   {key:"marcin_dekor", label:"Marcin Dekor"},
   {key:"forest_polska",label:"Forest Polska, ul. Poloneza 89, 02-826 Warszawa"},
-  {key:"mio_decor",    label:"Mio Decor"}
+  {key:"mio_decor",    label:"Mio Decor"},
+  {key:"rema",         label:"Rema"},
+  {key:"homestead",    label:"Homestead"}
 ];
+
+// Zamówienie Osprzętu — cztery kategorie sprzętu, każda z własną, ograniczoną
+// listą dostawców (kolejność = kolejność w UI, pierwszy = domyślny wybór).
+export const HARDWARE_CATEGORIES={
+  rolety:               {label:"Mechanizmy rolet",       suppliers:["rema","marcin_dekor"]},
+  szyna_ks:              {label:"Szyny KS",               suppliers:["forest_polska","marcin_dekor"]},
+  karnisz_elektryczny:   {label:"Karnisze elektryczne",   suppliers:["forest_polska","marcin_dekor","mio_decor","homestead"]},
+  karnisz_dekoracyjny:   {label:"Karnisze dekoracyjne",   suppliers:["marcin_dekor","forest_polska"]}
+};
 
 // ── Geometria szyny giętej w jeden łuk (cięciwa + strzałka) ──────────────
 // chord = rozstaw końców łuku (cm), depth = wysięg/strzałka w najgłębszym punkcie (cm)
@@ -5207,26 +5218,78 @@ function prestigeKolorTag(pc){
   return k?" — "+k.l:"";
 }
 
-export function buildKarniszRows(client){
+// Zam\u00f3wienie Osprz\u0119tu \u2014 zast\u0119puje dawne "Zam\u00f3wienie karniszy". Cztery kategorie
+// sprz\u0119tu wysy\u0142ane do r\u00f3\u017cnych dostawc\u00f3w (patrz HARDWARE_CATEGORIES): mechanizmy
+// rolet rzymskich, szyny KS, karnisze elektryczne, karnisze dekoracyjne.
+export function buildHardwareRows(client){
   var rows=[];
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
+        if(p.type==="roleta"){
+          var rpc=p.c||{},rpar=p.par||{};
+          if(rpc.rSystem==="bez_mechanizmu")return; // bez mechanizmu \u2014 nic do zam\u00f3wienia
+          var rModelMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
+          var rModelLbl=rModelMap[rpc.rModel]||rpc.rModel||"-";
+          var rSystemLbl=rpc.rSystem==="elektryk"?"elektryczny":rpc.rSystem==="polautomatyczny"?"p\u00f3\u0142automatyczny":"manualny";
+          var rStrona=rpc.rSystem==="elektryk"?(rpc.stronaSilnika||"Lewo"):(rpc.rModel==="duo"&&rpc.rSystem==="manual"?"Obie strony":(rpc.stronaObslugi||"Lewo"));
+          var rLancuszekLbl=rpc.rSystem==="elektryk"?"":(rpc.lancuszek==="metalowy"
+            ?", \u0142a\u0144cuszek metalowy ("+(rpc.kolorLancuszka||"srebrny")+")"
+            :", \u0142a\u0144cuszek bia\u0142y");
+          var rQty=(rpc.rModel==="duo"&&rpc.rSystem!=="polautomatyczny")?2:1;
+          rows.push({
+            room:r.name,win:w.name,
+            type:"Mechanizm rolety rzymskiej "+rModelLbl+" \u2014 "+rSystemLbl+rLancuszekLbl+", strona: "+rStrona,
+            len:rpar.wCm||0,
+            qty:rQty,
+            arc:0,arcDepth:null,arcChord:null,pts:0,
+            motorSide:null,motorType:null,
+            category:"rolety",
+            supplier:p.karniszSupplier||"",
+            total:0,lines:""
+          });
+          return;
+        }
+        if(p.type==="karnisz_dek"){
+          var kdR=p.kdRozmiar||20;
+          var kdKolorObj=KD_KOLORY.find(function(k){return k.id===p.kdKolor;});
+          var kdLabel="Karnisz dekoracyjny \u00d8"+kdR+"mm"+(kdKolorObj?" \u2014 "+kdKolorObj.label:"");
+          (p.kdSzyny||[]).forEach(function(seg){
+            if(!seg||!seg.dlugosc)return;
+            rows.push({
+              room:r.name,win:w.name,type:kdLabel,
+              len:seg.dlugosc,qty:seg.qty||1,
+              arc:0,arcDepth:null,arcChord:null,pts:0,
+              motorSide:null,motorType:null,
+              category:"karnisz_dekoracyjny",
+              supplier:p.karniszSupplier||"",
+              total:0,lines:""
+            });
+          });
+          return;
+        }
         if(p.type!=="karnisz"&&p.type!=="szyna"&&p.type!=="prestige_round"&&p.type!=="prestige_square"&&p.type!=="shuttle")return;
         var pc=p.c||{},par=p.par||{};
         var typLabel;
+        var category;
         if(p.type==="karnisz"){
           typLabel=karniszBrandLabel(pc);
+          category="karnisz_elektryczny";
         }else if(p.type==="shuttle"){
           typLabel="Karnisz Shuttle L"+((pc.shFes&&pc.shFes!=="brak")?(" FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):" (suwaki)");
+          category="karnisz_dekoracyjny";
         }else if(p.type==="prestige_round"){
           typLabel="Karnisz Prestige ROUND ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
+          category="karnisz_dekoracyjny";
         }else if(p.type==="prestige_square"){
           typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
+          category="karnisz_dekoracyjny";
         }else if(pc.ksBrand==="msigma"){
           typLabel="Szyna mSigma (Mio Decor) "+(pc.ks==="wave"?"Wave":"Flex")+" "+(pc.kk==="czarna"?"czarna":"bia\u0142a")+(pc.ksWysiegnik==="tak"?" \u2014 na wysi\u0119gnikach mFix":"");
+          category="szyna_ks";
         }else{
           typLabel="Szyna KS "+(pc.ks||"flex");
+          category="szyna_ks";
         }
         var len=par.len||0;
         var res=calc(p);
@@ -5243,6 +5306,7 @@ export function buildKarniszRows(client){
           pts:par.pt||par.pts||0,
           motorSide:isKarnisz?(pc.motorSide||"lewo"):null,
           motorType:isKarnisz?(pc.motorType||"kurtyna"):null,
+          category:category,
           supplier:p.karniszSupplier||"",
           total:res.total||0,
           lines:(res.lines||[]).join("; ")
@@ -5253,16 +5317,18 @@ export function buildKarniszRows(client){
   return rows;
 }
 
-// Buduje HTML zamówienia karniszy/szyn z już gotowych (ewentualnie ręcznie
+// Buduje HTML Zamówienia Osprzętu z już gotowych (ewentualnie ręcznie
 // doedytowanych na ekranie podglądu) wierszy, pogrupowanych wg dostawcy.
-export function buildKarniszPDFHtmlFromRows(client,rows){
+export function buildHardwarePDFHtmlFromRows(client,rows){
   if(!rows||!rows.length)return null;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
   var bySupplier={};
   KARNISZ_SUPPLIERS.forEach(function(s){bySupplier[s.key]=[];});
   rows.forEach(function(r){
-    var key=(r.supplier&&bySupplier[r.supplier]!==undefined)?r.supplier:"marcin_dekor";
+    var cat=HARDWARE_CATEGORIES[r.category];
+    var fallback=(cat&&cat.suppliers[0])||"marcin_dekor";
+    var key=(r.supplier&&bySupplier[r.supplier]!==undefined)?r.supplier:fallback;
     bySupplier[key].push(r);
   });
 
@@ -5299,167 +5365,20 @@ export function buildKarniszPDFHtmlFromRows(client,rows){
 
   var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n  ";
 
-  return "<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Zam\xf3wienie karnisz\xf3w \u2014 "+client.name+"</title>"+pdfStyles().replace("</style>",extraStyles+"</style>")+"</head><body>"
+  return "<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Zam\xf3wienie osprz\u0119tu \u2014 "+client.name+"</title>"+pdfStyles().replace("</style>",extraStyles+"</style>")+"</head><body>"
     +"<div class=\"header\"><div><div class=\"logo-text\">PORTER<br>DESIGN</div><div class=\"logo-sub\">Dekoracje okienne</div></div>"
-    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Zam\xf3wienie karnisz\xf3w / szyn</div>"
+    +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Zam\xf3wienie osprz\u0119tu</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Klient: <strong>"+client.name+"</strong> &nbsp;|&nbsp; Data: "+dateStr+" &nbsp;|&nbsp; Dostawc\xf3w: "+activeSups.length+"</div></div></div>"
     +supplierSections
     +"<div class=\"footer\" style=\"margin-top:8mm\"><span>"+SELLER.name+" | "+SELLER.city+"</span><span>Generowano: "+dateStr+"</span></div>"
     +"</body></html>";
 }
 
-export function generateKarniszOrderPDFFromRows(client,rows){
-  var html=buildKarniszPDFHtmlFromRows(client,rows);
+export function generateHardwareOrderPDFFromRows(client,rows){
+  var html=buildHardwarePDFHtmlFromRows(client,rows);
   if(!html){alert("Brak pozycji.");return;}
-  openPDFWindow(html,"zamowienie-karnisz");
+  openPDFWindow(html,"zamowienie-osprzetu");
 }
-
-export function generateKarniszOrderPDF(client){
-  var rows=buildKarniszRows(client);
-  if(!rows.length){alert("Brak karniszów / szyn do zamówienia.");return;}
-
-  // Collect rows without a supplier assigned
-  var pending=rows.filter(function(r){return !r.supplier;});
-
-  function proceedWithPDF(){
-    var html=buildKarniszPDFHtmlFromRows(client,rows);
-    if(!html){alert("Brak pozycji.");return;}
-    openPDFWindow(html,"zamowienie-karnisz");
-  } // end proceedWithPDF
-
-  // If all rows already have suppliers, go straight to PDF
-  if(!pending.length){proceedWithPDF();return;}
-
-  // Build a touch-friendly dialog to assign supplier per unassigned item
-  var dlg=document.createElement("dialog");
-  dlg.style.cssText="border:none;border-radius:14px;padding:24px 20px;max-width:400px;width:92%;box-shadow:0 8px 40px rgba(0,0,0,0.22);font-family:inherit;";
-
-  var pidx=0;
-  function showSupplierPick(){
-    if(pidx>=pending.length){dlg.close();document.body.removeChild(dlg);proceedWithPDF();return;}
-    var r=pending[pidx];
-    var btns=KARNISZ_SUPPLIERS.map(function(s){
-      return '<button data-key="'+s.key+'" style="display:block;width:100%;padding:14px 16px;border-radius:8px;border:1.5px solid #c8c8c4;background:#fff;font-size:14px;font-weight:600;cursor:pointer;text-align:left;margin-bottom:10px;">'+s.label+'</button>';
-    }).join('');
-    dlg.innerHTML='<div style="font-size:12px;color:#888;margin-bottom:6px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;">Dostawca ('+(pidx+1)+'/'+pending.length+')</div>'
-      +'<div style="font-weight:700;font-size:15px;margin-bottom:4px">'+r.room+' / '+r.win+'</div>'
-      +'<div style="font-size:13px;color:#555;margin-bottom:20px">'+r.type+(r.len?' — '+r.len+' cm':'')+'</div>'
-      +btns
-      +'<button data-key="cancel" style="display:block;width:100%;padding:10px;border-radius:8px;border:none;background:none;font-size:13px;color:#888;cursor:pointer;">Anuluj</button>';
-    dlg.querySelectorAll("button").forEach(function(btn){
-      btn.addEventListener("click",function(){
-        var key=btn.getAttribute("data-key");
-        if(key==="cancel"){dlg.close();document.body.removeChild(dlg);return;}
-        r.supplier=key;
-        pidx++;
-        showSupplierPick();
-      });
-    });
-  }
-  document.body.appendChild(dlg);
-  dlg.showModal();
-  showSupplierPick();
-}
-
-// ── PDF: Szyny do montażu (lista dla montażysty) ────────────────────────────
-export function buildRailsRows(client){
-  var rows=[];
-  (client.rooms||[]).forEach(function(room){
-    (room.windows||[]).forEach(function(win){
-      (win.products||[]).forEach(function(p){
-        if(p.type!=="szyna"&&p.type!=="karnisz"&&p.type!=="prestige_round"&&p.type!=="prestige_square"&&p.type!=="karnisz_dek"&&p.type!=="shuttle")return;
-        var pc=p.c||{},par=p.par||{};
-        var typLabel;
-        if(p.type==="karnisz"){
-          typLabel="Karnisz el. "+(pc.km==="univ"?"Universal":(pc.km||"Slim").toUpperCase());
-        }else if(p.type==="shuttle"){
-          typLabel="Karnisz Shuttle L";
-        }else if(p.type==="prestige_round"){
-          typLabel="Karnisz Prestige ROUND";
-        }else if(p.type==="prestige_square"){
-          typLabel="Karnisz Prestige SQUARE";
-        }else if(p.type==="karnisz_dek"){
-          typLabel="Karnisz dekoracyjny";
-        }else if(pc.ksBrand==="msigma"){
-          typLabel="Szyna mSigma "+(pc.ks==="wave"?"Wave":"Flex")+" "+(pc.kk==="czarna"?"czarna":"bia\u0142a")+(pc.ksWysiegnik==="tak"?" (wysi\u0119gniki)":"");
-        }else{
-          var ksMode=pc.ks||"flex";
-          typLabel="Szyna KS "+(ksMode==="wave"?"Wave":ksMode==="manual"?"Manualna":"Flex");
-        }
-        var len=par.len||0;
-        var qty=par.qty||1;
-        if(!len)return;
-        var aDesc=arcDesc(par);
-        if(aDesc)typLabel+=" \u2014 "+aDesc;
-        rows.push({room:room.name||"",win:win.name||"",type:typLabel,len:len,qty:qty});
-      });
-    });
-  });
-  return rows;
-}
-
-// Buduje HTML "Szyny do montażu" z już gotowych (ewentualnie ręcznie
-// doedytowanych na ekranie podglądu) wierszy, pogrupowanych wg pomieszczeń.
-export function buildRailsInstallHtmlFromRows(client,rows){
-  if(!rows||!rows.length)return null;
-  var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
-
-  var roomGroups=[];
-  var roomIndex={};
-  rows.forEach(function(r){
-    var key=r.room||"Inne";
-    if(roomIndex[key]==null){roomIndex[key]=roomGroups.length;roomGroups.push({room:key,items:[]});}
-    roomGroups[roomIndex[key]].items.push(r);
-  });
-
-  var extraStyles="\n    body{font-size:13px;}\n    .room-header{background:#2c2c2a;color:#fff;padding:7px 12px;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;border-radius:4px;margin:5mm 0 2mm;}\n    table{width:100%;border-collapse:collapse;margin-bottom:3mm;}\n    th{background:#f2f2ef;font-size:11px;font-weight:700;padding:6px 10px;text-align:left;border-bottom:1.5px solid #c8c8c4;}\n    td{padding:6px 10px;font-size:12px;border-bottom:1px solid #e8e8e4;vertical-align:top;}\n    tr:last-child td{border-bottom:none;}\n    .len-cell{font-size:14px;font-weight:700;color:#1a1a18;}\n    .qty-badge{display:inline-block;background:#eeece9;color:#555;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:6px;}\n    .summary-box{margin-top:8mm;background:#f7f7f5;border:1px solid #c8c8c4;border-radius:6px;padding:8px 14px;font-size:11px;color:#555;}\n    .footer{margin-top:8mm;display:flex;justify-content:space-between;font-size:9px;color:#a8a8a4;border-top:0.5px solid #e0e0dc;padding-top:4mm;}\n  ";
-
-  var roomSections="";
-  var totalItems=0;
-  roomGroups.forEach(function(rg){
-    var trows=rg.items.map(function(it){
-      var qtyStr=(+it.qty||0)>1?'<span class="qty-badge">x'+it.qty+'</span>':"";
-      return "<tr>"
-        +"<td>"+rg.room+"</td>"
-        +"<td>"+it.win+"</td>"
-        +"<td>"+it.type+"</td>"
-        +"<td class=\"len-cell\">"+it.len+" cm"+qtyStr+"</td>"
-        +"</tr>";
-    }).join("");
-    totalItems+=rg.items.length;
-    roomSections+='<div class="room-header">'+rg.room+'</div>'
-      +'<table><thead><tr><th>Pomieszczenie</th><th>Okno / miejsce</th><th>Rodzaj</th><th>D\u0142ugo\u015b\u0107</th></tr></thead><tbody>'+trows+"</tbody></table>";
-  });
-
-  return '<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Szyny do monta\u017cu</title>'
-    +pdfStyles().replace('</style>',extraStyles+'</style>')
-    +'</head><body>'
-    +'<div class="header">'
-    +'<div><img src="'+LOGO_PDF_G+'" style="height:50px;width:auto;" alt="Porter Design"/></div>'
-    +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">\uD83D\uDD29 Szyny do monta\u017cu</div>'
-    +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong></div>'
-    +'<div style="font-size:10px;color:#a8a8a4;margin-top:2px">Wydrukowano: '+dateStr+'</div>'
-    +'</div></div>'
-    +roomSections
-    +'<div class="summary-box">Pozycji szyn / karniszów: <strong>'+totalItems+'</strong></div>'
-    +'<div class="footer"><span>'+SELLER.name+' \u2014 tylko do u\u017cytku wewn\u0119trznego</span><span>'+dateStr+'</span></div>'
-    +'</body></html>';
-}
-
-export function generateRailsInstallPDFFromRows(client,rows){
-  var html=buildRailsInstallHtmlFromRows(client,rows);
-  if(!html){alert("Brak szyn / karniszów do wydruku.");return;}
-  openPDFWindow(html,'szyny-montaz');
-}
-
-export function generateRailsInstallPDF(client){
-  var rows=buildRailsRows(client);
-  var html=buildRailsInstallHtmlFromRows(client,rows);
-  if(!html){alert("Brak szyn / karniszów do wydruku.");return;}
-  openPDFWindow(html,'szyny-montaz');
-}
-
-
 
 export const ROOM_PRESETS=[
   {key:"salon",label:"Salon",img:IMG_ROOM_SALON},
