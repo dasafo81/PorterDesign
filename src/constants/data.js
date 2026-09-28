@@ -4391,6 +4391,14 @@ export function buildOfferDetailRows(client){
         var total=p.mp!=null?p.mp:(calc(pfc).total||0);
         if(!total)return;
         var lbl=(PROD_TYPES.find(function(t){return t.id===p.type;})||{label:p.type}).label;
+        // Roleta: PROD_TYPES ma tylko ogólną etykietę "Roleta rzymska" — realny model
+        // (Relax/Print/Back/Front/Cascade/Duo) trzymany jest w pc.rModel. Bez tego
+        // nazwa w tej wycenie/PDF-ie nie zgadzała się z tym, co pokazuje Wycena
+        // uproszczona (ta liczy nazwę z modelu, nie z ogólnej etykiety typu).
+        if(p.type==="roleta"){
+          var rLblMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
+          lbl="Roleta "+(rLblMap[pc.rModel]||pc.rModel||"Relax");
+        }
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
         var nameLoc=" — "+r.name+(w.name?" / "+w.name:"");

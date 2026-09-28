@@ -255,6 +255,19 @@ export function App(p){
     setOpenDealId(curDeal.id);
   }
 
+  // Roleta: PROD_TYPES ma tylko ogólną etykietę "Roleta rzymska" — realny model
+  // (Relax/Print/Back/Front/Cascade/Duo) jest w p.c.rModel. Ta sama zasada nazewnictwa
+  // co w buildOfferDetailRows/buildSimplifiedRows, żeby Podsumowanie pokazywało
+  // ten sam produkt co Wycena szczegółowa/uproszczona i PDF-y wysyłane do klienta.
+  function prodTypeLabel(p){
+    if(p.type==="inny")return p.innyNazwa||"Inny";
+    if(p.type==="roleta"){
+      var rLblMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
+      var m=(p.c||{}).rModel;
+      return "Roleta "+(rLblMap[m]||m||"Relax");
+    }
+    return (PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;
+  }
   function wt(w){return(w.products||[]).reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);}
   function rt(r){return(r.windows||[]).reduce(function(a,w){return a+wt(w);},0);}
   function clientTotal(cl){return(cl.rooms||[]).reduce(function(a,r){return a+rt(r);},0);}
@@ -2019,7 +2032,7 @@ export function App(p){
       // nigdzie w UI nie dało się ich już zobaczyć ani wyczyścić.
       function winCard(w,extraStyle,hideName){
         var t=wt(w);
-        var desc=(w.products||[]).map(function(p){var l=p.type==="inny"&&p.innyNazwa?p.innyNazwa:(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
+        var desc=(w.products||[]).map(function(p){var l=prodTypeLabel(p);return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
         return ce("div",{key:w.id,style:mg({padding:"14px 16px",background:"var(--bg2)",borderRadius:12,marginBottom:6,display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,border:"1px solid var(--bd3)"},extraStyle||{})},
           ce("div",{style:{flex:1,minWidth:0}},
             hideName?null:ce("div",{style:{fontSize:14,fontWeight:600,color:"var(--t1)",marginBottom:3}},"\uD83E\uDE9F "+w.name),
@@ -2046,7 +2059,7 @@ export function App(p){
             ),
             group.map(function(w,gi){
               var t=wt(w);
-              var desc=(w.products||[]).map(function(p){var l=p.type==="inny"&&p.innyNazwa?p.innyNazwa:(PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
+              var desc=(w.products||[]).map(function(p){var l=prodTypeLabel(p);return p.fabName?l+" ("+p.fabName+")":l;}).join(", ");
               return ce("div",{key:w.id,style:{padding:"12px 14px",borderBottom:gi<group.length-1?"1px solid var(--bd2)":"none",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,background:gi%2===0?"var(--bg2)":"var(--bg3)"}},
                 ce("div",{style:{flex:1}},
                   ce("div",{style:{fontSize:13,fontWeight:700,color:THEME_HEX.violet,marginBottom:2}},"Wariant "+w.variantLabel),
