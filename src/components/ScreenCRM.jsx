@@ -1109,6 +1109,13 @@ export function ModalDeal(p){
         ce("button",{onClick:p.onClose,style:{position:"absolute",top:14,right:16,border:"none",background:"rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,width:30,height:30,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}},"×"),
         ce("div",{style:{fontSize:11,letterSpacing:"0.12em",textTransform:"uppercase",color:"rgba(255,255,255,0.7)",marginBottom:4}},"KARTA DEALA"),
         ce("div",{style:{fontSize:22,fontWeight:700,color:"#fff",marginBottom:2}},clientName),
+        cl&&(cl.phone||cl.email||cl.street||cl.city||cl.postal)
+          ?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginTop:6}},
+              cl.phone?ce("a",{href:"tel:"+cl.phone.replace(/\s+/g,""),style:{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#fff",textDecoration:"none",background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:20,padding:"4px 11px",whiteSpace:"nowrap"}},"📞 ",cl.phone):null,
+              cl.email?ce("a",{href:"mailto:"+cl.email,style:{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#fff",textDecoration:"none",background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:20,padding:"4px 11px",whiteSpace:"nowrap"}},"✉️ ",cl.email):null,
+              (cl.street||cl.city||cl.postal)?ce("span",{style:{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#fff",background:"rgba(255,255,255,0.16)",border:"1px solid rgba(255,255,255,0.25)",borderRadius:20,padding:"4px 11px",whiteSpace:"nowrap"}},"📍 ",[cl.street,[cl.postal,cl.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")):null
+            )
+          :null,
         ce("div",{style:{display:"flex",alignItems:"center",gap:12,marginTop:6,flexWrap:"wrap"}},
           ce("span",{style:{background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"3px 12px",fontSize:12,color:"#fff",fontWeight:600}},
             (CRM_STAGES.find(function(s){return s.id===d.stage;})||{label:d.stage}).label
