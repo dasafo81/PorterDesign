@@ -1118,7 +1118,7 @@ export function ModalDeal(p){
           ):null,
           ce("div",{style:{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}},
             ce("button",{onClick:p.onGoToClient,style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
-              "→ Karta klienta"
+              "→ Wycena"
             ),
             // Lista wszystkich produktow z wyceny szczegolowej (wymiary + uwagi,
             // bez cen) — checklista dla ekipy montazowej, bez wychodzenia z karty deala.
@@ -3368,8 +3368,8 @@ export function ScreenCRM(p){
     }).catch(function(e){alert("Błąd: "+e.message);});
   }
 
-  function goToClient(clientId){
-    p.pushModeReturn&&p.pushModeReturn();
+  function goToClient(clientId,dealId){
+    p.pushModeReturn&&p.pushModeReturn(dealId);
     p.setCurClientId(clientId);
     p.setScreen("rooms");
     p.setAppMode("wyceniarka");
@@ -3377,12 +3377,20 @@ export function ScreenCRM(p){
 
   // Skrot z karty deala prosto do ekranu "Podsumowanie" danego klienta
   // (bez przechodzenia przez karte klienta / liste pomieszczen).
-  function goToClientSummary(clientId){
-    p.pushModeReturn&&p.pushModeReturn();
+  function goToClientSummary(clientId,dealId){
+    p.pushModeReturn&&p.pushModeReturn(dealId);
     p.setCurClientId(clientId);
     p.setScreen("sum");
     p.setAppMode("wyceniarka");
   }
+
+  // Otwiera kartę deala wskazaną z zewnątrz (np. przycisk "Karta deala" w wyceniarce).
+  React.useEffect(function(){
+    if(!p.openDealId||!deals)return;
+    var d=deals.find(function(x){return String(x.id)===String(p.openDealId);});
+    if(d)setModalDeal(d);
+    p.onOpenDealConsumed&&p.onOpenDealConsumed();
+  },[p.openDealId,deals]);
 
   if(loadingDeals){
     return ce("div",{style:{textAlign:"center",padding:"3rem",color:"var(--t3)",fontSize:13}},"Ładowanie CRM...");
@@ -3432,8 +3440,8 @@ export function ScreenCRM(p){
       onToggleAssigned:function(userId){toggleAssigned(modalDeal.id,userId);},
       onDelete:function(){onDealDelete(modalDeal.id);},
       onClose:function(){setModalDeal(null);},
-      onGoToClient:function(){goToClient(modalDeal.client_id);},
-      onGoToSummary:function(){goToClientSummary(modalDeal.client_id);},
+      onGoToClient:function(){goToClient(modalDeal.client_id,modalDeal.id);},
+      onGoToSummary:function(){goToClientSummary(modalDeal.client_id,modalDeal.id);},
       onIssueInvoice:p.onIssueInvoice
     }):null
   );

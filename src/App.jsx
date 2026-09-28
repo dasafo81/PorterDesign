@@ -157,6 +157,10 @@ export function App(p){
   var s1=useState("home"),screen=s1[0],setScreen=s1[1];
   var s2=useState([]),clients=s2[0],setClients=s2[1];
   var sDeals=useState([]),deals=sDeals[0],setDeals=sDeals[1];
+  // Zapamiętuje skąd przyszliśmy do wyceniarki (np. z karty deala w CRM), żeby
+  // "Wstecz" wracało tam, a nie do listy wycen. Patrz pushModeReturn/popModeReturn niżej.
+  var sModeReturn=useState(null),modeReturn=sModeReturn[0],setModeReturn=sModeReturn[1];
+  var sOpenDealId=useState(null),openDealId=sOpenDealId[0],setOpenDealId=sOpenDealId[1];
   var s3=useState(null),curClientId=s3[0],setCurClientId=s3[1];
   var s4=useState(null),curRoomId=s4[0],setCurRoomId=s4[1];
   var s5=useState(null),curWin=s5[0],setCurWin=s5[1];
@@ -227,6 +231,29 @@ export function App(p){
 
   var curClient=clients.find(function(cl){return cl.id===curClientId;})||null;
   var curRoom=curClient?(curClient.rooms||[]).find(function(r){return r.id===curRoomId;}):null;
+  var curDeal=curClient?(deals||[]).find(function(d){return String(d.client_id)===String(curClient.id);})||null:null;
+
+  // Zapisuje, gdzie byliśmy przed wejściem do wyceniarki (np. z karty deala w CRM),
+  // żeby "Wstecz" wracało tam zamiast do listy wycen.
+  function pushModeReturn(dealId){
+    setModeReturn({appMode:appMode,screen:screen,dealId:dealId||null});
+  }
+  function popModeReturn(){
+    if(modeReturn){
+      setAppMode(modeReturn.appMode);
+      setScreen(modeReturn.screen);
+      if(modeReturn.dealId)setOpenDealId(modeReturn.dealId);
+      setModeReturn(null);
+    } else {
+      setScreen("home");
+    }
+  }
+  // Skrót z wyceniarki prosto do karty deala danego klienta w CRM.
+  function goToDealCard(){
+    if(!curDeal)return;
+    setAppMode("crm");
+    setOpenDealId(curDeal.id);
+  }
 
   function wt(w){return(w.products||[]).reduce(function(a,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return a+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);}
   function rt(r){return(r.windows||[]).reduce(function(a,w){return a+wt(w);},0);}
@@ -2713,13 +2740,19 @@ export function App(p){
     // Tresc glowna
     ce("div",{className:"pd-main"},
     appMode==="wyceniarka"&&screen!=="home"
-      ?ce("button",{onClick:function(){setScreen("home");},style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s",marginBottom:12}},"\u2190","Wstecz")
+      ?ce("div",{style:{display:"flex",gap:8,marginBottom:12}},
+          ce("button",{onClick:popModeReturn,style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"\u2190","Wstecz"),
+          curDeal?ce("button",{onClick:goToDealCard,title:"Przejd\u017a do karty deala w CRM",style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600,transition:"background 0.15s"}},"Karta deala","\u2192"):null
+        )
       :null,
     ce(React.Suspense,{fallback:LazyScreenFallback},
     appMode==="crm"
       ? ce(ScreenCRM,{clients:clients,setScreen:setScreen,setAppMode:setAppMode,setCurClientId:setCurClientId,
           gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady,
           onDealsSync:setDeals,
+          pushModeReturn:pushModeReturn,
+          openDealId:openDealId,
+          onOpenDealConsumed:function(){setOpenDealId(null);},
           onIssueInvoice:function(prefill){setPendingInvoice(prefill);setAppMode("faktury");},
           onClientStatusChange:function(clientId,status){
             setClients(function(cs){return cs.map(function(c){return String(c.id)===String(clientId)?Object.assign({},c,{status:status}):c;});});
