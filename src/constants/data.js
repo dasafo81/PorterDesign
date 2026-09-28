@@ -3695,16 +3695,14 @@ export function calc(p){
         ks=dekro?+(z*sv2).toFixed(2):+(z*szycie).toFixed(2);
       }
       kp=podszewka?+(z*linP+ks*0.5).toFixed(2):0;
-      koszt=kt+ks+kp;total+=koszt;
+      koszt=kt+ks+kp;
+      if(c.leadInSides)koszt+=10; // o\u0142\u00f3w w bokach \u2014 +10 z\u0142 za KA\u017bD\u0104 sztuk\u0119 (panel), nie rycza\u0142tem na produkt
+      total+=koszt;
       usage.fabMb+=z; usage.fabSell+=kt;
       usage.sewMb+=z; usage.sewSell+=ks;
       if(podszewka){usage.liningMb+=z; usage.fabSell+=z*linP; usage.sewSell+=ks*0.5;}
-      lines.push(pn.side+" "+pw+"cm"+(pn.h&&pn.h!==hCm?" \u00d7 h"+pn.h+"cm":"")+" \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":""));
+      lines.push(pn.side+" "+pw+"cm"+(pn.h&&pn.h!==hCm?" \u00d7 h"+pn.h+"cm":"")+" \u00b7 "+z+"mb \u2192 "+koszt.toFixed(2).replace(".",",")+" z\u0142"+(podszewka?" (w tym podszewka)":"")+(c.leadInSides?" (w tym o\u0142\u00f3w +10,00 z\u0142)":""));
     });
-    if(c.leadInSides){
-      total+=10;
-      lines.push("O\u0142\xf3w w bokach +10,00 z\u0142");
-    }
   }else if(p.type==="zaluzja"){
     var wCm=par.wCm||0,lCm=par.lCm||0;
     var jt=c.jt||"al25";
