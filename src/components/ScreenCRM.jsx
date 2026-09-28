@@ -3118,9 +3118,10 @@ function KanbanCol(kp){
   return ce("div",{style:full?{width:"100%"}:inGrid?{minWidth:0}:wide?{flex:"1 1 0",minWidth:280}:{flex:"1 1 0",minWidth:190,maxWidth:280}},
     ce("div",{style:{
       background:"var(--bg2)",border:"1px solid var(--bd2)",
-      borderRadius:14,padding:"10px 8px",height:"100%"
+      borderRadius:14,padding:"10px 8px",height:"100%",
+      display:"flex",flexDirection:"column"
     }},
-      ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:8,borderBottom:"1px solid var(--bd3)"}},
+      ce("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:10,paddingBottom:8,borderBottom:"1px solid var(--bd3)",flexShrink:0}},
         ce("div",{style:{width:9,height:9,borderRadius:"50%",background:stage.color,flexShrink:0}}),
         ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t1)",letterSpacing:"0.06em",textTransform:"uppercase",flex:1}},stage.label),
         ce("div",{style:{fontSize:11,color:"var(--t3)",fontWeight:500}},stageDeals.length||"")
@@ -3129,6 +3130,12 @@ function KanbanCol(kp){
         return ce("div",Object.assign({
           ref:provided.innerRef,
           style:Object.assign({
+            // flex:"1 1 auto" — kolumna w wierszu siatki jest zawsze tak wysoka jak
+            // najwyższa sąsiadka (height:"100%" na panelu wyżej); bez tego obszar
+            // upuszczania kończył się tuż pod ostatnią kartą, a widocznie pusty kawałek
+            // panelu poniżej wyglądał jak część kolumny, ale drop tam się nie liczył
+            // ("wisiał w powietrzu"). Teraz cały panel jest jednym obszarem drop.
+            flex:"1 1 auto",
             minHeight:60,
             background:snapshot.isDraggingOver?"rgba(99,102,241,0.06)":"transparent",
             borderRadius:8,
