@@ -21,6 +21,12 @@ export const CRM_STAGES =[
 ];
 // Kroki zamówienia widoczne jako "paseczki" na karcie w kolumnie Zamówienie.
 // Po zaznaczeniu wszystkich trzech deal automatycznie przechodzi do Realizacji.
+// Po tylu dniach bez ruchu w etapie Wycena kafelek przypomina o follow-upie do klienta.
+export const FOLLOWUP_DAYS=3;
+export function daysInWycena(deal){
+  if(!deal||deal.stage!=="wycena"||!deal.wycena_since)return 0;
+  return Math.max(0,Math.floor((Date.now()-new Date(deal.wycena_since).getTime())/86400000));
+}
 export const ORDER_STEPS=[
   {field:"order_hardware",label:"Osprz\u0119t", icon:"\uD83D\uDD29", doneLabel:"Osprz\u0119t zam\u00f3wiony"},
   {field:"order_fabric",  label:"Tkanina", icon:"\uD83E\uDDF5", doneLabel:"Tkanina zam\u00f3wiona"},
@@ -810,6 +816,13 @@ export function ModalDeal(p){
       .catch(function(e){alert("Termin zapisany w kalendarzu, ale nie udało się zapisać go w dealu: "+e.message);});
   }
 
+  // Follow-up po wycenie: klient odpowiedział lub został przypomniany — zerujemy licznik dni.
+  function markFollowupDone(){
+    var patch={wycena_since:new Date().toISOString(),updated_at:new Date().toISOString()};
+    sbApi.updateDeal(d.id,patch).then(function(){if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){alert("Błąd zapisu: "+e.message);});
+  }
+
   // Kroki zamówienia (osprzęt / tkanina / szycie) — w CRM przez toggleOrder z tablicy (auto-przejście
   // do Realizacji); w widoku bez tablicy (np. kalendarz) zapis bezpośredni z tym samym przeskokiem.
   function toggleOrderStep(field){
@@ -1456,6 +1469,19 @@ export function ModalDeal(p){
                   style:{fontSize:11,color:"var(--t2)",background:"none",border:"none",cursor:"pointer",padding:0,textDecoration:"underline dotted"}},
                   "🔎 Powiąż istniejącą fakturę ("+billUnlinked.length+" niepowiązanych)")
           ):null
+        ):null,
+        d.stage==="wycena"?ce(SectionCard,{icon:"🔔",title:"Follow-up po wycenie"},
+          (function(){
+            var n=daysInWycena(d);
+            var due=n>=FOLLOWUP_DAYS;
+            return ce("div",null,
+              ce("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:8,color:due?"var(--t1)":"var(--t3)",fontWeight:due?600:400}},
+                due?("Wycena czeka na odpowiedź od "+n+" dni — zadzwoń lub napisz do klienta."):
+                    ("Przypomnienie pojawi się po "+FOLLOWUP_DAYS+" dniach bez odpowiedzi (minęło: "+n+").")),
+              ce("button",{onClick:markFollowupDone,
+                style:{padding:"8px 14px",borderRadius:8,border:"1.5px solid var(--bd2)",background:"var(--bg)",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer"}},
+                "✓ Follow-up wykonany"));
+          })()
         ):null,
         (ADVANCE_MAIL_ENABLED&&d.stage==="zaliczka")?ce(SectionCard,{icon:"💳",title:"Zaliczka 50% i OWU",done:!!d.advance_sent_at},
           advInvoices.length===0
@@ -3026,6 +3052,8 @@ function DealCard(cp){
   // Przypomnienie: deal wisi w Realizacji ≥10 dni — sprawdzić status zamówienia w szwalni
   var daysInRealizacja=sid==="realizacja"&&deal.realizacja_since?Math.floor((Date.now()-new Date(deal.realizacja_since).getTime())/86400000):0;
   var showStuckWarning=sid==="realizacja"&&daysInRealizacja>=10;
+  var daysWycena=daysInWycena(deal);
+  var showFollowup=daysWycena>=FOLLOWUP_DAYS;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
       ref:provided.innerRef
@@ -3058,6 +3086,10 @@ function DealCard(cp){
         title:"W realizacji od "+daysInRealizacja+" dni \u2014 sprawd\u017a status zam\u00f3wienia w szwalni",
         style:{position:"absolute",top:8,left:8,fontSize:14,lineHeight:1,zIndex:1}
       },"\u26A0\uFE0F"):null,
+      showFollowup?ce("div",{
+        title:"Wycena bez odpowiedzi od "+daysWycena+" dni \u2014 zadzwo\u0144 lub napisz do klienta",
+        style:{position:"absolute",top:8,left:8,fontSize:14,lineHeight:1,zIndex:1}
+      },"\uD83D\uDD14"):null,
       ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:4,lineHeight:1.3}},name),
       total>0?ce("div",{style:{fontSize:12,fontWeight:700,color:stage.color,marginBottom:4}},Math.round(total/10)*10+" z\u0142"):null,
       (hasVisit||hasDeadline||hasDelivery||hasDelivery2)?ce("div",{style:{display:"flex",flexDirection:"column",gap:2,marginTop:4}},
@@ -3293,6 +3325,9 @@ export function ScreenCRM(p){
     // Przy zejściu z Realizacji do innego etapu czyścimy, żeby ewentualny powrót liczył od nowa.
     if(stage==="realizacja")patch.realizacja_since=new Date().toISOString();
     else if(deal&&deal.stage==="realizacja")patch.realizacja_since=null;
+    // Znacznik wejścia do Wyceny (przypomnienie o follow-upie po FOLLOWUP_DAYS dniach) — ten sam wzorzec.
+    if(stage==="wycena")patch.wycena_since=new Date().toISOString();
+    else if(deal&&deal.stage==="wycena")patch.wycena_since=null;
     // Znacznik wejscia do Zakonczone/Odrzucone — do automatycznego chowania starych
     // deali w Kanbanie (patrz KanbanCol -> archiveDays). Ten sam wzorzec co wyzej:
     // ustawiany tylko tutaj, zeby edycja karty po zamknieciu deala go nie zerowala.
