@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { refreshSession } from '../lib/auth.js';
 import { gcalLogin, gcalLogout, gcalGetToken } from '../lib/gcal.js';
+import { hasBuiltinCatalog } from '../constants/data.js';
 
 var ce = React.createElement;
 
@@ -82,6 +83,17 @@ var OWNERS = {
   paulina: { label: "Paulina", color: "#db2777", initials: "P" }
 };
 var OWNER_ORDER = ["damian", "paulina"];
+var OWNER_FALLBACK_COLORS = ["#6366f1", "#db2777", "#0d9488", "#f59e0b", "#7c3aed", "#0ea5e9"];
+// Tylko tenant z wbudowana baza (Porter Design) zachowuje historycznych wlascicieli damian/paulina
+// (zapisanych w zadaniach jako tekst). Pozostali maja wlasciciela = userzy ich tenanta (klucz = id usera).
+function applyTenantOwners(users) {
+  OWNERS = {}; OWNER_ORDER = [];
+  (users || []).forEach(function(u, i) {
+    var label = u.display_name || (u.email || "").split("@")[0] || "U\u017cytkownik";
+    OWNERS[u.id] = { label: label, color: u.color || OWNER_FALLBACK_COLORS[i % OWNER_FALLBACK_COLORS.length], initials: label.charAt(0).toUpperCase() };
+    OWNER_ORDER.push(u.id);
+  });
+}
 
 // ── CATEGORY CONFIG ──────────────────────────────────────────────────────────
 var CATEGORIES = {
@@ -282,7 +294,8 @@ function TaskCard(p) {
       // owner avatar (click = toggle owner)
       ce("div", {
         onClick: function() {
-          var next = task.owner === "damian" ? "paulina" : (task.owner === "paulina" ? null : "damian");
+          var oi = OWNER_ORDER.indexOf(task.owner);
+          var next = oi < 0 ? (OWNER_ORDER[0] || null) : (oi + 1 < OWNER_ORDER.length ? OWNER_ORDER[oi + 1] : null);
           p.onUpdate({ owner: next });
         },
         title: owner ? ("Osoba: " + owner.label + " (kliknij, by zmienić)") : "Przypisz osobę",
@@ -439,6 +452,13 @@ export function ScreenTasks(p) {
   var s5 = useState(null); var adding = s5[0]; var setAdding = s5[1]; // {cat, owner}
   var s6 = useState(""); var newTitle = s6[0]; var setNewTitle = s6[1];
   var s7 = useState(false); var showDone = s7[0]; var setShowDone = s7[1];
+
+  var sOw = useState(0); var setOwnersVer = sOw[1];
+  useEffect(function() {
+    if (hasBuiltinCatalog()) { OWNERS = { damian: { label: "Damian", color: "#6366f1", initials: "D" }, paulina: { label: "Paulina", color: "#db2777", initials: "P" } }; OWNER_ORDER = ["damian", "paulina"]; setOwnersVer(1); return; }
+    applyTenantOwners([]); setOwnersVer(1);
+    sbApi.getTenantUsers().then(function(u) { applyTenantOwners(u); setOwnersVer(function(v) { return v + 1; }); }).catch(function() {});
+  }, []);
 
   // ── LOAD ──
   useEffect(function() {
@@ -633,8 +653,7 @@ export function ScreenTasks(p) {
   if (hasNone) SIDEBAR.push("__none__");
 
   // overview metrics
-  var damianActive  = tasks.filter(function(t) { return !t.done && t.owner === "damian"; }).length;
-  var paulinaActive = tasks.filter(function(t) { return !t.done && t.owner === "paulina"; }).length;
+  function activeFor(oid) { return tasks.filter(function(t) { return !t.done && t.owner === oid; }).length; }
   var urgentActive  = tasks.filter(function(t) { return !t.done && (t.priority === "high" || isOverdue(t)); }).length;
 
   function ownerDot(t) {
@@ -651,16 +670,13 @@ export function ScreenTasks(p) {
     return ce("div", null,
       // metric cards
       ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 14 } },
-        ce("div", { style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 12, padding: "11px 13px" } },
-          ce("div", { style: { fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 6 } },
-            ce("span", { style: { width: 17, height: 17, borderRadius: "50%", background: OWNERS.damian.color, color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" } }, "D"), "Damian"),
-          ce("div", { style: { fontSize: 22, fontWeight: 700, color: "var(--t1)", marginTop: 3 } }, damianActive, ce("span", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 400 } }, " aktywnych"))
-        ),
-        ce("div", { style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 12, padding: "11px 13px" } },
-          ce("div", { style: { fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 6 } },
-            ce("span", { style: { width: 17, height: 17, borderRadius: "50%", background: OWNERS.paulina.color, color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" } }, "P"), "Paulina"),
-          ce("div", { style: { fontSize: 22, fontWeight: 700, color: "var(--t1)", marginTop: 3 } }, paulinaActive, ce("span", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 400 } }, " aktywnych"))
-        ),
+        OWNER_ORDER.slice(0, 2).map(function(oid) {
+          var ow = OWNERS[oid];
+          return ce("div", { key: oid, style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 12, padding: "11px 13px" } },
+            ce("div", { style: { fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 6 } },
+              ce("span", { style: { width: 17, height: 17, borderRadius: "50%", background: ow.color, color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" } }, ow.initials), ow.label),
+            ce("div", { style: { fontSize: 22, fontWeight: 700, color: "var(--t1)", marginTop: 3 } }, activeFor(oid), ce("span", { style: { fontSize: 11, color: "var(--t3)", fontWeight: 400 } }, " aktywnych")));
+        }),
         ce("div", { style: { background: "var(--bg)", border: "1px solid var(--bd2)", borderRadius: 12, padding: "11px 13px" } },
           ce("div", { style: { fontSize: 11, color: "var(--t3)", display: "flex", alignItems: "center", gap: 6 } }, "⏰ Pilne"),
           ce("div", { style: { fontSize: 22, fontWeight: 700, color: urgentActive > 0 ? "#ef4444" : "var(--t1)", marginTop: 3 } }, urgentActive)
@@ -719,7 +735,7 @@ export function ScreenTasks(p) {
         ce("button", { onClick: function() {
             var targetCat = activeCat === "__overview__" ? CAT_ORDER[0] : activeCat;
             if (activeCat === "__overview__") { setActiveCat(targetCat); }
-            openAdd(targetCat, "damian");
+            openAdd(targetCat, OWNER_ORDER[0] || null);
           },
           style: { padding: "9px 16px", borderRadius: 11, border: "none", background: "var(--t1)", color: "var(--bg)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" } },
           ce("span", null, "+"), "Nowe zadanie")

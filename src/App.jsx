@@ -4,7 +4,7 @@ import { signOut, getAccessToken } from './lib/auth.js';
 import {
   FABRICS, getAllFabrics, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
-  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, setBuiltinCatalog, SELLER,
+  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, setBuiltinCatalog, hasBuiltinCatalog, SELLER,
   buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
   buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
@@ -88,6 +88,7 @@ export function App(p){
   React.useEffect(function(){
     sbApi.getMyTenant().then(function(t){
       if(t&&t.config)setTenantConfig(t.config);
+      if(t&&t.name)setTenantName(t.name);
       // Wbudowana baza Porter tylko dla tenanta z config.builtin_catalog; po zmianie flagi przeladuj nadpisania
       if(t){
         setBuiltinCatalog(!!(t.config&&t.config.builtin_catalog));
@@ -97,8 +98,10 @@ export function App(p){
       if(t)setBilling({status:t.subscription_status||"trialing",trialEndsAt:t.trial_ends_at||null});
     }).catch(function(){});
   },[]);
-  var brandName=(tenantConfig&&tenantConfig.brand_name)||"Porter Design";
-  var brandLogo=(tenantConfig&&tenantConfig.logo_url)||LOGO_SRC;
+  // Fallback "Porter Design" i jego logo tylko dla tenanta z wbudowana baza; inni: nazwa tenanta z bazy, bez cudzego logo.
+  var sTenantName=useState(""),tenantName=sTenantName[0],setTenantName=sTenantName[1];
+  var brandName=(tenantConfig&&tenantConfig.brand_name)||tenantName||(hasBuiltinCatalog()?"Porter Design":"");
+  var brandLogo=(tenantConfig&&tenantConfig.logo_url)||(hasBuiltinCatalog()?LOGO_SRC:null);
   // Motyw: jasny (domyslny) / ciemny / bezowy — zapisywany w localStorage, stosowany jako data-theme na <html>.
   // Inicjalizacja "bez mrugniecia" dzieje sie juz w index.html (inline script przed pierwszym malowaniem).
   var sTheme=useState(function(){
@@ -1393,7 +1396,7 @@ export function App(p){
         ce("div",null,
           ce("div",{style:{fontSize:11,color:"var(--t3)",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6,fontWeight:600}},dateStr),
           ce("div",{style:{fontSize:28,fontWeight:900,color:"var(--t1)",lineHeight:1.15,marginBottom:4}},
-            "Porter Design"
+            brandName
           ),
           ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:20}},"Panel sprzeda\u017cy i wycen"),
           // Stat row — pipeline CRM: Zamówienie / Realizacja / Montaż
@@ -2696,7 +2699,7 @@ export function App(p){
     ce("div",{className:"pd-rail"+(railCollapsed?" pd-rail--collapsed":""),style:{"--pd-navcols":isSuperAdmin?9:8}},
       ce("div",{className:"pd-brand"},
         ce("div",{className:"pd-brandbox"},
-          ce("img",{src:brandLogo,alt:brandName,title:brandName,className:brandLogo===LOGO_SRC?"pd-logo-def":undefined})
+          brandLogo?ce("img",{src:brandLogo,alt:brandName,title:brandName,className:brandLogo===LOGO_SRC?"pd-logo-def":undefined}):null
         ),
         ce("div",{className:"pd-brandname"},brandName)
       ),
