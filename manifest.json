@@ -1,12 +1,14 @@
 {
-  "name": "Porter Design Assistant",
-  "short_name": "Porter Design",
-  "description": "Asystent wycen dekoracji okiennych",
+  "name": "Asystent Dekoracji",
+  "short_name": "Asystent",
+  "description": "Wyceny, CRM i faktury dla studiów dekoracji okien",
   "id": "/",
   "scope": "/",
   "start_url": "/",
   "display": "standalone",
-  "launch_handler": { "client_mode": "focus-existing" },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
   "background_color": "#ffffff",
   "theme_color": "#1a1a2e",
   "orientation": "any",

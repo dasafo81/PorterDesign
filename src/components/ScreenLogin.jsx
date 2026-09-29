@@ -218,7 +218,7 @@ export function ScreenLogin(p) {
             textAlign: 'center',
             letterSpacing: '0.04em'
           }
-        }, 'Porter Design Assistant \u00B7 Dost\u0119p tylko dla uprawnionych u\u017Cytkownik\u00F3w')
+        }, 'Asystent Dekoracji \u00B7 Dost\u0119p tylko dla uprawnionych u\u017Cytkownik\u00F3w')
       )
     )
   );
