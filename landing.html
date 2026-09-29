@@ -112,7 +112,19 @@
   .feat-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--wsp); margin-bottom: 0.7rem; }
   .feat-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; font-weight: 700; color: var(--ink); margin-bottom: 0.9rem; line-height: 1.25; }
   .feat-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
-  .app-frame { background: linear-gradient(135deg, #eae6fb 0%, #ddf0ea 100%); border-radius: 18px; padding: 1.1rem; box-shadow: 0 24px 60px rgba(60,45,120,0.14); }
+
+  /* Real app screenshots (new look) */
+  .shot-frame { background: #e9edf2; border-radius: 18px; padding: 0.7rem; box-shadow: 0 24px 60px rgba(28,32,60,0.22); }
+  .shot-frame img { display: block; width: 100%; height: auto; border-radius: 12px; }
+  .crm-showcase { max-width: 1240px; margin: 0 auto; padding: 3.2rem 2rem 1rem; text-align: center; }
+  .crm-showcase .feat-text { max-width: 720px; margin: 0 auto 2rem; }
+  .feat-list { list-style: none; margin-top: 1rem; display: grid; gap: 8px; text-align: left; }
+  .feat-list li { font-size: 14px; color: var(--ink2); line-height: 1.55; padding-left: 26px; position: relative; font-weight: 300; }
+  .feat-list li::before { content: "✓"; position: absolute; left: 0; top: 0; color: #2fa876; font-weight: 700; }
+  .feat-list li b { color: var(--ink); font-weight: 500; }
+  .feat-row.deal { grid-template-columns: 0.8fr 1.2fr; }
+  @media (max-width: 800px) { .feat-row.deal { grid-template-columns: 1fr; } .crm-showcase { padding: 2.2rem 1.2rem 0.5rem; } }
+  .app-frame { background: #e9edf2; border-radius: 18px; padding: 1.1rem; box-shadow: 0 24px 60px rgba(60,45,120,0.14); }
 
   /* Pricing hero section (dark, brand-heavy) */
   .pricing-section { background: linear-gradient(160deg, #1c1f4a 0%, #2e2b52 50%, #1e3d3e 100%); color: white; padding: 6rem 2rem; position: relative; overflow: hidden; }
@@ -402,7 +414,37 @@
   <div class="section-inner">
     <p class="section-label">Możliwości</p>
     <h2 class="section-title">Zamiast sześciu narzędzi<br>— jedno miejsce pracy</h2>
-    <p class="section-sub">Wyceny, CRM, kalendarz, faktury z KSeF i magazyn — zaprojektowane specjalnie dla studiów dekoracji okien.</p>
+    <p class="section-sub">Wyceny, CRM z kartą deala, kalendarz, faktury z KSeF i magazyn — zaprojektowane specjalnie dla studiów dekoracji okien.</p>
+  </div>
+
+
+  <!-- CRM: tablica -->
+  <div class="crm-showcase">
+    <div class="feat-text">
+      <p class="feat-eyebrow">CRM · Tablica zleceń</p>
+      <h3>Cały proces sprzedaży na jednej tablicy</h3>
+      <p>Od pomiaru, przez wycenę i zaliczkę, po zamówienie, realizację i montaż. Każde zlecenie to karta w kolorze etapu — z kwotą, terminem realizacji, datą montażu i statusem zamówionego osprzętu, tkaniny oraz szycia. Obsługa posprzedażowa, zakończone i odrzucone zawsze pod ręką.</p>
+    </div>
+    <div class="shot-frame"><img src="/crm-kanban.webp" alt="Tablica CRM z etapami: pomiar, wycena, zaliczka, zamówienie, realizacja, montaż" loading="lazy"></div>
+  </div>
+
+  <!-- CRM: karta deala -->
+  <div class="feat-row deal">
+    <div class="feat-text">
+      <p class="feat-eyebrow">CRM · Karta deala</p>
+      <h3>Jedna karta, z której sterujesz całym zleceniem</h3>
+      <p>Kliknij zlecenie i zobacz wszystko w jednym oknie — bez skakania między programami.</p>
+      <ul class="feat-list">
+        <li><b>Status i etapy:</b> przesuwasz zlecenie jednym przyciskiem, odhaczasz osprzęt, tkaninę i szycie.</li>
+        <li><b>Faktury:</b> wystawiasz zaliczkę i drugie 50%, wysyłasz klientowi, widzisz status KSeF i wpłaty.</li>
+        <li><b>Oferty:</b> podgląd wyceny, powrót do konfiguracji i wysyłka PDF bez wychodzenia z karty.</li>
+        <li><b>Ekonomia zlecenia:</b> koszt materiałów i szycia oraz marża liczone automatycznie.</li>
+        <li><b>Terminy i spotkania:</b> deadline, spotkanie z klientem, przypisany opiekun i zlecenie do szwalni.</li>
+      </ul>
+    </div>
+    <div class="feat-visual">
+      <div class="shot-frame"><img src="/crm-deal-card.webp" alt="Karta deala: rozliczenie z klientem, faktura, etapy zamówienia, deadline i ekonomia zlecenia" loading="lazy"></div>
+    </div>
   </div>
 
   <!-- Row 1: Zadania zespołu -->
@@ -578,7 +620,7 @@
       <div class="step"><div class="step-num">1</div><div class="step-line"></div><div class="step-body"><h3>Dodajesz klientkę i jej mieszkanie</h3><p>Imię, adres, pokoje z oknami — gotowe w 30 sekund. Wszystkie dane dostępne z każdego urządzenia.</p></div></div>
       <div class="step"><div class="step-num">2</div><div class="step-line"></div><div class="step-body"><h3>Konfigurujesz produkty na każde okno</h3><p>Wybierasz typ produktu, wymiary, tkaninę — aplikacja wylicza cenę brutto z marżą automatycznie. Bez Excela, bez kalkulatora.</p></div></div>
       <div class="step"><div class="step-num">3</div><div class="step-line"></div><div class="step-body"><h3>Generujesz PDF i wysyłasz mailem</h3><p>Profesjonalna oferta z logo studia jednym kliknięciem. Klientka dostaje maila zanim wyjdziesz z jej salonu.</p></div></div>
-      <div class="step"><div class="step-num">4</div><div class="step-body"><h3>Śledzisz status w CRM</h3><p>Przesuwasz kartę z "oferta wysłana" na "zamówienie złożone". Terminy trafiają prosto do kalendarza ekipy.</p></div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-body"><h3>Prowadzisz zlecenie w CRM</h3><p>Przesuwasz kartę między etapami, z karty deala wystawiasz faktury i wysyłasz oferty. Terminy trafiają prosto do kalendarza ekipy.</p></div></div>
     </div>
   </div>
 </section>
