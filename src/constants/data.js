@@ -5243,15 +5243,20 @@ export function buildHardwareRows(client){
           var rModelLbl=rModelMap[rpc.rModel]||rpc.rModel||"-";
           var rSystemLbl=rpc.rSystem==="elektryk"?"elektryczny":rpc.rSystem==="polautomatyczny"?"p\u00f3\u0142automatyczny":"manualny";
           var rStrona=rpc.rSystem==="elektryk"?(rpc.stronaSilnika||"Lewo"):(rpc.rModel==="duo"&&rpc.rSystem==="manual"?"Obie strony":(rpc.stronaObslugi||"Lewo"));
-          var rLancuszekLbl=rpc.rSystem==="elektryk"?"":(rpc.lancuszek==="metalowy"
-            ?", \u0142a\u0144cuszek metalowy ("+(rpc.kolorLancuszka||"srebrny")+")"
-            :", \u0142a\u0144cuszek bia\u0142y");
+          var rLancuszekLbl=rpc.rSystem==="elektryk"?"-":(rpc.lancuszek==="metalowy"
+            ?"Metalowy ("+(rpc.kolorLancuszka||"srebrny")+")"
+            :"Bia\u0142y");
           var rQty=(rpc.rModel==="duo"&&rpc.rSystem!=="polautomatyczny")?2:1;
           rows.push({
             room:r.name,win:w.name,
-            type:"Mechanizm rolety rzymskiej "+rModelLbl+" \u2014 "+rSystemLbl+rLancuszekLbl+", strona: "+rStrona,
+            type:"Mechanizm rolety rzymskiej \u2014 "+rModelLbl,
             len:rpar.wCm||0,
+            hCm:rpar.hCm||0,
+            nadproze:rpar.hNadproza||0,
             qty:rQty,
+            system:rSystemLbl,
+            strona:rStrona,
+            lancuszek:rLancuszekLbl,
             arc:0,arcDepth:null,arcChord:null,pts:0,
             motorSide:null,motorType:null,
             category:"rolety",
@@ -5355,9 +5360,19 @@ export function buildHardwarePDFHtmlFromRows(client,rows){
     var tableRows=supRows.map(function(r){
       var motorDesc=r.motorSide?(String(r.motorSide).charAt(0).toUpperCase()+String(r.motorSide).slice(1))+(r.motorType?" / "+(String(r.motorType).charAt(0).toUpperCase()+String(r.motorType).slice(1)):""):"–";
       var kolorLbl=(RAIL_SLIM_KOLORY.find(function(k){return k.v===r.kolor;})||{}).l;
+      // Mechanizm rolety: pozostałe kolumny (łuk/silnik) nic tu nie wnoszą, więc
+      // cała specyfika (sterowanie, strona, łańcuszek, wymiary) trafia w opis "Typ".
+      var typDesc=r.category==="rolety"
+        ?r.type
+          +"<br><span style=\"font-size:9px;color:#6b6b66\">"
+          +"Sterowanie: "+(r.system||"-")+" · Strona: "+(r.strona||"-")+" · Łańcuszek: "+(r.lancuszek||"-")
+          +(r.hCm?"<br>Wymiary: "+(r.len||"-")+"\xd7"+r.hCm+" cm":"")
+          +(r.nadproze?" · Nadproże: "+r.nadproze+" cm":"")
+          +"</span>"
+        :r.type+(kolorLbl?" — kolor: "+kolorLbl:"");
       return [
         r.roomWin||((r.room||"")+" / "+(r.win||"")),
-        r.type+(kolorLbl?" — kolor: "+kolorLbl:""),
+        typDesc,
         r.len?r.len+"cm":"-",
         (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
         r.arc?r.arc+" mb":"–",
