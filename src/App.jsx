@@ -4,7 +4,7 @@ import { signOut, getAccessToken } from './lib/auth.js';
 import {
   FABRICS, getAllFabrics, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
-  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, SELLER,
+  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, setBuiltinCatalog, SELLER,
   buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
   buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
@@ -88,6 +88,11 @@ export function App(p){
   React.useEffect(function(){
     sbApi.getMyTenant().then(function(t){
       if(t&&t.config)setTenantConfig(t.config);
+      // Wbudowana baza Porter tylko dla tenanta z config.builtin_catalog; po zmianie flagi przeladuj nadpisania
+      if(t){
+        setBuiltinCatalog(!!(t.config&&t.config.builtin_catalog));
+        sbApi.getCatalogItems().then(primeFabricOverrides).catch(function(){});
+      }
       if(t&&t.is_demo)setIsDemo(true);
       if(t)setBilling({status:t.subscription_status||"trialing",trialEndsAt:t.trial_ends_at||null});
     }).catch(function(){});

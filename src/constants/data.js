@@ -2790,6 +2790,17 @@ var FABRIC_LEGACY_NAMES = {
   "Ultimate":"Ultimate / Capture"
 };
 var _fabricOverrides = {};
+// Wbudowany katalog (FABRICS, TAPETY, ceny mechanizmow) to baza Porter Design z cenami zakupu
+// dostawcow. Dostaje ja tylko tenant z config.builtin_catalog=true (ustawiane w migracji 0055);
+// pozostali tenanci startuja z pustym katalogiem i importuja wlasny (Magazyn -> Katalog -> Import).
+// Domyslnie false, zeby przed wczytaniem tenanta nic z bazy Porter nie wyciekalo.
+var _builtinCatalog = false;
+try{ _builtinCatalog = (typeof localStorage!=="undefined") && localStorage.getItem("pd_builtin_catalog")==="1"; }catch(e){}
+export function setBuiltinCatalog(on){
+  _builtinCatalog = !!on;
+  try{ if(typeof localStorage!=="undefined") localStorage.setItem("pd_builtin_catalog", on?"1":"0"); }catch(e){}
+}
+export function hasBuiltinCatalog(){ return _builtinCatalog; }
 // Tkaniny wlasne (dodane recznie w Magazyn -> Katalog, bez base_key, grupa "tkaniny")
 var _customFabrics = [];
 function _rowToFabric(r){
@@ -2830,7 +2841,7 @@ export function primeFabricOverrides(rows){
 // bez pozycji ukrytych) + tkaniny wlasne dodane recznie w Katalogu.
 export function getAllFabrics(){
   var out = [];
-  FABRICS.forEach(function(f){
+  (_builtinCatalog ? FABRICS : []).forEach(function(f){
     var ov = _fabricOverrides[f.name];
     if(ov && ov.hidden) return;
     var eff = getFabricEffective(f.name);
@@ -2846,8 +2857,8 @@ export function getAllFabrics(){
 // Zwraca efektywną tkaninę (baza FABRICS + nadpisanie z katalogu, jeśli istnieje)
 export function getFabricEffective(name){
   if(name && FABRIC_LEGACY_NAMES[name]) name = FABRIC_LEGACY_NAMES[name];
-  var base = FABRICS.find(function(f){return f.name===name;});
-  var ov = _fabricOverrides[name];
+  var base = _builtinCatalog ? FABRICS.find(function(f){return f.name===name;}) : null;
+  var ov = _builtinCatalog ? _fabricOverrides[name] : null;
   if(!base && !ov){
     var cf = _customFabrics.find(function(f){return f.name===name;});
     return cf ? Object.assign({}, cf) : null;
