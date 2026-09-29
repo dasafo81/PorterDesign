@@ -127,6 +127,7 @@
   /* Real app screenshots (new look) */
 
   /* Application tour: menu tabs under hero */
+  .problem { background: #f4f5f8; }
   .tour { background: var(--white); padding: 4rem 2rem 4.5rem; }
   .tour-inner { max-width: 1240px; margin: 0 auto; }
   .tour-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; overflow-x: auto; background: #eceef3; border-radius: 16px; padding: 6px; max-width: 1080px; margin: 0 auto 2.2rem; scrollbar-width: none; }
@@ -135,6 +136,9 @@
   .tour-tab:hover { color: var(--ink); }
   .tour-tab[aria-selected="true"] { background: var(--white); border-color: var(--ink); color: #b45a12; font-weight: 600; box-shadow: 0 2px 8px rgba(28,34,51,0.10); }
   .tour-tab .ic { font-size: 16px; }
+  .sw-tabs { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+  .sw-btn { padding: 8px 18px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--white); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: var(--ink2); cursor: pointer; }
+  .sw-btn.active { border-color: var(--ink); color: #b45a12; font-weight: 600; }
   .tour-panel { display: none; grid-template-columns: 0.72fr 1.28fr; gap: 2.6rem; align-items: center; }
   .tour-panel.active { display: grid; animation: fadeUp .35s both; }
   .tour-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.9rem; font-weight: 700; line-height: 1.2; color: var(--ink); margin-bottom: 0.9rem; }
@@ -296,7 +300,7 @@
 </style>
 </head>
 <body>
-<div class="ksef-banner">📄 Fakturę z KSeF wystawiasz tam, gdzie prowadzisz zlecenie — bez przełączania się na inny program → <a href="#funkcje">zobacz</a></div>
+<div class="ksef-banner">📄 Fakturę z KSeF wystawiasz tam, gdzie prowadzisz zlecenie — bez przełączania się na inny program → <a href="#tour-faktury">zobacz</a></div>
 <nav>
   <a class="nav-logo" href="#"><img src="/logo-mark-192.png" alt="Asystent Dekoracji — logo">Asystent <span>Dekoracji</span></a>
   <a class="nav-cta" href="/register">Wypróbuj za darmo</a>
@@ -310,7 +314,7 @@
       <p class="hero-sub">Wybierasz produkt i wpisujesz wymiary — cena z marżą liczy się sama, bez arkuszy i kalkulatora. To jednak dopiero początek: Asystent Dekoracji to kompletne, niezależne studio — od kalendarza i CRM, przez pocztę, po faktury zgodne z KSeF.</p>
       <div class="hero-actions">
         <a href="/register" class="btn-primary">Wypróbuj za darmo (3 dni)</a>
-        <a href="#funkcje" class="btn-secondary">Zobacz możliwości</a>
+        <a href="#aplikacja" class="btn-secondary">Zobacz możliwości</a>
       </div>
       <p style="margin-top:1rem;font-size:13px;color:var(--ink3)">Wolisz zobaczyć demo na żywo? <a href="#kontakt" style="color:var(--wsp-dark);text-decoration:underline">Umów rozmowę</a></p>
       <div class="hero-badge">
@@ -338,6 +342,20 @@
   </div>
 </section>
 
+<section class="problem">
+  <div class="section-inner">
+    <p class="section-label">Czy to brzmi znajomo?</p>
+    <h2 class="section-title">Prowadzisz studio,<br>a wyceny zajmują Ci godziny</h2>
+    <p class="section-sub">Każdy właściciel małego studia dekoracji zna ten problem.</p>
+    <div class="problem-grid">
+      <div class="problem-card"><div class="problem-icon">📊</div><p>Wyceny robisz ręcznie w Excelu, musisz pilnować wzorów i marż przy każdej zmianie</p></div>
+      <div class="problem-card"><div class="problem-icon">📁</div><p>Dokumenty klientów są porozrzucane — wiadomości, foldery, notatki na kartce</p></div>
+      <div class="problem-card"><div class="problem-icon">⏳</div><p>Wysłanie oferty PDF klientowi zajmuje pół dnia zamiast kilku minut</p></div>
+      <div class="problem-card"><div class="problem-icon">🗓️</div><p>Terminy montażu gubią się, a klienci dzwonią z pytaniem "kiedy ekipa?"</p></div>
+    </div>
+  </div>
+</section>
+
 <section class="tour" id="aplikacja">
   <div class="tour-inner">
     <p class="section-label">Zobacz aplikację</p>
@@ -351,7 +369,10 @@
         <p>Od pomiaru, przez wycenę i zaliczkę, po zamówienie, realizację i montaż — każde zlecenie to karta w kolorze etapu. Widzisz kwotę, termin realizacji, datę montażu i status osprzętu, tkaniny oraz szycia.</p>
         <ul class="feat-list"><li>Przeciągasz karty między etapami</li><li>Karta deala: faktury, oferty, ekonomia zlecenia i marża w jednym oknie</li><li>Obsługa posprzedażowa, zakończone i odrzucone zawsze pod ręką</li></ul>
       </div>
-      <div class="shot-frame"><img src="/crm-kanban.webp" alt="Tablica CRM z etapami zleceń" loading="eager"></div>
+      <div class="shot-switch">
+        <div class="shot-frame"><img class="sw-img" data-sw="board" src="/crm-kanban.webp" alt="Tablica CRM z etapami zleceń"><img class="sw-img" data-sw="deal" src="/crm-deal-card.webp" alt="Karta deala: rozliczenie, etapy zamówienia, deadline i ekonomia zlecenia" hidden></div>
+        <div class="sw-tabs" role="group" aria-label="Widok CRM"><button type="button" class="sw-btn active" data-sw="board">Tablica zleceń</button><button type="button" class="sw-btn" data-sw="deal">Karta deala</button></div>
+      </div>
     </div>
     <div class="tour-panel" role="tabpanel" id="tour-panel-wyceny" aria-labelledby="tour-tab-wyceny">
       <div class="tour-text">
@@ -428,15 +449,6 @@
   </div>
 </section>
 
-<section class="custom" id="integracje">
-  <div class="custom-inner">
-    <p class="section-label">Integracje i personalizacja</p>
-    <h2 class="section-title">Połączone z Twoimi narzędziami,<br>dopasowane do Twojego studia</h2>
-    <p class="section-sub">Kalendarz i poczta, których już używasz, oraz cenniki, kontrahenci i szablony ustawione po Twojemu.</p>
-    <div class="custom-grid"><div class="custom-card"><div class="custom-ic">📅</div><p class="custom-tag">Integracje</p><h3>Google Calendar</h3><p>Terminy pomiarów, montaży i realizacji trafiają do Twojego kalendarza Google, osobno dla każdej ekipy.</p></div><div class="custom-card"><div class="custom-ic">📨</div><p class="custom-tag">Integracje</p><h3>Outlook</h3><p>Wysyłasz oferty i dokumenty z własnej skrzynki Outlook, śledzisz korespondencję z klientem i dodajesz wydarzenia do kalendarza Outlook.</p></div><div class="custom-card"><div class="custom-ic">🏷️</div><p class="custom-tag">Własne ustawienia</p><h3>Własne cenniki</h3><p>Korzystasz z katalogu cen producentów albo tworzysz własny cennik dla produktów spoza katalogu — ceny i marże masz pod kontrolą.</p></div><div class="custom-card"><div class="custom-ic">👥</div><p class="custom-tag">Własne ustawienia</p><h3>Kontrahenci</h3><p>Baza klientów i dostawców z uzupełnianiem danych po NIP, gotowa do użycia w ofertach, zamówieniach i fakturach.</p></div><div class="custom-card"><div class="custom-ic">📋</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony ofert</h3><p>Oferta w PDF z logo studia, własnymi uwagami i ważnością — szczegółowa albo uproszczona, jednym kliknięciem.</p></div><div class="custom-card"><div class="custom-ic">✉️</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony maili</h3><p>Gotowe wiadomości do klientów: oferta, potwierdzenie, przypomnienie. Klient, kwota i zaliczka wstawiają się same.</p></div><div class="custom-card"><div class="custom-ic">🧾</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony faktur</h3><p>Dane sprzedawcy, numerację i stawki VAT ustawiasz raz. Zaliczkę i fakturę końcową wystawiasz wprost ze zlecenia.</p></div></div>
-  </div>
-</section>
-
 <section class="pricing-section" id="wyceny">
   <div class="pricing-inner">
     <p class="pricing-eyebrow">Serce aplikacji · Wyceny</p>
@@ -501,111 +513,12 @@
   </div>
 </section>
 
-<section>
-  <div class="section-inner">
-    <p class="section-label">Czy to brzmi znajomo?</p>
-    <h2 class="section-title">Prowadzisz studio,<br>a wyceny zajmują Ci godziny</h2>
-    <p class="section-sub">Każdy właściciel małego studia dekoracji zna ten problem.</p>
-    <div class="problem-grid">
-      <div class="problem-card"><div class="problem-icon">📊</div><p>Wyceny robisz ręcznie w Excelu, musisz pilnować wzorów i marż przy każdej zmianie</p></div>
-      <div class="problem-card"><div class="problem-icon">📁</div><p>Dokumenty klientów są porozrzucane — wiadomości, foldery, notatki na kartce</p></div>
-      <div class="problem-card"><div class="problem-icon">⏳</div><p>Wysłanie oferty PDF klientowi zajmuje pół dnia zamiast kilku minut</p></div>
-      <div class="problem-card"><div class="problem-icon">🗓️</div><p>Terminy montażu gubią się, a klienci dzwonią z pytaniem "kiedy ekipa?"</p></div>
-    </div>
-  </div>
-</section>
-
-<section class="features-bg" id="funkcje">
-  <div class="section-inner">
-    <p class="section-label">Możliwości</p>
-    <h2 class="section-title">Zamiast sześciu narzędzi<br>— jedno miejsce pracy</h2>
-    <p class="section-sub">Wyceny, CRM z kartą deala, kalendarz, faktury z KSeF i magazyn — zaprojektowane specjalnie dla studiów dekoracji okien.</p>
-  </div>
-
-
-  <!-- CRM: tablica -->
-  <div class="crm-showcase">
-    <div class="feat-text">
-      <p class="feat-eyebrow">CRM · Tablica zleceń</p>
-      <h3>Cały proces sprzedaży na jednej tablicy</h3>
-      <p>Od pomiaru, przez wycenę i zaliczkę, po zamówienie, realizację i montaż. Każde zlecenie to karta w kolorze etapu — z kwotą, terminem realizacji, datą montażu i statusem zamówionego osprzętu, tkaniny oraz szycia. Obsługa posprzedażowa, zakończone i odrzucone zawsze pod ręką.</p>
-    </div>
-    <div class="shot-frame"><img src="/crm-kanban.webp" alt="Tablica CRM z etapami: pomiar, wycena, zaliczka, zamówienie, realizacja, montaż" loading="lazy"></div>
-  </div>
-
-  <!-- CRM: karta deala -->
-  <div class="feat-row deal">
-    <div class="feat-text">
-      <p class="feat-eyebrow">CRM · Karta deala</p>
-      <h3>Jedna karta, z której sterujesz całym zleceniem</h3>
-      <p>Kliknij zlecenie i zobacz wszystko w jednym oknie — bez skakania między programami.</p>
-      <ul class="feat-list">
-        <li><b>Status i etapy:</b> przesuwasz zlecenie jednym przyciskiem, odhaczasz osprzęt, tkaninę i szycie.</li>
-        <li><b>Faktury:</b> wystawiasz zaliczkę i drugie 50%, wysyłasz klientowi, widzisz status KSeF i wpłaty.</li>
-        <li><b>Oferty:</b> podgląd wyceny, powrót do konfiguracji i wysyłka PDF bez wychodzenia z karty.</li>
-        <li><b>Ekonomia zlecenia:</b> koszt materiałów i szycia oraz marża liczone automatycznie.</li>
-        <li><b>Terminy i spotkania:</b> deadline, spotkanie z klientem, przypisany opiekun i zlecenie do szwalni.</li>
-      </ul>
-    </div>
-    <div class="feat-visual">
-      <div class="shot-frame"><img src="/crm-deal-card.webp" alt="Karta deala: rozliczenie z klientem, faktura, etapy zamówienia, deadline i ekonomia zlecenia" loading="lazy"></div>
-    </div>
-  </div>
-
-  <!-- Row 1: Zadania zespołu -->
-  <div class="feat-row">
-    <div class="feat-text">
-      <p class="feat-eyebrow">Zadania · Zespół</p>
-      <h3>Każdy w zespole wie, co ma dziś zrobić</h3>
-      <p>Zadania podzielone na kategorie (montaż, marketing, dział legalny, sprzedaż...) i przypisane do osoby. Widok "Pilne" pokazuje, co wymaga uwagi już dziś — nic nie ginie w wiadomościach.</p>
-    </div>
-    <div class="feat-visual">
-      <div class="shot-frame"><img src="/zadania.webp" alt="Zadania zespołu podzielone na kategorie i osoby" loading="lazy"></div>
-    </div>
-  </div>
-
-  <!-- Row 2 (reverse): Kalendarz + Google -->
-  <div class="feat-row reverse">
-    <div class="feat-text">
-      <p class="feat-eyebrow">Kalendarz · Google Calendar</p>
-      <h3>Terminy montaży zawsze aktualne</h3>
-      <p>Po połączeniu własnego konta Google terminy pomiarów i montaży trafiają bezpośrednio do kalendarza — osobno dla każdej ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM, bez przełączania aplikacji.</p>
-    </div>
-    <div class="feat-visual">
-      <div class="shot-frame"><img src="/kalendarz.webp" alt="Kalendarz tygodniowy z montażami, pomiarami i realizacjami" loading="lazy"></div>
-    </div>
-  </div>
-
-  <!-- Row 3: Faktury KSeF -->
-  <div class="feat-row">
-    <div class="feat-text">
-      <p class="feat-eyebrow">Faktury · KSeF</p>
-      <h3>Faktura wystawiona tam, gdzie prowadzisz zlecenie — nie w osobnym programie</h3>
-      <p>Automatyczna numeracja, obsługa VAT, faktury sprzedażowe i zakupowe w jednym miejscu. Wysyłasz i śledzisz status w KSeF bez osobnego programu do fakturowania.</p>
-    </div>
-    <div class="feat-visual">
-      <div class="shot-frame"><img src="/faktury-ksef.webp" alt="Lista faktur sprzedażowych ze statusem płatności i KSeF" loading="lazy"></div>
-    </div>
-  </div>
-
-  <!-- Row 4 (reverse): Katalog / Magazyn -->
-  <div class="feat-row reverse">
-    <div class="feat-text">
-      <p class="feat-eyebrow">Magazyn · Katalog</p>
-      <h3>Stany magazynowe i katalog w jednej wyszukiwarce</h3>
-      <p>Stany tkanin, mechanizmów i akcesoriów z ostrzeżeniem o niskim stanie, katalog akcesoriów i ścinków szyn oraz własne kategorie produktów. Ostrzeżenie, gdy brakuje kluczowych parametrów (np. wysokości tkaniny), zanim trafi to do wyceny klientki.</p>
-    </div>
-    <div class="feat-visual">
-      <div class="shot-frame"><img src="/magazyn.webp" alt="Katalog tkanin w magazynie z cenami i statusem próbnika" loading="lazy"></div>
-    </div>
-  </div>
-
-  <div class="section-inner" style="margin-top: 1rem;">
-    <div class="features-grid">
-      <div class="feat-card"><div class="feat-icon">✂️</div><h3>Zlecenia szycia i zamówienia</h3><p>Jednym kliknięciem generujesz zlecenie szycia dla krawcowej, zamówienie tkanin oraz zamówienie karniszy.</p></div>
-      <div class="feat-card"><div class="feat-icon">📧</div><h3>Poczta — Outlook</h3><p>Wysyłasz oferty PDF przez swoje konto pocztowe. Historia korespondencji widoczna przy każdym kliencie.</p></div>
-      <div class="feat-card"><div class="feat-icon">📄</div><h3>Dokumenty PDF jednym kliknięciem</h3><p>Oferta, zlecenie szycia, zamówienie tkanin, zamówienie karniszy — gotowe dokumenty z logo studia.</p></div>
-    </div>
+<section class="custom" id="integracje">
+  <div class="custom-inner">
+    <p class="section-label">Integracje i personalizacja</p>
+    <h2 class="section-title">Połączone z Twoimi narzędziami,<br>dopasowane do Twojego studia</h2>
+    <p class="section-sub">Kalendarz i poczta, których już używasz, oraz cenniki, kontrahenci i szablony ustawione po Twojemu.</p>
+    <div class="custom-grid"><div class="custom-card"><div class="custom-ic">📅</div><p class="custom-tag">Integracje</p><h3>Google Calendar</h3><p>Terminy pomiarów, montaży i realizacji trafiają do Twojego kalendarza Google, osobno dla każdej ekipy.</p></div><div class="custom-card"><div class="custom-ic">📨</div><p class="custom-tag">Integracje</p><h3>Outlook</h3><p>Wysyłasz oferty i dokumenty z własnej skrzynki Outlook, śledzisz korespondencję z klientem i dodajesz wydarzenia do kalendarza Outlook.</p></div><div class="custom-card"><div class="custom-ic">🏷️</div><p class="custom-tag">Własne ustawienia</p><h3>Własne cenniki</h3><p>Korzystasz z katalogu cen producentów albo tworzysz własny cennik dla produktów spoza katalogu — ceny i marże masz pod kontrolą.</p></div><div class="custom-card"><div class="custom-ic">👥</div><p class="custom-tag">Własne ustawienia</p><h3>Kontrahenci</h3><p>Baza klientów i dostawców z uzupełnianiem danych po NIP, gotowa do użycia w ofertach, zamówieniach i fakturach.</p></div><div class="custom-card"><div class="custom-ic">📋</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony ofert</h3><p>Oferta w PDF z logo studia, własnymi uwagami i ważnością — szczegółowa albo uproszczona, jednym kliknięciem.</p></div><div class="custom-card"><div class="custom-ic">✉️</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony maili</h3><p>Gotowe wiadomości do klientów: oferta, potwierdzenie, przypomnienie. Klient, kwota i zaliczka wstawiają się same.</p></div><div class="custom-card"><div class="custom-ic">🧾</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony faktur</h3><p>Dane sprzedawcy, numerację i stawki VAT ustawiasz raz. Zaliczkę i fakturę końcową wystawiasz wprost ze zlecenia.</p></div></div>
   </div>
 </section>
 
@@ -716,6 +629,20 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a) {
   });
   var h=(location.hash||'').replace('#tour-','');
   if(h&&document.getElementById('tour-panel-'+h))show(h);
+})();
+
+(function(){
+  var btns=[].slice.call(document.querySelectorAll('.sw-btn'));
+  btns.forEach(function(b){b.addEventListener('click',function(){
+    var k=b.getAttribute('data-sw');
+    btns.forEach(function(x){x.classList.toggle('active',x===b);});
+    [].forEach.call(document.querySelectorAll('.sw-img'),function(i){i.hidden=i.getAttribute('data-sw')!==k;});
+  });});
+  window.addEventListener('hashchange',function(){
+    var h=(location.hash||'').replace('#tour-','');
+    var t=document.getElementById('tour-tab-'+h);
+    if(t&&location.hash.indexOf('#tour-')===0){t.click();var sec=document.getElementById('aplikacja');if(sec)sec.scrollIntoView({behavior:'smooth'});}
+  });
 })();
 </script>
 </body>
