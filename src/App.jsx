@@ -3183,8 +3183,11 @@ export function ModalClientEmail(p){
       setDbTemplates(mapped);
     }).catch(function(e){console.error("getMailTemplates error",e);setDbTemplates([]);});
   },[]);
-  var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
-  var hasWstepnaInList=activeTemplates.some(function(t){return t.id==="wstepna";});
+  // Z karty Podsumowanie pokazujemy tylko szablony dotyczące wycen/ofert
+  // (pozostałe — faktury, zamówienia tkanin, opinie itd. — żyją w module Poczta).
+  var isQuoteTpl=function(t){return /wycen|ofert/i.test(String(t.label||""));};
+  var activeTemplates=(dbTemplates!==null?dbTemplates:MAIL_TEMPLATES).filter(isQuoteTpl);
+  var hasWstepnaInList=activeTemplates.some(function(t){return t.id==="wstepna"||/^wstępna wycena$/i.test(String(t.label||"").trim());});
   var templateButtons=hasWstepnaInList?activeTemplates:[TPL_WSTEPNA].concat(activeTemplates);
   var s1=useState(p.to!=null?p.to:(client.email||"")),toEmail=s1[0],setToEmail=s1[1];
   var s2=useState(p.subject||(isWstepna?TPL_WSTEPNA.subject:"Oferta aran\u017cacji okiennych")),subject=s2[0],setSubject=s2[1];
