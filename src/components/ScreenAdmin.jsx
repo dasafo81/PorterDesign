@@ -37,7 +37,7 @@ function ModalShell(p) {
              display: 'flex', alignItems: 'center', justifyContent: 'center',
              zIndex: 10000, padding: 20 }
   },
-    ce('div', { style: { background: 'var(--bg2)', borderRadius: 16, padding: 24,
+    ce('div', { style: { background: 'var(--bg)', borderRadius: 16, padding: 24,
                           width: 'min(440px, 100%)', border: '1px solid var(--bd2)',
                           boxShadow: '0 20px 60px rgba(0,0,0,0.3)' } },
       ce('div', { style: { fontSize: 16, fontWeight: 700, color: 'var(--t1)', marginBottom: 18 } }, p.title),
@@ -86,22 +86,77 @@ function CreateTenantModal(p) {
   );
 }
 
-// ── Edit-tenant (branding) modal ──────────────────────────────
+// ── Logo: plik -> zmniejszony data URL (zapisywany w config.logo_url; dziala w app, PDF i mailach) ──
+function fileToLogoDataUrl(file) {
+  return new Promise(function(resolve, reject) {
+    if (!/^image\//.test(file.type)) { reject(new Error('Wybierz plik graficzny (PNG, JPG, WEBP lub SVG).')); return; }
+    var reader = new FileReader();
+    reader.onerror = function() { reject(new Error('Nie udało się odczytać pliku.')); };
+    reader.onload = function() {
+      var src = reader.result;
+      if (file.type === 'image/svg+xml') {
+        if (src.length > 300000) reject(new Error('Plik SVG jest za duży (max ok. 200 KB).')); else resolve(src);
+        return;
+      }
+      var img = new Image();
+      img.onerror = function() { reject(new Error('Nie udało się wczytać obrazu.')); };
+      img.onload = function() {
+        var MAX_W = 600, MAX_H = 300;
+        var k = Math.min(1, MAX_W / img.width, MAX_H / img.height);
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/png')); // PNG zachowuje przezroczystość
+      };
+      img.src = src;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+var labelStyle = { display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                    color: 'var(--t3)', textTransform: 'uppercase', marginBottom: 6 };
+function Field(p) {
+  return ce('div', { style: p.style || {} },
+    ce('label', { style: labelStyle }, p.label),
+    p.children,
+    p.hint ? ce('div', { style: { fontSize: 11, color: 'var(--t3)', marginTop: 5, lineHeight: 1.4 } }, p.hint) : null);
+}
+function Section(p) {
+  return ce('div', { style: { background: 'var(--bg2)', border: '1px solid var(--bd2)', borderRadius: 12, padding: 18 } },
+    ce('div', { style: { fontSize: 13, fontWeight: 700, color: 'var(--t1)', marginBottom: 2 } }, p.title),
+    p.sub ? ce('div', { style: { fontSize: 12, color: 'var(--t3)', marginBottom: 14, lineHeight: 1.5 } }, p.sub) : ce('div', { style: { height: 12 } }),
+    p.children);
+}
+
+// ── Edit-tenant (branding + dane firmy) modal ─────────────────
 function EditTenantModal(p) {
   var cfg = p.tenant.config || {};
+  var sel = cfg.seller || {};
   var sBrand = useState(cfg.brand_name || ''), brandName = sBrand[0], setBrandName = sBrand[1];
   var sLogo = useState(cfg.logo_url || ''), logoUrl = sLogo[0], setLogoUrl = sLogo[1];
-  var sel = cfg.seller || {};
-  var SELLER_FIELDS = [['name', 'Pe\u0142na nazwa firmy (PDF, faktury)'], ['short_name', 'Nazwa skr\u00f3cona'], ['addr', 'Adres'], ['city', 'Kod i miasto'],
-    ['nip', 'NIP'], ['email', 'E-mail firmowy'], ['tel', 'Telefon'], ['bank', 'Nr konta'], ['bank_name', 'Nazwa banku'], ['signature', 'Podpis w mailach (wiele linii)']];
-  var sSel = useState(function() { var o = {}; SELLER_FIELDS.forEach(function(f) { o[f[0]] = sel[f[0]] || ''; }); return o; }), seller = sSel[0], setSeller = sSel[1];
+  var sLogoErr = useState(null), logoErr = sLogoErr[0], setLogoErr = sLogoErr[1];
+  var SELLER_KEYS = ['name', 'short_name', 'addr', 'city', 'nip', 'email', 'tel', 'bank', 'bank_name', 'signature'];
+  var sSel = useState(function() { var o = {}; SELLER_KEYS.forEach(function(k) { o[k] = sel[k] || ''; }); return o; }), seller = sSel[0], setSeller = sSel[1];
   var sBusy = useState(false), busy = sBusy[0], setBusy = sBusy[1];
   var sErr = useState(null), err = sErr[0], setErr = sErr[1];
+  var fileRef = React.useRef(null);
+
+  function setS(k, v) { setSeller(function(s) { var n = Object.assign({}, s); n[k] = v; return n; }); }
+  function bind(k) { return { value: seller[k], onChange: function(e) { setS(k, e.target.value); }, style: inputStyle }; }
+
+  function onPickLogo(e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    setLogoErr(null);
+    fileToLogoDataUrl(f).then(setLogoUrl).catch(function(ex) { setLogoErr(ex.message); });
+  }
 
   function submit() {
     setBusy(true); setErr(null);
     var sOut = {};
-    SELLER_FIELDS.forEach(function(f) { if (seller[f[0]].trim()) sOut[f[0]] = seller[f[0]].trim(); });
+    SELLER_KEYS.forEach(function(k) { if (seller[k].trim()) sOut[k] = seller[k].trim(); });
     // Merge z dotychczasowa konfiguracja — PATCH podmienia caly config, a trzyma on tez np. builtin_catalog.
     adminApi.updateTenant(p.tenant.id, Object.assign({}, cfg, {
       brand_name: brandName.trim(),
@@ -115,43 +170,70 @@ function EditTenantModal(p) {
     });
   }
 
-  return ce(ModalShell, { title: 'Branding — ' + p.tenant.name, onClose: p.onClose },
-    err ? ce('div', { style: { padding: 10, marginBottom: 12, background: 'rgba(239,68,68,0.08)',
-                                border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8,
-                                color: '#ef4444', fontSize: 13 } }, err) : null,
-    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
-                            letterSpacing: '0.08em', color: 'var(--t3)',
-                            textTransform: 'uppercase', marginBottom: 6 } }, 'Nazwa marki (topbar)'),
-    ce('input', {
-      autoFocus: true, value: brandName,
-      onChange: function(e) { setBrandName(e.target.value); },
-      placeholder: 'np. Window Studio Pro',
-      style: inputStyle
-    }),
-    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700,
-                            letterSpacing: '0.08em', color: 'var(--t3)',
-                            textTransform: 'uppercase', marginBottom: 6, marginTop: 14 } },
-      'URL logo (opcjonalne)'),
-    ce('input', {
-      type: 'url', value: logoUrl,
-      onChange: function(e) { setLogoUrl(e.target.value); },
-      onKeyDown: function(e) { if (e.key === 'Enter') submit(); },
-      placeholder: 'https://...',
-      style: inputStyle
-    }),
-    ce('div', { style: { fontSize: 12, color: 'var(--t3)', marginTop: 8, marginBottom: 6 } },
-      'Puste pola \u2014 nazwa tenanta, bez logo. Poni\u017csze dane trafiaj\u0105 do PDF-\u00f3w wycen/zam\u00f3wie\u0144 i podpis\u00f3w w mailach.'),
-    SELLER_FIELDS.map(function(f) {
-      return ce('div', { key: f[0] },
-        ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--t3)', textTransform: 'uppercase', marginBottom: 4, marginTop: 10 } }, f[1]),
-        f[0] === 'signature'
-          ? ce('textarea', { rows: 3, value: seller[f[0]], onChange: function(e) { var v = e.target.value; setSeller(function(s) { return Object.assign({}, s, { signature: v }); }); }, style: inputStyle })
-          : ce('input', { value: seller[f[0]], onChange: function(e) { var v = e.target.value, k = f[0]; setSeller(function(s) { var n = Object.assign({}, s); n[k] = v; return n; }); }, style: inputStyle }));
-    }),
-    ce('div', { style: { display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' } },
-      ce('button', { onClick: p.onClose, disabled: busy, style: secondaryButtonStyle }, 'Anuluj'),
-      ce('button', { onClick: submit, disabled: busy, style: primaryButtonStyle(busy) },
-        busy ? 'Zapisuje...' : 'Zapisz')
+  var twoCol = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 };
+  return ce('div', {
+    onClick: function(e) { if (e.target === e.currentTarget && !busy) p.onClose(); },
+    style: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex',
+             alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20 }
+  },
+    ce('div', { style: { background: 'var(--bg)', borderRadius: 16, width: 'min(1040px, 100%)', maxHeight: 'calc(100vh - 40px)',
+                          display: 'flex', flexDirection: 'column', border: '1px solid var(--bd2)',
+                          boxShadow: '0 20px 60px rgba(0,0,0,0.3)' } },
+      // nagłówek
+      ce('div', { style: { padding: '18px 24px', borderBottom: '1px solid var(--bd2)', display: 'flex', alignItems: 'baseline', gap: 10 } },
+        ce('div', { style: { fontSize: 17, fontWeight: 700, color: 'var(--t1)' } }, 'Branding i dane firmy'),
+        ce('div', { style: { fontSize: 13, color: 'var(--t3)' } }, p.tenant.name)),
+      // treść (przewijana)
+      ce('div', { style: { padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 18 } },
+        err ? ce('div', { style: { padding: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                                    borderRadius: 8, color: '#ef4444', fontSize: 13 } }, err) : null,
+
+        ce(Section, { title: 'Marka', sub: 'Nazwa i logo w aplikacji (pasek boczny, ekran główny) oraz w PDF-ach. Puste pola — nazwa tenanta, bez logo.' },
+          ce('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, alignItems: 'start' } },
+            ce(Field, { label: 'Nazwa marki (topbar)' },
+              ce('input', { autoFocus: true, value: brandName, onChange: function(e) { setBrandName(e.target.value); },
+                            placeholder: 'np. Window Studio Pro', style: inputStyle })),
+            ce(Field, { label: 'Logo' },
+              ce('div', { style: { display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' } },
+                ce('div', { style: { width: 150, height: 76, border: '1.5px dashed var(--bd2)', borderRadius: 10, background: 'var(--bg2)',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 } },
+                  logoUrl
+                    ? ce('img', { src: logoUrl, alt: 'Logo', style: { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' } })
+                    : ce('span', { style: { fontSize: 12, color: 'var(--t3)' } }, 'brak logo')),
+                ce('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
+                  ce('input', { ref: fileRef, type: 'file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', onChange: onPickLogo, style: { display: 'none' } }),
+                  ce('button', { type: 'button', onClick: function() { if (fileRef.current) fileRef.current.click(); }, style: secondaryButtonStyle },
+                    logoUrl ? '📁 Zmień logo…' : '📁 Wybierz plik…'),
+                  logoUrl ? ce('button', { type: 'button', onClick: function() { setLogoUrl(''); setLogoErr(null); },
+                    style: Object.assign({}, secondaryButtonStyle, { color: '#dc2626' }) }, 'Usuń logo') : null)),
+              logoErr ? ce('div', { style: { fontSize: 12, color: '#ef4444', marginTop: 8 } }, logoErr) : null,
+              ce('div', { style: { fontSize: 11, color: 'var(--t3)', marginTop: 8 } }, 'PNG, JPG, WEBP lub SVG — zostanie automatycznie zmniejszone. Najlepiej logo na przezroczystym tle.'),
+              ce('input', { value: logoUrl.indexOf('data:') === 0 ? '' : logoUrl, onChange: function(e) { setLogoUrl(e.target.value); },
+                            placeholder: 'albo wklej adres URL logo: https://...', style: Object.assign({}, inputStyle, { marginTop: 10, fontSize: 13 }) })))),
+
+        ce(Section, { title: 'Dane firmy', sub: 'Trafiają do PDF-ów wycen i zamówień oraz podpisów w mailach.' },
+          ce('div', { style: twoCol },
+            ce(Field, { label: 'Pełna nazwa firmy (PDF, faktury)' }, ce('input', bind('name'))),
+            ce(Field, { label: 'Nazwa skrócona' }, ce('input', bind('short_name'))),
+            ce(Field, { label: 'Adres' }, ce('input', bind('addr'))),
+            ce(Field, { label: 'Kod i miasto' }, ce('input', bind('city'))),
+            ce(Field, { label: 'NIP' }, ce('input', bind('nip'))),
+            ce(Field, { label: 'Telefon' }, ce('input', bind('tel'))),
+            ce(Field, { label: 'E-mail firmowy' }, ce('input', bind('email'))))),
+
+        ce('div', { style: twoCol },
+          ce(Section, { title: 'Konto bankowe', sub: 'Wyświetlane na dokumentach do zapłaty.' },
+            ce('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
+              ce(Field, { label: 'Nr konta' }, ce('input', bind('bank'))),
+              ce(Field, { label: 'Nazwa banku' }, ce('input', bind('bank_name'))))),
+          ce(Section, { title: 'Podpis w mailach', sub: 'Dodawany na końcu wiadomości (możesz użyć wielu linii).' },
+            ce('textarea', { rows: 5, value: seller.signature, onChange: function(e) { setS('signature', e.target.value); },
+                              placeholder: 'Imię i nazwisko\nNazwa firmy', style: Object.assign({}, inputStyle, { resize: 'vertical' }) })))
+      ),
+      // stopka z przyciskami (zawsze widoczna)
+      ce('div', { style: { padding: '14px 24px', borderTop: '1px solid var(--bd2)', display: 'flex', gap: 8, justifyContent: 'flex-end' } },
+        ce('button', { onClick: p.onClose, disabled: busy, style: secondaryButtonStyle }, 'Anuluj'),
+        ce('button', { onClick: submit, disabled: busy, style: primaryButtonStyle(busy) }, busy ? 'Zapisuje...' : 'Zapisz'))
     )
   );
 }
