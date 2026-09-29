@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { sbApi } from '../lib/supabase.js';
+import { ModalCatalogImport } from './ModalCatalogImport.jsx';
 import {
   FABRICS, primeFabricOverrides, classifyFabricComposition, classifyFabricBlackout,
   isHighFabric, HIGH_FABRIC_MIN_CM, HIGH_FABRIC_TAG, getFabricEquivalents, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
-  KD_AKCESORIA, RS_MASKS, PRICE_LISTS,
+  KD_AKCESORIA, RS_MASKS, PRICE_LISTS, hasBuiltinCatalog,
   SHUTTLE_STEROWANIE, SHUTTLE_DOPLATY, SHUTTLE_UCHWYTY, SHUTTLE_MULT
 } from '../constants/data.js';
 const ce = React.createElement;
@@ -453,8 +454,18 @@ function TabRails(p) {
 
 // ── Zakładka: Cenniki ──────────────────────────────────────────────────────
 function TabCenniki(p) {
-  var s1 = useState(PRICE_LISTS[0] ? PRICE_LISTS[0].id : null); var activeId = s1[0]; var setActiveId = s1[1];
-  var active = PRICE_LISTS.find(function(pl) { return pl.id === activeId; }) || PRICE_LISTS[0];
+  var sDb = useState([]); var dbLists = sDb[0]; var setDbLists = sDb[1];
+  var sImp = useState(false); var showImport = sImp[0]; var setShowImport = sImp[1];
+  function reloadLists() { sbApi.getPriceLists().then(function(d) { setDbLists(d || []); }).catch(function() {}); }
+  useEffect(function() { reloadLists(); }, []);
+  // Wbudowane cenniki Porter tylko z flaga builtin_catalog; reszta to cenniki tenanta z bazy (import CSV/XLSX).
+  var lists = (hasBuiltinCatalog() ? PRICE_LISTS : []).concat(dbLists.map(function(l) { return { id: l.id, title: l.title, rows: l.rows || [], dbId: l.id }; }));
+  var s1 = useState(null); var activeId = s1[0]; var setActiveId = s1[1];
+  var active = lists.find(function(pl) { return pl.id === activeId; }) || lists[0];
+  function removeList(l) {
+    if (!confirm("Usun\u0105\u0107 cennik \u201E" + l.title + "\u201C?")) return;
+    sbApi.deletePriceList(l.dbId).then(reloadLists).catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
+  }
 
   var pillBase   = { padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 500, cursor: "pointer", border: "0.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)" };
   var pillActive = Object.assign({}, pillBase, { background: "#EEEDFE", borderColor: "#AFA9EC", color: "#3C3489" });
@@ -463,19 +474,24 @@ function TabCenniki(p) {
     ce("div", { style: { marginBottom: 12 } },
       ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)" } }, "\uD83D\uDCB0 Cenniki"),
       ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } },
-        PRICE_LISTS.length + " cennik" + (PRICE_LISTS.length === 1 ? "" : "i"))
+        lists.length + " cennik" + (lists.length === 1 ? "" : "i")),
+      ce("button", { onClick: function() { setShowImport(true); },
+        style: { marginTop: 8, padding: "8px 14px", borderRadius: 10, border: "1.5px solid var(--violet)", background: "transparent", color: "var(--violet)", fontWeight: 700, fontSize: 12.5, cursor: "pointer" } },
+        "\uD83D\uDCE5 Importuj cennik (CSV/XLSX)")
     ),
+    showImport && ce(ModalCatalogImport, { mode: "services", onClose: function() { setShowImport(false); }, onDone: reloadLists }),
 
-    PRICE_LISTS.length > 1 && ce("div", { style: { display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" } },
-      PRICE_LISTS.map(function(pl) {
+    lists.length > 1 && ce("div", { style: { display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" } },
+      lists.map(function(pl) {
         return ce("button", { key: pl.id, onClick: function() { setActiveId(pl.id); }, style: activeId === pl.id ? pillActive : pillBase }, pl.title);
       })
     ),
 
-    !active && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak cennik\u00f3w."),
+    !active && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak cennik\u00f3w \u2014 zaimportuj pierwszy z pliku CSV/XLSX."),
 
     active && ce("div", null,
-      ce("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)", marginBottom: 8 } }, active.title),
+      ce("div", { style: { fontSize: 13, fontWeight: 700, color: "var(--t1)", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" } }, active.title,
+        active.dbId && ce("button", { onClick: function() { removeList(active); }, style: { background: "none", border: "none", color: "#dc2626", cursor: "pointer", fontSize: 12, fontWeight: 600 } }, "\uD83D\uDDD1 Usu\u0144")),
       ce("div", { style: { border: "0.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },
         ce("table", { style: { width: "100%", borderCollapse: "collapse" } },
           ce("thead", null,
@@ -639,7 +655,14 @@ function fx(gid, price) {
 function fmtPrice(v) { return v == null ? "\u2014" : (Math.round(v * 100) / 100).toString().replace(".", ","); }
 
 // ── Katalog: pozycje bazowe ze stałych data.js ───────────────────────────────
+// Tenant bez config.builtin_catalog dostaje same grupy, bez wbudowanych pozycji Porter Design.
 function buildBaseCatalog() {
+  var full = hasBuiltinCatalog();
+  return buildFullBaseCatalog().map(function(g) {
+    return full ? g : Object.assign({}, g, { items: [] });
+  });
+}
+function buildFullBaseCatalog() {
   return [
     { id: "tkaniny", label: "Tkaniny", icon: "\uD83E\uDDF5", tracksHeight: true,
       items: FABRICS.map(function(f) {
@@ -1031,6 +1054,7 @@ function TabCatalog(p) {
   var s4e = useState(null); var equivModal = s4e[0]; var setEquivModal = s4e[1]; // nazwa tkaniny lub null
   var s4d = useState(null); var sampleFilter = s4d[0]; var setSampleFilter = s4d[1]; // null | "yes" | "no"
   var s4e = useState(false); var showHidden = s4e[0]; var setShowHidden = s4e[1];
+  var s4i = useState(false); var showImport = s4i[0]; var setShowImport = s4i[1];
 
   function reload() {
     setLoading(true);
@@ -1167,10 +1191,20 @@ function TabCatalog(p) {
         ce("div", { style: { fontSize: 12, color: "var(--t3)", marginTop: 2 } },
           totalItems + " pozycji cennikowych" + (noHeightCount > 0 ? " \u00B7 \u26A0\uFE0F " + noHeightCount + " tkanin bez wysoko\u015bci" : ""))
       ),
-      ce("button", { onClick: function() { setEditItem({ groupId: activeCat !== "all" ? activeCat : "inne" }); },
-        style: btn({ padding: "10px 18px", background: "var(--violet)", color: "#fff", display: "flex", alignItems: "center", gap: 6 }) },
-        ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj produkt")
+      ce("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
+        ce("button", { onClick: function() { setShowImport(true); },
+          style: btn({ padding: "10px 18px", background: "transparent", color: "var(--violet)", border: "1.5px solid var(--violet)", display: "flex", alignItems: "center", gap: 6 }) },
+          "\uD83D\uDCE5 Importuj z pliku"),
+        ce("button", { onClick: function() { setEditItem({ groupId: activeCat !== "all" ? activeCat : "inne" }); },
+          style: btn({ padding: "10px 18px", background: "var(--violet)", color: "#fff", display: "flex", alignItems: "center", gap: 6 }) },
+          ce("span", { style: { fontSize: 16 } }, "+"), "Dodaj produkt"))
     ),
+    showImport && ce(ModalCatalogImport, { mode: "catalog", existing: rows, defaultGroup: activeCat !== "all" && ["tkaniny", "tapety", "inne"].indexOf(activeCat) >= 0 ? activeCat : "tkaniny",
+      onClose: function() { setShowImport(false); }, onDone: reload }),
+    !loading && totalItems === 0 && ce("div", { style: { border: "2px dashed var(--bd2)", borderRadius: 14, padding: 28, textAlign: "center", marginBottom: 18 } },
+      ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)", marginBottom: 6 } }, "Tw\u00f3j katalog jest pusty"),
+      ce("div", { style: { fontSize: 13, color: "var(--t3)", marginBottom: 14 } }, "Wgraj cennik dostawcy (CSV lub XLSX) \u2014 kolumny dopasujemy automatycznie, a przed zapisem zobaczysz podgl\u0105d."),
+      ce("button", { onClick: function() { setShowImport(true); }, style: btn({ padding: "10px 22px", background: "var(--violet)", color: "#fff" }) }, "\uD83D\uDCE5 Zaimportuj pierwszy cennik")),
 
     ce("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10, marginBottom: 18 } },
       catTabs.map(function(c) {

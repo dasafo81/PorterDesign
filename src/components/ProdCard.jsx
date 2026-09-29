@@ -2559,21 +2559,21 @@ export const MAIL_TEMPLATES = [
     label:"Oferta",
     icon:"\uD83D\uDCCB",
     subject:"Oferta aranżacji okiennych \u2013 {clientName}",
-    body:"Dzie\u0144 dobry,\n\nW nawi\u0105zaniu do naszej rozmowy, przesy\u0142am w za\u0142\u0105czeniu PDF z przybli\u017con\u0105 wycen\u0105 {honorific} zam\u00f3wienia.\n\nOrientacyjna warto\u015b\u0107 realizacji: {total} z\u0142 brutto\n(zaliczka 50% = {zaliczka} z\u0142)\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wp\u0142aty zaliczki.\n\nCh\u0119tnie przyjad\u0119 z wzornikami tkanin.\nKoszt pomiaru z dojazdem: 250 PLN (odliczane od warto\u015bci zam\u00f3wienia).\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design"
+    body:"Dzie\u0144 dobry,\n\nW nawi\u0105zaniu do naszej rozmowy, przesy\u0142am w za\u0142\u0105czeniu PDF z przybli\u017con\u0105 wycen\u0105 {honorific} zam\u00f3wienia.\n\nOrientacyjna warto\u015b\u0107 realizacji: {total} z\u0142 brutto\n(zaliczka 50% = {zaliczka} z\u0142)\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wp\u0142aty zaliczki.\n\nCh\u0119tnie przyjad\u0119 z wzornikami tkanin.\nKoszt pomiaru z dojazdem: 250 PLN (odliczane od warto\u015bci zam\u00f3wienia).\n\nPozdrawiam serdecznie,\n{signature}"
   },
   {
     id:"potwierdzenie",
     label:"Potwierdzenie",
     icon:"\u2705",
-    subject:"Potwierdzenie zam\u00f3wienia \u2013 Porter Design",
-    body:"Dzie\u0144 dobry,\n\nDzi\u0119kuj\u0119 za wp\u0142at\u0119 zaliczki. Potwierdzam przyj\u0119cie {honorific} zam\u00f3wienia do realizacji.\n\nSzacowany czas realizacji: ok. 4 tygodnie.\nO post\u0119pach b\u0119d\u0119 informowa\u0107 na bie\u017c\u0105co.\n\nPozdrawiam,\nPaulina Porter\nPorter Design"
+    subject:"Potwierdzenie zam\u00f3wienia \u2013 {brand}",
+    body:"Dzie\u0144 dobry,\n\nDzi\u0119kuj\u0119 za wp\u0142at\u0119 zaliczki. Potwierdzam przyj\u0119cie {honorific} zam\u00f3wienia do realizacji.\n\nSzacowany czas realizacji: ok. 4 tygodnie.\nO post\u0119pach b\u0119d\u0119 informowa\u0107 na bie\u017c\u0105co.\n\nPozdrawiam,\n{signature}"
   },
   {
     id:"przypomnienie",
     label:"Przypomnienie",
     icon:"\uD83D\uDD14",
-    subject:"Przypomnienie \u2013 wycena Porter Design",
-    body:"Dzie\u0144 dobry,\n\nPozwalam sobie przypomnie\u0107 o przes\u0142anej wycenie. Oferta wa\u017cna jest przez 30 dni.\n\nJe\u015bli ma {honorific2} pytania lub \u017cyczenia zmian \u2014 ch\u0119tnie porozmawiam.\n\nPozdrawiam,\nPaulina Porter\nPorter Design"
+    subject:"Przypomnienie \u2013 wycena {brand}",
+    body:"Dzie\u0144 dobry,\n\nPozwalam sobie przypomnie\u0107 o przes\u0142anej wycenie. Oferta wa\u017cna jest przez 30 dni.\n\nJe\u015bli ma {honorific2} pytania lub \u017cyczenia zmian \u2014 ch\u0119tnie porozmawiam.\n\nPozdrawiam,\n{signature}"
   },
   {
     id:"wlasny",
@@ -2603,11 +2603,13 @@ export function fillTemplate(tpl, client, clients){
   return {
     subject: tpl.subject
       .replace("{clientName}", cl.name||"")
-      .replace("{honorific}", honorific),
+      .replace("{honorific}", honorific)
+      .replace(/{brand}/g, SELLER.shortName||""),
     body: tpl.body
       .replace(/{honorific2}/g, honorific2)
       .replace(/{honorific}/g, honorific)
       .replace(/{clientName}/g, cl.name||"")
+      .replace(/{signature}/g, SELLER.signature||"")
       .replace(/{total}/g, total>0?String(total):"___")
       .replace(/{zaliczka}/g, zaliczka>0?String(zaliczka):"___")
   };

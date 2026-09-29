@@ -5,7 +5,7 @@ const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabas
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
 }
@@ -118,6 +118,59 @@ export default async function handler(req) {
     const updated = await upd.json();
     if (!Array.isArray(updated) || updated.length === 0) return json({ error: 'tenant not found' }, 404);
     return json(updated[0]);
+  }
+
+  // Trwale usuwa tenanta: dane (funkcja SQL delete_tenant_data, migracja 0056) i konta uzytkownikow.
+  // Wymaga potwierdzenia nazwa tenanta; blokuje tenanta z wbudowana baza (Porter Design),
+  // tenanta wywolujacego, tenantow z kontem super-admina i z aktywna subskrypcja Stripe.
+  if (req.method === 'DELETE') {
+    let body;
+    try { body = await req.json(); } catch (e) { return json({ error: 'invalid json' }, 400); }
+    const tenantId = body && body.id;
+    if (!tenantId) return json({ error: 'id required' }, 400);
+
+    const tResp = await fetch(`${SB_URL}/rest/v1/tenants?id=eq.${encodeURIComponent(tenantId)}&select=*`, { headers });
+    if (!tResp.ok) return json({ error: 'failed to load tenant', detail: await tResp.text() }, 500);
+    const tArr = await tResp.json();
+    const tenant = Array.isArray(tArr) ? tArr[0] : null;
+    if (!tenant) return json({ error: 'tenant not found' }, 404);
+
+    if (((body && body.confirm_name) || '').trim() !== (tenant.name || '').trim()) {
+      return json({ error: 'Nazwa potwierdzająca nie zgadza się z nazwą tenanta.' }, 400);
+    }
+    if (tenant.config && tenant.config.builtin_catalog === true) {
+      return json({ error: 'Tego tenanta (z wbudowaną bazą Porter Design) nie można usunąć z panelu.' }, 403);
+    }
+    if (auth.user.app_metadata && auth.user.app_metadata.tenant_id === tenant.id) {
+      return json({ error: 'Nie można usunąć własnego tenanta.' }, 403);
+    }
+    if (tenant.stripe_subscription_id && tenant.subscription_status === 'active') {
+      return json({ error: 'Tenant ma aktywną subskrypcję Stripe — najpierw ją anuluj.' }, 409);
+    }
+
+    const usersResp = await fetch(`${SB_URL}/auth/v1/admin/users?per_page=1000`, { headers });
+    if (!usersResp.ok) return json({ error: 'failed to list users', detail: await usersResp.text() }, 500);
+    const tenantUsers = ((await usersResp.json()).users || []).filter(function(u) {
+      return u.app_metadata && u.app_metadata.tenant_id === tenant.id;
+    });
+    if (tenantUsers.some(function(u) { return u.app_metadata.is_super_admin === true; })) {
+      return json({ error: 'Tenant ma konto super-admina — nie można go usunąć.' }, 403);
+    }
+
+    // Dane najpierw (jedna transakcja — przy bledzie nic nie ginie), potem konta.
+    const rpc = await fetch(`${SB_URL}/rest/v1/rpc/delete_tenant_data`, {
+      method: 'POST', headers, body: JSON.stringify({ p_tenant: tenant.id }),
+    });
+    if (!rpc.ok) return json({ error: 'failed to delete tenant data', detail: await rpc.text() }, 500);
+    const deleted = await rpc.json();
+
+    const failedUsers = [];
+    for (const u of tenantUsers) {
+      const d = await fetch(`${SB_URL}/auth/v1/admin/users/${u.id}`, { method: 'DELETE', headers });
+      if (!d.ok) failedUsers.push(u.email);
+    }
+    console.warn('tenant deleted', { id: tenant.id, name: tenant.name, by: auth.user.email, rows: deleted, users: tenantUsers.length });
+    return json({ ok: true, deleted_rows: deleted, deleted_users: tenantUsers.length - failedUsers.length, failed_users: failedUsers });
   }
 
   return json({ error: 'method not allowed' }, 405);

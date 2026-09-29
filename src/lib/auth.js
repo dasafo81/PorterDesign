@@ -37,6 +37,20 @@ function saveSession(s) {
   }
 }
 
+// Dane trzymane w localStorage przegladarki, zwiazane z KONKRETNYM uzytkownikiem/tenantem
+// (token Google Calendar, cache zadan, szkice i flagi maili, polaczenia OAuth, aktywna firma).
+// Bez czyszczenia kolejny uzytkownik na tej samej przegladarce widzi cudze dane.
+function clearUserScopedStorage() {
+  try {
+    var drop = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (/^(pd_gcal_|pd_oauth_|pd_mail_|porter_tasks$|pd_active_entity$|pd_builtin_catalog$)/.test(k)) drop.push(k);
+    }
+    drop.forEach(function(k) { localStorage.removeItem(k); });
+  } catch (e) {}
+}
+
 // Zaloguj e-mail + hasło → zwraca Promise z sesją
 export function signIn(email, password) {
   return fetch(SB_URL + '/auth/v1/token?grant_type=password', {
@@ -56,6 +70,12 @@ export function signIn(email, password) {
     return r.json();
   })
   .then(function(data) {
+    try {
+      var uid = data && data.user && data.user.id;
+      var prev = localStorage.getItem('pd_last_uid');
+      if (uid && prev !== uid) clearUserScopedStorage();
+      if (uid) localStorage.setItem('pd_last_uid', uid);
+    } catch (e) {}
     saveSession(data);
     return data;
   });

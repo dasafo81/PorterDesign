@@ -305,7 +305,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Aranżacji Okiennych"+variantSuffix+"</title>"+pdfStyles()+"</head><body>"
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
-    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
+    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\""+SELLER.shortName+"\"/></div>"
     +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta nr "+offerNo+variantSuffix+"</div>"
     +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
@@ -474,7 +474,7 @@ export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUnti
   var h="<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>"+client.name+" - Oferta Ara\u017c. Okiennych"+titleSuffix+"</title>"+pdfStyles()+"</head><body>"
     +"<div style=\"text-align:center;margin-bottom:8mm;line-height:0;\"><img src=\""+BANNER_PDF_G+"\" style=\"width:520px;max-width:100%;height:auto;display:inline-block;\" alt=\"\"/></div>"
     +"<div class=\"header\" style=\"padding-top:2mm;\">"
-    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\"Porter Design\"/></div>"
+    +"<div><img src=\""+LOGO_PDF_G+"\" style=\"height:54px;width:auto;\" alt=\""+SELLER.shortName+"\"/></div>"
     +"<div style=\"text-align:right\"><div style=\"font-size:18px;font-weight:700\">Oferta nr "+offerNo+titleSuffix+"</div>"
     +"<div style=\"font-size:10px;color:#1a1a18;font-weight:600;margin-top:2px;\">"+client.name+"</div>"
     +"<div style=\"font-size:9px;color:#6b6b66;margin-top:4px\">Data: "+dateStr+" &nbsp;|&nbsp; Wa\u017cne do: "+validStr+"</div></div></div>"
@@ -608,7 +608,7 @@ export function generateClientEmail(client){
   var total=roundTo10((client.rooms||[]).reduce(function(a,r){return a+(r.windows||[]).reduce(function(b,w){return b+(w.products||[]).reduce(function(c,p){var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;return c+(p.mp!=null?p.mp:(calc(pfc).total||0));},0);},0);},0));
   var zaliczka=roundTo10(total*0.5);
   var clientTitle=client.gender==="male"?"Pana":"Pani";
-  var mail="Dzień dobry,\n\nW nawiązaniu do rozmowy / spotkania / przesłanych wymiarów, przesyłam w załączeniu PDF z uproszczoną, przybliżoną wyceną "+(client.gender==="male"?"Pana":"Pani")+" zamówienia.\n\nŁączna orientacyjna wartość realizacji: "+total+" zł brutto\n(zaliczka 50% = "+zaliczka+" zł)\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wpłaty zaliczki w wysokości 50% wartości zamówienia.\n\nChętnie przyjadę z wzornikami tkanin, aby dobrać kolor i fakturę do wnętrza.\n\nKoszt pomiaru z dojazdem wynosi 250 zł brutto i jest w całości odliczany od wartości zamówienia, jeśli przekracza ono 6 000 zł brutto.\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design\nTel.: "+SELLER.tel+"\nE-mail: "+SELLER.email;
+  var mail="Dzień dobry,\n\nW nawiązaniu do rozmowy / spotkania / przesłanych wymiarów, przesyłam w załączeniu PDF z uproszczoną, przybliżoną wyceną "+(client.gender==="male"?"Pana":"Pani")+" zamówienia.\n\nŁączna orientacyjna wartość realizacji: "+total+" zł brutto\n(zaliczka 50% = "+zaliczka+" zł)\n\nCzas realizacji: ok. 4 tygodnie od akceptacji i wpłaty zaliczki w wysokości 50% wartości zamówienia.\n\nChętnie przyjadę z wzornikami tkanin, aby dobrać kolor i fakturę do wnętrza.\n\nKoszt pomiaru z dojazdem wynosi 250 zł brutto i jest w całości odliczany od wartości zamówienia, jeśli przekracza ono 6 000 zł brutto.\n\nPozdrawiam serdecznie,\n"+SELLER.signature+"\nTel.: "+SELLER.tel+"\nE-mail: "+SELLER.email;
   return mail;
 }
 
@@ -728,11 +728,11 @@ export function generateSewingOrderPDF(client, modalData){
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;')
     .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
-    +'<div class="header"><div><img src="'+LOGO_PDF_G+'" style="height:50px;width:auto;" alt="Porter Design"/></div>'
+    +'<div class="header"><div><img src="'+LOGO_PDF_G+'" style="height:50px;width:auto;" alt="'+SELLER.shortName+'"/></div>'
     +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
     +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+' &nbsp;|&nbsp; Klient: <strong>'+client.name+'</strong></div></div></div>'
     +'<div class="meta">'
-    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-weight:700">PD PORTER DESIGN</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>'+SELLER.tel+'<br>'+SELLER.email+'</p></div>'
+    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-weight:700">'+SELLER.shortName+'</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>'+SELLER.tel+'<br>'+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+client.name+'</strong></p>'
     +(hasBothTypes
@@ -822,11 +822,11 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
     .replace('</style>',extraStyles+'</style>')
     +'</head><body>'
-    +'<div class="header"><div><img src="'+LOGO_PDF_G+'" style="height:50px;width:auto;" alt="Porter Design"/></div>'
+    +'<div class="header"><div><img src="'+LOGO_PDF_G+'" style="height:50px;width:auto;" alt="'+SELLER.shortName+'"/></div>'
     +'<div style="text-align:right"><div style="font-size:20px;font-weight:700">Zlecenie szycia</div>'
     +'<div style="font-size:11px;color:#6b6b66;margin-top:4px">Data: '+dateStr+'</div></div></div>'
     +'<div class="meta">'
-    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-weight:700">PD PORTER DESIGN</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>'+SELLER.tel+'<br>'+SELLER.email+'</p></div>'
+    +'<div class="meta-block"><h4>Zleceniodawca</h4><p><strong style="font-weight:700">'+SELLER.shortName+'</strong><br>'+SELLER.addr+'<br>'+SELLER.city+'<br>'+SELLER.tel+'<br>'+SELLER.email+'</p></div>'
     +'<div class="meta-block"><h4>Szwalnia</h4>'+sewHouseBlock+'</div>'
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+(client.name||'')+'</strong></p>'
     +'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>'+'</div>'

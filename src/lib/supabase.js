@@ -555,6 +555,21 @@ export const sbApi = {
   deleteCatalogItem: function(id){
     return sbFetch("DELETE","catalog_items?id=eq."+id);
   },
+  // Import zbiorczy: nowe pozycje jednym POST-em (tablica), aktualizacje osobnymi PATCH-ami.
+  bulkAddCatalogItems: function(list){
+    var now=new Date().toISOString();
+    return sbFetch("POST","catalog_items",list.map(function(d){return Object.assign({},d,{created_at:now,updated_at:now});}));
+  },
+  // Cenniki uslug per tenant (tabela tenant_price_lists, migracja 0055)
+  getPriceLists: function(){
+    return sbFetch("GET","tenant_price_lists?select=*&order=created_at.asc");
+  },
+  addPriceList: function(title,rows){
+    return sbFetch("POST","tenant_price_lists",{title:title,rows:rows});
+  },
+  deletePriceList: function(id){
+    return sbFetch("DELETE","tenant_price_lists?id=eq."+id);
+  },
 
   // Szyny KS - scinki
   getRailScraps: function(){
@@ -768,6 +783,10 @@ export const adminApi = {
   // Tworzy nowego tenanta. Zwraca pelny rekord z wygenerowanym uuid
   createTenant: function(name){
     return adminFetch("POST","/api/admin/tenants",{name:name});
+  },
+  // Trwale usuwa tenanta wraz z danymi i kontami (wymaga wpisania jego nazwy jako potwierdzenia)
+  deleteTenant: function(tenantId, confirmName){
+    return adminFetch("DELETE","/api/admin/tenants",{id:tenantId,confirm_name:confirmName});
   },
   // Lista userow w danym tenancie (filtruje po app_metadata.tenant_id)
   getUsers: function(tenantId){

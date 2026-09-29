@@ -98,6 +98,7 @@ export default async function handler(req) {
       config: {
         brand_name: studio_name,
         phone: phone,
+        email: email,
         nip: nip || null,
       },
       trial_ends_at: trialEndsAt(),
@@ -158,25 +159,55 @@ export default async function handler(req) {
     return json({ error: 'Błąd tworzenia konta. Spróbuj ponownie.' }, 500);
   }
 
-  // 3. Mail powitalny (best-effort — Supabase wyśle osobno mail weryfikacyjny)
+  // 3. Link aktywacyjny + mail powitalny.
+  // Uwaga: admin API (POST /auth/v1/admin/users) NIE wysyla zadnego maila weryfikacyjnego, wiec
+  // link generujemy sami (magiclink potwierdza adres przy pierwszym uzyciu) i wysylamy go w mailu powitalnym.
+  const created = await userResp.json().catch(() => null);
+  const userId = created && created.id;
   const origin = new URL(req.url).origin;
-  fetch(`${origin}/api/mail/send`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${SERVICE}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      template: 'welcome',
-      to: email,
-      data: {
-        brand_name: studio_name,
-        email,
-        trial_days: TRIAL_DAYS,
-        login_url: origin,
-      },
-    }),
-  }).catch(e => console.error('welcome mail failed:', e));
+
+  let verifyUrl = null;
+  try {
+    const linkResp = await fetch(`${SB_URL}/auth/v1/admin/generate_link`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ type: 'magiclink', email, redirect_to: origin }),
+    });
+    if (linkResp.ok) {
+      const linkData = await linkResp.json();
+      verifyUrl = linkData.action_link || null;
+    } else {
+      console.error('generate_link failed:', linkResp.status, await linkResp.text());
+    }
+  } catch (e) { console.error('generate_link error:', e); }
+
+  // Mail wysylamy z await — w Edge Runtime nieczekany fetch bywa ubijany zaraz po zwroceniu odpowiedzi,
+  // przez co mail nigdy nie wychodzil.
+  let mailSent = false;
+  if (verifyUrl) {
+    try {
+      const mailResp = await fetch(`${origin}/api/mail/send`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template: 'welcome',
+          to: email,
+          data: { brand_name: studio_name, email, trial_days: TRIAL_DAYS, login_url: origin, verify_url: verifyUrl },
+        }),
+      });
+      mailSent = mailResp.ok;
+      if (!mailResp.ok) console.error('welcome mail failed:', mailResp.status, await mailResp.text());
+    } catch (e) { console.error('welcome mail error:', e); }
+  }
+
+  // Awaria maila nie moze zostawic uzytkownika z kontem, ktorego nie da sie aktywowac:
+  // potwierdzamy adres od razu, a haslo, ktore wlasnie podal, pozwala sie zalogowac.
+  if (!mailSent && userId) {
+    await fetch(`${SB_URL}/auth/v1/admin/users/${userId}`, {
+      method: 'PUT', headers, body: JSON.stringify({ email_confirm: true }),
+    }).catch(e => console.error('auto-confirm failed:', e));
+    return json({ ok: true, mail_sent: false, message: 'Konto zostało utworzone. Nie udało się wysłać e-maila, ale możesz się od razu zalogować podanym hasłem.' });
+  }
 
   return json({ ok: true, message: 'Konto zostało utworzone. Sprawdź e-mail i potwierdź adres.' });
 }
