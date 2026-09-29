@@ -2114,7 +2114,7 @@ export function App(p){
     // dla klienta, reszta jednolicie soft-UI.
     var sumActBtn=function(primary){
       return {
-        padding:"14px 20px",borderRadius:12,border:"none",minHeight:52,
+        padding:"14px 12px",borderRadius:12,border:"none",minHeight:52,width:"100%",
         fontSize:14,fontWeight:primary?700:600,cursor:"pointer",letterSpacing:"0.02em",
         background:primary?"var(--violet)":"var(--bg)",
         color:primary?"#fff":"var(--t1)",
@@ -2172,8 +2172,10 @@ export function App(p){
           ce("span",{style:{fontSize:22,fontWeight:800,color:"var(--t1)"}},sumFinalTotal+" z\u0142")
         )
       ),
-      ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
-        Btn("\u2190 Edytuj",function(){setScreen("rooms");},false),
+      // Siatka: wszystkie przyciski tej samej szerokosci w jednym rzedzie; na waskim
+      // ekranie zawijaja sie do kolejnych rzedow (auto-fit).
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}},
+        ce("button",{onClick:function(){setScreen("rooms");},style:Object.assign(sumActBtn(false),{background:"transparent",boxShadow:"none",border:"1.5px solid var(--bd2)",fontWeight:500})},"\u2190 Edytuj"),
         ce("button",{onClick:function(){openOfferPreview();},style:sumActBtn(true)},"Wycena szczegółowa"),
         ce("button",{onClick:function(){openSimplifiedPreview();},style:sumActBtn(false)},"Wycena uproszczona"),
         ce("button",{onClick:function(){startClientMail();},style:sumActBtn(false)},"Mail do klienta"),
