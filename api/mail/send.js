@@ -54,7 +54,7 @@ async function verifyJwt(req, SERVICE, SB_URL) {
 
 // ── Szablony HTML ────────────────────────────────────────────────────────────
 
-function tplWelcome({ brand_name, email, login_url, trial_days }) {
+function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
   const name = brand_name || 'Twoje studio';
   const days = trial_days || 14;
   const url  = login_url || 'https://app.asystentdekoracji.pl';
@@ -73,13 +73,15 @@ function tplWelcome({ brand_name, email, login_url, trial_days }) {
   <tr><td style="padding:40px">
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#1a1a2e">Witaj, ${escHtml(name)}!</h1>
     <p style="margin:0 0 16px;font-size:15px;color:#444;line-height:1.6">
-      Twoje konto jest aktywne. Masz <strong>${days} dni</strong> bezpłatnego dostępu do wszystkich funkcji.
+      Twoje konto zostało utworzone. Masz <strong>${days} dni</strong> bezpłatnego dostępu do wszystkich funkcji.
+      ${verify_url ? 'Aby je aktywować, potwierdź adres e-mail, a następnie zaloguj się hasłem ustawionym w formularzu.' : ''}
     </p>
     <p style="margin:0 0 8px;font-size:14px;color:#666">Twój adres e-mail do logowania:</p>
     <p style="margin:0 0 32px;font-size:15px;font-weight:600;color:#1a1a2e">${escHtml(email)}</p>
-    <a href="${url}" style="display:inline-block;background:#1a1a2e;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600">
-      Przejdź do aplikacji →
+    <a href="${verify_url || url}" style="display:inline-block;background:#1a1a2e;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600">
+      ${verify_url ? 'Potwierdź adres e-mail →' : 'Przejdź do aplikacji →'}
     </a>
+    ${verify_url ? `<p style="margin:16px 0 0;font-size:13px;color:#666">Po potwierdzeniu zalogujesz się tutaj: <a href="${url}" style="color:#1a1a2e">${url}</a></p>` : ''}
     <hr style="margin:40px 0;border:none;border-top:1px solid #eee">
     <p style="margin:0;font-size:13px;color:#999;line-height:1.5">
       Masz pytania? Napisz na <a href="mailto:hello@asystentdekoracji.pl" style="color:#1a1a2e">hello@asystentdekoracji.pl</a>

@@ -235,11 +235,17 @@
       });
       var data = await resp.json();
 
-      if (resp.ok && data.ok) {
+      if (resp.ok && data.ok && data.mail_sent === false) {
+        form.innerHTML = '<div style="text-align:center;padding:1rem 0">'
+          + '<div style="font-size:2rem;margin-bottom:1rem">✅</div>'
+          + '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.75rem">Konto utworzone</h2>'
+          + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Nie udało się wysłać e-maila powitalnego, ale konto jest gotowe.<br>Zaloguj się adresem <strong>' + email + '</strong> i hasłem, które właśnie ustawiłeś/aś.<br><br><a href="/" style="color:var(--ink);font-weight:600">Przejdź do logowania →</a></p>'
+          + '</div>';
+      } else if (resp.ok && data.ok) {
         form.innerHTML = '<div style="text-align:center;padding:1rem 0">'
           + '<div style="font-size:2rem;margin-bottom:1rem">✉️</div>'
           + '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.75rem">Sprawdź skrzynkę e-mail</h2>'
-          + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Wysłaliśmy link aktywacyjny na adres<br><strong>' + email + '</strong><br><br>Kliknij w link w mailu, aby aktywować konto i zalogować się.</p>'
+          + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Wysłaliśmy link aktywacyjny na adres<br><strong>' + email + '</strong><br><br>Kliknij w link w mailu, aby potwierdzić adres, a potem zaloguj się hasłem, które ustawiłeś/aś w formularzu. Jeśli nie widzisz wiadomości, sprawdź folder Spam.</p>'
           + '</div>';
       } else {
         showMsg('error', data.error || 'Wystąpił błąd. Spróbuj ponownie.');
