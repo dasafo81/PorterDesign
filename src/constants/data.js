@@ -1397,7 +1397,7 @@ export const FABRICS =[
   {name:"ROFE",brutto:150,prod:"LART",width:300,zakup:39.7,belkowa:29.8},
   {name:"DIMOUT 310",brutto:160,prod:"LART",width:280,zakup:54,belkowa:42.6},
   {name:"BLOW",brutto:120,prod:"LART",width:300,zakup:36.9,belkowa:21.3},
-  {name:"Blackout 03",brutto:80,prod:"LART",width:280,zakup:28.4,belkowa:18.4},
+  {name:"Fodera",brutto:80,prod:"LART",width:280,zakup:28.4,belkowa:18.4},
   // \u2500\u2500 VADAIN \u2014 kolekcja CAPTURE (nazwa: "<Tkanina> / Capture") \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
   {name:"Aurora / Capture",brutto:220,prod:"Vadain",width:300,zakup:130,sklad:"80% RPET, 12% PES, 8% LI"},
   {name:"Euphoria / Capture",brutto:250,prod:"Vadain",width:300,zakup:142,sklad:"58% CO, 42% PES"},
@@ -2787,7 +2787,8 @@ var FABRIC_LEGACY_NAMES = {
   "Sign":"Sign / Capture",
   "Thread":"Thread / Capture",
   "Tomorrow":"Tomorrow / Capture",
-  "Ultimate":"Ultimate / Capture"
+  "Ultimate":"Ultimate / Capture",
+  "Blackout 03":"Fodera"
 };
 var _fabricOverrides = {};
 // Wbudowany katalog (FABRICS, TAPETY, ceny mechanizmow) to baza Porter Design z cenami zakupu
@@ -2880,7 +2881,7 @@ export function getFabricEffective(name){
 // ── Tkaniny podszewkowe (opcja "Podszewka" w zasłonie) — cena z katalogu ──
 export const LINING_FABRICS = [
   {name:"Blackout Uni", label:"Uni Blackout (Lart)"},
-  {name:"Blackout 03",  label:"Blackout 03 (Lart)"}
+  {name:"Fodera",       label:"Fodera (Lart)"}
 ];
 // Bestsellery tkanin — pokazywane jako pierwsza sekcja po otwarciu listy tkanin w wycenach
 // (FabPicker w ProdCard.jsx), pogrupowane wg kategorii; osobne zestawy dla zasłon i firan.

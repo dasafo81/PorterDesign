@@ -913,7 +913,7 @@ export function ProdCard(p){
         ),
         c.podszewka==="tak"?ce("div",{style:{marginTop:10,display:"flex",gap:10,flexWrap:"wrap"}},
           LINING_FABRICS.map(function(lf){
-            var f=getFabricEffective(lf.name),act=c.podszewkaTkanina===lf.name;
+            var f=getFabricEffective(lf.name),act=c.podszewkaTkanina===lf.name||(c.podszewkaTkanina==="Blackout 03"&&lf.name==="Fodera");
             return ce("button",{key:lf.name,type:"button",onClick:function(){sc("podszewkaTkanina",lf.name);},
               style:{flex:"1 1 200px",padding:"12px 16px",borderRadius:10,border:"2px solid "+(act?"var(--t1)":"var(--bd2)"),background:act?"var(--grl)":"var(--bg)",color:"var(--t1)",cursor:"pointer",textAlign:"left",minHeight:52,transition:"all .18s"}},
               ce("span",{style:{fontSize:15,fontWeight:600}},lf.label),
