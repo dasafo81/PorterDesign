@@ -122,8 +122,11 @@
   .feat-list li { font-size: 14px; color: var(--ink2); line-height: 1.55; padding-left: 26px; position: relative; font-weight: 300; }
   .feat-list li::before { content: "✓"; position: absolute; left: 0; top: 0; color: #2f9e6b; font-weight: 700; }
   .feat-list li b { color: var(--ink); font-weight: 500; }
+  .pdf-shot { margin-top: 2.2rem; }
+  .feat-row:has(.shot-frame) { grid-template-columns: 0.8fr 1.2fr; max-width: 1240px; gap: 2.6rem; }
+  .feat-row.reverse:has(.shot-frame) { grid-template-columns: 1.2fr 0.8fr; }
   .feat-row.deal { grid-template-columns: 0.8fr 1.2fr; }
-  @media (max-width: 800px) { .feat-row.deal { grid-template-columns: 1fr; } .crm-showcase { padding: 2.2rem 1.2rem 0.5rem; } }
+  @media (max-width: 800px) { .feat-row.deal, .feat-row:has(.shot-frame), .feat-row.reverse:has(.shot-frame) { grid-template-columns: 1fr; } .crm-showcase { padding: 2.2rem 1.2rem 0.5rem; } }
   .app-frame { background: #e9edf2; border-radius: 18px; padding: 1.1rem; box-shadow: 0 24px 60px rgba(28,34,51,0.14); }
 
   /* Pricing hero section (dark, brand-heavy) */
@@ -281,8 +284,8 @@
 
     <div class="hero-visual">
       <div class="hero-stack">
-        <img class="stack-img card-1" src="/wyceny-wymiary.webp" alt="Wymiary, kolor i tkanina w konfiguratorze wyceny">
-        <img class="stack-img card-2" src="/wyceny-model.webp" alt="Wybór modelu zasłony i rodzaju fałdy">
+        <img class="stack-img card-1" src="/wyceny-wymiary.webp" alt="Wycena: wymiary, kolor, tkanina i model zasłony">
+        <img class="stack-img card-2" src="/crm-kanban.webp" alt="Tablica CRM z etapami zleceń">
         <img class="stack-img card-3" src="/crm-deal-card.webp" alt="Karta deala w CRM: rozliczenie, etapy zamówienia, deadline">
       </div>
       <p class="trust-line"><strong>Stworzona przez specjalistów dla specjalistów.</strong> Testowana miesiącami na realnych zleceniach dla klientów premium — powstała z codziennej pracy w studiu, nie z listy życzeń.</p>
@@ -342,14 +345,14 @@
       <h3 class="pdf-pipeline-title">A z wyceny wychodzi wszystko, czego potrzebujesz</h3>
       <p class="pdf-pipeline-sub">Jeden przycisk — komplet dokumentów gotowy do wysyłki, produkcji i montażu.</p>
       <div class="pdf-grid">
-        <div class="pdf-card"><div class="pdf-card-icon">📄</div><div class="pdf-card-name">Wycena PDF</div></div>
+        <div class="pdf-card"><div class="pdf-card-icon">📄</div><div class="pdf-card-name">Wycena szczegółowa</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">📋</div><div class="pdf-card-name">Wycena uproszczona</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">✉️</div><div class="pdf-card-name">Mail do klienta</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">🧵</div><div class="pdf-card-name">Zamówienie tkaniny</div></div>
-        <div class="pdf-card"><div class="pdf-card-icon">🪝</div><div class="pdf-card-name">Zamówienie karniszy</div></div>
-        <div class="pdf-card"><div class="pdf-card-icon">🔩</div><div class="pdf-card-name">Szyny do montażu</div></div>
+        <div class="pdf-card"><div class="pdf-card-icon">🔩</div><div class="pdf-card-name">Zamówienie osprzętu</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">✂️</div><div class="pdf-card-name">Zlecenie szycia</div></div>
       </div>
+      <div class="shot-frame pdf-shot"><img src="/wyceny-podsumowanie.webp" alt="Podsumowanie wyceny z przyciskami: wycena szczegółowa, uproszczona, mail do klienta, zamówienie tkaniny i osprzętu, zlecenie szycia" loading="lazy"></div>
     </div>
   </div>
 </section>
@@ -413,35 +416,7 @@
       <p>Zadania podzielone na kategorie (montaż, marketing, dział legalny, sprzedaż...) i przypisane do osoby. Widok "Pilne" pokazuje, co wymaga uwagi już dziś — nic nie ginie w wiadomościach.</p>
     </div>
     <div class="feat-visual">
-      <div class="app-frame">
-        <div class="app-topnav">
-          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
-          <div class="app-tab"><span class="ic">📈</span>CRM</div>
-          <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
-          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
-          <div class="app-tab active"><span class="ic">✅</span>Zadania</div>
-          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
-          <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
-        </div>
-        <div class="app-panel">
-          <div class="kanban-mini">
-            <div class="kanban-col">
-              <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Montaż · 2</div>
-              <div class="kanban-card" style="border-left-color:#e8703a">Szablon zlecenia<span>Damian</span></div>
-              <div class="kanban-card" style="border-left-color:#e8703a">Grafik ekipy — lipiec<span>Damian</span></div>
-            </div>
-            <div class="kanban-col">
-              <div class="kanban-col-title"><span class="kdot" style="background:#e8703a"></span>Marketing · 1</div>
-              <div class="kanban-card" style="border-left-color:#e8703a">4 posty na tydzień<span>27 lip · Paulina</span></div>
-            </div>
-            <div class="kanban-col">
-              <div class="kanban-col-title"><span class="kdot" style="background:#c0392b"></span>Pilne · 2</div>
-              <div class="kanban-card" style="border-left-color:#c0392b">Warunki reklamacji<span>Damian</span></div>
-              <div class="kanban-card" style="border-left-color:#c0392b">Umowa — dostawca<span>26 lip · Damian</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="shot-frame"><img src="/zadania.webp" alt="Zadania zespołu podzielone na kategorie i osoby" loading="lazy"></div>
     </div>
   </div>
 
@@ -453,28 +428,7 @@
       <p>Po połączeniu własnego konta Google terminy pomiarów i montaży trafiają bezpośrednio do kalendarza — osobno dla każdej ekipy instalacyjnej. Podgląd i edycja zdarzeń z poziomu CRM, bez przełączania aplikacji.</p>
     </div>
     <div class="feat-visual">
-      <div class="app-frame">
-        <div class="app-topnav">
-          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
-          <div class="app-tab"><span class="ic">📈</span>CRM</div>
-          <div class="app-tab active"><span class="ic">📅</span>Kalen.</div>
-          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
-          <div class="app-tab"><span class="ic">✅</span>Zadania</div>
-          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
-          <div class="app-tab"><span class="ic">📦</span>Magazyn</div>
-        </div>
-        <div class="app-panel">
-          <div class="cal-google-banner">✓ Połączono z Google Calendar</div>
-          <div class="cal-head">
-            <span class="cal-head-title">Lipiec 2026</span>
-          </div>
-          <div class="cal-grid">
-            <div class="cal-day">1</div><div class="cal-day">2</div><div class="cal-day has-event">3<span class="dot"></span></div><div class="cal-day">4</div><div class="cal-day">5</div><div class="cal-day">6</div><div class="cal-day">7</div>
-            <div class="cal-day">8</div><div class="cal-day has-event">9<span class="dot"></span></div><div class="cal-day">10</div><div class="cal-day">11</div><div class="cal-day has-event">12<span class="dot"></span></div><div class="cal-day">13</div><div class="cal-day">14</div>
-          </div>
-          <p class="cal-legend"><b>3 lipca</b> — montaż, ul. Polna · <b>9 lipca</b> — pomiar, K. Sobolewska</p>
-        </div>
-      </div>
+      <div class="shot-frame"><img src="/kalendarz.webp" alt="Kalendarz tygodniowy z montażami, pomiarami i realizacjami" loading="lazy"></div>
     </div>
   </div>
 
@@ -498,32 +452,7 @@
       <p>Katalog tkanin, akcesoriów i ścinków szyn z cenami producentów. Ostrzeżenie, gdy brakuje kluczowych parametrów (np. wysokości tkaniny), zanim trafi to do wyceny klientki.</p>
     </div>
     <div class="feat-visual">
-      <div class="app-frame">
-        <div class="app-topnav">
-          <div class="app-tab"><span class="ic">📋</span>Wyceny</div>
-          <div class="app-tab"><span class="ic">📈</span>CRM</div>
-          <div class="app-tab"><span class="ic">📅</span>Kalen.</div>
-          <div class="app-tab"><span class="ic">✉️</span>Mail</div>
-          <div class="app-tab"><span class="ic">✅</span>Zadania</div>
-          <div class="app-tab"><span class="ic">💰</span>Faktury</div>
-          <div class="app-tab active"><span class="ic">📦</span>Magazyn</div>
-        </div>
-        <div class="app-panel">
-          <div class="wh-search">🔍 Szukaj produktu, producenta...</div>
-          <div class="wh-row">
-            <div><div class="wh-name">1310</div><div class="wh-sub">Margo Textil · 300 cm</div></div>
-            <span class="wh-stock ok">160 zł/mb</span>
-          </div>
-          <div class="wh-row">
-            <div><div class="wh-name">34200</div><div class="wh-sub">Sama Tekstil · ⚠ brak wysokości</div></div>
-            <span class="wh-stock low">150 zł/mb</span>
-          </div>
-          <div class="wh-row">
-            <div><div class="wh-name">Aisha</div><div class="wh-sub">Margo Textil · 290 cm</div></div>
-            <span class="wh-stock ok">180 zł/mb</span>
-          </div>
-        </div>
-      </div>
+      <div class="shot-frame"><img src="/magazyn.webp" alt="Katalog tkanin w magazynie z cenami i statusem próbnika" loading="lazy"></div>
     </div>
   </div>
 
