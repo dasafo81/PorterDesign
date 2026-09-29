@@ -114,6 +114,21 @@
   .feat-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
 
   /* Real app screenshots (new look) */
+
+  /* Application tour: menu tabs under hero */
+  .tour { background: var(--white); padding: 4rem 2rem 4.5rem; }
+  .tour-inner { max-width: 1240px; margin: 0 auto; }
+  .tour-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; overflow-x: auto; background: #eceef3; border-radius: 16px; padding: 6px; max-width: 900px; margin: 0 auto 2.2rem; scrollbar-width: none; }
+  .tour-tabs::-webkit-scrollbar { display: none; }
+  .tour-tab { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 16px; border-radius: 11px; border: 1.5px solid transparent; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--ink2); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+  .tour-tab:hover { color: var(--ink); }
+  .tour-tab[aria-selected="true"] { background: var(--white); border-color: var(--ink); color: #b45a12; font-weight: 600; box-shadow: 0 2px 8px rgba(28,34,51,0.10); }
+  .tour-tab .ic { font-size: 16px; }
+  .tour-panel { display: none; grid-template-columns: 0.72fr 1.28fr; gap: 2.6rem; align-items: center; }
+  .tour-panel.active { display: grid; animation: fadeUp .35s both; }
+  .tour-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.9rem; font-weight: 700; line-height: 1.2; color: var(--ink); margin-bottom: 0.9rem; }
+  .tour-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
+  @media (max-width: 900px) { .tour-panel { grid-template-columns: 1fr; gap: 1.6rem; } .tour { padding: 3rem 1.2rem; } .tour-tabs { justify-content: flex-start; } }
   .shot-frame { background: #e9edf2; border-radius: 18px; padding: 0.7rem; box-shadow: 0 24px 60px rgba(28,32,60,0.22); }
   .shot-frame img { display: block; width: 100%; height: auto; border-radius: 12px; }
   .crm-showcase { max-width: 1240px; margin: 0 auto; padding: 3.2rem 2rem 1rem; text-align: center; }
@@ -289,6 +304,69 @@
         <img class="stack-img card-3" src="/crm-deal-card.webp" alt="Karta deala w CRM: rozliczenie, etapy zamówienia, deadline">
       </div>
       <p class="trust-line"><strong>Stworzona przez specjalistów dla specjalistów.</strong> Testowana miesiącami na realnych zleceniach dla klientów premium — powstała z codziennej pracy w studiu, nie z listy życzeń.</p>
+    </div>
+  </div>
+</section>
+
+<section class="tour" id="aplikacja">
+  <div class="tour-inner">
+    <p class="section-label">Zobacz aplikację</p>
+    <h2 class="section-title">Całe studio w jednym menu</h2>
+    <p class="section-sub">Wybierz moduł, żeby zobaczyć, jak wygląda i co potrafi.</p>
+    <div class="tour-tabs" role="tablist" aria-label="Moduły aplikacji"><button class="tour-tab" role="tab" id="tour-tab-crm" aria-controls="tour-panel-crm" aria-selected="true" tabindex="0" data-tab="crm"><span class="ic">📈</span>CRM</button><button class="tour-tab" role="tab" id="tour-tab-wyceny" aria-controls="tour-panel-wyceny" aria-selected="false" tabindex="-1" data-tab="wyceny"><span class="ic">📋</span>Wyceny</button><button class="tour-tab" role="tab" id="tour-tab-kalendarz" aria-controls="tour-panel-kalendarz" aria-selected="false" tabindex="-1" data-tab="kalendarz"><span class="ic">📅</span>Kalendarz</button><button class="tour-tab" role="tab" id="tour-tab-zadania" aria-controls="tour-panel-zadania" aria-selected="false" tabindex="-1" data-tab="zadania"><span class="ic">✅</span>Zadania</button><button class="tour-tab" role="tab" id="tour-tab-faktury" aria-controls="tour-panel-faktury" aria-selected="false" tabindex="-1" data-tab="faktury"><span class="ic">💰</span>Faktury</button><button class="tour-tab" role="tab" id="tour-tab-magazyn" aria-controls="tour-panel-magazyn" aria-selected="false" tabindex="-1" data-tab="magazyn"><span class="ic">📦</span>Magazyn</button></div>
+    <div class="tour-panel active" role="tabpanel" id="tour-panel-crm" aria-labelledby="tour-tab-crm">
+      <div class="tour-text">
+        <p class="feat-eyebrow">CRM</p>
+        <h3>Cała sprzedaż na jednej tablicy</h3>
+        <p>Od pomiaru, przez wycenę i zaliczkę, po zamówienie, realizację i montaż — każde zlecenie to karta w kolorze etapu. Widzisz kwotę, termin realizacji, datę montażu i status osprzętu, tkaniny oraz szycia.</p>
+        <ul class="feat-list"><li>Przeciągasz karty między etapami</li><li>Karta deala: faktury, oferty, ekonomia zlecenia i marża w jednym oknie</li><li>Obsługa posprzedażowa, zakończone i odrzucone zawsze pod ręką</li></ul>
+      </div>
+      <div class="shot-frame"><img src="/crm-kanban.webp" alt="Tablica CRM z etapami zleceń" loading="eager"></div>
+    </div>
+    <div class="tour-panel" role="tabpanel" id="tour-panel-wyceny" aria-labelledby="tour-tab-wyceny">
+      <div class="tour-text">
+        <p class="feat-eyebrow">Wyceny</p>
+        <h3>Wycena u klientki w kilka minut</h3>
+        <p>Wybierasz typ produktu, wpisujesz wymiary i wskazujesz tkaninę z katalogu — cena z marżą i dodatkami liczy się sama. Dla każdego produktu system zna jego logikę: fałdy, ślizgi, wykończenia, mechanizmy.</p>
+        <ul class="feat-list"><li>9 rodzajów produktów: zasłony, firany, żaluzje, rolety, karnisze i własny cennik</li><li>Z jednej wyceny: PDF, wycena uproszczona, mail, zamówienie tkaniny i osprzętu, zlecenie szycia</li><li>Ostrzeżenia, gdy wymiary przekraczają limit tkaniny lub koloru</li></ul>
+      </div>
+      <div class="shot-frame"><img src="/wyceny-model.webp" alt="Konfigurator wyceny: wybór modelu zasłony i rodzaju fałdy" loading="lazy"></div>
+    </div>
+    <div class="tour-panel" role="tabpanel" id="tour-panel-kalendarz" aria-labelledby="tour-tab-kalendarz">
+      <div class="tour-text">
+        <p class="feat-eyebrow">Kalendarz</p>
+        <h3>Terminy ekip zawsze aktualne</h3>
+        <p>Widok tygodnia, miesiąca i dnia z wydarzeniami rozróżnionymi kolorami — pomiar, realizacja, montaż osobno dla każdej ekipy. Po połączeniu konta terminy synchronizują się z Google i Outlookiem.</p>
+        <ul class="feat-list"><li>Terminy z CRM trafiają do kalendarza automatycznie</li><li>Osobne kolory dla ekip instalacyjnych</li><li>Dodawanie i edycja wydarzeń bez przełączania aplikacji</li></ul>
+      </div>
+      <div class="shot-frame"><img src="/kalendarz.webp" alt="Kalendarz tygodniowy z pomiarami, montażami i realizacjami" loading="lazy"></div>
+    </div>
+    <div class="tour-panel" role="tabpanel" id="tour-panel-zadania" aria-labelledby="tour-tab-zadania">
+      <div class="tour-text">
+        <p class="feat-eyebrow">Zadania</p>
+        <h3>Każdy wie, co ma dziś zrobić</h3>
+        <p>Zadania podzielone na kategorie — montaż, marketing, dział legalny, sprzedaż, reklamacje — i przypisane do osoby. Widok „Pilne” pokazuje, co wymaga uwagi już dziś, a nic nie ginie w wiadomościach.</p>
+        <ul class="feat-list"><li>Licznik aktywnych zadań przy każdej osobie</li><li>Kategorie z własnymi kolorami</li><li>Terminy zadań w kalendarzu Google</li></ul>
+      </div>
+      <div class="shot-frame"><img src="/zadania.webp" alt="Zadania zespołu podzielone na kategorie i osoby" loading="lazy"></div>
+    </div>
+    <div class="tour-panel" role="tabpanel" id="tour-panel-faktury" aria-labelledby="tour-tab-faktury">
+      <div class="tour-text">
+        <p class="feat-eyebrow">Faktury</p>
+        <h3>Faktura tam, gdzie prowadzisz zlecenie</h3>
+        <p>Automatyczna numeracja, obsługa VAT, faktury sprzedażowe i zakupowe w jednym miejscu. Synchronizacja z KSeF, statusy płatności i podświetlone przeterminowane faktury — bez osobnego programu do fakturowania.</p>
+        <ul class="feat-list"><li>Zaliczka i drugie 50% wystawiane wprost z karty zlecenia</li><li>Wysyłka faktury do klienta jednym kliknięciem</li><li>Filtry okresów: miesiąc, kwartał, rok, własny zakres</li></ul>
+      </div>
+      <div class="shot-frame"><img src="/faktury-ksef.webp" alt="Lista faktur sprzedażowych ze statusem płatności i KSeF" loading="lazy"></div>
+    </div>
+    <div class="tour-panel" role="tabpanel" id="tour-panel-magazyn" aria-labelledby="tour-tab-magazyn">
+      <div class="tour-text">
+        <p class="feat-eyebrow">Magazyn</p>
+        <h3>Setki tkanin w jednej wyszukiwarce</h3>
+        <p>Katalog tkanin, akcesoriów i ścinków szyn z cenami sprzedaży. Wiesz, które próbniki masz na miejscu, a system ostrzega, gdy w tkaninie brakuje kluczowych parametrów, zanim trafi do wyceny klientki.</p>
+        <ul class="feat-list"><li>Status próbnika jednym kliknięciem</li><li>Odpowiedniki tkanin od różnych producentów</li><li>Ostrzeżenia o brakującej wysokości i innych parametrach</li></ul>
+      </div>
+      <div class="shot-frame"><img src="/magazyn.webp" alt="Katalog tkanin z cenami i statusem próbnika" loading="lazy"></div>
     </div>
   </div>
 </section>
@@ -555,6 +633,24 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a) {
     if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   });
 });
+
+(function(){
+  var tabs=[].slice.call(document.querySelectorAll('.tour-tab'));
+  if(!tabs.length)return;
+  function show(key,focus){
+    tabs.forEach(function(t){var on=t.getAttribute('data-tab')===key;t.setAttribute('aria-selected',on?'true':'false');t.tabIndex=on?0:-1;if(on&&focus)t.focus();});
+    [].forEach.call(document.querySelectorAll('.tour-panel'),function(p){p.classList.toggle('active',p.id==='tour-panel-'+key);});
+  }
+  tabs.forEach(function(t,i){
+    t.addEventListener('click',function(){show(t.getAttribute('data-tab'));});
+    t.addEventListener('keydown',function(e){
+      var n=e.key==='ArrowRight'?i+1:e.key==='ArrowLeft'?i-1:-1;
+      if(n<0)return;e.preventDefault();show(tabs[(n+tabs.length)%tabs.length].getAttribute('data-tab'),true);
+    });
+  });
+  var h=(location.hash||'').replace('#tour-','');
+  if(h&&document.getElementById('tour-panel-'+h))show(h);
+})();
 </script>
 </body>
 </html>
