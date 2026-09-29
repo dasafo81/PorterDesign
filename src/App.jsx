@@ -3196,7 +3196,11 @@ export function ModalClientEmail(p){
   },[]);
   var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
   var hasWstepnaInList=activeTemplates.some(function(t){return t.id==="wstepna";});
-  var templateButtons=hasWstepnaInList?activeTemplates:[TPL_WSTEPNA].concat(activeTemplates);
+  // W wycenie pokazujemy tylko szablony związane z wyceną/ofertą (bez Potwierdzenia, Przypomnienia,
+  // Opinii, Instrukcji prania itd. — te są do użycia w module Mail).
+  var QUOTE_TPL_IDS=["wstepna","oferta"];
+  var quoteTemplates=activeTemplates.filter(function(t){return QUOTE_TPL_IDS.indexOf(t.id)>=0;});
+  var templateButtons=hasWstepnaInList?quoteTemplates:[TPL_WSTEPNA].concat(quoteTemplates);
   var s1=useState(p.to!=null?p.to:(client.email||"")),toEmail=s1[0],setToEmail=s1[1];
   var s2=useState(p.subject||(isWstepna?TPL_WSTEPNA.subject:"Oferta aran\u017cacji okiennych")),subject=s2[0],setSubject=s2[1];
   var s3=useState(p.body||(isWstepna?TPL_WSTEPNA.html:DEFAULT_BODY)),body=s3[0],setBody=s3[1];
