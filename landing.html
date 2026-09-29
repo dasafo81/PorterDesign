@@ -136,6 +136,18 @@
   .tour-card h4 { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 0.4rem; }
   .tour-card p { font-size: 13.5px; color: var(--ink2); line-height: 1.6; font-weight: 300; }
   @media (max-width: 900px) { .tour-panel { grid-template-columns: 1fr; gap: 1.6rem; } .tour { padding: 3rem 1.2rem; } .tour-tabs { justify-content: flex-start; } }
+
+  /* Integrations & customization */
+  .custom { background: #f4f5f8; padding: 5rem 2rem; }
+  .custom-inner { max-width: 1140px; margin: 0 auto; }
+  .custom-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; }
+  .custom-card { flex: 1 1 240px; max-width: 272px; }
+  .custom-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 1.7rem 1.5rem; transition: transform .2s, box-shadow .2s; }
+  .custom-card:hover { transform: translateY(-3px); box-shadow: 0 12px 34px rgba(28,34,51,0.10); }
+  .custom-ic { width: 46px; height: 46px; border-radius: 12px; background: #eceef3; display: flex; align-items: center; justify-content: center; font-size: 1.45rem; margin-bottom: 1rem; }
+  .custom-card h3 { font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 0.45rem; }
+  .custom-card p { font-size: 13.5px; color: var(--ink2); line-height: 1.65; font-weight: 300; }
+  .custom-tag { display: inline-block; margin-bottom: 0.7rem; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #b45a12; }
   .shot-frame { background: #e9edf2; border-radius: 18px; padding: 0.7rem; box-shadow: 0 24px 60px rgba(28,32,60,0.22); }
   .shot-frame img { display: block; width: 100%; height: auto; border-radius: 12px; }
   .crm-showcase { max-width: 1240px; margin: 0 auto; padding: 3.2rem 2rem 1rem; text-align: center; }
@@ -339,13 +351,14 @@
       </div>
       <div class="shot-frame"><img src="/wyceny-model.webp" alt="Konfigurator wyceny: wybór modelu zasłony i rodzaju fałdy" loading="lazy"></div>
     </div>
-    <div class="tour-panel noshot" role="tabpanel" id="tour-panel-kontrahenci" aria-labelledby="tour-tab-kontrahenci">
+    <div class="tour-panel" role="tabpanel" id="tour-panel-kontrahenci" aria-labelledby="tour-tab-kontrahenci">
       <div class="tour-text">
         <p class="feat-eyebrow">Kontrahenci</p>
-        <h3>Baza klientów i dostawców w jednym miejscu</h3>
-        <p>Jedna baza dla klientów, dostawców i podmiotów oznaczonych jako oba. Wpisujesz NIP, a dane firmy uzupełniają się same — bez przepisywania z wizytówek i rejestrów.</p>
+        <h3>Jedna baza klientów i dostawców</h3>
+        <p>Wszystkie firmy i osoby, z którymi pracujesz, w jednej przeszukiwalnej bazie. Wpisujesz NIP, a dane firmy uzupełniają się same z rejestrów — bez przepisywania.</p>
+        <ul class="feat-list"><li>Wyszukiwanie po nazwie, NIP, telefonie, e-mailu i mieście</li><li>Rola: klient, dostawca lub oba</li><li>Dane trafiają wprost na faktury sprzedażowe i zakupowe</li></ul>
       </div>
-      <div class="tour-cards"><div class="tour-card"><div class="tour-card-ic">🔎</div><h4>Dane po NIP</h4><p>Nazwa, adres i REGON pobierane automatycznie z GUS, z zapasowym źródłem z Białej Listy VAT.</p></div><div class="tour-card"><div class="tour-card-ic">🏷️</div><h4>Klient, dostawca lub oba</h4><p>Rola kontrahenta widoczna na liście, a w formularzach faktur i zamówień podpowiadają się właściwe podmioty.</p></div><div class="tour-card"><div class="tour-card-ic">🧾</div><h4>Gotowe do faktury</h4><p>Dane kontrahenta trafiają wprost na fakturę sprzedażową i zakupową, razem z ustawieniami VAT.</p></div></div>
+      <div class="shot-frame"><img src="/kontrahenci.webp" alt="Baza kontrahentów z podziałem na klientów i dostawców" loading="lazy"></div>
     </div>
     <div class="tour-panel" role="tabpanel" id="tour-panel-kalendarz" aria-labelledby="tour-tab-kalendarz">
       <div class="tour-text">
@@ -356,13 +369,14 @@
       </div>
       <div class="shot-frame"><img src="/kalendarz.webp" alt="Kalendarz tygodniowy z pomiarami, montażami i realizacjami" loading="lazy"></div>
     </div>
-    <div class="tour-panel noshot" role="tabpanel" id="tour-panel-mail" aria-labelledby="tour-tab-mail">
+    <div class="tour-panel" role="tabpanel" id="tour-panel-mail" aria-labelledby="tour-tab-mail">
       <div class="tour-text">
         <p class="feat-eyebrow">Mail</p>
         <h3>Poczta i oferty bez opuszczania aplikacji</h3>
-        <p>Podłączasz własną skrzynkę Outlook lub Gmail i wysyłasz oferty prosto z wyceny. Cała korespondencja z klientem jest widoczna przy jego karcie.</p>
+        <p>Podłączasz własną skrzynkę Outlook i wysyłasz oferty prosto z wyceny. Odpowiadasz klientom, porządkujesz wiadomości i dodajesz terminy do kalendarza — wszystko w jednym oknie.</p>
+        <ul class="feat-list"><li>Oferta, potwierdzenie i przypomnienie z gotowych szablonów maili</li><li>PDF wyceny, zlecenia i faktury jako załączniki jednym kliknięciem</li><li>Foldery i kolorowe flagi zsynchronizowane ze skrzynką Outlook</li></ul>
       </div>
-      <div class="tour-cards"><div class="tour-card"><div class="tour-card-ic">✉️</div><h4>Oferty i dokumenty</h4><p>PDF wyceny, uproszczona wycena, zlecenia i faktury jako załączniki jednym kliknięciem.</p></div><div class="tour-card"><div class="tour-card-ic">📋</div><h4>Szablony wiadomości</h4><p>Oferta, potwierdzenie, przypomnienie — z automatycznie wstawianym klientem, kwotą i zaliczką.</p></div><div class="tour-card"><div class="tour-card-ic">🗂️</div><h4>Foldery i flagi</h4><p>Foldery, oznaczenia kolorami zsynchronizowane ze skrzynką oraz dodawanie wydarzeń do kalendarza.</p></div></div>
+      <div class="shot-frame"><img src="/mail.webp" alt="Skrzynka pocztowa w aplikacji: lista wiadomości i podgląd korespondencji z klientem" loading="lazy"></div>
     </div>
     <div class="tour-panel" role="tabpanel" id="tour-panel-zadania" aria-labelledby="tour-tab-zadania">
       <div class="tour-text">
@@ -391,14 +405,24 @@
       </div>
       <div class="shot-frame"><img src="/magazyn.webp" alt="Katalog tkanin z cenami i statusem próbnika" loading="lazy"></div>
     </div>
-    <div class="tour-panel noshot" role="tabpanel" id="tour-panel-ai" aria-labelledby="tour-tab-ai">
+    <div class="tour-panel" role="tabpanel" id="tour-panel-ai" aria-labelledby="tour-tab-ai">
       <div class="tour-text">
         <p class="feat-eyebrow">AI</p>
-        <h3>Asystent AI, który wstępnie wycenia za Ciebie</h3>
-        <p>Wgrywasz opis zlecenia, zdjęcia, rzuty lub gotowe oferty, a asystent rozpoznaje pokoje, okna i produkty i buduje z nich wycenę. Rozmawiasz z nim jak z pracownikiem — poprawiasz, dopytujesz, doprecyzowujesz.</p>
+        <h3>Asystent, który przygotowuje klienta za Ciebie</h3>
+        <p>Wklejasz mail od klienta, opisujesz zapytanie albo wgrywasz rzut, a asystent przygotowuje klienta w aplikacji. Jeśli czegoś brakuje, dopytuje, a potem wylicza wycenę.</p>
+        <ul class="feat-list"><li>Mail, opis lub rzut jako punkt wyjścia</li><li>Pytania o brakujące dane zamiast błędnych założeń</li><li>Gotowy klient z pokojami i produktami do dopracowania w wycenie</li></ul>
       </div>
-      <div class="tour-cards"><div class="tour-card"><div class="tour-card-ic">📎</div><h4>Pliki i zdjęcia</h4><p>PDF-y, skany i zdjęcia jako punkt wyjścia — bez przepisywania ręcznie.</p></div><div class="tour-card"><div class="tour-card-ic">💬</div><h4>Rozmowa zamiast formularza</h4><p>Doprecyzowujesz wymiary, tkaniny i mechanizmy w czacie, a wycena aktualizuje się na bieżąco.</p></div><div class="tour-card"><div class="tour-card-ic">➕</div><h4>Od razu w aplikacji</h4><p>Gotowy wynik tworzy klienta z pokojami i produktami, które dopracowujesz w zwykłym trybie wyceny.</p></div></div>
+      <div class="shot-frame"><img src="/ai.webp" alt="Asystent Wyceny AI w panelu bocznym aplikacji" loading="lazy"></div>
     </div>
+  </div>
+</section>
+
+<section class="custom" id="integracje">
+  <div class="custom-inner">
+    <p class="section-label">Integracje i personalizacja</p>
+    <h2 class="section-title">Połączone z Twoimi narzędziami,<br>dopasowane do Twojego studia</h2>
+    <p class="section-sub">Kalendarz i poczta, których już używasz, oraz cenniki, kontrahenci i szablony ustawione po Twojemu.</p>
+    <div class="custom-grid"><div class="custom-card"><div class="custom-ic">📅</div><p class="custom-tag">Integracje</p><h3>Google Calendar</h3><p>Terminy pomiarów, montaży i realizacji trafiają do Twojego kalendarza Google, osobno dla każdej ekipy.</p></div><div class="custom-card"><div class="custom-ic">📨</div><p class="custom-tag">Integracje</p><h3>Outlook</h3><p>Wysyłasz oferty i dokumenty z własnej skrzynki Outlook, śledzisz korespondencję z klientem i dodajesz wydarzenia do kalendarza Outlook.</p></div><div class="custom-card"><div class="custom-ic">🏷️</div><p class="custom-tag">Własne ustawienia</p><h3>Własne cenniki</h3><p>Korzystasz z katalogu cen producentów albo tworzysz własny cennik dla produktów spoza katalogu — ceny i marże masz pod kontrolą.</p></div><div class="custom-card"><div class="custom-ic">👥</div><p class="custom-tag">Własne ustawienia</p><h3>Kontrahenci</h3><p>Baza klientów i dostawców z uzupełnianiem danych po NIP, gotowa do użycia w ofertach, zamówieniach i fakturach.</p></div><div class="custom-card"><div class="custom-ic">📋</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony ofert</h3><p>Oferta w PDF z logo studia, własnymi uwagami i ważnością — szczegółowa albo uproszczona, jednym kliknięciem.</p></div><div class="custom-card"><div class="custom-ic">✉️</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony maili</h3><p>Gotowe wiadomości do klientów: oferta, potwierdzenie, przypomnienie. Klient, kwota i zaliczka wstawiają się same.</p></div><div class="custom-card"><div class="custom-ic">🧾</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony faktur</h3><p>Dane sprzedawcy, numerację i stawki VAT ustawiasz raz. Zaliczkę i fakturę końcową wystawiasz wprost ze zlecenia.</p></div></div>
   </div>
 </section>
 
@@ -568,7 +592,7 @@
   <div class="section-inner" style="margin-top: 1rem;">
     <div class="features-grid">
       <div class="feat-card"><div class="feat-icon">✂️</div><h3>Zlecenia szycia i zamówienia</h3><p>Jednym kliknięciem generujesz zlecenie szycia dla krawcowej, zamówienie tkanin oraz zamówienie karniszy.</p></div>
-      <div class="feat-card"><div class="feat-icon">📧</div><h3>Poczta — Outlook i Gmail</h3><p>Wysyłasz oferty PDF przez swoje konto pocztowe. Historia korespondencji widoczna przy każdym kliencie.</p></div>
+      <div class="feat-card"><div class="feat-icon">📧</div><h3>Poczta — Outlook</h3><p>Wysyłasz oferty PDF przez swoje konto pocztowe. Historia korespondencji widoczna przy każdym kliencie.</p></div>
       <div class="feat-card"><div class="feat-icon">📄</div><h3>Dokumenty PDF jednym kliknięciem</h3><p>Oferta, zlecenie szycia, zamówienie tkanin, zamówienie karniszy — gotowe dokumenty z logo studia.</p></div>
     </div>
   </div>
