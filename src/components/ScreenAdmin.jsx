@@ -91,15 +91,23 @@ function EditTenantModal(p) {
   var cfg = p.tenant.config || {};
   var sBrand = useState(cfg.brand_name || ''), brandName = sBrand[0], setBrandName = sBrand[1];
   var sLogo = useState(cfg.logo_url || ''), logoUrl = sLogo[0], setLogoUrl = sLogo[1];
+  var sel = cfg.seller || {};
+  var SELLER_FIELDS = [['name', 'Pe\u0142na nazwa firmy (PDF, faktury)'], ['short_name', 'Nazwa skr\u00f3cona'], ['addr', 'Adres'], ['city', 'Kod i miasto'],
+    ['nip', 'NIP'], ['email', 'E-mail firmowy'], ['tel', 'Telefon'], ['bank', 'Nr konta'], ['bank_name', 'Nazwa banku'], ['signature', 'Podpis w mailach (wiele linii)']];
+  var sSel = useState(function() { var o = {}; SELLER_FIELDS.forEach(function(f) { o[f[0]] = sel[f[0]] || ''; }); return o; }), seller = sSel[0], setSeller = sSel[1];
   var sBusy = useState(false), busy = sBusy[0], setBusy = sBusy[1];
   var sErr = useState(null), err = sErr[0], setErr = sErr[1];
 
   function submit() {
     setBusy(true); setErr(null);
-    adminApi.updateTenant(p.tenant.id, {
+    var sOut = {};
+    SELLER_FIELDS.forEach(function(f) { if (seller[f[0]].trim()) sOut[f[0]] = seller[f[0]].trim(); });
+    // Merge z dotychczasowa konfiguracja — PATCH podmienia caly config, a trzyma on tez np. builtin_catalog.
+    adminApi.updateTenant(p.tenant.id, Object.assign({}, cfg, {
       brand_name: brandName.trim(),
-      logo_url: logoUrl.trim()
-    }).then(function() {
+      logo_url: logoUrl.trim(),
+      seller: sOut
+    })).then(function() {
       p.onSaved();
     }).catch(function(e) {
       setErr(e.message || 'Blad zapisu');
@@ -131,8 +139,15 @@ function EditTenantModal(p) {
       placeholder: 'https://...',
       style: inputStyle
     }),
-    ce('div', { style: { fontSize: 12, color: 'var(--t3)', marginTop: 8 } },
-      'Puste pola — aplikacja uzywa domyslnego brandingu Porter Design.'),
+    ce('div', { style: { fontSize: 12, color: 'var(--t3)', marginTop: 8, marginBottom: 6 } },
+      'Puste pola \u2014 nazwa tenanta, bez logo. Poni\u017csze dane trafiaj\u0105 do PDF-\u00f3w wycen/zam\u00f3wie\u0144 i podpis\u00f3w w mailach.'),
+    SELLER_FIELDS.map(function(f) {
+      return ce('div', { key: f[0] },
+        ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--t3)', textTransform: 'uppercase', marginBottom: 4, marginTop: 10 } }, f[1]),
+        f[0] === 'signature'
+          ? ce('textarea', { rows: 3, value: seller[f[0]], onChange: function(e) { var v = e.target.value; setSeller(function(s) { return Object.assign({}, s, { signature: v }); }); }, style: inputStyle })
+          : ce('input', { value: seller[f[0]], onChange: function(e) { var v = e.target.value, k = f[0]; setSeller(function(s) { var n = Object.assign({}, s); n[k] = v; return n; }); }, style: inputStyle }));
+    }),
     ce('div', { style: { display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' } },
       ce('button', { onClick: p.onClose, disabled: busy, style: secondaryButtonStyle }, 'Anuluj'),
       ce('button', { onClick: submit, disabled: busy, style: primaryButtonStyle(busy) },

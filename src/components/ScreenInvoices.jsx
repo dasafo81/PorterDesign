@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sbApi, ksefApi } from '../lib/supabase.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
-import { InlineEdit } from '../constants/data.js';
+import { InlineEdit, SELLER, hasBuiltinCatalog } from '../constants/data.js';
 const ce = React.createElement;
 
 // ── Stałe ──────────────────────────────────────────────────────────────────
@@ -2644,7 +2644,7 @@ export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
     +"</style></head><body>"
     +(inv.status==="draft"?"<div class='watermark'>SZKIC</div>":"")
     +"<div class='top'>"
-    +"<div class=\'logo\'><img src=\'" + "https://rkcidwusjzvfwxszotnb.supabase.co/storage/v1/object/public/assets/porter-design-assets/logo.png?v=2" + "\'  alt=\'Porter Design\' style=\'height:54px;width:auto;display:block;\'></div>"
+    +"<div class=\'logo\'><img src=\'" + (SELLER.logoUrl || (hasBuiltinCatalog() ? "https://rkcidwusjzvfwxszotnb.supabase.co/storage/v1/object/public/assets/porter-design-assets/logo.png?v=2" : "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")) + "\'  alt=\'" + (SELLER.shortName || "") + "\' style=\'height:54px;width:auto;display:block;\'></div>"
     +"<div style='text-align:center;flex:1;'><h1>"+docLabel+"</h1></div>"
     +"<table class='meta-table'><tr><td>Numer faktury:</td><td>"+(inv.number||"")+"</td></tr>"
     +"<tr><td>Data wystawienia:</td><td>"+fmtD(inv.issue_date)+"</td></tr>"
@@ -2769,7 +2769,7 @@ function InvoiceDetailView(p){
     setMailSubject("Faktura "+(currentInv.number||""));
     setMailBodyText("Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
       +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
-      +".\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design");
+      +".\n\nPozdrawiam serdecznie,\n"+(SELLER.signature||""));
     var snap=currentInv.buyer_email||"";
     setMailTo(snap);
     setMailModalOpen(true);
@@ -2910,7 +2910,7 @@ function InvoiceDetailView(p){
               +"?subject="+encodeURIComponent("Faktura "+(currentInv.number||""))
               +"&body="+encodeURIComponent("Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
                 +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
-                +".\n\nPozdrawiam serdecznie,\nPaulina Porter\nPorter Design");
+                +".\n\nPozdrawiam serdecznie,\n"+(SELLER.signature||""));
             window.open(mailto);
           },
           style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,

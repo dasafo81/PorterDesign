@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { sbApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { refreshSession } from '../lib/auth.js';
 import { gcalLogin, gcalLogout, gcalGetToken } from '../lib/gcal.js';
-import { hasBuiltinCatalog } from '../constants/data.js';
+import { hasBuiltinCatalog, SELLER } from '../constants/data.js';
 
 var ce = React.createElement;
 
@@ -506,7 +506,7 @@ export function ScreenTasks(p) {
     var desc = [];
     if (cm) desc.push("Kategoria: " + cm.label);
     if (ow) desc.push("Osoba: " + ow.label);
-    desc.push("Porter Design — Zadania");
+    desc.push((SELLER.shortName || "") + " \u2014 Zadania");
     return {
       summary: (task.done ? "\u2705 " : "\uD83D\uDCCB ") + task.title,
       description: desc.join(" | "),

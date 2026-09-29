@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { roundTo10, buildOfferPDFHtml, resolvePDFAssets } from '../constants/data.js';
+import { roundTo10, buildOfferPDFHtml, resolvePDFAssets, SELLER } from '../constants/data.js';
 import { buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
@@ -1569,7 +1569,7 @@ function SettingsView(p){
           "Tekst dopisywany automatycznie pod ka\u017cd\u0105 wysy\u0142an\u0105 wiadomo\u015bci\u0105. Mo\u017cesz formatowa\u0107 tekst, dodawa\u0107 linki i zmienia\u0107 kolor."
         ),
         ce(RichTextEditor,{value:sigHtml,onChange:setSigHtml,minHeight:120,
-          placeholder:"Pozdrawiam,\nPaulina Porter\nPorter Design\ntel. 600 000 000"})
+          placeholder:"Pozdrawiam,\n"+(SELLER.signature||"Imi\u0119 i nazwisko")+"\ntel. 600 000 000"})
       ),
 
       // ── Sekcja: Obrazek (logo/baner) ───────────────────────────────────
@@ -2924,7 +2924,7 @@ export function ScreenMail(p){
     );
   }
 
-  var accountEmail=msAccount?(msAccount.username||"paulina@porterdesign.pl"):"paulina@porterdesign.pl";
+  var accountEmail=msAccount?(msAccount.username||SELLER.email||""):(SELLER.email||"");
 
   var composerPanel=ce("div",{style:{flex:1,display:"flex",flexDirection:"column",overflowY:"auto",gap:0}},
     ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:10}},

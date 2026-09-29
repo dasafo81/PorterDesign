@@ -4,7 +4,7 @@ import { signOut, getAccessToken } from './lib/auth.js';
 import {
   FABRICS, getAllFabrics, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
-  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, setBuiltinCatalog, hasBuiltinCatalog, SELLER,
+  KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, setBuiltinCatalog, hasBuiltinCatalog, applySellerConfig, SELLER,
   buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
   buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
@@ -92,6 +92,8 @@ export function App(p){
       // Wbudowana baza Porter tylko dla tenanta z config.builtin_catalog; po zmianie flagi przeladuj nadpisania
       if(t){
         setBuiltinCatalog(!!(t.config&&t.config.builtin_catalog));
+        applySellerConfig(t.config,t.name,!!(t.config&&t.config.builtin_catalog));
+        setSellerVer(function(v){return v+1;});
         sbApi.getCatalogItems().then(primeFabricOverrides).catch(function(){});
       }
       if(t&&t.is_demo)setIsDemo(true);
@@ -99,6 +101,7 @@ export function App(p){
     }).catch(function(){});
   },[]);
   // Fallback "Porter Design" i jego logo tylko dla tenanta z wbudowana baza; inni: nazwa tenanta z bazy, bez cudzego logo.
+  var sSellerVer=useState(0),setSellerVer=sSellerVer[1]; // wymusza render po wczytaniu danych sprzedawcy
   var sTenantName=useState(""),tenantName=sTenantName[0],setTenantName=sTenantName[1];
   var brandName=(tenantConfig&&tenantConfig.brand_name)||tenantName||(hasBuiltinCatalog()?"Porter Design":"");
   var brandLogo=(tenantConfig&&tenantConfig.logo_url)||(hasBuiltinCatalog()?LOGO_SRC:null);
@@ -3575,7 +3578,7 @@ export function ModalAIValuation(p){
       return "  "+k+": "+JZ_LABELS[k];
     }).join("\n");
     var lines=[
-      "Jesteś asystentem Pauliny Porter, właścicielki pracowni Porter Design.",
+      "Jesteś asystentem właściciela pracowni "+(brandName||"")+" ("+(SELLER.signature||"").replace(/\n/g,", ")+").",
       "Pracujesz z PAULINĄ — właścicielką firmy. Ona wkleja Ci maile lub opisuje zapytania klientów.",
       "ZAWSZE piszesz DO PAULINY, nigdy do klienta. Nawet jeśli mail jest od klientki w 1. osobie — Ty odpowiadasz Paulinie.",
       "Styl: roboczy, rzeczowy. Żadnych 'Dzień dobry Pani Kasiu', 'Dziękujemy za zapytanie' itp.",

@@ -98,6 +98,7 @@ export default async function handler(req) {
       config: {
         brand_name: studio_name,
         phone: phone,
+        email: email,
         nip: nip || null,
       },
       trial_ends_at: trialEndsAt(),

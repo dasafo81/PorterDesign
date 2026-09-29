@@ -4288,8 +4288,34 @@ export const SELLER ={
   email:"paulina@porterdesign.pl",
   tel:"+48 791 123 437",
   bank:"21 1160 2202 0000 0006 3164 7645",
-  bankName:"Millennium Bank"
+  bankName:"Millennium Bank",
+  shortName:"PD PORTER DESIGN",
+  signature:"Paulina Porter\nPorter Design",
+  logoUrl:""
 };
+// SELLER jest mutowany w miejscu (applySellerConfig), zeby wszystkie dotychczasowe odwolania
+// (PDF-y, maile) czytaly dane aktualnego tenanta bez zmiany call site'ow.
+// Domyslne wartosci Porter Design zachowuje tylko tenant z config.builtin_catalog.
+var SELLER_PORTER = Object.assign({}, SELLER);
+export function applySellerConfig(cfg, tenantName, builtin){
+  cfg = cfg || {};
+  var s = cfg.seller || {};
+  var base = builtin ? SELLER_PORTER : {name:"",addr:"",city:"",nip:"",email:"",tel:"",bank:"",bankName:"",shortName:"",signature:"",logoUrl:""};
+  var name = s.name || (builtin ? base.name : (cfg.brand_name || tenantName || ""));
+  Object.assign(SELLER, base, {
+    name: name,
+    addr: s.addr || base.addr,
+    city: s.city || base.city,
+    nip: s.nip || cfg.nip || base.nip,
+    email: s.email || cfg.email || base.email,
+    tel: s.tel || cfg.phone || base.tel,
+    bank: s.bank || base.bank,
+    bankName: s.bank_name || base.bankName,
+    shortName: s.short_name || (builtin ? base.shortName : name),
+    signature: s.signature || (builtin ? base.signature : name),
+    logoUrl: cfg.logo_url || (builtin ? "" : "")
+  });
+}
 
 export function formatPLN(n){return roundTo10(n).toLocaleString("pl-PL")+" zł";}
 export function roundTo10(n){var r=n%10;return r<5?n-r:n+(10-r);}
@@ -4911,6 +4937,12 @@ export function preloadPDFAssets(){
 export function resolvePDFAssets(html){
   if(!html)return Promise.resolve(html);
   if(html.indexOf("__PD_LOGO_PDF__")===-1&&html.indexOf("__PD_BANNER_PDF__")===-1)return Promise.resolve(html);
+  // Logo i banner z pdfAssets to materialy Porter Design — inny tenant dostaje swoje logo (config.logo_url)
+  // albo przezroczysty piksel, nigdy cudze.
+  if(!_builtinCatalog){
+    var PIXEL="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+    return Promise.resolve(html.split("__PD_LOGO_PDF__").join(SELLER.logoUrl||PIXEL).split("__PD_BANNER_PDF__").join(PIXEL));
+  }
   return preloadPDFAssets().then(function(a){
     return html.split("__PD_LOGO_PDF__").join(a.LOGO_PDF_G)
                .split("__PD_BANNER_PDF__").join(a.BANNER_PDF_G);
@@ -5065,7 +5097,7 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
 
   var html=`<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie ${offerNo}</title>${pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;').replace('</style>',extraStyles+'</style>')}</head><body>
   <div class="header">
-    <div><img src="${LOGO_PDF_G}" style="height:50px;width:auto;" alt="Porter Design"/></div>
+    <div><img src="${LOGO_PDF_G}" style="height:50px;width:auto;" alt="${SELLER.shortName}"/></div>
     <div style="text-align:right"><div style="font-size:20px;font-weight:700">Zamówienie nr ${offerNo}</div>
       <div style="font-size:9px;color:#6b6b66;margin-top:4px">Data wystawienia: ${dateStr} &nbsp;|&nbsp; Termin realizacji: ${validStr}</div>
     </div>

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
-import { LOGO_SRC, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
+import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
@@ -512,11 +512,11 @@ export function ModalDeal(p){
         P("w załączeniu przesyłam fakturę"+(number?" nr <b>"+number+"</b>":"")+" na kwotę <b>"+gross+"</b>"+part+"."),
         due?P("Termin płatności: <b>"+due+"</b>."):"",
         P("Dziękujemy za współpracę. W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-        P("Pozdrawiam serdecznie,<br>Paulina Porter<br>Porter Design")
+        P("Pozdrawiam serdecznie,<br>"+String(SELLER.signature||"").replace(/\n/g,"<br>"))
       ].filter(Boolean).join("<div><br></div>");
       var invFile=new File([html],fname,{type:"text/html"});
       setMailErr(null);setMailMsg(null);
-      setMailSubject("Faktura"+(number?" nr "+number:"")+" — Porter Design");
+      setMailSubject("Faktura"+(number?" nr "+number:"")+" — "+(SELLER.shortName||""));
       setMailBodyText(body);
       setMailTo((cl&&cl.email)||full.buyer_email||"");
       setMailAttachments([{id:"inv_"+Date.now(),name:fname,size:invFile.size,type:"upload",file:invFile}]);
@@ -851,7 +851,7 @@ export function ModalDeal(p){
         P("<b>Rozpoczęcie zamówienia</b> następuje po wpłacie zaliczki w terminie wskazanym na fakturze. Zgodnie z OWU dokonanie zapłaty zadatku jest równoznaczne z zapoznaniem się z ich treścią i pełną akceptacją."),
         P("<b>Czas realizacji</b> wynosi ok. 4 tygodni od momentu zaksięgowania wpłaty."),
         P("W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-        P("Pozdrawiam serdecznie,<br>Paulina Porter<br>Porter Design")
+        P("Pozdrawiam serdecznie,<br>"+String(SELLER.signature||"").replace(/\n/g,"<br>"))
       ].join("<div><br></div>");
       var invFile=new File([html],fname,{type:"text/html"});
       setMailErr(null);setMailMsg(null);
