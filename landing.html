@@ -122,6 +122,7 @@
   .feat-list li { font-size: 14px; color: var(--ink2); line-height: 1.55; padding-left: 26px; position: relative; font-weight: 300; }
   .feat-list li::before { content: "✓"; position: absolute; left: 0; top: 0; color: #2f9e6b; font-weight: 700; }
   .feat-list li b { color: var(--ink); font-weight: 500; }
+  .pdf-shot { margin-top: 2.2rem; }
   .feat-row:has(.shot-frame) { grid-template-columns: 0.8fr 1.2fr; max-width: 1240px; gap: 2.6rem; }
   .feat-row.reverse:has(.shot-frame) { grid-template-columns: 1.2fr 0.8fr; }
   .feat-row.deal { grid-template-columns: 0.8fr 1.2fr; }
@@ -283,8 +284,8 @@
 
     <div class="hero-visual">
       <div class="hero-stack">
-        <img class="stack-img card-1" src="/wyceny-wymiary.webp" alt="Wymiary, kolor i tkanina w konfiguratorze wyceny">
-        <img class="stack-img card-2" src="/wyceny-model.webp" alt="Wybór modelu zasłony i rodzaju fałdy">
+        <img class="stack-img card-1" src="/wyceny-wymiary.webp" alt="Wycena: wymiary, kolor, tkanina i model zasłony">
+        <img class="stack-img card-2" src="/crm-kanban.webp" alt="Tablica CRM z etapami zleceń">
         <img class="stack-img card-3" src="/crm-deal-card.webp" alt="Karta deala w CRM: rozliczenie, etapy zamówienia, deadline">
       </div>
       <p class="trust-line"><strong>Stworzona przez specjalistów dla specjalistów.</strong> Testowana miesiącami na realnych zleceniach dla klientów premium — powstała z codziennej pracy w studiu, nie z listy życzeń.</p>
@@ -344,14 +345,14 @@
       <h3 class="pdf-pipeline-title">A z wyceny wychodzi wszystko, czego potrzebujesz</h3>
       <p class="pdf-pipeline-sub">Jeden przycisk — komplet dokumentów gotowy do wysyłki, produkcji i montażu.</p>
       <div class="pdf-grid">
-        <div class="pdf-card"><div class="pdf-card-icon">📄</div><div class="pdf-card-name">Wycena PDF</div></div>
+        <div class="pdf-card"><div class="pdf-card-icon">📄</div><div class="pdf-card-name">Wycena szczegółowa</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">📋</div><div class="pdf-card-name">Wycena uproszczona</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">✉️</div><div class="pdf-card-name">Mail do klienta</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">🧵</div><div class="pdf-card-name">Zamówienie tkaniny</div></div>
-        <div class="pdf-card"><div class="pdf-card-icon">🪝</div><div class="pdf-card-name">Zamówienie karniszy</div></div>
-        <div class="pdf-card"><div class="pdf-card-icon">🔩</div><div class="pdf-card-name">Szyny do montażu</div></div>
+        <div class="pdf-card"><div class="pdf-card-icon">🔩</div><div class="pdf-card-name">Zamówienie osprzętu</div></div>
         <div class="pdf-card"><div class="pdf-card-icon">✂️</div><div class="pdf-card-name">Zlecenie szycia</div></div>
       </div>
+      <div class="shot-frame pdf-shot"><img src="/wyceny-podsumowanie.webp" alt="Podsumowanie wyceny z przyciskami: wycena szczegółowa, uproszczona, mail do klienta, zamówienie tkaniny i osprzętu, zlecenie szycia" loading="lazy"></div>
     </div>
   </div>
 </section>
