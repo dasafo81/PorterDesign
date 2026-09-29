@@ -2342,6 +2342,10 @@ export function App(p){
           var catSuppliers=(cat?cat.suppliers:KARNISZ_SUPPLIERS.map(function(s){return s.key;}))
             .map(function(key){return KARNISZ_SUPPLIERS.find(function(s){return s.key===key;});})
             .filter(Boolean);
+          // Mechanizm rolety rzymskiej nie ma łuku, gięcia ani silnika (to pola
+          // karniszy/szyn) — całą specyfikę (model, system, łańcuszek, strona)
+          // niesie już edytowalne pole "Typ", więc te pola tu tylko myliłyby.
+          var isRolety=r.category==="rolety";
           return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,border:"1px solid var(--bd3)"}},
             cat?ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)",marginBottom:6}},cat.label):null,
             ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}},
@@ -2353,14 +2357,14 @@ export function App(p){
               )
             ),
             ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
-              karniszFieldInput(i,"len","Długość (cm)",100),
+              karniszFieldInput(i,"len",isRolety?"Szerokość (cm)":"Długość (cm)",100),
               karniszFieldInput(i,"qty","Ilość",70),
-              karniszFieldInput(i,"arc","Gięcie łuk (mb)",110),
-              karniszFieldInput(i,"arcDepth","Głęb. łuku (cm)",110),
-              karniszFieldInput(i,"arcChord","Cięciwa łuku (cm)",120),
-              karniszFieldInput(i,"pts","Gięcie pkt",90),
-              karniszFieldInput(i,"motorSide","Strona silnika",110),
-              karniszFieldInput(i,"motorType","Typ silnika",110)
+              isRolety?null:karniszFieldInput(i,"arc","Gięcie łuk (mb)",110),
+              isRolety?null:karniszFieldInput(i,"arcDepth","Głęb. łuku (cm)",110),
+              isRolety?null:karniszFieldInput(i,"arcChord","Cięciwa łuku (cm)",120),
+              isRolety?null:karniszFieldInput(i,"pts","Gięcie pkt",90),
+              isRolety?null:karniszFieldInput(i,"motorSide","Strona silnika",110),
+              isRolety?null:karniszFieldInput(i,"motorType","Typ silnika",110)
             ),
             ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
               ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t2)"}},"Dostawca:"),
