@@ -475,13 +475,13 @@ export function ScreenAdmin() {
                   style: { border: '1px solid var(--bd2)', background: 'var(--bg)', color: 'var(--t2)',
                             borderRadius: 10, padding: '8px 14px', fontSize: 12,
                             fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }
-                }, '\\u270E Edytuj branding'),
+                }, '\u270E Edytuj branding'),
                 (selectedTenant.config && selectedTenant.config.builtin_catalog) ? null : ce('button', {
                   onClick: function() { setShowDT(true); },
                   style: { border: '1px solid rgba(220,38,38,0.4)', background: 'transparent', color: '#dc2626',
                             borderRadius: 10, padding: '8px 14px', fontSize: 12,
                             fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }
-                }, '\\uD83D\\uDDD1 Usu\\u0144'),
+                }, '\uD83D\uDDD1 Usu\u0144'),
                 ce('button', {
                   onClick: function() { setShowCU(true); },
                   style: { border: 'none', background: 'var(--violet)', color: '#fff',
