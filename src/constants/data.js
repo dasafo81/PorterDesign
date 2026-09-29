@@ -5249,7 +5249,8 @@ export function buildHardwareRows(client){
           var rQty=(rpc.rModel==="duo"&&rpc.rSystem!=="polautomatyczny")?2:1;
           rows.push({
             room:r.name,win:w.name,
-            type:"Mechanizm rolety rzymskiej \u2014 "+rModelLbl,
+            type:"Mechanizm rolety rzymskiej",
+            model:rModelLbl,
             len:rpar.wCm||0,
             hCm:rpar.hCm||0,
             nadproze:rpar.hNadproza||0,
@@ -5363,7 +5364,7 @@ export function buildHardwarePDFHtmlFromRows(client,rows){
       // Mechanizm rolety: pozostałe kolumny (łuk/silnik) nic tu nie wnoszą, więc
       // cała specyfika (sterowanie, strona, łańcuszek, wymiary) trafia w opis "Typ".
       var typDesc=r.category==="rolety"
-        ?r.type
+        ?r.type+(r.model?" — "+r.model:"")
           +"<br><span style=\"font-size:9px;color:#6b6b66\">"
           +"Sterowanie: "+(r.system||"-")+" · Strona: "+(r.strona||"-")+" · Łańcuszek: "+(r.lancuszek||"-")
           +(r.hCm?"<br>Wymiary: "+(r.len||"-")+"\xd7"+r.hCm+" cm":"")

@@ -2359,6 +2359,7 @@ export function App(p){
             ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
               karniszFieldInput(i,"len",isRolety?"Szerokość (cm)":"Długość (cm)",100),
               karniszFieldInput(i,"qty","Ilość",70),
+              isRolety?karniszFieldInput(i,"model","Model",110):null,
               isRolety?karniszFieldInput(i,"hCm","Wysokość (cm)",100):null,
               isRolety?karniszFieldInput(i,"nadproze","Wys. nadproża (cm)",130):null,
               isRolety?karniszFieldInput(i,"system","Sterowanie",120):null,
