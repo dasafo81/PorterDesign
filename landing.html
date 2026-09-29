@@ -118,9 +118,9 @@
   /* Application tour: menu tabs under hero */
   .tour { background: var(--white); padding: 4rem 2rem 4.5rem; }
   .tour-inner { max-width: 1240px; margin: 0 auto; }
-  .tour-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; overflow-x: auto; background: #eceef3; border-radius: 16px; padding: 6px; max-width: 900px; margin: 0 auto 2.2rem; scrollbar-width: none; }
+  .tour-tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: nowrap; overflow-x: auto; background: #eceef3; border-radius: 16px; padding: 6px; max-width: 1080px; margin: 0 auto 2.2rem; scrollbar-width: none; }
   .tour-tabs::-webkit-scrollbar { display: none; }
-  .tour-tab { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 16px; border-radius: 11px; border: 1.5px solid transparent; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--ink2); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+  .tour-tab { flex: 1 0 auto; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 13px; border-radius: 11px; border: 1.5px solid transparent; background: transparent; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--ink2); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
   .tour-tab:hover { color: var(--ink); }
   .tour-tab[aria-selected="true"] { background: var(--white); border-color: var(--ink); color: #b45a12; font-weight: 600; box-shadow: 0 2px 8px rgba(28,34,51,0.10); }
   .tour-tab .ic { font-size: 16px; }
@@ -128,6 +128,13 @@
   .tour-panel.active { display: grid; animation: fadeUp .35s both; }
   .tour-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.9rem; font-weight: 700; line-height: 1.2; color: var(--ink); margin-bottom: 0.9rem; }
   .tour-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
+  .tour-panel.noshot { grid-template-columns: 1fr; gap: 1.8rem; max-width: 980px; margin: 0 auto; }
+  .tour-panel.noshot .tour-text { text-align: center; max-width: 720px; margin: 0 auto; }
+  .tour-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .tour-card { background: #f4f5f8; border: 1px solid var(--border); border-radius: 16px; padding: 1.6rem 1.4rem; }
+  .tour-card-ic { width: 44px; height: 44px; border-radius: 12px; background: var(--white); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(28,34,51,0.08); }
+  .tour-card h4 { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 0.4rem; }
+  .tour-card p { font-size: 13.5px; color: var(--ink2); line-height: 1.6; font-weight: 300; }
   @media (max-width: 900px) { .tour-panel { grid-template-columns: 1fr; gap: 1.6rem; } .tour { padding: 3rem 1.2rem; } .tour-tabs { justify-content: flex-start; } }
   .shot-frame { background: #e9edf2; border-radius: 18px; padding: 0.7rem; box-shadow: 0 24px 60px rgba(28,32,60,0.22); }
   .shot-frame img { display: block; width: 100%; height: auto; border-radius: 12px; }
@@ -313,7 +320,7 @@
     <p class="section-label">Zobacz aplikację</p>
     <h2 class="section-title">Całe studio w jednym menu</h2>
     <p class="section-sub">Wybierz moduł, żeby zobaczyć, jak wygląda i co potrafi.</p>
-    <div class="tour-tabs" role="tablist" aria-label="Moduły aplikacji"><button class="tour-tab" role="tab" id="tour-tab-crm" aria-controls="tour-panel-crm" aria-selected="true" tabindex="0" data-tab="crm"><span class="ic">📈</span>CRM</button><button class="tour-tab" role="tab" id="tour-tab-wyceny" aria-controls="tour-panel-wyceny" aria-selected="false" tabindex="-1" data-tab="wyceny"><span class="ic">📋</span>Wyceny</button><button class="tour-tab" role="tab" id="tour-tab-kalendarz" aria-controls="tour-panel-kalendarz" aria-selected="false" tabindex="-1" data-tab="kalendarz"><span class="ic">📅</span>Kalendarz</button><button class="tour-tab" role="tab" id="tour-tab-zadania" aria-controls="tour-panel-zadania" aria-selected="false" tabindex="-1" data-tab="zadania"><span class="ic">✅</span>Zadania</button><button class="tour-tab" role="tab" id="tour-tab-faktury" aria-controls="tour-panel-faktury" aria-selected="false" tabindex="-1" data-tab="faktury"><span class="ic">💰</span>Faktury</button><button class="tour-tab" role="tab" id="tour-tab-magazyn" aria-controls="tour-panel-magazyn" aria-selected="false" tabindex="-1" data-tab="magazyn"><span class="ic">📦</span>Magazyn</button></div>
+    <div class="tour-tabs" role="tablist" aria-label="Moduły aplikacji"><button class="tour-tab" role="tab" id="tour-tab-crm" aria-controls="tour-panel-crm" aria-selected="true" tabindex="0" data-tab="crm"><span class="ic">📈</span>CRM</button><button class="tour-tab" role="tab" id="tour-tab-wyceny" aria-controls="tour-panel-wyceny" aria-selected="false" tabindex="-1" data-tab="wyceny"><span class="ic">📋</span>Wyceny</button><button class="tour-tab" role="tab" id="tour-tab-kontrahenci" aria-controls="tour-panel-kontrahenci" aria-selected="false" tabindex="-1" data-tab="kontrahenci"><span class="ic">👥</span>Kontrahenci</button><button class="tour-tab" role="tab" id="tour-tab-kalendarz" aria-controls="tour-panel-kalendarz" aria-selected="false" tabindex="-1" data-tab="kalendarz"><span class="ic">📅</span>Kalendarz</button><button class="tour-tab" role="tab" id="tour-tab-mail" aria-controls="tour-panel-mail" aria-selected="false" tabindex="-1" data-tab="mail"><span class="ic">📨</span>Mail</button><button class="tour-tab" role="tab" id="tour-tab-zadania" aria-controls="tour-panel-zadania" aria-selected="false" tabindex="-1" data-tab="zadania"><span class="ic">✅</span>Zadania</button><button class="tour-tab" role="tab" id="tour-tab-faktury" aria-controls="tour-panel-faktury" aria-selected="false" tabindex="-1" data-tab="faktury"><span class="ic">💰</span>Faktury</button><button class="tour-tab" role="tab" id="tour-tab-magazyn" aria-controls="tour-panel-magazyn" aria-selected="false" tabindex="-1" data-tab="magazyn"><span class="ic">📦</span>Magazyn</button><button class="tour-tab" role="tab" id="tour-tab-ai" aria-controls="tour-panel-ai" aria-selected="false" tabindex="-1" data-tab="ai"><span class="ic">🤖</span>AI</button></div>
     <div class="tour-panel active" role="tabpanel" id="tour-panel-crm" aria-labelledby="tour-tab-crm">
       <div class="tour-text">
         <p class="feat-eyebrow">CRM</p>
@@ -332,6 +339,14 @@
       </div>
       <div class="shot-frame"><img src="/wyceny-model.webp" alt="Konfigurator wyceny: wybór modelu zasłony i rodzaju fałdy" loading="lazy"></div>
     </div>
+    <div class="tour-panel noshot" role="tabpanel" id="tour-panel-kontrahenci" aria-labelledby="tour-tab-kontrahenci">
+      <div class="tour-text">
+        <p class="feat-eyebrow">Kontrahenci</p>
+        <h3>Baza klientów i dostawców w jednym miejscu</h3>
+        <p>Jedna baza dla klientów, dostawców i podmiotów oznaczonych jako oba. Wpisujesz NIP, a dane firmy uzupełniają się same — bez przepisywania z wizytówek i rejestrów.</p>
+      </div>
+      <div class="tour-cards"><div class="tour-card"><div class="tour-card-ic">🔎</div><h4>Dane po NIP</h4><p>Nazwa, adres i REGON pobierane automatycznie z GUS, z zapasowym źródłem z Białej Listy VAT.</p></div><div class="tour-card"><div class="tour-card-ic">🏷️</div><h4>Klient, dostawca lub oba</h4><p>Rola kontrahenta widoczna na liście, a w formularzach faktur i zamówień podpowiadają się właściwe podmioty.</p></div><div class="tour-card"><div class="tour-card-ic">🧾</div><h4>Gotowe do faktury</h4><p>Dane kontrahenta trafiają wprost na fakturę sprzedażową i zakupową, razem z ustawieniami VAT.</p></div></div>
+    </div>
     <div class="tour-panel" role="tabpanel" id="tour-panel-kalendarz" aria-labelledby="tour-tab-kalendarz">
       <div class="tour-text">
         <p class="feat-eyebrow">Kalendarz</p>
@@ -340,6 +355,14 @@
         <ul class="feat-list"><li>Terminy z CRM trafiają do kalendarza automatycznie</li><li>Osobne kolory dla ekip instalacyjnych</li><li>Dodawanie i edycja wydarzeń bez przełączania aplikacji</li></ul>
       </div>
       <div class="shot-frame"><img src="/kalendarz.webp" alt="Kalendarz tygodniowy z pomiarami, montażami i realizacjami" loading="lazy"></div>
+    </div>
+    <div class="tour-panel noshot" role="tabpanel" id="tour-panel-mail" aria-labelledby="tour-tab-mail">
+      <div class="tour-text">
+        <p class="feat-eyebrow">Mail</p>
+        <h3>Poczta i oferty bez opuszczania aplikacji</h3>
+        <p>Podłączasz własną skrzynkę Outlook lub Gmail i wysyłasz oferty prosto z wyceny. Cała korespondencja z klientem jest widoczna przy jego karcie.</p>
+      </div>
+      <div class="tour-cards"><div class="tour-card"><div class="tour-card-ic">✉️</div><h4>Oferty i dokumenty</h4><p>PDF wyceny, uproszczona wycena, zlecenia i faktury jako załączniki jednym kliknięciem.</p></div><div class="tour-card"><div class="tour-card-ic">📋</div><h4>Szablony wiadomości</h4><p>Oferta, potwierdzenie, przypomnienie — z automatycznie wstawianym klientem, kwotą i zaliczką.</p></div><div class="tour-card"><div class="tour-card-ic">🗂️</div><h4>Foldery i flagi</h4><p>Foldery, oznaczenia kolorami zsynchronizowane ze skrzynką oraz dodawanie wydarzeń do kalendarza.</p></div></div>
     </div>
     <div class="tour-panel" role="tabpanel" id="tour-panel-zadania" aria-labelledby="tour-tab-zadania">
       <div class="tour-text">
@@ -367,6 +390,14 @@
         <ul class="feat-list"><li>Status próbnika jednym kliknięciem</li><li>Odpowiedniki tkanin od różnych producentów</li><li>Ostrzeżenia o brakującej wysokości i innych parametrach</li></ul>
       </div>
       <div class="shot-frame"><img src="/magazyn.webp" alt="Katalog tkanin z cenami i statusem próbnika" loading="lazy"></div>
+    </div>
+    <div class="tour-panel noshot" role="tabpanel" id="tour-panel-ai" aria-labelledby="tour-tab-ai">
+      <div class="tour-text">
+        <p class="feat-eyebrow">AI</p>
+        <h3>Asystent AI, który wstępnie wycenia za Ciebie</h3>
+        <p>Wgrywasz opis zlecenia, zdjęcia, rzuty lub gotowe oferty, a asystent rozpoznaje pokoje, okna i produkty i buduje z nich wycenę. Rozmawiasz z nim jak z pracownikiem — poprawiasz, dopytujesz, doprecyzowujesz.</p>
+      </div>
+      <div class="tour-cards"><div class="tour-card"><div class="tour-card-ic">📎</div><h4>Pliki i zdjęcia</h4><p>PDF-y, skany i zdjęcia jako punkt wyjścia — bez przepisywania ręcznie.</p></div><div class="tour-card"><div class="tour-card-ic">💬</div><h4>Rozmowa zamiast formularza</h4><p>Doprecyzowujesz wymiary, tkaniny i mechanizmy w czacie, a wycena aktualizuje się na bieżąco.</p></div><div class="tour-card"><div class="tour-card-ic">➕</div><h4>Od razu w aplikacji</h4><p>Gotowy wynik tworzy klienta z pokojami i produktami, które dopracowujesz w zwykłym trybie wyceny.</p></div></div>
     </div>
   </div>
 </section>
