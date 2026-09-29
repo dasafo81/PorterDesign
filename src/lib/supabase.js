@@ -784,6 +784,10 @@ export const adminApi = {
   createTenant: function(name){
     return adminFetch("POST","/api/admin/tenants",{name:name});
   },
+  // Trwale usuwa tenanta wraz z danymi i kontami (wymaga wpisania jego nazwy jako potwierdzenia)
+  deleteTenant: function(tenantId, confirmName){
+    return adminFetch("DELETE","/api/admin/tenants",{id:tenantId,confirm_name:confirmName});
+  },
   // Lista userow w danym tenancie (filtruje po app_metadata.tenant_id)
   getUsers: function(tenantId){
     return adminFetch("GET","/api/admin/users?tenant_id="+encodeURIComponent(tenantId));

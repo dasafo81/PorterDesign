@@ -156,6 +156,54 @@ function EditTenantModal(p) {
   );
 }
 
+// ── Delete-tenant modal (nieodwracalne) ───────────────────────
+function DeleteTenantModal(p) {
+  var sConf = useState(''), conf = sConf[0], setConf = sConf[1];
+  var sBusy = useState(false), busy = sBusy[0], setBusy = sBusy[1];
+  var sErr = useState(null), err = sErr[0], setErr = sErr[1];
+  var t = p.tenant;
+  var match = conf.trim() === (t.name || '').trim();
+
+  function submit() {
+    if (!match) return;
+    setBusy(true); setErr(null);
+    adminApi.deleteTenant(t.id, conf.trim()).then(function(res) {
+      p.onDeleted(res);
+    }).catch(function(e) {
+      setErr(e.message || 'Blad usuwania');
+      setBusy(false);
+    });
+  }
+
+  return ce(ModalShell, { title: 'Usu\u0144 tenanta \u2014 ' + t.name, onClose: busy ? function() {} : p.onClose },
+    err ? ce('div', { style: { padding: 10, marginBottom: 12, background: 'rgba(239,68,68,0.08)',
+                                border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8,
+                                color: '#ef4444', fontSize: 13 } }, err) : null,
+    ce('div', { style: { fontSize: 13, color: 'var(--t2)', lineHeight: 1.6, marginBottom: 12 } },
+      'Operacja jest ', ce('strong', null, 'nieodwracalna'), '. Zostan\u0105 trwale usuni\u0119te: ',
+      ce('strong', null, (t.user_count || 0) + ' kont u\u017cytkownik\u00f3w'), ', ',
+      ce('strong', null, (t.client_count || 0) + ' klient\u00f3w'),
+      ' oraz wszystkie pozosta\u0142e dane tenanta (wyceny, faktury, katalog, zadania, kontrahenci, ustawienia). ',
+      'Nie s\u0105 usuwane pliki w Storage ani subskrypcja w Stripe. Przywr\u00f3ci\u0107 mo\u017cna tylko z kopii zapasowej bazy.'),
+    ce('label', { style: { display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+                            color: 'var(--t3)', textTransform: 'uppercase', marginBottom: 6 } },
+      'Wpisz nazwę tenanta, aby potwierdzić: ' + t.name),
+    ce('input', {
+      autoFocus: true, value: conf,
+      onChange: function(e) { setConf(e.target.value); },
+      onKeyDown: function(e) { if (e.key === 'Enter') submit(); },
+      placeholder: t.name, style: inputStyle
+    }),
+    ce('div', { style: { display: 'flex', gap: 8, marginTop: 20, justifyContent: 'flex-end' } },
+      ce('button', { onClick: p.onClose, disabled: busy, style: secondaryButtonStyle }, 'Anuluj'),
+      ce('button', { onClick: submit, disabled: busy || !match,
+        style: { border: 'none', background: '#dc2626', color: '#fff', borderRadius: 10, padding: '10px 18px',
+                  fontSize: 13, fontWeight: 700, cursor: (busy || !match) ? 'not-allowed' : 'pointer',
+                  opacity: (busy || !match) ? 0.5 : 1 } },
+        busy ? 'Usuwam...' : 'Usu\u0144 trwale'))
+  );
+}
+
 // ── Awatary userow (kolor + inicjaly) — do przypisywania dealow w CRM ────────
 var USER_COLORS = ['#6366f1', '#db2777', '#059669', '#d97706', '#0ea5e9', '#8b5cf6', '#dc2626', '#0d9488'];
 function userInitials(name, email) {
@@ -330,6 +378,7 @@ export function ScreenAdmin() {
   var sShowCT = useState(false), showCT = sShowCT[0], setShowCT = sShowCT[1];
   var sShowCU = useState(false), showCU = sShowCU[0], setShowCU = sShowCU[1];
   var sShowET = useState(false), showET = sShowET[0], setShowET = sShowET[1];
+  var sShowDT = useState(false), showDT = sShowDT[0], setShowDT = sShowDT[1];
   var sEditUser = useState(null), editUser = sEditUser[0], setEditUser = sEditUser[1];
 
   function loadTenants() {
@@ -427,6 +476,12 @@ export function ScreenAdmin() {
                             borderRadius: 10, padding: '8px 14px', fontSize: 12,
                             fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }
                 }, '\\u270E Edytuj branding'),
+                (selectedTenant.config && selectedTenant.config.builtin_catalog) ? null : ce('button', {
+                  onClick: function() { setShowDT(true); },
+                  style: { border: '1px solid rgba(220,38,38,0.4)', background: 'transparent', color: '#dc2626',
+                            borderRadius: 10, padding: '8px 14px', fontSize: 12,
+                            fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }
+                }, '\\uD83D\\uDDD1 Usu\\u0144'),
                 ce('button', {
                   onClick: function() { setShowCU(true); },
                   style: { border: 'none', background: 'var(--violet)', color: '#fff',
@@ -533,6 +588,14 @@ export function ScreenAdmin() {
       tenant: selectedTenant,
       onClose: function() { setShowCU(false); },
       onCreated: function() { setShowCU(false); loadUsers(selectedId); loadTenants(); }
+    }) : null,
+    showDT && selectedTenant ? ce(DeleteTenantModal, {
+      tenant: selectedTenant,
+      onClose: function() { setShowDT(false); },
+      onDeleted: function(res) {
+        setShowDT(false); setSelectedId(null); setUsers(null); loadTenants();
+        if (res && res.failed_users && res.failed_users.length) alert('Tenant usuni\u0119ty, ale nie uda\u0142o si\u0119 usun\u0105\u0107 kont: ' + res.failed_users.join(', '));
+      }
     }) : null,
     showET && selectedTenant ? ce(EditTenantModal, {
       tenant: selectedTenant,
