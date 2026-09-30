@@ -3417,7 +3417,10 @@ export function ModalClientEmail(p){
       var atts=[{"@odata.type":"#microsoft.graph.fileAttachment",name:pdfName,contentType:"application/pdf",contentBytes:pdfB64}].concat(extraGraphAtts);
       if(img)atts.push({"@odata.type":"#microsoft.graph.fileAttachment",name:"signature.png",contentType:img.ct,contentBytes:img.b64,isInline:true,contentId:"signature-image"});
       var recips=to.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean).map(function(a){return {emailAddress:{address:a}};});
-      if(recips.length===1&&client.name)recips[0].emailAddress.name=client.name;
+      // Nazwa klienta tylko gdy mail idzie na jego adres — zlecenia do szwalni/dostawców nie mogą dostać etykiety klienta
+      var clientMailLc=String(client.email||"").trim().toLowerCase();
+      var isClientAddr=recips.length===1&&!!clientMailLc&&recips[0].emailAddress.address.toLowerCase()===clientMailLc;
+      if(isClientAddr&&client.name)recips[0].emailAddress.name=client.name;
       var attBytes=atts.reduce(function(a,x){return a+Math.round(String(x.contentBytes||"").length*0.75);},0);
       var inThread=!!(asReply&&replyMsg);
       // Wątek klienta albo duże załączniki (pojedyncze żądanie sendMail bywa ograniczone do ~4 MB) → szkic + załączniki osobno
@@ -3429,7 +3432,7 @@ export function ModalClientEmail(p){
           });
       return sendReq.then(function(res){
         if(!res.ok)return res.json().catch(function(){return {};}).then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+res.status+")");});
-        sbApi.upsertMailRecipient(to,client.name||"").catch(function(){});
+        sbApi.upsertMailRecipient(to,isClientAddr?(client.name||""):"").catch(function(){});
         setSending(false);setSent(true);
         setTimeout(function(){p.onClose();},1600);
       });
