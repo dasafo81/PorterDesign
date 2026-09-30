@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { roundTo10, buildOfferPDFHtml, resolvePDFAssets, SELLER } from '../constants/data.js';
+import { roundTo10, buildOfferPDFHtml, buildOfferDetailRows, resolvePDFAssets, SELLER } from '../constants/data.js';
 import { buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
 import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
@@ -97,6 +97,27 @@ function clientPdfParams(cl){
   var v=+cl.install_fee||0;
   return {comm:comm,montaz:{mode:amount?"amount":"percent",value:amount?v:v/100}};
 }
+// Ustawienia z Podsumowania (montaż, rabat, koszt wizyty) zapisywane przez App.jsx
+// w localStorage per klient — bez nich mail wysyłał PDF z innym montażem i bez
+// odliczeń, niż widać w Podsumowaniu.
+function clientAdjustments(cl,baseTotal){
+  var adj=null;
+  try{adj=JSON.parse(localStorage.getItem("pd_adj_"+cl.id)||"null");}catch(e){}
+  var pp=clientPdfParams(cl);
+  var montaz=pp.montaz;
+  if(adj&&adj.mi!=null&&adj.mi!==""){
+    var mv=+String(adj.mi).replace(",",".")||0;
+    montaz=adj.mm==="amount"?{mode:"amount",value:mv}:{mode:"percent",value:mv/100};
+  }
+  var montazVal=montaz.mode==="amount"?roundTo10(montaz.value):roundTo10(baseTotal*montaz.value);
+  var discount=0,visitFee=0;
+  if(adj){
+    var di=+String(adj.di).replace(",",".")||0,vi=+String(adj.vi).replace(",",".")||0;
+    if(adj.de&&di>0)discount=adj.dm==="percent"?roundTo10((baseTotal+montazVal)*di/100):roundTo10(di);
+    if(adj.ve&&vi>0)visitFee=roundTo10(vi);
+  }
+  return {comm:pp.comm,montaz:montaz,discount:discount,visitFee:visitFee};
+}
 // Wybór wariantów do PDF-a z modułu Mail — jak w App.jsx (makeSimplInitSel +
 // computeSimplSelection), ale najpierw respektuje zapisany w karcie klienta wybór
 // z podglądu "Wycena uproszczona" (simpl_draft.sel), żeby mail wysyłał dokładnie
@@ -139,9 +160,16 @@ function buildAppPdfHtml(id,client){
   var pp=clientPdfParams(client);
   if(id==="pdf_uproszczona"){
     var rows=buildSimplifiedRows(client,defaultSimplSelection(client),pp.comm);
-    return buildSimplifiedPDFHtmlFromRows(client,rows,pp.montaz,null,"");
+    var base=rows.reduce(function(a,rd){return a+(rd.windows||[]).reduce(function(b,wd){return b+(wd.items||[]).reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
+    var ad=clientAdjustments(client,base);
+    return buildSimplifiedPDFHtmlFromRows(client,rows,ad.montaz,null,"",ad.discount,ad.visitFee);
   }
-  if(id==="pdf_oferta")return buildOfferPDFHtml(client,pp.comm,pp.montaz,"");
+  if(id==="pdf_oferta"){
+    var dRows=buildOfferDetailRows(client)||[];
+    var dBase=dRows.reduce(function(a,r){return a+(pp.comm>0?roundTo10(r.total*(1+pp.comm)):(+r.total||0));},0);
+    var da=clientAdjustments(client,dBase);
+    return buildOfferPDFHtml(client,pp.comm,da.montaz,"",null,da.discount,da.visitFee);
+  }
   return null;
 }
 function appPdfName(id,client){
