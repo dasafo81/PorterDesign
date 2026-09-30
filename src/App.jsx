@@ -431,9 +431,28 @@ export function App(p){
     sbApi.getCatalogItems().then(primeFabricOverrides).catch(function(){});
   },[]);
 
+  // Rabat, koszt wizyty i montaż z Podsumowania żyły tylko w stanie ekranu, więc
+  // mail (ScreenMail) budował PDF bez nich. Zapisujemy je per klient w localStorage
+  // (synchronicznie, bez wyścigów zapisów do bazy) — mail czyta stąd te same wartości.
+  // Efekt zapisu MUSI stać przed efektem hydratacji poniżej: przy zmianie klienta
+  // stan zawiera jeszcze wartości poprzedniego klienta i nie wolno ich zapisać pod nowym id.
+  var adjOwnerRef=React.useRef(null);
+  React.useEffect(function(){
+    if(!curClientId||adjOwnerRef.current!==curClientId)return;
+    try{localStorage.setItem("pd_adj_"+curClientId,JSON.stringify({mi:montazInput,mm:montazMode,de:discountEnabled,dm:discountMode,di:discountInput,ve:visitFeeEnabled,vi:visitFeeInput}));}catch(e){}
+  },[curClientId,montazInput,montazMode,discountEnabled,discountMode,discountInput,visitFeeEnabled,visitFeeInput]);
+
   // Hydratuj lokalne pola Polecenie/Montaż z aktualnego klienta przy każdej zmianie klienta
   React.useEffect(function(){
     var cl=clients.find(function(c){return c.id===curClientId;});
+    var adj=null;
+    try{adj=JSON.parse(localStorage.getItem("pd_adj_"+curClientId)||"null");}catch(e){}
+    setDiscountEnabled(!!(adj&&adj.de));
+    setDiscountMode(adj&&adj.dm==="percent"?"percent":"amount");
+    setDiscountInput(adj&&adj.di!=null?String(adj.di):"");
+    setVisitFeeEnabled(!!(adj&&adj.ve));
+    setVisitFeeInput(adj&&adj.vi!=null?String(adj.vi):"250");
+    adjOwnerRef.current=curClientId;
     setCommissionInput(cl&&cl.commission!=null?String(cl.commission):"");
     setMontazInput(cl&&cl.install_fee!=null?String(cl.install_fee):"");
     setMontazMode(cl&&cl.install_fee_mode==="amount"?"amount":"percent");
