@@ -286,10 +286,10 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var winBody;
       if(wr.items.length===1){
         // Pojedynczy produkt — jeden wiersz (nazwa okna + produkt), bez powtórzonej sumy
-        winBody="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"<br><span style=\"font-size:9px;font-weight:400;color:#888;\">"+wr.items[0].label+"</span></td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
+        winBody="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;background:"+totalRowBg+";font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"<br><span style=\"font-size:9px;font-weight:400;color:#888;\">"+wr.items[0].label+"</span></td><td style=\"padding:8px 10px;background:"+totalRowBg+";text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">"+roundTo10(wr.total)+" z\u0142</td></tr>";
       }else{
         // Kilka produktów — pozycje + podsumowanie okna
-        var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
+        var totalRow2="<tr style=\"background:"+totalRowBg+"\"><td style=\"padding:8px 10px;background:"+totalRowBg+";font-size:11px;font-weight:700;color:"+headerColor+";\">"+winLabel+"</td><td style=\"padding:8px 10px;background:"+totalRowBg+";text-align:right;font-size:12px;font-weight:700;color:"+headerColor+";\">" +roundTo10(wr.total)+" z\u0142</td></tr>";
         winBody=wr.rows+totalRow2;
       }
       roomSection2+="<table style=\"width:100%;table-layout:fixed;border-collapse:collapse;border:1px solid #ede3d9;margin-bottom:3mm;\"><colgroup><col><col style=\"width:30mm;\"></colgroup><tbody>"+winBody+"</tbody></table>";
