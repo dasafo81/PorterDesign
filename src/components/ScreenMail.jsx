@@ -575,9 +575,18 @@ function MailList(p){
     if(fl.important)return t.mails.some(function(m){return m.isImportant;});
     return t.mails.some(function(m){return (m.categories||[]).indexOf(fl.category)>=0;});
   }
+  // Ptaszek w menu = flaga na DOWOLNYM mailu wątku (threadHasFlag), więc odznaczenie
+  // musi ją zdjąć ze wszystkich takich maili. Wcześniej przełączany był tylko head:
+  // gdy flaga siedziała na starszym mailu, klik ją tam ZOSTAWIAŁ i dokładał na head.
   function toggleThreadFlag(t,fl){
-    if(fl.important){ if(p.onToggleImportant)p.onToggleImportant(t.head); }
-    else { if(p.onToggleFlag)p.onToggleFlag(t.head,fl); }
+    var has=threadHasFlag(t,fl);
+    var targets=has
+      ?t.mails.filter(function(m){return fl.important?m.isImportant:(m.categories||[]).indexOf(fl.category)>=0;})
+      :[t.head];
+    targets.forEach(function(m){
+      if(fl.important){ if(p.onToggleImportant)p.onToggleImportant(m); }
+      else { if(p.onToggleFlag)p.onToggleFlag(m,fl); }
+    });
   }
   var isInbox=p.folder==="inbox";
   var searching=filter.trim().length>0;
