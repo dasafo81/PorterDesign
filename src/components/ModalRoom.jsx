@@ -554,3 +554,30 @@ export function ModalSimple(p){
 // ── ROLLER BLIND IMAGES (base64) ──────────────────────────────
 // ── CURTAIN MODEL & FOLD TYPE IMAGES (base64) ──────────────────────
 // ── PRODUCT CARD ───────────────────────────────────────────────────────────
+
+
+// Kopiowanie produktu do innego pomieszczenia (lub okna) tego samego klienta.
+// p.rooms: pokoje klienta, p.curRoomId, p.curWinId, p.onPick(roomId,winId|null), p.onClose
+export function ModalCopyProduct(p){
+  var rooms=p.rooms||[];
+  var btn={width:"100%",textAlign:"left",padding:"12px 14px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"var(--bg2)",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer"};
+  return ce("div",{onClick:p.onClose,style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1200,padding:"16px"}},
+    ce("div",{onClick:function(ev){ev.stopPropagation();},style:{background:"var(--bg)",borderRadius:18,padding:"1.5rem",width:380,maxWidth:"100%",maxHeight:"85vh",overflowY:"auto",border:"1px solid var(--bd2)",boxShadow:"0 20px 60px rgba(0,0,0,0.22)"}},
+      ce("div",{style:{fontSize:16,fontWeight:700,color:"var(--t1)",marginBottom:4}},"Kopiuj do pomieszczenia"),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:14,lineHeight:1.4}},"Produkt trafi na koniec wybranego pomieszczenia wraz z wymiarami, tkaniną i ustawieniami."),
+      ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        rooms.map(function(r){
+          var wins=r.windows||[];
+          var multi=wins.length>1;
+          return ce("div",{key:r.id,style:{display:"flex",flexDirection:"column",gap:6}},
+            multi?ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)",marginTop:4}},r.name):null,
+            multi?wins.map(function(w,i){
+              return ce("button",{key:w.id,onClick:function(){p.onPick(r.id,w.id);},style:btn},(w.name||("Okno "+(i+1)))+((r.id===p.curRoomId&&w.id===p.curWinId)?" (to samo)":""));
+            }):ce("button",{onClick:function(){p.onPick(r.id,wins[0]?wins[0].id:null);},style:btn},r.name+(r.id===p.curRoomId?" (to samo)":""))
+          );
+        })
+      ),
+      ce("button",{onClick:p.onClose,style:{width:"100%",marginTop:14,padding:"12px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:13,fontWeight:600,cursor:"pointer"}},"Anuluj")
+    )
+  );
+}
