@@ -238,7 +238,7 @@ export function ModalSewing(p){
       var html=buildSewingOrderHtmlFromRows(rows,p.client,dta);
       if(!html){alert('Brak wybranych pozycji.');return;}
       p.onMailDoc(html,'Zlecenie szycia - '+((p.client&&p.client.name)||'klient')+'.pdf',{
-        to:'',
+        to:'',supplier:house,
         subject:'Zlecenie szycia \u2014 '+((p.client&&p.client.name)||''),
         body:['Dzie\u0144 dobry,','W za\u0142\u0105czeniu przesy\u0142am zlecenie szycia.',
           'Prosz\u0119 o potwierdzenie przyj\u0119cia i terminu realizacji.']

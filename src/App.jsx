@@ -1211,11 +1211,36 @@ export function App(p){
   // z ekranu podglądu — ten sam modal co "Mail do klienta" (Microsoft Graph +
   // htmlToPdfBase64), tylko z innym tematem, treścią i adresatem. Dzięki temu
   // zamówienia do dostawców i szwalni nie wymagają przechodzenia do modułu Mail.
+  // E-mail producenta/dostawcy z Kontrahentów (Magazyn → Kontrahenci) po nazwie.
+  // Nazwa szwalni/dostawcy bywa opisowa ("TRINITAS — ul. Składowa 9, ..."), więc
+  // porównujemy tylko człon przed " — " / przecinkiem, bez polskich znaków i wielkości liter.
+  function normSupName(t){
+    return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\u0142/g,"l")
+      .split(/\s[\u2014\u2013-]\s|,/)[0].replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+  }
+  function findSupplierEmail(contacts,supplier){
+    var key=normSupName(supplier);
+    if(!key||key.length<3)return "";
+    var cands=(contacts||[]).filter(function(c){
+      if(!c.email)return false;
+      var n=normSupName(c.name);
+      return n&&(n===key||n.indexOf(key)>=0||key.indexOf(n)>=0);
+    });
+    cands.sort(function(a,b){return (b.role==="dostawca"||b.role==="oba"?1:0)-(a.role==="dostawca"||a.role==="oba"?1:0);});
+    return cands.length?cands[0].email:"";
+  }
   function mailDoc(html,name,opts){
     if(!html){alert("Brak tre\u015bci dokumentu do wys\u0142ania.");return;}
     opts=opts||{};
-    setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:opts.to,title:opts.title,template:opts.template});
-    setShowEmailModal(true);
+    function open(to){
+      setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:to,title:opts.title,template:opts.template});
+      setShowEmailModal(true);
+    }
+    // opts.supplier: gdy pole "Do" nie jest podane, podstawiamy e-mail dostawcy z Kontrahentów.
+    if(opts.supplier&&!opts.to){
+      sbApi.getContacts().then(function(rows){return findSupplierEmail(rows,opts.supplier);})
+        .catch(function(){return "";}).then(open);
+    }else open(opts.to);
   }
   // Prosta treść maila dla dokumentów roboczych (zamówienia, zlecenia).
   function docMailBody(lines){
@@ -2500,7 +2525,7 @@ export function App(p){
       var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
       mailDoc(buildFabricOrderHtmlFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes}),
         "Zamowienie tkaniny - "+sup+".pdf",
-        {to:"",subject:"Zam\u00f3wienie tkaniny \u2014 "+(curClient.name||""),
+        {to:"",supplier:sup,subject:"Zam\u00f3wienie tkaniny \u2014 "+(curClient.name||""),
          body:docMailBody(["Dzie\u0144 dobry,",
            "W za\u0142\u0105czeniu przesy\u0142am zam\u00f3wienie tkaniny.",
            "Prosz\u0119 o potwierdzenie dost\u0119pno\u015bci i terminu wysy\u0142ki."])});
