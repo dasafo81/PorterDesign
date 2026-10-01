@@ -2816,6 +2816,8 @@ function _rowToFabric(r){
     kurczliwosc: r.shrinkage_pct!=null ? r.shrinkage_pct : null,
     flameRetardant: !!r.flame_retardant,
     soundproof: !!r.soundproof,
+    bestseller: !!r.bestseller, welur: !!r.welur, basic: !!r.basic, podszewka: !!r.podszewka, is3d: !!r.is_3d,
+    thermal: !!r.thermal, pattern: !!r.pattern, gloss: !!r.gloss, polprzezierne: !!r.polprzezierne,
     hidden: !!r.hidden,
     custom: true
   };
@@ -2874,8 +2876,34 @@ export function getFabricEffective(name){
     gramatura:(ov && ov.weight_gsm!=null) ? ov.weight_gsm : (base?base.gramatura:null),
     kurczliwosc:(ov && ov.shrinkage_pct!=null) ? ov.shrinkage_pct : (base && base.kurczliwosc!=null ? base.kurczliwosc : null),
     flameRetardant: (ov && ov.flame_retardant!=null) ? !!ov.flame_retardant : !!(base && base.flameRetardant),
-    soundproof: (ov && ov.soundproof!=null) ? !!ov.soundproof : !!(base && base.soundproof)
+    soundproof: (ov && ov.soundproof!=null) ? !!ov.soundproof : !!(base && base.soundproof),
+    bestseller: !!(ov && ov.bestseller), welur: !!(ov && ov.welur), basic: !!(ov && ov.basic),
+    podszewka: !!(ov && ov.podszewka), is3d: !!(ov && ov.is_3d), thermal: !!(ov && ov.thermal),
+    pattern: !!(ov && ov.pattern), gloss: !!(ov && ov.gloss), polprzezierne: !!(ov && ov.polprzezierne)
   };
+}
+// Tagi tkaniny (Naturalne, Błysk, Welur...) — te same co w Magazyn → Katalog,
+// używane do wyszukiwania i filtrowania w wyborze tkaniny w wycenie.
+export function getFabricTags(f){
+  var t = [];
+  if(!f) return t;
+  var comp = classifyFabricComposition(f.sklad);
+  if(comp) t.push(comp);
+  var bo = classifyFabricBlackout(f.name);
+  if(bo) t.push(bo);
+  if(isHighFabric(f.width)) t.push(HIGH_FABRIC_TAG);
+  if(f.flameRetardant) t.push("Trudnopalne");
+  if(f.soundproof) t.push("D\u017Awi\u0119koszczelne");
+  if(f.thermal) t.push("Termiczne");
+  if(f.bestseller) t.push("Bestseller");
+  if(f.welur) t.push("Welur");
+  if(f.basic) t.push("Basic");
+  if(f.polprzezierne) t.push("P\u00f3\u0142przezierne");
+  if(f.podszewka) t.push("Podszewka");
+  if(f.is3d) t.push("3D");
+  if(f.pattern) t.push("Wz\u00f3r");
+  if(f.gloss) t.push("B\u0142ysk");
+  return t;
 }
 // ── Tkaniny podszewkowe (opcja "Podszewka" w zasłonie) — cena z katalogu ──
 export const LINING_FABRICS = [

@@ -766,6 +766,10 @@ function mergeCatalog(baseGroups, rows) {
         basic:      o ? !!o.basic : false,
         podszewka:  o ? !!o.podszewka : false,
         is3d:       o ? !!o.is_3d : false,
+        thermal:    o ? !!o.thermal : false,
+        pattern:    o ? !!o.pattern : false,
+        gloss:      o ? !!o.gloss : false,
+        polprzezierne: o ? !!o.polprzezierne : false,
         hidden:   o ? !!o.hidden : false
       };
     }).filter(function(m) { return !m.hidden; });
