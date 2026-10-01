@@ -16,7 +16,7 @@ import {
 import { RichTextEditor } from './components/MailShared.jsx';
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
-import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalConfirmTypeChange, ModalSimple, ModalVariantAdvisor } from './components/ModalRoom.jsx';
+import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalCopyProduct, ModalConfirmTypeChange, ModalSimple, ModalVariantAdvisor } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
 import { ScreenCRM, CRMKalendarz, CRM_STAGES, dealTotal } from './components/ScreenCRM.jsx';
@@ -1225,6 +1225,27 @@ export function App(p){
   function addProd(){setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([{id:Date.now(),type:"zaslona",c:{},par:{},panels:[{side:"Zasłona lewa",w:""}],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});}
   function updProd(i,p){setCurWin(function(w){return mg(w,{products:(w.products||[]).map(function(x,j){return j===i?p:x;})});});}
   function remProd(i){setCurWin(function(w){return mg(w,{products:(w.products||[]).filter(function(_,j){return j!==i;})});});}
+  var scp=useState(null),copyProd=scp[0],setCopyProd=scp[1];
+  // Kopia produktu do innego pomieszczenia/okna tego samego klienta (z wymiarami, tkanina itd.).
+  function copyProdTo(roomId,winId){
+    var src=copyProd;setCopyProd(null);
+    if(!src||!curClientId)return;
+    var copy=mg(JSON.parse(JSON.stringify(src)),{id:Date.now()});
+    if(roomId===curRoomId&&curWin&&(winId==null||winId===curWin.id)){
+      setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([copy])});});
+      return;
+    }
+    updateClient(curClientId,function(cl){
+      return mg(cl,{rooms:(cl.rooms||[]).map(function(rr){
+        if(rr.id!==roomId)return rr;
+        var wins=rr.windows||[];
+        if(!wins.length)return mg(rr,{windows:[{id:"default_"+rr.id,name:"",isDefault:true,products:[copy]}]});
+        var ti=winId!=null?wins.findIndex(function(w){return w.id===winId;}):0;
+        if(ti<0)ti=0;
+        return mg(rr,{windows:wins.map(function(w,j){return j===ti?mg(w,{products:(w.products||[]).concat([copy])}):w;})});
+      })});
+    });
+  }
   function dupProd(i){setCurWin(function(w){var prods=w.products||[];var src=prods[i];var copy=mg(src,{id:Date.now()});var next=prods.slice(0,i+1).concat([copy]).concat(prods.slice(i+1));return mg(w,{products:next});});}
 
   function Btn(label,onClick,primary){
@@ -1779,6 +1800,7 @@ export function App(p){
               onChange:function(np){setCurWin(function(w){return mg(w,{products:(w.products||[]).map(function(x,j){return j===i?np:x;})});});},
               onRemove:function(){setCurWin(function(w){return mg(w,{products:(w.products||[]).filter(function(_,j){return j!==i;})});});},
               onDuplicate:function(){setCurWin(function(w){var prods=w.products||[];var src=prods[i];var copy=mg(src,{id:Date.now()});var next=prods.slice(0,i+1).concat([copy]).concat(prods.slice(i+1));return mg(w,{products:next});});},
+              onCopyTo:function(){setCopyProd(swProducts[i]);},
               onMoveUp:i>0?function(){moveProd(i,-1);}:undefined,
               onMoveDown:i<swProducts.length-1?function(){moveProd(i,1);}:undefined
             })
@@ -1919,7 +1941,7 @@ export function App(p){
           },chipLabel);
         })
       ):null,
-      (curWin.products||[]).map(function(p,i){return ce("div",{key:p.id,id:"prod-anchor-"+p.id},ce(ProdCard,{prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);},onDuplicate:function(){dupProd(i);}}));}),
+      (curWin.products||[]).map(function(p,i){return ce("div",{key:p.id,id:"prod-anchor-"+p.id},ce(ProdCard,{prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);},onDuplicate:function(){dupProd(i);},onCopyTo:function(){setCopyProd((curWin.products||[])[i]);}}));}),
       ce("button",{onClick:addProd,style:{padding:"20px 18px",borderRadius:12,border:"2px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:16,cursor:"pointer",marginBottom:16,width:"100%",minHeight:62,transition:"all .15s"}},"+ Dodaj produkt"),
       (curWin.products||[]).length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},
         ce("span",{style:{fontSize:14,color:"var(--grd)"}},"Łącznie okno"),
@@ -2844,6 +2866,7 @@ export function App(p){
     ),
     showClientModal?ce(ModalClient,{onOk:addClient,onClose:function(){setShowClientModal(false);}}):null,
     showNewQuoteModal?ce(ModalNewQuoteFromClient,{clients:clients,onOk:addClient,onClose:function(){setShowNewQuoteModal(false);}}):null,
+    copyProd&&curClient?ce(ModalCopyProduct,{rooms:curClient.rooms||[],curRoomId:curRoomId,curWinId:curWin?curWin.id:null,onPick:copyProdTo,onClose:function(){setCopyProd(null);}}):null,
     showRoomModal?ce(ModalRoom,{onOk:addRoom,onClose:function(){setShowRoomModal(false);}}):null,
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showVariantAdvisor&&curClient?ce(ModalVariantAdvisor,{client:curClient,onApply:applyVariantAdvisor,onClose:function(){setShowVariantAdvisor(false);}}):null,
