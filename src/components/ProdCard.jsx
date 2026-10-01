@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { ModalConfirmTypeChange, ModalConfirmRemove } from './ModalRoom.jsx';
 import { sbApi } from '../lib/supabase.js';
 import {
-  FABRICS, LINING_FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, getFabricEquivalents, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
+  FABRICS, LINING_FABRICS, getAllFabrics, getBestsellerFabrics, getFabricEffective, getFabricEquivalents, getFabricTags, IMG_FALDA_PLASKA, IMG_FALDA_PODWOJNA, IMG_FALDA_POJEDYNCZA,
   IMG_FALDA_POTROJNA, IMG_FALDA_STUDIO, IMG_JZ_ALUMINIUM, IMG_JZ_BAMBOO,
   IMG_JZ_ABACHI, IMG_JZ_BASSWOOD, IMG_JZ_PRIMEWOOD, IMG_MODEL_FALDA, IMG_MODEL_TASMA, IMG_MODEL_WAVE,
   IMG_OKNO, IMG_ROLETA_BACK, IMG_ROLETA_CASCADE, IMG_ROLETA_DUO,
@@ -69,11 +69,21 @@ export function FabPicker(p){
   // pikerow tkaniny (główna + warstwa 2 Roleta Duo), bo oba używają tego komponentu.
   // getAllFabrics() = cennik bazowy z nadpisaniami (bez ukrytych) + tkaniny wlasne z Katalogu.
   var effFabrics=getAllFabrics();
-  var list=q?effFabrics.filter(function(f){return (f.name||"").toLowerCase().includes(q.toLowerCase())||(f.prod||"").toLowerCase().includes(q.toLowerCase());}):effFabrics;
+  var tagSt=useState(null);var activeTag=tagSt[0],setActiveTag=tagSt[1];
+  // Tagi (Naturalne, Błysk...) — wyszukiwarka dopasowuje też po nich, a chipy poniżej filtrują listę.
+  var tagsOf=function(f){return getFabricTags(f);};
+  var allTags=[];
+  effFabrics.forEach(function(f){tagsOf(f).forEach(function(t){if(allTags.indexOf(t)<0)allTags.push(t);});});
+  var ql=q.toLowerCase().trim();
+  var list=effFabrics.filter(function(f){
+    if(activeTag&&tagsOf(f).indexOf(activeTag)<0)return false;
+    if(!ql)return true;
+    return (f.name||"").toLowerCase().includes(ql)||(f.prod||"").toLowerCase().includes(ql)||tagsOf(f).some(function(t){return t.toLowerCase().includes(ql);});
+  });
   var sf=effFabrics.find(function(f){return f.name===p.fabName;});
   var hasSelection=p.fabName||p.fabMan!=null;
   // Bestsellery (p.prodType: "zaslona" | "firana") — tylko gdy lista nie jest przefiltrowana wyszukiwarką.
-  var bestsellerGroups=(!q && p.prodType)?getBestsellerFabrics(p.prodType):[];
+  var bestsellerGroups=(!q && !activeTag && p.prodType)?getBestsellerFabrics(p.prodType):[];
   function renderFabRow(f){
     var active=p.fabName===f.name;
     return ce("div",{key:f.name,
@@ -124,7 +134,14 @@ export function FabPicker(p){
       ):null
     ):null,
     open?ce("div",null,
-      ce("input",{autoFocus:true,value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny po nazwie lub dostawcy...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
+      ce("input",{autoFocus:true,value:q,onChange:function(ev){setQ(ev.target.value);},placeholder:"Szukaj tkaniny po nazwie, dostawcy lub tagu (np. naturalne, b\u0142ysk)...",style:{width:"100%",padding:"14px 16px",fontSize:16,border:"none",borderBottom:"1px solid var(--bd3)",background:"var(--bg)",color:"var(--t1)",outline:"none",boxSizing:"border-box",minHeight:56}}),
+      allTags.length?ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",padding:"8px 16px",borderBottom:"1px solid var(--bd3)",background:"var(--bg)"}},
+        allTags.map(function(t){
+          var on=activeTag===t;
+          return ce("button",{key:t,onClick:function(){setActiveTag(on?null:t);},
+            style:{padding:"5px 11px",borderRadius:16,border:"1.5px solid "+(on?"var(--grd)":"var(--bd2)"),background:on?"var(--grl)":"var(--bg2)",color:on?"var(--grd)":"var(--t2)",fontSize:12,fontWeight:on?700:500,cursor:"pointer"}},t);
+        })
+      ):null,
       ce("div",{style:{maxHeight:280,overflowY:"auto"}},
         bestsellerGroups.length?bestsellerGroups.map(function(g,gi){
           return ce(Fragment,{key:"bs-"+g.cat},
