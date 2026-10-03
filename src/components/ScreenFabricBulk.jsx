@@ -11,7 +11,7 @@ function fmt(n){ return (Math.round(n*100)/100).toFixed(2).replace(".",","); }
 
 export function ScreenFabricBulk(p){
   var clients=(p.clients||[]).filter(function(c){return c.status!=="odrzucone";});
-  var ts=useState({}),sel=ts[0],setSel=ts[1];
+  var ts=useState(function(){var o={};(p.initialIds||[]).forEach(function(id){o[id]=true;});return o;}),sel=ts[0],setSel=ts[1];
   var ns=useState(""),notes=ns[0],setNotes=ns[1];
   var qs=useState(""),q=qs[0],setQ=qs[1];
 
