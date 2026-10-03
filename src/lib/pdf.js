@@ -113,7 +113,7 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
     <div class="supplier-header">
       <div class="supplier-name">${supplierLabel}</div>
       <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
-      <div class="supplier-meta">Klient: <strong>${client.name}</strong>  |  Data: ${dateStr}</div>
+      <div class="supplier-meta">${opts.bulkLabel?"Zamówienie zbiorcze":"Klient"}: <strong>${client.name}</strong>  |  Data: ${dateStr}</div>
     </div>
     ${tableHTML}
     ${shipHTML}
@@ -123,7 +123,7 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
   return '<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+supplierLabel+' — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
     +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
     +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
-    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">Klient: <strong>'+client.name+'</strong> &nbsp;|&nbsp; Dostawca: <strong>'+supplierLabel+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
+    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">'+(opts.bulkLabel?'Zamówienie zbiorcze':'Klient')+': <strong>'+client.name+'</strong> &nbsp;|&nbsp; Dostawca: <strong>'+supplierLabel+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
     +bodySection
     +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
     +'</body></html>';

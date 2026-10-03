@@ -39,6 +39,7 @@ const ScreenTasks     = lazyNamed(function(){return import('./components/ScreenT
 const ScreenAdmin     = lazyNamed(function(){return import('./components/ScreenAdmin.jsx');},'ScreenAdmin');
 const ScreenInvoices  = lazyNamed(function(){return import('./components/ScreenInvoices.jsx');},'ScreenInvoices');
 const ScreenWarehouse = lazyNamed(function(){return import('./components/ScreenWarehouse.jsx');},'ScreenWarehouse');
+const ScreenFabricBulk = lazyNamed(function(){return import('./components/ScreenFabricBulk.jsx');},'ScreenFabricBulk');
 const ScreenContacts  = lazyNamed(function(){return import('./components/ScreenContacts.jsx');},'ScreenContacts');
 
 // Fallback pokazywany na czas pobierania chunku ekranu.
@@ -1527,7 +1528,16 @@ export function App(p){
         },
           ce("span",{style:{fontSize:15,lineHeight:1}},"\uD83D\uDDD1"),
           ce("span",null,"Kosz")
+        ),
+        ce("div",{
+          onClick:function(){setScreen("fabricBulk");},
+          title:"Zbiorcze zam\u00f3wienie tkanin dla kilku klient\u00f3w",
+          style:{padding:"11px 16px",borderRadius:14,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:7,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)"}
+        },
+          ce("span",{style:{fontSize:15,lineHeight:1}},"\uD83E\uDDF5"),
+          ce("span",null,"Zam\u00f3wienie zbiorcze")
         )
+
       ),
 
       trashOpen?ce(ModalTrash,{
@@ -2485,6 +2495,12 @@ export function App(p){
                "Proszę o potwierdzenie terminu dostawy."])});
         },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"✉️ Wyślij mailem")
       )
+    );
+  }
+  else if(screen==="fabricBulk"){
+    content=ce(Fragment,null,
+      ce(React.Suspense,{fallback:LazyScreenFallback},ce(ScreenFabricBulk,{clients:clients,onMailDoc:mailDoc})),
+      ce("div",{style:{display:"flex",gap:10,marginTop:16}},Btn("\u2190 Wstecz",function(){setScreen("home");},false))
     );
   }
   else if(screen==="fabricPreview"&&curClient){
