@@ -233,6 +233,7 @@ export function App(p){
   var scd=useState(null),confirmDelete=scd[0],setConfirmDelete=scd[1];
   var shh=useState(false),showHistoryModal=shh[0],setShowHistoryModal=shh[1];
   // confirmDelete: {type:"client"|"room"|"window", label:str, onConfirm:fn}
+  var sBF=useState("home"),bulkFrom=sBF[0],setBulkFrom=sBF[1];
   var sHS=useState(""),homeSearch=sHS[0],setHomeSearch=sHS[1];
   // Kosz klientow (soft delete, migracja 0041)
   var sTR=useState(false),trashOpen=sTR[0],setTrashOpen=sTR[1];
@@ -1530,7 +1531,7 @@ export function App(p){
           ce("span",null,"Kosz")
         ),
         ce("div",{
-          onClick:function(){setScreen("fabricBulk");},
+          onClick:function(){setBulkFrom("home");setScreen("fabricBulk");},
           title:"Zbiorcze zam\u00f3wienie tkanin dla kilku klient\u00f3w",
           style:{padding:"11px 16px",borderRadius:14,fontSize:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:7,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)"}
         },
@@ -2267,6 +2268,7 @@ export function App(p){
         ce("button",{onClick:function(){openSimplifiedPreview();},style:sumActBtn(false)},"Wycena uproszczona"),
         ce("button",{onClick:function(){startClientMail();},style:sumActBtn(false)},"Mail do klienta"),
         ce("button",{onClick:function(){openFabricPreview();},style:sumActBtn(false)},"Zamówienie tkaniny"),
+        ce("button",{onClick:function(){setBulkFrom("sum");setScreen("fabricBulk");},style:sumActBtn(false)},"Zamówienie zbiorcze tkanin"),
         ce("button",{onClick:function(){openKarniszPreview();},style:sumActBtn(false)},"Zamówienie osprzętu"),
         ce("button",{onClick:function(){setScreen("sewingPreview");},style:sumActBtn(false)},"Zlecenie szycia")
       )
@@ -2499,8 +2501,8 @@ export function App(p){
   }
   else if(screen==="fabricBulk"){
     content=ce(Fragment,null,
-      ce(React.Suspense,{fallback:LazyScreenFallback},ce(ScreenFabricBulk,{clients:clients,onMailDoc:mailDoc})),
-      ce("div",{style:{display:"flex",gap:10,marginTop:16}},Btn("\u2190 Wstecz",function(){setScreen("home");},false))
+      ce(React.Suspense,{fallback:LazyScreenFallback},ce(ScreenFabricBulk,{clients:clients,onMailDoc:mailDoc,initialIds:bulkFrom==="sum"&&curClientId?[curClientId]:[]})),
+      ce("div",{style:{display:"flex",gap:10,marginTop:16}},Btn("\u2190 Wstecz",function(){setScreen(bulkFrom==="sum"&&curClientId?"sum":"home");},false))
     );
   }
   else if(screen==="fabricPreview"&&curClient){
