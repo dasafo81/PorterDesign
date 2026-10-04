@@ -1467,8 +1467,47 @@ export const FABRICS =[
   {name:"Stylo",brutto:240,prod:"FR-One",width:null,zakup:119.17,belkowa:91.67,flameRetardant:true},
   {name:"Sunlight",brutto:170,prod:"FR-One",width:null,zakup:85.53,belkowa:65.79,flameRetardant:true},
   {name:"Supervio",brutto:190,prod:"FR-One",width:null,zakup:95.03,belkowa:73.1,flameRetardant:true},
-  {name:"Vesta Dimout",brutto:160,prod:"FR-One",width:302,zakup:80.78,belkowa:62.14,sklad:"100% PES",gramatura:271,flameRetardant:true}
+  {name:"Vesta Dimout",brutto:160,prod:"FR-One",width:302,zakup:80.78,belkowa:62.14,sklad:"100% PES",gramatura:271,flameRetardant:true},
+  // ── ANTONIO FERRE — tkaniny naturalne (VV Design, cennik 01.01.2025) ──
+  // Cennik w EUR, przeliczony kursem NBP tabela C sprzedaż 4,3638 (jak DEKOMA 2026).
+  // zakup = cena kuponu netto hurt, belkowa = cena wałka netto hurt, brutto = detal brutto z cennika (zaokr. do 10 zł).
+  // Cotolin 100 i Lisse: cena wałka z PDF wygląda na błąd (17,50 / 43,00 € przy kuponie 32,50 / 39,00 €) — pominięta.
+  // Uwagi dostawcy (transport, VAT, odcienie): FABRIC_PRODUCER_NOTES.
+  {name:"Andros",brutto:230,prod:"Antonio Ferre",width:290,zakup:115.64,belkowa:102.55,sklad:"60% PES, 40% LI"},
+  {name:"Ardea",brutto:320,prod:"Antonio Ferre",width:290,zakup:159.28,belkowa:137.46,sklad:"70% LI, 30% PES"},
+  {name:"Cotolin 100",brutto:280,prod:"Antonio Ferre",width:280,zakup:141.82,sklad:"63% CO, 37% PES"},
+  {name:"Gavi",brutto:270,prod:"Antonio Ferre",width:290,zakup:137.46,belkowa:120.0,sklad:"60% LI, 40% PES"},
+  {name:"Hairy",brutto:310,prod:"Antonio Ferre",width:290,zakup:161.46,belkowa:139.64,sklad:"58% LI, 30% PES, 12% CO"},
+  {name:"Leonardo",brutto:380,prod:"Antonio Ferre",width:280,zakup:189.83,belkowa:163.64,sklad:"100% LI"},
+  {name:"Lino 100",brutto:290,prod:"Antonio Ferre",width:300,zakup:146.19,belkowa:126.55,sklad:"100% LI"},
+  {name:"Lino 80",brutto:370,prod:"Antonio Ferre",width:280,zakup:183.28,belkowa:157.1,sklad:"100% LI"},
+  {name:"Lino Magic",brutto:370,prod:"Antonio Ferre",width:300,zakup:183.28,belkowa:157.1,sklad:"100% LI"},
+  {name:"Lino Matrix",brutto:370,prod:"Antonio Ferre",width:300,zakup:183.28,belkowa:157.1,sklad:"100% LI"},
+  {name:"Lino Neo",brutto:370,prod:"Antonio Ferre",width:310,zakup:183.28,belkowa:157.1,sklad:"100% LI"},
+  {name:"Lino Stripe",brutto:370,prod:"Antonio Ferre",width:310,zakup:183.28,belkowa:157.1,sklad:"100% LI"},
+  {name:"Lino Swing",brutto:360,prod:"Antonio Ferre",width:280,zakup:178.92,belkowa:152.73,sklad:"65% LI, 35% CV"},
+  {name:"Lino Tango",brutto:300,prod:"Antonio Ferre",width:300,zakup:150.55,belkowa:128.73,sklad:"60% LI, 40% CO"},
+  {name:"Lisse",brutto:340,prod:"Antonio Ferre",width:280,zakup:170.19,sklad:"100% LI"},
+  {name:"Milan",brutto:240,prod:"Antonio Ferre",width:280,zakup:117.82,belkowa:102.55,sklad:"60% LI, 20% CO, 20% PAN"},
+  {name:"Mimo",brutto:300,prod:"Antonio Ferre",width:290,zakup:150.55,belkowa:126.55,sklad:"60% CO, 24% CV, 12% LI"},
+  {name:"Picasso",brutto:320,prod:"Antonio Ferre",width:310,zakup:161.46,belkowa:144.01,sklad:"50% LI, 50% CO"},
+  {name:"Polynatur",brutto:260,prod:"Antonio Ferre",width:300,zakup:128.73,belkowa:111.28,sklad:"100% PES"},
+  {name:"Sauvage",brutto:250,prod:"Antonio Ferre",width:280,zakup:124.37,belkowa:106.91,sklad:"100% PES"},
+  {name:"Valtierra",brutto:190,prod:"Antonio Ferre",width:290,zakup:93.82,belkowa:82.91,sklad:"85% PES, 15% LI"}
 ];
+
+// Uwagi dostawców tkanin (z cenników) — pokazywane przy wyborze tkaniny w wycenie
+// i w edycji pozycji w Magazynie. Klucz = pole `prod` tkaniny.
+export const FABRIC_PRODUCER_NOTES = {
+  "Antonio Ferre": [
+    "Ceny netto — doliczyć VAT 23%. Cennik w EUR (VV Design, 01.01.2025).",
+    "Ceny nie zawierają transportu: 35 € za sztukę albo koszt dzielony przy większej liczbie zamówień zebranych razem.",
+    "Dopuszczalne różnice w odcieniach kolorów (względy technologiczne).",
+    "Oferta ma charakter informacyjny, nie jest ofertą handlową w rozumieniu Kodeksu Cywilnego.",
+    "Czas oczekiwania: brak w cenniku — do uzupełnienia."
+  ]
+};
+export function getFabricProducerNotes(prod){return (prod&&FABRIC_PRODUCER_NOTES[prod])||null;}
 
 // ── TAPETY I OKŁADZINY ŚCIENNE ARTE (Decodore) ─────────────────────────
 // Cennik scalony 2025 (obowiązuje od 24.04.2025): tapety (rol) + okładziny ścienne (rol / mb / szt).

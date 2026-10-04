@@ -13,7 +13,7 @@ import {
   JZ_LABELS, JZ_ZONES, JZ_AB35_COLORS, JZ_AB50_COLORS, JZ_PW35_COLORS, JZ_PW50_COLORS, JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_BA27_COLORS, JZ_BA35_COLORS, JZ_BA50_COLORS, JZ_BA65_COLORS, JZ_BS50_COLORS,
   JZ_TASIEMKA_COLORS, jzTasWidthGroup, JZ_DZWONKI_COLORS, JZ_DZWONKI_STALOWE, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
-  tapetaItems, tapetaFind, fmtZl, hasBuiltinCatalog, TAPETA_MANUAL, TAPETA_ZAPAS_DOMYSLNY,
+  getFabricProducerNotes, tapetaItems, tapetaFind, fmtZl, hasBuiltinCatalog, TAPETA_MANUAL, TAPETA_ZAPAS_DOMYSLNY,
   PROD_TYPES, PROD_GROUPS, KARNISZ_EL_BRANDS, INNY_KATEGORIE, RCITY, RDUO, REL,
   PL_NAPEDY, PL_PILOTY, PL_PILOT_KOLORY, PL_PRZELACZNIKI, PL_CENTRALKA,
   PL_LADOWARKA, PL_WIDTHS, PL_MULT,
@@ -114,6 +114,10 @@ export function FabPicker(p){
       ),
       ce("span",{style:{color:"var(--t3)",fontSize:16,transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,lineHeight:1,display:"inline-block"}},"⌄")
     ),
+    (!open && sf && getFabricProducerNotes(sf.prod))?ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)",fontSize:12,color:"var(--t2)",lineHeight:1.5}},
+      ce("div",{style:{fontWeight:700,color:"#b45309",marginBottom:2}},"\u26A0\uFE0F Uwagi dostawcy \u2014 "+sf.prod),
+      getFabricProducerNotes(sf.prod).map(function(n,i){return ce("div",{key:i},"\u2022 "+n);})
+    ):null,
     (!open && p.fabName && getFabricEquivalents(p.fabName).length)?ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)"}},
       ce("button",{onClick:function(){setEqOpen(!eqOpen);},
         style:{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 11px",border:"1.5px solid #7c3aed",background:"rgba(124,58,237,0.10)",color:"#7c3aed",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer"}},

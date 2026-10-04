@@ -42,3 +42,13 @@ assert.equal(tapetaCalc(P("NIE_MA", { wallW: 1, wallH: 1 })).total, 0);
 setBuiltinCatalog(false);
 assert.equal(tapetaCalc(P(rol.name, { wallW: 400, wallH: 260, rollW: 53, rollL: 1005 })).total, 0);
 console.log("tapeta: OK");
+
+// Antonio Ferre: 21 tkanin w cenniku bazowym + uwagi dostawcy
+import { FABRICS, getFabricTags, getFabricProducerNotes } from "../src/constants/data.js";
+var af = FABRICS.filter(function (f) { return f.prod === "Antonio Ferre"; });
+assert.equal(af.length, 21);
+assert.equal(new Set(FABRICS.map(function (f) { return f.name; })).size, FABRICS.length, "nazwy tkanin muszą być unikalne");
+af.forEach(function (f) { assert.ok(f.brutto >= f.zakup * 1.5 && f.width >= 280 && f.sklad, f.name); });
+assert.ok(getFabricProducerNotes("Antonio Ferre").some(function (n) { return /35 €/.test(n); }));
+assert.equal(getFabricProducerNotes("DEKOMA"), null);
+console.log("antonio ferre: OK", getFabricTags(af.find(function (f) { return f.name === "Leonardo"; })));
