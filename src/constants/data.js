@@ -5402,6 +5402,66 @@ export const TAPETY =[
   {name:"A43034",kolekcja:"YALA PALMA",jm:"mb",brutto:1731.0,zakup:1003.98}
 ];
 
+// ── PRODUKT W WYCENIE: TAPETA / OKŁADZINA ARTE ───────────────────────────────
+// Klient płaci brutto z cennika ARTE (item.brutto). Cennik nie podaje wymiarów
+// rolki ani szerokości materiału — wpisuje je się w wycenie (z próbnika).
+//  rol: pasy = szer. ściany / szer. rolki; pas = wys. ściany + zapas; z rolki wychodzi
+//       floor(dł. rolki / pas) pasów; cena = pełne rolki × cena rolki.
+//  mb:  pasy = szer. ściany / szer. materiału; mb = pasy × (wys. + zapas), w górę do 0,1 mb.
+//  szt: panorama / zestaw — ilość sztuk × cena (wymiary ściany tylko informacyjnie).
+// Dokładna cena (bez zaokrąglenia do 10 zł jak w formatPLN) — ceny rolek są do groszy.
+export function fmtZl(n){return n.toLocaleString("pl-PL",{minimumFractionDigits:0,maximumFractionDigits:2})+" zł";}
+export const TAPETA_MANUAL="__manual__";
+export const TAPETA_ZAPAS_DOMYSLNY=10;
+var _tapetaIdx=null;
+export function tapetaItems(){return hasBuiltinCatalog()?TAPETY:[];}
+export function tapetaFind(kod){
+  if(!kod||kod===TAPETA_MANUAL||!hasBuiltinCatalog())return null;
+  if(!_tapetaIdx){_tapetaIdx={};TAPETY.forEach(function(t){_tapetaIdx[t.name]=t;});}
+  return _tapetaIdx[kod]||null;
+}
+export function tapetaCalc(p){
+  var c=p.c||{},par=p.par||{};
+  var empty={total:0,lines:[],warn:null,qty:0,unit:"szt.",item:null};
+  var item=tapetaFind(c.tapKod),manual=c.tapKod===TAPETA_MANUAL;
+  var jm,cena,nazwa;
+  if(item){jm=item.jm;cena=item.brutto;nazwa=item.name+" "+item.kolekcja;}
+  else if(manual){
+    jm=c.tapManJm||"rol";
+    cena=+(String(c.tapManCena==null?"":c.tapManCena).replace(",","."))||0;
+    nazwa=c.tapManNazwa||"Tapeta (cena ręczna)";
+  }else return empty;
+  if(!cena)return empty;
+  var zapas=c.tapZapas!=null&&c.tapZapas!==""?(+String(c.tapZapas).replace(",","."))||0:TAPETA_ZAPAS_DOMYSLNY;
+  var wW=+par.wallW||0,wH=+par.wallH||0,lines=[],warn=null,qty=0,total=0,unit="szt.";
+  var dim=wW&&wH?" · ściana "+wW+"×"+wH+" cm":"";
+  function up(x){return Math.ceil(x-1e-9);}
+  if(jm==="rol"){
+    unit="rol";
+    var rW=+par.rollW||0,rL=+par.rollL||0;
+    if(!wW||!wH||!rW||!rL)return Object.assign({},empty,{unit:unit,item:item});
+    var strips=up(wW/rW),stripLen=wH*(1+zapas/100),perRoll=Math.floor(rL/stripLen+1e-9);
+    if(perRoll<1)return Object.assign({},empty,{unit:unit,item:item,warn:"Pas ("+Math.round(stripLen)+" cm z zapasem) jest dłuższy niż rolka ("+rL+" cm)."});
+    qty=up(strips/perRoll);total=qty*cena;
+    lines.push(nazwa+dim);
+    lines.push("Rolka "+rW+"×"+rL+" cm: "+strips+" pas. po "+Math.round(stripLen)+" cm (zapas "+zapas+"%), "+perRoll+" pas./rolkę → "+qty+" rol × "+fmtZl(cena));
+  }else if(jm==="mb"){
+    unit="mb";
+    var mW=+par.matW||0;
+    if(!wW||!wH||!mW)return Object.assign({},empty,{unit:unit,item:item});
+    var st=up(wW/mW);qty=Math.ceil(st*wH*(1+zapas/100)/10-1e-9)/10;total=Math.round(qty*cena*100)/100;
+    lines.push(nazwa+dim);
+    lines.push("Materiał "+mW+" cm: "+st+" pas. × "+Math.round(wH*(1+zapas/100))+" cm (zapas "+zapas+"%) = "+String(qty).replace(".",",")+" mb × "+fmtZl(cena));
+  }else{
+    unit="szt.";
+    qty=+par.qty||1;total=Math.round(qty*cena*100)/100;
+    lines.push(nazwa+dim);
+    lines.push(qty+" szt. × "+fmtZl(cena));
+  }
+  return {total:Math.round(total*100)/100,lines:lines,warn:warn,qty:qty,unit:unit,item:item};
+}
+
+
 // ── Klasyfikacja tkaniny wg składu: Naturalne / Semi-Natural ────────────
 // Parsuje pola typu "58% CO, 42% PES", "100% LI", ale też polskie opisy
 // wpisywane ręcznie przy własnych tkaninach: "60% Bawełna, 40% Poliester"
@@ -5693,6 +5753,7 @@ export const PROD_TYPES =[
   {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
   {id:"karnisz_dek",label:"Karnisz dekoracyjny",icon:"📏"},
   {id:"plisa",label:"Plisa okienna",icon:"🪟"},
+  {id:"tapeta",label:"Tapety ARTE",icon:"🎨"},
   {id:"inny",label:"Inny",icon:"📦"}
 ];
 
@@ -5701,6 +5762,7 @@ export const PROD_GROUPS =[
   {id:"tkaniny",       label:"Tkaniny",          types:["zaslona","firana"]},
   {id:"zaluzje_rolety",label:"\u017baluzje i rolety", types:["zaluzja","roleta","shadow","plisa"]},
   {id:"karnisze",      label:"Karnisze",         types:["szyna","karnisz_dek"], brands:"karnisz_el"},
+  {id:"tapety",        label:"Tapety i okładziny", types:["tapeta"]},
   {id:"inne",          label:"Inne",             types:["inny"]}
 ];
 
@@ -6619,6 +6681,10 @@ export function calc(p){
         if(rem){total+=rem.price;lines.push("+ "+rem.label+" +"+rem.price+" z\u0142");}
       });
     }
+  }else if(p.type==="tapeta"){
+    var tpR=tapetaCalc(p);
+    if(!tpR.total)return{total:0,lines:[],warn:tpR.warn};
+    total=tpR.total;lines=tpR.lines;warn=tpR.warn;
   }else if(p.type==="inny"){
     // Cena za szt. (c.innyCena, string — dopuszcza przecinek) x ilość (par.qty)
     var inCena=+(String(c.innyCena==null?"":c.innyCena).replace(",","."))||0,inQty=par.qty||1;
@@ -7143,8 +7209,9 @@ export function buildOfferRows(client){
         var desc=prodLabel+(detail?" \u00b7 "+detail:"")+" — "+r.name+(w.name?" / "+w.name:"")
           +(p.note?"<br><span style=\"font-size:9px;color:#a86b00;font-style:italic;\">Uwaga: "+escOffer(p.note)+"</span>":"");
         var isKurtain=(p.type==="zaslona"||p.type==="firana");
-        var rQty=p.type==="inny"?((p.par&&p.par.qty)||1):1;
-        rows.push({lp:lp++,name:desc,qty:rQty,unit:isKurtain?"kpl.":"szt.",cenaJedn:total/rQty,total:total});
+        var tpO=p.type==="tapeta"?tapetaCalc(p):null;
+        var rQty=tpO&&tpO.qty?tpO.qty:(p.type==="inny"?((p.par&&p.par.qty)||1):1);
+        rows.push({lp:lp++,name:desc,qty:rQty,unit:tpO?tpO.unit:(isKurtain?"kpl.":"szt."),cenaJedn:total/rQty,total:total});
       });
     });
   });
@@ -7317,6 +7384,13 @@ export function buildOfferDetailRows(client){
           // (nie ma tam takiego pola) — zawsze wychodziło "-". Wg Damiana: Producent
           // to marka szyny, nie dostawca — Forest dla Shuttle, inaczej Premium Line/Somfy.
           producent=p.type==="shuttle"?"Forest":(pc.kBrand==="somfy"?"Somfy":"Premium Line");
+        } else if(p.type==="tapeta"){
+          var tpX=tapetaCalc(p);
+          producent="ARTE";
+          modelSzycia=tpX.item?tpX.item.kolekcja:(pc.tapManNazwa||"-");
+          tkaninaKolor=tpX.item?tpX.item.name:"-";
+          szerokosc=par.wallW?(par.wallW+" cm"):"-";
+          wysokosc=par.wallH?(par.wallH+" cm"):"-";
         } else if(p.type==="plisa"){
           // Plisy okienne \u2014 producent zawsze Hanarol
           producent="Hanarol";
@@ -7334,10 +7408,11 @@ export function buildOfferDetailRows(client){
         // 1 (poza "inny"), wiec "Wycena szczegolowa" pokazywala zla ilosc i
         // zawyzona cene jednostkowa (total dzielony przez 1 zamiast przez qty).
         var QTY_TYPES=["szyna","karnisz","prestige_round","prestige_square","shuttle","inny"];
-        var rowQty=QTY_TYPES.indexOf(p.type)>=0?(par.qty||1):1;
+        var tpD=p.type==="tapeta"?tapetaCalc(p):null;
+        var rowQty=tpD&&tpD.qty?tpD.qty:(QTY_TYPES.indexOf(p.type)>=0?(par.qty||1):1);
         rows.push({
           room:r.name,win:w.name,
-          qty:rowQty,unit:isKurtain?"kpl.":"szt.",
+          qty:rowQty,unit:tpD?tpD.unit:(isKurtain?"kpl.":"szt."),
           name:name,_prodLabel:prodLabel,_nameLoc:nameLoc,
           modelSzycia:modelSzycia,tkaninaKolor:tkaninaKolor,producent:producent,
           szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,note:p.note||null,
