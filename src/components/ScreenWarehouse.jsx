@@ -3,7 +3,7 @@ import { sbApi } from '../lib/supabase.js';
 import { ModalCatalogImport } from './ModalCatalogImport.jsx';
 import {
   FABRICS, primeFabricOverrides, classifyFabricComposition, classifyFabricBlackout,
-  isHighFabric, HIGH_FABRIC_MIN_CM, HIGH_FABRIC_TAG, getFabricEquivalents, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
+  getFabricProducerNotes, isHighFabric, HIGH_FABRIC_MIN_CM, HIGH_FABRIC_TAG, getFabricEquivalents, TAPETY, RS_MOTORS, RS_REMOTES, KN_LIST, KN_PILOTY,
   PRESTIGE_PILOTY, PRESTIGE_CENTRALKI, RRZ_SOMFY_ACC, RRZ_PREMIUM_ACC,
   KD_AKCESORIA, RS_MASKS, PRICE_LISTS, hasBuiltinCatalog,
   SHUTTLE_STEROWANIE, SHUTTLE_DOPLATY, SHUTTLE_UCHWYTY, SHUTTLE_MULT
@@ -921,6 +921,9 @@ function ModalCatalogItem(p) {
     ce("div", { style: { background: "var(--bg)", borderRadius: 16, padding: 24, width: "min(440px, 94vw)", maxHeight: "88vh", overflowY: "auto", border: "1px solid var(--bd2)", boxShadow: "0 12px 40px rgba(0,0,0,0.2)" } },
       ce("div", { style: { fontSize: 15, fontWeight: 700, color: "var(--t1)", marginBottom: 4 } },
         hasRow ? "Edytuj pozycj\u0119" : (isBase ? "Edytuj pozycj\u0119 bazow\u0105" : "Nowy produkt")),
+      getFabricProducerNotes(meta) && ce("div", { style: { fontSize: 11.5, color: "var(--t2)", lineHeight: 1.5, background: "var(--bg2)", border: "1px solid var(--bd2)", borderRadius: 8, padding: "8px 10px", marginBottom: 14 } },
+        ce("div", { style: { fontWeight: 700, color: "#b45309", marginBottom: 2 } }, "\u26A0\uFE0F Uwagi dostawcy \u2014 " + meta),
+        getFabricProducerNotes(meta).map(function(x, i) { return ce("div", { key: i }, "\u2022 " + x); })),
       isBase && ce("div", { style: { fontSize: 11, color: "var(--t3)", marginBottom: 16 } },
         "Pozycja z cennika \u2014 zapis utworzy nadpisanie (orygina\u0142 pozostaje w kodzie)."),
       !isBase && ce("div", { style: { height: 12 } }),

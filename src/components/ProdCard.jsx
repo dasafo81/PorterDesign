@@ -13,6 +13,7 @@ import {
   JZ_LABELS, JZ_ZONES, JZ_AB35_COLORS, JZ_AB50_COLORS, JZ_PW35_COLORS, JZ_PW50_COLORS, JZ_AL25_COLORS, JZ_AL50_COLORS, JZ_BA27_COLORS, JZ_BA35_COLORS, JZ_BA50_COLORS, JZ_BA65_COLORS, JZ_BS50_COLORS,
   JZ_TASIEMKA_COLORS, jzTasWidthGroup, JZ_DZWONKI_COLORS, JZ_DZWONKI_STALOWE, KARNISZ_SUPPLIERS, KN,
   KP, KN_LIST, KN_PILOTY, KN_CENTRALKI, KSLIM, KUNIV, LOGO_SRC,
+  getFabricProducerNotes, tapetaItems, tapetaFind, fmtZl, hasBuiltinCatalog, TAPETA_MANUAL, TAPETA_ZAPAS_DOMYSLNY,
   PROD_TYPES, PROD_GROUPS, KARNISZ_EL_BRANDS, INNY_KATEGORIE, RCITY, RDUO, REL,
   PL_NAPEDY, PL_PILOTY, PL_PILOT_KOLORY, PL_PRZELACZNIKI, PL_CENTRALKA,
   PL_LADOWARKA, PL_WIDTHS, PL_MULT,
@@ -113,6 +114,10 @@ export function FabPicker(p){
       ),
       ce("span",{style:{color:"var(--t3)",fontSize:16,transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,lineHeight:1,display:"inline-block"}},"⌄")
     ),
+    (!open && sf && getFabricProducerNotes(sf.prod))?ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)",fontSize:12,color:"var(--t2)",lineHeight:1.5}},
+      ce("div",{style:{fontWeight:700,color:"#b45309",marginBottom:2}},"\u26A0\uFE0F Uwagi dostawcy \u2014 "+sf.prod),
+      getFabricProducerNotes(sf.prod).map(function(n,i){return ce("div",{key:i},"\u2022 "+n);})
+    ):null,
     (!open && p.fabName && getFabricEquivalents(p.fabName).length)?ce("div",{style:{padding:"8px 12px",background:"var(--bg2)",borderTop:"1px solid var(--bd3)"}},
       ce("button",{onClick:function(){setEqOpen(!eqOpen);},
         style:{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 11px",border:"1.5px solid #7c3aed",background:"rgba(124,58,237,0.10)",color:"#7c3aed",borderRadius:9,fontSize:12,fontWeight:700,cursor:"pointer"}},
@@ -239,13 +244,14 @@ export function ProdCard(p){
     // inaczej samo przeklikanie marek na pustym produkcie odpalaloby modal.
     var meaningfulC=Object.keys(pr.c||{}).filter(function(k){return k!=="split"&&k!=="kBrand";});
     return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||
-      (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm))||
+      (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm||pr.par.wallW||pr.par.wallH))||
       meaningfulC.length>0||
       (pr.kdSzyny&&pr.kdSzyny.length>0)||
       (pr.kdAkc&&Object.keys(pr.kdAkc).length>0)||
       (pr.par&&pr.par.len));
   }
   var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
+  var stq=useState(""),tapQ=stq[0],setTapQ=stq[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
   // Wymiary przenoszone przy "Zmien, zachowujac wymiary" (zmiana typu).
   // Rodziny: kurt (zaslona/firana), okno (roleta/shadow/zaluzja/plisa), rail (szyny/karnisze).
@@ -314,6 +320,8 @@ export function ProdCard(p){
     shadow:'M4 4h16v3.2H4zM5.6 7.2v10.4M18.4 7.2v10.4M4.8 17.6h14.4v2.2H4.8zM12 19.8v1.6',
     // Plisa: harmonijka — linia lamana, nie rownolegle paski
     plisa:'M4 4.5l16 3.6-16 3.6 16 3.6-16 3.6',
+    // Tapeta: rolka wzoru — trzy pasy z zakladka u gory
+    tapeta:'M5 3.5h14v17H5zM9.7 3.5v17M14.3 3.5v17M5 8h4.7M14.3 15h4.7',
     // Szyna KS: plaska szyna z wozkami (bez ozdobnych koncowek)
     szyna:'M3 8h18v3H3zM7 11v3.4M12 11v3.4M17 11v3.4',
     // Karnisz dekoracyjny: drazek z kulami na koncach + kolka
@@ -2447,6 +2455,59 @@ export function ProdCard(p){
           "Drabinka podtrzymuj\u0105ca tkanin\u0119 (dop\u0142ata wg wymiaru)"
         )
       )
+    );
+  }else if(prod.type==="tapeta"){
+    // ── TAPETY / OKŁADZINY ARTE: wymiar ściany → ilość → cena ─────────
+    var tpC=tapetaFind(c.tapKod),tpMan=c.tapKod===TAPETA_MANUAL;
+    var tpJm=tpC?tpC.jm:(tpMan?(c.tapManJm||"rol"):null);
+    var tpTokens=tapQ.toLowerCase().split(/\s+/).filter(Boolean);
+    var tpHits=tpTokens.length?tapetaItems().filter(function(t){
+      var h=(t.name+" "+t.kolekcja).toLowerCase();
+      return tpTokens.every(function(k){return h.indexOf(k)>=0;});
+    }):[];
+    var tpShown=tpHits.slice(0,40);
+    var tpRes=tapetaCalc(prod);
+    var tpNum=function(k,label,ph){return ce(Fld,{label:label},ce("input",{type:"text",inputMode:"decimal",value:par[k]||"",onChange:function(ev){sp(k,ev.target.value);},placeholder:ph||"cm",style:IST}));};
+    form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+      tpC?ce("div",{style:{padding:"10px 14px",border:"1.5px solid var(--t1)",borderRadius:10,display:"flex",alignItems:"center",gap:10}},
+        ce("div",{style:{flex:1,minWidth:0}},
+          ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)"}},tpC.name),
+          ce("div",{style:{fontSize:13,color:"var(--t2)"}},tpC.kolekcja+" \u00b7 "+fmtZl(tpC.brutto)+" / "+tpC.jm)
+        ),
+        ce("button",{onClick:function(){p.onChange(mg(prod,{c:mg(c,{tapKod:null})}));},style:{border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"}},"Zmie\u0144")
+      ):tpMan?ce("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+        ce(Fld,{label:"NAZWA / KOD"},ce("input",{type:"text",value:c.tapManNazwa||"",onChange:function(ev){sc("tapManNazwa",ev.target.value);},placeholder:"np. tapeta spoza cennika",style:IST})),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          ce(Fld,{label:"JEDNOSTKA CENY"},ce(Chips,{items:["rol","mb","szt"].map(function(j){return ce(Chip,{key:j,label:j,active:tpJm===j,onClick:function(){sc("tapManJm",j);}});})})),
+          ce(Fld,{label:"CENA ZA JEDNOSTK\u0118 (z\u0142)"},ce("input",{type:"text",inputMode:"decimal",value:c.tapManCena!=null?c.tapManCena:"",onChange:function(ev){sc("tapManCena",ev.target.value===""?null:ev.target.value);},placeholder:"np. 450",style:IST}))
+        ),
+        ce("button",{onClick:function(){p.onChange(mg(prod,{c:mg(c,{tapKod:null})}));},style:{alignSelf:"flex-start",border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"}},"\u2039 Wr\u00f3\u0107 do cennika")
+      ):ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+        ce(Fld,{label:"WZ\u00d3R Z CENNIKA ARTE"},ce("input",{type:"text",value:tapQ,onChange:function(ev){setTapQ(ev.target.value);},placeholder:"Szukaj: kod lub kolekcja, np. A11500 albo alaya silk",style:Object.assign({},IST,{width:"100%"})})),
+        tpTokens.length&&!tpShown.length?ce("div",{style:{fontSize:13,color:"var(--t3)"}},hasBuiltinCatalog()?"Brak pasuj\u0105cych pozycji.":"Katalog ARTE nie jest w\u0142\u0105czony dla tego konta \u2014 u\u017cyj wpisu r\u0119cznego."):null,
+        tpShown.length?ce("div",{style:{maxHeight:260,overflowY:"auto",border:"1px solid var(--bd2)",borderRadius:10}},
+          tpShown.map(function(t){
+            return ce("button",{key:t.name,onClick:function(){setTapQ("");p.onChange(mg(prod,{c:mg(c,{tapKod:t.name})}));},style:{display:"flex",width:"100%",gap:10,textAlign:"left",padding:"8px 12px",border:"none",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
+              ce("b",{style:{minWidth:70}},t.name),ce("span",{style:{flex:1}},t.kolekcja),ce("span",{style:{whiteSpace:"nowrap",color:"var(--t2)"}},fmtZl(t.brutto)+"/"+t.jm));
+          }).concat(tpHits.length>tpShown.length?[ce("div",{key:"_more",style:{padding:"8px 12px",fontSize:12,color:"var(--t3)"}},"Poka\u017cano 40 z "+tpHits.length+" \u2014 zawę\u017a wyszukiwanie.")]:[])
+        ):null,
+        ce("button",{onClick:function(){p.onChange(mg(prod,{c:mg(c,{tapKod:TAPETA_MANUAL})}));},style:{alignSelf:"flex-start",border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)",textDecoration:"underline"}},"Wzoru nie ma w cenniku \u2014 wpisz r\u0119cznie")
+      ),
+      tpJm?ce(Fragment,null,
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          tpNum("wallW","SZEROKO\u015a\u0106 \u015aCIANY (cm)","np. 400"),
+          tpNum("wallH","WYSOKO\u015a\u0106 \u015aCIANY (cm)","np. 260")
+        ),
+        tpJm==="rol"?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          tpNum("rollW","SZEROKO\u015a\u0106 ROLKI (cm)","z pr\u00f3bnika"),
+          tpNum("rollL","D\u0141UGO\u015a\u0106 ROLKI (cm)","z pr\u00f3bnika")
+        ):null,
+        tpJm==="mb"?tpNum("matW","SZEROKO\u015a\u0106 MATERIA\u0141U (cm)","np. 130"):null,
+        tpJm==="szt"?ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})):null,
+        tpJm!=="szt"?ce(Fld,{label:"ZAPAS NA DOCINKI I RAPPORT (%)"},ce("input",{type:"text",inputMode:"decimal",value:c.tapZapas!=null?c.tapZapas:String(TAPETA_ZAPAS_DOMYSLNY),onChange:function(ev){sc("tapZapas",ev.target.value);},style:IST})):null,
+        tpRes.qty?ce("div",{style:{fontSize:14,color:"var(--grd)",fontWeight:600}},"Do zam\u00f3wienia: "+String(tpRes.qty).replace(".",",")+" "+tpRes.unit):null,
+        tpJm==="rol"&&!(par.rollW&&par.rollL)?ce("div",{style:{fontSize:13,color:"var(--t2)"}},"Cennik nie podaje wymiar\u00f3w rolki \u2014 wpisz je z pr\u00f3bnika."):null
+      ):null
     );
   }else if(prod.type==="inny"){
     // Legacy: stare pozycje "inny" z samą nazwą → kategoria "Inny"
