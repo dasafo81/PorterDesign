@@ -170,8 +170,7 @@ function buildFA3(inv, items, settings) {
     <P_13_Razem>${totalNet}</P_13_Razem>
     <P_14_Razem>${totalVat}</P_14_Razem>
     <Platnosc>
-      <Zaplacono>2</Zaplacono>
-      <DataZaplaty>${isoDate(inv.due_date)}</DataZaplaty>
+      ${inv.due_date ? `<TerminPlatnosci><Termin>${isoDate(inv.due_date)}</Termin></TerminPlatnosci>` : ''}
       <FormaPlatnosci>${payCode}</FormaPlatnosci>
       ${s.bank || settings.seller_bank ? `<NrRachunku>${escXml((s.bank || settings.seller_bank || '').replace(/\s/g, ''))}</NrRachunku>` : ''}
     </Platnosc>
