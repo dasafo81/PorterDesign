@@ -677,7 +677,7 @@ function buildFullBaseCatalog() {
     { id: "tapety", label: "Tapety", icon: "\uD83C\uDFA8",
       items: TAPETY.map(function(t) {
         return { baseKey: "tapety::" + t.name, name: t.name, price: fx("tapety", t.brutto),
-          unit: "z\u0142/" + t.jm, meta: t.kolekcja || "", heightCm: null,
+          unit: "z\u0142/" + t.jm, meta: "ARTE", collection: t.kolekcja || "", heightCm: null,
           zakup: t.zakup != null ? t.zakup : null, sklad: "" };
       }) },
     { id: "silniki_shadow", label: "Silniki \u2014 Roleta Shadow", icon: "\u2699\uFE0F",
@@ -752,6 +752,7 @@ function mergeCatalog(baseGroups, rows) {
         price:    o && o.price != null     ? o.price     : it.price,
         unit:     o && o.unit              ? o.unit      : it.unit,
         meta:     o && o.meta != null      ? o.meta      : it.meta,
+        collection: it.collection || "",
         heightCm: o && o.height_cm != null ? o.height_cm : it.heightCm,
         zakup:    o && o.purchase_price != null ? o.purchase_price : it.zakup,
         sklad:    o && o.composition != null ? o.composition : it.sklad,
@@ -1057,6 +1058,7 @@ function TabCatalog(p) {
   var s3 = useState(null);  var editItem = s3[0]; var setEditItem = s3[1];
   var s4 = useState("all"); var activeCat = s4[0]; var setActiveCat = s4[1];
   var s4b = useState(null); var activeMeta = s4b[0]; var setActiveMeta = s4b[1];
+  var s4c = useState(null); var activeColl = s4c[0]; var setActiveColl = s4c[1];
   var s4c = useState(null); var activeTag = s4c[0];  var setActiveTag = s4c[1];
   var s4e = useState(null); var equivModal = s4e[0]; var setEquivModal = s4e[1]; // nazwa tkaniny lub null
   var s4d = useState(null); var sampleFilter = s4d[0]; var setSampleFilter = s4d[1]; // null | "yes" | "no"
@@ -1164,6 +1166,11 @@ function TabCatalog(p) {
   var producers = activeGroupForMeta
     ? Array.from(new Set(activeGroupForMeta.items.map(function(it) { return it.meta; }).filter(Boolean))).sort()
     : [];
+  // Kolekcje w ramach jednego producenta (np. ARTE ma ich setki) — lista rozwijana, nie kafelki.
+  var collections = activeGroupForMeta
+    ? Array.from(new Set(activeGroupForMeta.items.map(function(it) { return it.collection; }).filter(Boolean))).sort()
+    : [];
+  var collFilter = activeColl && collections.indexOf(activeColl) >= 0 ? activeColl : null;
 
   // ── Kategorie tkanin (skład / zaciemnienie / wysokość / trudnopalność / dźwięk) ──
   // Tylko w zakładce Tkaniny — reszta kategorii katalogu nie ma tych atrybutów.
@@ -1183,9 +1190,10 @@ function TabCatalog(p) {
         if (onlyNoH && !it.warn) return false;
         if (missingFilter && (it.missing || []).indexOf(missingFilter) < 0) return false;
         if (activeMeta && it.meta !== activeMeta) return false;
+        if (collFilter && it.collection !== collFilter) return false;
         if (activeTag && (it.tags || []).indexOf(activeTag) < 0) return false;
         if (sampleFilter && (gr.id !== "tkaniny" || (sampleFilter === "yes") !== !!it.hasSample)) return false;
-        if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
+        if (q) return (it.name || "").toLowerCase().includes(q) || (it.meta || "").toLowerCase().includes(q) || (it.collection || "").toLowerCase().includes(q) || gr.label.toLowerCase().includes(q);
         return true;
       });
       return { group: gr, items: items };
@@ -1236,6 +1244,12 @@ function TabCatalog(p) {
           prod);
       })
     ),
+
+    collections.length > 1 && ce("div", { style: { marginBottom: 16 } },
+      ce("select", { value: collFilter || "", onChange: function(e) { setActiveColl(e.target.value || null); },
+        style: { padding: "9px 14px", borderRadius: 20, border: "1.5px solid " + (collFilter ? "var(--violet)" : "var(--bd2)"), background: collFilter ? "rgba(124,58,237,0.10)" : "var(--bg2)", color: collFilter ? "var(--violet)" : "var(--t3)", fontSize: 12.5, fontWeight: collFilter ? 700 : 500, maxWidth: "100%" } },
+        ce("option", { value: "" }, "Wszystkie kolekcje (" + collections.length + ")"),
+        collections.map(function(c) { return ce("option", { key: c, value: c }, c); }))),
 
     fabricTagCounts.length > 0 && ce("div", { style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 } },
       ce("button", { onClick: function() { setActiveTag(null); },
@@ -1324,7 +1338,7 @@ function TabCatalog(p) {
                   !it.isBase && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "var(--violet)", background: "rgba(124,58,237,0.10)", borderRadius: 6, padding: "1px 5px" } }, "w\u0142asny"),
                   it.overridden && ce("span", { style: { marginLeft: 6, fontSize: 9, fontWeight: 700, color: "#0369a1", background: "rgba(3,105,161,0.10)", borderRadius: 6, padding: "1px 5px" } }, "edyt.")
                 ),
-                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.detail, it.gramaturaLabel, it.kurczliwoscLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
+                ce("div", { style: { fontSize: 11, color: "var(--t3)", marginTop: 2 } }, [it.meta, it.collection, it.detail, it.gramaturaLabel, it.kurczliwoscLabel, it.sklad].filter(Boolean).join(" \u00B7 ") || "\u2014"),
                 it.tags && it.tags.length > 0 && ce("div", { style: { display: "flex", gap: 5, flexWrap: "wrap", marginTop: 4 } },
                   it.tags.filter(function(tag) { return tag !== "Odpowiedniki"; }).map(function(tag) {
                     var tc = tag === "Trudnopalne" ? "#dc2626"
@@ -1410,7 +1424,7 @@ function ModalEquivalents(p) {
         rows.map(function(r) {
           var it = r.it;
           var sub = it
-            ? [it.meta, it.heightCm != null ? (it.heightCm + " cm") : null, it.sklad].filter(Boolean).join(" \u00B7 ")
+            ? [it.meta, it.collection, it.heightCm != null ? (it.heightCm + " cm") : null, it.sklad].filter(Boolean).join(" \u00B7 ")
             : "brak w katalogu";
           return ce("div", { key: r.name,
             onClick: function() { if (it) p.onGoTo(r.name); },
