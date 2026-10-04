@@ -347,7 +347,16 @@ export function ModalDeal(p){
   var montazAmountD=cl&&cl.install_fee_mode==="amount"?(parseFloat(cl.install_fee)||0):0;
   var quoteBezMontazu=roundTo10(quoteBreak.total);
   var quoteMontazVal=montazAmountD>0?roundTo10(montazAmountD):(montazRateD>0?roundTo10(quoteBreak.total*montazRateD):0);
-  var clientTotal=roundTo10(quoteBreak.total+quoteMontazVal);
+  // Rabat i koszt wizyty z Podsumowania (App.jsx zapisuje je per klient w localStorage) —
+  // wartość zlecenia, zaliczka i marża muszą liczyć się od kwoty po rabacie, tak jak "Razem" w Podsumowaniu.
+  var adjD=null;
+  try{adjD=cl?JSON.parse(localStorage.getItem("pd_adj_"+cl.id)||"null"):null;}catch(e){}
+  var quoteGross=roundTo10(quoteBreak.total+quoteMontazVal);
+  var adjDiscountIn=adjD?(+String(adjD.di).replace(",",".")||0):0;
+  var adjVisitIn=adjD?(+String(adjD.vi).replace(",",".")||0):0;
+  var quoteDiscountVal=(adjD&&adjD.de&&adjDiscountIn>0)?(adjD.dm==="percent"?roundTo10(quoteGross*adjDiscountIn/100):roundTo10(adjDiscountIn)):0;
+  var quoteVisitFeeVal=(adjD&&adjD.ve&&adjVisitIn>0)?roundTo10(adjVisitIn):0;
+  var clientTotal=Math.max(0,roundTo10(quoteGross-quoteDiscountVal-quoteVisitFeeVal));
 
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
@@ -1164,8 +1173,16 @@ export function ModalDeal(p){
               ce("span",null,"Montaż ("+Math.round(montazRateD*100)+"%)"),
               ce("span",null,quoteMontazVal.toLocaleString("pl-PL")+" zł")
             ):null,
+            quoteDiscountVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Rabat"),
+              ce("span",null,"−"+quoteDiscountVal.toLocaleString("pl-PL")+" zł")
+            ):null,
+            quoteVisitFeeVal>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Koszt wizyty pomiarowej"),
+              ce("span",null,"−"+quoteVisitFeeVal.toLocaleString("pl-PL")+" zł")
+            ):null,
             ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"var(--t1)"}},
-              ce("span",null,montazRateD>0?"Łącznie z montażem":"Łącznie"),
+              ce("span",null,(montazRateD>0||quoteMontazVal>0)?"Łącznie z montażem":"Łącznie"),
               ce("span",null,clientTotal.toLocaleString("pl-PL")+" zł")
             )
           )
