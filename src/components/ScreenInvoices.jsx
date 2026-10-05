@@ -1835,9 +1835,14 @@ function InvoiceList(p){
     if(filterDocTypes.indexOf(inv.doc_type||"vat")<0) return false;
     if(search){
       var q=search.toLowerCase();
+      var snap=inv.seller_snapshot||{};
+      var qDigits=q.replace(/\D/g,"");
+      var nipHit=function(v){ return qDigits&&String(v||"").replace(/\D/g,"").includes(qDigits); };
       return (inv.number&&inv.number.toLowerCase().includes(q))
           || (inv.buyer_name&&inv.buyer_name.toLowerCase().includes(q))
-          || (inv.buyer_nip&&inv.buyer_nip.includes(q));
+          || (snap.name&&String(snap.name).toLowerCase().includes(q))
+          || (inv.seller_name&&String(inv.seller_name).toLowerCase().includes(q))
+          || nipHit(inv.buyer_nip) || nipHit(snap.nip) || nipHit(inv.seller_nip);
     }
     return true;
   });
