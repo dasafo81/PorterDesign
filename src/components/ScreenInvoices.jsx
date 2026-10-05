@@ -2206,7 +2206,7 @@ function InvoiceList(p){
       ce("div",{style:{overflowX:"auto",WebkitOverflowScrolling:"touch"}},
         ce("div",{style:{minWidth:1050}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 64px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 90px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
         ["Numer","Typ","Kontrahent","Data","Termin pł.","Płatność","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=7?"center":"right")}},h);
         })
@@ -2285,7 +2285,7 @@ function InvoiceList(p){
             if(e&&e.detail===0) return;
             (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv);
           },
-          style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 64px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 90px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
             background:rowBg,width:"100%",opacity:isBusy?0.6:1,
             boxShadow:isPaidRow?"inset 3px 0 0 var(--gr)":"none"},
@@ -2331,6 +2331,13 @@ function InvoiceList(p){
             isOverdue&&ce("div",{style:{fontSize:9,fontWeight:700,color:"var(--red)",marginTop:3}},"⚠ termin minął")
           ),
           ce("div",{style:{textAlign:"right",display:"flex",gap:2,justifyContent:"flex-end"}},
+            // Dodaj sprzedawcę z faktury zakupowej do bazy kontrahentów (bez przepisywania NIP).
+            // Widoczne tylko gdy faktura nie jest jeszcze powiązana z kontrahentem.
+            (isPurchase&&!inv.contact_id&&(snap.name||snap.nip||inv.buyer_name)&&p.onAddContact)&&ce("button",{
+              onClick:function(e){e.stopPropagation();p.onAddContact(inv);},
+              title:"Dodaj sprzedawcę do kontrahentów",
+              style:{border:"none",background:"none",color:"var(--violet)",cursor:"pointer",fontSize:14,padding:"2px 4px"}
+            },"👤+"),
             // Duplikuj — wystawia od razu nową fakturę (nowy numer, dzisiejsza data)
             // z przepisanym nabywcą i pozycjami tej faktury. Otwiera edytor, więc
             // przed zapisem można jeszcze coś poprawić.
@@ -3162,6 +3169,41 @@ export function ScreenInvoices(p){
       .finally(function(){ setViewBusyId(null); });
   }
 
+  // Dodaj sprzedawcę z faktury zakupowej do kontrahentów i podepnij do faktury (contact_id).
+  // Gdy kontrahent o tym NIP już istnieje, tylko go podpinamy (bez duplikatu).
+  function onAddContact(inv){
+    var snap=inv.seller_snapshot||{};
+    var useSnap=!!(snap.name||snap.nip);
+    var name=((useSnap?snap.name:inv.buyer_name)||"").trim();
+    var nip=((useSnap?snap.nip:inv.buyer_nip)||"").replace(/[\s\-]/g,"");
+    if(!name&&!nip){ alert("Brak danych sprzedawcy na tej fakturze."); return; }
+    function link(cid){
+      return sbApi.updateInvoice(inv.id,{contact_id:cid}).then(function(){
+        setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{contact_id:cid}):x;});});
+      });
+    }
+    sbApi.getContacts().then(function(rows){
+      var ex=nip&&(rows||[]).find(function(c){return (c.nip||"").replace(/[\s\-]/g,"")===nip;});
+      if(ex){
+        return link(ex.id).then(function(){ alert("Kontrahent „"+ex.name+"” już istnieje — powiązano z nim fakturę."); });
+      }
+      return sbApi.addContact({
+        kind: nip?"firma":"osoba", role:"dostawca",
+        name:name||nip, nip:nip,
+        street:((useSnap?snap.address:inv.buyer_address)||"").trim(),
+        postal:((useSnap?snap.postal:inv.buyer_postal)||"").trim(),
+        city:((useSnap?snap.city:inv.buyer_city)||"").trim(),
+        email:((useSnap?snap.email:inv.buyer_email)||"").trim(),
+        phone:((useSnap?snap.phone:"")||"").trim(),
+        default_vat:23, default_payment_days:14, tags:[]
+      }).then(function(data){
+        var cid=data&&data[0]?data[0].id:null;
+        if(!cid) throw new Error("nie udało się utworzyć kontrahenta");
+        return link(cid).then(function(){ alert("Dodano kontrahenta „"+(name||nip)+"” (Magazyn → Kontrahenci)."); });
+      });
+    }).catch(function(e){ alert("Błąd dodawania kontrahenta: "+(e.message||e)); });
+  }
+
   // Brak ustawień — banner informacyjny
   var settingsEmpty=!(activeEntity&&activeEntity.name)&&!(settings&&settings.seller_name);
 
@@ -3197,7 +3239,7 @@ export function ScreenInvoices(p){
           });
         },
         entities:entities, activeEntityId:activeEntityId, onEntityChange:changeEntity,
-        onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete, onDuplicate:onDuplicate,
+        onNew:openNew, onEdit:openEdit, onSettings:openSettings, onDelete:onDelete, onDuplicate:onDuplicate, onAddContact:onAddContact,
         onSynced:function(){ sbApi.getInvoices().then(function(data){ setInvoices(data||[]); }); },
         onChangePayStatus:function(inv,newStatus,newAmount){
           // Uogólniony handler zmiany statusu płatności — zasila menu "Zapłacono"
