@@ -2159,6 +2159,8 @@ export function ScreenMail(p){
   var sqt=us(""),quotedHtml=sqt[0],setQuotedHtml=sqt[1];
   var satt=us([]),attachments=satt[0],setAttachments=satt[1];
   var scon=us([]),contactSug=scon[0],setContactSug=scon[1];
+  // Pole "Do:" ma fokus — spóźniona odpowiedź z Supabase nie może ponownie otworzyć listy po blur
+  var toFocusRef=React.useRef(false);
   var ssent=us(false),justSent=ssent[0],setJustSent=ssent[1];
   var ssending=us(false),sending=ssending[0],setSending=ssending[1];
   var scal=us(null),calMail=scal[0],setCalMail=scal[1];
@@ -2492,9 +2494,9 @@ export function ScreenMail(p){
       }).map(function(r){return {email:r.email,name:r.name||""};});
       var combined=fc.slice();
       hist.forEach(function(h){if(!combined.find(function(x){return x.email.toLowerCase()===h.email.toLowerCase();}))combined.push(h);});
-      setContactSug(combined.slice(0,8));
+      if(toFocusRef.current)setContactSug(combined.slice(0,8));
     }).catch(function(){
-      setContactSug(fc.slice(0,8));
+      if(toFocusRef.current)setContactSug(fc.slice(0,8));
     });
     // Pokaż lokalnych od razu, Supabase dopełni za chwilę
     setContactSug(fc.slice(0,8));
@@ -3122,7 +3124,7 @@ export function ScreenMail(p){
           style:{border:"none",background:"none",cursor:"pointer",fontSize:11,fontWeight:600,color:"var(--violet)",padding:"2px 4px"}},
           showCcBcc?"\u2212 Ukryj CC/UDW":"+ CC / UDW")
       ),
-      ce("input",{type:"email",value:toEmail,onChange:function(e){onToChange(e.target.value);},onBlur:function(){setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:INP}),
+      ce("input",{type:"email",value:toEmail,onChange:function(e){toFocusRef.current=true;onToChange(e.target.value);},onFocus:function(){toFocusRef.current=true;},onBlur:function(){toFocusRef.current=false;setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:INP}),
       contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:9999,boxShadow:"0 10px 30px rgba(0,0,0,0.22)",overflow:"hidden",marginTop:2,maxHeight:280,overflowY:"auto"}},
         contactSug.map(function(c){
           return ce("div",{key:c.email+"|"+(c.clientId||""),onClick:function(){
