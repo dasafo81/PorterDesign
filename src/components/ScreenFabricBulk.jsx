@@ -14,6 +14,9 @@ export function ScreenFabricBulk(p){
   var ts=useState(function(){var o={};(p.initialIds||[]).forEach(function(id){o[id]=true;});return o;}),sel=ts[0],setSel=ts[1];
   var ns=useState(""),notes=ns[0],setNotes=ns[1];
   var qs=useState(""),q=qs[0],setQ=qs[1];
+  // Pozycje usunięte z zamówienia i metraż z własnego magazynu (odejmowany od zamówienia).
+  var rs=useState({}),removed=rs[0],setRemoved=rs[1];
+  var ss=useState({}),stock=ss[0],setStock=ss[1];
 
   var recent=clients.slice().sort(function(a,b){
     return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""));
@@ -35,15 +38,33 @@ export function ScreenFabricBulk(p){
     if(!bySup[r.prod]){bySup[r.prod]={sup:r.prod,rows:[],fabs:{},fabKeys:[],total:0};supKeys.push(r.prod);}
     var g=bySup[r.prod]; g.rows.push(r); g.total+=r.metry;
     var fk=(r.fabName||"-")+"||"+(r.kolor||"-");
-    if(!g.fabs[fk]){g.fabs[fk]={fabName:r.fabName||"-",kolor:r.kolor||"-",metry:0,clients:{}};g.fabKeys.push(fk);}
-    var f=g.fabs[fk]; f.metry+=r.metry; f.clients[r._client]=(f.clients[r._client]||0)+r.metry;
+    if(!g.fabs[fk]){g.fabs[fk]={fabName:r.fabName||"-",kolor:r.kolor||"-",metry:0,clients:{},rows:[],key:r.prod+"##"+fk};g.fabKeys.push(fk);}
+    var f=g.fabs[fk]; f.metry+=r.metry; f.clients[r._client]=(f.clients[r._client]||0)+r.metry; f.rows.push(r);
+  });
+  // Metraż do zamówienia po odjęciu usuniętych pozycji i stanu magazynowego.
+  supKeys.forEach(function(sup){
+    var g=bySup[sup]; g.orderRows=[]; g.orderTotal=0;
+    g.fabKeys.forEach(function(fk){
+      var f=g.fabs[fk];
+      var st=Math.min(Math.max(parseFloat(String(stock[f.key]||"").replace(",","."))||0,0),f.metry);
+      f.stock=st; f.removed=!!removed[f.key]; f.toOrder=f.removed?0:f.metry-st;
+      if(f.removed)return;
+      var left=st;
+      f.rows.forEach(function(r){
+        var cut=Math.min(left,r.metry); left-=cut;
+        var m=r.metry-cut;
+        if(m>0.0001){g.orderRows.push(mg(r,{metry:m}));g.orderTotal+=m;}
+      });
+    });
   });
   supKeys.sort(function(a,b){return a.localeCompare(b,"pl");});
+  function setRem(k,v){setRemoved(function(s){var n=Object.assign({},s);if(v)n[k]=true;else delete n[k];return n;});}
 
   var pseudo={name:chosen.length+" "+(chosen.length===1?"klient":"klientów")+": "+chosen.map(function(c){return c.name;}).join(", ")};
-  function docFor(sup){return buildFabricOrderHtmlFromRows(pseudo,sup,bySup[sup].rows,{notes:notes,bulkLabel:true});}
-  function preview(sup){generateFabricOrderPDFFromRows(pseudo,sup,bySup[sup].rows,{notes:notes,bulkLabel:true});}
+  function docFor(sup){return buildFabricOrderHtmlFromRows(pseudo,sup,bySup[sup].orderRows,{notes:notes,bulkLabel:true});}
+  function preview(sup){if(!bySup[sup].orderRows.length)return;generateFabricOrderPDFFromRows(pseudo,sup,bySup[sup].orderRows,{notes:notes,bulkLabel:true});}
   function mail(sup){
+    if(!bySup[sup].orderRows.length)return;
     p.onMailDoc(docFor(sup),"Zamowienie zbiorcze tkaniny - "+sup+".pdf",{
       to:"",supplier:sup,subject:"Zamówienie tkaniny — zbiorcze",
       body:["Dzień dobry,","W załączeniu przesyłam zbiorcze zamówienie tkaniny.","Proszę o potwierdzenie dostępności i terminu wysyłki."]
@@ -79,7 +100,7 @@ export function ScreenFabricBulk(p){
           ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:8}},
             ce("div",null,
               ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"🧵 "+sup),
-              ce("div",{style:{fontSize:11,color:"var(--t3)"}},fmt(g.total)+" mb · "+g.fabKeys.length+" tkanin")
+              ce("div",{style:{fontSize:11,color:"var(--t3)"}},fmt(g.orderTotal)+" mb do zamówienia"+(g.orderTotal!==g.total?" (z "+fmt(g.total)+")":""))
             ),
             ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
               ce("button",{onClick:function(){preview(sup);},style:Object.assign({},btn,{border:"none",background:"var(--t2)",color:"#fff"})},"👁️ Podgląd"),
@@ -89,12 +110,24 @@ export function ScreenFabricBulk(p){
           g.fabKeys.map(function(fk){
             var f=g.fabs[fk];
             var names=Object.keys(f.clients);
-            return ce("div",{key:fk,style:{padding:"8px 10px",background:"var(--bg)",borderRadius:8,marginBottom:6,border:"1px solid var(--bd3)"}},
-              ce("div",{style:{display:"flex",justifyContent:"space-between",gap:8,fontSize:13,color:"var(--t1)"}},
-                ce("span",{style:{fontWeight:600}},f.fabName+(f.kolor&&f.kolor!=="-"?" · "+f.kolor:"")),
-                ce("span",{style:{fontWeight:700,color:"var(--grd)",whiteSpace:"nowrap"}},fmt(f.metry)+" mb")),
+            return ce("div",{key:fk,style:{padding:"8px 10px",background:"var(--bg)",borderRadius:8,marginBottom:6,border:"1px solid var(--bd3)",opacity:f.removed?0.55:1}},
+              ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,fontSize:13,color:"var(--t1)"}},
+                ce("span",{style:{fontWeight:600,textDecoration:f.removed?"line-through":"none"}},f.fabName+(f.kolor&&f.kolor!=="-"?" · "+f.kolor:"")),
+                ce("span",{style:{display:"flex",alignItems:"center",gap:8}},
+                  ce("span",{style:{fontWeight:700,color:"var(--grd)",whiteSpace:"nowrap"}},f.removed?"pominięta":fmt(f.toOrder)+" mb"),
+                  f.removed?
+                    ce("button",{onClick:function(){setRem(f.key,false);},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:12}},"↩ Przywróć"):
+                    ce("button",{title:"Usuń pozycję z zamówienia",onClick:function(){setRem(f.key,true);},style:{border:"none",background:"transparent",color:"#c0392b",cursor:"pointer",fontSize:16,lineHeight:1}},"🗑"))),
               ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},
-                names.length>1?names.map(function(n){return n+" "+fmt(f.clients[n]);}).join(" · "):names[0])
+                (names.length>1?names.map(function(n){return n+" "+fmt(f.clients[n]);}).join(" · "):names[0])+" · potrzeba łącznie "+fmt(f.metry)+" mb"),
+              f.removed?null:ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:6,fontSize:12,color:"var(--t2)"}},
+                ce("span",null,"Mam na magazynie:"),
+                ce("input",{type:"text",inputMode:"decimal",value:stock[f.key]||"",placeholder:"0",
+                  onChange:function(e){var v=e.target.value;setStock(function(s){var n=Object.assign({},s);n[f.key]=v;return n;});},
+                  style:{width:70,padding:"5px 8px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}}),
+                ce("span",null,"mb"),
+                f.stock>0?ce("button",{onClick:function(){setStock(function(s){var n=Object.assign({},s);n[f.key]=String(f.metry).replace(".",",");return n;});},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:11,textDecoration:"underline"}},"całość"):
+                  ce("button",{onClick:function(){setStock(function(s){var n=Object.assign({},s);n[f.key]=String(Math.round(f.metry*100)/100).replace(".",",");return n;});},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:11,textDecoration:"underline"}},"całość"))
             );
           })
         );
