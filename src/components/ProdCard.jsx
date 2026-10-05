@@ -252,6 +252,7 @@ export function ProdCard(p){
   }
   var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
   var stq=useState(""),tapQ=stq[0],setTapQ=stq[1];
+  var stc=useState(""),tapCol=stc[0],setTapCol=stc[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
   // Wymiary przenoszone przy "Zmien, zachowujac wymiary" (zmiana typu).
   // Rodziny: kurt (zaslona/firana), okno (roleta/shadow/zaluzja/plisa), rail (szyny/karnisze).
@@ -2461,11 +2462,19 @@ export function ProdCard(p){
     var tpC=tapetaFind(c.tapKod),tpMan=c.tapKod===TAPETA_MANUAL;
     var tpJm=tpC?tpC.jm:(tpMan?(c.tapManJm||"rol"):null);
     var tpTokens=tapQ.toLowerCase().split(/\s+/).filter(Boolean);
-    var tpHits=tpTokens.length?tapetaItems().filter(function(t){
+    var tpAll=tapetaItems();
+    var tpHits=(tpTokens.length||tapCol)?tpAll.filter(function(t){
+      if(tapCol&&t.kolekcja!==tapCol)return false;
       var h=(t.name+" "+t.kolekcja).toLowerCase();
       return tpTokens.every(function(k){return h.indexOf(k)>=0;});
     }):[];
-    var tpShown=tpHits.slice(0,40);
+    var tpShown=tpHits.slice(0,tapCol?200:40);
+    var tpCols=[];
+    if(!tpTokens.length&&!tapCol){
+      var tpCnt={};
+      tpAll.forEach(function(t){tpCnt[t.kolekcja]=(tpCnt[t.kolekcja]||0)+1;});
+      tpCols=Object.keys(tpCnt).sort().map(function(k){return {name:k,n:tpCnt[k]};});
+    }
     var tpRes=tapetaCalc(prod);
     var tpNum=function(k,label,ph){return ce(Fld,{label:label},ce("input",{type:"text",inputMode:"decimal",value:par[k]||"",onChange:function(ev){sp(k,ev.target.value);},placeholder:ph||"cm",style:IST}));};
     form=ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
@@ -2483,13 +2492,20 @@ export function ProdCard(p){
         ),
         ce("button",{onClick:function(){p.onChange(mg(prod,{c:mg(c,{tapKod:null})}));},style:{alignSelf:"flex-start",border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"}},"\u2039 Wr\u00f3\u0107 do cennika")
       ):ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-        ce(Fld,{label:"WZ\u00d3R Z CENNIKA ARTE"},ce("input",{type:"text",value:tapQ,onChange:function(ev){setTapQ(ev.target.value);},placeholder:"Szukaj: kod lub kolekcja, np. A11500 albo alaya silk",style:Object.assign({},IST,{width:"100%"})})),
-        tpTokens.length&&!tpShown.length?ce("div",{style:{fontSize:13,color:"var(--t3)"}},hasBuiltinCatalog()?"Brak pasuj\u0105cych pozycji.":"Katalog ARTE nie jest w\u0142\u0105czony dla tego konta \u2014 u\u017cyj wpisu r\u0119cznego."):null,
+        ce(Fld,{label:"WZ\u00d3R Z CENNIKA ARTE"},ce("input",{type:"text",value:tapQ,onChange:function(ev){setTapQ(ev.target.value);},placeholder:"Szukaj lub wybierz kolekcję z listy, np. A11500 albo alaya silk",style:Object.assign({},IST,{width:"100%"})})),
+        tapCol?ce("button",{onClick:function(){setTapCol("");},style:{alignSelf:"flex-start",border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)"}},"\u2039 Wszystkie kolekcje \u00b7 "+tapCol):null,
+        tpCols.length?ce("div",{style:{maxHeight:300,overflowY:"auto",border:"1px solid var(--bd2)",borderRadius:10}},
+          tpCols.map(function(k){
+            return ce("button",{key:k.name,onClick:function(){setTapCol(k.name);},style:{display:"flex",width:"100%",gap:10,textAlign:"left",padding:"8px 12px",border:"none",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
+              ce("span",{style:{flex:1}},k.name),ce("span",{style:{color:"var(--t3)"}},k.n+" wzor\u00f3w \u203a"));
+          })
+        ):null,
+        (tpTokens.length||tapCol)&&!tpShown.length?ce("div",{style:{fontSize:13,color:"var(--t3)"}},hasBuiltinCatalog()?"Brak pasuj\u0105cych pozycji.":"Katalog ARTE nie jest w\u0142\u0105czony dla tego konta \u2014 u\u017cyj wpisu r\u0119cznego."):null,
         tpShown.length?ce("div",{style:{maxHeight:260,overflowY:"auto",border:"1px solid var(--bd2)",borderRadius:10}},
           tpShown.map(function(t){
-            return ce("button",{key:t.name,onClick:function(){setTapQ("");p.onChange(mg(prod,{c:mg(c,{tapKod:t.name})}));},style:{display:"flex",width:"100%",gap:10,textAlign:"left",padding:"8px 12px",border:"none",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
+            return ce("button",{key:t.name,onClick:function(){setTapQ("");setTapCol("");p.onChange(mg(prod,{c:mg(c,{tapKod:t.name})}));},style:{display:"flex",width:"100%",gap:10,textAlign:"left",padding:"8px 12px",border:"none",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
               ce("b",{style:{minWidth:70}},t.name),ce("span",{style:{flex:1}},t.kolekcja),ce("span",{style:{whiteSpace:"nowrap",color:"var(--t2)"}},fmtZl(t.brutto)+"/"+t.jm));
-          }).concat(tpHits.length>tpShown.length?[ce("div",{key:"_more",style:{padding:"8px 12px",fontSize:12,color:"var(--t3)"}},"Poka\u017cano 40 z "+tpHits.length+" \u2014 zawę\u017a wyszukiwanie.")]:[])
+          }).concat(tpHits.length>tpShown.length?[ce("div",{key:"_more",style:{padding:"8px 12px",fontSize:12,color:"var(--t3)"}},"Poka\u017cano "+tpShown.length+" z "+tpHits.length+" \u2014 zawę\u017a wyszukiwanie.")]:[])
         ):null,
         ce("button",{onClick:function(){p.onChange(mg(prod,{c:mg(c,{tapKod:TAPETA_MANUAL})}));},style:{alignSelf:"flex-start",border:"none",background:"none",cursor:"pointer",fontSize:13,color:"var(--t3)",textDecoration:"underline"}},"Wzoru nie ma w cenniku \u2014 wpisz r\u0119cznie")
       ),
