@@ -1720,6 +1720,7 @@ function TemplatesView(p){
   var sUploading=us(false),uploading=sUploading[0],setUploading=sUploading[1];
   var sMsg=us(null),msg=sMsg[0],setMsg=sMsg[1];
   var sConfDel=us(false),confDel=sConfDel[0],setConfDel=sConfDel[1];
+  var sReord=us(false),reordering=sReord[0],setReordering=sReord[1];
   var fileRef=ur(null);
 
   var templates=p.templates||[];
@@ -1752,6 +1753,29 @@ function TemplatesView(p){
     setMode("view");
     setMsg(null);
     setConfDel(false);
+  }
+
+  // Zmiana kolejności strzałkami: zamiana sąsiadów + zapis sort_order = pozycja na liście
+  function moveTemplate(tplId,dir){
+    var idx=templates.findIndex(function(t){return t.id===tplId;});
+    var to=idx+dir;
+    if(idx<0||to<0||to>=templates.length)return;
+    var prev=templates;
+    var next=templates.slice();
+    var tmp=next[idx];next[idx]=next[to];next[to]=tmp;
+    next=next.map(function(t,i){return Object.assign({},t,{sortOrder:i});});
+    if(p.onTemplatesChange)p.onTemplatesChange(next);
+    setReordering(true);setMsg(null);
+    Promise.all(next.map(function(t,i){
+      if(prev[i]&&prev[i].id===t.id&&prev[i].sortOrder===i)return null;
+      return sbApi.updateMailTemplate(t.id,{sort_order:i});
+    })).then(function(){
+      setReordering(false);
+    }).catch(function(err){
+      setReordering(false);
+      if(p.onTemplatesChange)p.onTemplatesChange(prev);
+      setMsg({type:"err",text:"Błąd zmiany kolejności: "+(err.message||"nieznany")});
+    });
   }
 
   function onPickFile(){if(fileRef.current)fileRef.current.click();}
@@ -1789,6 +1813,8 @@ function TemplatesView(p){
       template_files:editFiles,
       suggest_attachments:sel&&sel.suggestAttachments||[]
     };
+    // Nowy szablon ląduje na końcu listy
+    if(mode==="new")data.sort_order=templates.length;
     var promise=mode==="new"
       ?sbApi.addMailTemplate(data)
       :sbApi.updateMailTemplate(selId,data);
@@ -1965,15 +1991,32 @@ function TemplatesView(p){
         ?ce("div",{style:{padding:14,fontSize:12,color:"var(--t3)",fontStyle:"italic"}},
           "Brak szablonów")
         :null,
-      templates.map(function(tpl){
+      templates.map(function(tpl,idx){
         var active=selId===tpl.id&&mode==="view";
+        var isFirst=idx===0,isLast=idx===templates.length-1;
+        function arrowBtn(dir,label,glyph,disabled){
+          return ce("button",{
+            onClick:function(ev){ev.stopPropagation();moveTemplate(tpl.id,dir);},
+            disabled:disabled||reordering,
+            title:label,
+            style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:disabled?"not-allowed":"pointer",fontSize:11,
+              color:disabled?"var(--t3)":"var(--t1)",width:24,height:24,borderRadius:5,display:"flex",
+              alignItems:"center",justifyContent:"center",padding:0,lineHeight:1,opacity:disabled?0.35:0.7}
+          },glyph);
+        }
         return ce("div",{key:tpl.id,onClick:function(){setSelId(tpl.id);setMode("view");setMsg(null);setConfDel(false);},
-          style:{padding:"12px 14px",cursor:"pointer",borderBottom:"1px solid var(--bd3)",
-            background:active?"var(--wb)":"transparent",
+          style:{padding:"12px 10px 12px 14px",cursor:"pointer",borderBottom:"1px solid var(--bd3)",
+            background:active?"var(--wb)":"transparent",display:"flex",alignItems:"center",gap:8,
             borderLeft:"3px solid "+(active?"var(--wbd)":"transparent")}},
-          ce("div",{style:{fontSize:18,marginBottom:4}},tpl.icon),
-          ce("div",{style:{fontSize:13,fontWeight:active?700:500,color:"var(--t1)",
-            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},tpl.label)
+          ce("div",{style:{flex:1,minWidth:0}},
+            ce("div",{style:{fontSize:18,marginBottom:4}},tpl.icon),
+            ce("div",{style:{fontSize:13,fontWeight:active?700:500,color:"var(--t1)",
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},tpl.label)
+          ),
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:3,flexShrink:0}},
+            arrowBtn(-1,"Przesuń w górę","▲",isFirst),
+            arrowBtn(1,"Przesuń w dół","▼",isLast)
+          )
         );
       }),
       // Przycisk nowego szablonu zawsze na dole
