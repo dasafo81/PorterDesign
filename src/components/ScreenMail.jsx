@@ -876,7 +876,7 @@ function MailPreview(p){
   }
 
   function buildSrcDocUnsafe(mid,htmlContent){
-    var IFRAME_STYLES="@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');html{-webkit-text-size-adjust:100%;}body{margin:0;padding:16px 20px;overflow-wrap:anywhere;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%!important;height:auto!important;}table{max-width:100%!important;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
+    var IFRAME_STYLES="@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');html{-webkit-text-size-adjust:100%;}body{margin:0;padding:16px 20px;overflow-wrap:anywhere;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%!important;height:auto!important;}table{max-width:100%!important;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}@media(max-width:600px){body{padding:10px 12px!important;font-size:15px!important;line-height:1.6!important;}}";
     var cache=window._porterAttImgCache||{};
     // Usuń <script> i obsługę zdarzeń — sandbox i tak je blokuje, ale to ucisza ostrzeżenia w konsoli
     var clean=(htmlContent||"").replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,"").replace(/\son\w+\s*=\s*"[^"]*"/gi,"").replace(/\son\w+\s*=\s*'[^']*'/gi,"");
@@ -1278,12 +1278,12 @@ function MailPreview(p){
   var narrow=typeof window!=="undefined"&&window.innerWidth<720;
   return ce("div",{style:narrow?{display:"block",height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehaviorY:"contain"}:{display:"flex",flexDirection:"column",height:"100%"}},
     lbNode,
-    ce("div",{style:{padding:narrow?"10px 12px":"16px 20px 14px",borderBottom:"1px solid var(--bd2)",flexShrink:0}},
-      ce("div",{style:{fontWeight:700,fontSize:16,color:"var(--t1)",marginBottom:10,lineHeight:1.3,display:"flex",alignItems:"center",gap:8}},
+    ce("div",{style:{padding:narrow?"6px 12px 10px":"16px 20px 14px",borderBottom:"1px solid var(--bd2)",flexShrink:0}},
+      ce("div",{style:{fontWeight:700,fontSize:narrow?15:16,color:"var(--t1)",marginBottom:narrow?8:10,lineHeight:1.3,display:"flex",alignItems:"center",gap:8}},
         head.subject,
         mails.length>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,padding:"2px 8px",borderRadius:10,background:"var(--bg3)"}},mails.length+" wiadomo\u015bci"):null
       ),
-      ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+      ce("div",{className:"pd-mail-actions",style:{display:"flex",gap:6,flexWrap:"wrap"}},
         p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
           ?ce("button",{onClick:function(){p.onReply&&p.onReply(head,bodies);},style:Object.assign({},BGHOST,{color:"var(--violet)",borderColor:"var(--violet)",fontWeight:600})},"\u21a9 Odpowiedz")
           :null,
@@ -1368,7 +1368,7 @@ function MailPreview(p){
         var sentByMe=m.folder==="sent";
         return ce("div",{key:m.id,style:{borderBottom:"1px solid var(--bd2)"}},
           ce("div",{onClick:function(){toggleExpand(m.id);},
-            style:{padding:"14px 20px 10px",cursor:"pointer",display:"flex",gap:10,alignItems:"flex-start",
+            style:{padding:narrow?"10px 12px 8px":"14px 20px 10px",cursor:"pointer",display:"flex",gap:10,alignItems:"flex-start",
               background:isExp?"transparent":"var(--bg2)"}},
             ce(Avatar,{size:32,bg:sentByMe?"#a0956e":"#c8a96a",label:initials(per.name)}),
             ce("div",{style:{flex:1,minWidth:0}},
@@ -1389,7 +1389,7 @@ function MailPreview(p){
               !isExp?ce("div",{style:{fontSize:12,color:"var(--t2)",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview):null
             )
           ),
-          isExp?ce("div",{style:{padding:"8px 12px 16px",background:"transparent"}},
+          isExp?ce("div",{style:{padding:narrow?"0 0 12px":"8px 12px 16px",background:"transparent"}},
             // \u015awie\u017co wys\u0142any mail: mamy tylko lokalny placeholder (id "m_..."), Graph
             // nie zwr\u00f3ci dla niego za\u0142\u0105cznik\u00f3w \u2014 pokazujemy list\u0119 z kompozytora.
             (String(m.id).indexOf("m_")===0&&(m.localAttachments||[]).length>0)
@@ -1442,7 +1442,7 @@ function MailPreview(p){
                   );
                 })
             ):null,
-            ce("div",{style:{background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",
+            ce("div",{style:narrow?{background:"#fff",overflow:"hidden",minHeight:60,borderTop:"1px solid var(--bd2)"}:{background:"var(--bg2)",borderRadius:10,border:"1px solid var(--bd2)",
               boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden",minHeight:60}},
               loading
                 ?ce("div",{style:{padding:"18px 20px",color:"#888",fontStyle:"italic",fontSize:13}},"\u23F3 Wczytywanie tre\u015bci\u2026")
@@ -1471,7 +1471,7 @@ function MailPreview(p){
                       :ce("div",{style:{padding:"16px 20px",color:"var(--t3)",fontStyle:"italic",fontSize:13}},
                         "\u23F3 Przygotowywanie tre\u015bci\u2026")
                     )
-                    :ce("div",{style:{padding:"16px 20px",whiteSpace:"pre-wrap",fontSize:13,color:"#1a1a1a",lineHeight:1.75}},bodyContent)
+                    :ce("div",{style:{padding:narrow?"12px":"16px 20px",whiteSpace:"pre-wrap",fontSize:narrow?15:13,color:"#1a1a1a",lineHeight:1.75}},bodyContent)
                   )
                   :ce("div",{style:{padding:"16px 20px",color:"#999",fontStyle:"italic",fontSize:13}},m.preview||"(brak tre\u015bci)")
             )
@@ -3237,14 +3237,14 @@ export function ScreenMail(p){
     );
   }
 
-  return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:"var(--bg2)",borderRadius:16,padding:16,border:"1px solid var(--bd2)",boxSizing:"border-box"}},
-    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 14px",background:"var(--bg2)",borderRadius:10,marginBottom:12,border:"1px solid var(--bd2)",flexShrink:0,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
+  return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%",background:isMobile?"transparent":"var(--bg2)",borderRadius:isMobile?0:16,padding:isMobile?0:16,border:isMobile?"none":"1px solid var(--bd2)",boxSizing:"border-box"}},
+    ce("div",{style:{display:(isMobile&&selThread)?"none":"flex",alignItems:"center",justifyContent:"space-between",padding:isMobile?"4px 8px":"7px 14px",gap:6,background:"var(--bg2)",borderRadius:10,marginBottom:isMobile?6:12,border:"1px solid var(--bd2)",flexShrink:0,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},
       ce("div",{style:{display:"flex",alignItems:"center",gap:8}},
         isMobile?ce("button",{onClick:function(){setMobileFoldersOpen(true);},style:{border:"1px solid var(--bd2)",background:"var(--bg)",borderRadius:8,width:30,height:30,fontSize:15,cursor:"pointer",flexShrink:0}},"\u2630"):null,
         ce("div",{style:{width:8,height:8,borderRadius:"50%",background:"#10b981",flexShrink:0,boxShadow:"0 0 0 2px rgba(16,185,129,0.2)"}}),
-        ce("span",{style:{fontSize:12,color:"var(--t2)"}},"Zalogowano jako\u00a0",ce("strong",{style:{color:"var(--t1)"}},accountEmail))
+        ce("span",{style:{fontSize:12,color:"var(--t2)",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},isMobile?null:"Zalogowano jako\u00a0",ce("strong",{style:{color:"var(--t1)"}},accountEmail))
       ),
-      ce("button",{onClick:function(){setRefreshKey(function(k){return k+1;});},disabled:loadingMails,style:{fontSize:11,color:"var(--t3)",border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:loadingMails?"default":"pointer",padding:"4px 10px",borderRadius:6,opacity:loadingMails?0.5:1}},loadingMails?"⏳":"🔄 Odśwież"),
+      ce("button",{onClick:function(){setRefreshKey(function(k){return k+1;});},disabled:loadingMails,style:{fontSize:11,color:"var(--t3)",border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:loadingMails?"default":"pointer",padding:"4px 10px",borderRadius:6,opacity:loadingMails?0.5:1}},loadingMails?"⏳":(isMobile?"🔄":"🔄 Odśwież")),
       ce("button",{onClick:function(){msalLogout().catch(function(){}).finally(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
     ),
 

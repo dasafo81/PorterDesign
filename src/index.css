@@ -212,6 +212,23 @@
     .pd-mail-h{height:calc(100vh - 190px);height:calc(100dvh - 190px);}
     .pd-railtoggle{display:none;}
 
+    /* ── Telefon (<=720px): kompaktowy pasek, mniej marginesow, poczta na caly ekran ── */
+    @media (max-width:720px){
+      .pd-app-pad{padding:.5rem!important;}
+      .app-inner{padding:.25rem;}
+      .pd-shell{gap:.5rem;}
+      .pd-rail{padding:8px;gap:8px;border-radius:14px;}
+      .pd-brandbox{width:44px;height:44px;border-radius:12px;padding:4px;}
+      .pd-navbtn{padding:6px 0 5px;gap:1px;}
+      .pd-navlabel{display:none;}
+      .pd-navbtn.active .pd-navlabel{display:block;font-size:9px;}
+      /* W poczcie chowamy logo i kontrolki — zostaje sama nawigacja */
+      .pd-shell:has(.pd-mail-h) .pd-brand,.pd-shell:has(.pd-mail-h) .pd-rail-foot{display:none;}
+      .pd-shell:has(.pd-mail-h) .pd-rail{grid-template-areas:"nav nav";}
+      .pd-mail-h{height:calc(100vh - 100px);height:calc(100dvh - 100px);}
+      .pd-mail-actions button{padding:6px 10px!important;font-size:12px!important;}
+    }
+
     @media (min-width:1050px){
       .pd-shell{flex-direction:row;align-items:flex-start;gap:16px;}
       .pd-rail{
