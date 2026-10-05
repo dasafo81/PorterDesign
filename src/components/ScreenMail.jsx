@@ -1869,7 +1869,7 @@ function TemplatesView(p){
           isSystem:r.is_system||false,sortOrder:r.sort_order||0
         };});
         if(p.onTemplatesChange)p.onTemplatesChange(mapped);
-        setSelId(mapped.length>0?mapped[0].id:null);
+        setSelId(null);
         setMode("view");
         setConfDel(false);
         setSaving(false);
@@ -2006,53 +2006,73 @@ function TemplatesView(p){
     );
   }
 
-  return ce("div",{style:{display:"flex",height:"100%"}},
-    // Lewa kolumna — lista szablonów
-    ce("div",{style:{width:160,borderRight:"1px solid var(--bd2)",display:"flex",
-      flexDirection:"column",overflowY:"auto",flexShrink:0}},
-      templates.length===0&&mode!=="new"
-        ?ce("div",{style:{padding:14,fontSize:12,color:"var(--t3)",fontStyle:"italic"}},
-          "Brak szablonów")
-        :null,
-      templates.map(function(tpl,idx){
-        var active=selId===tpl.id&&mode==="view";
-        var isFirst=idx===0,isLast=idx===templates.length-1;
-        function arrowBtn(dir,label,glyph,disabled){
-          return ce("button",{
-            onClick:function(ev){ev.stopPropagation();moveTemplate(tpl.id,dir);},
-            disabled:disabled||reordering,
-            title:label,
-            style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:disabled?"not-allowed":"pointer",fontSize:11,
-              color:disabled?"var(--t3)":"var(--t1)",width:24,height:24,borderRadius:5,display:"flex",
-              alignItems:"center",justifyContent:"center",padding:0,lineHeight:1,opacity:disabled?0.35:0.7}
-          },glyph);
-        }
-        return ce("div",{key:tpl.id,onClick:function(){setSelId(tpl.id);setMode("view");setMsg(null);setConfDel(false);},
-          style:{padding:"12px 10px 12px 14px",cursor:"pointer",borderBottom:"1px solid var(--bd3)",
-            background:active?"var(--wb)":"transparent",display:"flex",alignItems:"center",gap:8,
-            borderLeft:"3px solid "+(active?"var(--wbd)":"transparent")}},
-          ce("div",{style:{flex:1,minWidth:0}},
-            ce("div",{style:{fontSize:18,marginBottom:4}},tpl.icon),
-            ce("div",{style:{fontSize:13,fontWeight:active?700:500,color:"var(--t1)",
-              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},tpl.label)
-          ),
-          ce("div",{style:{display:"flex",flexDirection:"column",gap:3,flexShrink:0}},
-            arrowBtn(-1,"Przesuń w górę","▲",isFirst),
-            arrowBtn(1,"Przesuń w dół","▼",isLast)
-          )
-        );
-      }),
-      // Przycisk nowego szablonu zawsze na dole
-      ce("div",{style:{marginTop:"auto",padding:10,borderTop:"1px solid var(--bd2)"}},
-        ce("button",{onClick:startNew,
-          style:Object.assign({},BGHOST,{width:"100%",fontSize:12,justifyContent:"center"})},
-          "+ Nowy szablon")
+  var modalOpen=mode!=="view"||!!sel;
+  function closeModal(){setSelId(null);setMode("view");setMsg(null);setConfDel(false);}
+  // Esc zamyka okno tylko w podglądzie, żeby w edycji nie zgubić zmian
+  ue(function(){
+    if(!modalOpen||mode!=="view")return;
+    function onKey(e){if(e.key==="Escape")closeModal();}
+    document.addEventListener("keydown",onKey);
+    return function(){document.removeEventListener("keydown",onKey);};
+  },[modalOpen,mode]);
+
+  var clamp2={display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"};
+  function tile(tpl,idx){
+    var isFirst=idx===0,isLast=idx===templates.length-1;
+    var usage=TEMPLATE_USAGE[tpl.id];
+    function arrowBtn(dir,label,glyph,disabled){
+      return ce("button",{
+        onClick:function(ev){ev.stopPropagation();moveTemplate(tpl.id,dir);},
+        disabled:disabled||reordering,
+        title:label,
+        style:{border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:disabled?"not-allowed":"pointer",fontSize:11,
+          color:disabled?"var(--t3)":"var(--t1)",width:26,height:24,borderRadius:5,display:"flex",
+          alignItems:"center",justifyContent:"center",padding:0,lineHeight:1,opacity:disabled?0.35:0.7}
+      },glyph);
+    }
+    return ce("div",{key:tpl.id,
+      onClick:function(){setSelId(tpl.id);setMode("view");setMsg(null);setConfDel(false);},
+      style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 14px 10px",cursor:"pointer",
+        display:"flex",flexDirection:"column",gap:6,minHeight:150,minWidth:0,boxShadow:"0 1px 6px rgba(0,0,0,0.04)"}},
+      ce("div",{style:{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}},
+        ce("span",{style:{fontSize:26,lineHeight:1}},tpl.icon),
+        usage?ce("span",{style:{fontSize:10,fontWeight:700,color:"var(--violet)",border:"1px solid var(--violet)",
+          borderRadius:20,padding:"1px 8px",whiteSpace:"nowrap"}},"w aplikacji"):null
+      ),
+      ce("div",{style:Object.assign({fontSize:14,fontWeight:700,color:"var(--t1)",lineHeight:1.3},clamp2)},tpl.label),
+      ce("div",{style:Object.assign({fontSize:11.5,color:"var(--t3)",lineHeight:1.4,flex:1},clamp2)},
+        usage?usage.where:(tpl.subject?"Temat: "+tpl.subject:"Brak tematu")),
+      ce("div",{style:{display:"flex",alignItems:"center",gap:6}},
+        ce("span",{style:{fontSize:11,color:"var(--t3)",flex:1}},
+          (tpl.templateFiles&&tpl.templateFiles.length>0)?"\uD83D\uDCCE "+tpl.templateFiles.length:""),
+        arrowBtn(-1,"Przesuń wcześniej","◀",isFirst),
+        arrowBtn(1,"Przesuń później","▶",isLast)
       )
+    );
+  }
+
+  return ce("div",{style:{height:"100%",overflowY:"auto",padding:16}},
+    ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:14,flexWrap:"wrap"}},
+      ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Kliknij szablon, \u017ceby zobaczy\u0107 tre\u015b\u0107 i go edytowa\u0107. Strza\u0142kami \u25C0 \u25B6 zmienisz kolejno\u015b\u0107 na li\u015bcie."),
+      ce("button",{onClick:startNew,style:BGHOST},"+ Nowy szablon")
     ),
-    // Prawa kolumna — podgląd/edytor
-    ce("div",{style:{flex:1,minWidth:0,padding:"16px 20px",display:"flex",flexDirection:"column",overflow:"hidden"}},
-      rightPane
-    )
+    templates.length===0
+      ?ce("div",{style:{padding:14,fontSize:13,color:"var(--t3)",fontStyle:"italic"}},"Brak szablon\u00f3w")
+      :ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:12}},
+        templates.map(tile)),
+    modalOpen?ce("div",{onClick:function(){if(mode==="view")closeModal();},
+      style:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",zIndex:900,
+        display:"flex",alignItems:"center",justifyContent:"center",padding:16}},
+      ce("div",{onClick:function(ev){ev.stopPropagation();},
+        style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:14,width:"100%",maxWidth:780,
+          height:"min(86vh,720px)",display:"flex",flexDirection:"column",padding:"30px 20px 16px",
+          boxShadow:"0 20px 60px rgba(0,0,0,0.35)",position:"relative",boxSizing:"border-box"}},
+        ce("button",{onClick:closeModal,title:"Zamknij",
+          style:{position:"absolute",top:6,right:10,border:"none",background:"none",cursor:"pointer",
+            color:"var(--t3)",fontSize:22,lineHeight:1,padding:"2px 6px"}},"\u00d7"),
+        ce("div",{style:{flex:1,minHeight:0,display:"flex",flexDirection:"column",overflow:"hidden"}},rightPane)
+      )
+    ):null
   );
 }
 
