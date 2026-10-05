@@ -624,7 +624,8 @@ export const sbApi = {
         "Content-Type":"application/json",
         "Prefer":"resolution=merge-duplicates,return=minimal"
       },
-      body:JSON.stringify({email:email.trim(),email_lower:emailLower,name:name||"",last_used_at:new Date().toISOString()})
+      // Pusta nazwa nie nadpisuje wcześniej zapisanej (merge-duplicates)
+      body:JSON.stringify(Object.assign({email:email.trim(),email_lower:emailLower,last_used_at:new Date().toISOString()},name?{name:name}:{}))
     }).catch(function(){return null;});
   }
 };
