@@ -36,7 +36,7 @@ import {
   SHUTTLE_BASE, SHUTTLE_DOPLATY, SHUTTLE_STEROWANIE, SHUTTLE_UCHWYTY,
   SHUTTLE_WIDTHS, shuttleUchwytyQty,
   PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES,
-  calc, formatPLN, getPanelsForProd, jzLookup,
+  calc, tapetaCalc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup, arcGeom
 } from '../constants/data.js';
 import { generateFabricOrderPDF, generateClientEmail,
