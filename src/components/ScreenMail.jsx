@@ -2686,7 +2686,9 @@ export function ScreenMail(p){
     if(attachments.some(function(a){return a.type==="pdfdata"&&a.error;})&&!window.confirm("Nie uda\u0142o si\u0119 wygenerowa\u0107 PDF wyceny. Wys\u0142a\u0107 bez niego?"))return;
     setSending(true);
     setSendError(null);
-    var toName=selClient?selClient.name:toEmail;
+    // Nazwę klienta wolno przypisać tylko adresowi, który faktycznie należy do tego klienta —
+    // inaczej (np. wycena podpięta, a "Do:" zmienione ręcznie) obcy adres dostaje cudze imię.
+    var toName=(selClient&&selClient.email&&String(selClient.email).trim().toLowerCase()===String(toEmail).trim().toLowerCase())?selClient.name:"";
     var uploadFiles=attachments.filter(function(a){return a.type==="upload"&&a.file instanceof File;}).map(function(a){return a.file;});
     var sigImgUrl=(userSettings&&userSettings.signature_image_url)||"";
     var hasSigImg=!!sigImgUrl;
