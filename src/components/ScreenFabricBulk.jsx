@@ -126,6 +126,11 @@ export function ScreenFabricBulk(p){
               ce("button",{onClick:function(){mail(sup);},style:Object.assign({},btn,{border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)"})},"✉️ Wyślij mailem")
             )
           ),
+          ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8,fontSize:12,color:"var(--t2)"}},
+            ce("span",{style:{fontWeight:600}},"Wyślij tkaninę na adres (szwalnia):"),
+            ce("select",{value:house,onChange:function(e){setHouse(e.target.value);},style:{flex:1,minWidth:220,padding:"7px 10px",fontSize:13,border:"1.5px solid "+(house?"var(--bd2)":"#c0392b"),borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
+              ce("option",{value:""},"— wybierz szwalnię —"),
+              SEWING_HOUSES.map(function(h,i){return ce("option",{key:i,value:h},h);}))),
           g.fabKeys.map(function(fk){
             var f=g.fabs[fk];
             var names=Object.keys(f.clients);
