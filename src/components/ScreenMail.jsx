@@ -1464,7 +1464,12 @@ function MailPreview(p){
                         style:{width:"100%",border:"none",minHeight:200,display:"block",background:"#fff"},
                         onLoad:function(e){
                           var fr=e.target;
-                          try{fr.style.height=(fr.contentDocument.documentElement.scrollHeight+24)+"px";}catch(ex){}
+                          try{
+                            var idoc=fr.contentDocument,iw=fr.clientWidth,sw=idoc.documentElement.scrollWidth;
+                            // Szeroki mail (np. tabela 600-700px) na telefonie: skaluj do szerokosci ekranu jak Gmail
+                            if(iw>0&&sw>iw+2&&iw<720){idoc.body.style.zoom=String(iw/sw);}
+                            fr.style.height=(idoc.documentElement.scrollHeight+24)+"px";
+                          }catch(ex){}
                         }
                       })
                       // srcDoc jeszcze nie zbudowany — wczesniej renderowal sie pusty iframe (bialo)
