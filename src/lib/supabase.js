@@ -332,6 +332,11 @@ export const sbApi = {
   getMailTemplates: function(){
     return sbFetch("GET","mail_templates?select=*&order=sort_order.asc");
   },
+  // Jeden szablon po template_id (null, gdy go nie ma w bazie)
+  getMailTemplate: function(templateId){
+    return sbFetch("GET","mail_templates?select=*&limit=1&template_id=eq."+encodeURIComponent(templateId))
+      .then(function(rows){return (rows&&rows[0])||null;});
+  },
   // Dodaj nowy szablon. Je\u015bli data.template_id nie podany, generuje slug z label+timestamp
   addMailTemplate: function(data){
     var payload=Object.assign({},data||{});

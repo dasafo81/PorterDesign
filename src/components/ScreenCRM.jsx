@@ -5,6 +5,7 @@ import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFab
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
+import { loadSystemTemplate, fillVars, dropEmptyParas } from '../lib/mailTemplates.js';
 import { buildInvoicePDFHtml, InvoiceEditor, calcLineFromGross, splitClientAddr } from './ScreenInvoices.jsx';
 const ce = React.createElement;
 
@@ -505,7 +506,8 @@ export function ModalDeal(p){
     setBillMailId(inv.id);setBillErr(null);
     Promise.all([
       sbApi.getInvoice(inv.id),
-      sbApi.getInvoiceSettings().catch(function(){return null;})
+      sbApi.getInvoiceSettings().catch(function(){return null;}),
+      loadSystemTemplate("faktura")
     ]).then(function(res){
       var full=res[0];
       if(!full)throw new Error("Nie udało się pobrać faktury.");
@@ -515,17 +517,15 @@ export function ModalDeal(p){
       var gross=billFmt(full.total_gross);
       var due=full.due_date?String(full.due_date).split("-").reverse().join("."):"";
       var part=billList.length>1?(idx===0?" (zaliczka 50% wartości zamówienia)":" (pozostałe 50% wartości zamówienia)"):"";
-      var P=function(t){return "<div>"+t+"</div>";};
-      var body=[
-        P("Dzień dobry,"),
-        P("w załączeniu przesyłam fakturę"+(number?" nr <b>"+number+"</b>":"")+" na kwotę <b>"+gross+"</b>"+part+"."),
-        due?P("Termin płatności: <b>"+due+"</b>."):"",
-        P("Dziękujemy za współpracę. W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-        P("Pozdrawiam serdecznie,<br>"+String(SELLER.signature||"").replace(/\n/g,"<br>"))
-      ].filter(Boolean).join("<div><br></div>");
+      // Treść z szablonu "faktura" (Poczta → Szablony)
+      var tpl=res[2];
+      var vars={numer:number,kwota:gross,czesc:part,
+        terminZdanie:due?"Termin płatności: <b>"+due+"</b>.":"",
+        sprzedawca:SELLER.shortName||"",podpis:String(SELLER.signature||"").replace(/\n/g,"<br>")};
+      var body=dropEmptyParas(fillVars(tpl.body,vars));
       var invFile=new File([html],fname,{type:"text/html"});
       setMailErr(null);setMailMsg(null);
-      setMailSubject("Faktura"+(number?" nr "+number:"")+" — "+(SELLER.shortName||""));
+      setMailSubject(fillVars(tpl.subject,vars));
       setMailBodyText(body);
       setMailTo((cl&&cl.email)||full.buyer_email||"");
       setMailAttachments([{id:"inv_"+Date.now(),name:fname,size:invFile.size,type:"upload",file:invFile}]);
@@ -760,9 +760,11 @@ export function ModalDeal(p){
       // Normalizacja: małe litery, pojedyncze spacje, wszystkie warianty myślnika (-, –, —) ujednolicone na "-"
       var norm=function(s){return String(s||"").trim().toLowerCase().replace(/[\u2010-\u2015]/g,"-").replace(/\s*-\s*/g," - ").replace(/\s+/g," ").trim();};
       var byLabel=function(lbl){var n=norm(lbl);return (rows||[]).find(function(r){return norm(r.label)===n;})||null;};
+      // Po template_id (stałe, migracja 0057); po nazwie tylko jako awaryjne dopasowanie starych wierszy
+      var byId=function(id){return (rows||[]).find(function(r){return r.template_id===id;})||null;};
       setMailTpls({
-        opinia:byLabel("Opinia - swobodna"),
-        instrukcja:byLabel("Instrukcja prania i czyszczenia")
+        opinia:byId("opinia")||byLabel("Opinia - swobodna")||byLabel("Prośba o opinię"),
+        instrukcja:byId("instrukcja_prania")||byLabel("Instrukcja prania i czyszczenia")
       });
     }).catch(function(){setMailTpls({opinia:null,instrukcja:null});});
   },[]);
@@ -844,7 +846,8 @@ export function ModalDeal(p){
       // hosting potrafi zwrócić index.html zamiast 404, więc sprawdzamy też typ zawartości
       fetch(OWU_URL,{cache:"no-store"}).then(function(r){
         return r.ok&&/pdf/i.test(r.headers.get("content-type")||"");
-      }).catch(function(){return false;})
+      }).catch(function(){return false;}),
+      loadSystemTemplate("faktura_zaliczkowa")
     ]).then(function(res){
       var full=res[0];
       if(!full)throw new Error("Nie udało się pobrać faktury.");
@@ -853,18 +856,13 @@ export function ModalDeal(p){
       var number=full.number||"";
       var fname="Faktura-"+(number||"dokument").replace(/[^\w-]+/g,"_")+".html";
       var gross=(+full.total_gross||0).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
-      var P=function(t){return "<div>"+t+"</div>";};
-      var body=[
-        P("Dzień dobry,"),
-        P("w załączeniu przesyłam fakturę zaliczkową"+(number?" nr <b>"+number+"</b>":"")+" na kwotę <b>"+gross+"</b> (50% wartości zamówienia) oraz Ogólne Warunki Umowy (OWU)."),
-        P("<b>Rozpoczęcie zamówienia</b> następuje po wpłacie zaliczki w terminie wskazanym na fakturze. Zgodnie z OWU dokonanie zapłaty zadatku jest równoznaczne z zapoznaniem się z ich treścią i pełną akceptacją."),
-        P("<b>Czas realizacji</b> wynosi ok. 4 tygodni od momentu zaksięgowania wpłaty."),
-        P("W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-        P("Pozdrawiam serdecznie,<br>"+String(SELLER.signature||"").replace(/\n/g,"<br>"))
-      ].join("<div><br></div>");
+      // Treść z szablonu "faktura_zaliczkowa" (Poczta → Szablony)
+      var tpl=res[3];
+      var vars={numer:number,kwota:gross,podpis:String(SELLER.signature||"").replace(/\n/g,"<br>")};
+      var body=dropEmptyParas(fillVars(tpl.body,vars));
       var invFile=new File([html],fname,{type:"text/html"});
       setMailErr(null);setMailMsg(null);
-      setMailSubject("Faktura zaliczkowa"+(number?" nr "+number:"")+" i Ogólne Warunki Umowy");
+      setMailSubject(fillVars(tpl.subject,vars));
       setMailBodyText(body);
       setMailTo((cl&&cl.email)||"");
       setMailAttachments([
@@ -914,7 +912,7 @@ export function ModalDeal(p){
     if(!cl)return;
     var tpl=mailTpls&&mailTpls[kind];
     if(!tpl){
-      alert("Brak szablonu \""+(kind==="opinia"?"Opinia - swobodna":"Instrukcja prania i czyszczenia")+"\" w bazie (zakładka Mail → Szablony).");
+      alert("Brak szablonu \""+(kind==="opinia"?"Prośba o opinię":"Instrukcja prania i czyszczenia")+"\" w bazie (zakładka Mail → Szablony).");
       return;
     }
     setMailErr(null);setMailMsg(null);

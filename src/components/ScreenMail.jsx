@@ -5,6 +5,7 @@ import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../ms
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
+import { SYSTEM_TEMPLATES, TEMPLATE_USAGE, HIDDEN_IN_COMPOSE } from '../lib/mailTemplates.js';
 const ce = React.createElement;
 // Reeksport dla zgodnosci — definicje mieszkaja teraz w MailShared.jsx.
 export { fillTemplate, RichTextEditor };
@@ -1778,6 +1779,15 @@ function TemplatesView(p){
     });
   }
 
+  // Wczytuje do edytora treść domyślną z kodu (zapis dopiero po kliknięciu „Zapisz")
+  function restoreDefault(){
+    var def=SYSTEM_TEMPLATES[selId];
+    if(!def)return;
+    setEditSubj(def.subject);
+    setEditBody(def.body);
+    setMsg({type:"ok",text:"Wczytano tre\u015b\u0107 domy\u015bln\u0105 \u2014 kliknij Zapisz, \u017ceby j\u0105 zachowa\u0107"});
+  }
+
   function onPickFile(){if(fileRef.current)fileRef.current.click();}
 
   function onFileChange(e){
@@ -1880,6 +1890,8 @@ function TemplatesView(p){
           ce("div",{style:{fontWeight:700,fontSize:16,color:"var(--t1)",flex:1}},sel.label),
           ce("button",{onClick:function(){startEdit(sel);},style:BGHOST},"\u270F\uFE0F Edytuj")
         ),
+        TEMPLATE_USAGE[sel.id]?ce("div",{style:{fontSize:12,color:"var(--violet)",padding:"6px 10px",background:"var(--bg3)",borderRadius:8,flexShrink:0,lineHeight:1.5}},
+          ce("b",null,"U\u017cywany w: "),TEMPLATE_USAGE[sel.id].where):null,
         ce("div",{style:{fontSize:12,color:"var(--t3)",padding:"6px 10px",background:"var(--bg3)",borderRadius:8,flexShrink:0}},
           "Temat: ",sel.subject||ce("em",null,"(brak)")),
         // Podgląd treści
@@ -1902,6 +1914,8 @@ function TemplatesView(p){
           )
         ):null,
         ce("div",{style:{display:"flex",gap:8,flexShrink:0}},
+          HIDDEN_IN_COMPOSE[sel.id]?ce("div",{style:{flex:1,fontSize:12,color:"var(--t3)",alignSelf:"center"}},
+            "Wstawia si\u0119 automatycznie przy wysy\u0142ce z aplikacji."):
           ce("button",{onClick:function(){p.onUseTemplate(sel);},
             style:Object.assign({},BPRIM,{flex:1})},"\u270F\uFE0F U\u017cyj szablonu"),
           ce("button",{onClick:function(){startEdit(sel);},style:BGHOST},"\u2699\uFE0F Edytuj")
@@ -1927,6 +1941,13 @@ function TemplatesView(p){
       // Temat
       ce("input",{type:"text",value:editSubj,onChange:function(e){setEditSubj(e.target.value);},
         placeholder:"Temat wiadomo\u015bci (opcjonalne: {clientName})",style:Object.assign({},INP,{flexShrink:0})}),
+      // Gdzie szablon działa i jakie zmienne podstawia aplikacja
+      mode==="edit"&&TEMPLATE_USAGE[selId]?ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5,flexShrink:0}},
+        ce("div",null,ce("b",null,"U\u017cywany w: "),TEMPLATE_USAGE[selId].where),
+        ce("div",null,ce("b",null,"Zmienne: "),TEMPLATE_USAGE[selId].vars),
+        SYSTEM_TEMPLATES[selId]?ce("button",{onClick:restoreDefault,style:Object.assign({},BGHOST,{marginTop:6,fontSize:12})},
+          "\u21A9\uFE0F Przywr\u00f3\u0107 tre\u015b\u0107 domy\u015bln\u0105"):null
+      ):null,
       // Treść — RichTextEditor
       ce("div",{style:{flex:1,minHeight:180,display:"flex",flexDirection:"column"}},
         ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:4})},"Tre\u015b\u0107"),
@@ -1972,7 +1993,9 @@ function TemplatesView(p){
               style:Object.assign({},BGHOST,{color:"#b91c1c",borderColor:"#fca5a5"})},
               "\uD83D\uDDD1\uFE0F Usu\u0144 szablon")
             :ce("div",{style:{display:"flex",gap:6,alignItems:"center"}},
-              ce("span",{style:{fontSize:12,color:"#b91c1c"}},"Na pewno?"),
+              ce("span",{style:{fontSize:12,color:"#b91c1c"}},TEMPLATE_USAGE[selId]
+                ?"U\u017cywany w aplikacji \u2014 po usuni\u0119ciu wr\u00f3ci tre\u015b\u0107 wbudowana. Na pewno?"
+                :"Na pewno?"),
               ce("button",{onClick:onDelete,disabled:saving,
                 style:Object.assign({},BGHOST,{color:"#b91c1c",borderColor:"#fca5a5",fontWeight:700})},
                 saving?"\u23F3 Usuwam\u2026":"Tak, usu\u0144"),
@@ -2168,7 +2191,9 @@ export function ScreenMail(p){
   },[attachments,selClientId]);
   var userEmail=msAccount&&(msAccount.username||msAccount.email)||"";
   // Aktywna lista szablonów — z bazy jeśli załadowane, fallback na MAIL_TEMPLATES
-  var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
+  var allTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
+  // Szablony faktur i zamówień zna tylko aplikacja (zmienne {numer}, {kwota}…), więc nie trafiają do zwykłej wiadomości
+  var activeTemplates=allTemplates.filter(function(t){return !HIDDEN_IN_COMPOSE[t.id];});
   // Aktualnie wybrany szablon (obiekt) — etykieta w polu wyboru
   var selTpl=activeTemplates.find(function(t){return t.id===selTemplate;})||null;
 
@@ -3174,7 +3199,7 @@ export function ScreenMail(p){
     );
   } else if(activeFolder==="templates"){
     rightContent=ce(TemplatesView,{
-      templates:activeTemplates,
+      templates:allTemplates,
       onUseTemplate:function(tpl){
         setSelTemplate(tpl.id);
         mailNavigate("compose");

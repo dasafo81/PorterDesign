@@ -21,6 +21,7 @@ import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
 import { ScreenCRM, CRMKalendarz, CRM_STAGES, dealTotal } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
+import { loadSystemTemplate, HIDDEN_IN_COMPOSE } from './lib/mailTemplates.js';
 const ce = React.createElement;
 
 // \u2500\u2500 Leniwe ekrany \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -1234,19 +1235,25 @@ export function App(p){
   function mailDoc(html,name,opts){
     if(!html){alert("Brak tre\u015bci dokumentu do wys\u0142ania.");return;}
     opts=opts||{};
+    // Treść z szablonu w bazie (Poczta → Szablony): opts.templateId albo, gdy nie podano treści,
+    // "wstepna" (wycena uproszczona) / "wycena_po_spotkaniu" (pozostałe wyceny dla klienta).
+    var tplId=opts.templateId||(opts.body?null:(opts.template==="wstepna"?"wstepna":"wycena_po_spotkaniu"));
     function open(to){
-      setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:to,title:opts.title,template:opts.template,noTemplates:opts.noTemplates});
-      setShowEmailModal(true);
+      (tplId?loadSystemTemplate(tplId):Promise.resolve(null)).then(function(tpl){
+        var filled=tpl?fillTemplate({subject:tpl.subject,body:tpl.body},curClient):null;
+        setEmailPdf({html:html,name:name,
+          subject:opts.subject!=null?opts.subject:(filled?filled.subject:undefined),
+          body:opts.body!=null?opts.body:(filled?filled.body:undefined),
+          tplFiles:tpl&&opts.template==="wstepna"?tpl.files:null,
+          to:to,title:opts.title,template:opts.template,noTemplates:opts.noTemplates});
+        setShowEmailModal(true);
+      });
     }
     // opts.supplier: gdy pole "Do" nie jest podane, podstawiamy e-mail dostawcy z Kontrahentów.
     if(opts.supplier&&!opts.to){
       sbApi.getContacts().then(function(rows){return findSupplierEmail(rows,opts.supplier);})
         .catch(function(){return "";}).then(open);
     }else open(opts.to);
-  }
-  // Prosta treść maila dla dokumentów roboczych (zamówienia, zlecenia).
-  function docMailBody(lines){
-    return lines.map(function(t){return "<div>"+t+"</div>";}).join("<div><br></div>");
   }
 
   function addProd(){setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([{id:Date.now(),type:"zaslona",c:{},par:{},panels:[{side:"Zasłona lewa",w:""}],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});}
@@ -2085,8 +2092,7 @@ export function App(p){
       var mailVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
       var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"",mailDiscountVal,mailVisitFeeVal);
       if(!html){alert("Brak pozycji do wyceny.");return;}
-      setEmailPdf({html:html,name:"Oferta - "+(curClient.name||"klient")+".pdf"});
-      setShowEmailModal(true);
+      mailDoc(html,"Oferta - "+(curClient.name||"klient")+".pdf",{});
     }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
@@ -2491,10 +2497,7 @@ export function App(p){
         ce("button",{onClick:function(){
           mailDoc(buildHardwarePDFHtmlFromRows(curClient,karniszPreviewRows),
             "Zamowienie osprzetu - "+(curClient.name||"klient")+".pdf",
-            {to:"",subject:"Zamówienie osprzętu — "+(curClient.name||""),
-             body:docMailBody(["Dzień dobry,",
-               "W załączeniu przesyłam zamówienie osprzętu.",
-               "Proszę o potwierdzenie terminu dostawy."])});
+            {to:"",templateId:"zamowienie_osprzetu",noTemplates:true});
         },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"✉️ Wyślij mailem")
       )
     );
@@ -2538,10 +2541,7 @@ export function App(p){
       var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
       mailDoc(buildFabricOrderHtmlFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes}),
         "Zamowienie tkaniny - "+sup+".pdf",
-        {to:"",supplier:sup,subject:"Zam\u00f3wienie tkaniny \u2014 "+(curClient.name||""),
-         body:docMailBody(["Dzie\u0144 dobry,",
-           "W za\u0142\u0105czeniu przesy\u0142am zam\u00f3wienie tkaniny.",
-           "Prosz\u0119 o potwierdzenie dost\u0119pno\u015bci i terminu wysy\u0142ki."])});
+        {to:"",supplier:sup,templateId:"zamowienie_tkaniny",noTemplates:true});
     }
 
     content=ce(Fragment,null,
@@ -2909,7 +2909,7 @@ export function App(p){
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showVariantAdvisor&&curClient?ce(ModalVariantAdvisor,{client:curClient,onApply:applyVariantAdvisor,onClose:function(){setShowVariantAdvisor(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
+    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,tplFiles:emailPdf&&emailPdf.tplFiles,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
@@ -3274,7 +3274,7 @@ export function ModalClientEmail(p){
       setDbTemplates(mapped);
     }).catch(function(e){console.error("getMailTemplates error",e);setDbTemplates([]);});
   },[]);
-  var activeTemplates=dbTemplates!==null?dbTemplates:MAIL_TEMPLATES;
+  var activeTemplates=(dbTemplates!==null?dbTemplates:MAIL_TEMPLATES).filter(function(t){return !HIDDEN_IN_COMPOSE[t.id];});
   var hasWstepnaInList=activeTemplates.some(function(t){return t.id==="wstepna";});
   var templateButtons=hasWstepnaInList?activeTemplates:[TPL_WSTEPNA].concat(activeTemplates);
   var s1=useState(p.to!=null?p.to:(client.email||"")),toEmail=s1[0],setToEmail=s1[1];
@@ -3294,7 +3294,7 @@ export function ModalClientEmail(p){
   var pdfName=p.pdfName||"Oferta.pdf";
   var sigRef=React.useRef(null);
   // Domyślne załączniki szablonu "Wstępna wycena" (PDF-y z public/mail-att/) — użytkownik może je usunąć
-  useEffect(function(){ if(isWstepna)addTemplateFiles(TPL_WSTEPNA); },[]);
+  useEffect(function(){ if(isWstepna)addTemplateFiles(p.tplFiles?{files:p.tplFiles}:TPL_WSTEPNA); },[]);
   // Odpowiedź w wątku klienta: ostatni mail od klienta w Odebranych (Graph createReply)
   var sRM=useState(null),replyMsg=sRM[0],setReplyMsg=sRM[1];   // {id,subject,date}
   var sAR=useState(true),asReply=sAR[0],setAsReply=sAR[1];

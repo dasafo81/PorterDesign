@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sbApi, ksefApi } from '../lib/supabase.js';
 import { msalGetToken, msalGetActiveAccount } from '../msal.js';
 import { InlineEdit, SELLER, hasBuiltinCatalog } from '../constants/data.js';
+import { loadSystemTemplate, fillVars, dropEmptyParas, bodyToText } from '../lib/mailTemplates.js';
 const ce = React.createElement;
 
 // ── Stałe ──────────────────────────────────────────────────────────────────
@@ -2778,10 +2779,21 @@ function InvoiceDetailView(p){
   // w CRM nowszy/poprawiony adres, podstawiamy go (pole "Do" i tak jest edytowalne).
   function openMailModal(){
     setMailErr(null); setMailMsg(null);
+    // Tre\u015b\u0107 z szablonu "faktura" (Poczta \u2192 Szablony); bez wiersza w bazie dzia\u0142a domy\u015blna z kodu.
+    // Pole tre\u015bci jest zwyk\u0142ym tekstem, wi\u0119c HTML szablonu zamieniamy na tekst.
+    var due=currentInv.due_date?String(currentInv.due_date).split("-").reverse().join("."):"";
+    var vars={
+      numer:currentInv.number||"",kwota:fmtMoney(currentInv.total_gross),czesc:"",
+      terminZdanie:due?"Termin p\u0142atno\u015bci: <b>"+due+"</b>.":"",
+      sprzedawca:SELLER.shortName||"",podpis:String(SELLER.signature||"").replace(/\n/g,"<br>")
+    };
     setMailSubject("Faktura "+(currentInv.number||""));
-    setMailBodyText("Dzie\u0144 dobry,\n\nW za\u0142\u0105czeniu przesy\u0142am faktur\u0119 nr "
-      +(currentInv.number||"")+" na kwot\u0119 "+fmtMoney(currentInv.total_gross)
-      +".\n\nPozdrawiam serdecznie,\n"+(SELLER.signature||""));
+    setMailBodyText("");
+    loadSystemTemplate("faktura").then(function(tpl){
+      if(!tpl)return;
+      setMailSubject(fillVars(tpl.subject,vars));
+      setMailBodyText(bodyToText(dropEmptyParas(fillVars(tpl.body,vars))));
+    });
     var snap=currentInv.buyer_email||"";
     setMailTo(snap);
     setMailModalOpen(true);
