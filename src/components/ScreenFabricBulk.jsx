@@ -17,6 +17,7 @@ export function ScreenFabricBulk(p){
   // Pozycje usunięte z zamówienia i ręcznie ustawiony metraż zamówienia.
   var rs=useState({}),removed=rs[0],setRemoved=rs[1];
   var ss=useState({}),qty=ss[0],setQty=ss[1];
+  var fs=useState({}),fabNote=fs[0],setFabNote=fs[1];
 
   var recent=clients.slice().sort(function(a,b){
     return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""));
@@ -63,8 +64,13 @@ export function ScreenFabricBulk(p){
   function setRem(k,v){setRemoved(function(s){var n=Object.assign({},s);if(v)n[k]=true;else delete n[k];return n;});}
 
   var pseudo={name:chosen.length+" "+(chosen.length===1?"klient":"klientów")+": "+chosen.map(function(c){return c.name;}).join(", ")};
-  function docFor(sup){return buildFabricOrderHtmlFromRows(pseudo,sup,bySup[sup].orderRows,{notes:notes,bulkLabel:true});}
-  function preview(sup){if(!bySup[sup].orderRows.length)return;generateFabricOrderPDFFromRows(pseudo,sup,bySup[sup].orderRows,{notes:notes,bulkLabel:true});}
+  function optsFor(sup){
+    var fn={};
+    bySup[sup].fabKeys.forEach(function(fk){var f=bySup[sup].fabs[fk];var t=(fabNote[f.key]||"").trim();if(t&&!f.removed)fn[fk]=t;});
+    return {notes:notes,bulkLabel:true,fabNotes:fn};
+  }
+  function docFor(sup){return buildFabricOrderHtmlFromRows(pseudo,sup,bySup[sup].orderRows,optsFor(sup));}
+  function preview(sup){if(!bySup[sup].orderRows.length)return;generateFabricOrderPDFFromRows(pseudo,sup,bySup[sup].orderRows,optsFor(sup));}
   function mail(sup){
     if(!bySup[sup].orderRows.length)return;
     p.onMailDoc(docFor(sup),"Zamowienie zbiorcze tkaniny - "+sup+".pdf",{
@@ -128,7 +134,10 @@ export function ScreenFabricBulk(p){
                   onChange:function(e){var v=e.target.value;setQty(function(s){var n=Object.assign({},s);n[f.key]=v;return n;});},
                   style:{width:80,padding:"5px 8px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}}),
                 ce("span",null,"mb"),
-                qty[f.key]!==undefined?ce("button",{onClick:function(){setQty(function(s){var n=Object.assign({},s);delete n[f.key];return n;});},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:11,textDecoration:"underline"}},"przywróć "+fmt(f.metry)):null)
+                qty[f.key]!==undefined?ce("button",{onClick:function(){setQty(function(s){var n=Object.assign({},s);delete n[f.key];return n;});},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:11,textDecoration:"underline"}},"przywróć "+fmt(f.metry)):null),
+              f.removed?null:ce("textarea",{value:fabNote[f.key]||"",rows:1,placeholder:"Uwagi do tej pozycji...",
+                onChange:function(e){var v=e.target.value;setFabNote(function(s){var n=Object.assign({},s);n[f.key]=v;return n;});},
+                style:{width:"100%",boxSizing:"border-box",marginTop:6,padding:"6px 8px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)",resize:"vertical"}})
             );
           })
         );

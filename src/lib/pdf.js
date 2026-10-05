@@ -67,6 +67,9 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
   });
 
   // Tabela 1 — właściwe zamówienie: jedna pozycja = jedna tkanina
+  var fabNotes=opts.fabNotes||{};
+  var hasFabNotes=fabKeys.some(function(fk){return fabNotes[fk];});
+  function escNote(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");}
   var orderRows=fabKeys.map(function(fk){
     var g=byFabric[fk];
     return [
@@ -75,10 +78,10 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
       g.width?(g.width+" cm"):"-",
       "<strong>"+g.metry.toFixed(2).replace(".",",")+" mb</strong>",
       g.rows.length+" szt."
-    ];
+    ].concat(hasFabNotes?[fabNotes[fk]?escNote(fabNotes[fk]):"-"]:[]);
   });
   var orderTableHTML=makeTableHTML(
-    ["Tkanina","Kolor","Szer. tkaniny","Do zamówienia (mb)","Pozycji"],
+    ["Tkanina","Kolor","Szer. tkaniny","Do zamówienia (mb)","Pozycji"].concat(hasFabNotes?["Uwagi"]:[]),
     orderRows,
     "Zamówienie — metraż dla każdej tkaniny"
   );
