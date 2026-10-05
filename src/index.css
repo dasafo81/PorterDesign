@@ -209,7 +209,7 @@
     /* Ponizej progu uklad jest jak byl: topbar + zakladki nad trescia. 190px to
        wysokosc tego chrome — wartosc przeniesiona 1:1 ze starego inline style
        w App.jsx, zeby na tablecie w pionie nic sie nie zmienilo. */
-    .pd-mail-h{height:calc(100vh - 190px);}
+    .pd-mail-h{height:calc(100vh - 190px);height:calc(100dvh - 190px);}
     .pd-railtoggle{display:none;}
 
     @media (min-width:1050px){

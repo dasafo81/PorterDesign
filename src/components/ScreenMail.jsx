@@ -876,7 +876,7 @@ function MailPreview(p){
   }
 
   function buildSrcDocUnsafe(mid,htmlContent){
-    var IFRAME_STYLES="@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');body{margin:0;padding:16px 20px;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%;height:auto;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
+    var IFRAME_STYLES="@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');html{-webkit-text-size-adjust:100%;}body{margin:0;padding:16px 20px;overflow-wrap:anywhere;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;line-height:1.75;word-break:break-word;}img{max-width:100%!important;height:auto!important;}table{max-width:100%!important;}blockquote{border-left:3px solid #ccc;padding-left:12px;color:#666;margin:8px 0;}a{color:#7c3aed;}p{margin:0 0 8px;}table{border-collapse:collapse;}td,th{padding:4px 8px;}";
     var cache=window._porterAttImgCache||{};
     // Usuń <script> i obsługę zdarzeń — sandbox i tak je blokuje, ale to ucisza ostrzeżenia w konsoli
     var clean=(htmlContent||"").replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,"").replace(/\son\w+\s*=\s*"[^"]*"/gi,"").replace(/\son\w+\s*=\s*'[^']*'/gi,"");
@@ -1274,9 +1274,11 @@ function MailPreview(p){
     );
   }
 
-  return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
+  // Wąski ekran (telefon): nagłówek z przyciskami zajmuje pół ekranu, więc przewija się razem z treścią
+  var narrow=typeof window!=="undefined"&&window.innerWidth<720;
+  return ce("div",{style:narrow?{display:"block",height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehaviorY:"contain"}:{display:"flex",flexDirection:"column",height:"100%"}},
     lbNode,
-    ce("div",{style:{padding:"16px 20px 14px",borderBottom:"1px solid var(--bd2)",flexShrink:0}},
+    ce("div",{style:{padding:narrow?"10px 12px":"16px 20px 14px",borderBottom:"1px solid var(--bd2)",flexShrink:0}},
       ce("div",{style:{fontWeight:700,fontSize:16,color:"var(--t1)",marginBottom:10,lineHeight:1.3,display:"flex",alignItems:"center",gap:8}},
         head.subject,
         mails.length>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,padding:"2px 8px",borderRadius:10,background:"var(--bg3)"}},mails.length+" wiadomo\u015bci"):null
@@ -1349,7 +1351,7 @@ function MailPreview(p){
         )
       )
     ),
-    ce("div",{style:{flex:1,overflowY:"auto"}},
+    ce("div",{style:narrow?{padding:"0 0 24px"}:{flex:1,overflowY:"auto"}},
       mails.map(function(m,idx){
         var per=displayPerson(m);
         var isExp=!!expanded[m.id];
@@ -1397,7 +1399,7 @@ function MailPreview(p){
                       style:{display:"flex",alignItems:"center",gap:6,padding:"7px 14px 7px 10px",borderRadius:10,
                         background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12}},
                       ce("span",{style:{fontSize:16}},"\uD83D\uDCCE"),
-                      ce("span",{style:{color:"var(--t1)",fontWeight:500}},att.name||"Za\u0142\u0105cznik"),
+                      ce("span",{style:{color:"var(--t1)",fontWeight:500,minWidth:0,overflowWrap:"anywhere"}},att.name||"Za\u0142\u0105cznik"),
                       att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:4}},fmtBytes(att.size)):null
                     );
                   })
@@ -1434,7 +1436,7 @@ function MailPreview(p){
                       background:"var(--bg3)",border:"1px solid var(--bd2)",fontSize:12,cursor:"pointer",
                       boxShadow:"0 1px 3px rgba(0,0,0,0.07)"}},
                     ce("span",{style:{fontSize:16}},isPdf?"\uD83D\uDCC4":isImg?"\uD83D\uDDBC\uFE0F":"\uD83D\uDCCE"),
-                    ce("span",{style:{color:"var(--t1)",fontWeight:500}},att.name||"Za\u0142\u0105cznik"),
+                    ce("span",{style:{color:"var(--t1)",fontWeight:500,minWidth:0,overflowWrap:"anywhere"}},att.name||"Za\u0142\u0105cznik"),
                     att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:4}},fmtBytes(att.size)):null,
                     ce("span",{style:{fontSize:11,color:"var(--accent)",marginLeft:6,fontWeight:700}},isImg?"\uD83D\uDD0D":"\u2197")
                   );
