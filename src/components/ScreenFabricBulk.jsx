@@ -14,9 +14,9 @@ export function ScreenFabricBulk(p){
   var ts=useState(function(){var o={};(p.initialIds||[]).forEach(function(id){o[id]=true;});return o;}),sel=ts[0],setSel=ts[1];
   var ns=useState(""),notes=ns[0],setNotes=ns[1];
   var qs=useState(""),q=qs[0],setQ=qs[1];
-  // Pozycje usunięte z zamówienia i metraż z własnego magazynu (odejmowany od zamówienia).
+  // Pozycje usunięte z zamówienia i ręcznie ustawiony metraż zamówienia.
   var rs=useState({}),removed=rs[0],setRemoved=rs[1];
-  var ss=useState({}),stock=ss[0],setStock=ss[1];
+  var ss=useState({}),qty=ss[0],setQty=ss[1];
 
   var recent=clients.slice().sort(function(a,b){
     return String(b.updated_at||b.created_at||"").localeCompare(String(a.updated_at||a.created_at||""));
@@ -41,19 +41,21 @@ export function ScreenFabricBulk(p){
     if(!g.fabs[fk]){g.fabs[fk]={fabName:r.fabName||"-",kolor:r.kolor||"-",metry:0,clients:{},rows:[],key:r.prod+"##"+fk};g.fabKeys.push(fk);}
     var f=g.fabs[fk]; f.metry+=r.metry; f.clients[r._client]=(f.clients[r._client]||0)+r.metry; f.rows.push(r);
   });
-  // Metraż do zamówienia po odjęciu usuniętych pozycji i stanu magazynowego.
+  // Metraż do zamówienia: domyślnie suma z wycen, z możliwością ręcznej korekty (mniej lub więcej).
   supKeys.forEach(function(sup){
     var g=bySup[sup]; g.orderRows=[]; g.orderTotal=0;
     g.fabKeys.forEach(function(fk){
       var f=g.fabs[fk];
-      var st=Math.min(Math.max(parseFloat(String(stock[f.key]||"").replace(",","."))||0,0),f.metry);
-      f.stock=st; f.removed=!!removed[f.key]; f.toOrder=f.removed?0:f.metry-st;
-      if(f.removed)return;
-      var left=st;
-      f.rows.forEach(function(r){
-        var cut=Math.min(left,r.metry); left-=cut;
-        var m=r.metry-cut;
-        if(m>0.0001){g.orderRows.push(mg(r,{metry:m}));g.orderTotal+=m;}
+      var raw=qty[f.key];
+      var custom=raw!==undefined&&raw!==""?parseFloat(String(raw).replace(",",".")):NaN;
+      f.removed=!!removed[f.key];
+      f.toOrder=isNaN(custom)||custom<0?f.metry:custom;
+      if(f.removed||f.toOrder<=0)return;
+      var factor=f.toOrder<f.metry?f.toOrder/f.metry:1;
+      var extra=f.toOrder>f.metry?f.toOrder-f.metry:0;
+      f.rows.forEach(function(r,i){
+        var m=r.metry*factor+(i===f.rows.length-1?extra:0);
+        g.orderRows.push(mg(r,{metry:m}));g.orderTotal+=m;
       });
     });
   });
@@ -119,15 +121,14 @@ export function ScreenFabricBulk(p){
                     ce("button",{onClick:function(){setRem(f.key,false);},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:12}},"↩ Przywróć"):
                     ce("button",{title:"Usuń pozycję z zamówienia",onClick:function(){setRem(f.key,true);},style:{border:"none",background:"transparent",color:"#c0392b",cursor:"pointer",fontSize:16,lineHeight:1}},"🗑"))),
               ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},
-                (names.length>1?names.map(function(n){return n+" "+fmt(f.clients[n]);}).join(" · "):names[0])+" · potrzeba łącznie "+fmt(f.metry)+" mb"),
+                (names.length>1?names.map(function(n){return n+" "+fmt(f.clients[n]);}).join(" · "):names[0])+""),
               f.removed?null:ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:6,fontSize:12,color:"var(--t2)"}},
-                ce("span",null,"Mam na magazynie:"),
-                ce("input",{type:"text",inputMode:"decimal",value:stock[f.key]||"",placeholder:"0",
-                  onChange:function(e){var v=e.target.value;setStock(function(s){var n=Object.assign({},s);n[f.key]=v;return n;});},
-                  style:{width:70,padding:"5px 8px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}}),
+                ce("span",null,"Zamawiam:"),
+                ce("input",{type:"text",inputMode:"decimal",value:qty[f.key]!==undefined?qty[f.key]:fmt(f.metry),
+                  onChange:function(e){var v=e.target.value;setQty(function(s){var n=Object.assign({},s);n[f.key]=v;return n;});},
+                  style:{width:80,padding:"5px 8px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:6,background:"var(--bg)",color:"var(--t1)"}}),
                 ce("span",null,"mb"),
-                f.stock>0?ce("button",{onClick:function(){setStock(function(s){var n=Object.assign({},s);n[f.key]=String(f.metry).replace(".",",");return n;});},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:11,textDecoration:"underline"}},"całość"):
-                  ce("button",{onClick:function(){setStock(function(s){var n=Object.assign({},s);n[f.key]=String(Math.round(f.metry*100)/100).replace(".",",");return n;});},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:11,textDecoration:"underline"}},"całość"))
+                qty[f.key]!==undefined?ce("button",{onClick:function(){setQty(function(s){var n=Object.assign({},s);delete n[f.key];return n;});},style:{border:"none",background:"transparent",color:"var(--t2)",cursor:"pointer",fontSize:11,textDecoration:"underline"}},"przywróć "+fmt(f.metry)):null)
             );
           })
         );
