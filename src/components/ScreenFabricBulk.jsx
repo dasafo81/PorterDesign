@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { buildFabricRows, mg } from '../constants/data.js';
+import { buildFabricRows, mg, SEWING_HOUSES } from '../constants/data.js';
 import { buildFabricOrderHtmlFromRows, generateFabricOrderPDFFromRows } from '../lib/pdf.js';
 const ce = React.createElement;
 
@@ -17,6 +17,7 @@ export function ScreenFabricBulk(p){
   // Pozycje usunięte z zamówienia i ręcznie ustawiony metraż zamówienia.
   var rs=useState({}),removed=rs[0],setRemoved=rs[1];
   var ss=useState({}),qty=ss[0],setQty=ss[1];
+  var hs=useState(""),house=hs[0],setHouse=hs[1];
   var fs=useState({}),fabNote=fs[0],setFabNote=fs[1];
 
   var recent=clients.slice().sort(function(a,b){
@@ -67,16 +68,20 @@ export function ScreenFabricBulk(p){
   function optsFor(sup){
     var fn={};
     bySup[sup].fabKeys.forEach(function(fk){var f=bySup[sup].fabs[fk];var t=(fabNote[f.key]||"").trim();if(t&&!f.removed)fn[fk]=t;});
-    return {notes:notes,bulkLabel:true,fabNotes:fn};
+    return {notes:notes,bulkLabel:true,fabNotes:fn,sewingHouse:house};
   }
   function docFor(sup){return buildFabricOrderHtmlFromRows(pseudo,sup,bySup[sup].orderRows,optsFor(sup));}
   function preview(sup){if(!bySup[sup].orderRows.length)return;generateFabricOrderPDFFromRows(pseudo,sup,bySup[sup].orderRows,optsFor(sup));}
+  // Mail do producenta: adres z karty kontrahenta (opts.supplier), bez szablonów,
+  // stała treść + adres wysyłki tkaniny wybrany z listy naszych szwalni.
   function mail(sup){
     if(!bySup[sup].orderRows.length)return;
+    if(!house){alert("Wybierz szwalnię, na którą ma być wysłana tkanina.");return;}
+    var lines=["Dzień dobry,","Proszę o realizację zamówienia z załącznika.","Proszę wysłać na adres:"];
+    var body=lines.map(function(t){return "<div>"+t+"</div>";}).join("<div><br></div>");
+    if(house)body+="<div><br></div><div>"+house.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</div>";
     p.onMailDoc(docFor(sup),"Zamowienie zbiorcze tkaniny - "+sup+".pdf",{
-      to:"",supplier:sup,subject:"Zamówienie tkaniny — zbiorcze",
-      body:["Dzień dobry,","W załączeniu przesyłam zbiorcze zamówienie tkaniny.","Proszę o potwierdzenie dostępności i terminu wysyłki."]
-        .map(function(t){return "<div>"+t+"</div>";}).join("<div><br></div>")
+      to:"",supplier:sup,subject:"Zamówienie tkaniny — zbiorcze",title:"✉️ Zamówienie do producenta",noTemplates:true,body:body
     });
   }
 
@@ -98,6 +103,12 @@ export function ScreenFabricBulk(p){
     chosen.length===0?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"8px 0"}},"Zaznacz co najmniej jednego klienta."):
     (supKeys.length===0?ce("div",{style:{color:"var(--t3)",fontSize:12,padding:"8px 0"}},"Zaznaczeni klienci nie mają tkanin do zamówienia."):
     ce("div",null,
+      ce("div",{style:card},
+        ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"Adres wysyłki tkaniny — szwalnia"),
+        ce("select",{value:house,onChange:function(e){setHouse(e.target.value);},style:{width:"100%",padding:"8px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
+          ce("option",{value:""},"— wybierz szwalnię —"),
+          SEWING_HOUSES.map(function(h,i){return ce("option",{key:i,value:h},h);}))
+      ),
       ce("div",{style:card},
         ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"Uwagi do zamówienia"),
         ce("textarea",{value:notes,onChange:function(e){setNotes(e.target.value);},rows:2,placeholder:"Uwagi dla dostawcy...",style:{width:"100%",boxSizing:"border-box",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical"}})

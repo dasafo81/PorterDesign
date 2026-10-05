@@ -5,7 +5,7 @@ import {
   FABRICS, getAllFabrics, getFabricEffective, IMG_OKNO, IMG_ROOM_GABINET, IMG_ROOM_KUCHNIA,
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, setBuiltinCatalog, hasBuiltinCatalog, applySellerConfig, SELLER,
-  buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
+  SEWING_HOUSES, buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
   buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
   getPanelsForProd, mg, openPDFWindow, roundTo10
@@ -1235,7 +1235,7 @@ export function App(p){
     if(!html){alert("Brak tre\u015bci dokumentu do wys\u0142ania.");return;}
     opts=opts||{};
     function open(to){
-      setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:to,title:opts.title,template:opts.template});
+      setEmailPdf({html:html,name:name,subject:opts.subject,body:opts.body,to:to,title:opts.title,template:opts.template,noTemplates:opts.noTemplates});
       setShowEmailModal(true);
     }
     // opts.supplier: gdy pole "Do" nie jest podane, podstawiamy e-mail dostawcy z Kontrahentów.
@@ -2506,12 +2506,7 @@ export function App(p){
     );
   }
   else if(screen==="fabricPreview"&&curClient){
-    var SEWING_HOUSES_LIST=[
-      "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
-      "LAURALES — ul. Kolegialna 35 lok.1, 09-402 Płock",
-      "MARCIN DEKOR — ul. Terespolska 75, 05-074 Halinów",
-      "NITECZKAMI — Troszyn Polski 38B, 09-530 Troszyn"
-    ];
+    var SEWING_HOUSES_LIST=SEWING_HOUSES;
     function setFabricRowField(i,key,v){
       setFabricPreviewRows(function(prev){return prev.map(function(x,xi){
         if(xi!==i)return x;
@@ -2914,7 +2909,7 @@ export function App(p){
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showVariantAdvisor&&curClient?ce(ModalVariantAdvisor,{client:curClient,onApply:applyVariantAdvisor,onClose:function(){setShowVariantAdvisor(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
+    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
@@ -3576,7 +3571,7 @@ export function ModalClientEmail(p){
           "\u201E"+replyMsg.subject+"\u201D \u00b7 "+new Date(replyMsg.date).toLocaleDateString("pl-PL")
           +(asReply?" \u2014 temat zostanie z w\u0105tku (pole Temat pomini\u0119te)":""))
       ):null,
-      ce("div",{style:{marginBottom:12,display:"flex",gap:6,flexWrap:"wrap"}},
+      p.noTemplates?null:ce("div",{style:{marginBottom:12,display:"flex",gap:6,flexWrap:"wrap"}},
         templateButtons.map(function(tpl){
           return ce("button",{key:tpl.id,type:"button",onClick:function(){applyMailTemplate(tpl);},
             style:{padding:"5px 11px",borderRadius:20,border:"1.5px solid var(--bd2)",background:"transparent",
