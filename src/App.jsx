@@ -2837,7 +2837,7 @@ export function App(p){
       ce("div",{className:"pd-nav"},
       [
         {id:"crm",       label:"CRM",   icon:"\uD83D\uDCC8"},
-        {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCCB"},
+        {id:"wyceniarka",label:"Wyceny",icon:"\uD83D\uDCD0"},
         {id:"kontrahenci",label:"Kontrahenci",icon:"\uD83D\uDC65"},
         {id:"kalendarz", label:"Kalendarz",icon:"\uD83D\uDCC5"},
         {id:"mail",      label:"Mail",  icon:"\uD83D\uDCE8"},
