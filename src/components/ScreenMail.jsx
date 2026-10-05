@@ -2122,6 +2122,13 @@ export function ScreenMail(p){
   var scalok=us(null),calSaved=scalok[0],setCalSaved=scalok[1];
   var serr=us(null),sendError=serr[0],setSendError=serr[1];
   var stplpick=us(false),showTplPicker=stplpick[0],setShowTplPicker=stplpick[1];
+  // Esc zamyka listę szablonów
+  React.useEffect(function(){
+    if(!showTplPicker)return;
+    function onKey(e){if(e.key==="Escape")setShowTplPicker(false);}
+    document.addEventListener("keydown",onKey);
+    return function(){document.removeEventListener("keydown",onKey);};
+  },[showTplPicker]);
   // Per-user ustawienia z Supabase (podpis, obrazek). null = nie załadowane jeszcze
   var sset=us(null),userSettings=sset[0],setUserSettings=sset[1];
   // Szablony z bazy — null = ładowanie, [] = puste, [...] = załadowane
@@ -3037,6 +3044,9 @@ export function ScreenMail(p){
         ),
         ce("span",{style:{color:"var(--t3)",fontSize:11}},"\u25BE")
       ),
+      // Przezroczyste tło: kliknięcie poza listą ją zamyka
+      showTplPicker?ce("div",{onClick:function(){setShowTplPicker(false);},
+        style:{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:399}}):null,
       showTplPicker?ce("div",{style:{
         position:"absolute",left:0,right:0,top:"100%",marginTop:4,zIndex:400,
         background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,
