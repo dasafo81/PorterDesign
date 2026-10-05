@@ -2584,7 +2584,8 @@ export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
       postal:inv.buyer_postal||"", city:inv.buyer_city||""
     };
   }
-  var selBank=snap.bank||s.seller_bank||"";
+  // Zakup: konto ma byc kontrahenta (gdzie placimy), nigdy nasze z Ustawien.
+  var selBank=isZakup?(snap.bank||""):(snap.bank||s.seller_bank||"");
 
   var paid=+(inv.paid_amount||0);
   var gross=+(inv.total_gross||0);
@@ -2666,7 +2667,7 @@ export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
     +"<div class='pay-row'>"
     +"<div>Termin p\u0142atno\u015bci: "+fmtD(inv.due_date)+"<br>Spos\u00f3b p\u0142atno\u015bci: "+(inv.payment_method||"przelew").replace(/^./,function(c){return c.toUpperCase();})+"</div>"
     +(selBank?"<div style='text-align:right'>Numer konta: "+selBank+"</div>"
-      :(previewMode?"<div style='text-align:right;color:#c0392b'>\u26A0\uFE0F Brak numeru konta w Ustawieniach</div>":"<div></div>"))
+      :(previewMode?"<div style='text-align:right;color:#c0392b'>\u26A0\uFE0F "+(isZakup?"Brak numeru konta kontrahenta na fakturze":"Brak numeru konta w Ustawieniach")+"</div>":"<div></div>"))
     +"</div>"
     +"<div class='parties'>"
     +"<div class='party'><div class='sect-head'>"+partyTop.label+"</div><p><strong>"+partyTop.name+"</strong>"
