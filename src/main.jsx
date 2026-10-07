@@ -7,6 +7,9 @@ import { ScreenLogin } from './components/ScreenLogin.jsx';
 import { loadSession, refreshSession } from './lib/auth.js';
 import { markBrokerCallback } from './lib/oauthBroker.js';
 
+// Ekran zgody OAuth (/oauth/consent) — leniwie, żeby supabase-js nie obciążał głównego bundla.
+var OAuthConsent = React.lazy(function() { return import('./components/OAuthConsent.jsx'); });
+
 var SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
 if (SENTRY_DSN) {
   Sentry.init({
@@ -125,6 +128,10 @@ function Root() {
     return React.createElement(ScreenLogin, {
       onLogin: function() { setLoggedIn(true); }
     });
+  }
+
+  if (window.location.pathname === '/oauth/consent') {
+    return React.createElement(React.Suspense, { fallback: null }, React.createElement(OAuthConsent));
   }
 
   return React.createElement(App, {
