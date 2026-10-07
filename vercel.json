@@ -12,6 +12,10 @@
   ],
   "rewrites": [
     {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "/api/mcp?metadata=1"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
