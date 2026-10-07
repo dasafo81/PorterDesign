@@ -4,7 +4,7 @@
 //
 // Bezpieczeństwo: wszystkie zapytania do Supabase idą z tokenem ZALOGOWANEGO
 // użytkownika (nie service role), więc RLS po tenant_id izoluje dane tenantów.
-// Zapis jest niedostępny. Ceny zakupu/marże są domyślnie ukryte
+// Zapis jest niedostępny. Ceny zakupu, marże i koszty zleceń są domyślnie ukryte
 // (włącza je MCP_EXPOSE_PURCHASE_PRICES=1).
 //
 // Autoryzacja: Bearer = access_token Supabase. Metadane OAuth (RFC 9728) wskazują
@@ -72,6 +72,12 @@ function isId(s) { return /^\d+$/.test(String(s)); }
 
 const CLIENT_COLS = 'id,name,addr,postal,city,phone,email,status,quote_no,contact_id,created_at,updated_at';
 const OFFER_COLS = 'id,client_id,number,kind,total_gross,discount_amount,valid_until,status,notes,created_at';
+const INVOICE_COLS = 'id,number,direction,doc_type,status,issue_date,sale_date,due_date,payment_method,payment_status,paid_amount,buyer_name,buyer_nip,buyer_city,buyer_email,seller_snapshot,client_id,deal_id,contact_id,offer_number,total_net,total_vat,total_gross,currency,notes,ksef_status,ksef_number,created_at';
+const ITEM_COLS = 'position,name,quantity,unit,unit_net,vat_rate,line_net,line_vat,line_gross';
+const CONTACT_COLS = 'id,kind,role,name,nip,regon,street,postal,city,email,phone,default_payment_days,tags,notes,created_at';
+const WAREHOUSE_COLS = 'id,category,name,quantity,unit,color,supplier,location,notes,length_cm,updated_at';
+const COST_COLS = 'id,deal_id,kind,amount,supplier,installer_name,paid_at,planned_delivery,actual_delivery,note';
+const MAX_TEXT = 40000; // limit odpowiedzi get_client_quote (znaki)
 const CATALOG_BASE = 'id,name,price,unit,meta,height_cm,composition,weight_gsm,shrinkage_pct,flame_retardant,soundproof,hidden';
 
 // ── Narzędzia ──────────────────────────────────────────────────────────────
@@ -112,7 +118,93 @@ const TOOLS = [
       limit: { type: 'integer' },
     } },
   },
+  {
+    name: 'get_client_quote',
+    description: 'Treść wyceny klienta: pomieszczenia, okna i produkty (typ, konfiguracja, ręcznie ustawiona cena). Ceny wyliczane przez aplikację nie są zapisane w bazie — łączną kwotę wygenerowanej oferty podają search_offers / get_client.',
+    inputSchema: { type: 'object', properties: { client_id: { type: 'integer' } }, required: ['client_id'] },
+  },
+  {
+    name: 'search_invoices',
+    description: 'Szukaj faktur (sprzedaży i zakupu) po numerze, nabywcy/NIP, typie, statusie, statusie płatności, dacie wystawienia, kliencie lub zleceniu (deal). Zwraca nagłówki bez XML.',
+    inputSchema: { type: 'object', properties: {
+      query: { type: 'string', description: 'Numer faktury, nazwa nabywcy lub NIP' },
+      direction: { type: 'string', description: 'sprzedaz lub zakup' },
+      doc_type: { type: 'string', description: 'vat | proforma | zaliczka | koncowa | korekta | uproszczona' },
+      status: { type: 'string', description: 'draft | issued | sent | cancelled' },
+      payment_status: { type: 'string', description: 'unpaid | partial | paid' },
+      client_id: { type: 'integer' },
+      deal_id: { type: 'string', description: 'UUID zlecenia' },
+      date_from: { type: 'string', description: 'Data wystawienia od, RRRR-MM-DD' },
+      date_to: { type: 'string', description: 'Data wystawienia do, RRRR-MM-DD' },
+      limit: { type: 'integer' },
+    } },
+  },
+  {
+    name: 'get_invoice',
+    description: 'Jedna faktura (po UUID) wraz z pozycjami.',
+    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+  },
+  {
+    name: 'search_contacts',
+    description: 'Szukaj kontrahentów (klienci i dostawcy) po nazwie, NIP, e-mailu, telefonie lub mieście.',
+    inputSchema: { type: 'object', properties: {
+      query: { type: 'string' },
+      role: { type: 'string', description: 'klient | dostawca | oba' },
+      limit: { type: 'integer' },
+    } },
+  },
+  {
+    name: 'search_deals',
+    description: 'Szukaj zleceń w CRM (etap, terminy wizyt/dostawy, notatki, stan zamówień) po etapie, kliencie lub zakresie terminu.',
+    inputSchema: { type: 'object', properties: {
+      stage: { type: 'string', description: 'Etap, np. pomiar, zaliczka, zamowienie' },
+      client_id: { type: 'integer' },
+      deadline_from: { type: 'string' },
+      deadline_to: { type: 'string' },
+      limit: { type: 'integer' },
+    } },
+  },
+  {
+    name: 'get_deal',
+    description: 'Jedno zlecenie z CRM (po UUID), jego faktury' + (EXPOSE_PURCHASE ? ' i koszty.' : '. Koszty zlecenia są wyłączone w konfiguracji serwera.'),
+    inputSchema: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+  },
+  {
+    name: 'search_warehouse',
+    description: 'Szukaj w magazynie (tkaniny, mechanizmy, gotowe, próbniki, szyny) po nazwie, kolorze, dostawcy, lokalizacji lub kategorii.',
+    inputSchema: { type: 'object', properties: {
+      query: { type: 'string' },
+      category: { type: 'string', description: 'tkanina | mechanizm | gotowy | probnik | szyna' },
+      limit: { type: 'integer' },
+    } },
+  },
 ];
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ENUM = /^[a-z_0-9ąćęłńóśźż-]{1,40}$/i;
+function enumVal(v, label) { if (!ENUM.test(String(v))) throw new Error('Nieprawidłowa wartość: ' + label); return encodeURIComponent(v); }
+
+// Ogranicza ciężki JSON wyceny: usuwa zdjęcia/base64 i bardzo długie teksty.
+function slim(v) {
+  if (Array.isArray(v)) return v.map(slim);
+  if (v && typeof v === 'object') {
+    const o = {};
+    for (const k of Object.keys(v)) {
+      if (/^(img|image|photo|foto|preview|thumb)/i.test(k)) continue;
+      o[k] = slim(v[k]);
+    }
+    return o;
+  }
+  if (typeof v === 'string' && v.length > 300) return v.slice(0, 300) + '…';
+  return v;
+}
+
+function sellerBrief(snap) {
+  if (!snap || typeof snap !== 'object') return undefined;
+  const o = {};
+  for (const k of Object.keys(snap)) if (/name|nazwa|nip/i.test(k)) o[k] = snap[k];
+  return o;
+}
 
 async function callTool(name, a, token) {
   a = a || {};
@@ -152,6 +244,73 @@ async function callTool(name, a, token) {
     if (a.soundproof === true) p += '&soundproof=eq.true';
     return sb(token, p);
   }
+  if (name === 'get_client_quote') {
+    if (!isId(a.client_id)) throw new Error('Nieprawidłowe client_id');
+    const rows = await sb(token, `clients?select=id,name,quote_no,status,rooms&id=eq.${a.client_id}&deleted_at=is.null`);
+    if (!rows.length) throw new Error('Nie znaleziono klienta');
+    const c = rows[0];
+    const out = JSON.stringify({ id: c.id, name: c.name, quote_no: c.quote_no, status: c.status, rooms: slim(c.rooms || []) });
+    return out.length > MAX_TEXT ? { truncated: true, note: 'Wycena jest bardzo duża — pokazano początek.', json: out.slice(0, MAX_TEXT) } : JSON.parse(out);
+  }
+  if (name === 'search_invoices') {
+    let p = `invoices?select=${INVOICE_COLS}&order=created_at.desc&limit=${lim(a.limit)}`;
+    const q = term(a.query);
+    if (q) p += `&or=(number.ilike.*${q}*,buyer_name.ilike.*${q}*,buyer_nip.ilike.*${q}*)`;
+    if (a.direction) p += `&direction=eq.${enumVal(a.direction, 'direction')}`;
+    if (a.doc_type) p += `&doc_type=eq.${enumVal(a.doc_type, 'doc_type')}`;
+    if (a.status) p += `&status=eq.${enumVal(a.status, 'status')}`;
+    if (a.payment_status) p += `&payment_status=eq.${enumVal(a.payment_status, 'payment_status')}`;
+    if (a.client_id != null) { if (!isId(a.client_id)) throw new Error('Nieprawidłowe client_id'); p += `&client_id=eq.${a.client_id}`; }
+    if (a.deal_id) { if (!UUID.test(a.deal_id)) throw new Error('Nieprawidłowe deal_id'); p += `&deal_id=eq.${a.deal_id}`; }
+    const from = isoDate(a.date_from), to = isoDate(a.date_to);
+    if (from) p += `&issue_date=gte.${from}`;
+    if (to) p += `&issue_date=lte.${to}`;
+    const rows = await sb(token, p);
+    return rows.map((r) => ({ ...r, seller_snapshot: sellerBrief(r.seller_snapshot) }));
+  }
+  if (name === 'get_invoice') {
+    if (!UUID.test(String(a.id))) throw new Error('Nieprawidłowe id');
+    const [rows, items] = await Promise.all([
+      sb(token, `invoices?select=${INVOICE_COLS}&id=eq.${a.id}`),
+      sb(token, `invoice_items?select=${ITEM_COLS}&invoice_id=eq.${a.id}&order=position.asc`),
+    ]);
+    if (!rows.length) throw new Error('Nie znaleziono faktury');
+    return { invoice: { ...rows[0], seller_snapshot: sellerBrief(rows[0].seller_snapshot) }, items };
+  }
+  if (name === 'search_contacts') {
+    let p = `contacts?select=${CONTACT_COLS}&order=name.asc&limit=${lim(a.limit)}`;
+    const q = term(a.query);
+    if (q) p += `&or=(name.ilike.*${q}*,nip.ilike.*${q}*,email.ilike.*${q}*,phone.ilike.*${q}*,city.ilike.*${q}*)`;
+    if (a.role) p += `&role=eq.${enumVal(a.role, 'role')}`;
+    return sb(token, p);
+  }
+  if (name === 'search_deals') {
+    let p = `deals?select=*&order=created_at.desc&limit=${lim(a.limit)}`;
+    if (a.stage) p += `&stage=eq.${enumVal(a.stage, 'stage')}`;
+    if (a.client_id != null) { if (!isId(a.client_id)) throw new Error('Nieprawidłowe client_id'); p += `&client_id=eq.${a.client_id}`; }
+    const from = isoDate(a.deadline_from), to = isoDate(a.deadline_to);
+    if (from) p += `&deadline=gte.${from}`;
+    if (to) p += `&deadline=lte.${to}`;
+    return sb(token, p);
+  }
+  if (name === 'get_deal') {
+    if (!UUID.test(String(a.id))) throw new Error('Nieprawidłowe id');
+    const jobs = [
+      sb(token, `deals?select=*&id=eq.${a.id}`),
+      sb(token, `invoices?select=id,number,direction,doc_type,status,payment_status,total_gross,issue_date&deal_id=eq.${a.id}&order=created_at.desc&limit=${MAX_LIMIT}`),
+    ];
+    if (EXPOSE_PURCHASE) jobs.push(sb(token, `deal_costs?select=${COST_COLS}&deal_id=eq.${a.id}&order=created_at.asc`));
+    const [rows, invoices, costs] = await Promise.all(jobs);
+    if (!rows.length) throw new Error('Nie znaleziono zlecenia');
+    return EXPOSE_PURCHASE ? { deal: rows[0], invoices, costs } : { deal: rows[0], invoices };
+  }
+  if (name === 'search_warehouse') {
+    let p = `warehouse_items?select=${WAREHOUSE_COLS}&order=name.asc&limit=${lim(a.limit)}`;
+    const q = term(a.query);
+    if (q) p += `&or=(name.ilike.*${q}*,color.ilike.*${q}*,supplier.ilike.*${q}*,location.ilike.*${q}*)`;
+    if (a.category) p += `&category=eq.${enumVal(a.category, 'category')}`;
+    return sb(token, p);
+  }
   throw new Error('Nieznane narzędzie');
 }
 
@@ -165,8 +324,8 @@ async function handleRpc(msg, token) {
     return ok({
       protocolVersion: PROTOCOL,
       capabilities: { tools: {} },
-      serverInfo: { name: 'asystent-dekoracji', version: '1.0.0' },
-      instructions: 'Dostęp tylko do odczytu: klienci, oferty i katalog produktów zalogowanego użytkownika.',
+      serverInfo: { name: 'asystent-dekoracji', version: '1.1.0' },
+      instructions: 'Dostęp tylko do odczytu: klienci, wyceny, oferty, faktury, kontrahenci, zlecenia CRM, magazyn i katalog produktów zalogowanego użytkownika.',
     });
   }
   if (method === 'ping') return ok({});
