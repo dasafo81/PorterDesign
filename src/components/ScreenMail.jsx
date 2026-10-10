@@ -54,7 +54,10 @@ export function findDefaultTemplate(list){
 // pod kluczem "pd_mail_flags" (JSON: [{id,label,color,category,preset}]).
 // preset = kolor kategorii w Outlooku (preset8 = fioletowy, preset0 = czerwony…)
 export const DEFAULT_MAIL_FLAGS = [
-  {id:"damian",label:"Damian",color:"#8b5cf6",category:"Damian",preset:"preset8"}
+  {id:"paulina",label:"Paulina",color:"#f97316",category:"Paulina",preset:"preset1"},
+  {id:"damian",label:"Damian",color:"#8b5cf6",category:"Damian",preset:"preset8"},
+  {id:"paulina_zalatwione",label:"Paulina załatwione",color:"#22c55e",category:"Paulina załatwione",preset:"preset4"},
+  {id:"damian_zalatwione",label:"Damian załatwione",color:"#14b8a6",category:"Damian załatwione",preset:"preset5"}
 ];
 // Kolory dopuszczalne dla flag \u2014 celowo ograniczone do presetow Outlooka,
 // zeby oznaczenie mialo ten sam kolor w aplikacji i w skrzynce Outlooka.
