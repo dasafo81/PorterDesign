@@ -2420,7 +2420,23 @@ export function ScreenMail(p){
   // (localStorage \u2192 DEFAULT_MAIL_FLAGS) ustawiony w inicjalizatorze stanu.
   ue(function(){
     sbApi.getMailFlags().then(function(list){
-      if(list)setMailFlags(list);
+      if(!list)return;
+      // Jednorazowo dolacz nowe flagi domyslne do listy zapisanej wczesniej w bazie
+      // (inaczej zapisana lista z samym "Damian" przykrywa nowe domyslne).
+      var seeded=false;
+      try{seeded=localStorage.getItem("pd_mail_flags_seed_v2")==="1";}catch(e){}
+      if(!seeded){
+        var have={};
+        list.forEach(function(f){have[f.id]=true;});
+        var missing=DEFAULT_MAIL_FLAGS.filter(function(f){return !have[f.id];});
+        try{localStorage.setItem("pd_mail_flags_seed_v2","1");}catch(e){}
+        if(missing.length){
+          list=list.concat(missing);
+          try{localStorage.setItem("pd_mail_flags",JSON.stringify(list));}catch(e){}
+          sbApi.saveMailFlags(list).catch(function(){});
+        }
+      }
+      setMailFlags(list);
     }).catch(function(){});
   },[]);
 
