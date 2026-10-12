@@ -2578,6 +2578,25 @@ export function App(p){
                 ce("button",{onClick:function(){mailFabricForSupplier(r.prod);},style:{padding:"10px 16px",borderRadius:10,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer"}},"\u2709\uFE0F Wy\u015blij mailem")
               )
             ):null,
+            // Suma mb osobno dla każdej tkaniny + koloru (to inna tkanina — zamawiamy je osobno).
+            isNewSup?(function(){
+              var agg={},keys=[];
+              fabricPreviewRows.forEach(function(x){
+                if(x.prod!==r.prod)return;
+                var k=(x.fabName||"-")+" — "+(x.kolor||"-");
+                if(!agg[k]){agg[k]=0;keys.push(k);}
+                agg[k]+=parseFloat(String(x.metry).replace(",","."))||0;
+              });
+              keys.sort(function(a,b){return a.localeCompare(b,"pl");});
+              return ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd3)",borderRadius:12,padding:"10px 14px",marginBottom:8}},
+                ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:6}},"Do zamówienia — tkanina / kolor"),
+                keys.map(function(k){
+                  return ce("div",{key:k,style:{display:"flex",justifyContent:"space-between",gap:12,fontSize:13,color:"var(--t1)",padding:"2px 0"}},
+                    ce("span",null,k),
+                    ce("strong",null,agg[k].toFixed(2).replace(".",",")+" mb"));
+                })
+              );
+            })():null,
             ce("div",{style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",border:"1px solid var(--bd3)"}},
               fabricFieldInput(i,"fabName","Tkanina",160),
               fabricFieldInput(i,"kolor","Kolor",110),
