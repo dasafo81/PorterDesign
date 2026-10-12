@@ -52,3 +52,13 @@ af.forEach(function (f) { assert.ok(f.brutto >= f.zakup * 1.5 && f.width >= 280 
 assert.ok(getFabricProducerNotes("Antonio Ferre").some(function (n) { return /35 €/.test(n); }));
 assert.equal(getFabricProducerNotes("DEKOMA"), null);
 console.log("antonio ferre: OK", getFabricTags(af.find(function (f) { return f.name === "Leonardo"; })));
+
+// ADECOR: cennik detaliczny 2026 (210 pozycji, zakup = 50% ceny detalicznej) + uwagi dostawcy
+var ad = FABRICS.filter(function (f) { return f.prod === "ADECOR"; });
+assert.equal(ad.length, 210);
+assert.equal(new Set(FABRICS.map(function (f) { return f.name.toLowerCase().trim(); })).size, FABRICS.length, "nazwy tkanin muszą być unikalne (bez względu na wielkość liter)");
+ad.forEach(function (f) { assert.equal(f.zakup, Math.round(f.brutto * 50) / 100, f.name); });
+assert.equal(ad.find(function (f) { return f.name === "Alfa 325"; }).width, 325);
+assert.ok(ad.find(function (f) { return f.name === "Block FR 280"; }).flameRetardant);
+assert.ok(getFabricProducerNotes("ADECOR").length >= 4);
+console.log("adecor: OK");
