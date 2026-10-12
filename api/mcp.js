@@ -124,6 +124,16 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: { client_id: { type: 'integer' } }, required: ['client_id'] },
   },
   {
+    name: 'find_quote_products',
+    description: 'Znajdź klientów, w których wycenie jest dany typ produktu (opcjonalnie o długości w zakresie), od najnowszych. Typy: karnisz, prestige_round, prestige_square, shuttle (= karnisze elektryczne; domyślnie wszystkie), szyna, zaslona, firana, roleta, zaluzja, karnisz_dek, inny. Długość (cm) dotyczy produktów z polem długości (karnisze, szyny).',
+    inputSchema: { type: 'object', properties: {
+      types: { type: 'array', items: { type: 'string' }, description: 'Typy produktów; domyślnie karnisze elektryczne' },
+      min_len_cm: { type: 'number', description: 'Długość większa niż (cm)' },
+      max_len_cm: { type: 'number', description: 'Długość mniejsza niż (cm)' },
+      limit: { type: 'integer', description: 'Max klientów (1-25, domyślnie 5)' },
+    } },
+  },
+  {
     name: 'search_invoices',
     description: 'Szukaj faktur (sprzedaży i zakupu) po numerze, nabywcy/NIP, typie, statusie, statusie płatności, dacie wystawienia, kliencie lub zleceniu (deal). Zwraca nagłówki bez XML.',
     inputSchema: { type: 'object', properties: {
@@ -199,6 +209,44 @@ function slim(v) {
   return v;
 }
 
+const ELECTRIC_TYPES = ['karnisz', 'prestige_round', 'prestige_square', 'shuttle'];
+const PRODUCT_TYPE = /^[a-z_]{1,30}$/;
+
+// Przeszukuje wyceny (clients.rooms) po typie produktu i długości. Wstępny filtr robi baza
+// (zawieranie jsonb), dopiero potem sprawdzamy długość w kodzie.
+async function findQuoteProducts(token, a) {
+  const types = Array.isArray(a.types) && a.types.length ? a.types.slice(0, 6).map(String) : ELECTRIC_TYPES;
+  if (!types.every((t) => PRODUCT_TYPE.test(t))) throw new Error('Nieprawidłowy typ produktu');
+  const min = a.min_len_cm != null ? Number(a.min_len_cm) : null;
+  const max = a.max_len_cm != null ? Number(a.max_len_cm) : null;
+  if ((min != null && !isFinite(min)) || (max != null && !isFinite(max))) throw new Error('Nieprawidłowa długość');
+  const want = lim(a.limit || 5);
+  const typeSet = new Set(types);
+
+  const batches = await Promise.all(types.map((t) => {
+    const filter = encodeURIComponent(JSON.stringify([{ windows: [{ products: [{ type: t }] }] }]));
+    return sb(token, `clients?select=id,name,quote_no,status,updated_at,rooms&deleted_at=is.null&rooms=cs.${filter}&order=updated_at.desc&limit=60`);
+  }));
+  const seen = new Map();
+  for (const b of batches) for (const c of b) seen.set(c.id, c);
+  const clients = [...seen.values()].sort((x, y) => String(y.updated_at).localeCompare(String(x.updated_at)));
+
+  const out = [];
+  for (const c of clients) {
+    const matches = [];
+    for (const r of c.rooms || []) for (const w of r.windows || []) for (const p of w.products || []) {
+      if (!typeSet.has(p.type)) continue;
+      const len = parseFloat(p.par && p.par.len);
+      if (min != null && !(len > min)) continue;
+      if (max != null && !(len < max)) continue;
+      matches.push({ room: r.name, window: w.name || w.label, type: p.type, len_cm: isFinite(len) ? len : null, qty: (p.par && p.par.qty) || 1 });
+    }
+    if (matches.length) out.push({ client_id: c.id, name: c.name, quote_no: c.quote_no, status: c.status, updated_at: c.updated_at, matches: matches.slice(0, 10) });
+    if (out.length >= want) break;
+  }
+  return out;
+}
+
 function sellerBrief(snap) {
   if (!snap || typeof snap !== 'object') return undefined;
   const o = {};
@@ -252,6 +300,7 @@ async function callTool(name, a, token) {
     const out = JSON.stringify({ id: c.id, name: c.name, quote_no: c.quote_no, status: c.status, rooms: slim(c.rooms || []) });
     return out.length > MAX_TEXT ? { truncated: true, note: 'Wycena jest bardzo duża — pokazano początek.', json: out.slice(0, MAX_TEXT) } : JSON.parse(out);
   }
+  if (name === 'find_quote_products') return findQuoteProducts(token, a);
   if (name === 'search_invoices') {
     let p = `invoices?select=${INVOICE_COLS}&order=created_at.desc&limit=${lim(a.limit)}`;
     const q = term(a.query);
