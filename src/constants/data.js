@@ -7278,7 +7278,7 @@ export function buildOfferDetailRows(client){
         // uproszczona (ta liczy nazwę z modelu, nie z ogólnej etykiety typu).
         if(p.type==="roleta"){
           var rLblMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
-          lbl="Roleta "+(rLblMap[pc.rModel]||pc.rModel||"Relax");
+          lbl="Roleta Rzymska - model "+(rLblMap[pc.rModel]||pc.rModel||"Relax");
         }
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
         var isKurtain=(p.type==="zaslona"||p.type==="firana");

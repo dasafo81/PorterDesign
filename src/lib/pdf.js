@@ -238,7 +238,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
           subtypeLabel=JL2[jt2]||("\u017baluzja "+jt2);
         }else if(p.type==="roleta"){
           var rM=(p.c||{}).rModel||"relax";var RML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
-          subtypeLabel="Roleta "+(RML[rM]||rM);
+          subtypeLabel="Roleta Rzymska - model "+(RML[rM]||rM);
         }else if(p.type==="roleta_shadow"){
           subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");
         }
@@ -384,7 +384,7 @@ export function buildSimplifiedRows(client,selection,comm){
     (windows||[]).forEach(function(w){(w.products||[]).forEach(function(p){
       var t=calcProd(p);if(!t)return;
       var subtypeLabel="";
-      if(p.type==="roleta"){var m=(p.c||{}).rModel||"relax";var ML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};subtypeLabel="Roleta "+(ML[m]||m);}
+      if(p.type==="roleta"){var m=(p.c||{}).rModel||"relax";var ML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};subtypeLabel="Roleta Rzymska - model "+(ML[m]||m);}
       else if(p.type==="roleta_shadow"){subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");}
       else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba35:"Bamboo 35mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
       else if(p.type==="szyna"){subtypeLabel=((p.c||{}).ksBrand==="msigma"?"Szyna mSigma ":"Szyna KS ")+((p.c||{}).ks==="wave"?"Wave":"Flex");}
