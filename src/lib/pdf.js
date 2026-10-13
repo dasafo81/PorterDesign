@@ -239,8 +239,8 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
         }else if(p.type==="roleta"){
           var rM=(p.c||{}).rModel||"relax";var RML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
           subtypeLabel="Roleta Rzymska - model "+(RML[rM]||rM);
-        }else if(p.type==="roleta_shadow"){
-          subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");
+        }else if(p.type==="shadow"){
+          subtypeLabel="Roleta Rzymska - model Shadow";
         }
         var key=p.type==="inny"?(p.innyNazwa||"Inne"):(p.type==="zaluzja"?(subtypeLabel+"__"+p.id):(subtypeLabel||p.type));
         if(!typeData[key]){typeData[key]={count:0,total:0,type:p.type,innyNazwa:p.innyNazwa,subtypeLabel:subtypeLabel,sewings:[]};typeOrder.push(key);}
@@ -255,7 +255,7 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||pluralProd(d.type,d.count));
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=(d.type==="zaslona"||d.type==="firana");
-      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow"||d.type==="shuttle"||d.type==="inny");
+      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="shadow"||d.type==="shuttle"||d.type==="inny");
       var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
       var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
       items.push({label:labelHTML,total:d.total});
@@ -385,7 +385,7 @@ export function buildSimplifiedRows(client,selection,comm){
       var t=calcProd(p);if(!t)return;
       var subtypeLabel="";
       if(p.type==="roleta"){var m=(p.c||{}).rModel||"relax";var ML={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};subtypeLabel="Roleta Rzymska - model "+(ML[m]||m);}
-      else if(p.type==="roleta_shadow"){subtypeLabel="Roleta Shadow "+((p.c||{}).shadowGroup||"C");}
+      else if(p.type==="shadow"){subtypeLabel="Roleta Rzymska - model Shadow";}
       else if(p.type==="zaluzja"){var jt=(p.c||{}).jt||"al25";var JL={al25:"Alu 25mm",al35:"Alu 35mm",al50:"Alu 50mm",ba35:"Bamboo 35mm",ba50:"Bamboo 50mm",bs50:"Basswood 50mm"};subtypeLabel="\u017baluzja "+(JL[jt]||jt);}
       else if(p.type==="szyna"){subtypeLabel=((p.c||{}).ksBrand==="msigma"?"Szyna mSigma ":"Szyna KS ")+((p.c||{}).ks==="wave"?"Wave":"Flex");}
       else if(p.type==="karnisz"){subtypeLabel=karniszBrandLabel(p.c);}
@@ -404,7 +404,7 @@ export function buildSimplifiedRows(client,selection,comm){
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
       var extra=d.sewings.length>0?" ("+d.sewings.join(", ")+")":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
-      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="roleta_shadow"||d.type==="shuttle"||d.type==="inny";
+      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="shadow"||d.type==="shuttle"||d.type==="inny";
       var qtyTag=hasQty&&d.count>1?" ("+d.count+" szt.)":"";
       var label=lbl+(isKpl?" (kpl.)":"")+qtyTag+extra;
       items.push({label:label,total:d.total});
