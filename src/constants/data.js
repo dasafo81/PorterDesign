@@ -5789,7 +5789,7 @@ export const PROD_TYPES =[
   {id:"karnisz",label:"Karnisz elektryczny",icon:"⚡"},
   {id:"prestige_round",label:"Karnisz Prestige",icon:"⚡"},
   {id:"shuttle",label:"Karnisz Shuttle",icon:"⚡"},
-  {id:"shadow",label:"Roleta Shadow",icon:"🎬"},
+  {id:"shadow",label:"Roleta Rzymska - model Shadow",icon:"🎬"},
   {id:"karnisz_dek",label:"Karnisz dekoracyjny",icon:"📏"},
   {id:"plisa",label:"Plisa okienna",icon:"🪟"},
   {id:"tapeta",label:"Tapety ARTE",icon:"🎨"},
@@ -7278,7 +7278,7 @@ export function buildOfferDetailRows(client){
         // uproszczona (ta liczy nazwę z modelu, nie z ogólnej etykiety typu).
         if(p.type==="roleta"){
           var rLblMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
-          lbl="Roleta "+(rLblMap[pc.rModel]||pc.rModel||"Relax");
+          lbl="Roleta Rzymska - model "+(rLblMap[pc.rModel]||pc.rModel||"Relax");
         }
         var prodLabel=p.type==="inny"?(p.innyNazwa||lbl):lbl;
         var isKurtain=(p.type==="zaslona"||p.type==="firana");

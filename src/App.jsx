@@ -278,7 +278,7 @@ export function App(p){
     if(p.type==="roleta"){
       var rLblMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
       var m=(p.c||{}).rModel;
-      return "Roleta "+(rLblMap[m]||m||"Relax");
+      return "Roleta Rzymska - model "+(rLblMap[m]||m||"Relax");
     }
     return (PROD_TYPES.find(function(pt){return pt.id===p.type;})||{label:p.type}).label;
   }
