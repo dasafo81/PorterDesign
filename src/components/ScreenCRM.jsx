@@ -1362,7 +1362,11 @@ export function ModalDeal(p){
           )
         ),
 
-        (billInvoices&&(billList.length>0||d.stage!=="pomiar"))?ce(SectionCard,{icon:"🧾",title:"Rozliczenie z klientem",done:billDone},
+        // Podczas ładowania faktur (billInvoices===null) pokazujemy kartę od razu z placeholderem,
+        // żeby sekcja nie "wskakiwała" po chwili i nie przesuwała układu.
+        (billInvoices===null&&d.stage!=="pomiar")?ce(SectionCard,{icon:"🧾",title:"Rozliczenie z klientem",done:false},
+          ce("div",{style:{fontSize:12,color:"var(--t3)"}},"⏳ Ładuję faktury...")
+        ):(billInvoices&&(billList.length>0||d.stage!=="pomiar"))?ce(SectionCard,{icon:"🧾",title:"Rozliczenie z klientem",done:billDone},
           billList.length===0
             ?ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
               ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
