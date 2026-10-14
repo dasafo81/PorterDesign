@@ -7,7 +7,7 @@
 //   STRIPE_PRICE_START  — price_... (plan Start, 149 zł/mc)
 //   STRIPE_PRICE_STUDIO — price_... (plan Studio, 279 zł/mc)
 //   STRIPE_PRICE_PRO    — price_... (plan Pro, 449 zł/mc)
-//   APP_URL             — np. https://mydecolab.pl (do success/cancel URL)
+//   APP_URL             — np. https://www.mydecolab.pl (do success/cancel URL)
 //
 // POST /api/stripe/checkout
 // Body: { plan: "start" | "studio" | "pro" }

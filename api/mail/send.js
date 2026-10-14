@@ -57,7 +57,7 @@ async function verifyJwt(req, SERVICE, SB_URL) {
 function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
   const name = brand_name || 'Twoje studio';
   const days = trial_days || 14;
-  const url  = login_url || 'https://app.mydecolab.pl';
+  const url  = login_url || 'https://www.mydecolab.pl';
   return {
     subject: `Witaj w My DecoLab — ${name}`,
     html: `<!DOCTYPE html>
@@ -98,7 +98,7 @@ function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
 function tplTrialExpiring({ brand_name, trial_end_date, upgrade_url }) {
   const name = brand_name || 'Twoje studio';
   const date = trial_end_date || '';
-  const url  = upgrade_url || 'https://app.mydecolab.pl/settings/billing';
+  const url  = upgrade_url || 'https://www.mydecolab.pl/settings/billing';
   return {
     subject: `Twój trial wygasa ${date} — odnów dostęp`,
     html: `<!DOCTYPE html>
