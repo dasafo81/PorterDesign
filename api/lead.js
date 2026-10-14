@@ -7,7 +7,7 @@
 // Wymagane zmienne środowiskowe (Vercel → Settings → Environment Variables):
 //   RESEND_API_KEY  — już skonfigurowany dla api/mail/send.js
 //   MAIL_FROM       — już skonfigurowany dla api/mail/send.js
-//   LEAD_TO_EMAIL   — adres, na który mają trafiać leady (np. "paulina@mydecolab.pl")
+//   LEAD_TO_EMAIL   — adres, na który mają trafiać leady (np. "kontakt@mydecolab.pl")
 //
 // POST /api/lead
 // Body: { name, email, studio, city, message?, honeypot? }

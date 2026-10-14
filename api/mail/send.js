@@ -84,7 +84,7 @@ function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
     ${verify_url ? `<p style="margin:16px 0 0;font-size:13px;color:#666">Po potwierdzeniu zalogujesz się tutaj: <a href="${url}" style="color:#1a1a2e">${url}</a></p>` : ''}
     <hr style="margin:40px 0;border:none;border-top:1px solid #eee">
     <p style="margin:0;font-size:13px;color:#999;line-height:1.5">
-      Masz pytania? Napisz na <a href="mailto:hello@mydecolab.pl" style="color:#1a1a2e">hello@mydecolab.pl</a>
+      Masz pytania? Napisz na <a href="mailto:kontakt@mydecolab.pl" style="color:#1a1a2e">kontakt@mydecolab.pl</a>
     </p>
   </td></tr>
 </table>
@@ -122,7 +122,7 @@ function tplTrialExpiring({ brand_name, trial_end_date, upgrade_url }) {
     </a>
     <hr style="margin:40px 0;border:none;border-top:1px solid #eee">
     <p style="margin:0;font-size:13px;color:#999">
-      Pytania? <a href="mailto:hello@mydecolab.pl" style="color:#1a1a2e">hello@mydecolab.pl</a>
+      Pytania? <a href="mailto:kontakt@mydecolab.pl" style="color:#1a1a2e">kontakt@mydecolab.pl</a>
     </p>
   </td></tr>
 </table>
@@ -159,7 +159,7 @@ function tplPasswordReset({ reset_url }) {
     <hr style="margin:40px 0;border:none;border-top:1px solid #eee">
     <p style="margin:0;font-size:13px;color:#999;line-height:1.5">
       Jeśli nie prosiłeś o reset hasła, zignoruj tę wiadomość.<br>
-      Pytania? <a href="mailto:hello@mydecolab.pl" style="color:#1a1a2e">hello@mydecolab.pl</a>
+      Pytania? <a href="mailto:kontakt@mydecolab.pl" style="color:#1a1a2e">kontakt@mydecolab.pl</a>
     </p>
   </td></tr>
 </table>
