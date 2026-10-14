@@ -255,8 +255,8 @@ export function buildSimplifiedPDFHtml(client,comm,montaz,variantLabel,roomVaria
       var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||pluralProd(d.type,d.count));
       var extra=d.sewings.length>0?" <span style=\"font-size:9px;color:#888;font-weight:400;\">("+d.sewings.join(", ")+")</span>":"";
       var isKpl=(d.type==="zaslona"||d.type==="firana");
-      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="shadow"||d.type==="shuttle"||d.type==="inny");
-      var qtyTag=hasQty&&d.count>1?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
+      var hasQty=(d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="shadow"||d.type==="shuttle"||d.type==="plisa"||d.type==="inny");
+      var qtyTag=hasQty&&(d.count>1||d.type==="plisa")?" <span style=\"font-size:9px;color:#888;\">("+d.count+" szt.)</span>":"";
       var labelHTML=lbl+(isKpl?" <span style=\"font-size:9px;color:#888;\">(kpl.)</span>":"")+qtyTag+extra;
       items.push({label:labelHTML,total:d.total});
       rows+="<tr><td style=\"padding:7px 10px;font-size:11px;color:#333;\">"+labelHTML+"</td><td style=\"padding:7px 10px;text-align:right;font-size:11px;font-weight:600;color:#333;\">"+roundTo10(d.total)+" z\u0142</td></tr>";
@@ -405,7 +405,7 @@ export function buildSimplifiedRows(client,selection,comm){
       var extra=d.sewings.length>0?" ("+d.sewings.join(", ")+")":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
       var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="shadow"||d.type==="shuttle"||d.type==="plisa"||d.type==="inny";
-      var qtyTag=hasQty&&d.count>1?" ("+d.count+" szt.)":"";
+      var qtyTag=hasQty&&(d.count>1||d.type==="plisa")?" ("+d.count+" szt.)":"";
       var label=lbl+(isKpl?" (kpl.)":"")+qtyTag+extra;
       items.push({label:label,total:d.total});
     });
