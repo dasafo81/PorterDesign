@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://asystentdekoracji.pl/sitemap.xml
+Sitemap: https://www.mydecolab.pl/sitemap.xml

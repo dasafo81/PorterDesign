@@ -10,7 +10,7 @@
 //   Migration 0024_stripe_webhook_events.sql must be applied before enabling live webhooks.
 //
 // Skonfiguruj w Stripe Dashboard:
-//   Endpoint URL: https://asystentdekoracji.pl/api/stripe/webhook
+//   Endpoint URL: https://www.mydecolab.pl/api/stripe/webhook
 //   Zdarzenia: checkout.session.completed, customer.subscription.updated,
 //              customer.subscription.deleted, invoice.payment_failed
 

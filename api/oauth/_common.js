@@ -9,7 +9,7 @@ export function json(data, status = 200, extra = {}) {
 
 export function cors() {
   return {
-    'Access-Control-Allow-Origin': process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl',
+    'Access-Control-Allow-Origin': process.env.APP_ORIGIN || 'https://www.mydecolab.pl',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
@@ -60,7 +60,7 @@ export async function supabase(path, options = {}) {
 }
 
 export function redirectUri(provider) {
-  const origin = process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl';
+  const origin = process.env.APP_ORIGIN || 'https://www.mydecolab.pl';
   return provider === 'microsoft'
     ? `${origin}/api/oauth/microsoft-callback`
     : `${origin}/api/oauth/google-callback`;

@@ -7,7 +7,7 @@
 // Wymagane zmienne środowiskowe (Vercel → Settings → Environment Variables):
 //   RESEND_API_KEY  — już skonfigurowany dla api/mail/send.js
 //   MAIL_FROM       — już skonfigurowany dla api/mail/send.js
-//   LEAD_TO_EMAIL   — adres, na który mają trafiać leady (np. "paulina@asystentdekoracji.pl")
+//   LEAD_TO_EMAIL   — adres, na który mają trafiać leady (np. "kontakt@mydecolab.pl")
 //
 // POST /api/lead
 // Body: { name, email, studio, city, message?, honeypot? }
@@ -46,7 +46,7 @@ export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const RESEND_KEY = process.env.RESEND_API_KEY;
-  const MAIL_FROM  = process.env.MAIL_FROM || 'Asystent Dekoracji <noreply@asystentdekoracji.pl>';
+  const MAIL_FROM  = process.env.MAIL_FROM || 'My DecoLab <noreply@mydecolab.pl>';
   const LEAD_TO    = process.env.LEAD_TO_EMAIL;
 
   if (!RESEND_KEY) return json({ error: 'server misconfigured' }, 500);

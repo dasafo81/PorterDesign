@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Check production readiness
         env:
-          HEALTH_URL: https://www.asystentdekoracji.pl/api/health
+          HEALTH_URL: https://www.mydecolab.pl/api/health
         run: |
           set -eu
           body="$(curl --fail-with-body --silent --show-error --max-time 20 "$HEALTH_URL")"
@@ -22,16 +22,16 @@ jobs:
 
           # Critical routes: no payment or invoice is created.
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
-            https://www.asystentdekoracji.pl/landing.html)" = "200"
+            https://www.mydecolab.pl/landing.html)" = "200"
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
             -X POST -H 'Content-Type: application/json' \
-            https://www.asystentdekoracji.pl/api/stripe/webhook)" = "400"
+            https://www.mydecolab.pl/api/stripe/webhook)" = "400"
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
             -X POST -H 'Content-Type: application/json' -d '{}' \
-            https://www.asystentdekoracji.pl/api/stripe/checkout)" = "500"
+            https://www.mydecolab.pl/api/stripe/checkout)" = "500"
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
             -X POST -H 'Content-Type: application/json' -d '{}' \
-            https://www.asystentdekoracji.pl/api/ksef/send)" = "401"
+            https://www.mydecolab.pl/api/ksef/send)" = "401"
 
   backup:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 2 * * *'
