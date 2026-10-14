@@ -401,10 +401,10 @@ export function buildSimplifiedRows(client,selection,comm){
     });});
     var items=[];
     typeOrder.forEach(function(key){var d=typeData[key];
-      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type));
+      var lbl=d.type==="inny"?(d.innyNazwa||"Inne"):(d.subtypeLabel||(d.type==="zaslona"?"Zas\u0142ony":d.type==="firana"?"Firany":d.type==="plisa"?(d.count===1?"Plisa":"Plisy"):d.type));
       var extra=d.sewings.length>0?" ("+d.sewings.join(", ")+")":"";
       var isKpl=d.type==="zaslona"||d.type==="firana";
-      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="shadow"||d.type==="shuttle"||d.type==="inny";
+      var hasQty=d.type==="szyna"||d.type==="karnisz"||d.type==="prestige_round"||d.type==="prestige_square"||d.type==="karnisz_dek"||d.type==="roleta"||d.type==="shadow"||d.type==="shuttle"||d.type==="plisa"||d.type==="inny";
       var qtyTag=hasQty&&d.count>1?" ("+d.count+" szt.)":"";
       var label=lbl+(isKpl?" (kpl.)":"")+qtyTag+extra;
       items.push({label:label,total:d.total});
