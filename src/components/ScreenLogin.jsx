@@ -76,15 +76,9 @@ export function ScreenLogin(p) {
         ce('div', { className: 'holo-orb', style: { width: 60, height: 60, background: 'var(--orb-3)', top: 30, left: 200, animationDelay: '1.5s' } }),
 
         ce('div', { style: { position: 'relative', zIndex: 1 } },
-          // Logo My DecoLab w szklanym chipie — czarne PNG z /public odwracamy na biale (panel ma zawsze ciemne tlo)
-          ce('div', {
-            style: {
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.22)',
-              borderRadius: 18, padding: '14px 22px', marginBottom: '1.8rem'
-            }
-          },
-            ce('img', { src: '/logo-mydecolab.png', alt: 'My DecoLab', style: { height: 52, width: 'auto', display: 'block', filter: 'invert(1)' } })
+          // Logo My DecoLab — czarne PNG z /public odwracamy na biale (panel ma zawsze ciemne tlo)
+          ce('div', { style: { display: 'flex', justifyContent: 'center', marginBottom: '2.2rem' } },
+            ce('img', { src: '/logo-mydecolab.png', alt: 'My DecoLab', style: { height: 84, maxWidth: '100%', width: 'auto', display: 'block', filter: 'invert(1)' } })
           ),
 
           ce('div', { style: { fontSize: 30, fontWeight: 900, color: '#fff', lineHeight: 1.18, marginBottom: 12 } },
