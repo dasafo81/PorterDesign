@@ -463,9 +463,10 @@ export function ModalDeal(p){
     setBillBusy(true);setBillErr(null);
     sbApi.getInvoice(first.id).then(function(full){
       if(!full)throw new Error("Nie udało się pobrać pierwszej faktury.");
-      // Nazwa i Uwagi zawsze wg tego samego standardu co pierwsza faktura (issueFirstHalf) —
-      // niezależnie od tego, jak nazwana była pozycja na pierwszej fakturze.
+      // Nazwa pozycji i Uwagi przejmowane z pierwszej faktury (te same, co wystawiono/edytowano
+      // w pierwszej); gdy puste — standard z issueFirstHalf.
       var srcItems=full.invoice_items||[];
+      var itemName=(srcItems[0]&&srcItems[0].name)||"Aranżacje okienne";
       var items;
       if(billRemaining!==null&&billRemaining>0&&srcItems.length){
         // Druga faktura = faktyczna reszta należności (wycena − już zafakturowane), a nie kopia
@@ -473,17 +474,17 @@ export function ModalDeal(p){
         var it0=srcItems[0];
         var rest=+billRemaining.toFixed(2);
         var vr2=it0.vat_rate;
-        items=[Object.assign({position:1,name:"Aranżacje okienne",quantity:1,unit:it0.unit,vat_rate:vr2,pkwiu:it0.pkwiu||""},
+        items=[Object.assign({position:1,name:itemName,quantity:1,unit:it0.unit,vat_rate:vr2,pkwiu:it0.pkwiu||""},
           calcLineFromGross(rest,1,vr2),{unit_gross:rest})];
       } else {
         items=srcItems.map(function(it){
-          return {position:it.position,name:"Aranżacje okienne",quantity:it.quantity,unit:it.unit,unit_net:it.unit_net,
+          return {position:it.position,name:it.name||itemName,quantity:it.quantity,unit:it.unit,unit_net:it.unit_net,
             vat_rate:it.vat_rate,line_net:it.line_net,line_vat:it.line_vat,line_gross:it.line_gross,pkwiu:it.pkwiu||""};
         });
       }
       var ent=billEntities.find(function(e){return e.id===full.entity_id;})||{};
       var exempt2=!!(ent.vat_status==="zwolniony");
-      var notes=exempt2?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"";
+      var notes=full.notes||(exempt2?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"");
       setBillEditor({entity:ent,invoice:{
         doc_type:"vat", direction:"sprzedaz", payment_method:full.payment_method,
         client_id:full.client_id||(cl&&cl.id)||null, deal_id:d.id,
