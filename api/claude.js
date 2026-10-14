@@ -14,7 +14,7 @@ function json(data, status, extraHeaders = {}) {
 
 function corsHeaders(req) {
   const origin = req.headers.get('origin');
-  const allowed = process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl';
+  const allowed = process.env.APP_ORIGIN || 'https://www.mydecolab.pl';
   return origin === allowed ? {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',

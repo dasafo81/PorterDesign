@@ -65,7 +65,7 @@ export async function handleCallback(req, providerOverride = null) {
       return json({ error: 'OAuth connection could not be saved', detail: detail.slice(0, 500) }, 502, cors());
     }
     await supabase(`oauth_states?state_hash=eq.${encodeURIComponent(stateHash)}`, { method: 'DELETE' });
-    const origin = process.env.APP_ORIGIN || 'https://www.asystentdekoracji.pl';
+    const origin = process.env.APP_ORIGIN || 'https://www.mydecolab.pl';
     return new Response(null, { status: 302, headers: { ...cors(), Location: `${origin}/?oauth=${provider}&connected=1&return=mail` } });
   } catch (e) {
     return json({ error: e.message || 'OAuth callback failed' }, 500, cors());

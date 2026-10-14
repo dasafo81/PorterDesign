@@ -90,7 +90,7 @@ export function ScreenLogin(p) {
           ),
 
           ce('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--hero-text-1)', marginBottom: 10 } },
-            'Asystent Dekoracji'
+            'My DecoLab'
           ),
           ce('div', { style: { fontSize: 30, fontWeight: 900, color: '#fff', lineHeight: 1.18, marginBottom: 12 } },
             'Wycena, CRM i faktury.', ce('br'), 'W jednym miejscu.'
@@ -218,7 +218,7 @@ export function ScreenLogin(p) {
             textAlign: 'center',
             letterSpacing: '0.04em'
           }
-        }, 'Asystent Dekoracji \u00B7 Dost\u0119p tylko dla uprawnionych u\u017Cytkownik\u00F3w')
+        }, 'My DecoLab \u00B7 Dost\u0119p tylko dla uprawnionych u\u017Cytkownik\u00F3w')
       )
     )
   );

@@ -1,6 +1,6 @@
 // api/mcp.js
 // Vercel Edge Function — zdalny serwer MCP (Streamable HTTP, bezstanowy, tylko odczyt).
-// Pozwala Claude przeszukiwać klientów, wyceny i katalog Asystenta Dekoracji.
+// Pozwala Claude przeszukiwać klientów, wyceny i katalog My DecoLab.
 //
 // Bezpieczeństwo: wszystkie zapytania do Supabase idą z tokenem ZALOGOWANEGO
 // użytkownika (nie service role), więc RLS po tenant_id izoluje dane tenantów.
@@ -324,7 +324,7 @@ async function handleRpc(msg, token) {
     return ok({
       protocolVersion: PROTOCOL,
       capabilities: { tools: {} },
-      serverInfo: { name: 'asystent-dekoracji', version: '1.1.0' },
+      serverInfo: { name: 'my-decolab', version: '1.1.0' },
       instructions: 'Dostęp tylko do odczytu: klienci, wyceny, oferty, faktury, kontrahenci, zlecenia CRM, magazyn i katalog produktów zalogowanego użytkownika.',
     });
   }

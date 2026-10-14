@@ -2,7 +2,7 @@
 // Vercel Edge Function — wysyła maile transakcyjne przez Resend.
 // Wymagane zmienne środowiskowe (Vercel → Settings → Environment Variables):
 //   RESEND_API_KEY     — klucz API z resend.com (re_...)
-//   MAIL_FROM          — adres nadawcy, np. "Porter Design <noreply@asystentdekoracji.pl>"
+//   MAIL_FROM          — adres nadawcy, np. "My DecoLab <noreply@mydecolab.pl>"
 //   SUPABASE_URL       — https://rkcidwusjzvfwxszotnb.supabase.co
 //   SUPABASE_SERVICE_ROLE_KEY
 //
@@ -57,9 +57,9 @@ async function verifyJwt(req, SERVICE, SB_URL) {
 function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
   const name = brand_name || 'Twoje studio';
   const days = trial_days || 14;
-  const url  = login_url || 'https://app.asystentdekoracji.pl';
+  const url  = login_url || 'https://app.mydecolab.pl';
   return {
-    subject: `Witaj w Asystent Dekoracji — ${name}`,
+    subject: `Witaj w My DecoLab — ${name}`,
     html: `<!DOCTYPE html>
 <html lang="pl">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -68,7 +68,7 @@ function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
 <tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
   <tr><td style="background:#1a1a2e;padding:32px 40px;text-align:center">
-    <span style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px">Asystent Dekoracji</span>
+    <span style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px">My DecoLab</span>
   </td></tr>
   <tr><td style="padding:40px">
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#1a1a2e">Witaj, ${escHtml(name)}!</h1>
@@ -84,7 +84,7 @@ function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
     ${verify_url ? `<p style="margin:16px 0 0;font-size:13px;color:#666">Po potwierdzeniu zalogujesz się tutaj: <a href="${url}" style="color:#1a1a2e">${url}</a></p>` : ''}
     <hr style="margin:40px 0;border:none;border-top:1px solid #eee">
     <p style="margin:0;font-size:13px;color:#999;line-height:1.5">
-      Masz pytania? Napisz na <a href="mailto:hello@asystentdekoracji.pl" style="color:#1a1a2e">hello@asystentdekoracji.pl</a>
+      Masz pytania? Napisz na <a href="mailto:hello@mydecolab.pl" style="color:#1a1a2e">hello@mydecolab.pl</a>
     </p>
   </td></tr>
 </table>
@@ -98,7 +98,7 @@ function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
 function tplTrialExpiring({ brand_name, trial_end_date, upgrade_url }) {
   const name = brand_name || 'Twoje studio';
   const date = trial_end_date || '';
-  const url  = upgrade_url || 'https://app.asystentdekoracji.pl/settings/billing';
+  const url  = upgrade_url || 'https://app.mydecolab.pl/settings/billing';
   return {
     subject: `Twój trial wygasa ${date} — odnów dostęp`,
     html: `<!DOCTYPE html>
@@ -109,12 +109,12 @@ function tplTrialExpiring({ brand_name, trial_end_date, upgrade_url }) {
 <tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
   <tr><td style="background:#c0392b;padding:32px 40px;text-align:center">
-    <span style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px">Asystent Dekoracji</span>
+    <span style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px">My DecoLab</span>
   </td></tr>
   <tr><td style="padding:40px">
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#1a1a2e">Twój trial kończy się ${escHtml(date)}</h1>
     <p style="margin:0 0 24px;font-size:15px;color:#444;line-height:1.6">
-      Hej ${escHtml(name)}, za 3 dni wygasa Twój bezpłatny dostęp do Asystent Dekoracji.
+      Hej ${escHtml(name)}, za 3 dni wygasa Twój bezpłatny dostęp do My DecoLab.
       Aby zachować wszystkie dane i dalej korzystać z aplikacji, wybierz plan.
     </p>
     <a href="${url}" style="display:inline-block;background:#c0392b;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600">
@@ -122,7 +122,7 @@ function tplTrialExpiring({ brand_name, trial_end_date, upgrade_url }) {
     </a>
     <hr style="margin:40px 0;border:none;border-top:1px solid #eee">
     <p style="margin:0;font-size:13px;color:#999">
-      Pytania? <a href="mailto:hello@asystentdekoracji.pl" style="color:#1a1a2e">hello@asystentdekoracji.pl</a>
+      Pytania? <a href="mailto:hello@mydecolab.pl" style="color:#1a1a2e">hello@mydecolab.pl</a>
     </p>
   </td></tr>
 </table>
@@ -136,7 +136,7 @@ function tplTrialExpiring({ brand_name, trial_end_date, upgrade_url }) {
 function tplPasswordReset({ reset_url }) {
   const url = reset_url || '#';
   return {
-    subject: 'Reset hasła — Asystent Dekoracji',
+    subject: 'Reset hasła — My DecoLab',
     html: `<!DOCTYPE html>
 <html lang="pl">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -145,7 +145,7 @@ function tplPasswordReset({ reset_url }) {
 <tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
   <tr><td style="background:#1a1a2e;padding:32px 40px;text-align:center">
-    <span style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px">Asystent Dekoracji</span>
+    <span style="color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px">My DecoLab</span>
   </td></tr>
   <tr><td style="padding:40px">
     <h1 style="margin:0 0 16px;font-size:24px;font-weight:700;color:#1a1a2e">Reset hasła</h1>
@@ -159,7 +159,7 @@ function tplPasswordReset({ reset_url }) {
     <hr style="margin:40px 0;border:none;border-top:1px solid #eee">
     <p style="margin:0;font-size:13px;color:#999;line-height:1.5">
       Jeśli nie prosiłeś o reset hasła, zignoruj tę wiadomość.<br>
-      Pytania? <a href="mailto:hello@asystentdekoracji.pl" style="color:#1a1a2e">hello@asystentdekoracji.pl</a>
+      Pytania? <a href="mailto:hello@mydecolab.pl" style="color:#1a1a2e">hello@mydecolab.pl</a>
     </p>
   </td></tr>
 </table>
@@ -194,7 +194,7 @@ export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const RESEND_KEY = process.env.RESEND_API_KEY;
-  const MAIL_FROM  = process.env.MAIL_FROM || 'Asystent Dekoracji <noreply@asystentdekoracji.pl>';
+  const MAIL_FROM  = process.env.MAIL_FROM || 'My DecoLab <noreply@mydecolab.pl>';
   const SERVICE    = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const SB_URL     = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
 

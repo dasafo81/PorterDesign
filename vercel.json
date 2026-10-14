@@ -6,7 +6,13 @@
     {
       "source": "/((?!api/).*)",
       "has": [{ "type": "host", "value": "porter-design.vercel.app" }],
-      "destination": "https://asystentdekoracji.pl/$1",
+      "destination": "https://mydecolab.pl/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "(www\\.)?asystentdekoracji\\.pl" }],
+      "destination": "https://mydecolab.pl/$1",
       "permanent": true
     }
   ],

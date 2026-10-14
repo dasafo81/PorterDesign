@@ -88,7 +88,7 @@ export default function OAuthConsent() {
 
   var name = (details.client && details.client.name) || 'Aplikacja zewnętrzna';
   return ce('div', { style: BOX },
-    ce('div', { style: { fontSize: 11, color: '#999', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 } }, 'Asystent Dekoracji'),
+    ce('div', { style: { fontSize: 11, color: '#999', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 } }, 'My DecoLab'),
     ce('div', { style: { fontSize: 17, fontWeight: 700, marginBottom: 10 } }, 'Zezwolić aplikacji „' + name + '” na dostęp?'),
     ce('div', { style: { fontSize: 12, color: '#666', lineHeight: 1.6, marginBottom: 6 } },
       'Aplikacja uzyska dostęp do Twojego konta' + (details.user && details.user.email ? ' (' + details.user.email + ')' : '') +

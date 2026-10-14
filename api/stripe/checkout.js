@@ -7,7 +7,7 @@
 //   STRIPE_PRICE_START  — price_... (plan Start, 149 zł/mc)
 //   STRIPE_PRICE_STUDIO — price_... (plan Studio, 279 zł/mc)
 //   STRIPE_PRICE_PRO    — price_... (plan Pro, 449 zł/mc)
-//   APP_URL             — np. https://asystentdekoracji.pl (do success/cancel URL)
+//   APP_URL             — np. https://mydecolab.pl (do success/cancel URL)
 //
 // POST /api/stripe/checkout
 // Body: { plan: "start" | "studio" | "pro" }
@@ -16,7 +16,7 @@
 export const config = { runtime: 'edge' };
 
 const SB_URL = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
-const ALLOWED_ORIGIN = process.env.APP_URL || 'https://www.asystentdekoracji.pl';
+const ALLOWED_ORIGIN = process.env.APP_URL || 'https://www.mydecolab.pl';
 
 function cors() {
   return {
@@ -57,7 +57,7 @@ export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'method not allowed' }, 405);
 
   const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
-  const APP_URL    = process.env.APP_URL || 'https://www.asystentdekoracji.pl';
+  const APP_URL    = process.env.APP_URL || 'https://www.mydecolab.pl';
   if (!STRIPE_KEY) return json({ error: 'server misconfigured' }, 500);
 
   const user = await verifyUser(req);
