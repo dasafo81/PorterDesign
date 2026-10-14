@@ -455,8 +455,8 @@ export function ModalDeal(p){
   var canIssueSecond=billList.length===1&&
     (billRemaining===null||billRemaining>10);
 
-  // "Wystaw drugie 50%": kopia pierwszej faktury (ten sam podmiot, nabywca, pozycje i stawki VAT)
-  // jako zwykła Faktura VAT. Otwiera edytor w module Faktury — numer, daty i KSeF jak przy Duplikuj.
+  // "Wystaw drugą fakturę": ten sam podmiot, nabywca i stawka VAT co pierwsza, kwota = reszta
+  // należności (wycena − zafakturowane; bez wyceny kopia pozycji) jako zwykła Faktura VAT. Otwiera edytor w module Faktury — numer, daty i KSeF jak przy Duplikuj.
   function issueSecondHalf(){
     var first=billList[0];
     if(!first)return;
@@ -465,10 +465,22 @@ export function ModalDeal(p){
       if(!full)throw new Error("Nie udało się pobrać pierwszej faktury.");
       // Nazwa i Uwagi zawsze wg tego samego standardu co pierwsza faktura (issueFirstHalf) —
       // niezależnie od tego, jak nazwana była pozycja na pierwszej fakturze.
-      var items=(full.invoice_items||[]).map(function(it){
-        return {position:it.position,name:"Aranżacje okienne",quantity:it.quantity,unit:it.unit,unit_net:it.unit_net,
-          vat_rate:it.vat_rate,line_net:it.line_net,line_vat:it.line_vat,line_gross:it.line_gross,pkwiu:it.pkwiu||""};
-      });
+      var srcItems=full.invoice_items||[];
+      var items;
+      if(billRemaining!==null&&billRemaining>0&&srcItems.length){
+        // Druga faktura = faktyczna reszta należności (wycena − już zafakturowane), a nie kopia
+        // pierwszej: pierwsza faktura nie musi wynosić dokładnie 50%. Stawka VAT i jednostka jak na pierwszej.
+        var it0=srcItems[0];
+        var rest=+billRemaining.toFixed(2);
+        var vr2=it0.vat_rate;
+        items=[Object.assign({position:1,name:"Aranżacje okienne",quantity:1,unit:it0.unit,vat_rate:vr2,pkwiu:it0.pkwiu||""},
+          calcLineFromGross(rest,1,vr2),{unit_gross:rest})];
+      } else {
+        items=srcItems.map(function(it){
+          return {position:it.position,name:"Aranżacje okienne",quantity:it.quantity,unit:it.unit,unit_net:it.unit_net,
+            vat_rate:it.vat_rate,line_net:it.line_net,line_vat:it.line_vat,line_gross:it.line_gross,pkwiu:it.pkwiu||""};
+        });
+      }
       var ent=billEntities.find(function(e){return e.id===full.entity_id;})||{};
       var exempt2=!!(ent.vat_status==="zwolniony");
       var notes=exempt2?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"";
@@ -516,7 +528,7 @@ export function ModalDeal(p){
       var fname="Faktura-"+(number||"dokument").replace(/[^\w-]+/g,"_")+".html";
       var gross=billFmt(full.total_gross);
       var due=full.due_date?String(full.due_date).split("-").reverse().join("."):"";
-      var part=billList.length>1?(idx===0?" (zaliczka 50% wartości zamówienia)":" (pozostałe 50% wartości zamówienia)"):"";
+      var part=billList.length>1?(idx===0?" (zaliczka)":" (pozostała część wartości zamówienia)"):"";
       // Treść z szablonu "faktura" (Poczta → Szablony)
       var tpl=res[2];
       var vars={numer:number,kwota:gross,czesc:part,
@@ -1438,7 +1450,7 @@ export function ModalDeal(p){
               canIssueSecond?ce("button",{onClick:issueSecondHalf,disabled:billBusy,
                 style:{marginTop:4,padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
                   fontSize:12,fontWeight:700,cursor:billBusy?"not-allowed":"pointer",opacity:billBusy?0.6:1}},
-                billBusy?"⏳ Przygotowuję...":"🧾 Wystaw drugie 50%"):null,
+                billBusy?"⏳ Przygotowuję...":(billRemaining!==null?"🧾 Wystaw drugą fakturę — reszta "+billFmt(billRemaining):"🧾 Wystaw drugą fakturę")):null,
               billErr?ce("div",{style:{fontSize:11,color:"var(--red, #ef4444)"}},billErr):null
             ),
           billUnlinked.length>0?ce("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid var(--bd3)"}},
