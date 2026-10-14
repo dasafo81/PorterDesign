@@ -392,7 +392,7 @@ export function ModalDeal(p){
   // żeby nie wciągać faktur z innego zlecenia tego samego klienta. Proformy i korekty pomijamy.
   function loadBill(){
     return Promise.all([
-      sbApi.getInvoices(),
+      sbApi.getInvoicesForDeal(d.id),
       sbApi.getEntities().catch(function(){return [];}),
       sbApi.getInvoiceSettings().catch(function(){return null;})
     ]).then(function(res){

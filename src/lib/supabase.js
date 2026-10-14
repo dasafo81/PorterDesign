@@ -456,6 +456,11 @@ export const sbApi = {
   getInvoices: function(){
     return sbFetch("GET","invoices?select=*&order=issue_date.desc.nullslast,created_at.desc");
   },
+  // Faktury potrzebne karcie deala: przypisane do zlecenia lub jeszcze bez deal_id
+  // (kandydaci do powiązania) — bez faktur przypisanych do innych zleceń.
+  getInvoicesForDeal: function(dealId){
+    return sbFetch("GET","invoices?select=*&or=(deal_id.eq."+encodeURIComponent(dealId)+",deal_id.is.null)&order=issue_date.desc.nullslast,created_at.desc");
+  },
   // Pojedyncza faktura wraz z pozycjami (PostgREST embed).
   getInvoice: function(id){
     return sbFetch("GET","invoices?id=eq."+id+"&select=*,invoice_items(*)").then(function(rows){
