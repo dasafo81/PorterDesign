@@ -1,7 +1,6 @@
 // src/components/ScreenLogin.jsx
 import React, { useState } from 'react';
 import { signIn } from '../lib/auth.js';
-import { LOGO_SRC } from '../constants/data.js';
 const ce = React.createElement;
 
 // Mini-lista funkcji pokazywana obok logowania — treść zsynchronizowana z landing.html
@@ -77,21 +76,17 @@ export function ScreenLogin(p) {
         ce('div', { className: 'holo-orb', style: { width: 60, height: 60, background: 'var(--orb-3)', top: 30, left: 200, animationDelay: '1.5s' } }),
 
         ce('div', { style: { position: 'relative', zIndex: 1 } },
-          // Logo w szklanym chipie — czytelne niezależnie od kolorów samego logo
+          // Logo My DecoLab w szklanym chipie — czarne PNG z /public odwracamy na biale (panel ma zawsze ciemne tlo)
           ce('div', {
             style: {
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.22)',
-              borderRadius: 16, padding: '10px 16px', marginBottom: '1.6rem'
+              borderRadius: 18, padding: '14px 22px', marginBottom: '1.8rem'
             }
           },
-            // Panel z logo ma zawsze ciemne tlo (--hero-gradient) — czarne SVG odwracamy na biale
-            ce('img', { src: LOGO_SRC, alt: 'Porter Design', style: { height: 34, objectFit: 'contain', filter: 'invert(1)' } })
+            ce('img', { src: '/logo-mydecolab.png', alt: 'My DecoLab', style: { height: 52, width: 'auto', display: 'block', filter: 'invert(1)' } })
           ),
 
-          ce('div', { style: { fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--hero-text-1)', marginBottom: 10 } },
-            'My DecoLab'
-          ),
           ce('div', { style: { fontSize: 30, fontWeight: 900, color: '#fff', lineHeight: 1.18, marginBottom: 12 } },
             'Wycena, CRM i faktury.', ce('br'), 'W jednym miejscu.'
           ),
