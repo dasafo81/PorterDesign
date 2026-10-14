@@ -3030,7 +3030,16 @@ function DealCard(cp){
   var baseTotal=cl?clientTotal2(cl):0;
   var montazRate=cl?(cl.install_fee_mode==="amount"?0:((parseFloat(cl.install_fee)||0)/100)):0;
   var montazAmount=cl&&cl.install_fee_mode==="amount"?(parseFloat(cl.install_fee)||0):0;
-  var total=roundTo10(baseTotal+(montazAmount>0?montazAmount:(montazRate>0?baseTotal*montazRate:0)));
+  var gross=roundTo10(baseTotal+(montazAmount>0?montazAmount:(montazRate>0?baseTotal*montazRate:0)));
+  // Rabat i koszt wizyty z Podsumowania (pd_adj_<id> w localStorage) — ta sama logika co w ModalDeal,
+  // żeby kwota na karcie była aktualna, tj. po rabacie.
+  var adj=null;
+  try{adj=cl?JSON.parse(localStorage.getItem("pd_adj_"+cl.id)||"null"):null;}catch(e){}
+  var adjDiscIn=adj?(+String(adj.di).replace(",",".")||0):0;
+  var adjVisitIn=adj?(+String(adj.vi).replace(",",".")||0):0;
+  var discVal=(adj&&adj.de&&adjDiscIn>0)?(adj.dm==="percent"?roundTo10(gross*adjDiscIn/100):roundTo10(adjDiscIn)):0;
+  var visitVal=(adj&&adj.ve&&adjVisitIn>0)?roundTo10(adjVisitIn):0;
+  var total=gross>0?Math.max(0,roundTo10(gross-discVal-visitVal)):0;
   // Terminy na karcie zależne od etapu: Pomiar → termin pomiaru; Zamówienie/Realizacja → deadline;
   // Montaż → deadline + termin montażu
   var sid=stage.id;
