@@ -47,7 +47,7 @@ async function gmailGetToken() {
   if (_gToken && Date.now() < _gExp) return _gToken;
   var data;
   try {
-    data = await brokerToken("google");
+    data = await brokerToken("google", { mail: true });
   } catch (e) {
     if (e && e.code === "OAUTH_RECONNECT_REQUIRED") throw reconnectError(e.code);
     throw e;
@@ -107,7 +107,7 @@ export async function mailGetActiveAccount() {
   var list = await brokerStatus();
   if (list) {
     var usable = list.filter(function(c) {
-      return c.provider === "microsoft" || (c.provider === "google" && GMAIL_SCOPE_RE.test(c.scopes || ""));
+      return c.provider === "microsoft" || (c.provider === "google" && !c.mail_disabled && GMAIL_SCOPE_RE.test(c.scopes || ""));
     }); // serwer zwraca najnowsze pierwsze
     for (var i = 0; i < usable.length; i++) {
       var acc = usable[i].provider === "google" ? await gmailActiveAccount() : await microsoftActiveAccount();
@@ -136,19 +136,16 @@ export function mailLogin(provider) {
   return msalLogin();
 }
 
-// Wylogowanie z modułu Mail = odłączenie konta po stronie serwera, inaczej zapisane połączenie
-// logowałoby użytkownika z powrotem samo. Błąd serwera przerywa wylogowanie (rzuca wyjątek),
-// żeby UI nie udawał wylogowania, po którym skrzynka i tak wróci.
-// Uwaga: odłączenie Gmaila odłącza też Kalendarz Google (to samo połączenie).
+// Wylogowanie z modułu Mail, inaczej zapisane połączenie logowałoby użytkownika z powrotem samo.
+// Outlook: połączenie jest kasowane. Gmail: tylko wyłączamy pocztę — Kalendarz Google działa na
+// tym samym połączeniu i ma zostać. Błąd serwera przerywa wylogowanie (wyjątek), żeby UI nie
+// udawał wylogowania, po którym skrzynka i tak wróci.
 export async function mailLogout() {
   var provider = getMailProvider();
-  await brokerDisconnect(provider);
+  await brokerDisconnect(provider, { mail: true });
   _gToken = null; _gExp = 0; _gAccount = null;
   if (provider === "google") {
-    try {
-      ["pd_oauth_gmail", "pd_oauth_google", "pd_gcal_token", "pd_gcal_token_exp", "pd_gcal_hint"]
-        .forEach(function(k) { localStorage.removeItem(k); });
-    } catch (e) {}
+    try { localStorage.removeItem("pd_oauth_gmail"); } catch (e) {}
   } else {
     msalForget();
   }

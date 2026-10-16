@@ -10,10 +10,21 @@ export default async function handler(req) {
   try {
     const user = await userFromRequest(req);
     if (!user) return json({ error: 'Unauthorized' }, 401, cors());
-    const provider = new URL(req.url).searchParams.get('provider');
+    const query = new URL(req.url).searchParams;
+    const provider = query.get('provider');
     if (!['google', 'microsoft'].includes(provider)) return json({ error: 'Invalid provider' }, 400, cors());
     serviceConfig();
     const uid = encodeURIComponent(user.id);
+    if (provider === 'google' && query.get('feature') === 'mail') {
+      // Wylogowanie z Gmaila: Kalendarz Google korzysta z tego samego połączenia, więc go nie kasujemy
+      // ani nie unieważniamy — tylko wyłączamy pocztę (token odwołasz w ustawieniach konta Google).
+      const off = await supabase(`oauth_connections?user_id=eq.${uid}&provider=eq.google&scopes=like.*gmail.*`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ mail_disabled: true }),
+      });
+      if (!off.ok) return json({ error: 'Could not disable mail (migration 0058 applied?)' }, 502, cors());
+      return json({ ok: true }, 200, cors());
+    }
     const r = await supabase(`oauth_connections?user_id=eq.${uid}&provider=eq.${provider}&select=id,refresh_token_ciphertext`);
     const rows = r.ok ? await r.json() : [];
     if (provider === 'google') {

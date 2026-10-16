@@ -2284,7 +2284,7 @@ export function ScreenMail(p){
       return null;
     };
     (returnedFromMicrosoft
-      ? brokerTokenRetry(mailProvider === 'google' ? 'google' : 'microsoft', 5).then(function(){ return mailGetActiveAccount(); })
+      ? brokerTokenRetry(mailProvider === 'google' ? 'google' : 'microsoft', 5, mailProvider === 'google' ? { mail: true } : undefined).then(function(){ return mailGetActiveAccount(); })
       : mailGetActiveAccount()
     ).then(finish).catch(function(e){console.error("MSAL session check error",e);if(returnedFromMicrosoft)setLoginIssue(mailAuthIssue()||("error:"+(e&&e.message||"")));});
   },[]);
@@ -3394,7 +3394,6 @@ export function ScreenMail(p){
       ),
       ce("button",{onClick:function(){setRefreshKey(function(k){return k+1;});},disabled:loadingMails,style:{fontSize:11,color:"var(--t3)",border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:loadingMails?"default":"pointer",padding:"4px 10px",borderRadius:6,opacity:loadingMails?0.5:1}},loadingMails?"⏳":(isMobile?"🔄":"🔄 Odśwież")),
       ce("button",{onClick:function(){
-        if(getMailProvider()==="google"&&!window.confirm("Odłączyć konto Gmail? Odłączony zostanie też Kalendarz Google, a połączenie trzeba będzie nawiązać od nowa."))return;
         mailLogout().then(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);setSelThread(null);}).catch(function(e){alert("Nie uda\u0142o si\u0119 wylogowa\u0107 \u2014 spr\u00f3buj ponownie. ("+(e.message||"b\u0142\u0105d po\u0142\u0105czenia")+")");});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
     ),
 

@@ -11,9 +11,14 @@ export default async function handler(req) {
     const user = await userFromRequest(req);
     if (!user) return json({ error: 'Unauthorized' }, 401, cors());
     serviceConfig();
-    const r = await supabase(`oauth_connections?user_id=eq.${encodeURIComponent(user.id)}&select=provider,provider_email,scopes,updated_at&order=updated_at.desc`);
+    const r = await supabase(`oauth_connections?user_id=eq.${encodeURIComponent(user.id)}&select=*&order=updated_at.desc`);
     if (!r.ok) return json({ error: 'Could not read connections' }, 502, cors());
-    return json({ connections: await r.json() }, 200, cors());
+    // Bez tokenów: tylko to, co potrzebne do wyboru skrzynki.
+    const rows = await r.json();
+    return json({ connections: rows.map(c => ({
+      provider: c.provider, provider_email: c.provider_email, scopes: c.scopes,
+      updated_at: c.updated_at, mail_disabled: !!c.mail_disabled,
+    })) }, 200, cors());
   } catch (e) {
     return json({ error: e.message || 'Status failed' }, 500, cors());
   }

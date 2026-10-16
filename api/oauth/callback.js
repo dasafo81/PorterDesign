@@ -66,6 +66,13 @@ export async function handleCallback(req, providerOverride = null) {
       const detail = await saveConnection.text();
       return json({ error: 'OAuth connection could not be saved', detail: detail.slice(0, 500) }, 502, cors());
     }
+    // Ponowne połączenie Gmaila włącza pocztę po wcześniejszym wylogowaniu. Osobne zapytanie
+    // i bez sprawdzania wyniku, żeby brak kolumny (migracja 0058) nie psuł samego łączenia.
+    if (provider === 'google' && /gmail\./.test(tokens.scope || '')) {
+      await supabase(`oauth_connections?user_id=eq.${encodeURIComponent(saved.user_id)}&provider=eq.google&provider_account_id=eq.${encodeURIComponent(providerAccountId)}`, {
+        method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ mail_disabled: false }),
+      }).catch(() => {});
+    }
     await supabase(`oauth_states?state_hash=eq.${encodeURIComponent(stateHash)}`, { method: 'DELETE' });
     // Google bez zakresu Gmail to połączenie kalendarza — wracamy do kalendarza, nie do Poczty.
     const returnTo = provider === 'google' && !/gmail\./.test(tokens.scope || '') ? 'calendar' : 'mail';
