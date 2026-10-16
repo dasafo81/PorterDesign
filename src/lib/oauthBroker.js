@@ -54,6 +54,13 @@ export function brokerToken(provider) {
   });
 }
 
+// Połączenia zalogowanego użytkownika (bez tokenów), najnowsze pierwsze; null gdy się nie uda.
+export function brokerStatus() {
+  return oauthFetch('/api/oauth/status').then(function(r) {
+    return r.ok ? r.json().then(function(d) { return d.connections || []; }) : null;
+  }).catch(function() { return null; });
+}
+
 // Usuwa zapisane połączenie (i unieważnia token u dostawcy, jeśli ten to wspiera).
 export function brokerDisconnect(provider) {
   return oauthFetch('/api/oauth/disconnect?provider=' + encodeURIComponent(provider)).then(function(r) {

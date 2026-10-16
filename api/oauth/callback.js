@@ -59,6 +59,8 @@ export async function handleCallback(req, providerOverride = null) {
       provider_email: info.email || info.mail || info.userPrincipalName || null,
       scopes: tokens.scope || '', refresh_token_ciphertext: refreshTokenCiphertext,
       access_token_expires_at: new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString(),
+      // updated_at decyduje, którą skrzynkę logować automatycznie (ostatnio połączona).
+      updated_at: new Date().toISOString(),
     }) });
     if (!saveConnection.ok) {
       const detail = await saveConnection.text();
