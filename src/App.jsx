@@ -98,7 +98,7 @@ export function App(p){
         setSellerVer(function(v){return v+1;});
         sbApi.getCatalogItems().then(primeFabricOverrides).catch(function(){});
       }
-      if(t&&t.is_demo)setIsDemo(true);
+      if(t&&t.is_demo){setIsDemo(true);setGcalToken("demo-token");}
       if(t)setBilling({status:t.subscription_status||"trialing",trialEndsAt:t.trial_ends_at||null});
     }).catch(function(){});
   },[]);

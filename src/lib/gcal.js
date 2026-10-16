@@ -82,6 +82,7 @@ function isExpired(exp) {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 import { brokerStart, brokerToken } from './oauthBroker.js';
+import { DEMO_TOKEN, isDemoMode } from './demoMock.js';
 
 // Czy GIS jest załadowany — przydatne dla UI ("przyciski disabled dopóki nie ready")
 export function gcalReady() {
@@ -142,6 +143,7 @@ function silentRefresh() {
 // Główna funkcja — zwraca świeży access token albo rzuca GCAL_INTERACTION_REQUIRED
 // Wywołujący powinien złapać ten błąd i wyświetlić UI logowania
 export function gcalGetToken() {
+  if (isDemoMode()) return Promise.resolve(DEMO_TOKEN);
   var cached = readCachedToken();
   if (cached && !isExpired(cached.exp)) {
     return Promise.resolve(cached.token);
@@ -159,12 +161,14 @@ export function gcalGetToken() {
 // Czy mamy w cache jakiś token (niekoniecznie ważny) — przydatne dla UI
 // "czy Paulina kiedykolwiek się zalogowała na tej maszynie"
 export function gcalHasSession() {
+  if (isDemoMode()) return true;
   var cached = readCachedToken();
   return !!(cached && cached.token);
 }
 
 // Czy mamy aktualnie ważny token (bez prób refresh)
 export function gcalHasValidToken() {
+  if (isDemoMode()) return true;
   var cached = readCachedToken();
   return !!(cached && !isExpired(cached.exp));
 }

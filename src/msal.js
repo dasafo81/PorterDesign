@@ -2,6 +2,7 @@
 // Multi-tenant: authority = /common — obsługuje dowolny Azure AD + konta osobiste MS
 import * as msal from "@azure/msal-browser";
 import { brokerStart, brokerToken } from "./lib/oauthBroker.js";
+import { DEMO_TOKEN, DEMO_MAIL_ACCOUNT, isDemoMode } from "./lib/demoMock.js";
 
 var CLIENT_ID = "ad714f55-19fb-4a5e-90a5-4253846e9338";
 
@@ -70,6 +71,7 @@ export async function msalLogin() {
 }
 
 export async function msalGetToken() {
+  if (isDemoMode()) return DEMO_TOKEN;
   // Połączenie jest zapisane na backendzie, więc nie uzależniaj go od znacznika
   // localStorage. Znacznik znika po wyczyszczeniu danych, zmianie urządzenia lub
   // niektórych aktualizacjach PWA, mimo że refresh token nadal jest ważny.
@@ -101,6 +103,7 @@ export async function msalGetToken() {
 }
 
 export async function msalGetActiveAccount() {
+  if (isDemoMode()) return DEMO_MAIL_ACCOUNT;
   if (_brokerAccount) return _brokerAccount;
   try {
     await getBrokerToken();

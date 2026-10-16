@@ -1,4 +1,5 @@
 import { refreshSession } from './auth.js';
+import { installDemoMock } from "./demoMock.js";
 
 export const SB_URL="https://rkcidwusjzvfwxszotnb.supabase.co";
 export const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3Vzanp2Znd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDU4NzIsImV4cCI6MjA5MDE4MTg3Mn0.N-frD06x0MzSg8dHmz-xneA16QvVrBmAYUg3ileNpXw";
@@ -407,7 +408,7 @@ export const sbApi = {
     return sbFetch("GET","tenants?select=id,name,config,trial_ends_at,subscription_status,plan,is_demo&limit=1").then(function(rows){
       var t=rows&&rows[0]?rows[0]:null;
       // Flaga trybu demo - czytana przez guardy (KSeF, mail) w tym module
-      try{if(typeof window!=="undefined")window.PD_IS_DEMO=!!(t&&t.is_demo);}catch(e){}
+      try{if(typeof window!=="undefined"){window.PD_IS_DEMO=!!(t&&t.is_demo);if(window.PD_IS_DEMO)installDemoMock();}}catch(e){}
       return t;
     });
   },
