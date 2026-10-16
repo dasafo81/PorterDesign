@@ -195,7 +195,7 @@ export function ScreenLogin(p) {
         // Link do rejestracji — dla nowych klient\u00f3w bez konta
         ce('div', { style: { marginTop: 14, fontSize: 12, textAlign: 'center', color: 'var(--t3)' } },
           'Nie masz jeszcze konta? ',
-          ce('a', { href: '/register', style: { color: 'var(--violet)', fontWeight: 700, textDecoration: 'none' } }, 'Za\u0142\u00f3\u017c konto (3 dni za darmo)')
+          ce('a', { href: '/register', style: { color: 'var(--violet)', fontWeight: 700, textDecoration: 'none' } }, 'Za\u0142\u00f3\u017c konto (14 dni za darmo)')
         ),
 
         // Stopka

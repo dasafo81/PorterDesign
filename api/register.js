@@ -10,7 +10,7 @@ export const config = { runtime: 'edge' };
 
 const SB_URL     = process.env.SUPABASE_URL || 'https://rkcidwusjzvfwxszotnb.supabase.co';
 const SERVICE    = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TRIAL_DAYS = 3;
+const TRIAL_DAYS = 14;
 const LEGAL_VERSIONS = { terms: '1.0', privacy: '1.0', dpa: '1.0' };
 
 function cors() {
