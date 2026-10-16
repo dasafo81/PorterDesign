@@ -9,9 +9,9 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --ink: #1c2b32; --ink2: #4a6070; --ink3: #8aa0ac;
-    --wsp: #849ca6; --wsp-dark: #5d7a87; --wsp-light: #ccd9de;
-    --wsp-bg: #f4f7f8; --wsp-bg2: #e8eef1; --white: #ffffff; --border: #dde5e8;
+    --ink: #1c2233; --ink2: #4d5568; --ink3: #8a91a1;
+    --wsp: #e8703a; --wsp-dark: #b45a12; --wsp-light: #f2d3bd;
+    --wsp-bg: #f4f5f8; --wsp-bg2: #e9ecf1; --white: #ffffff; --border: #dfe3ea;
   }
   html { scroll-behavior: smooth; }
   body { font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--wsp-bg); min-height: 100vh; display: flex; flex-direction: column; }
@@ -20,10 +20,11 @@
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     display: flex; align-items: center; justify-content: space-between;
     padding: 1.2rem 2.5rem; background: rgba(255,255,255,0.92);
-    backdrop-filter: blur(12px); border-bottom: 1px solid rgba(132,156,166,0.15);
+    backdrop-filter: blur(12px); border-bottom: 1px solid rgba(28,34,51,0.10);
   }
-  .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
-  .nav-logo span { color: var(--ink3); font-weight: 400; font-style: italic; }
+  .nav-logo { display: flex; align-items: center; text-decoration: none; }
+  .nav-logo img { height: 56px; width: auto; display: block; }
+  @media (max-width: 520px) { nav { padding: 0.9rem 1.2rem; } .nav-logo img { height: 42px; } }
   .nav-link { font-size: 13px; color: var(--ink2); text-decoration: none; }
   .nav-link:hover { color: var(--ink); }
 
@@ -118,7 +119,7 @@
 <body>
 
 <nav>
-  <a class="nav-logo" href="/">My <span>DecoLab</span></a>
+  <a class="nav-logo" href="/"><img src="/logo-mydecolab.png" alt="My DecoLab" width="172" height="56"></a>
   <a class="nav-link" href="/">← Powrót do strony głównej</a>
 </nav>
 
@@ -148,7 +149,7 @@
         </div>
         <div class="form-group">
           <label for="studio_name">Nazwa studia *</label>
-          <input type="text" id="studio_name" name="studio_name" placeholder="np. Studio Zasłon Kowalska" autocomplete="organization" required>
+          <input type="text" id="studio_name" name="studio_name" placeholder="Studio Zasłon" autocomplete="organization" required>
         </div>
       </div>
 
@@ -165,9 +166,9 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="website">Strona WWW lub Instagram *</label>
-          <input type="text" id="website" name="website" placeholder="www.studio.pl lub @studio" autocomplete="url" required>
-          <div class="hint">Podaj adres strony lub profilu Twojego studia</div>
+          <label for="website">WWW lub Instagram *</label>
+          <input type="text" id="website" name="website" placeholder="www.studio.pl / @studio" autocomplete="url" required>
+          <div class="hint">Strona lub profil Twojego studia</div>
         </div>
         <div class="form-group">
           <label for="city">Miasto</label>
