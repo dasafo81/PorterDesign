@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
-import { msalGetToken, msalGetActiveAccount } from '../msal.js';
+import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
 import { loadSystemTemplate, fillVars, dropEmptyParas } from '../lib/mailTemplates.js';
 import { buildInvoicePDFHtml, InvoiceEditor, calcLineFromGross, splitClientAddr } from './ScreenInvoices.jsx';
@@ -983,7 +983,7 @@ export function ModalDeal(p){
     return Promise.all(proms).then(function(arr){return arr.filter(Boolean);});
   }
 
-  // Wysyła mail (opinia / instrukcja prania) bezpośrednio z aplikacji przez podłączoną skrzynkę Outlook
+  // Wysyła mail (opinia / instrukcja prania) bezpośrednio z aplikacji przez podłączoną skrzynkę (Outlook lub Gmail)
   // (Microsoft Graph), analogicznie do wysyłki faktury w module Faktury. Wymaga wcześniejszego
   // zalogowania w zakładce Poczta — tu tylko odświeżamy token w tle (silent).
   function sendTplEmail(){
@@ -992,12 +992,12 @@ export function ModalDeal(p){
     if(!toList.length){setMailErr("Podaj adres e-mail odbiorcy.");return;}
     setMailBusy(true);setMailErr(null);setMailMsg(null);
     var tokenRef=null;
-    msalGetActiveAccount().then(function(acc){
+    mailGetActiveAccount().then(function(acc){
       if(!acc){
         var e=new Error("Zaloguj si\u0119 do poczty (zak\u0142adka Poczta), a potem spr\u00f3buj ponownie.");
         e.code="MS_NO_ACCOUNT"; throw e;
       }
-      return msalGetToken();
+      return mailGetToken();
     }).then(function(token){
       tokenRef=token;
       return buildGraphAttachments(mailAttachments);
@@ -1009,7 +1009,7 @@ export function ModalDeal(p){
         toRecipients:toList.map(function(addr){return {emailAddress:{address:addr}};})
       };
       if(graphAtts&&graphAtts.length)message.attachments=graphAtts;
-      return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+      return mailFetch("https://graph.microsoft.com/v1.0/me/sendMail",{
         method:"POST",
         headers:{"Authorization":"Bearer "+tokenRef,"Content-Type":"application/json"},
         body:JSON.stringify({message:message,saveToSentItems:true})
@@ -1765,7 +1765,7 @@ export function ModalDeal(p){
             ce("div",{style:{fontSize:15,fontWeight:800,color:"var(--t1)"}},
               mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":mailKind==="faktura"?"Faktura dla klienta":"Instrukcja prania i czyszczenia"
             ),
-            ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:1}},"Wysyłka przez Outlooka (Microsoft Graph)")
+            ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:1}},"Wysyłka z Twojej skrzynki ("+mailProviderLabel()+")")
           ),
           ce("button",{onClick:function(){setMailKind(null);},disabled:mailBusy,
             style:{border:"none",background:"var(--bg2, #f1f1ee)",color:"var(--t2)",borderRadius:8,

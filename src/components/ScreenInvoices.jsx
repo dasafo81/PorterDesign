@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sbApi, ksefApi } from '../lib/supabase.js';
-import { msalGetToken, msalGetActiveAccount } from '../msal.js';
+import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { InlineEdit, SELLER, hasBuiltinCatalog } from '../constants/data.js';
 import { loadSystemTemplate, fillVars, dropEmptyParas, bodyToText } from '../lib/mailTemplates.js';
 const ce = React.createElement;
@@ -2813,12 +2813,12 @@ function InvoiceDetailView(p){
     var to=String(mailTo||"").trim();
     if(!to) return;
     setMailBusy(true); setMailErr(null); setMailMsg(null);
-    msalGetActiveAccount().then(function(acc){
+    mailGetActiveAccount().then(function(acc){
       if(!acc){
         var e=new Error("Zaloguj si\u0119 do poczty (zak\u0142adka Poczta), a potem spr\u00f3buj ponownie.");
         e.code="MS_NO_ACCOUNT"; throw e;
       }
-      return msalGetToken();
+      return mailGetToken();
     }).then(function(token){
       var html=buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl);
       var b64=btoa(unescape(encodeURIComponent(html)));
@@ -2834,7 +2834,7 @@ function InvoiceDetailView(p){
           contentBytes:b64
         }]
       };
-      return fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+      return mailFetch("https://graph.microsoft.com/v1.0/me/sendMail",{
         method:"POST",
         headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
         body:JSON.stringify({message:message,saveToSentItems:true})

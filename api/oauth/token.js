@@ -41,6 +41,8 @@ export default async function handler(req) {
       expires_in: tokens.expires_in || 3600,
       provider,
       provider_email: connection.provider_email || null,
+      // Zakresy faktycznie nadane — klient sprawdza, czy to połączenie obejmuje Gmaila.
+      scope: tokens.scope || connection.scopes || '',
     }, 200, cors());
   } catch (e) {
     return json({ error: e.message || 'Token refresh failed' }, 500, cors());

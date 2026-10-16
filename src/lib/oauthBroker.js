@@ -29,8 +29,10 @@ function oauthFetch(path) {
   });
 }
 
-export function brokerStart(provider) {
-  return oauthFetch('/api/oauth/start?provider=' + encodeURIComponent(provider)).then(function(r) {
+// opts.mail: dla Google dolicza zakres Gmail (domyślnie tylko Kalendarz).
+export function brokerStart(provider, opts) {
+  var query = '?provider=' + encodeURIComponent(provider) + (opts && opts.mail ? '&mail=1' : '');
+  return oauthFetch('/api/oauth/start' + query).then(function(r) {
     return r.json().then(function(data) {
       if (!r.ok || !data.url) throw new Error(data.error || 'Nie udało się rozpocząć połączenia');
       window.location.assign(data.url);
@@ -52,6 +54,13 @@ export function brokerToken(provider) {
   });
 }
 
+// Usuwa zapisane połączenie (i unieważnia token u dostawcy, jeśli ten to wspiera).
+export function brokerDisconnect(provider) {
+  return oauthFetch('/api/oauth/disconnect?provider=' + encodeURIComponent(provider)).then(function(r) {
+    if (!r.ok) throw new Error('Nie udało się odłączyć konta');
+  });
+}
+
 export function brokerTokenRetry(provider, attempts) {
   var left = attempts == null ? 3 : attempts;
   return brokerToken(provider).catch(function(e) {
@@ -70,7 +79,8 @@ export function markBrokerCallback() {
     // Zapamiętaj, do której zakładki wrócić po połączeniu OAuth. Query string
     // jest zaraz czyszczony (replaceState), więc routing po powrocie nie może
     // na nim polegać — wcześniej Google lądował na ekranie startowym.
-    sessionStorage.setItem('pd_oauth_landing', provider);
+    // Google z zakresem Gmail wraca do Poczty ('gmail'), sam Kalendarz — do kalendarza.
+    sessionStorage.setItem('pd_oauth_landing', provider === 'google' && params.get('return') === 'mail' ? 'gmail' : provider);
     window.history.replaceState({}, document.title, window.location.pathname + window.location.hash);
   }
 }
