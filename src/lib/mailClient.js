@@ -4,32 +4,23 @@
 // z msal.js, więc dostawcę da się zmienić bez dotykania logiki UI.
 // Wybór dostawcy trzymamy w localStorage (pd_mail_provider); samo połączenie
 // (refresh token) siedzi zaszyfrowane w oauth_connections po stronie serwera.
-import { msalLogin, msalGetToken, msalGetActiveAccount } from "../msal.js";
+import { msalLogin, msalGetToken, msalGetActiveAccount, msalForget } from "../msal.js";
 import { brokerStart, brokerToken, brokerDisconnect } from "./oauthBroker.js";
 import { gmailFetch } from "./gmailApi.js";
 import { isDemoMode } from "./demoMock.js";
 
 var PREF_KEY = "pd_mail_provider";
-// Wartość PREF_KEY po świadomym wylogowaniu: bez niej zapisane połączenie Microsoft
-// (broker trzyma je po stronie serwera) logowałoby użytkownika z powrotem samo.
-var SIGNED_OUT = "none";
 var GMAIL_SCOPE_RE = /https:\/\/www\.googleapis\.com\/auth\/gmail\.modify/;
 
 export function getMailProvider() {
   if (isDemoMode()) return "microsoft";
   try {
     var pref = localStorage.getItem(PREF_KEY);
-    if (pref === SIGNED_OUT) return "microsoft";
     if (pref === "google" || pref === "microsoft") return pref;
     // Brak wyboru: użytkownik, który łączył tylko Gmaila, nie ma połączenia Microsoft.
     if (localStorage.getItem("pd_oauth_gmail") === "1" && localStorage.getItem("pd_oauth_microsoft") !== "1") return "google";
   } catch (e) {}
   return "microsoft";
-}
-
-function isSignedOut() {
-  if (isDemoMode()) return false;
-  try { return localStorage.getItem(PREF_KEY) === SIGNED_OUT; } catch (e) { return false; }
 }
 
 export function setMailProvider(provider) {
@@ -74,9 +65,7 @@ export async function mailGetToken() {
   return getMailProvider() === "google" ? gmailGetToken() : msalGetToken();
 }
 
-export async function mailGetActiveAccount() {
-  if (isSignedOut()) return null;
-  if (getMailProvider() !== "google") return msalGetActiveAccount();
+async function gmailActiveAccount() {
   try {
     await gmailGetToken();
     return _gAccount;
@@ -84,6 +73,21 @@ export async function mailGetActiveAccount() {
     if (e && e.code === "MS_INTERACTION_REQUIRED") return null;
     throw e;
   }
+}
+
+// Konto, do którego użytkownik MDL jest już podłączony (połączenia siedzą na serwerze, więc
+// działa to też na nowym urządzeniu). Bez zapamiętanego wyboru sprawdzamy kolejno Outlooka i Gmaila.
+export async function mailGetActiveAccount() {
+  if (isDemoMode()) return msalGetActiveAccount();
+  var pref = null;
+  try { pref = localStorage.getItem(PREF_KEY); } catch (e) {}
+  if (pref === "google") return gmailActiveAccount();
+  if (pref === "microsoft") return msalGetActiveAccount();
+  var ms = await msalGetActiveAccount();
+  if (ms) { setMailProvider("microsoft"); return ms; }
+  var g = await gmailActiveAccount().catch(function() { return null; });
+  if (g) setMailProvider("google");
+  return g;
 }
 
 // Zamiennik fetch() dla adresów Graph: dla Gmaila tłumaczy wywołanie na Gmail API.
@@ -99,17 +103,21 @@ export function mailLogin(provider) {
   return msalLogin();
 }
 
-// Wylogowanie z modułu Mail. Outlook: tylko lokalnie (bez przekierowania na stronę
-// wylogowania Microsoftu). Gmail: odłącza konto, więc unieważnia też Kalendarz Google.
+// Wylogowanie z modułu Mail = odłączenie konta po stronie serwera, inaczej zapisane połączenie
+// logowałoby użytkownika z powrotem samo. Błąd serwera przerywa wylogowanie (rzuca wyjątek),
+// żeby UI nie udawał wylogowania, po którym skrzynka i tak wróci.
+// Uwaga: odłączenie Gmaila odłącza też Kalendarz Google (to samo połączenie).
 export async function mailLogout() {
   var provider = getMailProvider();
+  await brokerDisconnect(provider);
   _gToken = null; _gExp = 0; _gAccount = null;
   if (provider === "google") {
-    await brokerDisconnect("google");
     try {
       ["pd_oauth_gmail", "pd_oauth_google", "pd_gcal_token", "pd_gcal_token_exp", "pd_gcal_hint"]
         .forEach(function(k) { localStorage.removeItem(k); });
     } catch (e) {}
+  } else {
+    msalForget();
   }
-  setMailProvider(SIGNED_OUT);
+  setMailProvider(null);
 }

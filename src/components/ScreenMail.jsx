@@ -3388,7 +3388,7 @@ export function ScreenMail(p){
       ce("button",{onClick:function(){setRefreshKey(function(k){return k+1;});},disabled:loadingMails,style:{fontSize:11,color:"var(--t3)",border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:loadingMails?"default":"pointer",padding:"4px 10px",borderRadius:6,opacity:loadingMails?0.5:1}},loadingMails?"⏳":(isMobile?"🔄":"🔄 Odśwież")),
       ce("button",{onClick:function(){
         if(getMailProvider()==="google"&&!window.confirm("Odłączyć konto Gmail? Odłączony zostanie też Kalendarz Google, a połączenie trzeba będzie nawiązać od nowa."))return;
-        mailLogout().catch(function(){}).finally(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
+        mailLogout().then(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);setSelThread(null);}).catch(function(e){alert("Nie uda\u0142o si\u0119 wylogowa\u0107 \u2014 spr\u00f3buj ponownie. ("+(e.message||"b\u0142\u0105d po\u0142\u0105czenia")+")");});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
     ),
 
     calSaved?ce("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"var(--grl)",borderRadius:10,marginBottom:10,flexShrink:0,border:"1px solid var(--gr)",fontSize:13,color:"var(--gr)"}},

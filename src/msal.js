@@ -29,6 +29,8 @@ var _initPromise = null;
 var _brokerToken = null;
 var _brokerTokenExpiresAt = 0;
 var _brokerAccount = null;
+// Po świadomym wylogowaniu (msalForget) nie wolno wrócić do danych z pamięci ani z cache MSAL.
+var _forgotten = false;
 
 function rememberBrokerToken(data) {
   _brokerToken = data.access_token;
@@ -72,6 +74,7 @@ export async function msalLogin() {
 
 export async function msalGetToken() {
   if (isDemoMode()) return DEMO_TOKEN;
+  if (_forgotten) { var out = new Error("MS_INTERACTION_REQUIRED"); out.code = "MS_INTERACTION_REQUIRED"; throw out; }
   // Połączenie jest zapisane na backendzie, więc nie uzależniaj go od znacznika
   // localStorage. Znacznik znika po wyczyszczeniu danych, zmianie urządzenia lub
   // niektórych aktualizacjach PWA, mimo że refresh token nadal jest ważny.
@@ -104,6 +107,7 @@ export async function msalGetToken() {
 
 export async function msalGetActiveAccount() {
   if (isDemoMode()) return DEMO_MAIL_ACCOUNT;
+  if (_forgotten) return null;
   if (_brokerAccount) return _brokerAccount;
   try {
     await getBrokerToken();
@@ -114,6 +118,19 @@ export async function msalGetActiveAccount() {
   var inst = await getInstance();
   var accounts = inst.getAllAccounts();
   return accounts[0] || null;
+}
+
+// Wylogowanie lokalne bez przekierowania na stronę Microsoftu: czyści tokeny w pamięci
+// i cache MSAL. (Połączenie brokera usuwa osobno brokerDisconnect.)
+export function msalForget() {
+  _forgotten = true;
+  _brokerToken = null; _brokerTokenExpiresAt = 0; _brokerAccount = null;
+  try {
+    Object.keys(localStorage).concat(Object.keys(sessionStorage)).forEach(function(k) {
+      if (/^msal\./i.test(k)) { localStorage.removeItem(k); sessionStorage.removeItem(k); }
+    });
+    localStorage.removeItem("pd_oauth_microsoft");
+  } catch (e) {}
 }
 
 export async function msalLogout() {
