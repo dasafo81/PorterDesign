@@ -5,7 +5,7 @@
 // Wybór dostawcy trzymamy w localStorage (pd_mail_provider); samo połączenie
 // (refresh token) siedzi zaszyfrowane w oauth_connections po stronie serwera.
 import { msalLogin, msalGetToken, msalGetActiveAccount, msalForget } from "../msal.js";
-import { brokerStart, brokerToken, brokerDisconnect } from "./oauthBroker.js";
+import { brokerStart, brokerToken, brokerDisconnect, brokerStatus } from "./oauthBroker.js";
 import { gmailFetch } from "./gmailApi.js";
 import { isDemoMode } from "./demoMock.js";
 
@@ -65,29 +65,62 @@ export async function mailGetToken() {
   return getMailProvider() === "google" ? gmailGetToken() : msalGetToken();
 }
 
+// Powód ostatniej nieudanej autoryzacji — ekran logowania pokazuje go po powrocie z OAuth,
+// zamiast po cichu wracać do wyboru skrzynki.
+var _issue = null;
+export function mailAuthIssue() { return _issue; }
+
 async function gmailActiveAccount() {
   try {
     await gmailGetToken();
     return _gAccount;
   } catch (e) {
-    if (e && e.code === "MS_INTERACTION_REQUIRED") return null;
+    if (e && e.code === "MS_INTERACTION_REQUIRED") {
+      _issue = e.cause === "GMAIL_SCOPE_MISSING" ? "gmail_scope" : "reconnect";
+      return null;
+    }
+    _issue = "error:" + (e && e.message || "nieznany błąd");
     throw e;
   }
 }
 
-// Konto, do którego użytkownik MDL jest już podłączony (połączenia siedzą na serwerze, więc
-// działa to też na nowym urządzeniu). Bez zapamiętanego wyboru sprawdzamy kolejno Outlooka i Gmaila.
+async function microsoftActiveAccount() {
+  try {
+    return await msalGetActiveAccount();
+  } catch (e) {
+    _issue = "error:" + (e && e.message || "nieznany błąd");
+    throw e;
+  }
+}
+
+// Skrzynka, do której użytkownik MDL ma się zalogować automatycznie: ta, której ostatnio używał
+// na tym urządzeniu (pd_mail_provider), a na nowym urządzeniu — ostatnio połączona z jego kontem
+// (połączenia siedzą na serwerze). Bez wylogowania wracamy więc do niej bez ponownego logowania.
 export async function mailGetActiveAccount() {
   if (isDemoMode()) return msalGetActiveAccount();
+  _issue = null;
   var pref = null;
   try { pref = localStorage.getItem(PREF_KEY); } catch (e) {}
   if (pref === "google") return gmailActiveAccount();
-  if (pref === "microsoft") return msalGetActiveAccount();
-  var ms = await msalGetActiveAccount();
-  if (ms) { setMailProvider("microsoft"); return ms; }
-  var g = await gmailActiveAccount().catch(function() { return null; });
-  if (g) setMailProvider("google");
-  return g;
+  if (pref === "microsoft") return microsoftActiveAccount();
+
+  var list = await brokerStatus();
+  if (list) {
+    var usable = list.filter(function(c) {
+      return c.provider === "microsoft" || (c.provider === "google" && GMAIL_SCOPE_RE.test(c.scopes || ""));
+    }); // serwer zwraca najnowsze pierwsze
+    for (var i = 0; i < usable.length; i++) {
+      var acc = usable[i].provider === "google" ? await gmailActiveAccount() : await microsoftActiveAccount();
+      if (acc) { setMailProvider(usable[i].provider); return acc; }
+    }
+    var hasGoogle = list.some(function(c) { return c.provider === "google"; });
+    if (!usable.length && hasGoogle) _issue = "gmail_scope";
+    if (usable.length) return null;
+  }
+  // Brak listy z serwera albo brak połączeń: stara ścieżka (np. cache MSAL sprzed brokera).
+  var ms = await microsoftActiveAccount();
+  if (ms) setMailProvider("microsoft");
+  return ms;
 }
 
 // Zamiennik fetch() dla adresów Graph: dla Gmaila tłumaczy wywołanie na Gmail API.

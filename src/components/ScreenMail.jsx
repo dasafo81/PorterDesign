@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml, buildOfferDetailRows, resolvePDFAssets, SELLER } from '../constants/data.js';
 import { buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
-import { mailLogin, mailLogout, mailGetToken, mailGetActiveAccount, mailFetch, getMailProvider } from '../lib/mailClient.js';
+import { mailLogin, mailLogout, mailGetToken, mailGetActiveAccount, mailFetch, getMailProvider, mailAuthIssue } from '../lib/mailClient.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
@@ -2131,6 +2131,7 @@ export function ScreenMail(p){
   var stok=us(null),accessToken=stok[0],setAccessToken=stok[1];
   var sacc=us(null),msAccount=sacc[0],setMsAccount=sacc[1];
   var slogging=us(false),logging=slogging[0],setLogging=slogging[1];
+  var sliss=us(null),loginIssue=sliss[0],setLoginIssue=sliss[1];   // dlaczego powrót z OAuth nie zalogował
   var suf=us([]),userFolders=suf[0],setUserFolders=suf[1];
   var saf=us("inbox"),activeFolder=saf[0],setActiveFolder=saf[1];
   var snf=us(false),showNF=snf[0],setShowNF=snf[1];
@@ -2277,14 +2278,15 @@ export function ScreenMail(p){
       if (returnedFromMicrosoft) {
         // The callback marker confirms the redirect, but make the error visible
         // instead of silently falling back to the login card.
-        console.error("Microsoft OAuth callback returned without a usable broker connection");
+        console.error("OAuth callback returned without a usable broker connection", mailAuthIssue());
+        setLoginIssue(mailAuthIssue()||"reconnect");
       }
       return null;
     };
     (returnedFromMicrosoft
       ? brokerTokenRetry(mailProvider === 'google' ? 'google' : 'microsoft', 5).then(function(){ return mailGetActiveAccount(); })
       : mailGetActiveAccount()
-    ).then(finish).catch(function(e){console.error("MSAL session check error",e);});
+    ).then(finish).catch(function(e){console.error("MSAL session check error",e);if(returnedFromMicrosoft)setLoginIssue(mailAuthIssue()||("error:"+(e&&e.message||"")));});
   },[]);
 
   // Załaduj szablony z bazy (nie wymaga auth — baza jest publiczna)
@@ -3097,6 +3099,11 @@ export function ScreenMail(p){
           ),
         logging?"Logowanie...":"Po\u0142\u0105cz Outlook (Microsoft)"
       ),
+      loginIssue?ce("div",{style:{maxWidth:320,padding:"10px 12px",background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:9,fontSize:12,color:"var(--red)",lineHeight:1.6,textAlign:"left"}},
+        loginIssue==="gmail_scope"?"Google nie nada\u0142 dost\u0119pu do Gmaila. Po\u0142\u0105cz ponownie i na ekranie zgody zaznacz wszystkie uprawnienia (odczyt i wysy\u0142anie poczty)."
+        :loginIssue.indexOf("error:")===0?"B\u0142\u0105d po\u0142\u0105czenia: "+loginIssue.slice(6)
+        :"Po\u0142\u0105czenie nie zosta\u0142o zapisane. Spr\u00f3buj ponownie."
+      ):null,
       ce("div",{style:{fontSize:11,color:"var(--t3)",maxWidth:320,lineHeight:1.6}},"Przejdziesz na stron\u0119 logowania Google lub Microsoft. Aplikacja nie zna Twojego has\u0142a, a dost\u0119p mo\u017cesz w ka\u017cdej chwili cofn\u0105\u0107.")
     );
   }
