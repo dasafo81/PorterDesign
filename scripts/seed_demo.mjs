@@ -16,7 +16,7 @@ var EMAIL = process.env.DEMO_EMAIL || "demo@mydecolab.pl";
 var PASSWORD = process.env.DEMO_PASSWORD;
 var TENANT_NAME = "Studio Dekoracji Demo";
 
-if (!DRY && (!KEY || !PASSWORD)) {
+if (!DRY && !process.argv.includes("--sql") && (!KEY || !PASSWORD)) {
   console.error("Brak SUPABASE_SERVICE_ROLE_KEY lub DEMO_PASSWORD (min. 8 znakow). Dodaj --dry-run, by tylko policzyc dane.");
   process.exit(1);
 }
@@ -117,6 +117,34 @@ rows.forEach(function (r) {
   console.log("  " + r.cl.name.padEnd(36) + r.cl.status.padEnd(14) + r.total.toFixed(2).padStart(10) + " zl");
   if (!(r.net > 0)) { console.error("  ^ BLAD: wycena = 0, sprawdz nazwy tkanin/wymiary"); process.exitCode = 2; }
 });
+if (process.argv.includes("--sql")) {
+  var q = function (v) { return "'" + String(v).replace(/'/g, "''") + "'"; };
+  var o = [];
+  o.push("-- Dane demo My DecoLab (fikcyjne). Uruchom w Supabase SQL Editor.");
+  o.push("-- 1) Zaloz konto przez strone rejestracji, 2) wpisz jego e-mail ponizej, 3) Run.");
+  o.push("do $$");
+  o.push("declare v_email text := 'WPISZ_EMAIL_KONTA@example.com'; v_tenant uuid; v_cid bigint; v_ct uuid;");
+  o.push("begin");
+  o.push("  select (raw_app_meta_data->>'tenant_id')::uuid into v_tenant from auth.users where lower(email)=lower(v_email);");
+  o.push("  if v_tenant is null then raise exception 'Nie znaleziono konta %', v_email; end if;");
+  o.push("  update tenants set is_demo=true, trial_ends_at=null where id=v_tenant;");
+  o.push("  delete from offers where tenant_id=v_tenant;");
+  o.push("  delete from clients where tenant_id=v_tenant;");
+  o.push("  delete from contacts where tenant_id=v_tenant;");
+  rows.forEach(function (r, i) {
+    var cl = r.cl;
+    o.push("  insert into contacts(tenant_id,kind,role,name,street,postal,city,email,phone) values (v_tenant," + q(/Hotel/.test(cl.name) ? "firma" : "osoba") + ",'klient'," + q(cl.name) + "," + q(cl.addr) + "," + q(cl.postal) + "," + q(cl.city) + "," + q(cl.email) + "," + q(cl.phone) + ") returning id into v_ct;");
+    o.push("  insert into clients(tenant_id,name,addr,postal,city,phone,email,rooms,status,install_fee,install_fee_mode,contact_id,created_at) values (v_tenant," + q(cl.name) + "," + q(cl.addr) + "," + q(cl.postal) + "," + q(cl.city) + "," + q(cl.phone) + "," + q(cl.email) + "," + q(JSON.stringify(cl.rooms)) + "::jsonb," + q(cl.status) + "," + (cl.install_fee ? q(cl.install_fee) : "null") + "," + q(cl.install_fee_mode || "percent") + ",v_ct," + q(iso(r.created)) + ") returning id into v_cid;");
+    if (!(cl.status === "odrzucone" && i % 2))
+      o.push("  insert into offers(tenant_id,client_id,number,kind,total_gross,valid_until,status,created_at) values (v_tenant,v_cid," + q("OF-" + ymd(r.created) + "-" + slug(cl.name)) + "," + q(cl.offer) + "," + (Math.round(r.total * 100) / 100) + "," + q(dayOffset(-14 + i * 4).toISOString().slice(0, 10)) + "," + q(cl.status === "zrealizowane" ? "zaakceptowana" : "wygenerowana") + "," + q(iso(r.created)) + ");");
+  });
+  CONTACT_EXTRA.forEach(function (c) {
+    o.push("  insert into contacts(tenant_id,kind,role,name,nip,street,postal,city,email,phone,notes) values (v_tenant," + [c.kind, c.role, c.name, c.nip, c.street, c.postal, c.city, c.email, c.phone, c.notes].map(q).join(",") + ");");
+  });
+  o.push("end $$;");
+  console.log(o.join("\n"));
+  process.exit();
+}
 if (DRY || process.exitCode) process.exit();
 
 // ── Zapis do Supabase ────────────────────────────────────────────────────────
