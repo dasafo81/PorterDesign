@@ -41,8 +41,9 @@ export function brokerStart(provider, opts) {
   });
 }
 
-export function brokerToken(provider) {
-  return oauthFetch('/api/oauth/token?provider=' + encodeURIComponent(provider)).then(function(r) {
+// opts.mail: dla Google wybiera połączenie z Gmailem (a nie to założone dla kalendarza).
+export function brokerToken(provider, opts) {
+  return oauthFetch('/api/oauth/token?provider=' + encodeURIComponent(provider) + (opts && opts.mail ? '&feature=mail' : '')).then(function(r) {
     return r.json().then(function(data) {
       if (!r.ok || !data.access_token) {
         var e = new Error(data.error || 'OAUTH_RECONNECT_REQUIRED');
@@ -62,18 +63,18 @@ export function brokerStatus() {
 }
 
 // Usuwa zapisane połączenie (i unieważnia token u dostawcy, jeśli ten to wspiera).
-export function brokerDisconnect(provider) {
-  return oauthFetch('/api/oauth/disconnect?provider=' + encodeURIComponent(provider)).then(function(r) {
+export function brokerDisconnect(provider, opts) {
+  return oauthFetch('/api/oauth/disconnect?provider=' + encodeURIComponent(provider) + (opts && opts.mail ? '&feature=mail' : '')).then(function(r) {
     if (!r.ok) throw new Error('Nie udało się odłączyć konta');
   });
 }
 
-export function brokerTokenRetry(provider, attempts) {
+export function brokerTokenRetry(provider, attempts, opts) {
   var left = attempts == null ? 3 : attempts;
-  return brokerToken(provider).catch(function(e) {
+  return brokerToken(provider, opts).catch(function(e) {
     if (left <= 1 || !e || e.code !== 'OAUTH_RECONNECT_REQUIRED') throw e;
     return new Promise(function(resolve) { setTimeout(resolve, 500); })
-      .then(function() { return brokerTokenRetry(provider, left - 1); });
+      .then(function() { return brokerTokenRetry(provider, left - 1, opts); });
   });
 }
 
