@@ -1572,7 +1572,7 @@ export function App(p){
           ce("span",{style:{fontSize:20}},"\uD83E\uDDEA"),
           ce("span",{style:{fontSize:13,fontWeight:600}},"Tryb demo \u2014 dane przyk\u0142adowe. Wysy\u0142ka do KSeF i maile s\u0105 symulowane.")
         ),
-        ce("a",{href:"/register",style:{fontSize:13,fontWeight:700,color:"var(--violet)",textDecoration:"underline",whiteSpace:"nowrap"}},"Za\u0142\u00f3\u017c konto")
+        ce("a",{href:"/register",style:{fontSize:13,fontWeight:700,color:"var(--violet)",textDecoration:"underline",whiteSpace:"nowrap"}},"Popro\u015b o darmowy test")
       ):null,
 
       // ── Offline banner ──

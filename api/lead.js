@@ -10,7 +10,9 @@
 //   LEAD_TO_EMAIL   — adres, na który mają trafiać leady (np. "kontakt@mydecolab.pl")
 //
 // POST /api/lead
-// Body: { name, email, studio, city, message?, honeypot? }
+// Body: { name, email, studio, city, website, kind?, phone?, message?, honeypot? }
+//   kind: 'demo' (umow prezentacje) | 'trial' (prosba o darmowy test 14 dni); domyslnie 'demo'.
+//   website: WYMAGANE — adres strony WWW lub Instagrama (weryfikacja, ze zglasza sie firma z branzy).
 
 export const config = { runtime: 'edge' };
 
@@ -31,6 +33,22 @@ function json(data, status) {
 
 function isValidEmail(e) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
+
+// Zwraca znormalizowany URL (https://...) albo null. Przyjmuje: domene/URL, @uchwyt lub instagram.com/uchwyt.
+function normalizeWebsite(raw) {
+  const v = String(raw || '').trim();
+  if (!v || v.length > 200 || /\s/.test(v)) return null;
+  if (/^@?[A-Za-z0-9._]{2,30}$/.test(v) && !/\.[a-z]{2,}$/i.test(v.replace(/^@/, ''))) {
+    return 'https://www.instagram.com/' + v.replace(/^@/, '') + '/';
+  }
+  if (/^@[A-Za-z0-9._]{2,30}$/.test(v)) return 'https://www.instagram.com/' + v.slice(1) + '/';
+  const withProto = /^https?:\/\//i.test(v) ? v : 'https://' + v;
+  try {
+    const u = new URL(withProto);
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(u.hostname)) return null;
+    return u.href;
+  } catch (e) { return null; }
 }
 
 function escHtml(s) {
@@ -63,9 +81,16 @@ export default async function handler(req) {
   const studio  = ((body && body.studio) || '').trim();
   const city    = ((body && body.city) || '').trim();
   const message = ((body && body.message) || '').trim();
+  const phone   = ((body && body.phone) || '').trim().slice(0, 40);
+  const kind    = (body && body.kind) === 'trial' ? 'trial' : 'demo';
+  const website = normalizeWebsite(body && body.website);
 
   if (!name) return json({ error: 'Podaj imię i nazwisko.' }, 400);
   if (!email || !isValidEmail(email)) return json({ error: 'Podaj poprawny adres e-mail.' }, 400);
+  if (!website) return json({ error: 'Podaj adres strony WWW lub profilu na Instagramie (np. www.studio.pl albo @studio).' }, 400);
+  if (kind === 'trial' && !studio) return json({ error: 'Podaj nazwę studia.' }, 400);
+  if (kind === 'trial' && phone.replace(/\D/g, '').length < 9) return json({ error: 'Podaj numer telefonu.' }, 400);
+  if (kind === 'trial' && body.legal_consent !== true) return json({ error: 'Zaakceptuj Regulamin i Politykę Prywatności.' }, 400);
 
   const html = `<!DOCTYPE html>
 <html lang="pl">
@@ -75,13 +100,15 @@ export default async function handler(req) {
 <tr><td align="center">
 <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
   <tr><td style="background:#1a1a2e;padding:24px 32px">
-    <span style="color:#fff;font-size:18px;font-weight:700">Nowe zgłoszenie z landing page</span>
+    <span style="color:#fff;font-size:18px;font-weight:700">${kind === 'trial' ? 'Prośba o darmowy test (14 dni)' : 'Prośba o demo'}</span>
   </td></tr>
   <tr><td style="padding:32px">
     <p style="margin:0 0 10px;font-size:14px;color:#444"><strong>Imię i nazwisko:</strong> ${escHtml(name)}</p>
     <p style="margin:0 0 10px;font-size:14px;color:#444"><strong>E-mail:</strong> ${escHtml(email)}</p>
     <p style="margin:0 0 10px;font-size:14px;color:#444"><strong>Studio:</strong> ${escHtml(studio) || '—'}</p>
     <p style="margin:0 0 10px;font-size:14px;color:#444"><strong>Miasto:</strong> ${escHtml(city) || '—'}</p>
+    <p style="margin:0 0 10px;font-size:14px;color:#444"><strong>Telefon:</strong> ${escHtml(phone) || '—'}</p>
+    <p style="margin:0 0 10px;font-size:14px;color:#444"><strong>WWW / Instagram:</strong> <a href="${escHtml(website)}">${escHtml(website)}</a></p>
     <p style="margin:16px 0 0;font-size:14px;color:#444;line-height:1.6"><strong>Wiadomość:</strong><br>${escHtml(message) || '(brak)'}</p>
   </td></tr>
 </table>
@@ -100,7 +127,7 @@ export default async function handler(req) {
       from: MAIL_FROM,
       to: [LEAD_TO],
       reply_to: email,
-      subject: `Nowy lead: ${name}${studio ? ' — ' + studio : ''}`,
+      subject: `${kind === 'trial' ? 'Prośba o test' : 'Prośba o demo'}: ${name}${studio ? ' — ' + studio : ''}`,
       html,
     }),
   });

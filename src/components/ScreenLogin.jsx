@@ -192,10 +192,10 @@ export function ScreenLogin(p) {
           }
         }, loading ? 'Logowanie\u2026' : 'Zaloguj si\u0119'),
 
-        // Link do rejestracji — dla nowych klient\u00f3w bez konta
+        // Link do formularza zg\u0142oszeniowego \u2014 konta testowe zak\u0142ada administrator
         ce('div', { style: { marginTop: 14, fontSize: 12, textAlign: 'center', color: 'var(--t3)' } },
-          'Nie masz jeszcze konta? ',
-          ce('a', { href: '/register', style: { color: 'var(--violet)', fontWeight: 700, textDecoration: 'none' } }, 'Za\u0142\u00f3\u017c konto (14 dni za darmo)')
+          'Nie masz jeszcze dost\u0119pu? ',
+          ce('a', { href: '/register', style: { color: 'var(--violet)', fontWeight: 700, textDecoration: 'none' } }, 'Popro\u015b o darmowy test (14 dni)')
         ),
 
         // Stopka

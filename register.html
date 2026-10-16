@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zarejestruj się — My DecoLab</title>
+<title>Darmowy test — My DecoLab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -125,10 +125,15 @@
 <main>
   <div class="card">
     <div class="card-header">
-      <h1>Załóż konto</h1>
+      <h1>Darmowy test</h1>
       <p>Oprogramowanie dla studiów dekoracji okien</p>
       <span class="trial-badge">14 dni bezpłatnego dostępu</span>
     </div>
+
+    <p style="font-size:13px;color:var(--ink2);line-height:1.6;text-align:center;margin:0 0 1.25rem">
+      Konta testowe zakładamy ręcznie dla studiów i firm z branży. Wyślij zgłoszenie,
+      a odezwiemy się z dostępem — zwykle w ciągu 24 godzin w dni robocze.
+    </p>
 
     <form id="regForm" novalidate>
       <!-- honeypot — nie wypełniaj -->
@@ -136,57 +141,52 @@
         <input type="text" name="honeypot" id="honeypot" tabindex="-1" autocomplete="off">
       </div>
 
-      <div class="form-group">
-        <label for="studio_name">Nazwa studia *</label>
-        <input type="text" id="studio_name" name="studio_name"
-          placeholder="np. Studio Zasłon Kowalska"
-          autocomplete="organization" required>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Imię i nazwisko *</label>
+          <input type="text" id="name" name="name" placeholder="Paulina Kowalska" autocomplete="name" required>
+        </div>
+        <div class="form-group">
+          <label for="studio_name">Nazwa studia *</label>
+          <input type="text" id="studio_name" name="studio_name" placeholder="np. Studio Zasłon Kowalska" autocomplete="organization" required>
+        </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
           <label for="email">Adres e-mail *</label>
-          <input type="email" id="email" name="email"
-            placeholder="kontakt@studio.pl"
-            autocomplete="email" required>
+          <input type="email" id="email" name="email" placeholder="kontakt@studio.pl" autocomplete="email" required>
         </div>
         <div class="form-group">
           <label for="phone">Telefon *</label>
-          <input type="tel" id="phone" name="phone"
-            placeholder="500 000 000"
-            autocomplete="tel" required>
+          <input type="tel" id="phone" name="phone" placeholder="500 000 000" autocomplete="tel" required>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label for="nip">NIP <span style="font-weight:400;text-transform:none">(opcjonalny)</span></label>
-          <input type="text" id="nip" name="nip"
-            placeholder="1234567890"
-            autocomplete="off" maxlength="13">
+          <label for="website">Strona WWW lub Instagram *</label>
+          <input type="text" id="website" name="website" placeholder="www.studio.pl lub @studio" autocomplete="url" required>
+          <div class="hint">Podaj adres strony lub profilu Twojego studia</div>
         </div>
         <div class="form-group">
-          <label for="password">Hasło *</label>
-          <input type="password" id="password" name="password"
-            placeholder="min. 8 znaków"
-            autocomplete="new-password" required>
-          <div class="hint">Co najmniej 8 znaków</div>
+          <label for="city">Miasto</label>
+          <input type="text" id="city" name="city" placeholder="Warszawa" autocomplete="address-level2">
         </div>
       </div>
 
       <div id="msg" class="msg"></div>
 
       <button type="submit" class="submit-btn" id="submitBtn">
-        Utwórz konto bezpłatnie
+        Wyślij zgłoszenie
       </button>
 
       <hr class="divider">
 
       <label class="consent">
         <input type="checkbox" id="legal_consent" name="legal_consent" required>
-        <span>Akceptuję <a href="/terms" target="_blank" rel="noopener">Regulamin</a>, zapoznałem(-am) się z <a href="/privacy" target="_blank" rel="noopener">Polityką Prywatności</a> oraz akceptuję <a href="/dpa" target="_blank" rel="noopener">DPA</a>.</span>
+        <span>Akceptuję <a href="/terms" target="_blank" rel="noopener">Regulamin</a> i zapoznałem(-am) się z <a href="/privacy" target="_blank" rel="noopener">Polityką Prywatności</a>. Zgadzam się na kontakt w sprawie dostępu testowego.</span>
       </label>
-      <p class="terms">Wersje dokumentów: Regulamin 1.0, Polityka Prywatności 1.0, DPA 1.0.</p>
     </form>
 
     <p class="login-link">
@@ -213,53 +213,49 @@
     e.preventDefault();
     msg.className = 'msg'; msg.textContent = '';
 
-    var studio_name = document.getElementById('studio_name').value.trim();
+    var name        = document.getElementById('name').value.trim();
+    var studio      = document.getElementById('studio_name').value.trim();
     var email       = document.getElementById('email').value.trim().toLowerCase();
     var phone       = document.getElementById('phone').value.trim();
-    var nip         = document.getElementById('nip').value.trim();
-    var password    = document.getElementById('password').value;
+    var website     = document.getElementById('website').value.trim();
+    var city        = document.getElementById('city').value.trim();
     var honeypot    = document.getElementById('honeypot').value;
     var legal_consent = document.getElementById('legal_consent').checked;
 
-    // Podstawowa walidacja po stronie klienta
-    if (!studio_name) { showMsg('error', 'Podaj nazwę studia.'); return; }
+    if (!name) { showMsg('error', 'Podaj imię i nazwisko.'); return; }
+    if (!studio) { showMsg('error', 'Podaj nazwę studia.'); return; }
     if (!email || !email.includes('@')) { showMsg('error', 'Podaj poprawny adres e-mail.'); return; }
-    if (!phone || phone.replace(/\s/g,'').length < 9) { showMsg('error', 'Podaj numer telefonu.'); return; }
-    if (!password || password.length < 8) { showMsg('error', 'Hasło musi mieć co najmniej 8 znaków.'); return; }
-    if (!legal_consent) { showMsg('error', 'Zaakceptuj Regulamin i DPA oraz potwierdź zapoznanie się z Polityką Prywatności.'); return; }
+    if (!phone || phone.replace(/\D/g,'').length < 9) { showMsg('error', 'Podaj numer telefonu.'); return; }
+    if (!website) { showMsg('error', 'Podaj stronę WWW lub profil na Instagramie.'); return; }
+    if (!legal_consent) { showMsg('error', 'Zaakceptuj Regulamin i potwierdź zapoznanie się z Polityką Prywatności.'); return; }
 
     btn.disabled = true;
-    btn.textContent = 'Tworzenie konta…';
+    btn.textContent = 'Wysyłanie…';
 
     try {
-      var resp = await fetch('/api/register', {
+      var resp = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studio_name: studio_name, email: email, phone: phone, nip: nip, password: password, honeypot: honeypot, legal_consent: legal_consent }),
+        body: JSON.stringify({ kind: 'trial', name: name, studio: studio, email: email, phone: phone, website: website, city: city, honeypot: honeypot, legal_consent: legal_consent }),
       });
       var data = await resp.json();
 
-      if (resp.ok && data.ok && data.mail_sent === false) {
+      if (resp.ok && data.ok) {
         form.innerHTML = '<div style="text-align:center;padding:1rem 0">'
           + '<div style="font-size:2rem;margin-bottom:1rem">✅</div>'
-          + '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.75rem">Konto utworzone</h2>'
-          + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Nie udało się wysłać e-maila powitalnego, ale konto jest gotowe.<br>Zaloguj się adresem <strong>' + email + '</strong> i hasłem, które właśnie ustawiłeś/aś.<br><br><a href="/" style="color:var(--ink);font-weight:600">Przejdź do logowania →</a></p>'
+          + '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.75rem">Dziękujemy za zgłoszenie</h2>'
+          + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Sprawdzimy zgłoszenie i odezwiemy się z dostępem testowym na adres<br><strong></strong><br><br>Zwykle odpowiadamy w ciągu 24 godzin w dni robocze.</p>'
           + '</div>';
-      } else if (resp.ok && data.ok) {
-        form.innerHTML = '<div style="text-align:center;padding:1rem 0">'
-          + '<div style="font-size:2rem;margin-bottom:1rem">✉️</div>'
-          + '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.75rem">Sprawdź skrzynkę e-mail</h2>'
-          + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Wysłaliśmy link aktywacyjny na adres<br><strong>' + email + '</strong><br><br>Kliknij w link w mailu, aby potwierdzić adres, a potem zaloguj się hasłem, które ustawiłeś/aś w formularzu. Jeśli nie widzisz wiadomości, sprawdź folder Spam.</p>'
-          + '</div>';
+        form.querySelector('strong').textContent = email;
       } else {
         showMsg('error', data.error || 'Wystąpił błąd. Spróbuj ponownie.');
         btn.disabled = false;
-        btn.textContent = 'Utwórz konto bezpłatnie';
+        btn.textContent = 'Wyślij zgłoszenie';
       }
     } catch (err) {
       showMsg('error', 'Błąd połączenia. Sprawdź internet i spróbuj ponownie.');
       btn.disabled = false;
-      btn.textContent = 'Utwórz konto bezpłatnie';
+      btn.textContent = 'Wyślij zgłoszenie';
     }
   });
 </script>
