@@ -45,7 +45,10 @@ function clearUserScopedStorage() {
     var drop = [];
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
-      if (/^(pd_gcal_|pd_oauth_|pd_mail_|porter_tasks$|pd_active_entity$|pd_builtin_catalog$)/.test(k)) drop.push(k);
+      // msal.* i klucze z hostem logowania Microsoft: cache MSAL (konto + tokeny) nie jest powiazany z
+      // uzytkownikiem aplikacji. Bez czyszczenia msalGetActiveAccount() zwraca skrzynke poprzedniej osoby.
+      if (/^(pd_gcal_|pd_oauth_|pd_mail_|porter_tasks$|pd_active_entity$|pd_builtin_catalog$|msal\.)/i.test(k) ||
+          k.indexOf('login.windows.net') >= 0 || k.indexOf('login.microsoftonline.com') >= 0) drop.push(k);
     }
     drop.forEach(function(k) { localStorage.removeItem(k); });
   } catch (e) {}
