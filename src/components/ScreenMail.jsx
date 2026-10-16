@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml, buildOfferDetailRows, resolvePDFAssets, SELLER } from '../constants/data.js';
 import { buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
-import { msalLogin, msalGetToken, msalLogout, msalGetActiveAccount } from '../msal.js';
+import { mailLogin, mailLogout, mailGetToken, mailGetActiveAccount, mailFetch, getMailProvider } from '../lib/mailClient.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
@@ -346,7 +346,7 @@ function ModalCalendar(p){
               var startDt=new Date(dt).toISOString();
               var endDt=new Date(new Date(dt).getTime()+dur*60000).toISOString();
               if(p.accessToken){
-                fetch("https://graph.microsoft.com/v1.0/me/events",{
+                mailFetch("https://graph.microsoft.com/v1.0/me/events",{
                   method:"POST",
                   headers:{"Authorization":"Bearer "+p.accessToken,"Content-Type":"application/json"},
                   body:JSON.stringify({subject:title,body:{contentType:"Text",content:note},start:{dateTime:startDt,timeZone:"Europe/Warsaw"},end:{dateTime:endDt,timeZone:"Europe/Warsaw"}})
@@ -923,10 +923,10 @@ function MailPreview(p){
     if(fetchedAtts[mid]&&fetchedAtts[mid].length>0)return;
     if(loadingAtts[mid])return;
     setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
-    msalGetToken().then(function(tok){
+    mailGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
       var useToken=tok||p.accessToken;
-      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
+      return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
         headers:{"Authorization":"Bearer "+useToken}
       });
     })
@@ -994,9 +994,9 @@ function MailPreview(p){
     var key=mid+"__"+att.id;
     if(window._porterAttImgCache[key])return Promise.resolve(window._porterAttImgCache[key]);
     setLbLoading(true);
-    return msalGetToken().then(function(tok){
+    return mailGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
-      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id,{
+      return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+att.id,{
         headers:{"Authorization":"Bearer "+(tok||p.accessToken)}
       });
     })
@@ -1048,9 +1048,9 @@ function MailPreview(p){
     // Otwórz okno OD RAZU (synchronicznie) — inaczej przeglądarka zablokuje popup po async fetch
     var win=window.open("","_blank");
     if(win){win.document.write("<!DOCTYPE html><html><head><meta charset='UTF-8'><title>"+(attName||"Za\u0142\u0105cznik")+"</title></head><body style='margin:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;height:100vh;font-family:Arial,sans-serif;color:#aaa;'>\u23F3 \u0141adowanie\u2026</body></html>");}
-    msalGetToken().then(function(tok){
+    mailGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
-      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
+      return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+attId,{
         headers:{"Authorization":"Bearer "+(tok||p.accessToken)}
       });
     })
@@ -1093,10 +1093,10 @@ function MailPreview(p){
     if(!mid)return;
     if(bodies[mid]||loadingBody[mid])return;
     setLoadingBody(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
-    msalGetToken().then(function(tok){
+    mailGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
       var useToken=tok||p.accessToken;
-      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"?$select=body",{
+      return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"?$select=body",{
         headers:{"Authorization":"Bearer "+useToken}
       });
     })
@@ -2262,11 +2262,12 @@ export function ScreenMail(p){
 
   // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
   ue(function(){
-    var returnedFromMicrosoft = consumeBrokerCallback('microsoft');
+    var mailProvider = getMailProvider();
+    var returnedFromMicrosoft = consumeBrokerCallback(mailProvider === 'google' ? 'google' : 'microsoft');
     var finish = function(acc) {
       if(acc){
         setMsAccount(acc);
-        return msalGetToken().then(function(token){
+        return mailGetToken().then(function(token){
           if(token){
             setAccessToken(token);
             setLogged(true);
@@ -2281,8 +2282,8 @@ export function ScreenMail(p){
       return null;
     };
     (returnedFromMicrosoft
-      ? brokerTokenRetry('microsoft', 5).then(function(){ return msalGetActiveAccount(); })
-      : msalGetActiveAccount()
+      ? brokerTokenRetry(mailProvider === 'google' ? 'google' : 'microsoft', 5).then(function(){ return mailGetActiveAccount(); })
+      : mailGetActiveAccount()
     ).then(finish).catch(function(e){console.error("MSAL session check error",e);});
   },[]);
 
@@ -2345,12 +2346,12 @@ export function ScreenMail(p){
     var spamUrl="https://graph.microsoft.com/v1.0/me/mailFolders/junkEmail/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead&$orderby=receivedDateTime desc";
 
     // Odśwież token przed każdym pobraniem — stary token wygasa po ~1h
-    msalGetToken().then(function(freshToken){
+    mailGetToken().then(function(freshToken){
       if(freshToken&&freshToken!==accessToken)setAccessToken(freshToken);
       var tok=freshToken||accessToken;
 
       function fetchJson(url){
-        return fetch(url,{headers:{"Authorization":"Bearer "+tok}})
+        return mailFetch(url,{headers:{"Authorization":"Bearer "+tok}})
           .then(function(r){return r.ok?r.json():{value:[]};});
       }
 
@@ -2545,16 +2546,16 @@ export function ScreenMail(p){
   // GET .../attachments zwraca metadane + contentBytes od razu dla plików <3MB; większe pliki
   // wymagają osobnego GET na pojedynczy załącznik (tak jak downloadAttachment w MailPreview).
   function forwardOriginalAttachments(mid){
-    msalGetToken().then(function(tok){
+    mailGetToken().then(function(tok){
       var useTok=tok||accessToken;
       if(tok)setAccessToken(tok);
-      return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
+      return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
         headers:{"Authorization":"Bearer "+useTok}
       }).then(function(r){return r.ok?r.json():null;}).then(function(data){
         var list=(data&&data.value||[]).filter(function(a){return !a.isInline;});
         return Promise.all(list.map(function(a){
           if(a.contentBytes)return a;
-          return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+a.id,{
+          return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+a.id,{
             headers:{"Authorization":"Bearer "+useTok}
           }).then(function(r2){return r2.ok?r2.json():null;})
             .then(function(full){return full&&full.contentBytes?Object.assign({},a,{contentBytes:full.contentBytes}):null;})
@@ -2716,7 +2717,7 @@ export function ScreenMail(p){
 
     function doSend(atts){
       // Odśwież token tuż przed wysyłką — może wygasnąć podczas pracy w app
-      msalGetToken().then(function(freshToken){
+      mailGetToken().then(function(freshToken){
         if(freshToken)setAccessToken(freshToken);
         var tok=freshToken||accessToken;
         var parseRecips=function(str){
@@ -2735,7 +2736,7 @@ export function ScreenMail(p){
         if(ccList.length)msgPayload.ccRecipients=ccList;
         if(bccList.length)msgPayload.bccRecipients=bccList;
         if(atts&&atts.length>0)msgPayload.attachments=atts;
-        fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+        mailFetch("https://graph.microsoft.com/v1.0/me/sendMail",{
           method:"POST",
           headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
           body:JSON.stringify({message:msgPayload,saveToSentItems:true})
@@ -2875,13 +2876,13 @@ export function ScreenMail(p){
   function moveMailToFolder(mailId,token,targetFolder){
     var folderMap={"trash":"deletedItems","spam":"junkEmail","inbox":"inbox","sent":"sentItems"};
     var destId=folderMap[targetFolder]||targetFolder;
-    return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mailId+"/move",{
+    return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mailId+"/move",{
       method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
       body:JSON.stringify({destinationId:destId})
     }).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
   }
   function deleteMailPermanent(mailId,token){
-    return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mailId,{
+    return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mailId,{
       method:"DELETE",headers:{"Authorization":"Bearer "+token}
     }).then(function(){return true;}).catch(function(){return false;});
   }
@@ -2892,6 +2893,12 @@ export function ScreenMail(p){
   }
   function trashMail(mail){
     if(!mail)return;
+    if(mail.folder==="trash"&&getMailProvider()==="google"){
+      // Aplikacja nie ma uprawnienia do trwałego usuwania w Gmailu (zakres gmail.modify) —
+      // Gmail sam czyści kosz po 30 dniach.
+      window.alert("Gmail usuwa wiadomości z kosza automatycznie po 30 dniach. Aby usunąć od razu, opróżnij Kosz w Gmailu.");
+      return;
+    }
     if(mail.folder==="trash"){
       if(!window.confirm("Trwale usun\u0105\u0107 t\u0119 wiadomo\u015b\u0107? Tej operacji nie mo\u017cna cofn\u0105\u0107."))return;
       setAllMails(function(prev){return prev.filter(function(m){return m.id!==mail.id;});});
@@ -2917,7 +2924,7 @@ export function ScreenMail(p){
   }
   // Świeży token (odświeża wygasający) → callback(token)
   function withFreshToken(fn){
-    return msalGetToken().then(function(tok){
+    return mailGetToken().then(function(tok){
       if(tok&&tok!==accessToken)setAccessToken(tok);
       return fn(tok||accessToken);
     });
@@ -2931,7 +2938,7 @@ export function ScreenMail(p){
     if(!link||loadingMore)return;
     setLoadingMore(true);
     withFreshToken(function(tok){
-      return fetch(link,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
+      return mailFetch(link,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
     }).then(function(data){
       if(!data){setLoadingMore(false);return;}
       var mapped=(data.value||[]).map(function(m){return mapGraphMsg(m,folder);});
@@ -2955,7 +2962,7 @@ export function ScreenMail(p){
       +"&$top=25&$select="+encodeURIComponent(MAIL_SELECT);
     setSearchLoading(true);
     withFreshToken(function(tok){
-      return fetch(url,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
+      return mailFetch(url,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
     }).then(function(data){
       if(!data){setSearchResults([]);setSearchNextLink(null);setSearchLoading(false);return;}
       var mapped=(data.value||[]).map(function(m){return mapGraphMsg(m,folder);});
@@ -2971,7 +2978,7 @@ export function ScreenMail(p){
     if(!searchNextLink||searchLoading)return;
     setSearchLoading(true);var link=searchNextLink;
     withFreshToken(function(tok){
-      return fetch(link,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
+      return mailFetch(link,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
     }).then(function(data){
       if(!data){setSearchLoading(false);return;}
       var mapped=(data.value||[]).map(function(m){return mapGraphMsg(m,folder);});
@@ -2989,10 +2996,10 @@ export function ScreenMail(p){
   function markAsRead(mail,readVal){
     if(!mail||mail.id.indexOf("m_")===0)return;
     setAllMails(function(prev){return prev.map(function(m){return m.id===mail.id?Object.assign({},m,{isRead:readVal}):m;});});
-    msalGetToken().then(function(tok){
+    mailGetToken().then(function(tok){
       var token=tok||accessToken;
       if(!token)return;
-      fetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
+      mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
         method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
         body:JSON.stringify({isRead:readVal})
       }).catch(function(e){console.warn("markAsRead PATCH failed",e);});
@@ -3005,10 +3012,10 @@ export function ScreenMail(p){
     if(selThread&&selThread.head&&selThread.head.id===mail.id){
       setSelThread(function(prev){if(!prev)return prev;var newHead=Object.assign({},prev.head,{isImportant:newVal});return Object.assign({},prev,{head:newHead,mails:prev.mails.map(function(m){return m.id===mail.id?Object.assign({},m,{isImportant:newVal}):m;})});});
     }
-    msalGetToken().then(function(tok){
+    mailGetToken().then(function(tok){
       var token=tok||accessToken;
       if(!token)return;
-      fetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
+      mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
         method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
         body:JSON.stringify({importance:newVal?"high":"normal"})
       }).catch(function(e){console.warn("toggleImportant PATCH failed",e);});
@@ -3022,7 +3029,7 @@ export function ScreenMail(p){
     if(!window._porterMailCats)window._porterMailCats={};
     if(window._porterMailCats[flag.category])return Promise.resolve();
     window._porterMailCats[flag.category]=true;
-    return fetch("https://graph.microsoft.com/v1.0/me/outlook/masterCategories",{
+    return mailFetch("https://graph.microsoft.com/v1.0/me/outlook/masterCategories",{
       method:"POST",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
       body:JSON.stringify({displayName:flag.category,color:flag.preset||"preset8"})
     }).catch(function(){});   // 409 = kategoria ju\u017c istnieje \u2014 ignorujemy
@@ -3041,11 +3048,11 @@ export function ScreenMail(p){
         return Object.assign({},prev,{head:upd(prev.head),mails:prev.mails.map(upd)});
       });
     }
-    msalGetToken().then(function(tok){
+    mailGetToken().then(function(tok){
       var token=tok||accessToken;
       if(!token)return;
       return Promise.resolve(ensureMasterCategory(flag,token)).then(function(){
-        return fetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
+        return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mail.id,{
           method:"PATCH",headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
           body:JSON.stringify({categories:cur})
         });
@@ -3054,24 +3061,32 @@ export function ScreenMail(p){
   }
 
   if(!logged){
+    // Wybór skrzynki: oba przyciski przekierowują do logowania dostawcy (strona się przeładuje),
+    // a po powrocie efekt sesji wyżej dociąga token i konto.
+    var providerBtnStyle={display:"flex",alignItems:"center",gap:12,padding:"12px 24px",borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:logging?"wait":"pointer",fontSize:14,fontWeight:600,color:"var(--t1)",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",width:"100%",maxWidth:300,justifyContent:"center",opacity:logging?0.6:1};
+    var startLogin=function(provider){
+      setLogging(true);
+      mailLogin(provider).catch(function(e){
+        setLogging(false);
+        console.error("Mail login error",e);
+        if(e&&e.errorCode!=="user_cancelled"){alert("B\u0142\u0105d logowania: "+(e.message||e.errorCode||"nieznany b\u0142\u0105d"));}
+      });
+    };
     return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px",minHeight:300,gap:16,textAlign:"center"}},
       ce("div",{style:{width:64,height:64,borderRadius:16,background:"#0078d4",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:4}},"\u2709\uFE0F"),
       ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},"Modu\u0142 Mail"),
-      ce("div",{style:{fontSize:13,color:"var(--t2)",maxWidth:300,lineHeight:1.7}},"Zaloguj si\u0119 kontem Microsoft, by wysy\u0142a\u0107 maile przez Outlooka i zapisywa\u0107 zdarzenia w kalendarzu."),
-      ce("button",{
-        disabled:logging,
-        onClick:function(){
-          setLogging(true);
-          msalLogin()
-            .then(function(result){setMsAccount(result.account);return msalGetToken();})
-            .then(function(token){setAccessToken(token);setLogged(true);setLogging(false);})
-            .catch(function(e){
-              setLogging(false);
-              console.error("MSAL login error",e);
-              if(e.errorCode!=="user_cancelled"){alert("B\u0142\u0105d logowania: "+(e.message||e.errorCode||"nieznany b\u0142\u0105d"));}
-            });
-        },
-        style:{display:"flex",alignItems:"center",gap:12,padding:"12px 24px",borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:logging?"wait":"pointer",fontSize:14,fontWeight:600,color:"var(--t1)",marginTop:8,boxShadow:"0 2px 8px rgba(0,0,0,0.06)",opacity:logging?0.7:1}},
+      ce("div",{style:{fontSize:13,color:"var(--t2)",maxWidth:320,lineHeight:1.7}},"Pod\u0142\u0105cz swoj\u0105 skrzynk\u0119 Gmail albo Outlook, by czyta\u0107 i wysy\u0142a\u0107 maile z aplikacji oraz zapisywa\u0107 terminy w kalendarzu."),
+      ce("button",{disabled:logging,onClick:function(){startLogin("google");},style:providerBtnStyle},
+        logging?ce("span",{style:{fontSize:16}},"\u23F3")
+          :ce("svg",{width:20,height:20,viewBox:"0 0 48 48"},
+            ce("path",{fill:"#EA4335",d:"M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"}),
+            ce("path",{fill:"#4285F4",d:"M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"}),
+            ce("path",{fill:"#FBBC05",d:"M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"}),
+            ce("path",{fill:"#34A853",d:"M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"})
+          ),
+        logging?"Logowanie...":"Po\u0142\u0105cz Gmail"
+      ),
+      ce("button",{disabled:logging,onClick:function(){startLogin("microsoft");},style:providerBtnStyle},
         logging
           ?ce("span",{style:{fontSize:16}},"\u23F3")
           :ce("svg",{width:20,height:20,viewBox:"0 0 21 21"},
@@ -3080,9 +3095,9 @@ export function ScreenMail(p){
             ce("rect",{x:1,y:11,width:9,height:9,fill:"#00a4ef"}),
             ce("rect",{x:11,y:11,width:9,height:9,fill:"#ffb900"})
           ),
-        logging?"Logowanie...":"Zaloguj si\u0119 przez Microsoft"
+        logging?"Logowanie...":"Po\u0142\u0105cz Outlook (Microsoft)"
       ),
-      ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Otworzy si\u0119 okno logowania Microsoft")
+      ce("div",{style:{fontSize:11,color:"var(--t3)",maxWidth:320,lineHeight:1.6}},"Przejdziesz na stron\u0119 logowania Google lub Microsoft. Aplikacja nie zna Twojego has\u0142a, a dost\u0119p mo\u017cesz w ka\u017cdej chwili cofn\u0105\u0107.")
     );
   }
 
@@ -3371,7 +3386,9 @@ export function ScreenMail(p){
         ce("span",{style:{fontSize:12,color:"var(--t2)",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},isMobile?null:"Zalogowano jako\u00a0",ce("strong",{style:{color:"var(--t1)"}},accountEmail))
       ),
       ce("button",{onClick:function(){setRefreshKey(function(k){return k+1;});},disabled:loadingMails,style:{fontSize:11,color:"var(--t3)",border:"1px solid var(--bd2)",background:"var(--bg2)",cursor:loadingMails?"default":"pointer",padding:"4px 10px",borderRadius:6,opacity:loadingMails?0.5:1}},loadingMails?"⏳":(isMobile?"🔄":"🔄 Odśwież")),
-      ce("button",{onClick:function(){msalLogout().catch(function(){}).finally(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
+      ce("button",{onClick:function(){
+        if(getMailProvider()==="google"&&!window.confirm("Odłączyć konto Gmail? Odłączony zostanie też Kalendarz Google, a połączenie trzeba będzie nawiązać od nowa."))return;
+        mailLogout().catch(function(){}).finally(function(){setLogged(false);setAccessToken(null);setMsAccount(null);setAllMails([]);});},style:{fontSize:11,color:"var(--t3)",border:"none",background:"none",cursor:"pointer",padding:"4px 8px",borderRadius:6}},"Wyloguj")
     ),
 
     calSaved?ce("div",{style:{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"var(--grl)",borderRadius:10,marginBottom:10,flexShrink:0,border:"1px solid var(--gr)",fontSize:13,color:"var(--gr)"}},

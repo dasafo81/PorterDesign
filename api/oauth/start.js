@@ -8,7 +8,9 @@ export default async function handler(req) {
   try {
     const user = await userFromRequest(req);
     if (!user) return json({ error: 'Unauthorized' }, 401, cors());
-    const provider = new URL(req.url).searchParams.get('provider');
+    const query = new URL(req.url).searchParams;
+    const provider = query.get('provider');
+    const withMail = query.get('mail') === '1';
     if (!['google', 'microsoft'].includes(provider)) return json({ error: 'Invalid provider' }, 400, cors());
     serviceConfig();
     const state = crypto.randomUUID() + crypto.randomUUID();
@@ -25,8 +27,12 @@ export default async function handler(req) {
       redirect_uri: redirectUri(provider), response_type: 'code', state,
       scope: provider === 'google'
         ? 'openid email https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
+          // gmail.modify: odczyt, wysyłka, etykiety i kosz — bez trwałego usuwania.
+          + (withMail ? ' https://www.googleapis.com/auth/gmail.modify' : '')
         : 'openid email profile User.Read offline_access Mail.Send Mail.ReadWrite Calendars.ReadWrite',
       access_type: 'offline', prompt: 'consent',
+      // Połączenie samego Kalendarza nie może odebrać wcześniej nadanego dostępu do Gmaila.
+      ...(provider === 'google' ? { include_granted_scopes: 'true' } : {}),
     });
     const host = provider === 'google' ? 'https://accounts.google.com/o/oauth2/v2/auth' : 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
     return json({ url: `${host}?${params}` }, 200, cors());

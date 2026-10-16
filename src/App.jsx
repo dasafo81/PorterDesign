@@ -63,7 +63,7 @@ export function App(p){
       if (landing) {
         sessionStorage.removeItem("pd_oauth_landing");
         if (landing === "google") return "kalendarz";
-        if (landing === "microsoft") return "mail";
+        if (landing === "microsoft" || landing === "gmail") return "mail";
       }
     } catch (e) {}
     return "crm";

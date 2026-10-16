@@ -126,13 +126,22 @@
     <li>nie zezwalamy pracownikom na dostęp do tych danych, z wyjątkiem sytuacji uzyskania wyraźnej zgody użytkownika, w celach bezpieczeństwa (np. dochodzenia w sprawie nadużycia), w celu zgodności z obowiązującym prawem lub w przypadku danych anonimizowanych i agregowanych na potrzeby wewnętrzne.</li>
   </ul>
 
-  <h3>4.2. Microsoft Graph / Outlook</h3>
+  <h3>4.2. Gmail (Google API)</h3>
+  <p>Po wyraźnym połączeniu skrzynki Gmail użytkownik udziela Aplikacji dostępu w zakresie <code>gmail.modify</code> — odczyt wiadomości i załączników, wysyłka wiadomości, zarządzanie etykietami oraz przenoszenie do kosza i spamu. Aplikacja nie ma uprawnienia do trwałego usuwania wiadomości. Razem z Gmailem nadawany jest dostęp do Google Calendar opisany w pkt 4.1 (zapisywanie terminów).</p>
+  <ul>
+    <li>treść wiadomości i załączniki są pobierane bezpośrednio z API Google do przeglądarki użytkownika i nie są kopiowane ani przechowywane na naszych serwerach;</li>
+    <li>po stronie serwera przechowujemy wyłącznie zaszyfrowany (AES-256-GCM) token odświeżania, adres e-mail połączonego konta oraz listę nadanych zakresów — w celu odnawiania dostępu bez ponownego logowania;</li>
+    <li>użytkownik może w każdej chwili odłączyć konto w module Mail (przycisk „Wyloguj”) — token jest wtedy unieważniany u Google i usuwany z bazy — lub cofnąć dostęp w ustawieniach konta Google;</li>
+    <li>wykorzystanie danych z Gmaila odbywa się zgodnie z Google API Services User Data Policy, w tym z wymaganiami <em>Limited Use</em>: dane służą wyłącznie do wyświetlania i wysyłania poczty użytkownika w Aplikacji, nie są przekazywane podmiotom trzecim, nie służą reklamie ani trenowaniu modeli, a pracownicy nie mają do nich wglądu bez zgody użytkownika.</li>
+  </ul>
+
+  <h3>4.3. Microsoft Graph / Outlook</h3>
   <p>Analogicznie: po połączeniu konta Microsoft Aplikacja uzyskuje dostęp do skrzynki pocztowej użytkownika w zakresie niezbędnym do wyświetlania i wysyłania wiadomości z poziomu Aplikacji. Token przechowywany jest w przeglądarce, treści wiadomości nie są kopiowane na nasze serwery.</p>
 
-  <h3>4.3. KSeF (Krajowy System e-Faktur)</h3>
+  <h3>4.4. KSeF (Krajowy System e-Faktur)</h3>
   <p>Aplikacja umożliwia wysyłkę faktur do KSeF przy użyciu tokenu autoryzacyjnego użytkownika. Token jest zaszyfrowany i przechowywany w bazie danych Aplikacji wyłącznie do momentu, gdy użytkownik go usunie. Faktury są przesyłane bezpośrednio do API Ministerstwa Finansów.</p>
 
-  <h3>4.4. GUS (BIR 1.1)</h3>
+  <h3>4.5. GUS (BIR 1.1)</h3>
   <p>Aplikacja korzysta z API GUS w celu podpowiadania danych firmowych na podstawie numeru NIP lub REGON. Do GUS przekazywany jest wyłącznie numer wprowadzony przez użytkownika.</p>
 
   <h2>5. Odbiorcy danych</h2>
@@ -141,7 +150,7 @@
     <li><strong>Vercel Inc.</strong> — hosting Serwisu i Aplikacji,</li>
     <li><strong>Supabase Inc.</strong> — baza danych i uwierzytelnianie,</li>
     <li><strong>Resend</strong> — wysyłka wiadomości transakcyjnych (e-mail),</li>
-    <li><strong>Google LLC</strong> — w zakresie integracji Google Calendar (patrz sekcja 4.1),</li>
+    <li><strong>Google LLC</strong> — w zakresie integracji Google Calendar i Gmail (patrz sekcje 4.1 i 4.2),</li>
     <li><strong>Microsoft Corporation</strong> — w zakresie integracji Outlook,</li>
     <li><strong>Ministerstwo Finansów RP</strong> — w zakresie wysyłki faktur do KSeF,</li>
     <li><strong>Główny Urząd Statystyczny</strong> — w zakresie zapytań o dane firm.</li>
