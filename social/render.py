@@ -16,7 +16,6 @@ POSTS = [
   ('05-poczta', 'mail.webp', 'Poczta', 'Gmail, Outlook <em>albo każda inna skrzynka</em>', 'Wysyłasz oferty z własnego adresu i śledzisz korespondencję z klientem — bez wychodzenia z aplikacji.'),
   ('06-faktury', 'faktury-ksef.webp', 'Faktury i KSeF', 'Zaliczka i faktura końcowa <em>wprost ze zlecenia</em>', 'Faktury zgodne z KSeF, z danymi kontrahenta uzupełnianymi po NIP.'),
   ('07-ai', 'ai.webp', 'Asystent AI', 'Wklejasz maila od klienta. <em>Reszta dzieje się sama.</em>', 'Asystent przygotowuje klienta z pokojami i produktami, dopytuje o braki i wylicza wycenę.'),
-  ('08-crm', 'crm-deal-card.webp', 'CRM', 'Każdy klient <em>pod kontrolą</em>', 'Od pierwszego zapytania po realizację — etapy, notatki, zadania i dokumenty w jednej karcie.'),
 ]
 
 CSS = """
@@ -40,7 +39,7 @@ h1 em{font-style:italic;background:linear-gradient(105deg,#e8703a 20%,#f0a53a 90
 
 def page(img, eyebrow, title, sub):
     full = img == 'ai.webp'  # modal na przyciemnionym tle: cały kadr
-    imgstyle = 'width:100%' if full else 'width:1400px;margin-left:0' if img == 'crm-deal-card.webp' else 'width:1290px;margin-left:-168px'
+    imgstyle = 'width:100%' if full else 'width:1290px;margin-left:-168px'
     shotstyle = 'height:auto' if full else ''
     return f"""<!doctype html><html><head><meta charset=utf-8>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,700;1,700&family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
@@ -50,15 +49,20 @@ def page(img, eyebrow, title, sub):
 <div class=foot><img src="file://{PUB/'logo-mydecolab.png'}"><span>mydecolab.pl</span></div>
 </div></body></html>"""
 
-with sync_playwright() as p:
-    b = p.chromium.launch(executable_path=__import__('os').environ.get('CHROMIUM_PATH') or None)
-    pg = b.new_page(viewport={'width':1080,'height':1350})
-    for name, img, ey, t, s in POSTS:
-        f = OUT / f'{name}.html'
-        f.write_text(page(img, ey, t, s), encoding='utf-8')
-        pg.goto(f'file://{f}', wait_until='networkidle')
-        pg.evaluate('document.fonts.ready')
-        pg.screenshot(path=str(OUT / f'{name}.png'))
-        f.unlink()
-        print(name)
-    b.close()
+def main():
+    with sync_playwright() as p:
+        b = p.chromium.launch(executable_path=__import__('os').environ.get('CHROMIUM_PATH') or None)
+        pg = b.new_page(viewport={'width':1080,'height':1350})
+        for name, img, ey, t, s in POSTS:
+            f = OUT / f'{name}.html'
+            f.write_text(page(img, ey, t, s), encoding='utf-8')
+            pg.goto(f'file://{f}', wait_until='networkidle')
+            pg.evaluate('document.fonts.ready')
+            pg.screenshot(path=str(OUT / f'{name}.png'))
+            f.unlink()
+            print(name)
+        b.close()
+
+
+if __name__ == '__main__':
+    main()
