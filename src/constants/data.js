@@ -6747,7 +6747,7 @@ export function calc(p){
     else if(isMarcin){baz=parseFloat((lenMb*KS_MARCIN_PRICE).toFixed(2));}
     else if(c.ks==="wave"){baz=parseFloat((lenMb*100).toFixed(2));}
     else baz=parseFloat((lenMb*80).toFixed(2));
-    total=baz*qty+parseFloat((arc*100).toFixed(2))+parseFloat((pts*100*qty).toFixed(2));
+    total=baz*qty+parseFloat((arc*100*qty).toFixed(2))+parseFloat((pts*100*qty).toFixed(2));
     if(isMarcin){
       lines.push("Szyna KS Marcin Dekor "+ksKolorLbl+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb) \xd7 "+KS_MARCIN_PRICE+" zł/mb"+(qty>1?" x"+qty:""));
     }else if(isMSigma){
