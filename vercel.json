@@ -1,5 +1,5 @@
 {
-  "buildCommand": "rm -rf node_modules/.vite && npm run build && mkdir -p dist/app && mv dist/index.html dist/app/index.html && cp register.html privacy.html terms.html dpa.html manifest.json icon-192.png icon-512.png apple-touch-icon.png dist/ && cp landing.html dist/index.html",
+  "buildCommand": "sh scripts/vercel-build.sh",
   "outputDirectory": "dist",
   "framework": "vite",
   "redirects": [
