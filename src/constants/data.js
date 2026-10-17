@@ -6764,7 +6764,7 @@ export function calc(p){
     if(c.km==="sciana"){
       // Uchwyt scienny co 60cm szyny (x ilosc szyn): pojedynczy 20 zl, podwojny 35 zl
       var wallDouble=c.kmWall==="podwojny";
-      var wallPcs=Math.ceil(lenCm/KS_WALL_ROZSTAW)*qty;
+      var wallPcs=Math.max(2,Math.ceil(lenCm/KS_WALL_ROZSTAW))*qty;
       var wallUnit=wallDouble?KS_WALL_DOUBLE_PRICE:KS_WALL_SINGLE_PRICE;
       var wallSuma=parseFloat((wallPcs*wallUnit).toFixed(2));
       total+=wallSuma;
