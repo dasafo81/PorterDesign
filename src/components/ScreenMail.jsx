@@ -54,12 +54,9 @@ export function findDefaultTemplate(list){
 // Per-tenant: każdy tenant może mieć własny zestaw — nadpisanie w localStorage
 // pod kluczem "pd_mail_flags" (JSON: [{id,label,color,category,preset}]).
 // preset = kolor kategorii w Outlooku (preset8 = fioletowy, preset0 = czerwony…)
-export const DEFAULT_MAIL_FLAGS = [
-  {id:"paulina",label:"Paulina",color:"#f97316",category:"Paulina",preset:"preset1"},
-  {id:"damian",label:"Damian",color:"#8b5cf6",category:"Damian",preset:"preset8"},
-  {id:"paulina_zalatwione",label:"Paulina załatwione",color:"#22c55e",category:"Paulina załatwione",preset:"preset4"},
-  {id:"damian_zalatwione",label:"Damian załatwione",color:"#14b8a6",category:"Damian załatwione",preset:"preset5"}
-];
+// Brak flag domyślnych: zestaw (np. imiona osób w studiu) ustawia się per tenant przy onboardingu
+// albo w Ustawieniach — nowe studio zaczyna bez cudzych flag.
+export const DEFAULT_MAIL_FLAGS = [];
 // Kolory dopuszczalne dla flag \u2014 celowo ograniczone do presetow Outlooka,
 // zeby oznaczenie mialo ten sam kolor w aplikacji i w skrzynce Outlooka.
 export const FLAG_PALETTE = [
@@ -2428,21 +2425,6 @@ export function ScreenMail(p){
   ue(function(){
     sbApi.getMailFlags().then(function(list){
       if(!list)return;
-      // Jednorazowo dolacz nowe flagi domyslne do listy zapisanej wczesniej w bazie
-      // (inaczej zapisana lista z samym "Damian" przykrywa nowe domyslne).
-      var seeded=false;
-      try{seeded=localStorage.getItem("pd_mail_flags_seed_v2")==="1";}catch(e){}
-      if(!seeded){
-        var have={};
-        list.forEach(function(f){have[f.id]=true;});
-        var missing=DEFAULT_MAIL_FLAGS.filter(function(f){return !have[f.id];});
-        try{localStorage.setItem("pd_mail_flags_seed_v2","1");}catch(e){}
-        if(missing.length){
-          list=list.concat(missing);
-          try{localStorage.setItem("pd_mail_flags",JSON.stringify(list));}catch(e){}
-          sbApi.saveMailFlags(list).catch(function(){});
-        }
-      }
       setMailFlags(list);
     }).catch(function(){});
   },[]);
