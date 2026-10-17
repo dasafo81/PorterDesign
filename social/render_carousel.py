@@ -1,13 +1,14 @@
 """Karuzela na Instagram (5 slajdów 1080x1350) z karty deala. Najpierw: python3 social/anonymize_deal_card.py ...
 Uruchom: CHROMIUM_PATH=... python3 social/render_carousel.py"""
 import os, pathlib
-from PIL import Image
+from PIL import Image, ImageFilter
 from playwright.sync_api import sync_playwright
 from render import ROOT, PUB, OUT, CSS
 
 SRC = ROOT / 'social' / 'src'
 TMP = ROOT / 'social' / 'out' / '_crop'
 TMP.mkdir(parents=True, exist_ok=True)
+SS = 2  # współczynnik supersamplingu: rendering w 2160x2700, potem zmniejszenie do 1080x1350
 
 card = Image.open(SRC / 'deal-card.png')
 modal = Image.open(SRC / 'deal-opinie.png')
@@ -52,15 +53,23 @@ def html(n, crop, width, eyebrow, title, sub):
 def main():
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or None)
-        pg = b.new_page(viewport={'width': 1080, 'height': 1350})
+        pg = b.new_page(viewport={'width': 1080, 'height': 1350}, device_scale_factor=SS)
         for n, (name, img, box, width, ey, t, s) in enumerate(SLIDES):
             crop = TMP / f'{name}.png'
-            img.crop(box).save(crop)
+            c = img.crop(box)
+            # powiększenie z wyprzedzeniem (Lanczos) + lekkie wyostrzenie, zamiast skalowania w przeglądarce
+            inner = (width - 28) * SS
+            c = c.resize((inner, round(c.height * inner / c.width)), Image.LANCZOS)
+            c = c.filter(ImageFilter.UnsharpMask(radius=2.2, percent=140, threshold=2))
+            c.save(crop)
             f = OUT / f'{name}.html'
             f.write_text(html(n, crop, width, ey, t, s), encoding='utf-8')
             pg.goto(f'file://{f}', wait_until='networkidle')
             pg.evaluate('document.fonts.ready')
-            pg.screenshot(path=str(OUT / f'{name}.png'))
+            raw = OUT / f'{name}.raw.png'
+            pg.screenshot(path=str(raw))
+            Image.open(raw).convert('RGB').resize((1080, 1350), Image.LANCZOS).save(OUT / f'{name}.png', optimize=True)
+            raw.unlink()
             f.unlink()
             print(name)
         b.close()
