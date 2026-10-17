@@ -988,7 +988,7 @@ export function ProdCard(p){
 
       // SEKCJA 1: Wymiary + tkanina
       ce(Section,{num:"1",title:"Wymiary"},
-        ce("div",{style:{display:"grid",gridTemplateColumns:prod.type==="zaslona"?"repeat(4,minmax(0,1fr))":"1fr 1fr",gap:12,marginBottom:10}},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,marginBottom:10}},
           ce(Fld,{label:"SZEROKO\u015a\u0106"},
             ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:46}},
               ce("span",{style:{padding:"0 10px",color:"var(--t3)",fontSize:13,flexShrink:0}},"cm"),
@@ -1001,18 +1001,18 @@ export function ProdCard(p){
               ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"270",style:{flex:1,minWidth:0,padding:"10px 10px 10px 0",fontSize:16,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:46}})
             )
           ),
-          prod.type==="zaslona"?ce(Fld,{label:"SZER. POMIESZCZ. (opc.)"},
+          ce(Fld,{label:"SZER. POMIESZCZ. (opc.)"},
             ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:46}},
               ce("span",{style:{padding:"0 10px",color:"var(--t3)",fontSize:13,flexShrink:0}},"cm"),
               ce("input",{type:"text",inputMode:"numeric",value:par.wPomieszczenia||"",onChange:function(ev){sp("wPomieszczenia",ev.target.value);},placeholder:"np. 350",style:{flex:1,minWidth:0,padding:"10px 10px 10px 0",fontSize:16,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:46}})
             )
-          ):null,
-          prod.type==="zaslona"?ce(Fld,{label:"WYS. POMIESZCZ. (opc.)"},
+          ),
+          ce(Fld,{label:"WYS. POMIESZCZ. (opc.)"},
             ce("div",{style:{display:"flex",alignItems:"center",background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:46}},
               ce("span",{style:{padding:"0 10px",color:"var(--t3)",fontSize:13,flexShrink:0}},"cm"),
               ce("input",{type:"text",inputMode:"numeric",value:par.hPomieszczenia||"",onChange:function(ev){sp("hPomieszczenia",ev.target.value);},placeholder:"np. 270",style:{flex:1,minWidth:0,padding:"10px 10px 10px 0",fontSize:16,border:"none",background:"transparent",color:"var(--t1)",outline:"none",minHeight:46}})
             )
-          ):null
+          )
         ),
         ce("div",{style:{marginTop:0,marginBottom:10}},
           ce(Fld,{label:"KOLOR"},
