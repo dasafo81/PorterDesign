@@ -1,5 +1,5 @@
 // api/lead.js
-// Publiczny endpoint dla formularza "Umów demo" na landing.html.
+// Publiczny endpoint dla formularza "Umów demo" na landingu (landing.html, strona główna).
 // NIE wymaga JWT (dostępny bez logowania) — analogicznie do api/register.js.
 // Zabezpieczenia: walidacja pól, honeypot.
 // Wysyła powiadomienie mailowe przez Resend na adres z env LEAD_TO_EMAIL.

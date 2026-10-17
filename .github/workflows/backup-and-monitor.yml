@@ -21,8 +21,11 @@ jobs:
           echo "$body" | grep -q '"ok":true'
 
           # Critical routes: no payment or invoice is created.
+          # Strona główna (landing) i aplikacja pod /app.
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
-            https://www.mydecolab.pl/landing.html)" = "200"
+            https://www.mydecolab.pl/)" = "200"
+          test "$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 20 \
+            https://www.mydecolab.pl/app)" = "200"
           test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 \
             -X POST -H 'Content-Type: application/json' \
             https://www.mydecolab.pl/api/stripe/webhook)" = "400"

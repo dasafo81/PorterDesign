@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { signIn } from '../lib/auth.js';
 const ce = React.createElement;
 
-// Mini-lista funkcji pokazywana obok logowania — treść zsynchronizowana z landing.html
+// Mini-lista funkcji pokazywana obok logowania — treść zsynchronizowana z landingiem (landing.html, serwowany jako strona główna)
 var LOGIN_FEATURES = [
   { icon: '\uD83D\uDCCB', label: 'Wyceny w kilka minut' },
   { icon: '\uD83D\uDCC8', label: 'CRM z tablic\u0105 Kanban' },
