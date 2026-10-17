@@ -1397,7 +1397,7 @@ export const FABRICS =[
   {name:"ROFE",brutto:150,prod:"LART",width:300,zakup:39.7,belkowa:29.8},
   {name:"DIMOUT 310",brutto:160,prod:"LART",width:280,zakup:54,belkowa:42.6},
   {name:"BLOW",brutto:120,prod:"LART",width:300,zakup:36.9,belkowa:21.3},
-  {name:"Blackout 03",brutto:80,prod:"LART",width:280,zakup:28.4,belkowa:18.4},
+  {name:"Fodera",brutto:80,prod:"LART",width:280,zakup:28.4,belkowa:18.4},
   // \u2500\u2500 VADAIN \u2014 kolekcja CAPTURE (nazwa: "<Tkanina> / Capture") \u2500\u2500 brutto = cena r\u0119czna (sprzeda\u017cy), zakup = Cena Kuponu \u2500\u2500
   {name:"Aurora / Capture",brutto:220,prod:"Vadain",width:300,zakup:130,sklad:"80% RPET, 12% PES, 8% LI"},
   {name:"Euphoria / Capture",brutto:250,prod:"Vadain",width:300,zakup:142,sklad:"58% CO, 42% PES"},
@@ -5583,6 +5583,7 @@ export function isHighFabric(widthCm){
 // Dawne nazwy tkanin -> aktualne (zmiany nazw w FABRICS). Stare wyceny i nadpisania
 // z Katalogu trzymaja nazwe jako klucz, wiec mapujemy je na nowa nazwe.
 var FABRIC_LEGACY_NAMES = {
+  "Blackout 03":"Fodera",
   "Aurora Capture":"Aurora / Capture",
   "Euphoria":"Euphoria / Capture",
   "Explore":"Explore / Capture",
@@ -5717,7 +5718,7 @@ export function getFabricTags(f){
 // ── Tkaniny podszewkowe (opcja "Podszewka" w zasłonie) — cena z katalogu ──
 export const LINING_FABRICS = [
   {name:"Blackout Uni", label:"Uni Blackout (Lart)"},
-  {name:"Blackout 03",  label:"Blackout 03 (Lart)"}
+  {name:"Fodera",       label:"Fodera (Lart)"}
 ];
 // Bestsellery tkanin — pokazywane jako pierwsza sekcja po otwarciu listy tkanin w wycenach
 // (FabPicker w ProdCard.jsx), pogrupowane wg kategorii; osobne zestawy dla zasłon i firan.
@@ -7586,7 +7587,7 @@ export function buildFabricRows(client){
           if(pc.podszewka==="tak"&&pc.podszewkaTkanina&&metry>0){
             var linFab=getFabricEffective(pc.podszewkaTkanina);
             rows.push({
-              fabName:pc.podszewkaTkanina,
+              fabName:(linFab&&linFab.name)||pc.podszewkaTkanina,
               prod:(linFab&&linFab.prod)||"-",
               kolor:"-",
               brutto:(linFab&&linFab.brutto)||0,
@@ -7619,6 +7620,22 @@ export function buildFabricRows(client){
             win:w.name,
             note:"Roleta"+(p.note?" — "+p.note:"")
           });
+          // Podszewka rolety — osobna pozycja w zamówieniu (tkanina podszewkowa domyślna, metraż jak tkanina główna)
+          if(pc.rPodszewka==="tak"&&!isBezMech){
+            var rLinName=pc.podszewkaTkanina||LINING_FABRICS[0].name;
+            var rLinFab=getFabricEffective(rLinName);
+            rows.push({
+              fabName:rLinName,
+              prod:(rLinFab&&rLinFab.prod)||"-",
+              kolor:"-",
+              brutto:(rLinFab&&rLinFab.brutto)||0,
+              width:(rLinFab&&rLinFab.width)||null,
+              metry:rMetry,
+              room:r.name,
+              win:(w.name||"")+" — podszewka",
+              note:"Podszewka rolety"+(p.note?" — "+p.note:"")
+            });
+          }
           // Roleta Duo — druga warstwa tkaniny
           if(pc.rModel==="duo"&&(p.fab2Name||p.fab2ManName)){
             var fab2Obj=p.fab2Name?getFabricEffective(p.fab2Name):null;
