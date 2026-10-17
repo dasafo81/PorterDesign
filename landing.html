@@ -17,7 +17,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"My DecoLab","url":"https://www.mydecolab.pl/","inLanguage":"pl"},{"@type":"SoftwareApplication","name":"My DecoLab","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://www.mydecolab.pl/","inLanguage":"pl","description":"My DecoLab — wyceny, CRM, kalendarz, poczta (Gmail, Outlook, IMAP) i faktury z KSeF w jednym miejscu. Kompletne studio dekoracji okien: od pomiaru po fakturę, bez przełączania się między programami."}]}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -33,9 +33,9 @@
     padding: 1.2rem 2.5rem; background: rgba(255,255,255,0.92);
     backdrop-filter: blur(12px); border-bottom: 1px solid rgba(28,34,51,0.10);
   }
-  .nav-logo { display: flex; align-items: center; gap: 12px; font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
+  .nav-logo { display: flex; align-items: center; gap: 12px; font-family: 'Jost', sans-serif; font-size: 1.4rem; font-weight: 700; letter-spacing: 0.02em; color: var(--wsp-dark); text-decoration: none; }
   .nav-logo img { height: 56px; width: auto; display: block; }
-  .nav-logo span { color: var(--ink3); font-weight: 400; font-style: italic; }
+  .nav-logo span { color: var(--ink3); font-weight: 400; font-style: normal; }
   .nav-cta { padding: 10px 22px; border-radius: 8px; background: var(--wsp); color: white; font-size: 13px; font-weight: 500; letter-spacing: 0.04em; text-decoration: none; border: none; cursor: pointer; transition: background .2s; }
   .nav-cta:hover { background: var(--wsp-dark); }
   html { scroll-padding-top: 118px; }
@@ -67,12 +67,12 @@
   .hero::before { content: ""; position: absolute; top: -180px; left: 50%; transform: translateX(-50%); width: 900px; height: 500px; background: radial-gradient(ellipse at center, rgba(232,112,58,0.14) 0%, transparent 65%); pointer-events: none; }
   .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 3.5rem; align-items: center; max-width: 1320px; width: 100%; margin: 0 auto; text-align: left; }
   .hero-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.28em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1.4rem; opacity: 0; animation: fadeUp .6s .1s forwards; }
-  .hero h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.6rem, 4.2vw, 4rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; color: var(--ink); margin: 0 0 1.3rem; opacity: 0; animation: fadeUp .7s .2s forwards; }
-  .hero h1 em { background: linear-gradient(105deg, #e8703a 20%, #f0a53a 90%); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; }
+  .hero h1 { font-family: 'Jost', sans-serif; font-size: clamp(2.2rem, 3.7vw, 3.4rem); font-weight: 700; line-height: 1.12; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 1.3rem; opacity: 0; animation: fadeUp .7s .2s forwards; }
+  .hero h1 em { background: linear-gradient(105deg, #e8703a 20%, #f0a53a 90%); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: normal; font-weight: 400; }
   .stats-band { display: flex; justify-content: flex-start; gap: 0; margin: 2.6rem 0 0; background: rgba(255,255,255,0.65); backdrop-filter: blur(8px); border: 1px solid rgba(232,112,58,0.15); border-radius: 16px; overflow: hidden; opacity: 0; animation: fadeUp .8s .9s forwards; }
   .stat { flex: 1; padding: 1.2rem 1rem; text-align: center; }
   .stat + .stat { border-left: 1px solid rgba(232,112,58,0.12); }
-  .stat-num { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.7rem, 2.6vw, 2.2rem); font-weight: 700; color: #1c2233; line-height: 1; }
+  .stat-num { font-family: 'Jost', sans-serif; font-size: clamp(1.5rem, 2.3vw, 1.9rem); font-weight: 700; color: #1c2233; line-height: 1; }
   .stat-num b { background: linear-gradient(105deg, #e8703a, #f0a53a); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .stat-label { font-size: 11px; color: var(--ink2); margin-top: 6px; letter-spacing: 0.03em; }
   @media (max-width: 640px) { .stats-band { flex-direction: column; } .stat + .stat { border-left: none; border-top: 1px solid rgba(232,112,58,0.12); } }
@@ -102,7 +102,7 @@
   section { padding: 6rem 2rem; }
   .section-inner { max-width: 1100px; margin: 0 auto; }
   .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.26em; text-transform: uppercase; color: var(--wsp); margin-bottom: 1rem; text-align: center; }
-  .section-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1.15; text-align: center; color: var(--ink); margin-bottom: 1rem; }
+  .section-title { font-family: 'Jost', sans-serif; font-size: clamp(1.8rem, 3.4vw, 2.5rem); font-weight: 700; line-height: 1.18; letter-spacing: -0.02em; text-align: center; color: var(--ink); margin-bottom: 1rem; }
   .section-sub { font-size: 1rem; color: var(--ink2); line-height: 1.7; text-align: center; max-width: 520px; margin: 0 auto 3.5rem; font-weight: 300; }
   .problem-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
   .problem-card { background: var(--wsp-bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; border-left: 3px solid var(--wsp-light); }
@@ -118,7 +118,7 @@
   .steps { display: flex; flex-direction: column; gap: 0; max-width: 680px; margin: 0 auto; }
   .step { display: grid; grid-template-columns: 56px 1fr; gap: 0 1.5rem; padding-bottom: 2.5rem; position: relative; }
   .step:not(:last-child) .step-line { position: absolute; left: 27px; top: 56px; bottom: 0; width: 1px; background: var(--border); }
-  .step-num { width: 56px; height: 56px; border-radius: 50%; background: var(--wsp-bg); border: 1.5px solid var(--wsp-light); display: flex; align-items: center; justify-content: center; font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 700; color: var(--wsp-dark); flex-shrink: 0; }
+  .step-num { width: 56px; height: 56px; border-radius: 50%; background: var(--wsp-bg); border: 1.5px solid var(--wsp-light); display: flex; align-items: center; justify-content: center; font-family: 'Jost', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--wsp-dark); flex-shrink: 0; }
   .step-body { padding-top: 12px; }
   .step-body h3 { font-size: 17px; font-weight: 500; color: var(--ink); margin-bottom: 6px; }
   .step-body p { font-size: 14px; color: var(--ink2); line-height: 1.65; font-weight: 300; }
@@ -146,7 +146,7 @@
   .feat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 3.2rem; align-items: center; max-width: 1100px; margin: 0 auto; padding: 3.2rem 2rem; }
   .feat-row.reverse .feat-visual { order: -1; }
   .feat-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--wsp); margin-bottom: 0.7rem; }
-  .feat-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; font-weight: 700; color: var(--ink); margin-bottom: 0.9rem; line-height: 1.25; }
+  .feat-text h3 { font-family: 'Jost', sans-serif; font-size: 1.45rem; font-weight: 700; color: var(--ink); margin-bottom: 0.9rem; line-height: 1.25; }
   .feat-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
 
   /* Real app screenshots (new look) */
@@ -167,7 +167,7 @@
   .sw-btn.active { border-color: var(--ink); color: #b45a12; font-weight: 600; }
   .tour-panel { display: none; grid-template-columns: 0.72fr 1.28fr; gap: 2.6rem; align-items: center; }
   .tour-panel.active { display: grid; animation: fadeUp .35s both; }
-  .tour-text h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.9rem; font-weight: 700; line-height: 1.2; color: var(--ink); margin-bottom: 0.9rem; }
+  .tour-text h3 { font-family: 'Jost', sans-serif; font-size: 1.6rem; font-weight: 700; line-height: 1.2; color: var(--ink); margin-bottom: 0.9rem; }
   .tour-text p { font-size: 14.5px; color: var(--ink2); line-height: 1.7; font-weight: 300; }
   .tour-panel.noshot { grid-template-columns: 1fr; gap: 1.8rem; max-width: 980px; margin: 0 auto; }
   .tour-panel.noshot .tour-text { text-align: center; max-width: 720px; margin: 0 auto; }
@@ -210,14 +210,15 @@
   .pricing-section::after { content: ""; position: absolute; bottom: -200px; left: -100px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(59,130,246,0.2) 0%, transparent 60%); pointer-events: none; }
   .pricing-inner { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
   .pricing-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.28em; text-transform: uppercase; color: #f2a273; margin-bottom: 1rem; text-align: center; }
-  .pricing-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.2rem, 5vw, 3.6rem); font-weight: 700; line-height: 1.12; text-align: center; color: white; margin-bottom: 1rem; letter-spacing: -0.01em; }
-  .pricing-title em { background: linear-gradient(105deg, #f2a273 20%, #ffd08a 90%); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: italic; }
+  .pricing-title { font-family: 'Jost', sans-serif; font-size: clamp(1.9rem, 4.2vw, 3rem); font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; text-align: center; color: white; margin-bottom: 1rem; letter-spacing: -0.01em; }
+  .pricing-title em { background: linear-gradient(105deg, #f2a273 20%, #ffd08a 90%); -webkit-background-clip: text; background-clip: text; color: transparent; font-style: normal; font-weight: 400; }
+  .lt { font-weight: 400; }
   .pricing-sub { font-size: 1.05rem; color: rgba(255,255,255,0.75); line-height: 1.7; text-align: center; max-width: 620px; margin: 0 auto 3.5rem; font-weight: 300; }
 
   /* Flow: 3-step "measure → configure → done" pill row */
   .flow-row { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 1rem; align-items: center; max-width: 900px; margin: 0 auto 4rem; }
   .flow-step { text-align: center; padding: 1.4rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; backdrop-filter: blur(6px); }
-  .flow-num { display: inline-block; width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #e8703a, #f0a53a); color: white; font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 700; line-height: 34px; margin-bottom: 0.7rem; }
+  .flow-num { display: inline-block; width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #e8703a, #f0a53a); color: white; font-family: 'Jost', sans-serif; font-size: 17px; font-weight: 700; line-height: 34px; margin-bottom: 0.7rem; }
   .flow-step h4 { font-size: 15px; font-weight: 500; color: white; margin-bottom: 0.4rem; letter-spacing: 0.01em; }
   .flow-step p { font-size: 12.5px; color: rgba(255,255,255,0.65); line-height: 1.5; font-weight: 300; }
   .flow-arrow { color: rgba(255,255,255,0.25); font-size: 1.5rem; }
@@ -226,7 +227,7 @@
   /* Pricing showcase: mockup + product pills side by side */
   .pricing-showcase { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; max-width: 1200px; margin: 0 auto 4rem; }
   @media (max-width: 900px) { .pricing-showcase { grid-template-columns: 1fr; gap: 2rem; } }
-  .pricing-products h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; color: white; margin-bottom: 0.6rem; line-height: 1.25; }
+  .pricing-products h3 { font-family: 'Jost', sans-serif; font-size: 1.5rem; color: white; margin-bottom: 0.6rem; line-height: 1.25; }
   .pricing-products > p { font-size: 14px; color: rgba(255,255,255,0.7); line-height: 1.7; margin-bottom: 1.5rem; font-weight: 300; }
   .product-pills { display: flex; flex-wrap: wrap; gap: 8px; }
   .product-pill { background: rgba(255,255,255,0.08); border: 1px solid rgba(242,162,115,0.3); border-radius: 100px; padding: 8px 16px; font-size: 12.5px; color: white; font-weight: 500; letter-spacing: 0.01em; }
@@ -255,12 +256,12 @@
   .pm-fabric-price { font-size: 12px; color: #b45a12; font-weight: 700; }
   .pm-result { background: linear-gradient(135deg, #1c2233 0%, #232a3d 100%); border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; }
   .pm-result-label { font-size: 10px; color: rgba(255,255,255,0.6); letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
-  .pm-result-value { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 700; color: white; }
+  .pm-result-value { font-family: 'Jost', sans-serif; font-size: 20px; font-weight: 700; color: white; }
   .pm-result-value b { background: linear-gradient(105deg, #f2a273, #ffd08a); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
   /* PDF output pipeline (below showcase) */
   .pdf-pipeline-wrap { text-align: center; max-width: 1000px; margin: 0 auto; }
-  .pdf-pipeline-title { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; color: white; margin-bottom: 0.5rem; }
+  .pdf-pipeline-title { font-family: 'Jost', sans-serif; font-size: 1.4rem; color: white; margin-bottom: 0.5rem; }
   .pdf-pipeline-sub { font-size: 14px; color: rgba(255,255,255,0.65); margin-bottom: 2rem; font-weight: 300; }
   .pdf-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
   .pdf-card { flex: 1 1 150px; max-width: 170px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 1.1rem 0.8rem; text-align: center; transition: transform .2s, background .2s; backdrop-filter: blur(6px); }
@@ -318,7 +319,7 @@
   .success-msg { display: none; text-align: center; padding: 2rem; color: var(--wsp-dark); font-size: 15px; line-height: 1.7; }
   /* honeypot */
   .hp { display: none !important; }
-  .success-msg strong { display: block; font-size: 1.8rem; font-family: 'Cormorant Garamond', serif; margin-bottom: .5rem; }
+  .success-msg strong { display: block; font-size: 1.5rem; font-family: 'Jost', sans-serif; margin-bottom: .5rem; }
   @media (max-width: 600px) {
     nav { padding: 1rem 1.2rem; }
     .kanban-mini { flex-direction: column; }
@@ -388,7 +389,7 @@
 <section class="problem">
   <div class="section-inner">
     <p class="section-label">Czy to brzmi znajomo?</p>
-    <h2 class="section-title">Prowadzisz studio,<br>a wyceny zajmują Ci godziny</h2>
+    <h2 class="section-title">Prowadzisz studio,<br><span class="lt">a wyceny zajmują Ci godziny</span></h2>
     <p class="section-sub">Każdy właściciel małego studia dekoracji zna ten problem.</p>
     <div class="problem-grid">
       <div class="problem-card"><div class="problem-icon">📊</div><p>Wyceny robisz ręcznie w Excelu, musisz pilnować wzorów i marż przy każdej zmianie</p></div>
@@ -402,7 +403,7 @@
 <section class="tour" id="aplikacja">
   <div class="tour-inner">
     <p class="section-label">Zobacz aplikację</p>
-    <h2 class="section-title">Całe studio w jednym menu</h2>
+    <h2 class="section-title">Całe studio <span class="lt">w jednym menu</span></h2>
     <p class="section-sub">Wybierz moduł, żeby zobaczyć, jak wygląda i co potrafi.</p>
     <div class="tour-tabs" role="tablist" aria-label="Moduły aplikacji"><button class="tour-tab" role="tab" id="tour-tab-crm" aria-controls="tour-panel-crm" aria-selected="true" tabindex="0" data-tab="crm"><span class="ic">📈</span>CRM</button><button class="tour-tab" role="tab" id="tour-tab-wyceny" aria-controls="tour-panel-wyceny" aria-selected="false" tabindex="-1" data-tab="wyceny"><span class="ic">📋</span>Wyceny</button><button class="tour-tab" role="tab" id="tour-tab-kontrahenci" aria-controls="tour-panel-kontrahenci" aria-selected="false" tabindex="-1" data-tab="kontrahenci"><span class="ic">👥</span>Kontrahenci</button><button class="tour-tab" role="tab" id="tour-tab-kalendarz" aria-controls="tour-panel-kalendarz" aria-selected="false" tabindex="-1" data-tab="kalendarz"><span class="ic">📅</span>Kalendarz</button><button class="tour-tab" role="tab" id="tour-tab-mail" aria-controls="tour-panel-mail" aria-selected="false" tabindex="-1" data-tab="mail"><span class="ic">📨</span>Mail</button><button class="tour-tab" role="tab" id="tour-tab-zadania" aria-controls="tour-panel-zadania" aria-selected="false" tabindex="-1" data-tab="zadania"><span class="ic">✅</span>Zadania</button><button class="tour-tab" role="tab" id="tour-tab-faktury" aria-controls="tour-panel-faktury" aria-selected="false" tabindex="-1" data-tab="faktury"><span class="ic">💰</span>Faktury</button><button class="tour-tab" role="tab" id="tour-tab-magazyn" aria-controls="tour-panel-magazyn" aria-selected="false" tabindex="-1" data-tab="magazyn"><span class="ic">📦</span>Magazyn</button><button class="tour-tab" role="tab" id="tour-tab-ai" aria-controls="tour-panel-ai" aria-selected="false" tabindex="-1" data-tab="ai"><span class="ic">🤖</span>AI</button></div>
     <div class="tour-panel active" role="tabpanel" id="tour-panel-crm" aria-labelledby="tour-tab-crm">
@@ -559,7 +560,7 @@
 <section class="custom" id="integracje">
   <div class="custom-inner">
     <p class="section-label">Integracje i personalizacja</p>
-    <h2 class="section-title">Połączone z Twoimi narzędziami,<br>dopasowane do Twojego studia</h2>
+    <h2 class="section-title">Połączone z Twoimi narzędziami,<br><span class="lt">dopasowane do Twojego studia</span></h2>
     <p class="section-sub">Kalendarz i poczta, których już używasz — Google, Microsoft albo dowolna skrzynka IMAP/SMTP — oraz cenniki, kontrahenci i szablony ustawione po Twojemu.</p>
     <div class="custom-grid"><div class="custom-card"><div class="custom-ic">📅</div><p class="custom-tag">Integracje</p><h3>Google Calendar</h3><p>Terminy pomiarów, montaży i realizacji trafiają do Twojego kalendarza Google, osobno dla każdej ekipy.</p></div><div class="custom-card"><div class="custom-ic">📨</div><p class="custom-tag">Integracje</p><h3>Gmail i Outlook</h3><p>Logujesz się kontem Google lub Microsoft: wysyłasz oferty i dokumenty z własnego adresu, śledzisz korespondencję z klientem i dodajesz wydarzenia do kalendarza.</p></div><div class="custom-card"><div class="custom-ic">🔌</div><p class="custom-tag">Integracje</p><h3>Inne skrzynki (IMAP/SMTP)</h3><p>Masz pocztę u innego dostawcy — home.pl, nazwa.pl, WP, O2 czy własną domenę? Podajesz adres i hasło, a serwery podpowiadają się po domenie. Hasło jest przechowywane w postaci zaszyfrowanej.</p></div><div class="custom-card"><div class="custom-ic">🏷️</div><p class="custom-tag">Własne ustawienia</p><h3>Własne cenniki</h3><p>Korzystasz z katalogu cen producentów albo tworzysz własny cennik dla produktów spoza katalogu — ceny i marże masz pod kontrolą.</p></div><div class="custom-card"><div class="custom-ic">👥</div><p class="custom-tag">Własne ustawienia</p><h3>Kontrahenci</h3><p>Baza klientów i dostawców z uzupełnianiem danych po NIP, gotowa do użycia w ofertach, zamówieniach i fakturach.</p></div><div class="custom-card"><div class="custom-ic">📋</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony ofert</h3><p>Oferta w PDF z logo studia, własnymi uwagami i ważnością — szczegółowa albo uproszczona, jednym kliknięciem.</p></div><div class="custom-card"><div class="custom-ic">✉️</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony maili</h3><p>Gotowe wiadomości do klientów: oferta, potwierdzenie, przypomnienie. Klient, kwota i zaliczka wstawiają się same.</p></div><div class="custom-card"><div class="custom-ic">🧾</div><p class="custom-tag">Własne ustawienia</p><h3>Szablony faktur</h3><p>Dane sprzedawcy, numerację i stawki VAT ustawiasz raz. Zaliczkę i fakturę końcową wystawiasz wprost ze zlecenia.</p></div></div>
   </div>
@@ -568,7 +569,7 @@
 <section id="jak-to-dziala">
   <div class="section-inner">
     <p class="section-label">Jak to działa</p>
-    <h2 class="section-title">Od spotkania do oferty<br>w kilka minut</h2>
+    <h2 class="section-title">Od spotkania do oferty<br><span class="lt">w kilka minut</span></h2>
     <p class="section-sub">Typowy przebieg pracy z My DecoLab podczas wizyty u klientki.</p>
     <div class="steps">
       <div class="step"><div class="step-num">1</div><div class="step-line"></div><div class="step-body"><h3>Dodajesz klientkę i jej mieszkanie</h3><p>Imię, adres, pokoje z oknami — gotowe w 30 sekund. Wszystkie dane dostępne z każdego urządzenia.</p></div></div>
@@ -582,7 +583,7 @@
 <section class="features-bg" id="kontakt">
   <div class="section-inner">
     <p class="section-label">Kontakt</p>
-    <h2 class="section-title">Dowiedz się więcej</h2>
+    <h2 class="section-title">Dowiedz się <span class="lt">więcej</span></h2>
     <p class="section-sub">Pokażę Ci jak aplikacja działa na przykładzie Twojego studia. Bez zobowiązań, bez presji.</p>
     <div class="contact-wrap">
       <div id="form-wrap">

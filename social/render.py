@@ -25,8 +25,8 @@ body{width:1080px;height:1350px;font-family:'DM Sans',sans-serif;color:#1c2233;p
 .glow{position:absolute;top:-220px;left:50%;transform:translateX(-50%);width:1100px;height:600px;background:radial-gradient(ellipse at center,rgba(232,112,58,.17),transparent 70%)}
 .wrap{position:relative;height:100%;padding:76px 70px 64px;display:flex;flex-direction:column}
 .eyebrow{font-size:22px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;color:#e8703a;margin-bottom:26px}
-h1{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:92px;line-height:1.04;letter-spacing:-.01em}
-h1 em{font-style:italic;background:linear-gradient(105deg,#e8703a 20%,#f0a53a 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font-family:'Jost',sans-serif;font-weight:700;font-size:78px;line-height:1.1;letter-spacing:-.02em}
+h1 em{font-style:normal;font-weight:400;background:linear-gradient(105deg,#e8703a 20%,#f0a53a 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{font-size:29px;line-height:1.5;font-weight:300;color:#4d5568;margin-top:28px;max-width:900px}
 .shot{margin-top:auto;background:#e9edf2;border-radius:30px;padding:14px;box-shadow:0 40px 90px rgba(28,32,60,.28)}
 .shot{height:700px;overflow:hidden}
@@ -42,7 +42,7 @@ def page(img, eyebrow, title, sub):
     imgstyle = 'width:100%' if full else 'width:1290px;margin-left:-168px'
     shotstyle = 'height:auto' if full else ''
     return f"""<!doctype html><html><head><meta charset=utf-8>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,700;1,700&family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;700&family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class=glow></div><div class=wrap>
 <p class=eyebrow>{html.escape(eyebrow)}</p><h1>{title}</h1><p class=sub>{html.escape(sub)}</p>
 <div class=shot style="{shotstyle}"><div class=shotin><img style="{imgstyle}" src="file://{(SRC/img) if (SRC/img).exists() else (PUB/img)}"></div></div>

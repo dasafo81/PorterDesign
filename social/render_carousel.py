@@ -43,7 +43,7 @@ def html(n, crop, width, eyebrow, title, sub):
     last = n == len(SLIDES) - 1
     right = 'Darmowy test: mydecolab.pl' if last else 'mydecolab.pl'
     return f"""<!doctype html><html><head><meta charset=utf-8>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,700;1,700&family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;700&family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
 <style>{CSS}{EXTRA}</style></head><body><div class=glow></div><div class=wrap>
 <p class=eyebrow>{eyebrow}</p><h1>{title}</h1><p class=sub>{sub}</p>
 <div class=shot style="width:{width}px"><div class=shotin><img src="file://{crop}"></div></div>
