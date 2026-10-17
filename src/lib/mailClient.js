@@ -1,4 +1,4 @@
-// mailClient.js — wybór dostawcy poczty (Microsoft Outlook / Google Gmail).
+// mailClient.js — wybór dostawcy poczty (Microsoft Outlook / Google Gmail / własna skrzynka IMAP).
 //
 // ScreenMail, CRM i Faktury korzystają tylko z tych funkcji, a nie bezpośrednio
 // z msal.js, więc dostawcę da się zmienić bez dotykania logiki UI.
@@ -7,6 +7,7 @@
 import { msalLogin, msalGetToken, msalGetActiveAccount, msalForget } from "../msal.js";
 import { brokerStart, brokerToken, brokerDisconnect, brokerStatus } from "./oauthBroker.js";
 import { gmailFetch } from "./gmailApi.js";
+import { imapFetch, imapConnect, imapStatus, imapDisconnect } from "./imapApi.js";
 import { isDemoMode } from "./demoMock.js";
 
 var PREF_KEY = "pd_mail_provider";
@@ -16,7 +17,7 @@ export function getMailProvider() {
   if (isDemoMode()) return "microsoft";
   try {
     var pref = localStorage.getItem(PREF_KEY);
-    if (pref === "google" || pref === "microsoft") return pref;
+    if (pref === "google" || pref === "microsoft" || pref === "custom") return pref;
     // Brak wyboru: użytkownik, który łączył tylko Gmaila, nie ma połączenia Microsoft.
     if (localStorage.getItem("pd_oauth_gmail") === "1" && localStorage.getItem("pd_oauth_microsoft") !== "1") return "google";
   } catch (e) {}
@@ -30,7 +31,8 @@ export function setMailProvider(provider) {
 }
 
 export function mailProviderLabel(provider) {
-  return (provider || getMailProvider()) === "google" ? "Gmail" : "Outlook";
+  var p = provider || getMailProvider();
+  return p === "google" ? "Gmail" : p === "custom" ? "Poczta" : "Outlook";
 }
 
 // ── Gmail: token z brokera (refresh po stronie serwera) ──────────────────────
@@ -61,8 +63,36 @@ async function gmailGetToken() {
   return _gToken;
 }
 
+// ── Własna skrzynka (IMAP/SMTP): dane logowania zna tylko serwer ────────────────
+// Reszta aplikacji oczekuje "tokenu", więc dla własnej skrzynki zwracamy znacznik —
+// imapFetch() i tak uwierzytelnia się sesją aplikacji, a nie tym tokenem.
+var CUSTOM_TOKEN = "imap-session";
+var _cAccount = null;
+
+async function customActiveAccount() {
+  if (_cAccount) return _cAccount;
+  var st = await imapStatus();
+  if (!st || !st.connected) return null;
+  _cAccount = { username: st.email, email: st.email };
+  return _cAccount;
+}
+
+// Łączy własną skrzynkę (serwer sprawdza IMAP i SMTP przed zapisem) i od razu ją aktywuje.
+export async function mailConnectCustom(form) {
+  var res = await imapConnect(form);
+  _cAccount = { username: res.email, email: res.email };
+  setMailProvider("custom");
+  return _cAccount;
+}
+
 export async function mailGetToken() {
-  return getMailProvider() === "google" ? gmailGetToken() : msalGetToken();
+  var provider = getMailProvider();
+  if (provider === "custom") {
+    var acc = await customActiveAccount();
+    if (!acc) throw reconnectError("CUSTOM_NOT_CONNECTED");
+    return CUSTOM_TOKEN;
+  }
+  return provider === "google" ? gmailGetToken() : msalGetToken();
 }
 
 // Powód ostatniej nieudanej autoryzacji — ekran logowania pokazuje go po powrocie z OAuth,
@@ -103,6 +133,7 @@ export async function mailGetActiveAccount() {
   try { pref = localStorage.getItem(PREF_KEY); } catch (e) {}
   if (pref === "google") return gmailActiveAccount();
   if (pref === "microsoft") return microsoftActiveAccount();
+  if (pref === "custom") return customActiveAccount();
 
   var list = await brokerStatus();
   if (list) {
@@ -114,6 +145,9 @@ export async function mailGetActiveAccount() {
       if (acc) { setMailProvider(usable[i].provider); return acc; }
     }
     var hasGoogle = list.some(function(c) { return c.provider === "google"; });
+    // Własna skrzynka nie jest w oauth_connections — sprawdzamy ją osobno, zanim uznamy brak połączeń.
+    var cust = await customActiveAccount().catch(function() { return null; });
+    if (cust) { setMailProvider("custom"); return cust; }
     if (!usable.length && hasGoogle) _issue = "gmail_scope";
     if (usable.length) return null;
   }
@@ -125,7 +159,9 @@ export async function mailGetActiveAccount() {
 
 // Zamiennik fetch() dla adresów Graph: dla Gmaila tłumaczy wywołanie na Gmail API.
 export function mailFetch(url, init) {
-  if (getMailProvider() === "google" && !isDemoMode()) return gmailFetch(url, init);
+  var provider = getMailProvider();
+  if (provider === "google" && !isDemoMode()) return gmailFetch(url, init);
+  if (provider === "custom" && !isDemoMode()) return imapFetch(url, init);
   return fetch(url, init);
 }
 
@@ -142,9 +178,11 @@ export function mailLogin(provider) {
 // udawał wylogowania, po którym skrzynka i tak wróci.
 export async function mailLogout() {
   var provider = getMailProvider();
-  await brokerDisconnect(provider, { mail: true });
-  _gToken = null; _gExp = 0; _gAccount = null;
-  if (provider === "google") {
+  if (provider === "custom") await imapDisconnect(); else await brokerDisconnect(provider, { mail: true });
+  _gToken = null; _gExp = 0; _gAccount = null; _cAccount = null;
+  if (provider === "custom") {
+    // hasło skrzynki skasowane na serwerze — nic więcej do sprzątania lokalnie
+  } else if (provider === "google") {
     try { localStorage.removeItem("pd_oauth_gmail"); } catch (e) {}
   } else {
     msalForget();

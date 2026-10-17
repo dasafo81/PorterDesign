@@ -16,6 +16,9 @@
       "permanent": true
     }
   ],
+  "functions": {
+    "api/mail/imap.js": { "maxDuration": 30 }
+  },
   "rewrites": [
     {
       "source": "/.well-known/oauth-protected-resource",

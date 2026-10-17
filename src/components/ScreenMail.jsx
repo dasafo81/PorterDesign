@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { roundTo10, buildOfferPDFHtml, buildOfferDetailRows, resolvePDFAssets, SELLER } from '../constants/data.js';
 import { buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
-import { mailLogin, mailLogout, mailGetToken, mailGetActiveAccount, mailFetch, getMailProvider, mailAuthIssue } from '../lib/mailClient.js';
+import { mailLogin, mailConnectCustom, mailLogout, mailGetToken, mailGetActiveAccount, mailFetch, getMailProvider, mailAuthIssue } from '../lib/mailClient.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
+import { guessMailServers } from '../lib/imapApi.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
 import { SYSTEM_TEMPLATES, TEMPLATE_USAGE, HIDDEN_IN_COMPOSE } from '../lib/mailTemplates.js';
 const ce = React.createElement;
@@ -2131,6 +2132,9 @@ export function ScreenMail(p){
   var stok=us(null),accessToken=stok[0],setAccessToken=stok[1];
   var sacc=us(null),msAccount=sacc[0],setMsAccount=sacc[1];
   var slogging=us(false),logging=slogging[0],setLogging=slogging[1];
+  // Formularz własnej skrzynki (IMAP/SMTP); null = ukryty. Serwery podpowiadamy z domeny adresu.
+  var scf=us(null),customForm=scf[0],setCustomForm=scf[1];
+  var scErr=us(""),customError=scErr[0],setCustomError=scErr[1];
   var sliss=us(null),loginIssue=sliss[0],setLoginIssue=sliss[1];   // dlaczego powrót z OAuth nie zalogował
   var suf=us([]),userFolders=suf[0],setUserFolders=suf[1];
   var saf=us("inbox"),activeFolder=saf[0],setActiveFolder=saf[1];
@@ -3074,10 +3078,62 @@ export function ScreenMail(p){
         if(e&&e.errorCode!=="user_cancelled"){alert("B\u0142\u0105d logowania: "+(e.message||e.errorCode||"nieznany b\u0142\u0105d"));}
       });
     };
+    var cf=customForm||{email:"",username:"",password:"",imap_host:"",imap_port:"993",smtp_host:"",smtp_port:"465"};
+    var setCf=function(patch){setCustomForm(Object.assign({},cf,patch));};
+    var onEmail=function(v){
+      var g=guessMailServers(v);
+      // Podpowiedź nadpisuje tylko pola, których użytkownik jeszcze nie edytował ręcznie.
+      var patch={email:v};
+      if(g){
+        if(!cf.imapEdited)patch.imap_host=g.imap_host;
+        if(!cf.smtpEdited)patch.smtp_host=g.smtp_host;
+      }
+      setCf(patch);
+    };
+    var fieldStyle=Object.assign({},INP,{marginBottom:8});
+    var field=function(label,key,opts){
+      opts=opts||{};
+      return ce("div",{style:{flex:opts.flex||1,minWidth:0,textAlign:"left"}},
+        ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:4})},label),
+        ce("input",{type:opts.type||"text",value:cf[key],placeholder:opts.placeholder||"",autoComplete:opts.auto||"off",
+          onChange:function(e){
+            var patch={};patch[key]=e.target.value;
+            if(key==="imap_host")patch.imapEdited=true;
+            if(key==="smtp_host")patch.smtpEdited=true;
+            setCf(patch);
+          },style:fieldStyle}));
+    };
+    var canConnect=cf&&cf.email&&cf.password&&cf.imap_host&&cf.smtp_host&&!logging;
+    var submitCustom=function(){
+      setLogging(true);setCustomError("");
+      var imapPort=parseInt(cf.imap_port,10)||993,smtpPort=parseInt(cf.smtp_port,10)||465;
+      mailConnectCustom({
+        email:cf.email.trim(),username:(cf.username||cf.email).trim(),password:cf.password,
+        imap_host:cf.imap_host.trim(),imap_port:imapPort,imap_secure:imapPort!==143,
+        smtp_host:cf.smtp_host.trim(),smtp_port:smtpPort,smtp_secure:smtpPort===465
+      }).then(function(acc){
+        return mailGetToken().then(function(token){
+          setMsAccount(acc);setAccessToken(token);setLogged(true);setLogging(false);setCustomForm(null);
+        });
+      }).catch(function(e){
+        setLogging(false);
+        setCustomError(e&&e.message||"Nie uda\u0142o si\u0119 po\u0142\u0105czy\u0107 ze skrzynk\u0105");
+      });
+    };
+    var customMailForm=ce("div",{style:{width:"100%",maxWidth:340,padding:14,border:"1px solid var(--bd2)",borderRadius:12,background:"var(--bg2)",display:"flex",flexDirection:"column",gap:0}},
+      field("Adres e-mail","email",{type:"email",placeholder:"ty@twojadomena.pl",auto:"email"}),
+      field("Has\u0142o (lub has\u0142o aplikacji)","password",{type:"password",auto:"new-password"}),
+      field("Login (je\u015bli inny ni\u017c e-mail)","username",{placeholder:cf.email||"zwykle adres e-mail"}),
+      ce("div",{style:{display:"flex",gap:8}},field("Serwer IMAP","imap_host",{flex:3,placeholder:"imap.twojadomena.pl"}),field("Port","imap_port",{flex:1})),
+      ce("div",{style:{display:"flex",gap:8}},field("Serwer SMTP","smtp_host",{flex:3,placeholder:"smtp.twojadomena.pl"}),field("Port","smtp_port",{flex:1})),
+      ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.6,textAlign:"left",marginBottom:8}},"Porty: IMAP 993 (SSL) lub 143 (STARTTLS), SMTP 465 (SSL) lub 587 (STARTTLS). Przy w\u0142\u0105czonej weryfikacji dwuetapowej u\u017cyj has\u0142a aplikacji."),
+      customError?ce("div",{style:{padding:"8px 10px",background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:8,fontSize:12,color:"var(--red)",lineHeight:1.5,textAlign:"left",marginBottom:8}},customError):null,
+      ce("button",{disabled:!canConnect,onClick:submitCustom,style:Object.assign({},BPRIM,{opacity:canConnect?1:0.6,cursor:canConnect?"pointer":"default"})},logging?"\u0141\u0105czenie...":"Po\u0142\u0105cz skrzynk\u0119")
+    );
     return ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"40px 20px",minHeight:300,gap:16,textAlign:"center"}},
       ce("div",{style:{width:64,height:64,borderRadius:16,background:"#0078d4",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:4}},"\u2709\uFE0F"),
       ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},"Modu\u0142 Mail"),
-      ce("div",{style:{fontSize:13,color:"var(--t2)",maxWidth:320,lineHeight:1.7}},"Pod\u0142\u0105cz swoj\u0105 skrzynk\u0119 Gmail albo Outlook, by czyta\u0107 i wysy\u0142a\u0107 maile z aplikacji oraz zapisywa\u0107 terminy w kalendarzu."),
+      ce("div",{style:{fontSize:13,color:"var(--t2)",maxWidth:320,lineHeight:1.7}},"Pod\u0142\u0105cz swoj\u0105 skrzynk\u0119 Gmail, Outlook albo dowoln\u0105 inn\u0105 poczt\u0119 (IMAP/SMTP), by czyta\u0107 i wysy\u0142a\u0107 maile z aplikacji oraz zapisywa\u0107 terminy w kalendarzu."),
       ce("button",{disabled:logging,onClick:function(){startLogin("google");},style:providerBtnStyle},
         logging?ce("span",{style:{fontSize:16}},"\u23F3")
           :ce("svg",{width:20,height:20,viewBox:"0 0 48 48"},
@@ -3099,12 +3155,17 @@ export function ScreenMail(p){
           ),
         logging?"Logowanie...":"Po\u0142\u0105cz Outlook (Microsoft)"
       ),
+      ce("button",{disabled:logging,onClick:function(){setCustomError("");setCustomForm(customForm?null:{email:"",username:"",password:"",imap_host:"",imap_port:"993",smtp_host:"",smtp_port:"465"});},style:providerBtnStyle},
+        ce("span",{style:{fontSize:18}},"\uD83D\uDCEC"),
+        "Inna poczta (IMAP/SMTP)"
+      ),
+      customForm?customMailForm:null,
       loginIssue?ce("div",{style:{maxWidth:320,padding:"10px 12px",background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:9,fontSize:12,color:"var(--red)",lineHeight:1.6,textAlign:"left"}},
         loginIssue==="gmail_scope"?"Google nie nada\u0142 dost\u0119pu do Gmaila. Po\u0142\u0105cz ponownie i na ekranie zgody zaznacz wszystkie uprawnienia (odczyt i wysy\u0142anie poczty)."
         :loginIssue.indexOf("error:")===0?"B\u0142\u0105d po\u0142\u0105czenia: "+loginIssue.slice(6)
         :"Po\u0142\u0105czenie nie zosta\u0142o zapisane. Spr\u00f3buj ponownie."
       ):null,
-      ce("div",{style:{fontSize:11,color:"var(--t3)",maxWidth:320,lineHeight:1.6}},"Przejdziesz na stron\u0119 logowania Google lub Microsoft. Aplikacja nie zna Twojego has\u0142a, a dost\u0119p mo\u017cesz w ka\u017cdej chwili cofn\u0105\u0107.")
+      ce("div",{style:{fontSize:11,color:"var(--t3)",maxWidth:320,lineHeight:1.6}},"Gmail i Outlook: przejdziesz na stron\u0119 logowania dostawcy, a aplikacja nie pozna Twojego has\u0142a. Inna poczta: has\u0142o jest przechowywane na serwerze w formie zaszyfrowanej i mo\u017cesz je w ka\u017cdej chwili usun\u0105\u0107 przyciskiem Wyloguj.")
     );
   }
 
