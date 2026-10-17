@@ -167,14 +167,11 @@
     .client-tile:hover{transform:translateX(4px);box-shadow:0 8px 28px var(--hover-shadow-2);}
     .tab-pill{transition:all 0.2s var(--spring);}
     .nav-tab{transition:all 0.18s ease;}
-    /* Pola do wypelniania (wyceny itd.) — jasniejsze wnetrze niz tlo karty/modala.
-       Style pol sa inline (background:var(--bg)), wiec nadpisujemy selektorem po atrybucie. */
-    input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file])[style*="background:var(--bg"],
-    input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file])[style*="background: var(--bg"],
-    textarea[style*="background:var(--bg"],
-    textarea[style*="background: var(--bg"],
-    select[style*="background:var(--bg"],
-    select[style*="background: var(--bg"]{background:var(--field-bg) !important;}
+    /* Wszystkie pola do wypelniania (wyceny, firany, szyny itd.) — jasniejsze wnetrze niz tlo.
+       Pomijamy tylko pola celowo przezroczyste (edycja w linii, liczniki). */
+    input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]):not([style*="background:transparent"]):not([style*="background: transparent"]):not([style*="background:none"]):not([style*="background: none"]),
+    textarea:not([style*="background:transparent"]):not([style*="background: transparent"]):not([style*="background:none"]):not([style*="background: none"]),
+    select:not([style*="background:transparent"]):not([style*="background: transparent"]):not([style*="background:none"]):not([style*="background: none"]){background:var(--field-bg) !important;}
     .input-glass{background:var(--bg2);border:1.5px solid var(--bd2);backdrop-filter:blur(10px);border-radius:14px;transition:border-color 0.18s,box-shadow 0.18s;}
     .input-glass:focus{outline:none;border-color:var(--focus-border);box-shadow:0 0 0 3px var(--focus-shadow);}
     .holo-text{background:var(--holo-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
