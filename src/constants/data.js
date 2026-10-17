@@ -20,22 +20,22 @@ export const IMG_ROOM_GABINET  = imgUrl("rooms/gabinet.jpg");
 export const IMG_OKNO          = imgUrl("rooms/okno.jpg");
 
 // Żaluzje
-export const IMG_JZ_ALUMINIUM  = imgUrl("zaluzje/aluminium.jpg");
-export const IMG_JZ_BAMBOO     = imgUrl("zaluzje/bamboo.jpg");
-export const IMG_JZ_BASSWOOD   = imgUrl("zaluzje/basswood.jpg");
-export const IMG_JZ_ABACHI     = imgUrl("zaluzje/abachi.jpg");
-export const IMG_JZ_PRIMEWOOD  = imgUrl("zaluzje/primewood.jpg");
+export const IMG_JZ_ALUMINIUM  = "/img/zaluzje/aluminium.svg?v=1";
+export const IMG_JZ_BAMBOO     = "/img/zaluzje/bamboo.svg?v=1";
+export const IMG_JZ_BASSWOOD   = "/img/zaluzje/basswood.svg?v=1";
+export const IMG_JZ_ABACHI     = "/img/zaluzje/abachi.svg?v=1";
+export const IMG_JZ_PRIMEWOOD  = "/img/zaluzje/primewood.svg?v=1";
 
 // Rolety
-export const IMG_ROLETA_RELAX              = imgUrl("rolety/relax.jpg");
-export const IMG_ROLETA_PRINT              = imgUrl("rolety/print.jpg");
-export const IMG_ROLETA_BACK               = imgUrl("rolety/back.jpg");
-export const IMG_ROLETA_PODSZEWKA          = imgUrl("rolety/podszewka.jpg");
-export const IMG_ROLETA_DUO                = imgUrl("rolety/duo.jpg");
-export const IMG_ROLETA_FRONT              = imgUrl("rolety/front.jpg");
-export const IMG_ROLETA_CASCADE            = imgUrl("rolety/cascade.jpg");
-export const IMG_ROLETA_LANCUSZEK_BIALY    = imgUrl("rolety/lancuszek-bialy.jpg");
-export const IMG_ROLETA_LANCUSZEK_METALOWY = imgUrl("rolety/lancuszek-metalowy.jpg");
+export const IMG_ROLETA_RELAX              = "/img/rolety/relax.svg?v=1";
+export const IMG_ROLETA_PRINT              = "/img/rolety/print.svg?v=1";
+export const IMG_ROLETA_BACK               = "/img/rolety/back.svg?v=1";
+export const IMG_ROLETA_PODSZEWKA          = "/img/rolety/podszewka.svg?v=1";
+export const IMG_ROLETA_DUO                = "/img/rolety/duo.svg?v=1";
+export const IMG_ROLETA_FRONT              = "/img/rolety/front.svg?v=1";
+export const IMG_ROLETA_CASCADE            = "/img/rolety/cascade.svg?v=1";
+export const IMG_ROLETA_LANCUSZEK_BIALY    = "/img/rolety/lancuszek-bialy.svg?v=1";
+export const IMG_ROLETA_LANCUSZEK_METALOWY = "/img/rolety/lancuszek-metalowy.svg?v=1";
 
 // Zasłony / fałdy
 export const IMG_FALDA_POJEDYNCZA = imgUrl("zasony/falda-pojedyncza.jpg");

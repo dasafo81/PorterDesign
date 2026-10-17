@@ -656,20 +656,20 @@ var IMG_ROOM_GABINET  = imgUrl("rooms/gabinet.jpg");
 var IMG_OKNO          = imgUrl("rooms/okno.jpg");
 
 // \u017baluzje
-var IMG_JZ_ALUMINIUM  = imgUrl("zaluzje/aluminium.jpg");
-var IMG_JZ_BAMBOO     = imgUrl("zaluzje/bamboo.jpg");
-var IMG_JZ_BASSWOOD   = imgUrl("zaluzje/basswood.jpg");
+var IMG_JZ_ALUMINIUM  = "/img/zaluzje/aluminium.svg?v=1";
+var IMG_JZ_BAMBOO     = "/img/zaluzje/bamboo.svg?v=1";
+var IMG_JZ_BASSWOOD   = "/img/zaluzje/basswood.svg?v=1";
 
 // Rolety
-var IMG_ROLETA_RELAX              = imgUrl("rolety/relax.jpg");
-var IMG_ROLETA_PRINT              = imgUrl("rolety/print.jpg");
-var IMG_ROLETA_BACK               = imgUrl("rolety/back.jpg");
-var IMG_ROLETA_PODSZEWKA          = imgUrl("rolety/podszewka.jpg");
-var IMG_ROLETA_DUO                = imgUrl("rolety/duo.jpg");
-var IMG_ROLETA_FRONT              = imgUrl("rolety/front.jpg");
-var IMG_ROLETA_CASCADE            = imgUrl("rolety/cascade.jpg");
-var IMG_ROLETA_LANCUSZEK_BIALY    = imgUrl("rolety/lancuszek-bialy.jpg");
-var IMG_ROLETA_LANCUSZEK_METALOWY = imgUrl("rolety/lancuszek-metalowy.jpg");
+var IMG_ROLETA_RELAX              = "/img/rolety/relax.svg?v=1";
+var IMG_ROLETA_PRINT              = "/img/rolety/print.svg?v=1";
+var IMG_ROLETA_BACK               = "/img/rolety/back.svg?v=1";
+var IMG_ROLETA_PODSZEWKA          = "/img/rolety/podszewka.svg?v=1";
+var IMG_ROLETA_DUO                = "/img/rolety/duo.svg?v=1";
+var IMG_ROLETA_FRONT              = "/img/rolety/front.svg?v=1";
+var IMG_ROLETA_CASCADE            = "/img/rolety/cascade.svg?v=1";
+var IMG_ROLETA_LANCUSZEK_BIALY    = "/img/rolety/lancuszek-bialy.svg?v=1";
+var IMG_ROLETA_LANCUSZEK_METALOWY = "/img/rolety/lancuszek-metalowy.svg?v=1";
 
 // Zas\u0142ony / fa\u0142dy
 var IMG_FALDA_POJEDYNCZA = imgUrl("zasony/falda-pojedyncza.jpg");

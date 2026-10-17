@@ -1317,7 +1317,7 @@ export function ProdCard(p){
           style:{padding:"0 0 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:0,overflow:"hidden",transition:"all .18s"}
         },
           ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-            ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+            ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"center",display:"block",borderRadius:"10px 10px 0 0"}}),
 
             ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
             isA?ce("div",{style:{position:"absolute",top:6,left:6,width:22,height:22,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
@@ -1383,7 +1383,7 @@ export function ProdCard(p){
               style:{padding:"0 0 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:0,overflow:"hidden",transition:"all .18s"}
             },
               ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-                ce("img",{src:lk.imgSrc,alt:lk.label,style:{width:"100%",height:"80px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+                ce("img",{src:lk.imgSrc,alt:lk.label,style:{width:"100%",height:"80px",objectFit:"cover",objectPosition:"center",display:"block",borderRadius:"10px 10px 0 0"}}),
 
                 ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
                 isA?ce("div",{style:{position:"absolute",top:6,left:6,width:20,height:20,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:11,fontWeight:700}},"✓"):null
