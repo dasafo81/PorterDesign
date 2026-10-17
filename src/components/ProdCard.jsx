@@ -251,6 +251,7 @@ export function ProdCard(p){
       (pr.par&&pr.par.len));
   }
   var spt=useState(null),pendingType=spt[0],setPendingType=spt[1];
+  var stg=useState(null),tabSel=stg[0],setTabSel=stg[1];
   var stq=useState(""),tapQ=stq[0],setTapQ=stq[1];
   var stc=useState(""),tapCol=stc[0],setTapCol=stc[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
@@ -347,8 +348,8 @@ export function ProdCard(p){
   }
   function TypeCard(key,label,sub,active,onClick,iconId){
     return ce("button",{key:key,onClick:onClick,
-      style:{minHeight:44,padding:"6px 12px 6px 8px",borderRadius:12,border:"none",
-        display:"flex",flexDirection:"row",alignItems:"center",justifyContent:"flex-start",gap:8,
+      style:{minHeight:56,padding:"8px 12px",borderRadius:14,border:"none",
+        display:"flex",flexDirection:"row",alignItems:"center",justifyContent:"center",gap:10,
         boxShadow:active?"var(--nm-in)":"var(--nm-out)",
         background:"var(--bg)",
         color:active?"var(--violet-dark)":"var(--t1)",
@@ -360,61 +361,85 @@ export function ProdCard(p){
     );
   }
 
-  var brandBoxes=[];
-  var typeSelector=ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-    ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"stretch"}},
+  // Wariant C: pasek zakladek grup + jeden rzad kart wybranej grupy.
+  // Zakladka domyslnie podaza za wybranym typem; reczny wybor (tabSel) obowiazuje
+  // do klikniecia karty.
+  function groupOfType(){
+    var gid=null;
+    PROD_GROUPS.forEach(function(g){
+      if(g.types.indexOf(prod.type)>=0||(g.brands==="karnisz_el"&&isKarnEl))gid=g.id;
+    });
+    return gid;
+  }
+  var activeGid=(tabSel&&PROD_GROUPS.some(function(g){return g.id===tabSel;}))?tabSel:(groupOfType()||PROD_GROUPS[0].id);
+  var activeGroup=PROD_GROUPS.find(function(g){return g.id===activeGid;})||PROD_GROUPS[0];
+  var curGid=groupOfType();
+
+  function groupCount(g){return g.types.length+(g.brands==="karnisz_el"?1:0);}
+
+  var tabBar=ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+PROD_GROUPS.length+",minmax(0,1fr))",gap:6,padding:4,borderRadius:12,
+      background:"var(--bd3)",boxShadow:"var(--nm-in-sm)"}},
     PROD_GROUPS.map(function(g){
-      var cards=g.types.map(function(id){
-        var t=PROD_TYPES.find(function(x){return x.id===id;});
-        if(!t)return null;
-        return TypeCard(t.id,t.label,null,prod.type===t.id,function(){
-          applyType({id:t.id,label:t.label,type:t.id,set:{}});
-        },t.id);
-      }).filter(Boolean);
-
-      if(g.brands==="karnisz_el"){
-        cards.push(TypeCard("karnisz_el","Karnisze elektryczne","3 marki \u203a",isKarnEl,function(){
-          if(isKarnEl)return;
-          var d0=KARNISZ_EL_BRANDS[0].models[0];
-          applyType({id:"karnisz_el",label:"Karnisze elektryczne",type:d0.type,set:d0.set});
-        },"karnisz_el"));
-      }
-
-      // Panel marki/modelu jako pelnoszerokosciowa, wypelniona sekcja (nie wiszaca
-      // kreska z lewej) — wizualnie "w srodku" karty Karnisze elektryczne, nie obok.
-      var brandBox=null;
-      if(g.brands==="karnisz_el"&&isKarnEl){
-        var bObj=KARNISZ_EL_BRANDS.find(function(b){return b.id===curBrand;})||KARNISZ_EL_BRANDS[0];
-        brandBox=ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd3)",borderRadius:10,padding:12}},
-          ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MARKA"),
-          ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-            KARNISZ_EL_BRANDS.map(function(b){
-              return ce(Chip,{key:b.id,label:b.label,active:curBrand===b.id,onClick:function(){
-                var d1=b.models[0];
-                applyType({id:b.id+"_"+d1.id,label:b.label+" \u2014 "+d1.label,type:d1.type,set:d1.set});
-              }});
-            })
-          ),
-          bObj.models.length>1?ce("div",{style:{marginTop:12,paddingTop:12,borderTop:"1px solid var(--bd3)"}},
-            ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MODEL"),
-            ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-              bObj.models.map(function(m){
-                return ce(Chip,{key:m.id,label:m.label,active:prod.type===m.type,onClick:function(){
-                  applyType({id:bObj.id+"_"+m.id,label:bObj.label+" \u2014 "+m.label,type:m.type,set:m.set});
-                }});
-              })
-            )
-          ):null
-        );
-      }
-
-      if(brandBox)brandBoxes.push(ce("div",{key:"bb_"+g.id},brandBox));
-      return ce("div",{key:g.id,style:{background:"var(--bd3)",borderRadius:12,padding:"8px 10px 10px",flex:"1 1 auto"}},
-        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--violet)",marginBottom:6,paddingLeft:4}},g.label),
-        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"stretch"}},cards)
+      var sel=g.id===activeGid;
+      return ce("button",{key:g.id,onClick:function(){setTabSel(g.id);},
+        style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,minHeight:40,padding:"0 8px",border:"none",borderRadius:10,cursor:"pointer",
+          fontSize:11,fontWeight:sel?700:600,letterSpacing:"0.06em",textTransform:"uppercase",
+          color:sel?"var(--violet-dark)":"var(--t2)",background:sel?"var(--bg)":"transparent",boxShadow:sel?"var(--nm-out)":"none"}},
+        ce("span",null,g.label),
+        ce("span",{style:{minWidth:18,height:18,borderRadius:9,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,
+          background:g.id===curGid?"var(--violet)":"var(--bd2)",color:g.id===curGid?"#fff":"var(--t2)"}},groupCount(g))
       );
-    })),
-    brandBoxes
+    })
+  );
+
+  var groupCards=activeGroup.types.map(function(id){
+    var t=PROD_TYPES.find(function(x){return x.id===id;});
+    if(!t)return null;
+    return TypeCard(t.id,t.label,null,prod.type===t.id,function(){
+      setTabSel(null);
+      applyType({id:t.id,label:t.label,type:t.type||t.id,set:{}});
+    },t.id);
+  }).filter(Boolean);
+  if(activeGroup.brands==="karnisz_el"){
+    groupCards.push(TypeCard("karnisz_el","Karnisze elektryczne","3 marki \u203a",isKarnEl,function(){
+      setTabSel(null);
+      if(isKarnEl)return;
+      var d0=KARNISZ_EL_BRANDS[0].models[0];
+      applyType({id:"karnisz_el",label:"Karnisze elektryczne",type:d0.type,set:d0.set});
+    },"karnisz_el"));
+  }
+
+  // Panel marki/modelu pod rzedem kart, na pelna szerokosc.
+  var brandBox=null;
+  if(activeGroup.brands==="karnisz_el"&&isKarnEl){
+    var bObj=KARNISZ_EL_BRANDS.find(function(b){return b.id===curBrand;})||KARNISZ_EL_BRANDS[0];
+    brandBox=ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd3)",borderRadius:10,padding:12}},
+      ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MARKA"),
+      ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+        KARNISZ_EL_BRANDS.map(function(b){
+          return ce(Chip,{key:b.id,label:b.label,active:curBrand===b.id,onClick:function(){
+            var d1=b.models[0];
+            applyType({id:b.id+"_"+d1.id,label:b.label+" \u2014 "+d1.label,type:d1.type,set:d1.set});
+          }});
+        })
+      ),
+      bObj.models.length>1?ce("div",{style:{marginTop:12,paddingTop:12,borderTop:"1px solid var(--bd3)"}},
+        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MODEL"),
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          bObj.models.map(function(m){
+            return ce(Chip,{key:m.id,label:m.label,active:prod.type===m.type,onClick:function(){
+              applyType({id:bObj.id+"_"+m.id,label:bObj.label+" \u2014 "+m.label,type:m.type,set:m.set});
+            }});
+          })
+        )
+      ):null
+    );
+  }
+
+  var typeSelector=ce("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+    tabBar,
+    ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+Math.max(groupCards.length,1)+",minmax(0,1fr))",gap:12,alignItems:"stretch"}},groupCards),
+    brandBox
   );
 
   var panOpts=["Zas\u0142ona lewa","Zas\u0142ona prawa","Firana \u015brodkowa","Panel lewy","Panel prawy","Ca\u0142o\u015b\u0107"];
