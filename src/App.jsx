@@ -1229,6 +1229,12 @@ export function App(p){
     var cands=(contacts||[]).filter(function(c){
       if(!c.email)return false;
       var n=normSupName(c.name);
+      // Szwalnia bywa zapisana w Kontrahentach pod nazwą właściciela/firmy — wtedy łączy ją
+      // adres (ulica z listy szwalni) albo nazwa szwalni w notatkach/tagach kontrahenta.
+      var flat=function(t){return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ł/g,"l").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();};
+      var street=flat(c.street),addrPart=flat(String(supplier||"").split(/\s[—–-]\s/).slice(1).join(" "));
+      if(street.length>=5&&addrPart.indexOf(street)>=0)return true;
+      if(flat((c.notes||"")+" "+(c.tags||[]).join(" ")).indexOf(key)>=0)return true;
       if(!n)return false;
       if(n===key||n.indexOf(key)>=0||key.indexOf(n)>=0)return true;
       // Kolejność/dodatki w nazwie kontrahenta bywają inne ("Dekor Marcin", "Marcin Dekor Szwalnia"):
@@ -1737,11 +1743,11 @@ export function App(p){
             onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{name:v});});},
             inputStyle:{fontSize:20,fontWeight:700}})
         ),
-        ce("div",{style:{fontSize:14,color:"var(--violet)",lineHeight:1.4,marginBottom:6}},
-          ce(InlineEdit,{value:curClient.quote_label||"(nazwa wyceny \u2014 tylko dla Ciebie)",
-            onSave:function(v){var t=(v||"").replace("(nazwa wyceny \u2014 tylko dla Ciebie)","").trim();updateClient(curClientId,function(cl){return mg(cl,{quote_label:t});});},
-            inputStyle:{fontSize:14}})
-        ),
+        ce("input",{key:"ql_"+curClientId+"_"+(curClient.quote_label||""),type:"text",defaultValue:curClient.quote_label||"",
+          placeholder:"Nazwa wyceny (tylko dla Ciebie)",
+          onKeyDown:function(ev){if(ev.key==="Enter")ev.target.blur();},
+          onBlur:function(ev){var t=ev.target.value.trim();if(t===(curClient.quote_label||""))return;updateClient(curClientId,function(cl){return mg(cl,{quote_label:t});});},
+          style:{display:"block",width:"100%",boxSizing:"border-box",fontSize:14,color:"var(--violet)",border:"none",borderBottom:"1px dashed var(--bd2)",outline:"none",background:"transparent",padding:"2px 0",marginBottom:8,fontFamily:"inherit"}}),
         ce("div",{style:{fontSize:16,color:"var(--t2)",lineHeight:1.4}},
           ce(InlineEdit,{value:curClient.addr||"(brak adresu)",
             onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{addr:v});});},
