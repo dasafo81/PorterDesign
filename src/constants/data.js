@@ -6536,7 +6536,8 @@ export function calc(p){
       var useA2=belka>0&&phCm+20>belka&&!c.tasmaNaStojaco;
       if(useA2){
         var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
-        z=Math.ceil((lp*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
+        // Tkanina: każdy zaczęty pas odcinamy na pełną wysokość (połówka pasa też zużywa pełne hM)
+        z=Math.ceil((Math.ceil(lp)*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
         var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv).toFixed(2):+(lp*250).toFixed(2);
       }else{
