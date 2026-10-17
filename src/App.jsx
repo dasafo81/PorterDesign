@@ -617,13 +617,13 @@ export function App(p){
           var ok=window.confirm("UWAGA \u2014 ta zmiana usuwa "+(before-after)+" z "+before+" produkt\u00f3w tego klienta.\n\nJe\u015bli to nie by\u0142o zamierzone, kliknij Anuluj i od\u015bwie\u017c stron\u0119 (F5).\n\nZapisa\u0107 mimo to?");
           if(!ok)return cs;
         }
-        saveClientToSb(id,{name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null,karnisz_draft:newCl.karnisz_draft||null,fabric_draft:newCl.fabric_draft||null,simpl_draft:newCl.simpl_draft||null,sewing_draft:newCl.sewing_draft||null});
+        saveClientToSb(id,Object.assign({name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null,karnisz_draft:newCl.karnisz_draft||null,fabric_draft:newCl.fabric_draft||null,simpl_draft:newCl.simpl_draft||null,sewing_draft:newCl.sewing_draft||null},newCl.quote_label!==undefined?{quote_label:newCl.quote_label||null}:{}));
       }
       return updated;
     });
   }
 
-  function addClient(name,addr,phone,email,postal,city,contactId){
+  function addClient(name,addr,phone,email,postal,city,contactId,quoteLabel){
     // TRYB OFFLINE: do 2026-09-09 ta funkcja i tak strzelala do Supabase, a blad
     // ladowal wylacznie w console.error. Paulina na pomiarze wpisywala klienta,
     // dostawala ekran pomieszczen i pracowala dalej \u2014 a klient nigdy nie powstal
@@ -634,6 +634,7 @@ export function App(p){
       var payload={name:name,addr:addr,phone:phone||"",email:email||"",postal:postal||"",city:city||"",
         rooms:[{id:Date.now(),name:"Salon",img:IMG_ROOM_SALON,windows:[]}]};
       if(contactId)payload.contact_id=contactId;
+      if(quoteLabel)payload.quote_label=quoteLabel;
       var pend=[];
       try{var raw=localStorage.getItem("pd_offline_new_clients");if(raw)pend=JSON.parse(raw);}catch(e){}
       pend.push({id:tmpId,payload:payload,timestamp:Date.now()});
@@ -644,7 +645,7 @@ export function App(p){
       setScreen("rooms");
       return;
     }
-    sbApi.addClient(name,addr,phone,email,postal,city,contactId).then(function(data){
+    sbApi.addClient(name,addr,phone,email,postal,city,contactId,quoteLabel).then(function(data){
       var newCl=data&&data[0]?data[0]:null;
       // Wczesniej podstawialismy tu atrape z id:Date.now() \u2014 klient wygladal na
       // zapisanego, a kazdy pozniejszy PATCH szedl na nieistniejacy wiersz.
@@ -688,6 +689,7 @@ export function App(p){
       install_fee:cl.install_fee||null,
       install_fee_mode:cl.install_fee_mode||"percent"
     };
+    if(cl.quote_label)payload.quote_label=cl.quote_label;
     sbApi.addClientFull(payload).then(function(data){
       var newCl=data&&data[0]?data[0]:mg(payload,{id:Date.now()});
       setClients(function(cs){return [newCl].concat(cs);});
@@ -1227,7 +1229,12 @@ export function App(p){
     var cands=(contacts||[]).filter(function(c){
       if(!c.email)return false;
       var n=normSupName(c.name);
-      return n&&(n===key||n.indexOf(key)>=0||key.indexOf(n)>=0);
+      if(!n)return false;
+      if(n===key||n.indexOf(key)>=0||key.indexOf(n)>=0)return true;
+      // Kolejność/dodatki w nazwie kontrahenta bywają inne ("Dekor Marcin", "Marcin Dekor Szwalnia"):
+      // wystarczy, że wszystkie słowa nazwy szwalni występują w nazwie kontrahenta lub odwrotnie.
+      var kt=key.split(" "),nt=n.split(" ");
+      return kt.every(function(w){return nt.indexOf(w)>=0;})||nt.every(function(w){return kt.indexOf(w)>=0;});
     });
     cands.sort(function(a,b){return (b.role==="dostawca"||b.role==="oba"?1:0)-(a.role==="dostawca"||a.role==="oba"?1:0);});
     return cands.length?cands[0].email:"";
@@ -1411,6 +1418,7 @@ export function App(p){
         ce("div",{onClick:function(){openClient(cl.id);},style:{flex:1,cursor:"pointer",minWidth:0}},
           cl.quote_no?ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",marginBottom:2,fontVariantNumeric:"tabular-nums"}},cl.quote_no):null,
           ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:2,lineHeight:1.2}},cl.name),
+          cl.quote_label?ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--violet)",marginBottom:2}},cl.quote_label):null,
           cl.addr?ce("div",{style:{fontSize:12,color:"var(--t3)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(cl.addr||"").slice(0,40)):null
         ),
         // Right side
@@ -1447,7 +1455,7 @@ export function App(p){
     var q=(homeSearch||"").toLowerCase().trim();
     var filtered=q
       ? clients.filter(function(cl){
-          return (cl.name||"").toLowerCase().includes(q)||(cl.addr||"").toLowerCase().includes(q)||(cl.phone||"").toLowerCase().includes(q)||(cl.quote_no||"").toLowerCase().includes(q);
+          return (cl.name||"").toLowerCase().includes(q)||(cl.addr||"").toLowerCase().includes(q)||(cl.phone||"").toLowerCase().includes(q)||(cl.quote_no||"").toLowerCase().includes(q)||(cl.quote_label||"").toLowerCase().includes(q);
         })
       : clients;
 
@@ -1728,6 +1736,11 @@ export function App(p){
           ce(InlineEdit,{value:curClient.name,
             onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{name:v});});},
             inputStyle:{fontSize:20,fontWeight:700}})
+        ),
+        ce("div",{style:{fontSize:14,color:"var(--violet)",lineHeight:1.4,marginBottom:6}},
+          ce(InlineEdit,{value:curClient.quote_label||"(nazwa wyceny \u2014 tylko dla Ciebie)",
+            onSave:function(v){var t=(v||"").replace("(nazwa wyceny \u2014 tylko dla Ciebie)","").trim();updateClient(curClientId,function(cl){return mg(cl,{quote_label:t});});},
+            inputStyle:{fontSize:14}})
         ),
         ce("div",{style:{fontSize:16,color:"var(--t2)",lineHeight:1.4}},
           ce(InlineEdit,{value:curClient.addr||"(brak adresu)",
