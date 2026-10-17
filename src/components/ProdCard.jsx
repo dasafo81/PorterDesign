@@ -336,30 +336,33 @@ export function ProdCard(p){
   };
   function TypeIcon(iconId,active){
     var d=TYPE_ICON_SVGS[iconId]||TYPE_ICON_SVGS.inny;
-    return ce("span",{style:{width:34,height:34,borderRadius:11,flexShrink:0,
+    return ce("span",{style:{width:28,height:28,borderRadius:9,flexShrink:0,
         display:"flex",alignItems:"center",justifyContent:"center",
         boxShadow:active?"none":"var(--nm-in-sm)",
         background:active?"var(--violet)":"transparent",
         color:active?"#fff":"var(--t2)"}},
-      ce("svg",{viewBox:"0 0 24 24",width:19,height:19,fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},
+      ce("svg",{viewBox:"0 0 24 24",width:16,height:16,fill:"none",stroke:"currentColor",strokeWidth:1.5,strokeLinecap:"round",strokeLinejoin:"round"},
         ce("path",{d:d}))
     );
   }
   function TypeCard(key,label,sub,active,onClick,iconId){
     return ce("button",{key:key,onClick:onClick,
-      style:{minHeight:78,padding:"12px 14px",borderRadius:14,border:"none",
-        display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center",gap:8,
+      style:{minHeight:44,padding:"6px 12px 6px 8px",borderRadius:12,border:"none",
+        display:"flex",flexDirection:"row",alignItems:"center",justifyContent:"flex-start",gap:8,
         boxShadow:active?"var(--nm-in)":"var(--nm-out)",
         background:"var(--bg)",
         color:active?"var(--violet-dark)":"var(--t1)",
         fontSize:13,fontWeight:active?700:500,cursor:"pointer",textAlign:"left",transition:"box-shadow .15s"}},
       TypeIcon(iconId,active),
-      ce("span",null,label),
-      sub?ce("span",{style:{fontSize:10,fontWeight:400,color:active?"var(--violet)":"var(--t3)",marginTop:-4}},sub):null
+      ce("span",{style:{display:"flex",flexDirection:"column",alignItems:"flex-start",lineHeight:1.2}},
+        ce("span",null,label),
+        sub?ce("span",{style:{fontSize:10,fontWeight:400,color:active?"var(--violet)":"var(--t3)"}},sub):null)
     );
   }
 
-  var typeSelector=ce("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+  var brandBoxes=[];
+  var typeSelector=ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+    ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"stretch"}},
     PROD_GROUPS.map(function(g){
       var cards=g.types.map(function(id){
         var t=PROD_TYPES.find(function(x){return x.id===id;});
@@ -382,7 +385,7 @@ export function ProdCard(p){
       var brandBox=null;
       if(g.brands==="karnisz_el"&&isKarnEl){
         var bObj=KARNISZ_EL_BRANDS.find(function(b){return b.id===curBrand;})||KARNISZ_EL_BRANDS[0];
-        brandBox=ce("div",{style:{marginTop:10,background:"var(--bg)",border:"1px solid var(--bd3)",borderRadius:10,padding:12}},
+        brandBox=ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd3)",borderRadius:10,padding:12}},
           ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MARKA"),
           ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
             KARNISZ_EL_BRANDS.map(function(b){
@@ -405,12 +408,13 @@ export function ProdCard(p){
         );
       }
 
-      return ce("div",{key:g.id,style:{background:"var(--bd3)",borderRadius:12,padding:10}},
-        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--violet)",marginBottom:8,paddingLeft:4}},g.label),
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(168px,1fr))",gap:10,alignItems:"stretch"}},cards),
-        brandBox
+      if(brandBox)brandBoxes.push(ce("div",{key:"bb_"+g.id},brandBox));
+      return ce("div",{key:g.id,style:{background:"var(--bd3)",borderRadius:12,padding:"8px 10px 10px",flex:"1 1 auto"}},
+        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",color:"var(--violet)",marginBottom:6,paddingLeft:4}},g.label),
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"stretch"}},cards)
       );
-    })
+    })),
+    brandBoxes
   );
 
   var panOpts=["Zas\u0142ona lewa","Zas\u0142ona prawa","Firana \u015brodkowa","Panel lewy","Panel prawy","Ca\u0142o\u015b\u0107"];
