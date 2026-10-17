@@ -6530,14 +6530,13 @@ export function calc(p){
     var linP=(linFab&&linFab.brutto!=null)?linFab.brutto:80;
     if(podszewka&&c.podszewkaTkanina&&!(linFab&&linFab.brutto!=null))lines.push("Podszewka: brak ceny w katalogu \u2014 liczono stawk\u0119 domy\u015bln\u0105");
     (p.panels||[]).forEach(function(pn){
-      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw,pm=pw/100,z,kt,ks,kp,koszt;
+      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pw/100,z,kt,ks,kp,koszt;
       // Wysoko\u015b\u0107 per panel (komplet z r\xf3\u017cn\u0105 wysoko\u015bci\u0105 L/P), domy\u015blnie par.hCm
       var phCm=pn.h||hCm,hM=phCm/100;
       var useA2=belka>0&&phCm+20>belka&&!c.tasmaNaStojaco;
       if(useA2){
-        var pg=Math.ceil((belka/mars)/10)*10-10,lp=Math.ceil((pwZ/pg)*2)/2;
-        // Tkanina: każdy zaczęty pas odcinamy na pełną wysokość (połówka pasa też zużywa pełne hM)
-        z=Math.ceil((Math.ceil(lp)*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
+        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
+        z=Math.ceil((lp*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
         var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv).toFixed(2):+(lp*250).toFixed(2);
       }else{
@@ -7481,6 +7480,59 @@ export function buildOfferDetailRows(client){
 }
 
 
+// ── Korekta parowania pasów przy obracaniu tkaniny ──────────────────────────
+// calc() (gałąź useA2) zaokrągla liczbę potrzebnych pasów w górę do najbliższej
+// POŁÓWKI, zakładając że samotna połówka znajdzie parę — inny panel tej samej
+// tkaniny i tej samej wysokości (hM), z którym zmieści się w jednym przecięciu
+// materiału (krój dwóch połówek obok siebie na tej samej długości hM).
+// Jeśli w CAŁYM zamówieniu klienta liczba takich połówek dla danej pary
+// tkanina+wysokość wyjdzie NIEPARZYSTA, jedna zostaje bez pary — fizycznie nie
+// da się wykroić samej połówki, więc trzeba doliczyć pełny dodatkowy pas.
+// Funkcja skanuje całego klienta (wszystkie pomieszczenia/okna/produkty) i
+// zwraca listę takich korekt do doliczenia w zamówieniu tkaniny.
+export function getPasyParityKorekta(client){
+  var groups={};
+  (client.rooms||[]).forEach(function(r){
+    (r.windows||[]).forEach(function(w){
+      (w.products||[]).forEach(function(p){
+        if(p.type!=="zaslona"&&p.type!=="firana")return;
+        var c=p.c||{},par=p.par||{};
+        var fabP=p.fabMan!=null?p.fabMan:(p.fabP!=null?p.fabP:null);
+        var belka=p.fabW||0,mars=+(c.mars||"1.5");
+        var hCm0=par.hCm||0;
+        if(fabP==null||!hCm0)return;
+        (getPanelsForProd(p)||[]).forEach(function(pn){
+          var pw=pn.w||0;if(!pw)return;
+          var hCm=pn.h||hCm0,hM=hCm/100;
+          var useA2=belka>0&&hCm+20>belka&&!c.tasmaNaStojaco;
+          if(!useA2)return;
+          var pwZ=pw+20,pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
+          var fabKey=p.fabName||p.fabManName||"tkanina";
+          var key=fabKey+"::"+hM.toFixed(2);
+          if(!groups[key])groups[key]={
+            fabName:fabKey,
+            prod:p.fabName?((getFabricEffective(p.fabName)||{prod:"-"}).prod||"-"):"-",
+            hM:hM,sumLp:0,fabP:fabP
+          };
+          groups[key].sumLp+=lp;
+        });
+      });
+    });
+  });
+  var out=[];
+  Object.keys(groups).forEach(function(key){
+    var g=groups[key];
+    if(Math.round(g.sumLp*2)%2!==0){
+      var extraMb=Math.ceil((0.5*g.hM)*10)/10;
+      out.push({
+        fabName:g.fabName,prod:g.prod,hM:g.hM,extraMb:extraMb,
+        extraFabricCost:+(extraMb*g.fabP).toFixed(2)
+      });
+    }
+  });
+  return out;
+}
+
 export function buildFabricRows(client){
   // One row per window: {prod, fabName, kolor, width, metry, room, win, note}
   // Obsługuje: zaslona, firana, roleta (w tym Duo)
@@ -7564,6 +7616,13 @@ export function buildFabricRows(client){
           return;
         }
       });
+    });
+  });
+  getPasyParityKorekta(client).forEach(function(k){
+    rows.push({
+      fabName:k.fabName,prod:k.prod,kolor:"-",brutto:0,width:null,
+      metry:k.extraMb,room:"—",win:"—",
+      note:"Korekta \u2014 nieparzysta liczba pas\u00f3w przy obracaniu tkaniny (wys. "+(k.hM*100).toFixed(0)+"cm), +"+k.extraFabricCost.toFixed(2).replace(".",",")+" z\u0142"
     });
   });
   return rows;
