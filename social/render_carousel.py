@@ -31,7 +31,7 @@ SLIDES = [
 ]
 
 EXTRA = """
-.shot{margin:auto auto 0;height:auto;padding:14px}
+.shot{margin:auto;height:auto;padding:14px}
 .shot img{width:100%}
 .shotin{height:auto}
 .dots{display:flex;gap:12px;align-items:center}
@@ -41,9 +41,9 @@ EXTRA = """
 .foot .cta{font-size:25px;font-weight:500;color:#b45a12;letter-spacing:.04em}
 """
 
-def html(n, crop, width, eyebrow, title, sub):
-    dots = ''.join(f'<i class="{"on" if i == n else ""}"></i>' for i in range(len(SLIDES)))
-    last = n == len(SLIDES) - 1
+def html(n, total, crop, width, eyebrow, title, sub):
+    dots = ''.join(f'<i class="{"on" if i == n else ""}"></i>' for i in range(total))
+    last = n == total - 1
     right = 'Darmowy test: mydecolab.pl' if last else 'mydecolab.pl'
     return f"""<!doctype html><html><head><meta charset=utf-8>
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;700&family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
@@ -53,11 +53,12 @@ def html(n, crop, width, eyebrow, title, sub):
 <div class=foot><img src="file://{PUB/'logo-mydecolab.png'}"><div class=dots>{dots}</div><span>{right}</span></div>
 </div></body></html>"""
 
-def main():
+def main(slides=None):
+    slides = slides or SLIDES
     with sync_playwright() as p:
         b = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH') or None)
         pg = b.new_page(viewport={'width': 1080, 'height': 1350}, device_scale_factor=SS)
-        for n, (name, img, box, width, ey, t, s) in enumerate(SLIDES):
+        for n, (name, img, box, width, ey, t, s) in enumerate(slides):
             crop = TMP / f'{name}.png'
             c = img.crop(box)
             # powiększenie z wyprzedzeniem (Lanczos) + lekkie wyostrzenie, zamiast skalowania w przeglądarce
@@ -66,7 +67,7 @@ def main():
             c = c.filter(ImageFilter.UnsharpMask(radius=2.2, percent=140, threshold=2))
             c.save(crop)
             f = OUT / f'{name}.html'
-            f.write_text(html(n, crop, width, ey, t, s), encoding='utf-8')
+            f.write_text(html(n, len(slides), crop, width, ey, t, s), encoding='utf-8')
             pg.goto(f'file://{f}', wait_until='networkidle')
             pg.evaluate('document.fonts.ready')
             raw = OUT / f'{name}.raw.png'
