@@ -1,8 +1,13 @@
 {
-  "buildCommand": "rm -rf node_modules/.vite && npm run build && cp register.html landing.html privacy.html terms.html dpa.html manifest.json icon-192.png icon-512.png apple-touch-icon.png dist/",
+  "buildCommand": "rm -rf node_modules/.vite && npm run build && mkdir -p dist/app && mv dist/index.html dist/app/index.html && cp register.html privacy.html terms.html dpa.html manifest.json icon-192.png icon-512.png apple-touch-icon.png dist/ && cp landing.html dist/index.html",
   "outputDirectory": "dist",
   "framework": "vite",
   "redirects": [
+    {
+      "source": "/landing.html",
+      "destination": "/",
+      "permanent": true
+    },
     {
       "source": "/((?!api/).*)",
       "has": [{ "type": "host", "value": "porter-design.vercel.app" }],
@@ -46,12 +51,30 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/app/index.html"
     }
   ],
   "headers": [
     {
       "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/app",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/app/index.html",
       "headers": [
         {
           "key": "Cache-Control",

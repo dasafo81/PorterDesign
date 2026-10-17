@@ -87,8 +87,8 @@ export default async function handler(req) {
   params.set('metadata[plan]', plan);
   params.set('subscription_data[metadata][tenant_id]', tenantId);
   params.set('subscription_data[metadata][plan]', plan);
-  params.set('success_url', `${APP_URL}/?checkout=success`);
-  params.set('cancel_url', `${APP_URL}/?checkout=cancelled`);
+  params.set('success_url', `${APP_URL}/app?checkout=success`);
+  params.set('cancel_url', `${APP_URL}/app?checkout=cancelled`);
   if (user.email) params.set('customer_email', user.email);
 
   const stripeResp = await fetch('https://api.stripe.com/v1/checkout/sessions', {

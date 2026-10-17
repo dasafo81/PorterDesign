@@ -57,7 +57,7 @@ async function verifyJwt(req, SERVICE, SB_URL) {
 function tplWelcome({ brand_name, email, login_url, trial_days, verify_url }) {
   const name = brand_name || 'Twoje studio';
   const days = trial_days || 14;
-  const url  = login_url || 'https://www.mydecolab.pl';
+  const url  = login_url || 'https://www.mydecolab.pl/app';
   return {
     subject: `Witaj w My DecoLab — ${name}`,
     html: `<!DOCTYPE html>

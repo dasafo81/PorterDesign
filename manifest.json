@@ -4,7 +4,7 @@
   "description": "Wyceny, CRM i faktury dla studiów dekoracji okien",
   "id": "/",
   "scope": "/",
-  "start_url": "/",
+  "start_url": "/app",
   "display": "standalone",
   "launch_handler": {
     "client_mode": "focus-existing"
