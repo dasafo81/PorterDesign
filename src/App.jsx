@@ -1229,6 +1229,12 @@ export function App(p){
     var cands=(contacts||[]).filter(function(c){
       if(!c.email)return false;
       var n=normSupName(c.name);
+      // Szwalnia bywa zapisana w Kontrahentach pod nazwą właściciela/firmy — wtedy łączy ją
+      // adres (ulica z listy szwalni) albo nazwa szwalni w notatkach/tagach kontrahenta.
+      var flat=function(t){return String(t||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ł/g,"l").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();};
+      var street=flat(c.street),addrPart=flat(String(supplier||"").split(/\s[—–-]\s/).slice(1).join(" "));
+      if(street.length>=5&&addrPart.indexOf(street)>=0)return true;
+      if(flat((c.notes||"")+" "+(c.tags||[]).join(" ")).indexOf(key)>=0)return true;
       if(!n)return false;
       if(n===key||n.indexOf(key)>=0||key.indexOf(n)>=0)return true;
       // Kolejność/dodatki w nazwie kontrahenta bywają inne ("Dekor Marcin", "Marcin Dekor Szwalnia"):
