@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Darmowy test — My DecoLab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -43,8 +43,8 @@
 
   .card-header { text-align: center; margin-bottom: 2rem; }
   .card-header h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.9rem; font-weight: 700; color: var(--ink);
+    font-family: 'Jost', sans-serif;
+    font-size: 1.6rem; font-weight: 700; color: var(--ink);
     margin-bottom: 0.4rem;
   }
   .card-header p { font-size: 14px; color: var(--ink3); line-height: 1.5; }
@@ -244,7 +244,7 @@
       if (resp.ok && data.ok) {
         form.innerHTML = '<div style="text-align:center;padding:1rem 0">'
           + '<div style="font-size:2rem;margin-bottom:1rem">✅</div>'
-          + '<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:1.5rem;color:var(--ink);margin-bottom:0.75rem">Dziękujemy za zgłoszenie</h2>'
+          + '<h2 style="font-family:\'Jost\',sans-serif;font-size:1.3rem;color:var(--ink);margin-bottom:0.75rem">Dziękujemy za zgłoszenie</h2>'
           + '<p style="font-size:14px;color:var(--ink2);line-height:1.6">Sprawdzimy zgłoszenie i odezwiemy się z dostępem testowym na adres<br><strong></strong><br><br>Zwykle odpowiadamy w ciągu 24 godzin w dni robocze.</p>'
           + '</div>';
         form.querySelector('strong').textContent = email;
