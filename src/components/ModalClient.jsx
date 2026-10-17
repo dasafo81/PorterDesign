@@ -21,6 +21,7 @@ export function ModalClient(p){
   var cds=useState(false),cDrop=cds[0],setCDrop=cds[1];
   var sns=useState(true),saveAsNew=sns[0],setSaveAsNew=sns[1];
   var bs=useState(false),busy=bs[0],setBusy=bs[1];
+  var qls=useState(""),quoteLabel=qls[0],setQuoteLabel=qls[1];
 
   useEffect(function(){
     sbApi.getContacts().then(function(rows){setContacts(rows||[]);}).catch(function(){});
@@ -70,11 +71,11 @@ export function ModalClient(p){
   }
   function useExisting(){
     var c=dupe.c;
-    p.onOk(c.name||"",c.street||"",c.phone||"",c.email||"",c.postal||"",c.city||"",c.id);
+    p.onOk(c.name||"",c.street||"",c.phone||"",c.email||"",c.postal||"",c.city||"",c.id,quoteLabel.trim());
     p.onClose();
   }
 
-  function finish(cid){ p.onOk(name.trim(),addr.trim(),phone.trim(),email.trim(),postal.trim(),city.trim(),cid||null); p.onClose(); }
+  function finish(cid){ p.onOk(name.trim(),addr.trim(),phone.trim(),email.trim(),postal.trim(),city.trim(),cid||null,quoteLabel.trim()); p.onClose(); }
 
   function submit(){
     if(!name.trim()||busy)return;
@@ -131,7 +132,8 @@ export function ModalClient(p){
       ),
 
       ce("input",{autoFocus:true,value:name,onChange:function(ev){setName(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Imi\u0119 i nazwisko *",style:Object.assign({},INP,{fontSize:17,minHeight:56})}),
-      ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:-4,marginBottom:12,lineHeight:1.4}},"Dane adresowe i kontaktowe s\u0105 wykorzystywane przy wystawianiu faktur. Uzupe\u0142nienie nie jest obowi\u0105zkowe \u2014 mo\u017cna to zrobi\u0107 w dowolnym momencie."),
+      ce("input",{value:quoteLabel,onChange:function(ev){setQuoteLabel(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Nazwa wyceny (opcjonalnie, np. tkaniny)",style:INP}),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:-4,marginBottom:12,lineHeight:1.4}},"Nazwa wyceny widoczna tylko na li\u015bcie wycen \u2014 nie trafia do dokument\u00f3w ani maili. Dane adresowe i kontaktowe s\u0105 wykorzystywane przy wystawianiu faktur. Uzupe\u0142nienie nie jest obowi\u0105zkowe \u2014 mo\u017cna to zrobi\u0107 w dowolnym momencie."),
       ce("input",{value:addr,onChange:function(ev){setAddr(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"Ulica i numer",style:INP}),
       ce("div",{style:{display:"grid",gridTemplateColumns:"110px 1fr",gap:8,marginBottom:10}},
         ce("input",{value:postal,onChange:function(ev){setPostal(ev.target.value);},onKeyDown:function(ev){if(ev.key==="Enter")submit();},placeholder:"00-000",style:Object.assign({},INP,{marginBottom:0})}),
@@ -169,6 +171,7 @@ export function ModalNewQuoteFromClient(p){
   var clientsList=p.clients||[];
   var css=useState(""),search=css[0],setSearch=css[1];
   var cis=useState(null),picked=cis[0],setPicked=cis[1];
+  var qls=useState(""),quoteLabel=qls[0],setQuoteLabel=qls[1];
 
   var filtered=search.trim()
     ? clientsList.filter(function(c){
@@ -181,7 +184,7 @@ export function ModalNewQuoteFromClient(p){
 
   function submit(){
     if(!picked)return;
-    p.onOk(picked.name||"",picked.addr||"",picked.phone||"",picked.email||"",picked.postal||"",picked.city||"",picked.contact_id||null);
+    p.onOk(picked.name||"",picked.addr||"",picked.phone||"",picked.email||"",picked.postal||"",picked.city||"",picked.contact_id||null,quoteLabel.trim());
     p.onClose();
   }
 
@@ -197,6 +200,7 @@ export function ModalNewQuoteFromClient(p){
         autoFocus:true,
         style:Object.assign({},INP,{marginBottom:10})}),
 
+      ce("input",{value:quoteLabel,onChange:function(ev){setQuoteLabel(ev.target.value);},placeholder:"Nazwa wyceny (opcjonalnie, tylko dla Ciebie)",style:Object.assign({},INP,{marginBottom:10})}),
       ce("div",{style:{maxHeight:260,overflowY:"auto",border:"1px solid var(--bd2)",borderRadius:10,marginBottom:16}},
         filtered.length===0
           ? ce("div",{style:{padding:14,fontSize:13,color:"var(--t3)",textAlign:"center"}},"Brak klient\u00f3w")
