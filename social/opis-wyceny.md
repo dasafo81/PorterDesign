@@ -2,7 +2,7 @@
 
 Koniec z arkuszami i kalkulatorem. W My DecoLab budujesz wycenę krok po kroku — a cena z marżą liczy się sama.
 
-1️⃣ **Pomieszczenia** – salon, sypialnia, pokój dziecka; każde ze zdjęciem, liczbą okien i sumą, z możliwością kopiowania i wariantów
+1️⃣ **Pomieszczenia** – salon, sypialnia, pokój dziecka, gabinet; każde z liczbą okien i sumą, z możliwością kopiowania i wariantów
 2️⃣ **Okna** – w każdym pomieszczeniu dodajesz okna, a każde ma własny produkt i cenę
 3️⃣ **Produkt i wymiary** – zasłony, firany, żaluzje, rolety, karnisze i własny cennik; tkaninę wybierasz z katalogu
 4️⃣ **Model i szczegóły** – fałda, Wave, taśma marszcząca, układ, marszczenie, odstęp między ślizgami

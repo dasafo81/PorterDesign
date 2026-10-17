@@ -30,7 +30,7 @@ SLIDES = [
   ('wyceny-1', roleta, (18, 12, 1968, 1177), 940, 'Wyceny', 'Wycena zlecenia<br><em>w kilka minut</em>',
    'Dodajesz pomieszczenia i okna, wybierasz produkty — cena z marżą liczy się sama, bez arkuszy i kalkulatora.'),
   ('wyceny-2', pomieszczenia, full(pomieszczenia), 700, 'Krok 1 · pomieszczenia', 'Dodajesz pomieszczenia<br><em>jedno po drugim</em>',
-   'Salon, sypialnia, pokój dziecka — każde pomieszczenie ze zdjęciem, liczbą okien i sumą. Możesz je kopiować i robić warianty.'),
+   'Salon, sypialnia, pokój dziecka, gabinet — każde pomieszczenie z liczbą okien i sumą. Możesz je kopiować i robić warianty.'),
   ('wyceny-3', okna_j, full(okna_j), 940, 'Krok 2 · okna', 'W każdym pomieszczeniu<br><em>dodajesz okna</em>',
    'Okno lewe, okno balkonowe, kolejne — każde z własnym produktem i ceną. Okno możesz skopiować albo przygotować jego wariant.'),
   ('wyceny-4', roleta, (50, 110, 1000, 700), 940, 'Krok 3 · produkt i wymiary', 'Wybierasz produkt<br><em>i wpisujesz wymiary</em>',
