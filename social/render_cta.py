@@ -22,7 +22,7 @@ body{{width:1080px;height:1350px;position:relative;overflow:hidden;font-family:'
 .wrap{{position:relative;height:100%;padding:90px 80px 80px;display:flex;flex-direction:column;align-items:center;text-align:center}}
 .logo{{height:112px}}
 .eyebrow{{margin-top:auto;font-size:23px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;color:#f2a273}}
-h1{{font-family:'Jost',sans-serif;font-weight:700;font-size:96px;line-height:1.08;letter-spacing:-.025em;margin-top:30px}}
+h1{{font-family:'Jost',sans-serif;font-weight:700;font-size:92px;line-height:1.08;letter-spacing:-.025em;margin-top:30px}}
 h1 em{{font-style:normal;font-weight:400;background:linear-gradient(105deg,#f2a273 15%,#ffd08a 90%);-webkit-background-clip:text;background-clip:text;color:transparent}}
 .sub{{font-size:31px;line-height:1.55;font-weight:300;color:rgba(255,255,255,.78);margin-top:34px;max-width:820px}}
 .chips{{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:44px;max-width:900px}}
@@ -33,9 +33,9 @@ h1 em{{font-style:normal;font-weight:400;background:linear-gradient(105deg,#f2a2
 .spacer{{margin-bottom:auto}}
 </style></head><body><div class=glow></div><div class=glow2></div><div class=wrap>
 <img class=logo src="file://{tmp}">
-<p class=eyebrow>Dla studiów dekoracji okien</p>
-<h1>Czas na porządek<br><em>w całym studiu</em></h1>
-<p class=sub>Wyceny, CRM, kalendarz, poczta i faktury z KSeF w jednym miejscu. Przetestuj My DecoLab za darmo.</p>
+<p class=eyebrow>Aplikacja rusza w styczniu</p>
+<h1>Zacznij nowy rok<br>od porządku<br><em>w swojej pracowni</em></h1>
+<p class=sub>Uporządkuj wyceny, klientów, kalendarz, pocztę i faktury w jednym miejscu. Zapisz się na darmowy test już teraz.</p>
 <div class=chips><span>Wyceny</span><span>CRM</span><span>Kalendarz</span><span>Poczta</span><span>Faktury z KSeF</span></div>
 <div class=btn>Poproś o darmowy test (14 dni)</div>
 <p class=url>mydecolab.pl</p>
