@@ -6,6 +6,7 @@ import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, 
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
 import { loadSystemTemplate, fillVars, dropEmptyParas } from '../lib/mailTemplates.js';
+import { ACQ_DIRECT, ACQUISITION_OPTIONS, dealQuoteBreakdown, referralGross } from '../lib/referrals.js';
 import { buildInvoicePDFHtml, InvoiceEditor, calcLineFromGross, splitClientAddr } from './ScreenInvoices.jsx';
 const ce = React.createElement;
 
@@ -69,41 +70,6 @@ export function dealTotal(cl){
   var fee=parseFloat(cl.install_fee)||0;
   var add=cl.install_fee_mode==="amount"?fee:(fee>0?base*fee/100:0);
   return roundTo10(base+add);
-}
-
-// Rozbicie wyceny na pomieszczenia — do podglądu w karcie deala.
-// Zwraca surowe (niezaokrąglone) sumy; zaokrąglanie ma miejsce raz, na końcu,
-// tak samo jak w PDF (pdf.js), żeby wartości w Kanbanie / karcie deala / PDF się zgadzały.
-function dealQuoteBreakdown(cl){
-  if(!cl||!cl.rooms)return {rooms:[],total:0};
-  var comm=parseFloat(cl.commission)||0;
-  var rooms=[];
-  (cl.rooms||[]).forEach(function(r){
-    var wins=r.windows||[];
-    var groups={};
-    var roomSum=0;
-    wins.forEach(function(w){
-      var wVal=(w.products||[]).reduce(function(c,p){
-        var pfc=(p.type==="zaslona"||p.type==="firana")?mg(p,{panels:getPanelsForProd(p)}):p;
-        return c+(p.mp!=null?p.mp:(calc(pfc).total||0));
-      },0);
-      if(w.variantGroup){
-        if(!groups[w.variantGroup])groups[w.variantGroup]=[];
-        groups[w.variantGroup].push({w:w,val:wVal});
-      } else {
-        roomSum+=wVal;
-      }
-    });
-    Object.keys(groups).forEach(function(gid){
-      var sorted=groups[gid].slice().sort(function(a,b){return(a.w.variantLabel||"").localeCompare(b.w.variantLabel||"");});
-      roomSum+=sorted[0].val;
-    });
-    if(roomSum>0){
-      rooms.push({name:r.name||"Pomieszczenie",total:comm>0?roomSum*(1+comm/100):roomSum});
-    }
-  });
-  var total=rooms.reduce(function(a,x){return a+x.total;},0);
-  return {rooms:rooms,total:total};
 }
 
 export function fmtDate(iso){
@@ -340,7 +306,6 @@ export function ModalDeal(p){
     if(n.indexOf("szyny")>=0||n.indexOf("szyn ks")>=0||n.indexOf("karnisz")>=0)return "osprzet";
     return "inne";
   }
-  var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant","Oferteo"];
 
   var clientName=cl?cl.name:"(brak klienta)";
   var quoteBreak=dealQuoteBreakdown(cl);
@@ -1543,8 +1508,16 @@ export function ModalDeal(p){
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SKĄD KLIENT"),
             ce("select",{value:acquisition,onChange:function(ev){setAcquisition(ev.target.value);},style:INP},
-              ACQUISITION_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
-            )
+              (ACQUISITION_OPTIONS.indexOf(acquisition)<0?ACQUISITION_OPTIONS.concat([acquisition]):ACQUISITION_OPTIONS)
+                .map(function(o,i){return ce("option",{key:i,value:o},o?(ACQUISITION_OPTIONS.indexOf(o)<0?o+" (dotychczasowa wartość)":o):"— wybierz —");})
+            ),
+            (function(){
+              // Prowizja: polecający + Polecenie % na wycenie -> kwota trafia do zestawienia w Faktury → Wydatki
+              var g=(acquisition&&acquisition!==ACQ_DIRECT&&ACQUISITION_OPTIONS.indexOf(acquisition)>=0)?referralGross(cl):0;
+              if(!(g>0))return null;
+              return ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:4,lineHeight:1.4}},
+                "Polecenie "+(parseFloat(cl.commission)||0)+"% (bez montażu): "+g.toLocaleString("pl-PL")+" zł brutto dla polecającego — wpada do zestawienia prowizji (Faktury → Wydatki) po opłaceniu FV 50%.");
+            })()
           ),
           (p.teamUsers||[]).length?ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"PRZYPISANI"),

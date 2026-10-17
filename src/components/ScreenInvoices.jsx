@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sbApi, ksefApi } from '../lib/supabase.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { InlineEdit, SELLER, hasBuiltinCatalog } from '../constants/data.js';
+import { syncReferralStatements, buildCommissionStatementHtml, DOC_PROWIZJA } from '../lib/referrals.js';
 import { loadSystemTemplate, fillVars, dropEmptyParas, bodyToText } from '../lib/mailTemplates.js';
 const ce = React.createElement;
 
@@ -21,7 +22,7 @@ var DOC_TYPES = [
 // siatkę bezpieczeństwa: gdyby gdziekolwiek został niezmigrowany rekord, filtr ma go
 // pokazać, a nie ukryć (wcześniej brak 'zakup' w tej liście ukrywał WSZYSTKIE faktury
 // zakupowe z KSeF — były w bazie, ale nigdy nie pojawiały się na liście Wydatków).
-var FILTER_DOC_TYPES = DOC_TYPES.concat([{id:"zakup", label:"Zakupowa (stary model)"}]);
+var FILTER_DOC_TYPES = DOC_TYPES.concat([{id:"zakup", label:"Zakupowa (stary model)"},{id:DOC_PROWIZJA, label:"Zestawienie prowizji (nieksięgowe)"}]);
 var PAYMENT_METHODS = ["przelew","gotówka","karta","BLIK"];
 var UNITS = ["szt","m","m²","mb","kpl","usługa","godz"];
 // Opcje menu statusu płatności (kolumna "Zapłacono" na liście faktur) — id "issued" mapuje
@@ -1661,12 +1662,13 @@ function KsefBadge(p){
 // działający wybór okresu (patrz periodPreset w InvoiceList), a liczniki
 // zakładek Sprzedaż/Zakup liczą się z TEGO SAMEGO okresu co lista.
 var TYPE_COLORS={vat:"var(--violet)",proforma:"var(--teal)",zaliczka:"var(--amber)",
-  korekta:"var(--pink)",eko:"var(--grd)",zakup:"var(--red)"};
-var TYPE_ICONS={vat:"📄",proforma:"🧾",zaliczka:"💳",korekta:"↩️",eko:"🟢"};
+  korekta:"var(--pink)",eko:"var(--grd)",zakup:"var(--red)",prowizja:"var(--amber)"};
+var TYPE_ICONS={vat:"📄",proforma:"🧾",zaliczka:"💳",korekta:"↩️",eko:"🟢",prowizja:"🤝"};
 function docTypeLabel(id){
   var found=DOC_TYPES.find(function(d){return d.id===id;});
   if(found) return found.label;
   if(id==="zakup") return "Zakupowa (stary model)";
+  if(id===DOC_PROWIZJA) return "Zestawienie prowizji";
   return id||"Nieznany typ";
 }
 function typeColorOf(id){ return TYPE_COLORS[id]||"var(--t3)"; }
@@ -1679,7 +1681,8 @@ function periodStats(invoices){
   var weekAgo=addDays(today,-6);
   var monthKey=today.slice(0,7);
   var yearKey=today.slice(0,4);
-  var counted=invoices.filter(function(inv){return inv.status!=="draft"&&inv.status!=="cancelled";});
+  // Zestawienie prowizji to dokument nieksięgowy — nie wchodzi do kafelków sum
+  var counted=invoices.filter(function(inv){return inv.status!=="draft"&&inv.status!=="cancelled"&&inv.doc_type!==DOC_PROWIZJA;});
   function bucket(pred){
     var f=counted.filter(pred);
     return {count:f.length,sum:f.reduce(function(a,inv){return a+(+inv.total_gross||0);},0)};
@@ -1857,6 +1860,7 @@ function InvoiceList(p){
   // pokazywana jako podsumowanie pod tabelą, żeby od razu było widać łączną kwotę
   // wybranej selekcji, bez ręcznego liczenia.
   var listTotals=list.reduce(function(a,inv){
+    if(inv.doc_type===DOC_PROWIZJA)return a;
     a.net+=(+inv.total_net||0); a.gross+=(+inv.total_gross||0); return a;
   },{net:0,gross:0});
   var allTypesSelected=filterDocTypes.length===FILTER_DOC_TYPES.length;
@@ -1944,7 +1948,7 @@ function InvoiceList(p){
   // Wszystkie faktury zakupowe bez deal_id — niezaleznie od filtra okresu,
   // bo przypisanie robi sie zwykle po fakcie, nie w miesiacu wystawienia.
   var allPurchases=(p.invoices||[]).filter(function(x){
-    return invDirection(x)==="zakup"&&x.status!=="cancelled";
+    return invDirection(x)==="zakup"&&x.status!=="cancelled"&&x.doc_type!==DOC_PROWIZJA;
   });
   var unassignedPurchases=allPurchases.filter(function(x){return !x.deal_id;});
   var plFaktur=function(n){
@@ -2518,6 +2522,7 @@ async function buildKsefQrUrl(inv, settings){
 }
 
 export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
+  if(inv.doc_type===DOC_PROWIZJA)return buildCommissionStatementHtml(inv);
   var s=settings||{};
   var items=inv.invoice_items||[];
   var isZakup=invDirection(inv)==="zakup";
@@ -2735,7 +2740,7 @@ function InvoiceDetailView(p){
   },[currentInv.id,currentInv.ksef_status,currentInv.ksef_number,currentInv.ksef_invoice_hash,currentInv.doc_type,currentInv.issue_date]);
 
   var isIssued=currentInv.status==="issued";
-  var isEko=currentInv.doc_type==="eko";
+  var isEko=currentInv.doc_type==="eko"||currentInv.doc_type===DOC_PROWIZJA; // bez KSeF
   var ksefOk=currentInv.ksef_status==="confirmed";
   var ksefSent=currentInv.ksef_status==="sent"||currentInv.ksef_status==="pending";
   var ksefError=currentInv.ksef_status==="error";
@@ -3070,6 +3075,10 @@ export function ScreenInvoices(p){
         setDealsAll(results[3]||[]);
         setEntities(results[4]||[]);
         setLoading(false);
+        // Zestawienia prowizji dla polecających: dopisz/uaktualnij wg aktualnych zleceń i opłaconych FV 50%
+        syncReferralStatements({invoices:results[0]||[],deals:results[3]||[],clients:results[2]||[],entities:results[4]||[]})
+          .then(function(changed){if(changed)return sbApi.getInvoices().then(function(d){setInvoices(d||[]);});})
+          .catch(function(e){console.error("[prowizje] synchronizacja zestawień",e);});
         // Faktura przygotowana w karcie deala ("Wystaw drugie 50%") — edytor jak przy Duplikuj
         if(p.prefill){ setEditInv(p.prefill); invoiceNavigate("editor"); if(p.onPrefillUsed)p.onPrefillUsed(); }
       })
@@ -3268,7 +3277,12 @@ export function ScreenInvoices(p){
           var isPaid=newStatus==="paid";
           var prevPatch={paid:inv.paid,paid_amount:inv.paid_amount||0,payment_status:inv.payment_status||"unpaid"};
           setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:isPaid,paid_amount:amount,payment_status:newStatus}):x;});});
-          sbApi.updateInvoice(inv.id,{paid:isPaid,paid_amount:amount,payment_status:newStatus}).catch(function(){
+          sbApi.updateInvoice(inv.id,{paid:isPaid,paid_amount:amount,payment_status:newStatus}).then(function(){
+            // Opłacenie FV 50% dopisuje polecenie do zestawienia prowizji (błąd synchronizacji nie cofa płatności)
+            syncReferralStatements().then(function(changed){
+              if(changed)return sbApi.getInvoices().then(function(d){setInvoices(d||[]);});
+            }).catch(function(e){console.error("[prowizje] synchronizacja zestawień",e);});
+          },function(){
             setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,prevPatch):x;});});
           });
         },
