@@ -4,6 +4,7 @@ from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PUB = ROOT / 'public'
+SRC = ROOT / 'social' / 'src'  # zrzuty, które mają pierwszeństwo przed public/
 OUT = ROOT / 'social' / 'out'
 OUT.mkdir(exist_ok=True)
 
@@ -38,14 +39,14 @@ h1 em{font-style:italic;background:linear-gradient(105deg,#e8703a 20%,#f0a53a 90
 """
 
 def page(img, eyebrow, title, sub):
-    full = img in ('ai.webp', 'crm-deal-card.webp')  # modale bez paska bocznego: cały kadr
-    imgstyle = 'width:100%' if full else 'width:1290px;margin-left:-168px'
+    full = img == 'ai.webp'  # modal na przyciemnionym tle: cały kadr
+    imgstyle = 'width:100%' if full else 'width:1400px;margin-left:0' if img == 'crm-deal-card.webp' else 'width:1290px;margin-left:-168px'
     shotstyle = 'height:auto' if full else ''
     return f"""<!doctype html><html><head><meta charset=utf-8>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,700;1,700&family=DM+Sans:wght@300;500&display=swap" rel="stylesheet">
 <style>{CSS}</style></head><body><div class=glow></div><div class=wrap>
 <p class=eyebrow>{html.escape(eyebrow)}</p><h1>{title}</h1><p class=sub>{html.escape(sub)}</p>
-<div class=shot style="{shotstyle}"><div class=shotin><img style="{imgstyle}" src="file://{PUB/img}"></div></div>
+<div class=shot style="{shotstyle}"><div class=shotin><img style="{imgstyle}" src="file://{(SRC/img) if (SRC/img).exists() else (PUB/img)}"></div></div>
 <div class=foot><img src="file://{PUB/'logo-mydecolab.png'}"><span>mydecolab.pl</span></div>
 </div></body></html>"""
 
