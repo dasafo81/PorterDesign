@@ -6535,7 +6535,7 @@ export function calc(p){
       var phCm=pn.h||hCm,hM=phCm/100;
       var useA2=belka>0&&phCm+20>belka&&!c.tasmaNaStojaco;
       if(useA2){
-        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
+        var pg=Math.ceil((belka/mars)/10)*10,lp=Math.ceil((pwZ/pg)*2)/2;
         // Tkanina: każdy zaczęty pas odcinamy na pełną wysokość (połówka pasa też zużywa pełne hM)
         z=Math.ceil((Math.ceil(lp)*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
         var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
@@ -7507,7 +7507,7 @@ export function getPasyParityKorekta(client){
           var hCm=pn.h||hCm0,hM=hCm/100;
           var useA2=belka>0&&hCm+20>belka&&!c.tasmaNaStojaco;
           if(!useA2)return;
-          var pwZ=pw+10,pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
+          var pwZ=pw+10,pg=Math.ceil((belka/mars)/10)*10,lp=Math.ceil((pwZ/pg)*2)/2;
           var fabKey=p.fabName||p.fabManName||"tkanina";
           var key=fabKey+"::"+hM.toFixed(2);
           if(!groups[key])groups[key]={
