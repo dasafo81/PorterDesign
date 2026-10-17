@@ -772,7 +772,10 @@ export function InvoiceEditor(p){
 
     var isRealPurchaseDoc=isZakupDir&&docType!=="proforma"&&docType!=="eko";
     var numPeriod=periodKey(numberingReset,issueDate||todayISO());
-    var numFmt=docType==="eko"?"EKO/{nr}/{MM}":numberingFormat;
+    // EKO i proforma maja wlasne, oddzielne numeracje (z prefiksem) — nie wchodza w numeracje faktur VAT.
+    var numFmt=docType==="eko"?"EKO/{nr}/{MM}"
+      :docType==="proforma"?"PRO/{nr}/{MM}/{YYYY}"
+      :numberingFormat;
     var selfId=(p.invoice&&p.invoice.id)||null;
 
     // Nadanie numeru odporne na kolizje i na rozjazd licznika.
@@ -972,6 +975,8 @@ export function InvoiceEditor(p){
         direction==="zakup"
           ? "🟢 Dokument EKO (kosztowy) — 0% VAT, wewnętrzny wydatek gotówkowy. Numer nadajemy sami (EKO/nr/miesiąc), nigdy nie wychodzi poza aplikację (bez KSeF)."
           : "🟢 Dokument EKO — 0% VAT, wydatki gotówkowe, wystawiany od razu (bez KSeF). Numer własny (EKO/nr/miesiąc)."),
+      docType==="proforma"&&ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--teal)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--teal)",marginTop:4}},
+        "🧾 Proforma ma osobną numerację (PRO/nr/miesiąc/rok) — nie wchodzi w numerację faktur VAT."),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}},
         ce("div",null,ce("span",{style:label},"Data wystawienia"),ce("input",{style:inp,type:"date",value:issueDate,onChange:function(e){setIssueDate(e.target.value);}})),
         ce("div",null,ce("span",{style:label},"Data sprzedaży"),ce("input",{style:inp,type:"date",value:saleDate,onChange:function(e){setSaleDate(e.target.value);}})),
