@@ -930,8 +930,8 @@ export function ProdCard(p){
     var bottomType=c.bottomType||"single";
     var bottomSection=ce("div",{style:{marginTop:4}},
       ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:6}},"TYP DO\u0141U"),
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}},
-        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"O\u0142owianka"}].map(function(bt){
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:10}},
+        [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"O\u0142owianka"},{key:"pasmanteria",label:"Pasmanteria"}].map(function(bt){
           var isA=bottomType===bt.key;
           return ce("button",{key:bt.key,onClick:function(){sc("bottomType",bt.key);},style:{padding:"10px 8px",borderRadius:10,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
             isA?"\u2713 "+bt.label:bt.label

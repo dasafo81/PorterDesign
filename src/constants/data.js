@@ -7762,7 +7762,7 @@ export function buildSewingRows(client){
         else if(split==="right") splitDesc="Prawa";
         else if(split==="equal"){var tw2=par.wCm||0;splitDesc="Kurtyna "+Math.floor(tw2/2)+" + "+Math.ceil(tw2/2)+" cm";}
         else splitDesc=(pc.leftW||0)+"cm + "+(pc.rightW||0)+"cm";
-        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"O\u0142owianka"};
+        var bottomMap={single:"Pojedynczy",double:"Podw\xf3jny",overlock:"Overlock",tape:"O\u0142owianka",pasmanteria:"Pasmanteria"};
         var bottomDesc=(bottomMap[pc.bottomType||"single"]||"Pojedynczy")+(pc.bottomSize?" "+pc.bottomSize+"cm":"");
         rows.push({
           room:r.name,win:w.name,
