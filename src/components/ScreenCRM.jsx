@@ -35,6 +35,30 @@ export const ADVANCE_MAIL_ENABLED=false;
 export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane",archiveDays:30};
 export const STAGE_ODRZUCONE ={id:"odrzucone",label:"Odrzucone",color:"#ef4444",clientStatus:"odrzucone",archiveDays:30};
 
+// Lista "Skąd klient" w karcie deala. Każda pozycja poza kanałem własnym (ACQ_DIRECT) to polecający —
+// od niego liczy się prowizja (Polecenie %) i na niego wystawiany jest dokument w Rozliczeniu z klientem.
+export const ACQ_DIRECT="porterdesign.pl";
+export const ACQUISITION_OPTIONS=["",ACQ_DIRECT,"HomeStead Spółka z Ograniczoną Odpowiedzialnością","Wnętrza Part Karina Roman","Teresa Pyszkiewicz","Maja Dembowska Studio Architektury"];
+// Znacznik w uwagach dokumentu prowizyjnego (proforma/EKO kosztowa) — po nim karta deala rozpoznaje, że prowizja już wystawiona
+export const REFERRAL_NOTE="Prowizja za polecenie";
+
+function normPartyName(n){
+  return String(n||"").toLowerCase()
+    .replace(/sp[óo]łka z ograniczon[aą] odpowiedzialno[śs]ci[aą]|sp\.?\s*z\s*o\.?\s*o\.?/g,"")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l")
+    .replace(/[^a-z0-9]/g,"");
+}
+// Kontrahent o nazwie zbliżonej do polecającego z listy "Skąd klient" (null = brak w bazie kontrahentów)
+export function findReferrerContact(name,contacts){
+  var key=normPartyName(name);
+  if(!key)return null;
+  return (contacts||[]).find(function(c){
+    var ck=normPartyName(c.name);
+    return ck.length>=5&&(ck===key||ck.indexOf(key)>=0||key.indexOf(ck)>=0);
+  })||null;
+}
+function hasNip(c){return !!(c&&String(c.nip||"").replace(/\D/g,"").length>=10);}
+
 export function clientTotal2(cl){
   if(!cl||!cl.rooms)return 0;
   var comm=parseFloat(cl.commission)||0;
@@ -78,6 +102,7 @@ function dealQuoteBreakdown(cl){
   if(!cl||!cl.rooms)return {rooms:[],total:0};
   var comm=parseFloat(cl.commission)||0;
   var rooms=[];
+  var base=0;
   (cl.rooms||[]).forEach(function(r){
     var wins=r.windows||[];
     var groups={};
@@ -98,12 +123,13 @@ function dealQuoteBreakdown(cl){
       var sorted=groups[gid].slice().sort(function(a,b){return(a.w.variantLabel||"").localeCompare(b.w.variantLabel||"");});
       roomSum+=sorted[0].val;
     });
+    base+=roomSum;
     if(roomSum>0){
       rooms.push({name:r.name||"Pomieszczenie",total:comm>0?roomSum*(1+comm/100):roomSum});
     }
   });
   var total=rooms.reduce(function(a,x){return a+x.total;},0);
-  return {rooms:rooms,total:total};
+  return {rooms:rooms,total:total,base:base};
 }
 
 export function fmtDate(iso){
@@ -300,6 +326,10 @@ export function ModalDeal(p){
   // Wyszukiwarka niepowiązanych faktur (bez deal_id) — do ręcznego podpięcia pod to zlecenie,
   // np. faktur wystawionych zanim istniała ta sekcja albo bez wyboru klienta z CRM.
   var sblAll=useState([]),billUnlinked=sblAll[0],setBillUnlinked=sblAll[1];
+  // Prowizja za polecenie: wystawione dokumenty kosztowe (proforma/EKO) + baza kontrahentów polecających
+  var srfd=useState([]),referralDocs=srfd[0],setReferralDocs=srfd[1];
+  var srfc=useState([]),billContacts=srfc[0],setBillContacts=srfc[1];
+  var srfp=useState(""),refContactPick=srfp[0],setRefContactPick=srfp[1]; // ręczny wybór kontrahenta, gdy nazwa polecającego nie pasuje do żadnego
   var sblO=useState(false),billLinkOpen=sblO[0],setBillLinkOpen=sblO[1];
   var sblQ=useState(""),billLinkQuery=sblQ[0],setBillLinkQuery=sblQ[1];
   var sblB=useState(null),billLinkBusyId=sblB[0],setBillLinkBusyId=sblB[1];
@@ -340,7 +370,6 @@ export function ModalDeal(p){
     if(n.indexOf("szyny")>=0||n.indexOf("szyn ks")>=0||n.indexOf("karnisz")>=0)return "osprzet";
     return "inne";
   }
-  var ACQUISITION_OPTIONS=["","Polecenie","porterdesign.pl","kapadesign.pl","Piotr Skowroń","Projektant","Oferteo"];
 
   var clientName=cl?cl.name:"(brak klienta)";
   var quoteBreak=dealQuoteBreakdown(cl);
@@ -394,7 +423,8 @@ export function ModalDeal(p){
     return Promise.all([
       sbApi.getInvoicesForDeal(d.id),
       sbApi.getEntities().catch(function(){return [];}),
-      sbApi.getInvoiceSettings().catch(function(){return null;})
+      sbApi.getInvoiceSettings().catch(function(){return null;}),
+      sbApi.getContacts().catch(function(){return [];})
     ]).then(function(res){
       var sales=(res[0]||[]).filter(function(x){
         var dir=x.direction||(x.doc_type==="zakup"?"zakup":"sprzedaz");
@@ -408,6 +438,11 @@ export function ModalDeal(p){
       setBillInvoices(list);
       setBillEntities(res[1]||[]);
       setBillSettings(res[2]||{});
+      setBillContacts(res[3]||[]);
+      setReferralDocs((res[0]||[]).filter(function(x){
+        return String(x.deal_id||"")===String(d.id)&&x.direction==="zakup"&&(x.doc_type==="proforma"||x.doc_type==="eko")
+          &&x.status!=="cancelled"&&String(x.notes||"").indexOf(REFERRAL_NOTE)===0;
+      }));
       // Faktury bez deal_id, jeszcze nieprzypisane do żadnego zlecenia — kandydaci do ręcznego
       // powiązania (np. wystawione przed wprowadzeniem tej sekcji, bez wyboru klienta z CRM).
       setBillUnlinked(sales.filter(function(x){return !x.deal_id&&list.indexOf(x)<0;}));
@@ -575,6 +610,38 @@ export function ModalDeal(p){
         notes:notes, invoice_items:[item]
       }});
     }).finally(function(){setBillBusy(false);});
+  }
+
+  // ── PROWIZJA ZA POLECENIE ─────────────────────────────────────────────────
+  // Gdy na wycenie jest Polecenie % i pierwsza faktura (50%) jest opłacona, w Rozliczeniu pojawia się
+  // opcja wystawienia dokumentu dla polecającego (z pola "Skąd klient"): proforma, a gdy polecający nie ma
+  // NIP w kontrahentach — dokument EKO. Kwota = wartość polecenia z Podsumowania, czyli Polecenie % od
+  // wyceny BEZ montażu (procent jest liczony tylko od pozycji wyceny, montaż dolicza się osobno).
+  var refPct=cl?(parseFloat(cl.commission)||0):0;
+  var refAmount=refPct>0?Math.max(0,quoteBezMontazu-roundTo10(quoteBreak.base)):0;
+  var refName=(acquisition&&acquisition!==ACQ_DIRECT)?acquisition:"";
+  var refContact=refName
+    ?(billContacts.find(function(c){return String(c.id)===String(refContactPick);})||findReferrerContact(refName,billContacts))
+    :null;
+  var refDocType=hasNip(refContact)?"proforma":"eko";
+
+  function issueReferralDoc(){
+    if(!cl||!refName||!(refAmount>0))return;
+    var first=billList[0];
+    var ent=(first&&billEntities.find(function(e){return e.id===first.entity_id;}))||billEntities[0]||{};
+    var s=billSettings||{};
+    var vr=refDocType==="eko"?0:(+(s.default_vat)||23);
+    var item=Object.assign({position:1,name:"Prowizja za polecenie ("+refPct+"%) — "+(cl.name||"zlecenie"),quantity:1,
+      unit:s.default_unit||"szt",vat_rate:vr,pkwiu:""},calcLineFromGross(refAmount,1,vr),{unit_gross:refAmount});
+    var c=refContact||{};
+    setBillEditor({entity:ent,invoice:{
+      doc_type:refDocType, direction:"zakup", payment_method:s.default_payment_method||"przelew",
+      deal_id:d.id, contact_id:c.id||null,
+      seller_snapshot:{name:c.name||refName,nip:c.nip||"",address:c.street||"",postal:c.postal||"",city:c.city||"",email:c.email||"",phone:c.phone||"",bank:c.bank||""},
+      entity_id:ent.id,
+      notes:REFERRAL_NOTE+" — zlecenie: "+(cl.name||"")+" ("+refPct+"% od wyceny bez montażu)",
+      invoice_items:[item]
+    }});
   }
 
   // Po wystawieniu w popupie: zamknij edytor i odśwież listę faktur w karcie
@@ -1451,6 +1518,41 @@ export function ModalDeal(p){
                 style:{marginTop:4,padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
                   fontSize:12,fontWeight:700,cursor:billBusy?"not-allowed":"pointer",opacity:billBusy?0.6:1}},
                 billBusy?"⏳ Przygotowuję...":(billRemaining!==null?"🧾 Wystaw drugą fakturę — reszta "+billFmt(billRemaining):"🧾 Wystaw drugą fakturę")):null,
+              (function(){
+                // Prowizja za polecenie — tylko gdy wycena ma Polecenie % i pierwsza faktura (50%) jest już opłacona
+                var first=billList[0];
+                var firstPaid=!!first&&(+first.total_gross||0)>0&&billPaidAmount(first)>=(+first.total_gross||0);
+                if(!(refPct>0)||!firstPaid)return null;
+                var box={marginTop:6,paddingTop:8,borderTop:"1px solid var(--bd3)",display:"flex",flexDirection:"column",gap:6,fontSize:12};
+                var doc=referralDocs[0];
+                if(doc){
+                  return ce("div",{style:box},
+                    ce("div",{style:{display:"flex",justifyContent:"space-between",gap:8,alignItems:"baseline"}},
+                      ce("span",{style:{fontWeight:700,color:"var(--t1)"}},"🤝 Prowizja za polecenie · "+(doc.number||"—")+" · "+(doc.doc_type==="eko"?"EKO":"proforma")),
+                      ce("span",{style:{fontWeight:700,color:"var(--t1)",whiteSpace:"nowrap"}},billFmt(doc.total_gross))),
+                    ce("div",{style:{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",color:"var(--t3)",fontSize:11}},
+                      ce("span",null,((doc.seller_snapshot&&doc.seller_snapshot.name)||refName)+" · "+(doc.issue_date||"")),
+                      ce("button",{onClick:function(){previewBillInvoice(doc);},
+                        style:{padding:"5px 10px",borderRadius:8,border:"1px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}},"👁 Podgląd")));
+                }
+                if(!refName){
+                  return ce("div",{style:Object.assign({},box,{color:"var(--t3)",lineHeight:1.5})},
+                    "🤝 Wycena ma Polecenie "+refPct+"% ("+billFmt(refAmount)+"), ale w polu „Skąd klient” nie wybrano polecającego — wybierz go, aby wystawić prowizję.");
+                }
+                var matched=!!refContact;
+                return ce("div",{style:box},
+                  ce("div",{style:{fontWeight:700,color:"var(--t1)"}},"🤝 Prowizja za polecenie — "+refPct+"% od wyceny bez montażu: "+billFmt(refAmount)),
+                  ce("div",{style:{color:"var(--t3)",fontSize:11,lineHeight:1.5}},
+                    "Polecający: "+refName+(matched?(hasNip(refContact)?" · NIP "+refContact.nip:" · brak NIP w kontrahentach → dokument EKO"):" · brak w kontrahentach → dokument EKO")),
+                  (!matched||refContactPick)?ce("select",{value:refContactPick,onChange:function(ev){setRefContactPick(ev.target.value);},style:INP},
+                    ce("option",{value:""},"— wskaż kontrahenta polecającego —"),
+                    billContacts.map(function(c){return ce("option",{key:c.id,value:String(c.id)},(c.name||"—")+(hasNip(c)?" · "+c.nip:" · brak NIP"));})
+                  ):null,
+                  ce("button",{onClick:issueReferralDoc,disabled:!(refAmount>0),
+                    style:{padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:700,
+                      cursor:refAmount>0?"pointer":"not-allowed",opacity:refAmount>0?1:0.6}},
+                    refDocType==="proforma"?"🧾 Wystaw fakturę pro forma — "+billFmt(refAmount):"🟢 Wystaw dokument EKO — "+billFmt(refAmount)));
+              })(),
               billErr?ce("div",{style:{fontSize:11,color:"var(--red, #ef4444)"}},billErr):null
             ),
           billUnlinked.length>0?ce("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid var(--bd3)"}},
@@ -1543,7 +1645,8 @@ export function ModalDeal(p){
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SKĄD KLIENT"),
             ce("select",{value:acquisition,onChange:function(ev){setAcquisition(ev.target.value);},style:INP},
-              ACQUISITION_OPTIONS.map(function(o,i){return ce("option",{key:i,value:o},o||"— wybierz —");})
+              (ACQUISITION_OPTIONS.indexOf(acquisition)<0?ACQUISITION_OPTIONS.concat([acquisition]):ACQUISITION_OPTIONS)
+                .map(function(o,i){return ce("option",{key:i,value:o},o?(ACQUISITION_OPTIONS.indexOf(o)<0?o+" (dotychczasowa wartość)":o):"— wybierz —");})
             )
           ),
           (p.teamUsers||[]).length?ce("div",null,
