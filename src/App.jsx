@@ -1743,11 +1743,11 @@ export function App(p){
             onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{name:v});});},
             inputStyle:{fontSize:20,fontWeight:700}})
         ),
-        ce("div",{style:{fontSize:14,color:"var(--violet)",lineHeight:1.4,marginBottom:6}},
-          ce(InlineEdit,{value:curClient.quote_label||"(nazwa wyceny \u2014 tylko dla Ciebie)",
-            onSave:function(v){var t=(v||"").replace("(nazwa wyceny \u2014 tylko dla Ciebie)","").trim();updateClient(curClientId,function(cl){return mg(cl,{quote_label:t});});},
-            inputStyle:{fontSize:14}})
-        ),
+        ce("input",{key:"ql_"+curClientId+"_"+(curClient.quote_label||""),type:"text",defaultValue:curClient.quote_label||"",
+          placeholder:"Nazwa wyceny (tylko dla Ciebie)",
+          onKeyDown:function(ev){if(ev.key==="Enter")ev.target.blur();},
+          onBlur:function(ev){var t=ev.target.value.trim();if(t===(curClient.quote_label||""))return;updateClient(curClientId,function(cl){return mg(cl,{quote_label:t});});},
+          style:{display:"block",width:"100%",boxSizing:"border-box",fontSize:14,color:"var(--violet)",border:"none",borderBottom:"1px dashed var(--bd2)",outline:"none",background:"transparent",padding:"2px 0",marginBottom:8,fontFamily:"inherit"}}),
         ce("div",{style:{fontSize:16,color:"var(--t2)",lineHeight:1.4}},
           ce(InlineEdit,{value:curClient.addr||"(brak adresu)",
             onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{addr:v});});},
