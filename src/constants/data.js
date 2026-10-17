@@ -6530,13 +6530,14 @@ export function calc(p){
     var linP=(linFab&&linFab.brutto!=null)?linFab.brutto:80;
     if(podszewka&&c.podszewkaTkanina&&!(linFab&&linFab.brutto!=null))lines.push("Podszewka: brak ceny w katalogu \u2014 liczono stawk\u0119 domy\u015bln\u0105");
     (p.panels||[]).forEach(function(pn){
-      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var pwZ=pw+20,pm=pw/100,z,kt,ks,kp,koszt;
+      var pw=pn.w||0;if(!pw){lines.push(pn.side+": wpisz szerokość (cm)");return;}var legP=!!p.legacyPasy,pwZ=legP?pw+20:pw,pm=pw/100,z,kt,ks,kp,koszt;
       // Wysoko\u015b\u0107 per panel (komplet z r\xf3\u017cn\u0105 wysoko\u015bci\u0105 L/P), domy\u015blnie par.hCm
       var phCm=pn.h||hCm,hM=phCm/100;
       var useA2=belka>0&&phCm+20>belka&&!c.tasmaNaStojaco;
       if(useA2){
-        var pg=Math.ceil((belka/mars)/10)*10-20,lp=Math.ceil((pwZ/pg)*2)/2;
-        z=Math.ceil((lp*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
+        var pg=Math.ceil((belka/mars)/10)*10-(legP?20:10),lp=Math.ceil((pwZ/pg)*2)/2;
+        // Tkanina: każdy zaczęty pas odcinamy na pełną wysokość (połówka pasa też zużywa pełne hM)
+        z=Math.ceil(((legP?lp:Math.ceil(lp))*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
         var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv).toFixed(2):+(lp*250).toFixed(2);
       }else{
@@ -7488,6 +7489,8 @@ export function buildOfferDetailRows(client){
 // Jeśli w CAŁYM zamówieniu klienta liczba takich połówek dla danej pary
 // tkanina+wysokość wyjdzie NIEPARZYSTA, jedna zostaje bez pary — fizycznie nie
 // da się wykroić samej połówki, więc trzeba doliczyć pełny dodatkowy pas.
+// UWAGA: dotyczy WYŁĄCZNIE pozycji starej wersji liczenia (p.legacyPasy) — nowe
+// wyceny liczą każdy zaczęty pas jako pełny (patrz calc()) i korekty nie potrzebują.
 // Funkcja skanuje całego klienta (wszystkie pomieszczenia/okna/produkty) i
 // zwraca listę takich korekt do doliczenia w zamówieniu tkaniny.
 export function getPasyParityKorekta(client){
@@ -7500,7 +7503,7 @@ export function getPasyParityKorekta(client){
         var fabP=p.fabMan!=null?p.fabMan:(p.fabP!=null?p.fabP:null);
         var belka=p.fabW||0,mars=+(c.mars||"1.5");
         var hCm0=par.hCm||0;
-        if(fabP==null||!hCm0)return;
+        if(!p.legacyPasy||fabP==null||!hCm0)return;
         (getPanelsForProd(p)||[]).forEach(function(pn){
           var pw=pn.w||0;if(!pw)return;
           var hCm=pn.h||hCm0,hM=hCm/100;
