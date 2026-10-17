@@ -769,10 +769,10 @@ export function ProdCard(p){
         var cS=isA?"#f3dcc6":"#e6e9f1";
         var rC=isA?"#c4803f":"#a3aabb";
         var wC=isA?"#f7f1ea":"#f4f5f9";
-        var svgL='<svg width="68" height="52" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M9 6 Q12 20 10 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M16 6 Q19 22 17 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M23 6 Q26 19 24 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgR='<svg width="68" height="52" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M40 6 Q43 20 41 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M47 6 Q50 22 48 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M54 6 Q57 19 55 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgE='<svg width="68" height="52" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M20 6 Q23 22 21 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M41 6 Q44 20 42 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M51 6 Q54 22 52 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgU='<svg width="68" height="52" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L27 48 Q24 22 27 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M18 6 Q21 22 19 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M31 6 Q34 18 32 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M35 6 Q38 20 36 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M45 6 Q48 22 46 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M55 6 Q58 19 56 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgL='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M9 6 Q12 20 10 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M16 6 Q19 22 17 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M23 6 Q26 19 24 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgR='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M40 6 Q43 20 41 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M47 6 Q50 22 48 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M54 6 Q57 19 55 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgE='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M20 6 Q23 22 21 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M41 6 Q44 20 42 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M51 6 Q54 22 52 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgU='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L27 48 Q24 22 27 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M18 6 Q21 22 19 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M31 6 Q34 18 32 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M35 6 Q38 20 36 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M45 6 Q48 22 46 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M55 6 Q58 19 56 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
         var svgMap={left:svgL,right:svgR,equal:svgE,unequal:svgU};
         return ce("button",{
           key:opt.key,
@@ -781,7 +781,7 @@ export function ProdCard(p){
             if(opt.key==="unequal"&&totalW>0&&!c.leftW){newC=mg(newC,{leftW:Math.floor(totalW/2),rightW:Math.ceil(totalW/2)});}
             p.onChange(mg(prod,{c:newC}));
           },
-          style:{padding:"12px 6px 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t2)",fontSize:12,fontWeight:isA?600:400,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:8,transition:"all .18s"}
+          style:{padding:"8px 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t2)",fontSize:12,fontWeight:isA?600:400,cursor:"pointer",display:"flex",flexDirection:"row",justifyContent:"center",alignItems:"center",gap:10,transition:"all .18s"}
         },
           ce("div",{dangerouslySetInnerHTML:{__html:svgMap[opt.key]},style:{borderRadius:6,overflow:"hidden",lineHeight:0}}),
           ce("span",{style:{lineHeight:1.3,textAlign:"center"}},opt.label)
@@ -833,7 +833,7 @@ export function ProdCard(p){
           )
         );
       };
-      heightDiff=ce("div",{style:{marginTop:16}},
+      heightDiff=ce("div",{style:{marginTop:10}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
           ce("input",{type:"checkbox",checked:!!c.hDiff,onChange:function(ev){
             var on=ev.target.checked;
@@ -841,7 +841,7 @@ export function ProdCard(p){
           },style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
           ce("span",{},"R\xf3\u017cna wysoko\u015b\u0107 lewej i prawej zas\u0142ony")
         ),
-        c.hDiff?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:14}},
+        c.hDiff?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:8}},
           hInp("Wysoko\u015b\u0107 lewej","leftH"),
           hInp("Wysoko\u015b\u0107 prawej","rightH")
         ):null
@@ -851,21 +851,21 @@ export function ProdCard(p){
     // ── Procent marszczenia (stepper) ──────────────────────────────────
     var marsVal = +(c.mars||1.5);
     var marsPct = Math.round(marsVal*100);
-    var marsSection = ce("div",{style:{marginTop:20}},
+    var marsSection = ce("div",{style:{marginTop:0}},
       ce(Fld,{label:"PROCENT MARSZCZENIA FA\u0141DY"},
-        ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:52,background:"var(--bg)",maxWidth:200}},
-          ce("button",{onClick:function(){if(marsPct>100)sc("mars",((marsPct-10)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
+        ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:44,background:"var(--bg)",maxWidth:176}},
+          ce("button",{onClick:function(){if(marsPct>100)sc("mars",((marsPct-10)/100).toFixed(2));},style:{width:40,height:44,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
           ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:2,fontSize:17,color:"var(--t1)",fontWeight:500}},
             ce("input",{type:"text",inputMode:"numeric",value:marsPct,onChange:function(ev){sc("mars",(+(ev.target.value||100)/100).toFixed(2));},style:{width:52,border:"none",background:"transparent",textAlign:"center",fontSize:17,outline:"none",fontWeight:500}}),
             ce("span",{style:{color:"var(--t3)",fontSize:14}},"%")
           ),
-          ce("button",{onClick:function(){sc("mars",((marsPct+10)/100).toFixed(2));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
+          ce("button",{onClick:function(){sc("mars",((marsPct+10)/100).toFixed(2));},style:{width:40,height:44,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
         )
       )
     );
 
     // ── Fałda zwrotna checkbox ─────────────────────────────────────────
-    var faldaZwrotna = ce("div",{style:{display:"flex",alignItems:"center",gap:10,marginTop:16,cursor:"pointer"}},
+    var faldaZwrotna = ce("div",{style:{display:"flex",alignItems:"center",gap:10,minHeight:44,cursor:"pointer"}},
       ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
         ce("input",{type:"checkbox",checked:c.faldaZwrotna||false,onChange:function(ev){sc("faldaZwrotna",ev.target.checked);},style:{width:18,height:18,cursor:"pointer",accentColor:"var(--t1)"}}),
         ce("span",{},"Fa\u0142da zwrotna")
@@ -875,13 +875,13 @@ export function ProdCard(p){
     // ── Szerokość taśmy dropdown ───────────────────────────────────────
     var tasmyOptions=[6,7,8,9,10,12];
     var tVal=c.szerokosc_tasmy||8;
-    var tasmaSection=ce("div",{style:{marginTop:20}},
+    var tasmaSection=ce("div",{style:{marginTop:0}},
       ce(Fld,{label:"SZEROKO\u015a\u0106 TA\u015aMY"},
-        ce("div",{style:{position:"relative",maxWidth:200}},
+        ce("div",{style:{position:"relative",width:150}},
           ce("select",{
             value:tVal,
             onChange:function(ev){sc("szerokosc_tasmy",+ev.target.value);},
-            style:{width:"100%",padding:"14px 16px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",appearance:"none",cursor:"pointer",minHeight:52,outline:"none"}
+            style:{width:"100%",padding:"9px 34px 9px 14px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",appearance:"none",cursor:"pointer",minHeight:44,outline:"none"}
           },
             tasmyOptions.map(function(v){
               return ce("option",{key:v,value:v},v+" cm");
@@ -894,27 +894,27 @@ export function ProdCard(p){
 
     // ── Wysokość haczyka/ryszki (stepper z ołówkiem) ──────────────────
     var haczVal=c.wysokosc_haczyka!=null?c.wysokosc_haczyka:2.5;
-    var haczSection=ce("div",{style:{marginTop:20}},
+    var haczSection=ce("div",{style:{marginTop:0}},
       ce(Fld,{label:"WYSOKO\u015a\u0106 HACZYKA / RYSZKI"},
-        ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:52,background:"var(--bg)",maxWidth:200}},
-          ce("button",{onClick:function(){if(haczVal>=0.5)sc("wysokosc_haczyka",Math.round((haczVal-0.5)*10)/10);},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
+        ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:44,background:"var(--bg)",maxWidth:176}},
+          ce("button",{onClick:function(){if(haczVal>=0.5)sc("wysokosc_haczyka",Math.round((haczVal-0.5)*10)/10);},style:{width:40,height:44,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
           ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:17,color:"var(--t1)",fontWeight:500}},
             ce("span",{style:{fontSize:13,color:"var(--t2)",marginRight:2}},"\u270f\ufe0f"),
             ce("input",{type:"text",inputMode:"numeric",step:"0.5",value:haczVal,onChange:function(ev){sc("wysokosc_haczyka",+ev.target.value||0);},style:{width:44,border:"none",background:"transparent",textAlign:"center",fontSize:17,outline:"none",fontWeight:500}}),
             ce("span",{style:{color:"var(--t3)",fontSize:14}},"cm")
           ),
-          ce("button",{onClick:function(){sc("wysokosc_haczyka",Math.round((haczVal+0.5)*10)/10);},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
+          ce("button",{onClick:function(){sc("wysokosc_haczyka",Math.round((haczVal+0.5)*10)/10);},style:{width:40,height:44,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
         )
       )
     );
 
     // ── Odstęp między ślizgami ─────────────────────────────────────────
-    var glideGap=ce("div",{style:{marginTop:20}},
-      ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"ODST\u0118P MI\u0118DZY \u015aLIZGAMI"),
-      ce("div",{style:{display:"flex",gap:12}},
+    var glideGap=ce("div",{style:{marginTop:0}},
+      ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:5}},"ODST\u0118P MI\u0118DZY \u015aLIZGAMI"),
+      ce("div",{style:{display:"flex",gap:8}},
         [6,8].map(function(gap){
           var isA=c.glideGap===gap||(!c.glideGap&&gap===8);
-          return ce("button",{key:gap,onClick:function(){sc("glideGap",gap);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"transparent",color:isA?"var(--bg)":"var(--t1)",fontSize:15,fontWeight:isA?600:400,cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all .18s"}},
+          return ce("button",{key:gap,onClick:function(){sc("glideGap",gap);},style:{padding:"9px 18px",borderRadius:10,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t1)",fontSize:14,fontWeight:isA?700:400,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .18s"}},
             isA?ce("span",{style:{fontSize:16}},"✓"):"",
             gap+" cm"
           );
@@ -924,42 +924,42 @@ export function ProdCard(p){
 
     // ── Bottom section ─────────────────────────────────────────────────
     var bottomType=c.bottomType||"single";
-    var bottomSection=ce("div",{style:{marginTop:20}},
-      ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP DO\u0141U"),
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:16}},
+    var bottomSection=ce("div",{style:{marginTop:4}},
+      ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:6}},"TYP DO\u0141U"),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}},
         [{key:"single",label:"Pojedynczy"},{key:"double",label:"Podw\xf3jny"},{key:"overlock",label:"Overlock"},{key:"tape",label:"O\u0142owianka"}].map(function(bt){
           var isA=bottomType===bt.key;
-          return ce("button",{key:bt.key,onClick:function(){sc("bottomType",bt.key);},style:{padding:"16px 12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
+          return ce("button",{key:bt.key,onClick:function(){sc("bottomType",bt.key);},style:{padding:"10px 8px",borderRadius:10,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
             isA?"\u2713 "+bt.label:bt.label
           );
         })
       ),
-      ce("div",{style:{display:"grid",gridTemplateColumns:"auto auto 1fr",gap:16,alignItems:"center"}},
+      ce("div",{style:{display:"flex",flexWrap:"wrap",gap:"6px 22px",alignItems:"center"}},
         ce(Fld,{label:"ROZMIAR DO\u0141U (cm)",noMb:true},
-          ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:52,background:"var(--bg)"}},
-            ce("button",{onClick:function(){var v=c.bottomSize||8;sc("bottomSize",Math.max(0,v-1));},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
+          ce("div",{style:{display:"flex",alignItems:"center",border:"1.5px solid var(--bd2)",borderRadius:10,overflow:"hidden",minHeight:44,background:"var(--bg)"}},
+            ce("button",{onClick:function(){var v=c.bottomSize||8;sc("bottomSize",Math.max(0,v-1));},style:{width:40,height:44,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"−"),
             ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:4,fontSize:16,color:"var(--t1)",fontWeight:500}},
               ce("input",{type:"text",inputMode:"numeric",value:c.bottomSize!=null?c.bottomSize:8,onChange:function(ev){sc("bottomSize",+ev.target.value||0);},style:{width:50,border:"none",background:"transparent",textAlign:"center",fontSize:16,outline:"none",fontWeight:500}}),
               ce("span",{style:{color:"var(--t3)",fontSize:13}},"cm")
             ),
-            ce("button",{onClick:function(){sc("bottomSize",(c.bottomSize||8)+1);},style:{width:44,height:52,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
+            ce("button",{onClick:function(){sc("bottomSize",(c.bottomSize||8)+1);},style:{width:40,height:44,border:"none",background:"none",fontSize:18,cursor:"pointer",color:"var(--t2)"}},"+" )
           )
         ),
         ce("div",{style:{height:"100%",display:"flex",flexDirection:"column",justifyContent:"flex-end",paddingBottom:4}},
-          ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"14px 0",fontSize:15,color:"var(--t1)"}},
+          ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 0",fontSize:15,color:"var(--t1)"}},
             ce("input",{type:"checkbox",checked:c.leadInSides||false,onChange:function(ev){sc("leadInSides",ev.target.checked);},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
             ce("span",{},"O\u0142\xf3w w bokach")
           )
-        )
-      ),
-      ce("div",{style:{marginBottom:16}},
-        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"14px 0",fontSize:15,color:"var(--t1)"}},
+        ),
+      ce("div",{},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",padding:"6px 0",fontSize:15,color:"var(--t1)"}},
           ce("input",{type:"checkbox",checked:c.tasmaNaStojaco||false,onChange:function(ev){sc("tasmaNaStojaco",ev.target.checked);},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
           ce("span",{},"Ta\u015bma na stoj\u0105co")
         )
+      )
       ),
-      ce("div",{style:{marginTop:16}},
-        ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"14px 18px",borderRadius:10,border:"2px solid "+(c.podszewka==="tak"?"var(--t1)":"var(--bd2)"),background:c.podszewka==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
+      ce("div",{style:{marginTop:10}},
+        ce("label",{style:{display:"flex",alignItems:"center",gap:12,cursor:"pointer",padding:"9px 14px",borderRadius:10,border:"2px solid "+(c.podszewka==="tak"?"var(--t1)":"var(--bd2)"),background:c.podszewka==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
           ce("input",{type:"checkbox",checked:c.podszewka==="tak",onChange:function(ev){var on=ev.target.checked;p.onChange(mg(prod,{c:mg(c,{podszewka:on?"tak":"nie",podszewkaTkanina:on?(c.podszewkaTkanina||LINING_FABRICS[0].name):null})}));},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
           ce("div",{},
             ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Podszewka"),
@@ -1031,40 +1031,37 @@ export function ProdCard(p){
       // SEKCJA 3: Podział + szczegóły (zależne od modelu)
       model?ce(Section,{num:"3",title:"Szczeg\xf3\u0142y"},
         ce("div",{style:{marginBottom:6}},
-          ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:14,fontStyle:"italic"}},"(Je\u015bli wybierzesz nier\xf3wn\u0105 par\u0119, zmotoryzowane szyny nie b\u0119d\u0105 dost\u0119pne)"),
+          ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:8,fontStyle:"italic"}},"(Je\u015bli wybierzesz nier\xf3wn\u0105 par\u0119, zmotoryzowane szyny nie b\u0119d\u0105 dost\u0119pne)"),
           splitSelector,
           splitFields,
           heightDiff
         ),
-        // Procent marszczenia - wszystkie modele
-        marsSection,
-        // Fałda zwrotna - tylko Fałda
-        model==="falda"?faldaZwrotna:null,
-        // Szerokość taśmy - Fałda i Taśma
-        (model==="falda"||model==="tasma")?tasmaSection:null,
-        // Typ marszczenia - tylko Taśma Marszcząca
-        model==="tasma"?ce("div",{style:{marginTop:20}},
-          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP MARSZCZENIA"),
-          ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,maxWidth:400}},
-            ["Smok","O\u0142\xf3wek","Plisa","Ta\u015bma Wave"].map(function(typ){
-              var isA=c.typMarszczenia===typ||(typ==="Smok"&&!c.typMarszczenia);
-              return ce("button",{key:typ,onClick:function(){sc("typMarszczenia",typ);},style:{padding:"14px 8px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
-                isA?"\u2713 "+typ:typ
-              );
-            })
-          )
-        ):null,
-        // Wysokość haczyka - Fałda i Taśma (NIE Wave)
-        (model==="falda"||model==="tasma")?haczSection:null,
-        model==="wave"?glideGap:null,
-        // Wave z maskownicą — szycie 150 zł/mb zamiast 120
-        model==="wave"?ce("div",{style:{marginTop:20}},
-          ce("label",{style:{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",borderRadius:10,border:"1.5px solid "+(c.waveMask==="tak"?"var(--t1)":"var(--bd2)"),cursor:"pointer",background:c.waveMask==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
+        // Rzad kontrolek: marszczenie / tasma / haczyk / szczeliny / checkboxy
+        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:"10px 18px",alignItems:"flex-end",marginTop:12}},
+          marsSection,
+          (model==="falda"||model==="tasma")?tasmaSection:null,
+          (model==="falda"||model==="tasma")?haczSection:null,
+          model==="wave"?glideGap:null,
+          model==="falda"?faldaZwrotna:null,
+          model==="wave"?ce("div",{style:{marginTop:0}},
+          ce("label",{style:{display:"flex",alignItems:"center",gap:12,padding:"9px 14px",borderRadius:10,border:"1.5px solid "+(c.waveMask==="tak"?"var(--t1)":"var(--bd2)"),cursor:"pointer",background:c.waveMask==="tak"?"var(--grl)":"var(--bg)",transition:"all .18s"}},
             ce("input",{type:"checkbox",checked:c.waveMask==="tak",onChange:function(ev){sc("waveMask",ev.target.checked?"tak":"nie");},style:{width:20,height:20,cursor:"pointer",accentColor:"var(--t1)"}}),
             ce("div",{},
               ce("span",{style:{fontSize:15,fontWeight:600,color:"var(--t1)"}},"Z maskownic\u0105"),
               ce("span",{style:{fontSize:12,color:"var(--t3)",marginLeft:10}},"szycie 150 z\u0142/mb")
             )
+          )
+        ):null
+        ),
+        model==="tasma"?ce("div",{style:{marginTop:10}},
+          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:6}},"TYP MARSZCZENIA"),
+          ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,maxWidth:560}},
+            ["Smok","O\u0142\xf3wek","Plisa","Ta\u015bma Wave"].map(function(typ){
+              var isA=c.typMarszczenia===typ||(typ==="Smok"&&!c.typMarszczenia);
+              return ce("button",{key:typ,onClick:function(){sc("typMarszczenia",typ);},style:{padding:"10px 8px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:13,fontWeight:isA?600:400,cursor:"pointer",textAlign:"center",transition:"all .18s"}},
+                isA?"\u2713 "+typ:typ
+              );
+            })
           )
         ):null
       ):null,
