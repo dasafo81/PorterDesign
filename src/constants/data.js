@@ -7083,7 +7083,7 @@ export function costOf(usage,rates,fabricLookup){
 
 export function mg(a,b){return Object.assign({},a,b);}
 
-export const IST ={padding:"16px 18px",fontSize:17,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:56,boxSizing:"border-box",transition:"border-color .15s"};
+export const IST ={padding:"10px 14px",fontSize:16,border:"1.5px solid var(--bd2)",borderRadius:10,background:"var(--bg)",color:"var(--t1)",width:"100%",minHeight:46,boxSizing:"border-box",transition:"border-color .15s"};
 
 
 // ── INLINE EDIT COMPONENT ────────────────────────────────────────────────
