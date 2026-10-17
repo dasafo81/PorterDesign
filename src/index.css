@@ -172,6 +172,11 @@
     input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=hidden]):not([type=button]):not([type=submit]):not([type=reset]):not([type=image]):not([style*="background:transparent"]):not([style*="background: transparent"]):not([style*="background:none"]):not([style*="background: none"]),
     textarea:not([style*="background:transparent"]):not([style*="background: transparent"]):not([style*="background:none"]):not([style*="background: none"]),
     select:not([style*="background:transparent"]):not([style*="background: transparent"]):not([style*="background:none"]):not([style*="background: none"]){background:var(--field-bg) !important;}
+    /* Steppery (−/+ z liczba): ramke i tlo ma kontener, a sam input jest przezroczysty */
+    div[style*="overflow"][style*="background:var(--bg"]:has(> input[style*="transparent"]),
+    div[style*="overflow"][style*="background:var(--bg"]:has(> div > input[style*="transparent"]),
+    div[style*="overflow"][style*="background: var(--bg"]:has(> input[style*="transparent"]),
+    div[style*="overflow"][style*="background: var(--bg"]:has(> div > input[style*="transparent"]){background:var(--field-bg) !important;}
     .input-glass{background:var(--bg2);border:1.5px solid var(--bd2);backdrop-filter:blur(10px);border-radius:14px;transition:border-color 0.18s,box-shadow 0.18s;}
     .input-glass:focus{outline:none;border-color:var(--focus-border);box-shadow:0 0 0 3px var(--focus-shadow);}
     .holo-text{background:var(--holo-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
