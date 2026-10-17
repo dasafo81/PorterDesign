@@ -1,10 +1,11 @@
 """Podmienia dane osobowe na zrzutach karty deala na dane przykładowe (podmiana pikseli).
-Użycie: python3 social/anonymize_deal_card.py <karta.webp> <modal_opinia.webp> <katalog_wyjscia> <katalog_czcionek>
+Użycie: python3 social/anonymize_deal_card.py <karta.webp> <modal_opinia.webp> <katalog_wyjscia> <katalog_czcionek> [<modal_faktura.webp>]
 Czcionki: mont400/500/600/700.ttf (Montserrat, Google Fonts). Współrzędne dotyczą zrzutów 2000 px szerokości."""
 import sys, os
 from PIL import Image, ImageDraw, ImageFont
 
 card_src, modal_src, outdir, fontdir = sys.argv[1:5]
+inv_src = sys.argv[5] if len(sys.argv) > 5 else None
 os.makedirs(outdir, exist_ok=True)
 
 def font(w, s): return ImageFont.truetype(f'{fontdir}/mont{w}.ttf', s)
@@ -60,7 +61,8 @@ class Editor:
         ob = f.getbbox(old, anchor='ls')
         baseline = bb[1] - ob[1]
         nw = f.getlength(new)
-        if align == 'left': x = bb[0]
+        nb = f.getbbox(new, anchor='ls')
+        if align == 'left': x = bb[0] - nb[0]
         elif align == 'right': x = bb[2] - nw
         else: x = (bb[0] + bb[2]) / 2 - nw / 2
         self.erase(bb, pad)
@@ -173,3 +175,37 @@ d = ImageDraw.Draw(modal)
 for x0, yy, x1 in unders:
     d.line((x0, yy, x1, yy), fill=LINK, width=1)
 modal.save(os.path.join(outdir, 'deal-opinie.png'))
+
+
+# ---------- modal „Faktura dla klienta” ----------
+def replace_segments(ed, box, old, new, thr=60):
+    """Wiersz z mieszanymi wagami (zwykły/pogrubiony): old/new to listy (tekst, waga)."""
+    bb, col, _ = ed.ink(box, thr)
+    w = bb[2] - bb[0]
+    lo, hi = 8.0, 80.0
+    for _ in range(30):
+        m = (lo + hi) / 2
+        if sum(font(wt, m).getlength(t) for t, wt in old) < w: lo = m
+        else: hi = m
+    size = round(lo * 4) / 4
+    ob = font(old[0][1], size).getbbox(old[0][0], anchor='ls')
+    baseline = bb[1] - ob[1]
+    ed.erase(bb, 3)
+    x = bb[0]
+    for t, wt in new:
+        f = font(wt, size)
+        ed.layer.append((t, x, baseline, f, col))
+        x += f.getlength(t)
+
+if inv_src:
+    v = Editor(inv_src)
+    v.replace((724, 98, 1010, 120), 'Wysyłka z Twojej skrzynki (Outlook)', 'Wysyłka z Twojej skrzynki (Gmail)', 400, thr=40)
+    v.replace((672, 206, 1000, 236), 'zaneta.zanet@gmail.com', 'anna.kowal@mail.com', 400)
+    v.replace((672, 324, 1100, 356), 'Faktura nr EKO/5/10 — PD PORTER DESIGN', 'Faktura nr FV/5/10 — STUDIO DEKORACJI', 400)
+    replace_segments(v, (676, 546, 1330, 580),
+        [('w załączeniu przesyłam fakturę nr ', 400), ('EKO/5/10', 700), (' na kwotę ', 400), ('16 400,00 zł', 700), ('.', 400)],
+        [('w załączeniu przesyłam fakturę nr ', 400), ('FV/5/10', 700), (' na kwotę ', 400), ('16 400,00 zł', 700), ('.', 400)])
+    v.replace((676, 800, 900, 830), 'Paulina Porter', 'Anna Nowak', 400)
+    v.replace((676, 832, 900, 862), 'Porter Design', 'Studio Dekoracji', 400)
+    v.replace((700, 938, 1000, 964), 'Faktura-EKO_5_10.html', 'Faktura-FV_5_10.html', 400)
+    v.finish(os.path.join(outdir, 'deal-faktura-mail.png'))

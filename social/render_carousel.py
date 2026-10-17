@@ -12,6 +12,7 @@ SS = 2  # współczynnik supersamplingu: rendering w 2160x2700, potem zmniejszen
 
 card = Image.open(SRC / 'deal-card.png')
 modal = Image.open(SRC / 'deal-opinie.png')
+invmail = Image.open(SRC / 'deal-faktura-mail.png')
 
 # (plik, obraz, kadr, szerokość ramki w px, eyebrow, nagłówek, podtytuł)
 SLIDES = [
@@ -19,11 +20,13 @@ SLIDES = [
    'Wycena, rozliczenie z klientem, ekonomia zlecenia i terminy — wszystko, czego potrzebujesz przy zleceniu, pod ręką.'),
   ('karuzela-2', card, (697, 232, 1327, 640), 940, 'Faktury', 'Fakturę wyślesz mailem<br><em>i przekażesz do KSeF</em>',
    'Zaliczka, faktura końcowa, podgląd PDF, wysyłka do klienta i KSeF — prosto z karty zlecenia, bez przepisywania danych.'),
-  ('karuzela-3', card, (44, 652, 674, 1046), 940, 'Ekonomia zlecenia', 'Wiesz, ile zarabiasz<br><em>na zleceniu</em>',
+  ('karuzela-3', invmail, (636, 53, 1366, 1040), 540, 'Faktury', 'Mail z fakturą<br><em>gotowy w kilka sekund</em>',
+   'Temat, treść i załącznik z fakturą uzupełniają się z szablonu — sprawdzasz i klikasz Wyślij.'),
+  ('karuzela-4', card, (44, 652, 674, 1046), 940, 'Ekonomia zlecenia', 'Wiesz, ile zarabiasz<br><em>na zleceniu</em>',
    'Koszt tkaniny, szycia i osprzętu wyliczony z wyceny oraz marża na produkcji — zanim zamkniesz zlecenie.'),
-  ('karuzela-4', card, (1350, 245, 1980, 730), 940, 'Realizacja i montaż', 'Terminy i etapy<br><em>zawsze pod kontrolą</em>',
+  ('karuzela-5', card, (1350, 245, 1980, 730), 940, 'Realizacja i montaż', 'Terminy i etapy<br><em>zawsze pod kontrolą</em>',
    'Termin realizacji i montażu, etapy zamówienia (osprzęt, tkanina, szycie), spotkania i przypisanie ekipy w jednym miejscu.'),
-  ('karuzela-5', modal, (636, 53, 1366, 850), 620, 'Opinie klientów', 'Prośbę o opinię<br><em>wysyłasz jednym kliknięciem</em>',
+  ('karuzela-6', modal, (636, 53, 1366, 850), 620, 'Opinie klientów', 'Prośbę o opinię<br><em>wysyłasz jednym kliknięciem</em>',
    'Gotowy mail z linkami do Google i Facebooka, wysyłany z Twojej skrzynki — Gmail, Outlook lub własnej.'),
 ]
 
