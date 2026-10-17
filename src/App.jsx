@@ -1227,7 +1227,12 @@ export function App(p){
     var cands=(contacts||[]).filter(function(c){
       if(!c.email)return false;
       var n=normSupName(c.name);
-      return n&&(n===key||n.indexOf(key)>=0||key.indexOf(n)>=0);
+      if(!n)return false;
+      if(n===key||n.indexOf(key)>=0||key.indexOf(n)>=0)return true;
+      // Kolejność/dodatki w nazwie kontrahenta bywają inne ("Dekor Marcin", "Marcin Dekor Szwalnia"):
+      // wystarczy, że wszystkie słowa nazwy szwalni występują w nazwie kontrahenta lub odwrotnie.
+      var kt=key.split(" "),nt=n.split(" ");
+      return kt.every(function(w){return nt.indexOf(w)>=0;})||nt.every(function(w){return kt.indexOf(w)>=0;});
     });
     cands.sort(function(a,b){return (b.role==="dostawca"||b.role==="oba"?1:0)-(a.role==="dostawca"||a.role==="oba"?1:0);});
     return cands.length?cands[0].email:"";
