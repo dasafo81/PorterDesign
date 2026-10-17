@@ -29,6 +29,7 @@
       --teal:#3f7d63;--teal-l:rgba(63,125,99,0.12);
       --pink:#8a5a6a;--pink-l:rgba(138,90,106,0.10);
       --section-gap:24px;--field-gap:12px;--card-radius:18px;
+      --field-bg:#fbfcfe;
       --input-h:56px;--label-size:12px;
       --glass-bg:rgba(255,255,255,0.62);
       --glass-border:rgba(255,255,255,0.85);
@@ -57,6 +58,7 @@
     /* ── Motyw ciemny ─────────────────────────────────────────────────────── */
     [data-theme="dark"]{
       --bg:#23282f;
+      --field-bg:#2f353e;
       --bg2:rgba(35,40,47,0.70);
       --bg3:rgba(35,40,47,0.45);
       --bd1:rgba(255,255,255,0.14);
@@ -165,6 +167,10 @@
     .client-tile:hover{transform:translateX(4px);box-shadow:0 8px 28px var(--hover-shadow-2);}
     .tab-pill{transition:all 0.2s var(--spring);}
     .nav-tab{transition:all 0.18s ease;}
+    /* Pola do wypelniania (wyceny itd.) — jasniejsze wnetrze niz tlo karty/modala.
+       Style pol sa inline (background:var(--bg)), wiec nadpisujemy selektorem po atrybucie. */
+    input[style*="background:var(--bg)"],textarea[style*="background:var(--bg)"],select[style*="background:var(--bg)"],
+    input[style*="background: var(--bg)"],textarea[style*="background: var(--bg)"],select[style*="background: var(--bg)"]{background:var(--field-bg) !important;}
     .input-glass{background:var(--bg2);border:1.5px solid var(--bd2);backdrop-filter:blur(10px);border-radius:14px;transition:border-color 0.18s,box-shadow 0.18s;}
     .input-glass:focus{outline:none;border-color:var(--focus-border);box-shadow:0 0 0 3px var(--focus-shadow);}
     .holo-text{background:var(--holo-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
