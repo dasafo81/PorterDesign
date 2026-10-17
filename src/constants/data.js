@@ -5875,6 +5875,10 @@ export const RPOLAUTO_DUO ={80:904,100:1042,120:1114,140:1166,160:1274,180:1322,
 // dostępna w kolorze białym lub czarnym. Wysięgnik sufitowy mFix — dopłata za szt.,
 // liczona co ~70 cm długości szyny (montaż odsunięty od sufitu).
 export const KS_MSIGMA_PRICE=120;
+export const KS_MARCIN_PRICE=80;
+export const KS_WALL_ROZSTAW=60;
+export const KS_WALL_SINGLE_PRICE=20;
+export const KS_WALL_DOUBLE_PRICE=35;
 export const KS_WYSIEGNIK_PRICE=180;
 export const KS_WYSIEGNIK_ROZSTAW=70;
 
@@ -6736,12 +6740,17 @@ export function calc(p){
     if(!lenCm)return{total:0,lines:[],warn:null};
     var lenMb=lenCm/100;
     var isMSigma=c.ksBrand==="msigma";
+    var isMarcin=c.ksBrand==="marcin";
+    var ksKolorLbl=c.kk==="czarna"?"czarna":c.kk==="szara"?"szara":"biała";
     var baz;
     if(isMSigma){baz=parseFloat((lenMb*KS_MSIGMA_PRICE).toFixed(2));}
+    else if(isMarcin){baz=parseFloat((lenMb*KS_MARCIN_PRICE).toFixed(2));}
     else if(c.ks==="wave"){baz=parseFloat((lenMb*100).toFixed(2));}
     else baz=parseFloat((lenMb*80).toFixed(2));
     total=baz*qty+parseFloat((arc*100).toFixed(2))+parseFloat((pts*100).toFixed(2));
-    if(isMSigma){
+    if(isMarcin){
+      lines.push("Szyna KS Marcin Dekor "+ksKolorLbl+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb) \xd7 "+KS_MARCIN_PRICE+" zł/mb"+(qty>1?" x"+qty:""));
+    }else if(isMSigma){
       lines.push("Szyna mSigma (Mio Decor) "+(c.ks==="wave"?"Wave":"Flex")+" "+(c.kk==="czarna"?"czarna":"bia\u0142a")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb) \xd7 "+KS_MSIGMA_PRICE+" z\u0142/mb"+(qty>1?" x"+qty:""));
       if(c.ksWysiegnik==="tak"){
         var wysCount=Math.max(2,Math.ceil(lenCm/KS_WYSIEGNIK_ROZSTAW))*qty;
@@ -6750,9 +6759,17 @@ export function calc(p){
         lines.push("Wysi\u0119gnik sufitowy mFix (co "+KS_WYSIEGNIK_ROZSTAW+"cm) x"+wysCount+" \xd7 "+formatPLN(KS_WYSIEGNIK_PRICE)+" = "+formatPLN(wysSuma));
       }
     }else{
-      lines.push("KS "+(c.ks||"flex")+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
+      lines.push("KS "+(c.ks||"flex")+(c.ks==="wave"?"":" "+ksKolorLbl)+" "+lenCm+"cm ("+lenMb.toFixed(2)+"mb)"+(qty>1?" x"+qty:""));
     }
-    if(c.km==="sciana")warn="\u015acienny \u2014 dolicz uchwyty \u015bcienne.";
+    if(c.km==="sciana"){
+      // Uchwyt scienny co 60cm szyny (x ilosc szyn): pojedynczy 20 zl, podwojny 35 zl
+      var wallDouble=c.kmWall==="podwojny";
+      var wallPcs=Math.ceil(lenCm/KS_WALL_ROZSTAW)*qty;
+      var wallUnit=wallDouble?KS_WALL_DOUBLE_PRICE:KS_WALL_SINGLE_PRICE;
+      var wallSuma=parseFloat((wallPcs*wallUnit).toFixed(2));
+      total+=wallSuma;
+      lines.push("Monta\u017c \u015bcienny "+(wallDouble?"podw\xf3jny":"pojedynczy")+" (co "+KS_WALL_ROZSTAW+"cm) x"+wallPcs+" \xd7 "+formatPLN(wallUnit)+" = "+formatPLN(wallSuma));
+    }
   }else if(p.type==="plisa"){
     var wMm=par.wMm||0,hMm=par.hMm||0;
     if(!wMm||!hMm)return{total:0,lines:[],warn:null};
@@ -7352,8 +7369,9 @@ export function buildOfferDetailRows(client){
           podzial="Przek\u0142adnia: "+(pc.jzPrzekladnia||"Prawo")+", Hamulec: "+(pc.jzHamulec||"Prawo");
         } else if(p.type==="szyna"){
           var szMSigma=pc.ksBrand==="msigma";
-          modelSzycia=(szMSigma?"mSigma ":"")+(pc.ks==="wave"?"Wave":"Flex");
-          tkaninaKolor=szMSigma?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):(pc.ks==="wave"?(pc.kk==="czarna"?"Czarna":"Bia\u0142a"):"-");
+          var szMarcin=pc.ksBrand==="marcin";
+          modelSzycia=szMarcin?"Marcin Dekor":(szMSigma?"mSigma ":"")+(pc.ks==="wave"?"Wave":"Flex");
+          tkaninaKolor=pc.kk==="czarna"?"Czarna":pc.kk==="szara"?"Szara":"Bia\u0142a";
           szerokosc=par.len?(par.len+" cm"):"-";
           // Szyny KS Forest \u2014 producent zawsze Forest; mSigma \u2014 Mio Decor
           producent=szMSigma?"Mio Decor":(p.karniszSupplier||"Forest");
@@ -8200,14 +8218,18 @@ export function buildHardwareRows(client){
         }else if(p.type==="prestige_square"){
           typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
           category="karnisz_dekoracyjny";
+        }else if(pc.ksBrand==="marcin"){
+          typLabel="Szyna KS Marcin Dekor";
+          category="szyna_ks";
+          kolor=pc.kk==="czarna"?"czarny":pc.kk==="szara"?"szary":"bialy";
         }else if(pc.ksBrand==="msigma"){
           typLabel="Szyna mSigma (Mio Decor) "+(pc.ks==="wave"?"Wave":"Flex")+(pc.ksWysiegnik==="tak"?" \u2014 na wysi\u0119gnikach mFix":"");
           category="szyna_ks";
-          kolor=pc.kk==="czarna"?"czarny":"bialy";
+          kolor=pc.kk==="czarna"?"czarny":pc.kk==="szara"?"szary":"bialy";
         }else{
           typLabel="Szyna KS "+(pc.ks||"flex");
           category="szyna_ks";
-          kolor=pc.kk==="czarna"?"czarny":"bialy";
+          kolor=pc.kk==="czarna"?"czarny":pc.kk==="szara"?"szary":"bialy";
         }
         var len=par.len||0;
         var res=calc(p);
