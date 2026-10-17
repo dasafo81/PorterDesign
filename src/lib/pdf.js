@@ -95,7 +95,7 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
         g.fabName,
         g.kolor||"-",
         (+r.metry||0).toFixed(2).replace(".",",")+" mb",
-        r.roomWin||((r.room||"")+" / "+(r.win||""))
+        r.roomWin||[r.room,r.win].filter(Boolean).join(" / ")
       ]);
     });
   });

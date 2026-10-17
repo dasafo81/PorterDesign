@@ -2044,7 +2044,7 @@ export function App(p){
     function openKarniszPreview(){
       var rows=buildHardwareRows(curClient);
       if(!rows.length){alert("Brak osprzętu do zamówienia.");return;}
-      var baseRows=rows.map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||defaultHardwareSupplier(r.category)});});
+      var baseRows=rows.map(function(r){return mg(r,{roomWin:[r.room,r.win].filter(function(x){return x&&x!=="—";}).join(" / "),supplier:r.supplier||defaultHardwareSupplier(r.category)});});
       var draft=curClient.karnisz_draft;
       var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(baseRows);
       setKarniszBaseRows(baseRows);
@@ -2057,7 +2057,7 @@ export function App(p){
       var prepped=rows.map(function(r){
         var prod=r.prod||"Inny";
         if(prod==="-")prod="Bez producenta";
-        return mg(r,{prod:prod,roomWin:r.room+" / "+r.win});
+        return mg(r,{prod:prod,roomWin:[r.room,r.win].filter(function(x){return x&&x!=="—";}).join(" / ")});
       });
       var draft=curClient.fabric_draft;
       var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(prepped);
@@ -2441,7 +2441,7 @@ export function App(p){
     }
     function resetKarniszPreviewFromSource(){
       if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny?\n\nNadpisze to zmiany wprowadzone na tym ekranie."))return;
-      var freshRows=buildHardwareRows(curClient).map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||((HARDWARE_CATEGORIES[r.category]&&HARDWARE_CATEGORIES[r.category].suppliers[0])||"marcin_dekor")});});
+      var freshRows=buildHardwareRows(curClient).map(function(r){return mg(r,{roomWin:[r.room,r.win].filter(function(x){return x&&x!=="—";}).join(" / "),supplier:r.supplier||((HARDWARE_CATEGORIES[r.category]&&HARDWARE_CATEGORIES[r.category].suppliers[0])||"marcin_dekor")});});
       setKarniszBaseRows(freshRows);
       setKarniszPreviewRows(freshRows);
     }
@@ -2596,7 +2596,7 @@ export function App(p){
       var freshRows=buildFabricRows(curClient).filter(function(r){return r.metry&&r.metry>0;}).map(function(r){
         var prod=r.prod||"Inny";
         if(prod==="-")prod="Bez producenta";
-        return mg(r,{prod:prod,roomWin:r.room+" / "+r.win});
+        return mg(r,{prod:prod,roomWin:[r.room,r.win].filter(function(x){return x&&x!=="—";}).join(" / ")});
       });
       setFabricBaseRows(freshRows);
       setFabricPreviewRows(freshRows);

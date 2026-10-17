@@ -8309,7 +8309,7 @@ export function buildHardwarePDFHtmlFromRows(client,rows){
           +"</span>"
         :r.type+(kolorLbl?" — kolor: "+kolorLbl:"");
       return [
-        r.roomWin||((r.room||"")+" / "+(r.win||"")),
+        r.roomWin||[r.room,r.win].filter(Boolean).join(" / "),
         typDesc,
         r.len?r.len+"cm":"-",
         (+r.qty||0)>1?r.qty+" szt.":"1 szt.",

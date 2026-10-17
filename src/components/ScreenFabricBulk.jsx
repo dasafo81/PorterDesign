@@ -32,7 +32,7 @@ export function ScreenFabricBulk(p){
   chosen.forEach(function(c){
     buildFabricRows(c).filter(function(r){return r.metry&&r.metry>0;}).forEach(function(r){
       var prod=r.prod||"Inny"; if(prod==="-")prod="Bez producenta";
-      rows.push(mg(r,{prod:prod,roomWin:(c.name||"klient")+" / "+r.room+" / "+r.win,_client:c.name||"klient"}));
+      rows.push(mg(r,{prod:prod,roomWin:[c.name||"klient",r.room,r.win].filter(Boolean).join(" / "),_client:c.name||"klient"}));
     });
   });
   var bySup={},supKeys=[];
