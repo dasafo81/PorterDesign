@@ -189,12 +189,14 @@ export function ModalSewing(p){
     var tv=[];curtainRows.forEach(function(r){if(r.tasma&&r.tasma!=='-'){var v=r.tasma;if(tv.indexOf(v)<0)tv.push(v);}});
     var hv=[];curtainRows.forEach(function(r){if(r.haczyk&&r.haczyk!=='-'){var v=r.haczyk;if(hv.indexOf(v)<0)hv.push(v);}});
     var gv=[];curtainRows.forEach(function(r){if(r.glide&&r.glide!=='-'){var v=r.glide;if(gv.indexOf(v)<0)gv.push(v);}});
+    var bv=[];curtainRows.forEach(function(r){if(r.bottom&&r.bottom!=='-'){var v=r.bottom;if(bv.indexOf(v)<0)bv.push(v);}});
     var hasWave=curtainRows.some(function(r){return r.szStyle==='Wave';});
     return {leadInSides:hasLead,tasmaNaStojaco:hasTasmaNaStojaco,
       podszewka:pv.length>0,podszewkaNazwa:pv.join(', '),
       ryszka:hv.length>0,ryszkaNazwa:hv.join(' / '),
       tasmyH:tv.length>0,tasmyHNazwa:tv.join(' / '),
-      glide:hasWave&&gv.length>0,glideNazwa:gv.join(' / ')};
+      glide:hasWave&&gv.length>0,glideNazwa:gv.join(' / '),
+      bottom:bv.length>0,bottomNazwa:bv.join(' / ')};
   }
   function generateSingle(){
     if(hasCurtains){
@@ -549,6 +551,7 @@ export function ModalSewing(p){
         ce(SewOptsRow,{checkKey:'ryszka',label:'Wysokość ryszki',textKey:'ryszkaNazwa',placeholder:'np. 2.5 cm'}),
         ce(SewOptsRow,{checkKey:'tasmyH',label:'Wysokość taśmy',textKey:'tasmyHNazwa',placeholder:'np. 8 cm'}),
         ce(SewOptsRow,{checkKey:'glide',label:'Odstępy ślizgów (Wave)',textKey:'glideNazwa',placeholder:'np. 8 cm'}),
+        ce(SewOptsRow,{checkKey:'bottom',label:'Typ dołu',textKey:'bottomNazwa',placeholder:'np. Pasmanteria 8cm'}),
         ce('div',{style:{display:'flex',gap:10,marginTop:14}},
           ce('button',{onClick:confirmSewOpts,style:{flex:1,padding:'14px 20px',borderRadius:12,border:'none',background:'var(--t1)',color:'#fff',fontSize:15,fontWeight:600,cursor:'pointer'}},sewOptsAction==='mail'?'\u2709\ufe0f Wy\u015blij mailem':'\uD83D\uDC41\ufe0f Podgl\u0105d PDF'),
           ce('button',{onClick:function(){setShowSewOpts(false);},style:{padding:'14px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',color:'var(--t2)',fontSize:15,cursor:'pointer'}},'Anuluj')

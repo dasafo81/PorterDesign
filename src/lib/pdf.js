@@ -631,6 +631,7 @@ function buildCurtainOptionsHTML(curtainRows, sewOpts){
     if(sewOpts.ryszka)items.push('<strong>Wysokość ryszki:</strong> '+(sewOpts.ryszkaNazwa||''));
     if(sewOpts.tasmyH)items.push('<strong>Wysokość taśmy:</strong> '+(sewOpts.tasmyHNazwa||''));
     if(sewOpts.glide)items.push('<strong>Odstępy między ślizgami (Wave):</strong> '+(sewOpts.glideNazwa||''));
+    if(sewOpts.bottom)items.push('<strong>Typ dołu:</strong> '+(sewOpts.bottomNazwa||''));
   }else{
     // Fallback: agreguj z wierszy
     var hasLead=curtainRows.some(function(r){return r.leadInSides==='tak';});
@@ -645,6 +646,8 @@ function buildCurtainOptionsHTML(curtainRows, sewOpts){
     if(hv.length)items.push('<strong>Wysokość ryszki:</strong> '+hv.join(' / '));
     if(tv.length)items.push('<strong>Wysokość taśmy:</strong> '+tv.join(' / '));
     if(gv.length)items.push('<strong>Odstępy między ślizgami (Wave):</strong> '+gv.join(' / '));
+    var bv=[];curtainRows.forEach(function(r){if(r.bottom&&r.bottom!=='-'){var v=r.bottom;if(bv.indexOf(v)<0)bv.push(v);}});
+    if(bv.length)items.push('<strong>Typ dołu:</strong> '+bv.join(' / '));
   }
   if(!items.length)return '';
   return '<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;">'
