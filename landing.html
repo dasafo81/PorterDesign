@@ -58,6 +58,20 @@
   .nav-actions { display: flex; align-items: center; gap: 0.8rem; }
   .nav-login { font-size: 14px; font-weight: 500; color: var(--ink2); text-decoration: none; padding: 8px 10px; }
   .nav-login:hover { color: var(--ink); }
+  .login-wrap { position: relative; }
+  .nav-login { background: none; border: none; cursor: pointer; font-family: inherit; }
+  .login-panel { display: none; position: absolute; top: calc(100% + 14px); right: 0; width: 320px; background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 1.3rem 1.3rem 1.1rem; box-shadow: 0 18px 50px rgba(28,34,51,0.18); z-index: 120; }
+  .login-panel.open { display: block; }
+  .login-panel h3 { font-family: 'Jost', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--ink); margin-bottom: .9rem; }
+  .login-panel label { display: block; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); margin: .7rem 0 .3rem; }
+  .login-panel input { width: 100%; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 14px; font-family: inherit; color: var(--ink); background: var(--white); }
+  .login-panel input:focus { outline: none; border-color: var(--wsp); }
+  .login-panel button[type=submit] { width: 100%; margin-top: 1rem; padding: 12px; border: none; border-radius: 9px; background: var(--ink); color: #fff; font-size: 14px; font-weight: 500; font-family: inherit; cursor: pointer; }
+  .login-panel button[type=submit]:disabled { opacity: .6; cursor: default; }
+  .login-err { display: none; margin-top: .8rem; font-size: 13px; color: #b42318; background: #fdecea; border-radius: 8px; padding: 8px 10px; }
+  .login-err.show { display: block; }
+  .login-foot { margin-top: .9rem; font-size: 12.5px; color: var(--ink3); text-align: center; }
+  .login-foot a { color: var(--wsp-dark); }
   .nav-toggle { display: none; width: 42px; height: 42px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--white); cursor: pointer; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
   .nav-toggle span { display: block; width: 18px; height: 2px; background: var(--ink); border-radius: 2px; transition: transform .2s, opacity .2s; }
   .nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
@@ -71,7 +85,8 @@
     .nav-links { flex-direction: column; }
     .nav-links a { padding: 12px 14px; font-size: 15px; }
     .nav-actions { flex-direction: column; align-items: stretch; }
-    .nav-login { text-align: center; padding: 12px; }
+    .nav-login { text-align: center; padding: 12px; width: 100%; }
+    .login-panel { position: static; width: 100%; margin-top: 8px; box-shadow: none; }
     .nav-cta { text-align: center; padding: 13px 22px; }
   }
   .hero { display: flex; align-items: center; justify-content: center; padding: 7.5rem 2.5rem 5rem; background: linear-gradient(160deg, #eceef4 0%, #f6f4f1 34%, #f3ede5 100%); position: relative; overflow: hidden; }
@@ -355,7 +370,19 @@
       <a href="#kontakt">Kontakt</a>
     </div>
     <div class="nav-actions">
-      <a class="nav-login" href="/app">Zaloguj się</a>
+      <div class="login-wrap">
+        <button class="nav-login" type="button" id="login-toggle" aria-expanded="false" aria-controls="login-panel">Zaloguj się</button>
+        <form class="login-panel" id="login-panel" novalidate>
+          <h3>Logowanie do aplikacji</h3>
+          <label for="login-email">E-mail</label>
+          <input type="email" id="login-email" autocomplete="username" placeholder="twoj@studio.pl">
+          <label for="login-pass">Hasło</label>
+          <input type="password" id="login-pass" autocomplete="current-password">
+          <div class="login-err" id="login-err" role="alert"></div>
+          <button type="submit" id="login-submit">Zaloguj się</button>
+          <p class="login-foot">Nie masz jeszcze konta? <a href="/register">Poproś o darmowy test</a></p>
+        </form>
+      </div>
       <a class="nav-cta" href="/register">Poproś o darmowy test</a>
     </div>
   </div>
@@ -718,6 +745,55 @@ document.querySelectorAll('a[href^="#"]').forEach(function(a) {
     links.forEach(function(a,i){a.classList.toggle('active',i===cur);});
   }
   window.addEventListener('scroll',spy,{passive:true});spy();
+})();
+
+// Logowanie z landingu: to samo żądanie co w aplikacji (src/lib/auth.js), sesja w tym samym localStorage, potem przejście do /app.
+(function(){
+  var SB_URL='https://rkcidwusjzvfwxszotnb.supabase.co', SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrY2lkd3Vzanp2Znd4c3pvdG5iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MDU4NzIsImV4cCI6MjA5MDE4MTg3Mn0.N-frD06x0MzSg8dHmz-xneA16QvVrBmAYUg3ileNpXw';
+  var btn=document.getElementById('login-toggle'), panel=document.getElementById('login-panel');
+  if(!btn||!panel) return;
+  var em=document.getElementById('login-email'), pw=document.getElementById('login-pass'),
+      err=document.getElementById('login-err'), sub=document.getElementById('login-submit');
+  function setOpen(o){ panel.classList.toggle('open',o); btn.setAttribute('aria-expanded',o?'true':'false'); if(o) setTimeout(function(){em.focus();},30); }
+  btn.addEventListener('click',function(e){ e.stopPropagation(); setOpen(!panel.classList.contains('open')); });
+  document.addEventListener('click',function(e){ if(!panel.contains(e.target)&&e.target!==btn) setOpen(false); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') setOpen(false); });
+  // Jak w auth.js: przy zmianie użytkownika w tej przeglądarce czyścimy dane powiązane z poprzednim kontem.
+  function clearUserScoped(){
+    try{
+      var drop=[];
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(/^(pd_gcal_|pd_oauth_|pd_mail_|porter_tasks$|pd_active_entity$|pd_builtin_catalog$|msal\.)/i.test(k)||k.indexOf('login.windows.net')>=0||k.indexOf('login.microsoftonline.com')>=0) drop.push(k);
+      }
+      drop.forEach(function(k){ localStorage.removeItem(k); });
+    }catch(e){}
+  }
+  panel.addEventListener('submit',function(e){
+    e.preventDefault();
+    var email=em.value.trim(), pass=pw.value.trim();
+    err.classList.remove('show');
+    if(!email||!pass){ err.textContent='Podaj e-mail i hasło.'; err.classList.add('show'); return; }
+    sub.disabled=true; sub.textContent='Logowanie…';
+    fetch(SB_URL+'/auth/v1/token?grant_type=password',{
+      method:'POST', headers:{'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({email:email,password:pass})
+    }).then(function(r){
+      if(!r.ok) return r.json().then(function(x){ throw new Error(x.error_description||x.msg||'Nieprawidłowy e-mail lub hasło'); });
+      return r.json();
+    }).then(function(data){
+      try{
+        var uid=data&&data.user&&data.user.id, prev=localStorage.getItem('pd_last_uid');
+        if(uid&&prev!==uid) clearUserScoped();
+        if(uid) localStorage.setItem('pd_last_uid',uid);
+        localStorage.setItem('sb_session',JSON.stringify(data));
+      }catch(x){}
+      location.href='/app';
+    }).catch(function(x){
+      err.textContent=(x&&x.message&&x.message!=='Failed to fetch')?x.message:'Nie udało się zalogować — sprawdź połączenie i spróbuj ponownie.'; err.classList.add('show');
+      sub.disabled=false; sub.textContent='Zaloguj się';
+    });
+  });
 })();
 </script>
 </body>
