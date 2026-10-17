@@ -2616,7 +2616,7 @@ export function ProdCard(p){
     ),
     ce("div",{style:{padding:"4px 20px 20px",display:"flex",flexDirection:"column"}},
       form,
-      warn?ce("div",{style:{background:"var(--wb)",border:"1px solid var(--wbd)",borderRadius:8,padding:"10px 14px",fontSize:13,color:"var(--wt)",marginTop:16}},warn):null,
+      warn?ce("div",{role:"status",style:{display:"flex",alignItems:"center",gap:8,background:"#fdf1e3",border:"1px solid #f0c9a0",borderLeft:"4px solid #d4782f",borderRadius:8,padding:"8px 12px",fontSize:13,color:"#8a4a12",marginTop:12}},ce("span",{"aria-hidden":"true",style:{fontSize:15}},"\u26a0"),warn+(warn==="Wybierz tkanin\u0119"?" \u2014 sekcja Wymiary u g\u00f3ry":"")):null,
       total>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:10,padding:"14px 16px",marginTop:16}},
         lines.map(function(l,i){return ce("div",{key:i,style:{fontSize:13,color:"var(--gr)",marginBottom:4}},l);}),
         ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:700,color:"var(--grd)",marginTop:8,paddingTop:10,borderTop:"1px solid var(--grm)"}},
