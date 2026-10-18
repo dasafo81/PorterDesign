@@ -7894,6 +7894,7 @@ export function makeTableHTML(headers, rows, caption, colWidths){
   }
   var headerHTML=headers.map(function(h){return "<th>"+h+"</th>";}).join("");
   var rowsHTML=rows.map(function(r){
+    if(r&&r.group!==undefined&&!Array.isArray(r))return "<tr class=\"grp\"><td colspan=\""+headers.length+"\" style=\"background:#e4e4e0!important;font-weight:700;font-size:11px;padding:5px 8px;\">"+r.group+"</td></tr>";
     return "<tr>"+r.map(function(c){return "<td>"+c+"</td>";}).join("")+"</tr>";
   }).join("");
   return "<table>"+colgroupHTML+"<caption>"+caption+"</caption><thead><tr>"+headerHTML+"</tr></thead><tbody>"+rowsHTML+"</tbody></table>";
