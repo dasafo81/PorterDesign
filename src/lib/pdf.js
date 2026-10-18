@@ -656,6 +656,12 @@ function buildCurtainOptionsHTML(curtainRows, sewOpts){
     +'</div>';
 }
 
+// Pomieszczenie + nazwa okna — zlecenie szycia musi rozróżniać konkretne okna
+function sewRoomWin(r){
+  var esc=function(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
+  return '<strong>'+esc(r.room)+'</strong>'+(r.win?'<br><span style="color:#6b6b66;font-size:10px">'+esc(r.win)+'</span>':'');
+}
+
 export function generateSewingOrderPDF(client, modalData){
   var rows=buildSewingRows(client);
   if(!rows.length){alert("Brak pozycji szycia.");return;}
@@ -673,13 +679,13 @@ export function generateSewingOrderPDF(client, modalData){
   var hasBothTypes=curtainRows.length>0&&romanRows.length>0;
 
   // Tabela zasłon/firan — uproszczone kolumny
-  var tableHeader=["Lp.","Pomieszczenie","Model szycia","Tkanina / Kolor","Producent","Szerokość","Wysokość","Podział","Podszewka","Uwagi"];
+  var tableHeader=["Lp.","Pomieszczenie / okno","Model szycia","Tkanina / Kolor","Producent","Szerokość","Wysokość","Podział","Podszewka","Uwagi"];
   var tableRows=curtainRows.map(function(r,i){
     var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
     var tkaninaPlusKolor='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
     return [
       String(i+1),
-      r.room,
+      sewRoomWin(r),
       modelStr,
       tkaninaPlusKolor,
       r.prod||'-',
@@ -694,12 +700,12 @@ export function generateSewingOrderPDF(client, modalData){
   var curtainOptionsHTML=buildCurtainOptionsHTML(curtainRows,modalData.sewOpts||null);
 
   // Tabela rolet rzymskich
-  var romanHeader=["Lp.","Pomieszczenie","Model szycia","Tkanina / Kolor","Producent",
+  var romanHeader=["Lp.","Pomieszczenie / okno","Model szycia","Tkanina / Kolor","Producent",
     "Szerokość","Wysokość","Wys. nadproża",
     "Mechanizm","Strona łańcuszka","Kolor łańcuszka","Podszewka","Uwagi"];
   var romanTableRows=romanRows.map(function(r,i){
     var tkR="<strong>"+r.fabric+"</strong>"+(r.kolor&&r.kolor!=="-"?"<br><span style=\"color:#6b6b66;font-size:10px\">"+r.kolor+"</span>":"");
-    return [String(i+1),r.room,(r.type||"-").replace(/^[^(]+\((.+)\)$/,"$1"),tkR,r.prod||"-",
+    return [String(i+1),sewRoomWin(r),(r.type||"-").replace(/^[^(]+\((.+)\)$/,"$1"),tkR,r.prod||"-",
       r.wCm?(r.wCm+" cm"):"-",r.hCm?(r.hCm+" cm"):"-",
       r.nadprozeCm&&r.nadprozeCm!=="-"?(r.nadprozeCm+" cm"):"-",
       r.rSystem||"-",r.stronaObslugi||"-",r.kolorLancuszka||"-",
@@ -793,21 +799,21 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
   var curtainRows2=rows.filter(function(r){return r._type!=='roleta';});
   var romanRows2=rows.filter(function(r){return r._type==='roleta';});
   var hasBothTypes2=curtainRows2.length>0&&romanRows2.length>0;
-  var tableHeader=['Lp.','Pomieszczenie','Model szycia','Tkanina / Kolor','Producent','Szerokość','Wysokość','Podział','Podszewka','Uwagi'];
+  var tableHeader=['Lp.','Pomieszczenie / okno','Model szycia','Tkanina / Kolor','Producent','Szerokość','Wysokość','Podział','Podszewka','Uwagi'];
   var tableRows=curtainRows2.map(function(r,i){
     var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
     var tkaninaPlusKolor='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
-    return [String(i+1),r.room,modelStr,tkaninaPlusKolor,r.prod||'-',
+    return [String(i+1),sewRoomWin(r),modelStr,tkaninaPlusKolor,r.prod||'-',
       r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
       r.split,r.podszewka||'nie',r.note||''];
   });
   var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2,modalData.sewOpts||null);
-  var romanHeader2=['Lp.','Pomieszczenie','Model szycia','Tkanina / Kolor','Producent',
+  var romanHeader2=['Lp.','Pomieszczenie / okno','Model szycia','Tkanina / Kolor','Producent',
     'Szerokość','Wysokość','Wys. nadproża',
     'Mechanizm','Strona łańcuszka','Kolor łańcuszka','Podszewka','Uwagi'];
   var romanTableRows2=romanRows2.map(function(r,i){
     var tkR2='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
-    return [String(i+1),r.room,(r.type||'-').replace(/^[^(]+\((.+)\)$/,'$1'),tkR2,r.prod||'-',
+    return [String(i+1),sewRoomWin(r),(r.type||'-').replace(/^[^(]+\((.+)\)$/,'$1'),tkR2,r.prod||'-',
       r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
       r.nadprozeCm&&r.nadprozeCm!=='-'?(r.nadprozeCm+' cm'):'-',
       r.rSystem||'-',r.stronaObslugi||'-',r.kolorLancuszka||"-",
