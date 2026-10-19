@@ -2149,6 +2149,7 @@ export function CRMKalendarz(p){
     var ctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
     // Po kolei, żeby nie przekroczyć limitów API
     var missingInst=[];
+    var syncErrors=[];
     jobs.reduce(function(chain,j){
       return chain.then(function(){
         return syncDealDateToGcal(ctx,j.deal,j.client,j.field,calList).then(function(r){
@@ -2156,10 +2157,12 @@ export function CRMKalendarz(p){
         }).catch(function(e){
           delete syncedDealsRef.current[j.sk]; // spróbujemy ponownie przy następnym otwarciu
           console.warn("[gcal] synchronizacja terminu deala nie powiodła się",j.deal.id,j.field,e);
+          syncErrors.push((j.client&&j.client.name||"deal")+": "+((e&&e.message)||"błąd"));
         });
       });
     },Promise.resolve()).then(function(){
       fetchEvents(ctx.token);
+      if(syncErrors.length)alert("Nie udało się dodać części terminów z CRM do Google Calendar:\n"+syncErrors.slice(0,5).join("\n"));
       if(missingInst.length)alert("Nie znaleziono w Google kalendarza montażysty: "+missingInst.join(", ")+".\nTerminy montaży tych osób są tylko w kalendarzu głównym — udostępnij ich kalendarze temu kontu Google (z prawem zapisu).");
     });
   },[gcalToken,calList,calendarDeals]);
@@ -3007,6 +3010,21 @@ export function CRMKalendarz(p){
             ce('div',{style:{fontSize:13,color:'var(--t1)',lineHeight:1.5,wordBreak:'break-word',whiteSpace:'pre-wrap'}},r[1])
           );});
         })(),
+        (selectedGcalEv._crmDealId&&!selectedGcalEv.htmlLink)?ce('div',{
+          style:{marginTop:16,padding:'9px',borderRadius:10,background:'#4285f4',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
+          onClick:function(){
+            var ev=selectedGcalEv;
+            var deal=calendarDeals.find(function(x){return String(x.id)===String(ev._crmDealId);});
+            if(!deal||!gcalToken){alert('Zaloguj się do Google Calendar.');return;}
+            var client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||null;
+            var ctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+            syncDealDateToGcal(ctx,deal,client,ev._crmDateField,calList).then(function(r){
+              setSelectedGcalEv(null);
+              fetchEvents(ctx.token);
+              if(r&&r.missingInstaller)alert('Dodano do kalendarza głównego, ale nie znaleziono w Google kalendarza montażysty: '+r.missingInstaller+'.');
+            }).catch(function(e){alert('Błąd dodawania do Google Calendar: '+((e&&e.message)||'nieznany'));});
+          }
+        },'\uD83D\uDCC5 Dodaj do Google Calendar'):null,
         (!selectedGcalEv._readOnly&&selectedGcalEv.htmlLink)?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null,
         ce('div',{
           style:{marginTop:10,padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
