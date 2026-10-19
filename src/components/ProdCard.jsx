@@ -878,7 +878,7 @@ export function ProdCard(p){
 
     // ── Szerokość taśmy dropdown ───────────────────────────────────────
     var tasmyOptions=[6,7,8,9,10,12];
-    var tVal=c.szerokosc_tasmy||8;
+    var tVal=c.szerokosc_tasmy||10;
     var tasmaSection=ce("div",{style:{marginTop:0}},
       ce(Fld,{label:"SZEROKO\u015a\u0106 TA\u015aMY"},
         ce("div",{style:{position:"relative",width:150}},
