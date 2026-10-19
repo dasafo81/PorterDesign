@@ -259,7 +259,7 @@ export function ProdCard(p){
   // Rodziny: kurt (zaslona/firana), okno (roleta/shadow/zaluzja/plisa), rail (szyny/karnisze).
   // Miedzy rodzinami nic nie przenosimy (szer. okna != dlugosc karnisza) -> null -> brak trzeciej opcji.
   function carryDims(fromT,toT,pr,cc){
-    var RAIL=["szyna","karnisz","prestige_round","prestige_square","shuttle"];
+    var RAIL=["karnisz","prestige_round","prestige_square","shuttle"];
     function fam(t){
       if(t==="zaslona"||t==="firana")return "kurt";
       if(t==="roleta"||t==="shadow"||t==="zaluzja"||t==="plisa")return "okno";
@@ -1794,33 +1794,31 @@ export function ProdCard(p){
     var isMarcin=c.ksBrand==="marcin";
     var hasGrey=isMarcin||(!isMSigma&&c.ks!=="wave");
     form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:8}},
+        ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZ. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZ. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"\u2013",style:IST})),
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){spArc("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm) — rozstaw ko\u0144c\u00f3w"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"G\u0141\u0118B. \u0141UKU (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){spArc("arcDepth",ev.target.value);},placeholder:"\u2013",style:IST})),
+        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"\u2013",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST}))
       ),
       arcInfo(),
-      ce("div",{style:{marginBottom:12}},
-        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",marginBottom:6,textTransform:"uppercase"}},"PRODUCENT SZYNY"),
+      ce("div",{style:{marginBottom:8}},
         ce(Chips,{items:[
-          ce(Chip,{key:"forest",label:"Forest KS",active:!isMSigma,onClick:function(){sc("ksBrand","forest");}}),
+          ce(Chip,{key:"forest",label:"Forest KS",active:!isMSigma&&!isMarcin,onClick:function(){sc("ksBrand","forest");}}),
           ce(Chip,{key:"msigma",label:"Mio Decor Sigma",active:isMSigma,onClick:function(){sc("ksBrand","msigma");}}),
-          ce(Chip,{key:"marcin",label:"Marcin Dekor",active:isMarcin,onClick:function(){sc("ksBrand","marcin");}})
+          ce(Chip,{key:"marcin",label:"Marcin Dekor",active:isMarcin,onClick:function(){sc("ksBrand","marcin");}}),
+          isMarcin?null:ce(Chip,{key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
+          isMarcin?null:ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
+          ce(Chip,{key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}),
+          ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}),
+          hasGrey?ce(Chip,{key:"sz",label:"Szara",active:c.kk==="szara",onClick:function(){sc("kk","szara");}}):null,
+          ce(Chip,{key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
         ]})
       ),
-      ce(Chips,{items:[
-        isMarcin?null:ce(Chip,{key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
-        isMarcin?null:ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
-        ce(Chip,{key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}),
-        ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}),
-        hasGrey?ce(Chip,{key:"sz",label:"Szara",active:c.kk==="szara",onClick:function(){sc("kk","szara");}}):null,
-        ce(Chip,{key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
-      ]}),
-      c.km==="sciana"?ce("div",{style:{marginTop:12}},
+      c.km==="sciana"?ce("div",{style:{marginTop:4}},
         ce(Chips,{items:[
           ce(Chip,{key:"wp",label:"Uchwyt pojedynczy (20 z\u0142 co 60 cm)",active:c.kmWall!=="podwojny",onClick:function(){sc("kmWall","pojedynczy");}}),
           ce(Chip,{key:"wd",label:"Uchwyt podw\xf3jny (35 z\u0142 co 60 cm)",active:c.kmWall==="podwojny",onClick:function(){sc("kmWall","podwojny");}})
@@ -2600,7 +2598,7 @@ export function ProdCard(p){
   }
 
   // ▼ NOWE: szerokość pomieszczenia — wszystkie karnisze/szyny
-  if(["szyna","karnisz","prestige_round","prestige_square","shuttle","karnisz_dek"].indexOf(prod.type)>=0){
+  if(["karnisz","prestige_round","prestige_square","shuttle","karnisz_dek"].indexOf(prod.type)>=0){
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
         ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST}))
