@@ -2001,6 +2001,9 @@ export function CRMKalendarz(p){
   var sDragOver=useState(null),dragOverDay=sDragOver[0],setDragOverDay=sDragOver[1];
   var dragEvRef=React.useRef(null);
   function openDealEventPreview(ev){
+    var twinKey=dealKey(ev.deal.id,{visit:"visit_date",delivery:"delivery_date",delivery2:"delivery_date2",followup:"followup_date"}[ev.type]);
+    var twin=gcalEvents.find(function(g){return eventDealKey(g)===twinKey;});
+    if(twin){setSelectedGcalEv(twin);return;}
     var deal=ev.deal,client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||{};
     var address=[client.addr,[client.postal,client.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
     var start=new Date(ev.date),end=dealEventEnd(start,ev.client,ev.type,deal);
@@ -2114,7 +2117,9 @@ export function CRMKalendarz(p){
           var end=ev.end&&(ev.end.dateTime||ev.end.date)||"";
           var key=[ev.summary||"",start,end,ev.location||""].join("\u001f");
           var current=unique[key];
+          var names=((current&&current._calNames)||[]).concat(ev._calName||[]);
           if(!current || (ev._calPrimary && !current._calPrimary)) unique[key]=ev;
+          unique[key]=Object.assign({},unique[key],{_calNames:names});
         });
         setGcalEvents(Object.keys(unique).map(function(k){return unique[k];}));
         setLoadingEv(false);
@@ -3033,7 +3038,7 @@ export function CRMKalendarz(p){
           var isAllDay=!!(raw.start&&raw.start.date&&!raw.start.dateTime);
           var fmtDT=function(s){if(!s)return null;var d=new Date(s);return d.toLocaleString('pl-PL',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:isAllDay?undefined:'2-digit',minute:isAllDay?undefined:'2-digit'});};
           var rows=[];
-          if(raw._calName) rows.push(['Kalendarz',raw._calName]);
+          if(raw._calName) rows.push(['Kalendarz',(raw._calNames&&raw._calNames.length>1)?raw._calNames.join(', '):raw._calName]);
           if(startDT) rows.push([isAllDay?'Dzień':'Początek',fmtDT(startDT)]);
           if(endDT&&!isAllDay) rows.push(['Koniec',fmtDT(endDT)]);
           if(raw.location) rows.push(['Lokalizacja',raw.location]);
