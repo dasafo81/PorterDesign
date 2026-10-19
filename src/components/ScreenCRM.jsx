@@ -2414,6 +2414,14 @@ export function CRMKalendarz(p){
   // ── Pomocniki kalendarza ──
   function isSameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
 
+  // Montaże (termin realizacji z deala) zawsze na zielono, niezależnie od koloru kalendarza,
+  // w którym akurat leży wybrana kopia wydarzenia (zwykle główny, niebieski).
+  function gcalEventColor(ev){
+    var k=eventDealKey(ev),pk=k&&parseDealKey(k);
+    if(pk&&pk.field==="delivery_date")return "#10b981";
+    return ev._calColor||"#4285f4";
+  }
+
   function getEventsForDay(date){
     var result=[];
     // GCal events
@@ -2423,7 +2431,7 @@ export function CRMKalendarz(p){
       var d=new Date(start);
       var endRaw=ev.end&&(ev.end.dateTime||ev.end.date);
       var endD=ev.start.dateTime?(endRaw?new Date(endRaw):new Date(d.getTime()+3600000)):null;
-      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:ev._calColor||"#4285f4",time:ev.start.dateTime?d:null,end:endD,calName:ev._calName||"",gcalRaw:ev});
+      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:gcalEventColor(ev),time:ev.start.dateTime?d:null,end:endD,calName:ev._calName||"",gcalRaw:ev});
     });
     // Deal events
     var FIELD_BY_TYPE={visit:"visit_date",delivery:"delivery_date",delivery2:"delivery_date2",followup:"followup_date"};
