@@ -208,7 +208,7 @@ function MailRow(p) {
     }).catch(function () { setBody(m.preview); }).finally(function () { setBusy(false); });
   }
 
-  return ce("div", { style: { border: "1px solid var(--bd2)", borderRadius: 9, background: "var(--bg)", overflow: "hidden" } },
+  return ce("div", { style: { flexShrink: 0, border: "1px solid var(--bd2)", borderRadius: 9, background: "var(--bg)", overflow: "hidden" } },
     ce("div", { onClick: toggle, style: { display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", cursor: "pointer" } },
       ce("span", { title: m.out ? "Wysłane" : "Odebrane", style: { fontSize: 14, lineHeight: "18px", color: m.out ? "var(--t1)" : "var(--gr)" } }, m.out ? "↗" : "↙"),
       ce("div", { style: { flex: 1, minWidth: 0 } },
