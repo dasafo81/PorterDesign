@@ -129,18 +129,30 @@ export function installerCalendarId(deal, field, calList) {
   if (id && calList.some(function (c) { return c.id === id; })) return id;
   var name = String((second ? deal.installer_name2 : deal.installer_name) || "").trim().toLowerCase();
   if (!name) return null;
-  var m = calList.find(function (c) { return !c.primary && c.summary && c.summary.toLowerCase().indexOf(name) >= 0; });
+  var named = calList.filter(function (c) { return c.summary && c.summary.toLowerCase().indexOf(name) >= 0; });
+  var exact = named.find(function (c) { return c.summary.trim().toLowerCase() === name; });
+  var m = exact || named[0];
   return m ? m.id : null;
+}
+
+// Nazwa wybranego montażysty dla danego terminu (null gdy to nie termin montażowy lub nie wybrano)
+export function installerNameFor(deal, field) {
+  if (field !== "delivery_date" && field !== "delivery_date2") return null;
+  var n = String((field === "delivery_date2" ? deal.installer_name2 : deal.installer_name) || "").trim();
+  return n || null;
 }
 
 // Wysyła jeden termin deala do kalendarza głównego oraz (gdy ustawiony) kalendarza montażysty.
 export function syncDealDateToGcal(ctx, deal, client, field, calList) {
   var start = dealStartDate(deal[field]);
-  if (!start) return Promise.resolve([]);
+  if (!start) return Promise.resolve({ missingInstaller: null });
   var primary = (calList.find(function (c) { return c.primary; }) || calList[0] || {}).id || "primary";
   var instId = installerCalendarId(deal, field, calList);
   var targets = [primary];
   if (instId && instId !== primary) targets.push(instId);
+  // Wybrano montażystę, ale nie ma jego kalendarza na liście — wołający musi o tym ostrzec
+  var instName = installerNameFor(deal, field);
+  var missingInstaller = instName && !instId ? instName : null;
 
   var addr = client ? [client.addr, [client.postal, client.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") : "";
   var parts = [];
@@ -161,5 +173,5 @@ export function syncDealDateToGcal(ctx, deal, client, field, calList) {
   };
   return Promise.all(targets.map(function (calId) {
     return upsertDealEvent(ctx, Object.assign({}, base, { calId: calId }));
-  }));
+  })).then(function () { return { missingInstaller: missingInstaller }; });
 }
