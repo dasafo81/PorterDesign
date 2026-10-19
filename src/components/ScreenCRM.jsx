@@ -4,6 +4,7 @@ import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
+import { DealCorrespondence } from './DealCorrespondence.jsx';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
 import { loadSystemTemplate, fillVars, dropEmptyParas } from '../lib/mailTemplates.js';
 import { ACQ_DIRECT, ACQUISITION_OPTIONS, dealQuoteBreakdown, referralGross } from '../lib/referrals.js';
@@ -1485,6 +1486,10 @@ export function ModalDeal(p){
               cursor:(advBusy||!advInvoiceId)?"not-allowed":"pointer",opacity:(advBusy||!advInvoiceId)?0.5:1}
           },advBusy?"⏳ Przygotowuję…":(d.advance_sent_at?"✉ Wyślij ponownie fakturę + OWU":"✉ Wyślij fakturę + OWU"))
         ):null,
+
+        ce(SectionCard,{icon:"✉️",title:"Korespondencja z klientem"},
+          ce(DealCorrespondence,{email:(cl&&cl.email)||d.buyer_email||""})
+        ),
 
         ce(SectionCard,{icon:"📅",title:"Spotkanie",done:visitDone},
           ce("div",{style:{display:"flex",gap:8,alignItems:"center"}},
