@@ -1300,7 +1300,7 @@ export function ProdCard(p){
     var isDuo   = rModel==="duo";
 
     // ── MODEL SELECTOR ───────────────────────────────────────────────
-    var roletaModelSelector = ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,maxWidth:600}},
+    var roletaModelSelector = ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:8,maxWidth:900}},
       ROLETA_MODELS.map(function(m){
         var isA = rModel===m.key;
         return ce("button",{
@@ -1310,15 +1310,15 @@ export function ProdCard(p){
             if(m.key!=="duo" && rSystem==="polautomatyczny") newSys=null;
             p.onChange(mg(prod,{c:mg(c,{rModel:m.key,rSystem:newSys})}));
           },
-          style:{padding:"0 0 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:0,overflow:"hidden",transition:"all .18s"}
+          style:{padding:"0 0 6px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:0,overflow:"hidden",transition:"all .18s"}
         },
           ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-            ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+            ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"56px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
 
             ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
-            isA?ce("div",{style:{position:"absolute",top:6,left:6,width:22,height:22,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
+            isA?ce("div",{style:{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
           ),
-          ce("span",{style:{fontSize:12,fontWeight:isA?700:400,color:isA?"var(--violet-dark)":"var(--t1)",marginTop:8,lineHeight:1.3,textAlign:"center"}},m.label)
+          ce("span",{style:{fontSize:12,fontWeight:isA?700:400,color:isA?"var(--violet-dark)":"var(--t1)",marginTop:5,lineHeight:1.3,textAlign:"center"}},m.label)
         );
       })
     );
@@ -1566,10 +1566,9 @@ export function ProdCard(p){
       ),
       // SEKCJA 2: Model rolety
       ce(Section,{num:"2",title:"Model"},
-        ce("p",{style:{fontSize:13,color:"var(--t2)",marginBottom:16}},"Wybierz model rolety"),
         roletaModelSelector,
-        isDuo?ce("div",{style:{marginTop:20}},
-          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"MODEL SZYCIA (Duo)"),
+        isDuo?ce("div",{style:{marginTop:12}},
+          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"MODEL SZYCIA (Duo)"),
           ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
             ROLETA_MODELS.filter(function(m){return m.key!=="duo";}).map(function(m){
               var isA=c.rDuoModel===m.key;
