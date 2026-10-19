@@ -2063,6 +2063,18 @@ export function CRMKalendarz(p){
   // Zbierz terminy z dealów
   var now=new Date();
   var dealEvents=[];
+  // Termin w dealu przechowuje tylko początek. Koniec bierzemy z wpisu w Google
+  // Calendar o tym samym starcie i kliencie (tam zapisała go godzina „DO”),
+  // a bez takiego wpisu — z domyślnego czasu: pomiar 1 h, montaż/wieszanie 3 h.
+  function dealEventEnd(start,clientName,type){
+    var match=gcalEvents.find(function(g){
+      if(!g.start||!g.start.dateTime||!g.end||!g.end.dateTime)return false;
+      return new Date(g.start.dateTime).getTime()===start.getTime()&&(!clientName||(g.summary||"").indexOf(clientName)>=0);
+    });
+    if(match)return new Date(match.end.dateTime);
+    var durMin=(type==="visit"||type==="followup")?60:180;
+    return new Date(start.getTime()+durMin*60000);
+  }
   calendarDeals.forEach(function(deal){
     var cl=p.clients.find(function(c){return String(c.id)===String(deal.client_id);})||null;
     var name=cl?cl.name:"Klient";
@@ -2295,7 +2307,7 @@ export function CRMKalendarz(p){
     });
     // Deal events
     dealEvents.forEach(function(ev){
-      if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,end:new Date(ev.date.getTime()+3600000),dealEv:ev});
+      if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,end:dealEventEnd(ev.date,ev.client,ev.type),dealEv:ev});
     });
     result.sort(function(a,b){return (a.time||0)-(b.time||0);});
     return result;
