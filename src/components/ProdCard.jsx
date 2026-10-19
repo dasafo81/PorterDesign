@@ -47,7 +47,7 @@ import { generateFabricOrderPDF, generateClientEmail,
 const ce = React.createElement;
 
 export function Chip(p){
-  return ce("button",{onClick:p.onClick,style:{padding:"7px 14px",borderRadius:11,border:"none",background:"var(--bg)",boxShadow:p.active?"var(--nm-in)":"var(--nm-out-sm)",color:p.active?"var(--violet-dark)":"var(--t1)",fontSize:14,cursor:"pointer",marginBottom:0,transition:"box-shadow .15s,color .15s",minHeight:40,fontWeight:p.active?700:500}},p.label);
+  return ce("button",{onClick:p.onClick,style:{padding:"7px 14px",borderRadius:11,border:"none",background:"var(--bg)",boxShadow:p.active?"var(--nm-in)":"var(--nm-out-sm)",color:p.active?"var(--violet-dark)":"var(--t1)",fontSize:14,cursor:"pointer",marginBottom:0,transition:"box-shadow .15s,color .15s",minHeight:40,fontWeight:p.active?700:500,width:p.fill?"100%":undefined,boxSizing:"border-box"}},p.label);
 }
 export function Chips(p){return ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:2}},p.items.filter(Boolean));}
 export function Fld(p){return ce("div",{style:{display:"flex",flexDirection:"column",gap:5,marginBottom:p.noMb?0:2}},ce("label",{style:{fontSize:11,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase"}},(p.label||"").toUpperCase()),p.children);}
@@ -1794,7 +1794,7 @@ export function ProdCard(p){
     var isMarcin=c.ksBrand==="marcin";
     var hasGrey=isMarcin||(!isMSigma&&c.ks!=="wave");
     form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10,marginBottom:8}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,marginBottom:12,alignItems:"start"}},
         ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZ. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST})),
         ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZ. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"\u2013",style:IST})),
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
@@ -1805,18 +1805,18 @@ export function ProdCard(p){
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST}))
       ),
       arcInfo(),
-      ce("div",{style:{marginBottom:8}},
-        ce(Chips,{items:[
-          ce(Chip,{key:"forest",label:"Forest KS",active:!isMSigma&&!isMarcin,onClick:function(){sc("ksBrand","forest");}}),
-          ce(Chip,{key:"msigma",label:"Mio Decor Sigma",active:isMSigma,onClick:function(){sc("ksBrand","msigma");}}),
-          ce(Chip,{key:"marcin",label:"Marcin Dekor",active:isMarcin,onClick:function(){sc("ksBrand","marcin");}}),
-          isMarcin?null:ce(Chip,{key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
-          isMarcin?null:ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
-          ce(Chip,{key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}),
-          ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}),
-          hasGrey?ce(Chip,{key:"sz",label:"Szara",active:c.kk==="szara",onClick:function(){sc("kk","szara");}}):null,
-          ce(Chip,{key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
-        ]})
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginBottom:8}},
+          ce(Chip,{fill:1,key:"forest",label:"Forest KS",active:!isMSigma&&!isMarcin,onClick:function(){sc("ksBrand","forest");}}),
+          ce(Chip,{fill:1,key:"msigma",label:"Mio Decor Sigma",active:isMSigma,onClick:function(){sc("ksBrand","msigma");}}),
+          ce(Chip,{fill:1,key:"marcin",label:"Marcin Dekor",active:isMarcin,onClick:function(){sc("ksBrand","marcin");}})
+      ),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:8}},
+          isMarcin?null:ce(Chip,{fill:1,key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
+          isMarcin?null:ce(Chip,{fill:1,key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
+          ce(Chip,{fill:1,key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}),
+          ce(Chip,{fill:1,key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}),
+          hasGrey?ce(Chip,{fill:1,key:"sz",label:"Szara",active:c.kk==="szara",onClick:function(){sc("kk","szara");}}):null,
+          ce(Chip,{fill:1,key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
       ),
       c.km==="sciana"?ce("div",{style:{marginTop:4}},
         ce(Chips,{items:[
