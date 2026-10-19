@@ -7978,15 +7978,10 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
         r.producent||"-",
         r.szerokosc||"-",
         r.wysokosc||"-",
-        r.podzial||"-",
-        (+r.total||0).toFixed(2).replace(".",",")+" zł"
+        r.podzial||"-"
       ];
     });
-    var gTotal=g.rows.reduce(function(a,r){return a+(+r.total||0);},0);
-    gRows.push(["","<strong>Razem: "+g.room+"</strong>","","","","","","",
-      "<strong>"+gTotal.toFixed(2).replace(".",",")+" zł</strong>"
-    ]);
-    return makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor / Osprzęt","Producent","Szerokość","Wysokość","Podział / Sterowanie","Cena brutto"],gRows,g.room,['6%','21%','10%','16%','9%','8%','8%','11%','11%']);
+    return makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor / Osprzęt","Producent","Szerokość","Wysokość","Podział / Sterowanie"],gRows,g.room,['7%','24%','12%','18%','10%','9%','9%','11%']);
   }).join("\n");
 
   var userNotesHTML=offerNotes
@@ -8015,33 +8010,10 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
     </div>
   </div>
   ${tablesHTML}
-  <div class="sum-box"><span class="label">Do zapłaty</span><span class="amount">${total.toFixed(2).replace(".",",")} PLN</span></div>
   ${userNotesHTML}
   <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
   <div class="footer"><span>${SELLER.name} | ${SELLER.city}</span><span>Strona 1</span></div>
   </body></html>`;
-  var montazVal=montazMode==="amount"?roundTo10(montazInputValue): (montaz>0?roundTo10(total*montaz):0);
-  var totalWithMontaz=montazVal>0?roundTo10(total+montazVal):total;
-  var deduction=discount+visitFee;
-  var finalTotal=Math.max(0,roundTo10(totalWithMontaz-deduction));
-  var extraBreakdown='';
-  if(montazVal>0){
-    extraBreakdown+='<div style="margin:4mm 0 3mm;padding:10px 14px;background:#eeece9;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Monta\u017c dekoracji okiennych ('+(montazMode==="amount"?montazVal.toFixed(2).replace(".",",")+" zł":Math.round(montaz*100)+"%")+'):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">'+montazVal.toFixed(2).replace(".",",")+' z\u0142</span></div>'
-      +'<div style="margin-bottom:3mm;padding:10px 14px;background:#e8e8e4;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#555;font-weight:600;">\u0141\u0105cznie bez monta\u017cu:</span><span style="font-size:14px;font-weight:700;color:#555;">'+total.toFixed(2).replace(".",",")+' z\u0142</span></div>';
-  }
-  if(discount>0){
-    extraBreakdown+='<div style="margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Przyznany rabat:</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">\u2212'+discount.toFixed(2).replace(".",",")+' z\u0142</span></div>';
-  }
-  if(visitFee>0){
-    extraBreakdown+='<div style="margin-bottom:3mm;padding:10px 14px;background:#f5ede0;border-radius:8px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:12px;color:#1a1a18;">Koszt wizyty (odliczony od zam\u00f3wienia):</span><span style="font-size:13px;font-weight:700;color:#1a1a18;">\u2212'+visitFee.toFixed(2).replace(".",",")+' z\u0142</span></div>';
-  }
-  if(extraBreakdown){
-    html=html.replace('<div class="sum-box">',extraBreakdown+'<div class="sum-box">');
-  }
-  if(montazVal>0||deduction>0){
-    var finalLabel=montazVal>0?'\u0141\u0105cznie z monta\u017cem':'\u0141\u0105cznie';
-    html=html.replace('<span class="label">Do zapłaty</span><span class="amount">'+total.toFixed(2).replace(".",",")+' PLN</span>','<span class="label">'+finalLabel+'</span><span class="amount">'+finalTotal.toFixed(2).replace(".",",")+' PLN</span>');
-  }
   return html;
 }
 
