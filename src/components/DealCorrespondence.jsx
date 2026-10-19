@@ -84,7 +84,7 @@ function MailRow(p) {
         open ? null : ce("div", { style: { fontSize: 12, color: "var(--t2)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, m.preview)
       )
     ),
-    open ? ce("div", { style: { padding: "0 10px 10px 32px", fontSize: 12, color: "var(--t2)", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 320, overflowY: "auto" } },
+    open ? ce("div", { style: { padding: "0 10px 10px 32px", fontSize: 12, color: "var(--t2)", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 200, overflowY: "auto" } },
       busy ? "Wczytywanie…" : (body || m.preview)
     ) : null
   );
@@ -126,7 +126,9 @@ export function DealCorrespondence(p) {
     busy ? ce("div", { style: { fontSize: 12, color: "var(--t3)" } }, "Wczytywanie korespondencji…") : null,
     err ? ce("div", { style: { fontSize: 12, color: "var(--rd, #c0392b)" } }, err) : null,
     (!busy && !err && rows && !rows.length) ? ce("div", { style: { fontSize: 12, color: "var(--t3)" } }, "Brak wiadomości wymienionych z " + email + ".") : null,
-    (rows || []).map(function (m) { return ce(MailRow, { key: m.id, m: m }); }),
+    (rows && rows.length) ? ce("div", { style: { display: "flex", flexDirection: "column", gap: 6, maxHeight: 350, overflowY: "auto", paddingRight: 4 } },
+      rows.map(function (m) { return ce(MailRow, { key: m.id, m: m }); })
+    ) : null,
     ce("button", {
       onClick: function () { setTick(tick + 1); }, disabled: busy,
       style: { alignSelf: "flex-start", padding: "6px 12px", borderRadius: 8, border: "1px solid var(--bd2)", background: "transparent", color: "var(--t2)", fontSize: 12, cursor: busy ? "not-allowed" : "pointer" }
