@@ -47,7 +47,7 @@ import { generateFabricOrderPDF, generateClientEmail,
 const ce = React.createElement;
 
 export function Chip(p){
-  return ce("button",{onClick:p.onClick,style:{padding:"7px 14px",borderRadius:11,border:"none",background:"var(--bg)",boxShadow:p.active?"var(--nm-in)":"var(--nm-out-sm)",color:p.active?"var(--violet-dark)":"var(--t1)",fontSize:14,cursor:"pointer",marginBottom:0,transition:"box-shadow .15s,color .15s",minHeight:40,fontWeight:p.active?700:500}},p.label);
+  return ce("button",{onClick:p.onClick,style:{padding:"7px 14px",borderRadius:11,border:"none",background:"var(--bg)",boxShadow:p.active?"var(--nm-in)":"var(--nm-out-sm)",color:p.active?"var(--violet-dark)":"var(--t1)",fontSize:14,cursor:"pointer",marginBottom:0,transition:"box-shadow .15s,color .15s",minHeight:40,fontWeight:p.active?700:500,width:p.fill?"100%":undefined,boxSizing:"border-box"}},p.label);
 }
 export function Chips(p){return ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:2}},p.items.filter(Boolean));}
 export function Fld(p){return ce("div",{style:{display:"flex",flexDirection:"column",gap:5,marginBottom:p.noMb?0:2}},ce("label",{style:{fontSize:11,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase"}},(p.label||"").toUpperCase()),p.children);}
@@ -243,7 +243,7 @@ export function ProdCard(p){
     // (patrz applyType) — same w sobie nie licza sie jako "wpisane dane",
     // inaczej samo przeklikanie marek na pustym produkcie odpalaloby modal.
     var meaningfulC=Object.keys(pr.c||{}).filter(function(k){return k!=="split"&&k!=="kBrand";});
-    return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||
+    return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||pr.innyTkanina||
       (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm||pr.par.wallW||pr.par.wallH))||
       meaningfulC.length>0||
       (pr.kdSzyny&&pr.kdSzyny.length>0)||
@@ -259,7 +259,7 @@ export function ProdCard(p){
   // Rodziny: kurt (zaslona/firana), okno (roleta/shadow/zaluzja/plisa), rail (szyny/karnisze).
   // Miedzy rodzinami nic nie przenosimy (szer. okna != dlugosc karnisza) -> null -> brak trzeciej opcji.
   function carryDims(fromT,toT,pr,cc){
-    var RAIL=["szyna","karnisz","prestige_round","prestige_square","shuttle"];
+    var RAIL=["karnisz","prestige_round","prestige_square","shuttle"];
     function fam(t){
       if(t==="zaslona"||t==="firana")return "kurt";
       if(t==="roleta"||t==="shadow"||t==="zaluzja"||t==="plisa")return "okno";
@@ -301,7 +301,7 @@ export function ProdCard(p){
     if(hasProdData(prod)){setPendingType(t);return;}
     p.onChange(mg(prod,{type:t.type,c:mg({split:"unequal"},t.set||{}),par:{},panels:[],
       fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,
-      innyNazwa:undefined,innyKat:undefined}));
+      innyNazwa:undefined,innyKat:undefined,innyTkanina:undefined}));
   }
 
   // Sep 2026 redesign: karta soft-UI z ikona. Domyslnie wypukla (--nm-out,
@@ -678,7 +678,7 @@ export function ProdCard(p){
 
     // ── SECTION 0: Model selection ─────────────────────────────────────
     var modelSelector = ce("div",{style:{marginBottom:0}},
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:580}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:8,maxWidth:760}},
         [
           {key:"falda",label:"Fa\u0142da",imgSrc:IMG_MODEL_FALDA},
           {key:"wave",label:"Zas\u0142ona Wave",imgSrc:IMG_MODEL_WAVE},
@@ -691,7 +691,7 @@ export function ProdCard(p){
               p.onChange(mg(prod,{c:mg(c,{model:m.key,foldType:m.key==="falda"?(c.foldType||null):undefined})}));
             },
             style:{
-              padding:"0 0 10px",borderRadius:12,
+              padding:"0 0 6px",borderRadius:12,
               border:"2px solid "+(isActive?"var(--violet)":"var(--bd2)"),
               background:"var(--bg)",
               cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",
@@ -699,15 +699,15 @@ export function ProdCard(p){
             }
           },
             ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-              ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+              ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"56px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
 
               ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
-              isActive?ce("div",{style:{position:"absolute",top:8,left:8,width:26,height:26,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:700}},"✓"):null
+              isActive?ce("div",{style:{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
             ),
             ce("span",{style:{
               fontSize:12,
               color:"var(--t1)",
-              marginTop:8,paddingLeft:6,paddingRight:6,
+              marginTop:5,paddingLeft:6,paddingRight:6,
               lineHeight:1.3,textAlign:"center",fontWeight:isActive?700:400
             }},m.label)
           );
@@ -725,15 +725,15 @@ export function ProdCard(p){
         {key:"plaska",label:"P\u0142aska",imgSrc:IMG_FALDA_PLASKA},
         {key:"studio",label:"Studio",imgSrc:IMG_FALDA_STUDIO}
       ];
-      foldTypeSelector = ce("div",{style:{marginTop:20}},
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:580}},
+      foldTypeSelector = ce("div",{style:{marginTop:8}},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:8,maxWidth:760}},
           foldTypes.map(function(ft){
             var isActive=foldType!==null&&foldType===ft.key;
             return ce("button",{
               key:ft.key,
               onClick:function(){sc("foldType",ft.key);},
               style:{
-                padding:"0 0 10px",borderRadius:12,
+                padding:"0 0 6px",borderRadius:12,
                 border:"2px solid "+(isActive?"var(--violet)":"var(--bd2)"),
                 background:"var(--bg)",
                 cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",
@@ -741,15 +741,15 @@ export function ProdCard(p){
               }
             },
               ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-                ce("img",{src:ft.imgSrc,alt:ft.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+                ce("img",{src:ft.imgSrc,alt:ft.label,style:{width:"100%",height:"56px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
 
                 ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
-                isActive?ce("div",{style:{position:"absolute",top:8,left:8,width:24,height:24,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:700}},"✓"):null
+                isActive?ce("div",{style:{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
               ),
               ce("span",{style:{
                 fontSize:12,fontWeight:isActive?600:400,
                 color:isActive?"var(--violet-dark)":"var(--t1)",
-                marginTop:8
+                marginTop:5
               }},ft.label)
             );
           })
@@ -773,10 +773,10 @@ export function ProdCard(p){
         var cS=isA?"#f3dcc6":"#e6e9f1";
         var rC=isA?"#c4803f":"#a3aabb";
         var wC=isA?"#f7f1ea":"#f4f5f9";
-        var svgL='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M9 6 Q12 20 10 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M16 6 Q19 22 17 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M23 6 Q26 19 24 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgR='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M40 6 Q43 20 41 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M47 6 Q50 22 48 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M54 6 Q57 19 55 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgE='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M20 6 Q23 22 21 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M41 6 Q44 20 42 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M51 6 Q54 22 52 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgU='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L27 48 Q24 22 27 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M18 6 Q21 22 19 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M31 6 Q34 18 32 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M35 6 Q38 20 36 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M45 6 Q48 22 46 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M55 6 Q58 19 56 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgL='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M9 6 Q12 20 10 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M16 6 Q19 22 17 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M23 6 Q26 19 24 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgR='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M40 6 Q43 20 41 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M47 6 Q50 22 48 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M54 6 Q57 19 55 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgE='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M20 6 Q23 22 21 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M41 6 Q44 20 42 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M51 6 Q54 22 52 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgU='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L27 48 Q24 22 27 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M18 6 Q21 22 19 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M31 6 Q34 18 32 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M35 6 Q38 20 36 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M45 6 Q48 22 46 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M55 6 Q58 19 56 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
         var svgMap={left:svgL,right:svgR,equal:svgE,unequal:svgU};
         return ce("button",{
           key:opt.key,
@@ -785,7 +785,7 @@ export function ProdCard(p){
             if(opt.key==="unequal"&&totalW>0&&!c.leftW){newC=mg(newC,{leftW:Math.floor(totalW/2),rightW:Math.ceil(totalW/2)});}
             p.onChange(mg(prod,{c:newC}));
           },
-          style:{padding:"8px 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t2)",fontSize:12,fontWeight:isA?600:400,cursor:"pointer",display:"flex",flexDirection:"row",justifyContent:"center",alignItems:"center",gap:10,transition:"all .18s"}
+          style:{padding:"4px 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t2)",fontSize:12,fontWeight:isA?600:400,cursor:"pointer",display:"flex",flexDirection:"row",justifyContent:"center",alignItems:"center",gap:10,transition:"all .18s"}
         },
           ce("div",{dangerouslySetInnerHTML:{__html:svgMap[opt.key]},style:{borderRadius:6,overflow:"hidden",lineHeight:0}}),
           ce("span",{style:{lineHeight:1.3,textAlign:"center"}},opt.label)
@@ -1024,18 +1024,14 @@ export function ProdCard(p){
 
       // SEKCJA 2: Model zasłony
       ce(Section,{num:"2",title:"Model"},
-        ce("p",{style:{fontSize:13,color:"var(--t2)",marginBottom:16}},"Wybierz model zas\u0142ony"),
         modelSelector,
-        foldTypeSelector?ce("div",{style:{marginTop:4}},
-          ce("p",{style:{fontSize:13,color:"var(--t2)",margin:"16px 0 0"}},"Wybierz rodzaj fa\u0142dy"),
-          foldTypeSelector
-        ):null
+        foldTypeSelector
       ),
 
       // SEKCJA 3: Podział + szczegóły (zależne od modelu)
       model?ce(Section,{num:"3",title:"Szczeg\xf3\u0142y"},
         ce("div",{style:{marginBottom:6}},
-          ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:8,fontStyle:"italic"}},"(Je\u015bli wybierzesz nier\xf3wn\u0105 par\u0119, zmotoryzowane szyny nie b\u0119d\u0105 dost\u0119pne)"),
+          ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:6,fontStyle:"italic"}},"(Je\u015bli wybierzesz nier\xf3wn\u0105 par\u0119, zmotoryzowane szyny nie b\u0119d\u0105 dost\u0119pne)"),
           splitSelector,
           splitFields,
           heightDiff
@@ -1304,7 +1300,7 @@ export function ProdCard(p){
     var isDuo   = rModel==="duo";
 
     // ── MODEL SELECTOR ───────────────────────────────────────────────
-    var roletaModelSelector = ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,maxWidth:600}},
+    var roletaModelSelector = ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(6,minmax(0,1fr))",gap:8,maxWidth:900}},
       ROLETA_MODELS.map(function(m){
         var isA = rModel===m.key;
         return ce("button",{
@@ -1314,15 +1310,15 @@ export function ProdCard(p){
             if(m.key!=="duo" && rSystem==="polautomatyczny") newSys=null;
             p.onChange(mg(prod,{c:mg(c,{rModel:m.key,rSystem:newSys})}));
           },
-          style:{padding:"0 0 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:0,overflow:"hidden",transition:"all .18s"}
+          style:{padding:"0 0 6px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:0,overflow:"hidden",transition:"all .18s"}
         },
           ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-            ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+            ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"56px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
 
             ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
-            isA?ce("div",{style:{position:"absolute",top:6,left:6,width:22,height:22,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
+            isA?ce("div",{style:{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
           ),
-          ce("span",{style:{fontSize:12,fontWeight:isA?700:400,color:isA?"var(--violet-dark)":"var(--t1)",marginTop:8,lineHeight:1.3,textAlign:"center"}},m.label)
+          ce("span",{style:{fontSize:12,fontWeight:isA?700:400,color:isA?"var(--violet-dark)":"var(--t1)",marginTop:5,lineHeight:1.3,textAlign:"center"}},m.label)
         );
       })
     );
@@ -1570,10 +1566,9 @@ export function ProdCard(p){
       ),
       // SEKCJA 2: Model rolety
       ce(Section,{num:"2",title:"Model"},
-        ce("p",{style:{fontSize:13,color:"var(--t2)",marginBottom:16}},"Wybierz model rolety"),
         roletaModelSelector,
-        isDuo?ce("div",{style:{marginTop:20}},
-          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"MODEL SZYCIA (Duo)"),
+        isDuo?ce("div",{style:{marginTop:12}},
+          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"MODEL SZYCIA (Duo)"),
           ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
             ROLETA_MODELS.filter(function(m){return m.key!=="duo";}).map(function(m){
               var isA=c.rDuoModel===m.key;
@@ -1794,33 +1789,31 @@ export function ProdCard(p){
     var isMarcin=c.ksBrand==="marcin";
     var hasGrey=isMarcin||(!isMSigma&&c.ks!=="wave");
     form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,marginBottom:12,alignItems:"start"}},
+        ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZ. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST})),
+        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZ. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"\u2013",style:IST})),
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.len||"",onChange:function(ev){sp("len",ev.target.value);},placeholder:"np. 250",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){spArc("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm) — rozstaw ko\u0144c\u00f3w"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKs||"",onChange:function(ev){sp("hKs",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"G\u0141\u0118B. \u0141UKU (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){spArc("arcDepth",ev.target.value);},placeholder:"\u2013",style:IST})),
+        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"\u2013",style:IST})),
+        ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pts||"",onChange:function(ev){sp("pts",ev.target.value);},placeholder:"0",style:IST}))
       ),
       arcInfo(),
-      ce("div",{style:{marginBottom:12}},
-        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",color:"var(--t3)",marginBottom:6,textTransform:"uppercase"}},"PRODUCENT SZYNY"),
-        ce(Chips,{items:[
-          ce(Chip,{key:"forest",label:"Forest KS",active:!isMSigma,onClick:function(){sc("ksBrand","forest");}}),
-          ce(Chip,{key:"msigma",label:"Mio Decor Sigma",active:isMSigma,onClick:function(){sc("ksBrand","msigma");}}),
-          ce(Chip,{key:"marcin",label:"Marcin Dekor",active:isMarcin,onClick:function(){sc("ksBrand","marcin");}})
-        ]})
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginBottom:8}},
+          ce(Chip,{fill:1,key:"forest",label:"Forest KS",active:!isMSigma&&!isMarcin,onClick:function(){sc("ksBrand","forest");}}),
+          ce(Chip,{fill:1,key:"msigma",label:"Mio Decor Sigma",active:isMSigma,onClick:function(){sc("ksBrand","msigma");}}),
+          ce(Chip,{fill:1,key:"marcin",label:"Marcin Dekor",active:isMarcin,onClick:function(){sc("ksBrand","marcin");}})
       ),
-      ce(Chips,{items:[
-        isMarcin?null:ce(Chip,{key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
-        isMarcin?null:ce(Chip,{key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
-        ce(Chip,{key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}),
-        ce(Chip,{key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}),
-        hasGrey?ce(Chip,{key:"sz",label:"Szara",active:c.kk==="szara",onClick:function(){sc("kk","szara");}}):null,
-        ce(Chip,{key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
-      ]}),
-      c.km==="sciana"?ce("div",{style:{marginTop:12}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:8}},
+          isMarcin?null:ce(Chip,{fill:1,key:"fl",label:"Flex",active:!c.ks||c.ks==="flex",onClick:function(){sc("ks","flex");}}),
+          isMarcin?null:ce(Chip,{fill:1,key:"wv",label:"Wave",active:c.ks==="wave",onClick:function(){sc("ks","wave");}}),
+          ce(Chip,{fill:1,key:"bi",label:"Bia\u0142a",active:!c.kk||c.kk==="biala",onClick:function(){sc("kk","biala");}}),
+          ce(Chip,{fill:1,key:"cz",label:"Czarna",active:c.kk==="czarna",onClick:function(){sc("kk","czarna");}}),
+          hasGrey?ce(Chip,{fill:1,key:"sz",label:"Szara",active:c.kk==="szara",onClick:function(){sc("kk","szara");}}):null,
+          ce(Chip,{fill:1,key:"sc",label:"Monta\u017c \u015bcienny",active:c.km==="sciana",onClick:function(){tc("km","sufit","sciana");}})
+      ),
+      c.km==="sciana"?ce("div",{style:{marginTop:4}},
         ce(Chips,{items:[
           ce(Chip,{key:"wp",label:"Uchwyt pojedynczy (20 z\u0142 co 60 cm)",active:c.kmWall!=="podwojny",onClick:function(){sc("kmWall","pojedynczy");}}),
           ce(Chip,{key:"wd",label:"Uchwyt podw\xf3jny (35 z\u0142 co 60 cm)",active:c.kmWall==="podwojny",onClick:function(){sc("kmWall","podwojny");}})
@@ -2584,6 +2577,13 @@ export function ProdCard(p){
           style:Object.assign({},IST,{width:"100%"})
         })
       ):null,
+      (innyKat==="narzuta"||innyKat==="poduszki")?ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          ce(Fld,{label:innyKat==="poduszki"?"SZEROKO\u015a\u0106 POSZEWKI (cm)":"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 50",style:IST})),
+          ce(Fld,{label:innyKat==="poduszki"?"WYSOKO\u015a\u0106 POSZEWKI (cm)":"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 50",style:IST}))
+        ),
+        ce(Fld,{label:"TKANINA / KOLOR (do zlecenia szycia)"},ce("input",{type:"text",value:prod.innyTkanina||"",onChange:function(ev){p.onChange(mg(prod,{innyTkanina:ev.target.value||undefined}));},placeholder:"np. Velvet 12 beż",style:Object.assign({},IST,{width:"100%"})}))
+      ):null,
       innyKat?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"CENA ZA SZT. (z\u0142)"},ce("input",{type:"text",inputMode:"decimal",value:c.innyCena!=null?c.innyCena:"",onChange:function(ev){sc("innyCena",ev.target.value===""?null:ev.target.value);},placeholder:"np. 250",style:IST}))
@@ -2600,7 +2600,7 @@ export function ProdCard(p){
   }
 
   // ▼ NOWE: szerokość pomieszczenia — wszystkie karnisze/szyny
-  if(["szyna","karnisz","prestige_round","prestige_square","shuttle","karnisz_dek"].indexOf(prod.type)>=0){
+  if(["karnisz","prestige_round","prestige_square","shuttle","karnisz_dek"].indexOf(prod.type)>=0){
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
         ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST}))
@@ -2651,10 +2651,10 @@ export function ProdCard(p){
         var t=pendingType;
         p.onChange(mg(prod,{type:t.type||t.id,c:mg(mg({split:"unequal"},t.set||{}),keep.c),par:keep.par,panels:[],
           fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,
-          innyNazwa:undefined,innyKat:undefined}));
+          innyNazwa:undefined,innyKat:undefined,innyTkanina:undefined}));
       }:null,
       onConfirm:function(){
-        p.onChange(mg(prod,{type:pendingType.type||pendingType.id,c:mg({split:"unequal"},pendingType.set||{}),par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
+        p.onChange(mg(prod,{type:pendingType.type||pendingType.id,c:mg({split:"unequal"},pendingType.set||{}),par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined,innyTkanina:undefined}));
       },
       onClose:function(){setPendingType(null);}
     }):null,

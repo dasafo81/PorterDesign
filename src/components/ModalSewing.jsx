@@ -58,7 +58,7 @@ export function ModalSewing(p){
   // jest czystą funkcją rooms, więc osobny baseRows do porównania nie jest tu
   // potrzebny.
   var rw=useState(savedDraft&&savedDraft.rows?savedDraft.rows:buildSewingRows(p.client)),allRows=rw[0],setAllRows=rw[1];
-  var hasCurtains=allRows.some(function(r){return r._type!=='roleta';});
+  var hasCurtains=allRows.some(function(r){return r._type!=='roleta'&&r._type!=='inne';});
   var hasRolety=allRows.some(function(r){return r._type==='roleta';});
   var hasBothSewTypes=hasCurtains&&hasRolety;
   function setSewRowField(i,key,v){
@@ -94,11 +94,12 @@ export function ModalSewing(p){
             sewRowInput(i,'prod','Producent',110),
             sewRowInput(i,'wCm','Szer. (cm)',80),
             sewRowInput(i,'hCm','Wys. (cm)',80),
-            isRoleta?sewRowInput(i,'nadprozeCm','Wys. nadproża',100):sewRowInput(i,'szStyle','Model szycia',100),
-            isRoleta?sewRowInput(i,'rSystem','Mechanizm',110):sewRowInput(i,'marszczenie','Marszczenie',90),
-            isRoleta?sewRowInput(i,'stronaObslugi','Strona łańcuszka',110):sewRowInput(i,'split','Podział',110),
+            r._type==='inne'?sewRowInput(i,'qty','Ilość (szt.)',80):null,
+            r._type==='inne'?null:(isRoleta?sewRowInput(i,'nadprozeCm','Wys. nadproża',100):sewRowInput(i,'szStyle','Model szycia',100)),
+            r._type==='inne'?null:(isRoleta?sewRowInput(i,'rSystem','Mechanizm',110):sewRowInput(i,'marszczenie','Marszczenie',90)),
+            r._type==='inne'?null:(isRoleta?sewRowInput(i,'stronaObslugi','Strona łańcuszka',110):sewRowInput(i,'split','Podział',110)),
             isRoleta?sewRowInput(i,'kolorLancuszka','Kolor łańcuszka',110):null,
-            sewRowInput(i,'podszewka','Podszewka',90),
+            r._type==='inne'?null:sewRowInput(i,'podszewka','Podszewka',90),
             sewRowInput(i,'note','Uwagi',150)
           );
         })
@@ -201,7 +202,7 @@ export function ModalSewing(p){
   function generateSingle(){
     if(hasCurtains){
       setSewOptsFrom('single');setSewOptsAction('preview');
-      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta';})));
+      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta'&&r._type!=='inne';})));
       setShowSewOpts(true);
     }else{doGenerateSingle(null);}
   }
@@ -216,7 +217,7 @@ export function ModalSewing(p){
 
   function generateSplitBatch(){
     if(!selIds.length){alert('Wybierz przynajmniej jedną pozycję.');return;}
-    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta';});
+    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta'&&r._type!=='inne';});
     if(sc.length){setSewOptsFrom('split');setSewOptsAction('preview');if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));setShowSewOpts(true);return;}
     doGenerateSplitBatch(null);
   }
@@ -233,6 +234,10 @@ export function ModalSewing(p){
   // Wysyłka zlecenia mailem do szwalni — ten sam dokument co podgląd, tylko jako
   // załącznik PDF w modalu maila (p.onMailDoc pochodzi z App i otwiera ModalClientEmail).
   function mailSewing(rows,house,dta){
+    // Termin realizacji do zapisania na dealu: przy dwóch typach szycia łączymy oba terminy.
+    var termLabel=(dta.termCurtains&&dta.termRolety&&dta.termCurtains!==dta.termRolety)
+      ?'Zasłony: '+dta.termCurtains+', rolety: '+dta.termRolety
+      :(dta.term||dta.termCurtains||dta.termRolety||'');
     if(!p.onMailDoc){alert('Wysy\u0142ka maila niedost\u0119pna z tego miejsca.');return;}
     // Zabezpieczenie: b\u0142\u0105d w budowaniu dokumentu (np. wiersz z brakuj\u0105cymi danymi)
     // ma si\u0119 sko\u0144czy\u0107 czytelnym alertem, a nie crashem ca\u0142ej aplikacji.
@@ -240,7 +245,8 @@ export function ModalSewing(p){
       var html=buildSewingOrderHtmlFromRows(rows,p.client,dta);
       if(!html){alert('Brak wybranych pozycji.');return;}
       p.onMailDoc(html,'Zlecenie szycia - '+((p.client&&p.client.name)||'klient')+'.pdf',{
-        to:'',supplier:house,noTemplates:true,title:'✉️ Zlecenie szycia do szwalni',
+        to:'',supplier:house,noTemplates:true,
+        onSent:function(){if(p.onSewingSent)p.onSewingSent(house,termLabel);},title:'✉️ Zlecenie szycia do szwalni',
         subject:'Zlecenie szycia \u2014 '+((p.client&&p.client.name)||''),
         body:['Dzie\u0144 dobry,','W za\u0142\u0105czeniu przesy\u0142am zlecenie szycia.',
           'Prosz\u0119 o potwierdzenie przyj\u0119cia i terminu realizacji.']
@@ -254,7 +260,7 @@ export function ModalSewing(p){
   function mailSingle(){
     if(hasCurtains){
       setSewOptsFrom('single');setSewOptsAction('mail');
-      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta';})));
+      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta'&&r._type!=='inne';})));
       setShowSewOpts(true);
     }else{doMailSingle(null);}
   }
@@ -266,7 +272,7 @@ export function ModalSewing(p){
   }
   function mailSplitBatch(){
     if(!selIds.length){alert('Wybierz przynajmniej jedn\u0105 pozycj\u0119.');return;}
-    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta';});
+    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta'&&r._type!=='inne';});
     if(sc.length){
       setSewOptsFrom('split');setSewOptsAction('mail');
       if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));

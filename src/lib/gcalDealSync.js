@@ -29,7 +29,12 @@ export function dealFieldTitle(field, deal) {
   return "Follow-up";
 }
 
-function defaultDurMin(field) {
+var DURATION_FIELD = { visit_date: "visit_duration_min", delivery_date: "delivery_duration_min", delivery_date2: "delivery2_duration_min", followup_date: "followup_duration_min" };
+
+// Czas trwania zapisany w dealu (z godziny „DO” w oknie Google), a bez niego domyślny
+function defaultDurMin(field, deal) {
+  var saved = deal && Number(deal[DURATION_FIELD[field]]);
+  if (saved > 0) return saved;
   if (field === "visit_date") return 60;
   if (field === "followup_date") return 30;
   return 180;
@@ -168,7 +173,7 @@ export function syncDealDateToGcal(ctx, deal, client, field, calList) {
     description: parts.join("\n"),
     location: addr,
     start: start,
-    durMin: defaultDurMin(field),
+    durMin: defaultDurMin(field, deal),
     clientName: client && client.name
   };
   return Promise.all(targets.map(function (calId) {
