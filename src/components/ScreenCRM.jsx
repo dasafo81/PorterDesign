@@ -227,6 +227,7 @@ export function ModalDeal(p){
   var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
   var sdl=useState(d.deadline?String(d.deadline).slice(0,10):""),deadline=sdl[0],setDeadline=sdl[1];
   var ssh=useState(d.sewing_house||""),sewingHouse=ssh[0],setSewingHouse=ssh[1];
+  var sst=useState(d.sewing_term||""),sewingTerm=sst[0],setSewingTerm=sst[1];
   var ssd=useState(d.sewing_sent_date?d.sewing_sent_date.slice(0,10):""),sewingSentDate=ssd[0],setSewingSentDate=ssd[1];
   var srev=useState(!!d.review_sent),reviewSent=srev[0],setReviewSent=srev[1];
   var sinv=useState(!!d.invoice_sent),invoiceSent=sinv[0],setInvoiceSent=sinv[1];
@@ -767,6 +768,7 @@ export function ModalDeal(p){
       acquisition:acquisition||null,
       sewing_house:sewingHouse||null,
       sewing_sent_date:sewingSentDate||null,
+      sewing_term:sewingTerm||null,
       review_sent:reviewSent,
       invoice_sent:invoiceSent,
       washing_sent:washingSent,
@@ -1652,7 +1654,7 @@ export function ModalDeal(p){
           ORDER_STEPS.map(function(st){
             return ce(CheckRow,{key:st.field,checked:!!d[st.field],onChange:function(){toggleOrderStep(st.field);},
               label:st.icon+" "+st.doneLabel,
-              sublabel:st.field==="order_sewing"&&sewingHouse&&sewingHouse!=="__custom__"?sewingHouse:null});
+              sublabel:st.field==="order_sewing"&&sewingHouse&&sewingHouse!=="__custom__"?(sewingHouse+(sewingTerm?" · termin: "+sewingTerm:"")):null});
           }),
           (ORDER_STEPS.every(function(s){return !!d[s.field];})&&d.stage==="realizacja")
             ?ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.4}},"✓ Wszystko zamówione — deal przeniesiony do Realizacji")
@@ -1673,6 +1675,10 @@ export function ModalDeal(p){
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA WYSŁANIA ZLECENIA"),
             ce("input",{type:"date",value:sewingSentDate,onChange:function(ev){setSewingSentDate(ev.target.value);},style:INP})
+          ),
+          ce("div",null,
+            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"TERMIN REALIZACJI"),
+            ce("input",{type:"text",value:sewingTerm,placeholder:"np. 25.04.2026",onChange:function(ev){setSewingTerm(ev.target.value);},style:INP})
           )
         ),
 

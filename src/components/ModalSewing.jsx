@@ -234,6 +234,10 @@ export function ModalSewing(p){
   // Wysyłka zlecenia mailem do szwalni — ten sam dokument co podgląd, tylko jako
   // załącznik PDF w modalu maila (p.onMailDoc pochodzi z App i otwiera ModalClientEmail).
   function mailSewing(rows,house,dta){
+    // Termin realizacji do zapisania na dealu: przy dwóch typach szycia łączymy oba terminy.
+    var termLabel=(dta.termCurtains&&dta.termRolety&&dta.termCurtains!==dta.termRolety)
+      ?'Zasłony: '+dta.termCurtains+', rolety: '+dta.termRolety
+      :(dta.term||dta.termCurtains||dta.termRolety||'');
     if(!p.onMailDoc){alert('Wysy\u0142ka maila niedost\u0119pna z tego miejsca.');return;}
     // Zabezpieczenie: b\u0142\u0105d w budowaniu dokumentu (np. wiersz z brakuj\u0105cymi danymi)
     // ma si\u0119 sko\u0144czy\u0107 czytelnym alertem, a nie crashem ca\u0142ej aplikacji.
@@ -242,7 +246,7 @@ export function ModalSewing(p){
       if(!html){alert('Brak wybranych pozycji.');return;}
       p.onMailDoc(html,'Zlecenie szycia - '+((p.client&&p.client.name)||'klient')+'.pdf',{
         to:'',supplier:house,noTemplates:true,
-        onSent:function(){if(p.onSewingSent)p.onSewingSent(house);},title:'✉️ Zlecenie szycia do szwalni',
+        onSent:function(){if(p.onSewingSent)p.onSewingSent(house,termLabel);},title:'✉️ Zlecenie szycia do szwalni',
         subject:'Zlecenie szycia \u2014 '+((p.client&&p.client.name)||''),
         body:['Dzie\u0144 dobry,','W za\u0142\u0105czeniu przesy\u0142am zlecenie szycia.',
           'Prosz\u0119 o potwierdzenie przyj\u0119cia i terminu realizacji.']

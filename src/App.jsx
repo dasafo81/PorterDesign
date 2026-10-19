@@ -2868,7 +2868,7 @@ export function App(p){
   else if(screen==="sewingPreview"&&curClient){
     content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");},onMailDoc:mailDoc,updateClient:updateClient,
       // Po faktycznej wysyłce zlecenia mailem zapisujemy na dealu, do której szwalni i kiedy poszło.
-      onSewingSent:function(house){
+      onSewingSent:function(house,term){
         if(!curDeal||!house)return;
         var now=new Date();
         var today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
@@ -2876,7 +2876,7 @@ export function App(p){
         var known=["TRINITAS — ul. Składowa 9, 86-300 Grudziądz","LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock",
           "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów","Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"]
           .find(function(o){var k=normSupName(o);return k===key||(key&&(k.indexOf(key)>=0||key.indexOf(k)>=0))||(key.split(" ")[0]===k.split(" ")[0]);});
-        var patch={sewing_house:known||String(house).trim(),sewing_sent_date:today,updated_at:now.toISOString()};
+        var patch={sewing_house:known||String(house).trim(),sewing_sent_date:today,sewing_term:term||null,updated_at:now.toISOString()};
         sbApi.updateDeal(curDeal.id,patch).then(function(){
           setDeals(function(prev){return (prev||[]).map(function(d){return d.id===curDeal.id?Object.assign({},d,patch):d;});});
         }).catch(function(e){console.warn("[deal] szwalnia nie zapisana",e&&e.message);});
