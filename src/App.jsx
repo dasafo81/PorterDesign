@@ -392,14 +392,32 @@ export function App(p){
       if(stopped||document.hidden)return;
       // focus + visibilitychange potrafia wpasc razem — dlawimy do 1 na 5 s.
       var now=Date.now();
-      if(now-lastListReloadRef.current<5000)return;
+      // Do 2026-10 limit wynosil 5 s i kazde odswiezenie ciagnelo CALA tabele
+      // clients (ciezkie `rooms`) — Supabase ostrzegal o wyczerpaniu Disk IO.
+      // Teraz: 60 s i pobieramy pelne wiersze tylko tych klientow, ktorych
+      // updated_at sie zmienil (lub ktorych jeszcze nie mamy).
+      if(now-lastListReloadRef.current<60000)return;
       lastListReloadRef.current=now;
-      Promise.all([sbApi.getClients(),sbApi.getDeals()]).then(function(res){
+      sbApi.getClientsMeta().then(function(metas){
+        var have={};
+        (clientsRef.current||[]).forEach(function(cl){have[cl.id]=cl.updated_at;});
+        var changed=(metas||[]).filter(function(m){return !(m.id in have)||have[m.id]!==m.updated_at;}).map(function(m){return m.id;});
+        return Promise.all([sbApi.getClientsByIds(changed),sbApi.getDeals()]).then(function(r){
+          return [r[0],r[1],metas||[]];
+        });
+      }).then(function(res){
         if(stopped)return;
-        var fresh=migrateClients(res[0]||[]);
+        var changedRows=migrateClients(res[0]||[]);
+        var changedById={};
+        changedRows.forEach(function(cl){changedById[cl.id]=cl;});
         setClients(function(cs){
           var openId=curClientIdRef.current;
           var local=(cs||[]).find(function(cl){return cl.id===openId;});
+          var byId={};
+          (cs||[]).forEach(function(cl){byId[cl.id]=cl;});
+          // Kolejnosc jak w getClients (id malejaco); usunieci z serwera znikaja.
+          var fresh=res[2].map(function(m){return changedById[m.id]||byId[m.id];}).filter(Boolean)
+            .sort(function(a,b){return b.id-a.id;});
           var merged=fresh.map(function(cl){return (local&&cl.id===openId)?local:cl;});
           // Klienci zalozeni offline nie istnieja jeszcze na serwerze \u2014 bez tego
           // odswiezenie listy skasowaloby ich razem z pomiarami.

@@ -61,6 +61,16 @@ export const sbApi = {
     // deleted_at is null \u2014 klienci w Koszu nie trafiaja na liste.
     return sbFetch("GET","clients?select=*&deleted_at=is.null&order=id.desc");
   },
+  // Lekka lista (id + updated_at) — do odswiezania w tle bez ciagniecia ciezkiego
+  // JSON-a `rooms` wszystkich klientow (zrodlo wysokiego Disk IO w Supabase).
+  getClientsMeta: function(){
+    return sbFetch("GET","clients?select=id,updated_at&deleted_at=is.null");
+  },
+  // Pelne wiersze tylko dla podanych id (zmienieni / nowi klienci).
+  getClientsByIds: function(ids){
+    if(!ids||!ids.length)return Promise.resolve([]);
+    return sbFetch("GET","clients?select=*&deleted_at=is.null&id=in.("+ids.join(",")+")&order=id.desc");
+  },
   // Kosz: klienci usunieci, ale wciaz odzyskiwalni.
   getDeletedClients: function(){
     return sbFetch("GET","clients?select=*&deleted_at=not.is.null&order=deleted_at.desc");
