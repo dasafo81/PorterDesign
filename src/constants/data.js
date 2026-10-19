@@ -7809,7 +7809,7 @@ export function buildSewingRows(client){
           hCm:(pc.hDiff&&(pc.split==="equal"||(pc.split||"unequal")==="unequal")&&(+pc.leftH||+par.hCm)!==(+pc.rightH||+par.hCm))?("<strong>Lewa "+(+pc.leftH||+par.hCm)+" cm</strong><br><strong>Prawa "+(+pc.rightH||+par.hCm)+"</strong>"):(par.hCm||"-"),
           wCm:par.wCm||"-",
           szStyle:sz,marszczenie:mars,
-          tasma:(pc.model==="tasma"||pc.model==="falda")?(pc.szerokosc_tasmy||10)+" cm":"-",
+          tasma:(pc.model==="tasma"||pc.model==="falda")?(pc.szerokosc_tasmy||8)+" cm":"-",
           haczyk:(pc.model==="tasma"||pc.model==="falda")?(pc.wysokosc_haczyka!=null?pc.wysokosc_haczyka:2.5)+" cm":"-",
           split:splitDesc,bottom:bottomDesc,
           glide:sz==="Wave"?"Odst\u0119p "+(pc.glideGap||8)+" cm":"-",

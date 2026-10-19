@@ -688,7 +688,7 @@ export function ProdCard(p){
           return ce("button",{
             key:m.key,
             onClick:function(){
-              p.onChange(mg(prod,{c:mg(c,{model:m.key,foldType:m.key==="falda"?(c.foldType||null):undefined})}));
+              p.onChange(mg(prod,{c:mg(c,{model:m.key,foldType:m.key==="falda"?(c.foldType||null):undefined,szerokosc_tasmy:(c.model==null&&c.szerokosc_tasmy==null)?10:c.szerokosc_tasmy})}));
             },
             style:{
               padding:"0 0 6px",borderRadius:12,
@@ -878,7 +878,7 @@ export function ProdCard(p){
 
     // ── Szerokość taśmy dropdown ───────────────────────────────────────
     var tasmyOptions=[6,7,8,9,10,12];
-    var tVal=c.szerokosc_tasmy||10;
+    var tVal=c.szerokosc_tasmy||8;
     var tasmaSection=ce("div",{style:{marginTop:0}},
       ce(Fld,{label:"SZEROKO\u015a\u0106 TA\u015aMY"},
         ce("div",{style:{position:"relative",width:150}},
