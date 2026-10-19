@@ -678,7 +678,7 @@ export function ProdCard(p){
 
     // ── SECTION 0: Model selection ─────────────────────────────────────
     var modelSelector = ce("div",{style:{marginBottom:0}},
-      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:580}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:8,maxWidth:760}},
         [
           {key:"falda",label:"Fa\u0142da",imgSrc:IMG_MODEL_FALDA},
           {key:"wave",label:"Zas\u0142ona Wave",imgSrc:IMG_MODEL_WAVE},
@@ -691,7 +691,7 @@ export function ProdCard(p){
               p.onChange(mg(prod,{c:mg(c,{model:m.key,foldType:m.key==="falda"?(c.foldType||null):undefined})}));
             },
             style:{
-              padding:"0 0 10px",borderRadius:12,
+              padding:"0 0 6px",borderRadius:12,
               border:"2px solid "+(isActive?"var(--violet)":"var(--bd2)"),
               background:"var(--bg)",
               cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",
@@ -699,15 +699,15 @@ export function ProdCard(p){
             }
           },
             ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-              ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+              ce("img",{src:m.imgSrc,alt:m.label,style:{width:"100%",height:"56px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
 
               ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
-              isActive?ce("div",{style:{position:"absolute",top:8,left:8,width:26,height:26,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:700}},"✓"):null
+              isActive?ce("div",{style:{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
             ),
             ce("span",{style:{
               fontSize:12,
               color:"var(--t1)",
-              marginTop:8,paddingLeft:6,paddingRight:6,
+              marginTop:5,paddingLeft:6,paddingRight:6,
               lineHeight:1.3,textAlign:"center",fontWeight:isActive?700:400
             }},m.label)
           );
@@ -725,15 +725,15 @@ export function ProdCard(p){
         {key:"plaska",label:"P\u0142aska",imgSrc:IMG_FALDA_PLASKA},
         {key:"studio",label:"Studio",imgSrc:IMG_FALDA_STUDIO}
       ];
-      foldTypeSelector = ce("div",{style:{marginTop:20}},
-        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,maxWidth:580}},
+      foldTypeSelector = ce("div",{style:{marginTop:8}},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:8,maxWidth:760}},
           foldTypes.map(function(ft){
             var isActive=foldType!==null&&foldType===ft.key;
             return ce("button",{
               key:ft.key,
               onClick:function(){sc("foldType",ft.key);},
               style:{
-                padding:"0 0 10px",borderRadius:12,
+                padding:"0 0 6px",borderRadius:12,
                 border:"2px solid "+(isActive?"var(--violet)":"var(--bd2)"),
                 background:"var(--bg)",
                 cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",
@@ -741,15 +741,15 @@ export function ProdCard(p){
               }
             },
               ce("div",{style:{position:"relative",width:"100%",lineHeight:0}},
-                ce("img",{src:ft.imgSrc,alt:ft.label,style:{width:"100%",height:"90px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
+                ce("img",{src:ft.imgSrc,alt:ft.label,style:{width:"100%",height:"56px",objectFit:"cover",objectPosition:"top",display:"block",borderRadius:"10px 10px 0 0",filter:"brightness(1.3) saturate(.7) contrast(.82)"}}),
 
                 ce("div",{style:{position:"absolute",left:0,top:0,right:0,bottom:0,background:"color-mix(in srgb, var(--bg) 38%, transparent)",borderRadius:"10px 10px 0 0",pointerEvents:"none"}}),
-                isActive?ce("div",{style:{position:"absolute",top:8,left:8,width:24,height:24,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13,fontWeight:700}},"✓"):null
+                isActive?ce("div",{style:{position:"absolute",top:5,left:5,width:20,height:20,borderRadius:"50%",background:"var(--violet)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:12,fontWeight:700}},"✓"):null
               ),
               ce("span",{style:{
                 fontSize:12,fontWeight:isActive?600:400,
                 color:isActive?"var(--violet-dark)":"var(--t1)",
-                marginTop:8
+                marginTop:5
               }},ft.label)
             );
           })
@@ -773,10 +773,10 @@ export function ProdCard(p){
         var cS=isA?"#f3dcc6":"#e6e9f1";
         var rC=isA?"#c4803f":"#a3aabb";
         var wC=isA?"#f7f1ea":"#f4f5f9";
-        var svgL='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M9 6 Q12 20 10 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M16 6 Q19 22 17 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M23 6 Q26 19 24 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgR='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M40 6 Q43 20 41 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M47 6 Q50 22 48 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M54 6 Q57 19 55 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgE='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M20 6 Q23 22 21 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M41 6 Q44 20 42 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M51 6 Q54 22 52 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
-        var svgU='<svg width="54" height="41" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L27 48 Q24 22 27 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M18 6 Q21 22 19 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M31 6 Q34 18 32 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M35 6 Q38 20 36 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M45 6 Q48 22 46 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M55 6 Q58 19 56 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgL='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M9 6 Q12 20 10 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M16 6 Q19 22 17 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M23 6 Q26 19 24 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgR='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M40 6 Q43 20 41 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M47 6 Q50 22 48 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M54 6 Q57 19 55 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgE='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L31 48 Q28 22 31 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M20 6 Q23 22 21 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M37 6 Q40 18 38 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M41 6 Q44 20 42 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M51 6 Q54 22 52 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
+        var svgU='<svg width="40" height="30" viewBox="0 0 68 52"><rect width="68" height="52" fill="'+wC+'"/><rect x="3" y="4" width="62" height="2" rx="1" fill="'+rC+'"/><rect x="5" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><rect x="60" y="3" width="3" height="6" rx="1.5" fill="'+rC+'"/><path d="M6 6 Q9 18 7 48 L27 48 Q24 22 27 6 Z" fill="'+cC+'"/><path d="M10 6 Q13 20 11 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M18 6 Q21 22 19 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M31 6 Q34 18 32 48 L62 48 Q59 22 62 6 Z" fill="'+cC+'"/><path d="M35 6 Q38 20 36 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M45 6 Q48 22 46 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/><path d="M55 6 Q58 19 56 48" stroke="'+cS+'" stroke-width="1.5" fill="none"/></svg>';
         var svgMap={left:svgL,right:svgR,equal:svgE,unequal:svgU};
         return ce("button",{
           key:opt.key,
@@ -785,7 +785,7 @@ export function ProdCard(p){
             if(opt.key==="unequal"&&totalW>0&&!c.leftW){newC=mg(newC,{leftW:Math.floor(totalW/2),rightW:Math.ceil(totalW/2)});}
             p.onChange(mg(prod,{c:newC}));
           },
-          style:{padding:"8px 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t2)",fontSize:12,fontWeight:isA?600:400,cursor:"pointer",display:"flex",flexDirection:"row",justifyContent:"center",alignItems:"center",gap:10,transition:"all .18s"}
+          style:{padding:"4px 10px",borderRadius:12,border:"2px solid "+(isA?"var(--violet)":"var(--bd2)"),background:"var(--bg)",color:isA?"var(--violet-dark)":"var(--t2)",fontSize:12,fontWeight:isA?600:400,cursor:"pointer",display:"flex",flexDirection:"row",justifyContent:"center",alignItems:"center",gap:10,transition:"all .18s"}
         },
           ce("div",{dangerouslySetInnerHTML:{__html:svgMap[opt.key]},style:{borderRadius:6,overflow:"hidden",lineHeight:0}}),
           ce("span",{style:{lineHeight:1.3,textAlign:"center"}},opt.label)
@@ -1024,18 +1024,14 @@ export function ProdCard(p){
 
       // SEKCJA 2: Model zasłony
       ce(Section,{num:"2",title:"Model"},
-        ce("p",{style:{fontSize:13,color:"var(--t2)",marginBottom:16}},"Wybierz model zas\u0142ony"),
         modelSelector,
-        foldTypeSelector?ce("div",{style:{marginTop:4}},
-          ce("p",{style:{fontSize:13,color:"var(--t2)",margin:"16px 0 0"}},"Wybierz rodzaj fa\u0142dy"),
-          foldTypeSelector
-        ):null
+        foldTypeSelector
       ),
 
       // SEKCJA 3: Podział + szczegóły (zależne od modelu)
       model?ce(Section,{num:"3",title:"Szczeg\xf3\u0142y"},
         ce("div",{style:{marginBottom:6}},
-          ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:8,fontStyle:"italic"}},"(Je\u015bli wybierzesz nier\xf3wn\u0105 par\u0119, zmotoryzowane szyny nie b\u0119d\u0105 dost\u0119pne)"),
+          ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:6,fontStyle:"italic"}},"(Je\u015bli wybierzesz nier\xf3wn\u0105 par\u0119, zmotoryzowane szyny nie b\u0119d\u0105 dost\u0119pne)"),
           splitSelector,
           splitFields,
           heightDiff
