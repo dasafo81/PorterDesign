@@ -418,14 +418,50 @@ function AttachmentsSection(p){
   var tpl=allTpls.find(function(t){return t.id===p.selTemplate;})||allTpls[0];
   var suggested=tpl?tpl.suggestAttachments||[]:[];
 
-  function addFiles(e){
-    var files=Array.from(e.target.files||[]);
+  var sdo=us(false),dragOver=sdo[0],setDragOver=sdo[1];
+  var dragDepth=React.useRef(0);
+
+  function pushFiles(files){
+    if(!files.length)return;
     p.setAttachments(function(prev){
-      return prev.concat(files.map(function(f){
-        return {id:"att_"+Date.now()+"_"+f.name,name:f.name,size:f.size,type:"upload",file:f};
+      return prev.concat(files.map(function(f,i){
+        return {id:"att_"+Date.now()+"_"+i+"_"+f.name,name:f.name,size:f.size,type:"upload",file:f};
       }));
     });
+  }
+
+  function addFiles(e){
+    pushFiles(Array.from(e.target.files||[]));
     e.target.value="";
+  }
+
+  // Drag & drop: licznik wejść/wyjść, bo dragenter/dragleave odpalają się też dla elementów potomnych
+  function hasFiles(e){
+    var t=e.dataTransfer&&e.dataTransfer.types;
+    return !!t&&Array.prototype.indexOf.call(t,"Files")!==-1;
+  }
+  function onDragEnter(e){
+    if(!hasFiles(e))return;
+    e.preventDefault();
+    dragDepth.current++;
+    setDragOver(true);
+  }
+  function onDragOver(e){
+    if(!hasFiles(e))return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect="copy";
+  }
+  function onDragLeave(e){
+    if(!hasFiles(e))return;
+    dragDepth.current=Math.max(0,dragDepth.current-1);
+    if(dragDepth.current===0)setDragOver(false);
+  }
+  function onDrop(e){
+    if(!hasFiles(e))return;
+    e.preventDefault();
+    dragDepth.current=0;
+    setDragOver(false);
+    pushFiles(Array.from(e.dataTransfer.files||[]));
   }
 
   function addPdf(opt){
@@ -447,7 +483,13 @@ function AttachmentsSection(p){
     color:showPicker?"var(--grd)":"var(--t2)"
   };
 
-  return ce("div",{style:{marginBottom:12}},
+  return ce("div",{
+      onDragEnter:onDragEnter,onDragOver:onDragOver,onDragLeave:onDragLeave,onDrop:onDrop,
+      style:{padding:6,margin:"0 -6px 12px",borderRadius:12,
+        border:"2px dashed "+(dragOver?"var(--gr)":"transparent"),
+        background:dragOver?"var(--grl)":"transparent",transition:"background .12s,border-color .12s"}},
+    dragOver?ce("div",{style:{textAlign:"center",fontSize:12,fontWeight:600,color:"var(--grd)",padding:"6px 0",pointerEvents:"none"}},
+      "📎 Upuść pliki, aby dołączyć do wiadomości"):null,
     p.attachments.length>0?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}},
       p.attachments.map(function(att){
         return ce("div",{key:att.id,style:{display:"flex",alignItems:"center",gap:6,
