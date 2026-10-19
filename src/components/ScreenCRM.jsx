@@ -86,6 +86,9 @@ export function deadlineFromNow(){
   return t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
 }
 
+// Kolumna z czasem trwania (min) dla każdego pola terminu w dealu
+export var DEAL_DURATION_FIELD={visit_date:"visit_duration_min",delivery_date:"delivery_duration_min",delivery_date2:"delivery2_duration_min",followup_date:"followup_duration_min"};
+
 export function gcalLink(title,date,desc){
   if(!date)return null;
   var d=new Date(date);
@@ -779,6 +782,14 @@ export function ModalDeal(p){
   // Termin ustawiony z karty deala musi trafić do bazy OD RAZU — wcześniej
   // zapisywał się tylko w stanie lokalnym i znikał, jeśli karta została zamknięta
   // bez kliknięcia „Zapisz” (przez co nie pojawiał się też na kafelku w CRM).
+  function persistDealDuration(field,min){
+    if(!(min>0))return;
+    var patch={};
+    patch[field]=min;
+    sbApi.updateDeal(d.id,patch)
+      .then(function(){if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){console.warn("[deal] czas trwania nie zapisany",e&&e.message);});
+  }
   function persistDealDate(field,val,setter){
     if(setter)setter(val);
     // Natywny picker <input type="datetime-local"> wywołuje onChange przy KAŻDEJ
@@ -1070,7 +1081,8 @@ export function ModalDeal(p){
     Promise.all(targets.map(function(cid){return postToCalendar(cid,gcalToken);}))
       .then(function(){
         var dtStr=dft.date+"T"+dft.timeFrom;
-        if(dft.onSave)dft.onSave(dtStr);
+        var toMin=function(t){var a=String(t||"").split(":");return parseInt(a[0],10)*60+parseInt(a[1]||"0",10);};
+        if(dft.onSave)dft.onSave(dtStr,Math.max(toMin(dft.timeTo)-toMin(dft.timeFrom),0));
         setGcalDraft(null);
         var msg="Dodano do kalendarza! ✅"+(targets.length>1?" ("+targets.length+" kalendarze)":"");
         alert(msg);
@@ -1505,7 +1517,7 @@ export function ModalDeal(p){
               style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
             }),
             gcalToken?ce("button",{
-              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt){persistDealDate("visit_date",dt,setVisitDate);});},
+              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt,dur){persistDealDate("visit_date",dt,setVisitDate);persistDealDuration("visit_duration_min",dur);});},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
             },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):null
@@ -1563,7 +1575,7 @@ export function ModalDeal(p){
               style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
             }),
             gcalToken?ce("button",{
-              onClick:function(){addToGcal("Montaż",delivDate,"",function(dt){persistDealDate("delivery_date",dt,setDelivDate);});},
+              onClick:function(){addToGcal("Montaż",delivDate,"",function(dt,dur){persistDealDate("delivery_date",dt,setDelivDate);persistDealDuration("delivery_duration_min",dur);});},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
             },"📅 "+(delivDate?"Zmień":"Ustaw termin")):null
@@ -1586,7 +1598,7 @@ export function ModalDeal(p){
                 "📅 "+fmtDate(delivDate2)+(delivDate2.length>10?" "+delivDate2.slice(11,16):"")
               ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
               gcalToken?ce("button",{
-                onClick:function(){addToGcal(installLabel2||"Wieszanie",delivDate2,installerCalId2||installerCalId,function(dt){persistDealDate("delivery_date2",dt,setDelivDate2);});},
+                onClick:function(){addToGcal(installLabel2||"Wieszanie",delivDate2,installerCalId2||installerCalId,function(dt,dur){persistDealDate("delivery_date2",dt,setDelivDate2);persistDealDuration("delivery2_duration_min",dur);});},
                 title:"Ustaw termin i dodaj do Google Calendar",
                 style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
               },"📅 "+(delivDate2?"Zmień":"Ustaw termin")):null
@@ -1933,7 +1945,7 @@ export function CRMKalendarz(p){
   function openDealEventPreview(ev){
     var deal=ev.deal,client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||{};
     var address=[client.addr,[client.postal,client.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-    var start=new Date(ev.date),end=new Date(start.getTime()+3600000);
+    var start=new Date(ev.date),end=dealEventEnd(start,ev.client,ev.type,deal);
     setSelectedGcalEv({id:"crm-"+deal.id+"-"+ev.type,summary:ev.label+" — "+ev.client,start:{dateTime:start.toISOString()},end:{dateTime:end.toISOString()},location:address,description:["Klient: "+(client.name||ev.client),client.phone?"Telefon: "+client.phone:null,deal.installer_name?"Montażysta: "+deal.installer_name:null].filter(Boolean).join("\n"),_calName:"Termin z CRM",_readOnly:false,_crmDealId:deal.id,_crmDateField:ev.type==="visit"?"visit_date":(ev.type==="delivery2"?"delivery_date2":(ev.type==="delivery"?"delivery_date":"followup_date"))});
   }
 
@@ -2066,7 +2078,9 @@ export function CRMKalendarz(p){
   // Termin w dealu przechowuje tylko początek. Koniec bierzemy z wpisu w Google
   // Calendar o tym samym starcie i kliencie (tam zapisała go godzina „DO”),
   // a bez takiego wpisu — z domyślnego czasu: pomiar 1 h, montaż/wieszanie 3 h.
-  function dealEventEnd(start,clientName,type){
+  function dealEventEnd(start,clientName,type,deal){
+    var dField=DEAL_DURATION_FIELD[type==="visit"?"visit_date":type==="delivery"?"delivery_date":type==="delivery2"?"delivery_date2":"followup_date"];
+    if(deal&&deal[dField]>0)return new Date(start.getTime()+deal[dField]*60000);
     var match=gcalEvents.find(function(g){
       if(!g.start||!g.start.dateTime||!g.end||!g.end.dateTime)return false;
       return new Date(g.start.dateTime).getTime()===start.getTime()&&(!clientName||(g.summary||"").indexOf(clientName)>=0);
@@ -2211,6 +2225,7 @@ export function CRMKalendarz(p){
         // YYYY-MM-DD, so changing the hour appeared to save but was lost.
         var crmDateTime=new Date(ev.date+"T"+ev.timeFrom+":00");
         crmPatch[ev._crmDateField||"delivery_date"]=crmDateTime.toISOString();
+        crmPatch[DEAL_DURATION_FIELD[ev._crmDateField||"delivery_date"]]=Math.round((end-start)/60000);
         setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
         sbApi.updateDeal(ev._crmDealId,crmPatch)
           .then(function(){
@@ -2307,7 +2322,7 @@ export function CRMKalendarz(p){
     });
     // Deal events
     dealEvents.forEach(function(ev){
-      if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,end:dealEventEnd(ev.date,ev.client,ev.type),dealEv:ev});
+      if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,end:dealEventEnd(ev.date,ev.client,ev.type,ev.deal),dealEv:ev});
     });
     result.sort(function(a,b){return (a.time||0)-(b.time||0);});
     return result;
