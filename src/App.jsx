@@ -3383,6 +3383,8 @@ export function ModalClientEmail(p){
   var extraAttInputRef=React.useRef(null);
   var pdfName=p.pdfName||"Oferta.pdf";
   var sigRef=React.useRef(null);
+  // Skrzynka wybrana w module Poczta (Outlook / Gmail / własna); mailClient ładowany leniwie jak msal.js
+  function mc(){return import('./lib/mailClient.js');}
   // Domyślne załączniki szablonu "Wstępna wycena" (PDF-y z public/mail-att/) — użytkownik może je usunąć
   useEffect(function(){ if(isWstepna)addTemplateFiles(p.tplFiles?{files:p.tplFiles}:TPL_WSTEPNA); },[]);
   // Odpowiedź w wątku klienta: ostatni mail od klienta w Odebranych (Graph createReply)
@@ -3392,7 +3394,8 @@ export function ModalClientEmail(p){
     var addr=String(client.email||"").trim();
     if(p.to!=null||!addr)return;   // dokumenty dla dostawc\u00f3w \u2014 bez w\u0105tku
     var dead=false;
-    import('./msal.js').then(function(m){return m.msalGetToken();}).then(function(tok){
+    // Wątek (createReply na szkicu) działa tylko na Graph — Gmail/IMAP wysyłają zwykły nowy mail.
+    mc().then(function(m){return m.getMailProvider()==="microsoft"?m.mailGetToken():null;}).then(function(tok){
       if(!tok)return null;
       return fetch("https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$search="+encodeURIComponent('"from:'+addr+'"')+"&$top=10&$select=id,subject,receivedDateTime,from",
         {headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
@@ -3419,10 +3422,10 @@ export function ModalClientEmail(p){
   // Adres konta bywa niedostępny/zastępczy w obiekcie brokera ("Połączone konto Microsoft"),
   // więc sprawdzamy kolejno: konto brokera/MSAL + /me z Graph (mail, UPN).
   function loadSignature(){
-    return import('./msal.js').then(function(m){
+    return mc().then(function(m){
       return Promise.all([
-        m.msalGetActiveAccount().catch(function(){return null;}),
-        m.msalGetToken().then(function(tok){
+        m.mailGetActiveAccount().catch(function(){return null;}),
+        m.getMailProvider()!=="microsoft"?null:m.mailGetToken().then(function(tok){
           return tok?fetch("https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName",{headers:{"Authorization":"Bearer "+tok}})
             .then(function(r){return r.ok?r.json():null;}):null;
         }).catch(function(){return null;})
@@ -3556,7 +3559,8 @@ export function ModalClientEmail(p){
         return {"@odata.type":"#microsoft.graph.fileAttachment",name:a.name,contentType:a.file.type||"application/octet-stream",contentBytes:btoa(binary)};
       });
     }));
-    Promise.all([import('./msal.js').then(function(m){return m.msalGetToken();}),imgP,extraAttsP]).then(function(r){
+    var mailLib=null;
+    Promise.all([mc().then(function(m){mailLib=m;return m.mailGetToken();}),imgP,extraAttsP]).then(function(r){
       var tok=r[0],img=r[1],extraGraphAtts=r[2];
       if(!tok)throw new Error("MS_NO_TOKEN");
       var sig="";
@@ -3573,11 +3577,13 @@ export function ModalClientEmail(p){
       var isClientAddr=recips.length===1&&!!clientMailLc&&recips[0].emailAddress.address.toLowerCase()===clientMailLc;
       if(isClientAddr&&client.name)recips[0].emailAddress.name=client.name;
       var attBytes=atts.reduce(function(a,x){return a+Math.round(String(x.contentBytes||"").length*0.75);},0);
-      var inThread=!!(asReply&&replyMsg);
-      // Wątek klienta albo duże załączniki (pojedyncze żądanie sendMail bywa ograniczone do ~4 MB) → szkic + załączniki osobno
-      var sendReq=(inThread||attBytes>2500000)
+      var isMs=mailLib.getMailProvider()==="microsoft";
+      var inThread=isMs&&!!(asReply&&replyMsg);
+      // Wątek klienta albo duże załączniki (pojedyncze żądanie sendMail bywa ograniczone do ~4 MB) → szkic + załączniki osobno.
+      // Szkice to Graph — Gmail/IMAP zawsze idą jednym sendMail (adaptery same radzą sobie z dużymi plikami).
+      var sendReq=(inThread||(isMs&&attBytes>2500000))
         ? sendViaDraft(tok,inThread?replyMsg.id:null,subject,html,recips,atts)
-        : fetch("https://graph.microsoft.com/v1.0/me/sendMail",{
+        : mailLib.mailFetch("https://graph.microsoft.com/v1.0/me/sendMail",{
             method:"POST",headers:{"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
             body:JSON.stringify({message:{subject:subject,body:{contentType:"HTML",content:html},toRecipients:recips,attachments:atts},saveToSentItems:true})
           });
@@ -3591,7 +3597,7 @@ export function ModalClientEmail(p){
       setSending(false);
       var m=(e&&e.message)||"";
       setSendErr(m==="MS_NO_TOKEN"||m.indexOf("MS_INTERACTION_REQUIRED")!==-1||m.indexOf("Brak zalogowanego")!==-1||(e&&e.code)
-        ?"Brak po\u0142\u0105czenia z poczt\u0105 Microsoft \u2014 zaloguj si\u0119 w module Mail i spr\u00f3buj ponownie."
+        ?"Brak po\u0142\u0105czenia z poczt\u0105 \u2014 zaloguj si\u0119 w module Poczta (wybrana skrzynka) i spr\u00f3buj ponownie."
         :m||"Nieznany b\u0142\u0105d");
     });
   }
