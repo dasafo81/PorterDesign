@@ -799,7 +799,7 @@ export function ModalDeal(p){
         if(p.onPatch)p.onPatch(patch);
         // Każdy termin z karty deala ma być widoczny w Google Calendar
         if(!skipGcal&&val&&gcalToken&&calList.length&&DEAL_DATE_FIELDS.indexOf(field)>=0){
-          var snap=Object.assign({},d,{installer_calendar_id:installerCalId||null,installer_calendar_id2:installerCalId2||null,install_label2:installLabel2||null});
+          var snap=Object.assign({},d,{installer_name:installerName||null,installer_name2:installerName2||null,installer_calendar_id:installerCalId||null,installer_calendar_id2:installerCalId2||null,install_label2:installLabel2||null});
           snap[field]=val;
           var gctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
           syncDealDateToGcal(gctx,snap,cl,field,calList).catch(function(e){
@@ -2102,7 +2102,7 @@ export function CRMKalendarz(p){
         if(!deal[f])return;
         var dt=new Date(deal[f]);
         if(isNaN(dt.getTime())||dt<todayStart)return;
-        var sk=[deal.id,f,deal[f],deal.installer_calendar_id||"",deal.installer_calendar_id2||""].join("|");
+        var sk=[deal.id,f,deal[f],deal.installer_name||"",deal.installer_name2||"",deal.installer_calendar_id||"",deal.installer_calendar_id2||""].join("|");
         if(syncedDealsRef.current[sk])return;
         syncedDealsRef.current[sk]=true;
         jobs.push({sk:sk,deal:deal,client:client,field:f});

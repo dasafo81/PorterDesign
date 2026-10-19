@@ -120,15 +120,27 @@ export function upsertDealEvent(ctx, o) {
   });
 }
 
+// Kalendarz montażysty: z jawnie zapisanego id, a gdy go brak (UI go nie ustawia) —
+// po nazwie montażysty zawartej w nazwie kalendarza, tak jak w oknie „Dodaj do kalendarza".
+export function installerCalendarId(deal, field, calList) {
+  var second = field === "delivery_date2";
+  if (field !== "delivery_date" && !second) return null;
+  var id = second ? deal.installer_calendar_id2 : deal.installer_calendar_id;
+  if (id && calList.some(function (c) { return c.id === id; })) return id;
+  var name = String((second ? deal.installer_name2 : deal.installer_name) || "").trim().toLowerCase();
+  if (!name) return null;
+  var m = calList.find(function (c) { return !c.primary && c.summary && c.summary.toLowerCase().indexOf(name) >= 0; });
+  return m ? m.id : null;
+}
+
 // Wysyła jeden termin deala do kalendarza głównego oraz (gdy ustawiony) kalendarza montażysty.
 export function syncDealDateToGcal(ctx, deal, client, field, calList) {
   var start = dealStartDate(deal[field]);
   if (!start) return Promise.resolve([]);
   var primary = (calList.find(function (c) { return c.primary; }) || calList[0] || {}).id || "primary";
-  var instId = field === "delivery_date" ? deal.installer_calendar_id
-    : (field === "delivery_date2" ? deal.installer_calendar_id2 : null);
+  var instId = installerCalendarId(deal, field, calList);
   var targets = [primary];
-  if (instId && instId !== primary && calList.some(function (c) { return c.id === instId; })) targets.push(instId);
+  if (instId && instId !== primary) targets.push(instId);
 
   var addr = client ? [client.addr, [client.postal, client.city].filter(Boolean).join(" ")].filter(Boolean).join(", ") : "";
   var parts = [];
