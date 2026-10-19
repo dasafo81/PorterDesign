@@ -671,6 +671,18 @@ function sewGroupRows(rows, mapFn){
   return out;
 }
 
+// Tabela narzut / poduszek (kategorie "Inny") w zleceniu szycia
+function buildInneSewingTableHTML(inneRows){
+  if(!inneRows||!inneRows.length)return "";
+  var hdr=["Lp.","Produkt","Tkanina","Szerokość","Długość / wysokość","Ilość","Uwagi"];
+  var trs=sewGroupRows(inneRows,function(r,i){
+    return [String(i+1),'<strong>'+r.type+'</strong>',r.fabric||'-',
+      r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
+      String(r.qty||1)+' szt.',r.note||''];
+  });
+  return makeTableHTML(hdr,trs,"Narzuty i poduszki \u2014 specyfikacja szycia",['3%','16%','20%','10%','12%','8%','31%']);
+}
+
 export function generateSewingOrderPDF(client, modalData){
   var rows=buildSewingRows(client);
   if(!rows.length){alert("Brak pozycji szycia.");return;}
@@ -683,7 +695,8 @@ export function generateSewingOrderPDF(client, modalData){
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
   var totalMetry=rows.reduce(function(a,r){return a+r.metry;},0);
 
-  var curtainRows=rows.filter(function(r){return r._type!=="roleta";});
+  var curtainRows=rows.filter(function(r){return r._type!=="roleta"&&r._type!=="inne";});
+  var inneRows=rows.filter(function(r){return r._type==="inne";});
   var romanRows=rows.filter(function(r){return r._type==="roleta";});
   var hasBothTypes=curtainRows.length>0&&romanRows.length>0;
 
@@ -764,6 +777,7 @@ export function generateSewingOrderPDF(client, modalData){
     +'</div>'
     +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zasłony i firany — specyfikacja szycia",['3%','8%','16%','9%','8%','8%','14%','9%','25%'])+curtainOptionsHTML:"")
     +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,"Rolety rzymskie \u2014 specyfikacja szycia",['3%','12%','13%','9%','6%','6%','7%','8%','9%','9%','8%','10%'])+romanOptsHTML+notesFieldHTML:"")
+    +buildInneSewingTableHTML(inneRows)
     +notesBlock
 
     +'<div class="footer"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Strona 1</span></div>'
@@ -804,7 +818,8 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
   var termRoletyStr2=modalData.termRolety||termStr;
   var attachB64=modalData.attachB64||null;
   var now=new Date();var dateStr=now.toLocaleDateString('pl-PL');
-  var curtainRows2=rows.filter(function(r){return r._type!=='roleta';});
+  var curtainRows2=rows.filter(function(r){return r._type!=='roleta'&&r._type!=='inne';});
+  var inneRows2=rows.filter(function(r){return r._type==='inne';});
   var romanRows2=rows.filter(function(r){return r._type==='roleta';});
   var hasBothTypes2=curtainRows2.length>0&&romanRows2.length>0;
   var tableHeader=['Lp.','Model szycia','Tkanina / Kolor','Producent','Szerokość','Wysokość','Podział','Podszewka','Uwagi'];
@@ -855,6 +870,7 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
     +'</div>'
     +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,'Zasłony i firany — specyfikacja szycia',['3%','8%','16%','9%','8%','8%','14%','9%','25%'])+curtainOptionsHTML2:'')
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,'Rolety rzymskie \u2014 specyfikacja szycia',['3%','12%','13%','9%','6%','6%','7%','8%','9%','9%','8%','10%'])+romanOptsHTML2+notesFieldHTML2:'')
+    +buildInneSewingTableHTML(inneRows2)
     +notesBlock
     +'</body></html>';
   return h;

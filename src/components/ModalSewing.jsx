@@ -58,7 +58,7 @@ export function ModalSewing(p){
   // jest czystą funkcją rooms, więc osobny baseRows do porównania nie jest tu
   // potrzebny.
   var rw=useState(savedDraft&&savedDraft.rows?savedDraft.rows:buildSewingRows(p.client)),allRows=rw[0],setAllRows=rw[1];
-  var hasCurtains=allRows.some(function(r){return r._type!=='roleta';});
+  var hasCurtains=allRows.some(function(r){return r._type!=='roleta'&&r._type!=='inne';});
   var hasRolety=allRows.some(function(r){return r._type==='roleta';});
   var hasBothSewTypes=hasCurtains&&hasRolety;
   function setSewRowField(i,key,v){
@@ -94,11 +94,12 @@ export function ModalSewing(p){
             sewRowInput(i,'prod','Producent',110),
             sewRowInput(i,'wCm','Szer. (cm)',80),
             sewRowInput(i,'hCm','Wys. (cm)',80),
-            isRoleta?sewRowInput(i,'nadprozeCm','Wys. nadproża',100):sewRowInput(i,'szStyle','Model szycia',100),
-            isRoleta?sewRowInput(i,'rSystem','Mechanizm',110):sewRowInput(i,'marszczenie','Marszczenie',90),
-            isRoleta?sewRowInput(i,'stronaObslugi','Strona łańcuszka',110):sewRowInput(i,'split','Podział',110),
+            r._type==='inne'?sewRowInput(i,'qty','Ilość (szt.)',80):null,
+            r._type==='inne'?null:(isRoleta?sewRowInput(i,'nadprozeCm','Wys. nadproża',100):sewRowInput(i,'szStyle','Model szycia',100)),
+            r._type==='inne'?null:(isRoleta?sewRowInput(i,'rSystem','Mechanizm',110):sewRowInput(i,'marszczenie','Marszczenie',90)),
+            r._type==='inne'?null:(isRoleta?sewRowInput(i,'stronaObslugi','Strona łańcuszka',110):sewRowInput(i,'split','Podział',110)),
             isRoleta?sewRowInput(i,'kolorLancuszka','Kolor łańcuszka',110):null,
-            sewRowInput(i,'podszewka','Podszewka',90),
+            r._type==='inne'?null:sewRowInput(i,'podszewka','Podszewka',90),
             sewRowInput(i,'note','Uwagi',150)
           );
         })
@@ -201,7 +202,7 @@ export function ModalSewing(p){
   function generateSingle(){
     if(hasCurtains){
       setSewOptsFrom('single');setSewOptsAction('preview');
-      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta';})));
+      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta'&&r._type!=='inne';})));
       setShowSewOpts(true);
     }else{doGenerateSingle(null);}
   }
@@ -216,7 +217,7 @@ export function ModalSewing(p){
 
   function generateSplitBatch(){
     if(!selIds.length){alert('Wybierz przynajmniej jedną pozycję.');return;}
-    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta';});
+    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta'&&r._type!=='inne';});
     if(sc.length){setSewOptsFrom('split');setSewOptsAction('preview');if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));setShowSewOpts(true);return;}
     doGenerateSplitBatch(null);
   }
@@ -254,7 +255,7 @@ export function ModalSewing(p){
   function mailSingle(){
     if(hasCurtains){
       setSewOptsFrom('single');setSewOptsAction('mail');
-      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta';})));
+      if(!sewOpts)setSewOpts(buildDefaultSewOpts(allRows.filter(function(r){return r._type!=='roleta'&&r._type!=='inne';})));
       setShowSewOpts(true);
     }else{doMailSingle(null);}
   }
@@ -266,7 +267,7 @@ export function ModalSewing(p){
   }
   function mailSplitBatch(){
     if(!selIds.length){alert('Wybierz przynajmniej jedn\u0105 pozycj\u0119.');return;}
-    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta';});
+    var sc=selIds.map(function(i){return allRows[i];}).filter(function(r){return r._type!=='roleta'&&r._type!=='inne';});
     if(sc.length){
       setSewOptsFrom('split');setSewOptsAction('mail');
       if(!sewOpts)setSewOpts(buildDefaultSewOpts(sc));

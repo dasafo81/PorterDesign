@@ -243,7 +243,7 @@ export function ProdCard(p){
     // (patrz applyType) — same w sobie nie licza sie jako "wpisane dane",
     // inaczej samo przeklikanie marek na pustym produkcie odpalaloby modal.
     var meaningfulC=Object.keys(pr.c||{}).filter(function(k){return k!=="split"&&k!=="kBrand";});
-    return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||
+    return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||pr.innyTkanina||
       (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm||pr.par.wallW||pr.par.wallH))||
       meaningfulC.length>0||
       (pr.kdSzyny&&pr.kdSzyny.length>0)||
@@ -301,7 +301,7 @@ export function ProdCard(p){
     if(hasProdData(prod)){setPendingType(t);return;}
     p.onChange(mg(prod,{type:t.type,c:mg({split:"unequal"},t.set||{}),par:{},panels:[],
       fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,
-      innyNazwa:undefined,innyKat:undefined}));
+      innyNazwa:undefined,innyKat:undefined,innyTkanina:undefined}));
   }
 
   // Sep 2026 redesign: karta soft-UI z ikona. Domyslnie wypukla (--nm-out,
@@ -2577,6 +2577,13 @@ export function ProdCard(p){
           style:Object.assign({},IST,{width:"100%"})
         })
       ):null,
+      (innyKat==="narzuta"||innyKat==="poduszki")?ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+          ce(Fld,{label:innyKat==="poduszki"?"SZEROKO\u015a\u0106 POSZEWKI (cm)":"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 50",style:IST})),
+          ce(Fld,{label:innyKat==="poduszki"?"WYSOKO\u015a\u0106 POSZEWKI (cm)":"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 50",style:IST}))
+        ),
+        ce(Fld,{label:"TKANINA / KOLOR (do zlecenia szycia)"},ce("input",{type:"text",value:prod.innyTkanina||"",onChange:function(ev){p.onChange(mg(prod,{innyTkanina:ev.target.value||undefined}));},placeholder:"np. Velvet 12 beż",style:Object.assign({},IST,{width:"100%"})}))
+      ):null,
       innyKat?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"CENA ZA SZT. (z\u0142)"},ce("input",{type:"text",inputMode:"decimal",value:c.innyCena!=null?c.innyCena:"",onChange:function(ev){sc("innyCena",ev.target.value===""?null:ev.target.value);},placeholder:"np. 250",style:IST}))
@@ -2644,10 +2651,10 @@ export function ProdCard(p){
         var t=pendingType;
         p.onChange(mg(prod,{type:t.type||t.id,c:mg(mg({split:"unequal"},t.set||{}),keep.c),par:keep.par,panels:[],
           fabName:null,fabP:null,fabW:null,fabMan:null,fabManName:null,mp:null,
-          innyNazwa:undefined,innyKat:undefined}));
+          innyNazwa:undefined,innyKat:undefined,innyTkanina:undefined}));
       }:null,
       onConfirm:function(){
-        p.onChange(mg(prod,{type:pendingType.type||pendingType.id,c:mg({split:"unequal"},pendingType.set||{}),par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined}));
+        p.onChange(mg(prod,{type:pendingType.type||pendingType.id,c:mg({split:"unequal"},pendingType.set||{}),par:{},panels:[],fabName:null,fabP:null,fabW:null,fabMan:null,mp:null,innyNazwa:undefined,innyKat:undefined,innyTkanina:undefined}));
       },
       onClose:function(){setPendingType(null);}
     }):null,

@@ -7695,6 +7695,22 @@ export function buildSewingRows(client){
   (client.rooms||[]).forEach(function(r){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(prod){
+        // Narzuta / poduszki (kategorie produktu "Inny") — szyte wg wymiarów z karty
+        if(prod.type==="inny"&&(prod.innyKat==="narzuta"||prod.innyKat==="poduszki")){
+          var inPar=prod.par||{};
+          rows.push({
+            room:r.name,win:w.name,
+            type:prod.innyNazwa||(prod.innyKat==="poduszki"?"Poduszki":"Narzuta"),
+            fabric:prod.innyTkanina||"tkanina",
+            prod:"-",kolor:"-",
+            wCm:inPar.wCm||null,hCm:inPar.hCm||null,
+            qty:inPar.qty||1,
+            szStyle:"-",marszczenie:"-",split:"-",podszewka:"nie",
+            _type:"inne",
+            note:prod.note||""
+          });
+          return;
+        }
         if(prod.type!=="zaslona"&&prod.type!=="firana"&&prod.type!=="roleta")return;
         var pc=prod.c||{},par=prod.par||{};
         var lbl=(PROD_TYPES.find(function(t){return t.id===prod.type;})||{label:prod.type}).label;
