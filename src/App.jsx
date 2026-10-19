@@ -1276,7 +1276,7 @@ export function App(p){
           subject:opts.subject!=null?opts.subject:(filled?filled.subject:undefined),
           body:opts.body!=null?opts.body:(filled?filled.body:undefined),
           tplFiles:tpl&&opts.template==="wstepna"?tpl.files:null,
-          to:to,title:opts.title,template:opts.template,noTemplates:opts.noTemplates});
+          to:to,title:opts.title,template:opts.template,noTemplates:opts.noTemplates,onSent:opts.onSent});
         setShowEmailModal(true);
       });
     }
@@ -2866,7 +2866,21 @@ export function App(p){
     );
   }
   else if(screen==="sewingPreview"&&curClient){
-    content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");},onMailDoc:mailDoc,updateClient:updateClient});
+    content=ce(ModalSewing,{client:curClient,onClose:function(){setScreen("sum");},onMailDoc:mailDoc,updateClient:updateClient,
+      // Po faktycznej wysyłce zlecenia mailem zapisujemy na dealu, do której szwalni i kiedy poszło.
+      onSewingSent:function(house){
+        if(!curDeal||!house)return;
+        var now=new Date();
+        var today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
+        var key=normSupName(house);
+        var known=["TRINITAS — ul. Składowa 9, 86-300 Grudziądz","LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock",
+          "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów","Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"]
+          .find(function(o){var k=normSupName(o);return k===key||(key&&(k.indexOf(key)>=0||key.indexOf(k)>=0))||(key.split(" ")[0]===k.split(" ")[0]);});
+        var patch={sewing_house:known||String(house).trim(),sewing_sent_date:today,updated_at:now.toISOString()};
+        sbApi.updateDeal(curDeal.id,patch).then(function(){
+          setDeals(function(prev){return (prev||[]).map(function(d){return d.id===curDeal.id?Object.assign({},d,patch):d;});});
+        }).catch(function(e){console.warn("[deal] szwalnia nie zapisana",e&&e.message);});
+      }});
   }
 
   if(billingBlocked){
@@ -3017,7 +3031,7 @@ export function App(p){
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showVariantAdvisor&&curClient?ce(ModalVariantAdvisor,{client:curClient,onApply:applyVariantAdvisor,onClose:function(){setShowVariantAdvisor(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,tplFiles:emailPdf&&emailPdf.tplFiles,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
+    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,tplFiles:emailPdf&&emailPdf.tplFiles,onSent:emailPdf&&emailPdf.onSent,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
@@ -3603,6 +3617,7 @@ export function ModalClientEmail(p){
         if(!res.ok)return res.json().catch(function(){return {};}).then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+res.status+")");});
         sbApi.upsertMailRecipient(to,isClientAddr?(client.name||""):"").catch(function(){});
         setSending(false);setSent(true);
+        if(p.onSent){try{p.onSent();}catch(e){console.warn("[mail] onSent",e);}}
         setTimeout(function(){p.onClose();},1600);
       });
     }).catch(function(e){

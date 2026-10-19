@@ -1665,6 +1665,7 @@ export function ModalDeal(p){
             ce("select",{value:sewingHouse,onChange:function(ev){setSewingHouse(ev.target.value);},style:INP},
               ce("option",{value:""},"— wybierz szwalnię —"),
               SEWING_HOUSES_OPT.map(function(o,i){return ce("option",{key:i,value:o},o);}),
+              sewingHouse&&sewingHouse!=="__custom__"&&SEWING_HOUSES_OPT.indexOf(sewingHouse)<0?ce("option",{value:sewingHouse},sewingHouse):null,
               ce("option",{value:"__custom__"},"— inna (wpisz) —")
             )
           ),
