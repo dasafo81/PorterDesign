@@ -109,16 +109,6 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   // Z Uwag wycinamy fraze "metoda kasowa" — recznie wpisana notatka nie moze
   // odtworzyc tej samej sprzecznosci w DodatkowyOpis.
   const opis = String(inv.notes || "").replace(/metoda\s+kasowa/gi, "").replace(/\s{2,}/g, " ").trim();
-  // ── Zwolnienie z VAT ──────────────────────────────────────────────────────
-  // Pozycje "zw" (P_13_7) wymagaja w Adnotacje/Zwolnienie wariantu P_19=1 + podstawa
-  // prawna (P_19A). Wysylanie P_19N=1 ("brak zwolnienia") przy stawce zw KSeF odrzuca
-  // jako blad sesji/faktury.
-  const hasExempt = (items || []).some(it => +it.vat_rate === -1);
-  const basisMatch = String(inv.notes || "").match(/art\.\s*\d+.*$/i);
-  const exemptBasis = (basisMatch ? basisMatch[0] : "art. 113 ust. 1 ustawy o VAT").trim();
-  const zwolnienie = hasExempt
-    ? `<Zwolnienie><P_19>1</P_19><P_19A>${escXml("Zwolnienie z VAT na podstawie " + exemptBasis)}</P_19A></Zwolnienie>`
-    : `<Zwolnienie><P_19N>1</P_19N></Zwolnienie>`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/" xmlns:etd="http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/01/05/eD/DefinicjeTypy/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Naglowek>
@@ -143,7 +133,7 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     <P_2>${escXml(inv.number||"")}</P_2>
     <P_6>${isoDate(inv.sale_date||inv.issue_date)}</P_6>${stawki}
     <P_15>${totalGross}</P_15>
-    <Adnotacje><P_16>${p16}</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A>${zwolnienie}<NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
+    <Adnotacje><P_16>${p16}</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19N>1</P_19N></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
     <RodzajFaktury>VAT</RodzajFaktury>
     ${opis?`<DodatkowyOpis><Klucz>Uwagi</Klucz><Wartosc>${escXml(opis.slice(0,512))}</Wartosc></DodatkowyOpis>`:""}
     ${pozycje}
