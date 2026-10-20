@@ -87,6 +87,13 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
   );
 
   // Tabela 2 — rozbicie pomocnicze: co i gdzie idzie
+  // Szwalnia per pozycja (r.house) — gdy pozycje idą do różnych szwalni, dodajemy
+  // kolumnę "Szwalnia" i podsumowanie metrażu per szwalnia.
+  var houseOf=function(r){return r.house||sewingHouse||"";};
+  var houseNames=[];
+  rows.forEach(function(r){var h=houseOf(r);if(h&&houseNames.indexOf(h)<0)houseNames.push(h);});
+  var multiHouse=houseNames.length>1||(houseNames.length===1&&rows.some(function(r){return !houseOf(r);}));
+  var shortHouse=function(h){return h?escNote(String(h).split(" — ")[0]):"<em>nie wybrano</em>";};
   var detailRows=[];
   fabKeys.forEach(function(fk){
     var g=byFabric[fk];
@@ -96,16 +103,33 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
         g.kolor||"-",
         (+r.metry||0).toFixed(2).replace(".",",")+" mb",
         r.roomWin||((r.room||"")+" / "+(r.win||""))
-      ]);
+      ].concat(multiHouse?["<strong>"+shortHouse(houseOf(r))+"</strong>"]:[]));
     });
   });
   var tableHTML=orderTableHTML+makeTableHTML(
-    ["Tkanina","Kolor","Ilość (mb)","Przeznaczenie"],
+    ["Tkanina","Kolor","Ilość (mb)","Przeznaczenie"].concat(multiHouse?["Szwalnia"]:[]),
     detailRows,
     "Rozbicie na pomieszczenia / okna"
   );
 
-  var shipHTML=sewingHouse
+  if(!multiHouse&&houseNames.length===1)sewingHouse=houseNames[0];
+  var shipHTML=multiHouse
+    ? (function(){
+        var groups={},order=[];
+        rows.forEach(function(r){
+          var h=houseOf(r);
+          if(!groups[h]){groups[h]={h:h,items:{},keys:[]};order.push(h);}
+          var k=(r.fabName||"-")+" — "+(r.kolor||"-");
+          if(!groups[h].items[k]){groups[h].items[k]=0;groups[h].keys.push(k);}
+          groups[h].items[k]+=(+r.metry||0);
+        });
+        return '<div class="ship-block"><h4>Wysyłka tkaniny — podział na szwalnie</h4>'+order.map(function(h){
+          var g=groups[h];
+          return '<div class="ship-val" style="margin-top:4px">'+(h?escNote(h):"(szwalnia nie wybrana)")+'</div>'
+            +'<div style="font-size:10px;color:#3a3a38;margin-bottom:3px">'+g.keys.map(function(k){return escNote(k)+": <strong>"+g.items[k].toFixed(2).replace(".",",")+" mb</strong>";}).join("<br>")+'</div>';
+        }).join("")+'</div>';
+      })()
+    : sewingHouse
     ? `<div class="ship-block"><h4>Wysyłka tkaniny — szwalnia</h4><div class="ship-val">${sewingHouse}</div></div>`
     : "";
   var notesHTML=notes
