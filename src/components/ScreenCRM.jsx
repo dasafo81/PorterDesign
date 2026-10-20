@@ -123,7 +123,7 @@ function CheckRow(rp){
       }},rp.checked?ce("span",{style:{color:"#fff",fontSize:13,lineHeight:1}},"✓"):null),
       ce("div",null,
         ce("div",{style:{fontSize:13,fontWeight:rp.checked?600:400,color:"var(--t1)"}},(rp.checked?"✅ ":"")+rp.label),
-        rp.sublabel?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1}},rp.sublabel):null
+        rp.sublabel?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:1,whiteSpace:"pre-line"}},rp.sublabel):null
       )
     ),
     rp.action||null
@@ -227,6 +227,19 @@ export function ModalDeal(p){
   var sac=useState(d.acquisition||""),acquisition=sac[0],setAcquisition=sac[1];
   var sdl=useState(d.deadline?String(d.deadline).slice(0,10):""),deadline=sdl[0],setDeadline=sdl[1];
   var ssh=useState(d.sewing_house||""),sewingHouse=ssh[0],setSewingHouse=ssh[1];
+  // Historia zleceń szycia (kolumna sewing_orders); deal sprzed historii pokazuje dotychczasowe pojedyncze zlecenie.
+  var sso=useState(function(){
+    if(Array.isArray(d.sewing_orders)&&d.sewing_orders.length)return d.sewing_orders;
+    return d.sewing_house?[{house:d.sewing_house,sent_date:d.sewing_sent_date?String(d.sewing_sent_date).slice(0,10):null,term:d.sewing_term||null}]:[];
+  }),sewingOrders=sso[0],setSewingOrders=sso[1];
+  function fmtSewDate(v){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(v||"");return m?m[3]+"."+m[2]+"."+m[1]:(v||"");}
+  function removeSewingOrder(i){
+    if(!window.confirm("Usunąć ten wpis z historii zleceń szycia?"))return;
+    var next=sewingOrders.filter(function(_,j){return j!==i;});
+    var patch={sewing_orders:next,updated_at:new Date().toISOString()};
+    sbApi.updateDeal(d.id,patch).then(function(){setSewingOrders(next);if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){alert("Błąd zapisu: "+e.message);});
+  }
   var sst=useState(d.sewing_term||""),sewingTerm=sst[0],setSewingTerm=sst[1];
   var ssd=useState(d.sewing_sent_date?d.sewing_sent_date.slice(0,10):""),sewingSentDate=ssd[0],setSewingSentDate=ssd[1];
   var srev=useState(!!d.review_sent),reviewSent=srev[0],setReviewSent=srev[1];
@@ -1654,7 +1667,9 @@ export function ModalDeal(p){
           ORDER_STEPS.map(function(st){
             return ce(CheckRow,{key:st.field,checked:!!d[st.field],onChange:function(){toggleOrderStep(st.field);},
               label:st.icon+" "+st.doneLabel,
-              sublabel:st.field==="order_sewing"&&sewingHouse&&sewingHouse!=="__custom__"?(sewingHouse+(sewingTerm?" · termin: "+sewingTerm:"")):null});
+              sublabel:st.field==="order_sewing"?(sewingOrders.length
+                ?sewingOrders.map(function(o){return o.house+(o.sent_date?" · wysłano "+fmtSewDate(o.sent_date):"")+(o.term?" · termin: "+o.term:"");}).join("\n")
+                :(sewingHouse&&sewingHouse!=="__custom__"?(sewingHouse+(sewingTerm?" · termin: "+sewingTerm:"")):null)):null});
           }),
           (ORDER_STEPS.every(function(s){return !!d[s.field];})&&d.stage==="realizacja")
             ?ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.4}},"✓ Wszystko zamówione — deal przeniesiony do Realizacji")
@@ -1662,6 +1677,16 @@ export function ModalDeal(p){
         ),
 
         ce(SectionCard,{icon:"✂️",title:"Zamówienie szycia",done:!!d.order_sewing},
+          sewingOrders.length?ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+            ce("label",{style:{fontSize:11,color:"var(--t3)"}},"WYSŁANE ZLECENIA ("+sewingOrders.length+")"),
+            sewingOrders.map(function(o,i){
+              return ce("div",{key:i,style:{display:"flex",alignItems:"flex-start",gap:8,padding:"8px 10px",borderRadius:8,background:"var(--bg)",fontSize:12,lineHeight:1.4,color:"var(--t1)"}},
+                ce("div",{style:{flex:1}},
+                  ce("div",{style:{fontWeight:600}},o.house),
+                  ce("div",{style:{color:"var(--t3)"}},(o.sent_date?"wysłano "+fmtSewDate(o.sent_date):"")+(o.term?(o.sent_date?" · ":"")+"termin: "+o.term:""))),
+                ce("button",{onClick:function(){removeSewingOrder(i);},title:"Usuń wpis",style:{border:"none",background:"none",cursor:"pointer",color:"var(--t3)",fontSize:14,padding:0}},"✕"));
+            })
+          ):null,
           ce("div",null,
             ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SZWALNIA"),
             ce("select",{value:sewingHouse,onChange:function(ev){setSewingHouse(ev.target.value);},style:INP},
