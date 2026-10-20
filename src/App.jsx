@@ -2619,16 +2619,17 @@ export function App(p){
       setFabricBaseRows(freshRows);
       setFabricPreviewRows(freshRows);
     }
+    // Szwalnia per pozycja: puste pole = szwalnia domyślna z góry ekranu.
+    function fabricSupplierRows(sup){
+      var def=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
+      return fabricPreviewRows.filter(function(r){return r.prod===sup;}).map(function(r){return mg(r,{house:r.house||def||""});});
+    }
     function generateFabricForSupplier(sup){
-      var supRows=fabricPreviewRows.filter(function(r){return r.prod===sup;});
-      var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
-      generateFabricOrderPDFFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes});
+      generateFabricOrderPDFFromRows(curClient,sup,fabricSupplierRows(sup),{notes:fabricNotes});
     }
     // Ten sam dokument co podgląd, tylko wysyłany mailem do dostawcy tkaniny.
     function mailFabricForSupplier(sup){
-      var supRows=fabricPreviewRows.filter(function(r){return r.prod===sup;});
-      var house=fabricSewingHouse==="__custom__"?fabricSewingHouseCustom:fabricSewingHouse;
-      mailDoc(buildFabricOrderHtmlFromRows(curClient,sup,supRows,{sewingHouse:house,notes:fabricNotes}),
+      mailDoc(buildFabricOrderHtmlFromRows(curClient,sup,fabricSupplierRows(sup),{notes:fabricNotes}),
         "Zamowienie tkaniny - "+sup+".pdf",
         {to:"",supplier:sup,templateId:"zamowienie_tkaniny",noTemplates:true});
     }
@@ -2639,7 +2640,7 @@ export function App(p){
         "Każde pole poniżej jest edytowalne. Przeglądarka blokuje kilka okien naraz \u2014 generuj kolejno każdego dostawcę osobnym przyciskiem przy jego sekcji."
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
-        ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"Szwalnia (opcjonalnie)"),
+        ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"Szwalnia domyślna (opcjonalnie) \u2014 każdą pozycję możesz przypisać do innej szwalni poniżej"),
         ce("select",{value:fabricSewingHouse,onChange:function(ev){setFabricSewingHouse(ev.target.value);},style:{width:"100%",padding:"8px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
           SEWING_HOUSES_LIST.map(function(h,hi){return ce("option",{key:hi,value:h},h);}),
           ce("option",{value:"__custom__"},"— Wpisz własne dane —")
@@ -2691,7 +2692,11 @@ export function App(p){
               fabricFieldInput(i,"kolor","Kolor",110),
               fabricFieldInput(i,"metry","Ilość (mb)",90),
               fabricFieldInput(i,"roomWin","Przeznaczenie",180),
-              fabricFieldInput(i,"prod","Producent",150)
+              fabricFieldInput(i,"prod","Producent",150),
+              ce("select",{value:r.house||"",onChange:function(ev){setFabricRowField(i,"house",ev.target.value);},title:"Do której szwalni idzie ta pozycja",style:{width:210,padding:"7px 9px",fontSize:12,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},
+                ce("option",{value:""},"Szwalnia: domyślna"),
+                SEWING_HOUSES_LIST.map(function(h,hi){return ce("option",{key:hi,value:h},h.split(" \u2014 ")[0]);})
+              )
             )
           );
         }),
