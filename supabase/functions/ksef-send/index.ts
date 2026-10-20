@@ -51,6 +51,14 @@ async function sha256b64(data: Uint8Array): Promise<string> {
   return bufToB64(await crypto.subtle.digest("SHA-256", data));
 }
 
+// AdresL1/AdresL2 w FA(3) maja minLength=1 — puste linie (np. nabywca bez miasta)
+// KSeF odrzuca jako blad semantyki, wiec pusta linia w ogole nie trafia do XML.
+function adresXml(l1: string, l2: string): string {
+  const a = String(l1 || "").trim(), b = String(l2 || "").trim();
+  if (!a && !b) return `<Adres><KodKraju>PL</KodKraju><AdresL1>-</AdresL1></Adres>`;
+  return `<Adres><KodKraju>PL</KodKraju><AdresL1>${escXml(a || b)}</AdresL1>${a && b ? `<AdresL2>${escXml(b)}</AdresL2>` : ""}</Adres>`;
+}
+
 // deno-lint-ignore no-explicit-any
 function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings: Record<string,any>): string {
   const s = inv.seller_snapshot || {};
@@ -119,11 +127,11 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   </Naglowek>
   <Podmiot1>
     <DaneIdentyfikacyjne><NIP>${escXml(sellerNip)}</NIP><Nazwa>${escXml(s.name||settings.seller_name||"")}</Nazwa></DaneIdentyfikacyjne>
-    <Adres><KodKraju>PL</KodKraju><AdresL1>${escXml((s.address||settings.seller_address||"")+" "+(s.postal||settings.seller_postal||""))}</AdresL1><AdresL2>${escXml(s.city||settings.seller_city||"")}</AdresL2></Adres>
+    ${adresXml((s.address||settings.seller_address||"")+" "+(s.postal||settings.seller_postal||""), s.city||settings.seller_city||"")}
   </Podmiot1>
   <Podmiot2>
     <DaneIdentyfikacyjne>${buyerNip?`<NIP>${escXml(buyerNip)}</NIP>`:`<BrakID>1</BrakID>`}<Nazwa>${escXml(inv.buyer_name||"")}</Nazwa></DaneIdentyfikacyjne>
-    <Adres><KodKraju>PL</KodKraju><AdresL1>${escXml((inv.buyer_address||"")+" "+(inv.buyer_postal||""))}</AdresL1><AdresL2>${escXml(inv.buyer_city||"")}</AdresL2></Adres>
+    ${adresXml((inv.buyer_address||"")+" "+(inv.buyer_postal||""), inv.buyer_city||"")}
     <JST>2</JST>
     <GV>2</GV>
   </Podmiot2>
