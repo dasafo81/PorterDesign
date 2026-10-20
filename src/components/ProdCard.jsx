@@ -25,7 +25,7 @@ import {
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
   RS_B, RS_C, RS_D, RS_E, RS_HEIGHTS,
-  RS_IMG, RS_MASK_COLORS, RS_MOTORS, RS_OB_B, RS_OSPRZET_KOLORY,
+  RS_IMG, RS_MASK_COLORS, RS_MOTORS, RS_OB_B, RS_OSPRZET_KOLORY, RS_OSPRZET_KOLORY_UNI,
   RS_OB_C, RS_OB_D, RS_PROFIL, RS_SUPP_WIDTHS,
   RS_WIDTHS, SB_STORAGE, SELLER, WIN_PRESETS,
   KD_AKCESORIA, KD_KOLORY, KD_SZYNY, KD_ZASLEPKI,
@@ -1595,7 +1595,7 @@ export function ProdCard(p){
 
     }else if(prod.type==="shadow"){
     // ── ROLETA SHADOW FORM ───────────────────────────────────────────
-    form=ce(Fragment,null,
+    var rsRmForm=ce(Fragment,null,
       // Wymiary
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
         ce(Fld,{label:"X \u2014 SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
@@ -1788,9 +1788,41 @@ export function ProdCard(p){
         ):null
       )
     );
-
-
-
+    var rsUni=c.sModel==="uni";
+    var rsModelSel=ce(Fld,{label:"MODEL"},
+      ce("div",{style:{display:"flex",gap:8}},
+        [{k:"rm",l:"Shadow RM"},{k:"uni",l:"Shadow UNI"}].map(function(o){
+          var isA=(o.k==="uni")===rsUni;
+          return ce("button",{key:o.k,onClick:function(){sc("sModel",o.k==="uni"?"uni":null);},style:{flex:1,padding:"12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?700:400,cursor:"pointer"}},isA?"\u2713 "+o.l:o.l);
+        })
+      )
+    );
+    var rsUniForm=ce(Fragment,null,
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:10}},
+        ce(Fld,{label:"A \u2014 SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 80",style:IST})),
+        ce(Fld,{label:"B \u2014 WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 120",style:IST})),
+        ce(Fld,{label:"C \u2014 SZER. LISTWY (cm)"},ce("input",{type:"text",inputMode:"decimal",value:c.sListwa||"",onChange:function(ev){sc("sListwa",ev.target.value);},placeholder:"np. 2,5",style:IST}))
+      ),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:10}},"A, B = szeroko\u015b\u0107 i wysoko\u015b\u0107 pomi\u0119dzy krawędziami listwy przyszybowej. C = szeroko\u015b\u0107 listwy przyszybowej. Cennik UNI: maks. 140\xd7230 cm."),
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
+        ce(Fld,{label:"KOLOR TKANINY"},ce("input",{type:"text",value:c.sKolorTkaniny||"",onChange:function(ev){sc("sKolorTkaniny",ev.target.value);},placeholder:"np. beż / kod",style:IST})),
+        ce(Fld,{label:"KOLOR OSPRZ\u0118TU"},
+          ce("select",{value:c.sKolorOsprzetu||"",onChange:function(ev){sc("sKolorOsprzetu",ev.target.value||null);},style:Object.assign({},IST,{width:"100%"})},
+            ce("option",{value:""},"-- wybierz kolor --"),
+            RS_OSPRZET_KOLORY_UNI.map(function(k){return ce("option",{key:k.k,value:k.k},k.l);})
+          )
+        )
+      ),
+      ce(Fld,{label:"GRUPA CENOWA"},
+        ce("div",{style:{display:"flex",gap:8}},
+          ["B","C","D","E"].map(function(g){
+            var isA=(c.sgrup||"C")===g;
+            return ce("button",{key:g,onClick:function(){sc("sgrup",g);},style:{flex:1,padding:"12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?700:400,cursor:"pointer"}},isA?"\u2713 "+g:g);
+          })
+        )
+      )
+    );
+    form=ce(Fragment,null,rsModelSel,rsUni?rsUniForm:rsRmForm);
     }else if(prod.type==="szyna"){
     var isMSigma=c.ksBrand==="msigma";
     var isMarcin=c.ksBrand==="marcin";
