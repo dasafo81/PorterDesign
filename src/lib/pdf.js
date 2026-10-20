@@ -458,6 +458,33 @@ export function buildSimplifiedRows(client,selection,comm){
   return roomsData;
 }
 
+// "Ukryty rabat": rozkłada kwotę rabatu proporcjonalnie na ceny pozycji, tak żeby
+// suma w PDF była już po rabacie, a sam rabat nie był nigdzie wyszczególniony.
+export function spreadDiscountOnRows(roomsData,discount){
+  discount=(+discount>0)?roundTo10(+discount):0;
+  if(!discount||!roomsData||!roomsData.length)return roomsData;
+  var sum=0,maxIdx=0,maxVal=-1,n=0;
+  roomsData.forEach(function(rd){rd.windows.forEach(function(wd){wd.items.forEach(function(it){
+    var v=+it.total||0;sum+=v;if(v>maxVal){maxVal=v;maxIdx=n;}n++;
+  });});});
+  if(sum<=0)return roomsData;
+  discount=Math.min(discount,sum);
+  var newTotals=[];
+  roomsData.forEach(function(rd){rd.windows.forEach(function(wd){wd.items.forEach(function(it){
+    newTotals.push(roundTo10((+it.total||0)*(1-discount/sum)));
+  });});});
+  var rest=roundTo10(sum-discount-newTotals.reduce(function(a,b){return a+b;},0));
+  newTotals[maxIdx]=Math.max(0,roundTo10(newTotals[maxIdx]+rest));
+  var k=0;
+  return roomsData.map(function(rd){
+    var windows=rd.windows.map(function(wd){
+      var items=wd.items.map(function(it){return Object.assign({},it,{total:newTotals[k++]});});
+      return Object.assign({},wd,{items:items,total:items.reduce(function(a,it){return a+it.total;},0)});
+    });
+    return Object.assign({},rd,{windows:windows,total:windows.reduce(function(a,wd){return a+wd.total;},0)});
+  });
+}
+
 // Renderuje HTML "Wyceny uproszczonej" z już gotowej (ewentualnie ręcznie
 // doedytowanej na ekranie podglądu) struktury pokój -> okno -> pozycje.
 export function buildSimplifiedPDFHtmlFromRows(client,roomsData,montaz,validUntil,titleSuffix,discount,visitFee){

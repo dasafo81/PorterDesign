@@ -11,7 +11,7 @@ import {
   getPanelsForProd, mg, openPDFWindow, roundTo10
 } from './constants/data.js';
 import {
-  buildFabricOrderHtmlFromRows, buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
+  buildFabricOrderHtmlFromRows, buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, spreadDiscountOnRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
 } from './lib/pdf.js';
 import { RichTextEditor } from './components/MailShared.jsx';
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
@@ -224,7 +224,7 @@ export function App(p){
   var sSimplRows=useState([]),simplEditableRows=sSimplRows[0],setSimplEditableRows=sSimplRows[1];
   // Rabat per ekran wyceny uproszczonej — pozwala dać rabat tylko na jeden wariant
   // (osobno od rabatu z Podsumowania, który dotyczy wyceny szczegolowej).
-  var sSimplDisc=useState({en:false,mode:"amount",val:""}),simplDisc=sSimplDisc[0],setSimplDisc=sSimplDisc[1];
+  var sSimplDisc=useState({en:false,mode:"amount",val:"",hide:false}),simplDisc=sSimplDisc[0],setSimplDisc=sSimplDisc[1];
   var simplDraftRef=React.useRef(null);
   simplDraftRef.current={groups:simplRoomGroups,sel:simplSel,validUntil:simplValidUntil,rows:simplEditableRows,disc:simplDisc};
   var simplDraftDirtyRef=React.useRef(false);
@@ -2133,6 +2133,11 @@ export function App(p){
       var mailDisc=baseUnchanged&&draft.disc?draft.disc:{en:discountEnabled,mode:discountMode,val:discountInput};
       var mailDiscountVal=(mailDisc.en&&(+mailDisc.val)>0)?(mailDisc.mode==="amount"?roundTo10(+mailDisc.val):roundTo10(mailBase*(+mailDisc.val)/100)):0;
       var mailVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
+      if(mailDisc.hide&&mailDiscountVal>0){
+        rows=spreadDiscountOnRows(rows,mailDiscountVal);
+        montazP={mode:"amount",value:mailMontazVal};
+        mailDiscountVal=0;
+      }
       var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"",mailDiscountVal,mailVisitFeeVal);
       if(!html){alert("Brak pozycji do wyceny.");return;}
       mailDoc(html,"Oferta - "+(curClient.name||"klient")+".pdf",{});
@@ -2755,7 +2760,13 @@ export function App(p){
       var simplBase=simplGrandTotal+simplMontazVal;
       var simplDiscountVal=calcSimplDiscount(simplBase);
       var simplVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
-      generateSimplifiedPDFFromRows(curClient,simplEditableRows,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal);
+      var simplRowsOut=simplEditableRows;
+      if(simplDisc.hide&&simplDiscountVal>0){
+        simplRowsOut=spreadDiscountOnRows(simplEditableRows,simplDiscountVal);
+        simplMontazP={mode:"amount",value:simplMontazVal};
+        simplDiscountVal=0;
+      }
+      generateSimplifiedPDFFromRows(curClient,simplRowsOut,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal);
       setScreen("sum");
     }
     // Ta sama wycena uproszczona co w podglądzie, wysyłana mailem do klienta.
@@ -2767,7 +2778,13 @@ export function App(p){
       var simplBase=simplGrandTotal+simplMontazVal;
       var simplDiscountVal=calcSimplDiscount(simplBase);
       var simplVisitFeeVal=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
-      mailDoc(buildSimplifiedPDFHtmlFromRows(curClient,simplEditableRows,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal),
+      var simplRowsOut=simplEditableRows;
+      if(simplDisc.hide&&simplDiscountVal>0){
+        simplRowsOut=spreadDiscountOnRows(simplEditableRows,simplDiscountVal);
+        simplMontazP={mode:"amount",value:simplMontazVal};
+        simplDiscountVal=0;
+      }
+      mailDoc(buildSimplifiedPDFHtmlFromRows(curClient,simplRowsOut,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal),
         "Oferta - "+(curClient.name||"klient")+".pdf",{template:"wstepna"});
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
@@ -2871,7 +2888,11 @@ export function App(p){
           ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83C\uDFF7\uFE0F Rabat (tylko dla tego wariantu)")
         ),
         simplDisc.en?ce("select",{value:simplDisc.mode,onChange:function(ev){setSimplDiscField("mode",ev.target.value);},style:{padding:"8px 10px",border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)"}},ce("option",{value:"amount"},"zł"),ce("option",{value:"percent"},"%")):null,
-        simplDisc.en?ce("input",{type:"text",inputMode:"decimal",value:simplDisc.val,onChange:function(ev){setSimplDiscField("val",ev.target.value);},placeholder:simplDisc.mode==="amount"?"np. 300":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null
+        simplDisc.en?ce("input",{type:"text",inputMode:"decimal",value:simplDisc.val,onChange:function(ev){setSimplDiscField("val",ev.target.value);},placeholder:simplDisc.mode==="amount"?"np. 300":"np. 10",style:{width:90,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
+        simplDisc.en?ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",width:"100%"},title:"Rabat zostanie odjęty od cen pozycji w PDF, bez osobnej linii „Przyznany rabat”"},
+          ce("input",{type:"checkbox",checked:!!simplDisc.hide,onChange:function(ev){setSimplDiscField("hide",ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
+          ce("span",{style:{fontSize:13,color:"var(--t2)"}},"Rabat ukryty (naliczony w cenach, bez osobnej linii na wycenie)")
+        ):null
       ),
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,marginTop:16}},
         ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},simplShownDiscount>0?"\u0141\u0105cznie po rabacie (\u2212"+simplShownDiscount+" zł)":"\u0141\u0105cznie"),
