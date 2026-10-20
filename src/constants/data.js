@@ -7684,6 +7684,9 @@ export function getPanelsForProd(prod){
   var hd=pc.hDiff&&(sp==="equal"||sp==="unequal");
   var hL=hd?(+pc.leftH||+par.hCm||0):null,hR=hd?(+pc.rightH||+par.hCm||0):null;
   if(sp==="equal"){var h=Math.floor(tw/2);return [{side:"Zas\u0142ona lewa",w:h,h:hL},{side:"Zas\u0142ona prawa",w:tw-h,h:hR}];}
+  // Komplet nier\xf3wny bez wpisanych wymiar\xf3w sztuk: wycena wg po\u0142owy szeroko\u015bci (jak komplet r\xf3wny),
+  // \u017ceby zas\u0142ona nigdy nie wychodzi\u0142a za 0 z\u0142
+  if(!(pc.leftW>0)&&!(pc.rightW>0)&&tw>0){var hf=Math.floor(tw/2);return [{side:"Zas\u0142ona lewa",w:hf,h:hL},{side:"Zas\u0142ona prawa",w:tw-hf,h:hR}];}
   var out=[];
   if(pc.leftW>0) out.push({side:"Zas\u0142ona lewa",w:pc.leftW,h:hL});
   if(pc.rightW>0) out.push({side:"Zas\u0142ona prawa",w:pc.rightW,h:hR});
