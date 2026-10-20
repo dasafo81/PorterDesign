@@ -245,8 +245,9 @@ export function ModalDeal(p){
   var sna=useState(null),newSewOrder=sna[0],setNewSewOrder=sna[1];
   function addSewingOrder(){
     var o=newSewOrder;
-    if(!o||!o.house){alert("Wybierz szwalnię.");return;}
-    var next=sewingOrders.concat([{house:o.house,sent_date:o.sent_date||null,term:o.term||null}])
+    var houseName=o&&o.house==="__custom__"?String(o.custom||"").trim():(o&&o.house);
+    if(!houseName){alert("Wybierz szwalnię.");return;}
+    var next=sewingOrders.concat([{house:houseName,sent_date:o.sent_date||null,term:o.term||null}])
       .sort(function(a,b){return String(a.sent_date||"").localeCompare(String(b.sent_date||""));});
     var patch={sewing_orders:next,updated_at:new Date().toISOString()};
     sbApi.updateDeal(d.id,patch).then(function(){setSewingOrders(next);setNewSewOrder(null);if(p.onPatch)p.onPatch(patch);})
@@ -1750,31 +1751,15 @@ export function ModalDeal(p){
             ?ce("div",{style:{display:"flex",flexDirection:"column",gap:8,padding:10,borderRadius:8,background:"var(--bg)"}},
                 ce("select",{value:newSewOrder.house,onChange:function(ev){setNewSewOrder(Object.assign({},newSewOrder,{house:ev.target.value}));},style:INP},
                   ce("option",{value:""},"— wybierz szwalnię —"),
-                  SEWING_HOUSES_OPT.map(function(o,i){return ce("option",{key:i,value:o},o);})),
+                  SEWING_HOUSES_OPT.map(function(o,i){return ce("option",{key:i,value:o},o);}),
+                  ce("option",{value:"__custom__"},"— inna (wpisz) —")),
+                newSewOrder.house==="__custom__"?ce("input",{type:"text",value:newSewOrder.custom||"",placeholder:"Nazwa szwalni...",onChange:function(ev){setNewSewOrder(Object.assign({},newSewOrder,{custom:ev.target.value}));},style:INP}):null,
                 ce("input",{type:"date",value:newSewOrder.sent_date,onChange:function(ev){setNewSewOrder(Object.assign({},newSewOrder,{sent_date:ev.target.value}));},style:INP}),
                 ce("input",{type:"text",value:newSewOrder.term,placeholder:"Termin realizacji, np. 25.04.2026",onChange:function(ev){setNewSewOrder(Object.assign({},newSewOrder,{term:ev.target.value}));},style:INP}),
                 ce("div",{style:{display:"flex",gap:8}},
                   ce("button",{onClick:addSewingOrder,style:{padding:"8px 14px",borderRadius:9,border:"none",background:"var(--t1)",color:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600}},"Dodaj"),
                   ce("button",{onClick:function(){setNewSewOrder(null);},style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:13}},"Anuluj")))
-            :ce("button",{onClick:function(){setNewSewOrder({house:"",sent_date:"",term:""});},style:{alignSelf:"flex-start",padding:"6px 12px",borderRadius:9,border:"1px dashed var(--bd2)",background:"none",color:"var(--t2)",cursor:"pointer",fontSize:12}},"+ Dodaj zlecenie"),
-          ce("div",null,
-            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"SZWALNIA"),
-            ce("select",{value:sewingHouse,onChange:function(ev){setSewingHouse(ev.target.value);},style:INP},
-              ce("option",{value:""},"— wybierz szwalnię —"),
-              SEWING_HOUSES_OPT.map(function(o,i){return ce("option",{key:i,value:o},o);}),
-              sewingHouse&&sewingHouse!=="__custom__"&&SEWING_HOUSES_OPT.indexOf(sewingHouse)<0?ce("option",{value:sewingHouse},sewingHouse):null,
-              ce("option",{value:"__custom__"},"— inna (wpisz) —")
-            )
-          ),
-          sewingHouse==="__custom__"?ce("input",{type:"text",placeholder:"Nazwa szwalni...",onChange:function(ev){setSewingHouse(ev.target.value);},style:INP}):null,
-          ce("div",null,
-            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"DATA WYSŁANIA ZLECENIA"),
-            ce("input",{type:"date",value:sewingSentDate,onChange:function(ev){setSewingSentDate(ev.target.value);},style:INP})
-          ),
-          ce("div",null,
-            ce("label",{style:{fontSize:11,color:"var(--t3)",display:"block",marginBottom:4}},"TERMIN REALIZACJI"),
-            ce("input",{type:"text",value:sewingTerm,placeholder:"np. 25.04.2026",onChange:function(ev){setSewingTerm(ev.target.value);},style:INP})
-          )
+            :ce("button",{onClick:function(){setNewSewOrder({house:"",sent_date:"",term:""});},style:{alignSelf:"flex-start",padding:"6px 12px",borderRadius:9,border:"1px dashed var(--bd2)",background:"none",color:"var(--t2)",cursor:"pointer",fontSize:12}},"+ Dodaj zlecenie")
         ),
 
         ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent&&washingSent},
