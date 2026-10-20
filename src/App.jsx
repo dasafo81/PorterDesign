@@ -3579,6 +3579,19 @@ export function ModalClientEmail(p){
   function send(){
     var to=toEmail.trim();
     if(!to||!subject.trim()||!pdfB64||sending)return;
+    // Ostrzeżenie przed wysłaniem klientowi oferty z produktem, który ma wymiary, ale cenę 0 zł
+    var clientMailChk=String(client.email||"").trim().toLowerCase();
+    if(clientMailChk&&to.toLowerCase()===clientMailChk){
+      var zeroList=[];
+      (client.rooms||[]).forEach(function(r){(r.windows||[]).forEach(function(w){(w.products||[]).forEach(function(pr){
+        var par=pr.par||{};
+        if(!(par.wCm>0||par.hCm>0))return;
+        var pfc=(pr.type==="zaslona"||pr.type==="firana")?mg(pr,{panels:getPanelsForProd(pr)}):pr;
+        var price=pr.mp!=null?pr.mp:(calc(pfc).total||0);
+        if(!(price>0))zeroList.push((r.name||"")+" / "+(w.name||"")+" — "+(pr.type||"produkt")+" ("+(par.wCm||"?")+"\xd7"+(par.hCm||"?")+" cm)");
+      });});});
+      if(zeroList.length&&!window.confirm("UWAGA — w tej ofercie "+(zeroList.length===1?"jest produkt z wymiarami wyceniony":"są produkty z wymiarami wycenione")+" na 0 zł:\n\n"+zeroList.join("\n")+"\n\nKlient zobaczy cenę 0 zł. Wysłać mimo to?"))return;
+    }
     setSending(true);setSendErr(null);
     var font="font-family:Montserrat,Arial,Helvetica,sans-serif;";
     var sigHtml="",sigImg="";

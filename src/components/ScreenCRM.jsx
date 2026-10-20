@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
+import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor } from '../lib/gcalDealSync.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { DealCorrespondence } from './DealCorrespondence.jsx';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
@@ -788,6 +789,9 @@ export function ModalDeal(p){
       updated_at:new Date().toISOString()
     };
     sbApi.updateDeal(d.id,patch).then(function(){
+      // Zmiana montażysty/terminu → dosyłamy kalendarz montażysty (zanim karta się zamknie)
+      return syncDealDatesToGcal(["visit_date","delivery_date","delivery_date2"]);
+    }).then(function(){
       p.onSave(patch);
       setBusy(false);
       p.onClose();
@@ -805,7 +809,8 @@ export function ModalDeal(p){
       .then(function(){if(p.onPatch)p.onPatch(patch);})
       .catch(function(e){console.warn("[deal] czas trwania nie zapisany",e&&e.message);});
   }
-  function persistDealDate(field,val,setter){
+  // skipGcal: termin właśnie trafił do Google oknem „Dodaj do kalendarza” — nie synchronizujemy drugi raz.
+  function persistDealDate(field,val,setter,skipGcal){
     if(setter)setter(val);
     // Natywny picker <input type="datetime-local"> wywołuje onChange przy KAŻDEJ
     // zmianie w kalendarzyku (także przy przewijaniu miesięcy), więc zapis leci
@@ -821,8 +826,40 @@ export function ModalDeal(p){
       .then(function(){
         console.log("[deal] zapisano termin",d.id,patch);
         if(p.onPatch)p.onPatch(patch);
+        // Każdy termin z karty deala ma być widoczny w Google Calendar
+        if(!skipGcal&&val&&DEAL_DATE_FIELDS.indexOf(field)>=0){
+          var ov={};ov[field]=val;
+          syncDealDatesToGcal([field],ov);
+        }
       })
       .catch(function(e){alert("Termin zapisany w kalendarzu, ale nie udało się zapisać go w dealu: "+e.message);});
+  }
+
+  // Wysyła terminy deala do Google: kalendarz główny + kalendarz wybranego montażysty.
+  // Gdy wybrano montażystę, a nie ma jego kalendarza na liście — głośno ostrzega.
+  function syncDealDatesToGcal(fields,overrides){
+    if(!gcalToken||!calList.length)return Promise.resolve();
+    var snap=Object.assign({},d,{
+      visit_date:visitDate||null,delivery_date:delivDate||null,delivery_date2:delivDate2||null,
+      installer_name:installerName||null,installer_name2:installerName2||null,
+      installer_calendar_id:installerCalId||null,installer_calendar_id2:installerCalId2||null,
+      install_label2:installLabel2||null
+    },overrides||{});
+    var gctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+    var missing=[];
+    return fields.reduce(function(chain,f){
+      if(!snap[f])return chain;
+      return chain.then(function(){
+        return syncDealDateToGcal(gctx,snap,cl,f,calList).then(function(r){
+          if(r&&r.missingInstaller&&missing.indexOf(r.missingInstaller)<0)missing.push(r.missingInstaller);
+        });
+      });
+    },Promise.resolve()).then(function(){
+      if(missing.length)alert("Termin dodany do kalendarza głównego, ale nie znaleziono w Google kalendarza montażysty: "+missing.join(", ")+".\nMontażysta nie zobaczy tego terminu, dopóki kalendarz o takiej nazwie nie będzie dostępny dla tego konta (z prawem zapisu).");
+    }).catch(function(e){
+      console.warn("[gcal] synchronizacja terminu nie powiodła się",e);
+      alert("Termin zapisany w CRM, ale nie udało się dodać go do Google Calendar: "+((e&&e.message)||"błąd"));
+    });
   }
 
   // Kroki zamówienia (osprzęt / tkanina / szycie) — w CRM przez toggleOrder z tablicy (auto-przejście
@@ -1025,7 +1062,7 @@ export function ModalDeal(p){
     }).finally(function(){setMailBusy(false);});
   }
 
-  function addToGcal(title,dateStr,calIdOvr,onSave){
+  function addToGcal(title,dateStr,calIdOvr,onSave,dateField){
     if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
     if(!calList.length){alert("Brak dost\u0119pnych kalendarzy.");return;}
     var pad=function(n){return String(n).padStart(2,"0");};
@@ -1043,14 +1080,23 @@ export function ModalDeal(p){
     // Auto-dopasuj kalendarz montazysta po nazwie
     var autoCalId=(function(){
       if(calIdOvr)return calIdOvr;
-      if(installerName){
-        var matched=calList.find(function(c){return c.summary&&c.summary.toLowerCase().indexOf(installerName.toLowerCase())>=0;});
-        if(matched)return matched.id;
+      var snapD={installer_name:installerName,installer_name2:installerName2,installer_calendar_id:installerCalId,installer_calendar_id2:installerCalId2};
+      var iid=installerCalendarId(snapD,dateField,calList);
+      if(iid)return iid;
+      // Pomiar i inne terminy: jak dotąd, dopasowanie po nazwie pierwszego montażysty
+      if(!dateField||(dateField!=="delivery_date"&&dateField!=="delivery_date2")){
+        if(installerName){
+          var matched=calList.find(function(c){return c.summary&&c.summary.toLowerCase().indexOf(installerName.toLowerCase())>=0;});
+          if(matched)return matched.id;
+        }
       }
       return (calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
     })();
     var calId=autoCalId;
-    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+endMM,durMin:durMin,addPrimary:true,note:"",calId:calId,saving:false,onSave:onSave||null});
+    var wantInst=installerNameFor({installer_name:installerName,installer_name2:installerName2},dateField);
+    var primaryId=(calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
+    var missingInstaller=wantInst&&autoCalId===primaryId&&!calList.some(function(c){return c.id===autoCalId&&c.summary&&c.summary.toLowerCase().indexOf(wantInst.toLowerCase())>=0;})?wantInst:null;
+    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+endMM,durMin:durMin,addPrimary:true,note:"",calId:calId,saving:false,onSave:onSave||null,pdKey:dateField?dealKey(d.id,dateField):null,missingInstaller:missingInstaller});
   }
 
   function submitGcalDraft(){
@@ -1078,6 +1124,8 @@ export function ModalDeal(p){
       start:{dateTime:fmtLocal(startDt),timeZone:tz},
       end:{dateTime:fmtLocal(endDt),timeZone:tz}
     };
+    // Znacznik deala — kalendarz wie, że to wydarzenie jest odpowiednikiem terminu z CRM
+    if(dft.pdKey)eventBody.extendedProperties={"private":{pdKey:dft.pdKey}};
     var primaryCal=(calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
     var targets=[dft.calId];
     // Kalendarz główny (Pauliny) — tylko gdy zaznaczone; gdy jedzie sam montażysta, można odhaczyć
@@ -1532,7 +1580,7 @@ export function ModalDeal(p){
               style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
             }),
             gcalToken?ce("button",{
-              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt,dur){persistDealDate("visit_date",dt,setVisitDate);persistDealDuration("visit_duration_min",dur);});},
+              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt,dur){persistDealDate("visit_date",dt,setVisitDate,true);persistDealDuration("visit_duration_min",dur);},"visit_date");},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
             },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):null
@@ -1590,7 +1638,7 @@ export function ModalDeal(p){
               style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
             }),
             gcalToken?ce("button",{
-              onClick:function(){addToGcal("Montaż",delivDate,"",function(dt,dur){persistDealDate("delivery_date",dt,setDelivDate);persistDealDuration("delivery_duration_min",dur);});},
+              onClick:function(){addToGcal("Montaż",delivDate,"",function(dt,dur){persistDealDate("delivery_date",dt,setDelivDate,true);persistDealDuration("delivery_duration_min",dur);},"delivery_date");},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
             },"📅 "+(delivDate?"Zmień":"Ustaw termin")):null
@@ -1613,7 +1661,7 @@ export function ModalDeal(p){
                 "📅 "+fmtDate(delivDate2)+(delivDate2.length>10?" "+delivDate2.slice(11,16):"")
               ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
               gcalToken?ce("button",{
-                onClick:function(){addToGcal(installLabel2||"Wieszanie",delivDate2,installerCalId2||installerCalId,function(dt,dur){persistDealDate("delivery_date2",dt,setDelivDate2);persistDealDuration("delivery2_duration_min",dur);});},
+                onClick:function(){addToGcal(installLabel2||"Wieszanie",delivDate2,"",function(dt,dur){persistDealDate("delivery_date2",dt,setDelivDate2,true);persistDealDuration("delivery2_duration_min",dur);},"delivery_date2");},
                 title:"Ustaw termin i dodaj do Google Calendar",
                 style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
               },"📅 "+(delivDate2?"Zmień":"Ustaw termin")):null
@@ -1926,6 +1974,9 @@ export function ModalDeal(p){
             return labels.join(" + ");
           })()
         ),
+        gcalDraft.missingInstaller?ce("div",{style:{fontSize:12,color:"#b45309",background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:8,padding:"8px 10px",marginTop:-8,marginBottom:16}},
+          "⚠ Nie znaleziono kalendarza montażysty „"+gcalDraft.missingInstaller+"” — montażysta nie zobaczy tego terminu. Wybierz kalendarz ręcznie lub udostępnij go temu kontu Google."
+        ):null,
         // Opcja: nie dodawaj do kalendarza głównego (gdy na montaż jedzie sam montażysta)
         (function(){
           var primaryCal=(calList.find(function(c){return c.primary;})||calList[0]||{});
@@ -1975,6 +2026,9 @@ export function CRMKalendarz(p){
   var sDragOver=useState(null),dragOverDay=sDragOver[0],setDragOverDay=sDragOver[1];
   var dragEvRef=React.useRef(null);
   function openDealEventPreview(ev){
+    var twinKey=dealKey(ev.deal.id,{visit:"visit_date",delivery:"delivery_date",delivery2:"delivery_date2",followup:"followup_date"}[ev.type]);
+    var twin=gcalEvents.find(function(g){return eventDealKey(g)===twinKey;});
+    if(twin){setSelectedGcalEv(twin);return;}
     var deal=ev.deal,client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||{};
     var address=[client.addr,[client.postal,client.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
     var start=new Date(ev.date),end=dealEventEnd(start,ev.client,ev.type,deal);
@@ -2088,7 +2142,9 @@ export function CRMKalendarz(p){
           var end=ev.end&&(ev.end.dateTime||ev.end.date)||"";
           var key=[ev.summary||"",start,end,ev.location||""].join("\u001f");
           var current=unique[key];
+          var names=((current&&current._calNames)||[]).concat(ev._calName||[]);
           if(!current || (ev._calPrimary && !current._calPrimary)) unique[key]=ev;
+          unique[key]=Object.assign({},unique[key],{_calNames:names});
         });
         setGcalEvents(Object.keys(unique).map(function(k){return unique[k];}));
         setLoadingEv(false);
@@ -2131,6 +2187,48 @@ export function CRMKalendarz(p){
   });
   dealEvents.sort(function(a,b){return a.date-b.date;});
   var upcoming=dealEvents.filter(function(e){return e.date>=now;});
+
+  // Terminy z kart dealów (pomiar / realizacja / termin 2 / follow-up) mają być widoczne
+  // w Google Calendar. Przy otwarciu kalendarza dosyłamy te, których tam jeszcze nie ma
+  // (raz na sesję na każdą wartość daty); późniejsze zmiany dat synchronizuje karta deala.
+  var syncedDealsRef=React.useRef({});
+  React.useEffect(function(){
+    if(!gcalToken||!calList.length)return;
+    var todayStart=new Date();todayStart.setHours(0,0,0,0);
+    var jobs=[];
+    calendarDeals.forEach(function(deal){
+      var client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||null;
+      DEAL_DATE_FIELDS.forEach(function(f){
+        if(!deal[f])return;
+        var dt=new Date(deal[f]);
+        if(isNaN(dt.getTime())||dt<todayStart)return;
+        var sk=[deal.id,f,deal[f],deal.installer_name||"",deal.installer_name2||"",deal.installer_calendar_id||"",deal.installer_calendar_id2||""].join("|");
+        if(syncedDealsRef.current[sk])return;
+        syncedDealsRef.current[sk]=true;
+        jobs.push({sk:sk,deal:deal,client:client,field:f});
+      });
+    });
+    if(!jobs.length)return;
+    var ctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+    // Po kolei, żeby nie przekroczyć limitów API
+    var missingInst=[];
+    var syncErrors=[];
+    jobs.reduce(function(chain,j){
+      return chain.then(function(){
+        return syncDealDateToGcal(ctx,j.deal,j.client,j.field,calList).then(function(r){
+          if(r&&r.missingInstaller&&missingInst.indexOf(r.missingInstaller)<0)missingInst.push(r.missingInstaller);
+        }).catch(function(e){
+          delete syncedDealsRef.current[j.sk]; // spróbujemy ponownie przy następnym otwarciu
+          console.warn("[gcal] synchronizacja terminu deala nie powiodła się",j.deal.id,j.field,e);
+          syncErrors.push((j.client&&j.client.name||"deal")+": "+((e&&e.message)||"błąd"));
+        });
+      });
+    },Promise.resolve()).then(function(){
+      fetchEvents(ctx.token);
+      if(syncErrors.length)alert("Nie udało się dodać części terminów z CRM do Google Calendar:\n"+syncErrors.slice(0,5).join("\n"));
+      if(missingInst.length)alert("Nie znaleziono w Google kalendarza montażysty: "+missingInst.join(", ")+".\nTerminy montaży tych osób są tylko w kalendarzu głównym — udostępnij ich kalendarze temu kontu Google (z prawem zapisu).");
+    });
+  },[gcalToken,calList,calendarDeals]);
 
   function addDealEventToGcal(ev){
     if(!gcalToken){alert("Zaloguj si\u0119 najpierw do Google Calendar.");return;}
@@ -2224,7 +2322,7 @@ export function CRMKalendarz(p){
     var calId=ev._calId||'primary';
     setNewEvDraft({title:ev.summary||'',date:dateStr,timeFrom:timeFrom,timeTo:timeTo,
       description:ev.description||'',saving:false,selectedCals:[calId],
-      _editId:ev.id,_editCalId:calId,_crmDealId:ev._crmDealId||null,
+      _editId:ev.id,_editCalId:calId,_crmDealId:ev._crmDealId||null,_pdEv:eventDealKey(ev)?ev:null,
       _crmDateField:ev._crmDateField||null});
     setSelectedGcalEv(null);
   }
@@ -2294,7 +2392,7 @@ export function CRMKalendarz(p){
           return r;
         })
         .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);})
-        .then(function(){setNewEvDraft(null);fetchEvents(gcalToken);})
+        .then(function(){if(ev._pdEv&&!(ev._pdEv.start&&ev._pdEv.start.date&&!ev._pdEv.start.dateTime))syncDealFromGcalEvent(ev._pdEv,start);setNewEvDraft(null);fetchEvents(gcalToken);})
         .catch(function(){
           setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
           alert('B\u0142\u0105d edycji wydarzenia.');
@@ -2341,6 +2439,14 @@ export function CRMKalendarz(p){
   // ── Pomocniki kalendarza ──
   function isSameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
 
+  // Montaże (termin realizacji z deala) zawsze na zielono, niezależnie od koloru kalendarza,
+  // w którym akurat leży wybrana kopia wydarzenia (zwykle główny, niebieski).
+  function gcalEventColor(ev){
+    var k=eventDealKey(ev),pk=k&&parseDealKey(k);
+    if(pk&&pk.field==="delivery_date")return "#10b981";
+    return ev._calColor||"#4285f4";
+  }
+
   function getEventsForDay(date){
     var result=[];
     // GCal events
@@ -2350,10 +2456,15 @@ export function CRMKalendarz(p){
       var d=new Date(start);
       var endRaw=ev.end&&(ev.end.dateTime||ev.end.date);
       var endD=ev.start.dateTime?(endRaw?new Date(endRaw):new Date(d.getTime()+3600000)):null;
-      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:ev._calColor||"#4285f4",time:ev.start.dateTime?d:null,end:endD,calName:ev._calName||"",gcalRaw:ev});
+      if(isSameDay(d,date)) result.push({type:"gcal",title:ev.summary||"(bez tytułu)",color:gcalEventColor(ev),time:ev.start.dateTime?d:null,end:endD,calName:ev._calName||"",gcalRaw:ev});
     });
     // Deal events
+    var FIELD_BY_TYPE={visit:"visit_date",delivery:"delivery_date",delivery2:"delivery_date2",followup:"followup_date"};
+    var gcalDealKeys={};
+    gcalEvents.forEach(function(g){var k=eventDealKey(g);if(k)gcalDealKeys[k]=true;});
     dealEvents.forEach(function(ev){
+      // Termin ma już wydarzenie w Google (rysowane wyżej) — nie pokazuj drugiej kopii z CRM
+      if(gcalDealKeys[dealKey(ev.deal.id,FIELD_BY_TYPE[ev.type])])return;
       if(isSameDay(ev.date,date)) result.push({type:"deal",title:ev.label+" "+ev.client,color:ev.color,time:ev.date,end:dealEventEnd(ev.date,ev.client,ev.type,ev.deal),dealEv:ev});
     });
     result.sort(function(a,b){return (a.time||0)-(b.time||0);});
@@ -2432,6 +2543,21 @@ export function CRMKalendarz(p){
     return {h:snappedHour,m:0};
   }
 
+  // Wydarzenie Google powiązane z dealem (znacznik pdKey) — zmiana/usunięcie terminu
+  // ma się odbić także w dealu, inaczej CRM i Google rozjadą się. newStart=null → czyści datę.
+  function syncDealFromGcalEvent(raw,newStart){
+    var k=raw&&eventDealKey(raw);
+    var pk=k&&parseDealKey(k);
+    if(!pk||DEAL_DATE_FIELDS.indexOf(pk.field)<0)return;
+    var patch={};
+    patch[pk.field]=newStart?newStart.toISOString():null;
+    sbApi.updateDeal(pk.dealId,patch).then(function(){
+      setCalendarDeals(function(deals){
+        return deals.map(function(deal){return String(deal.id)===String(pk.dealId)?Object.assign({},deal,patch):deal;});
+      });
+    }).catch(function(e){console.warn("[deal] nie udało się zaktualizować terminu w dealu",e);});
+  }
+
   // ── Przeniesienie zdarzenia GCal na inny dzień i/lub godzinę (drag&drop) ──
   // targetTime: opcjonalny {h,m} wyliczony z pozycji upuszczenia w siatce
   // godzinowej (widok tygodnia/dnia) — nadpisuje godzinę zamiast zawsze
@@ -2484,7 +2610,7 @@ export function CRMKalendarz(p){
         if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doPatch(fresh);});}
         return r;
       })
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);if(!isAllDay)syncDealFromGcalEvent(raw,new Date(newStartObj.dateTime));})
       .catch(function(){
         setGcalEvents(prevSnapshot);
         fetchEvents(gcalToken);
@@ -2945,7 +3071,7 @@ export function CRMKalendarz(p){
           var isAllDay=!!(raw.start&&raw.start.date&&!raw.start.dateTime);
           var fmtDT=function(s){if(!s)return null;var d=new Date(s);return d.toLocaleString('pl-PL',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:isAllDay?undefined:'2-digit',minute:isAllDay?undefined:'2-digit'});};
           var rows=[];
-          if(raw._calName) rows.push(['Kalendarz',raw._calName]);
+          if(raw._calName) rows.push(['Kalendarz',(raw._calNames&&raw._calNames.length>1)?raw._calNames.join(', '):raw._calName]);
           if(startDT) rows.push([isAllDay?'Dzień':'Początek',fmtDT(startDT)]);
           if(endDT&&!isAllDay) rows.push(['Koniec',fmtDT(endDT)]);
           if(raw.location) rows.push(['Lokalizacja',raw.location]);
@@ -2956,6 +3082,21 @@ export function CRMKalendarz(p){
             ce('div',{style:{fontSize:13,color:'var(--t1)',lineHeight:1.5,wordBreak:'break-word',whiteSpace:'pre-wrap'}},r[1])
           );});
         })(),
+        (selectedGcalEv._crmDealId&&!selectedGcalEv.htmlLink)?ce('div',{
+          style:{marginTop:16,padding:'9px',borderRadius:10,background:'#4285f4',color:'#fff',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
+          onClick:function(){
+            var ev=selectedGcalEv;
+            var deal=calendarDeals.find(function(x){return String(x.id)===String(ev._crmDealId);});
+            if(!deal||!gcalToken){alert('Zaloguj się do Google Calendar.');return;}
+            var client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||null;
+            var ctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+            syncDealDateToGcal(ctx,deal,client,ev._crmDateField,calList).then(function(r){
+              setSelectedGcalEv(null);
+              fetchEvents(ctx.token);
+              if(r&&r.missingInstaller)alert('Dodano do kalendarza głównego, ale nie znaleziono w Google kalendarza montażysty: '+r.missingInstaller+'.');
+            }).catch(function(e){alert('Błąd dodawania do Google Calendar: '+((e&&e.message)||'nieznany'));});
+          }
+        },'\uD83D\uDCC5 Dodaj do Google Calendar'):null,
         (!selectedGcalEv._readOnly&&selectedGcalEv.htmlLink)?ce('a',{href:selectedGcalEv.htmlLink,target:'_blank',rel:'noopener noreferrer',style:{display:'block',marginTop:16,textAlign:'center',padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textDecoration:'none'}},'Otwórz w Google Calendar \u2197'):null,
         ce('div',{
           style:{marginTop:10,padding:'9px',borderRadius:10,border:'1px solid #4285f4',color:'#4285f4',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
@@ -2964,8 +3105,8 @@ export function CRMKalendarz(p){
         ce('div',{
           style:{marginTop:10,padding:'9px',borderRadius:10,border:'1px solid #ef4444',color:'#ef4444',fontSize:12,fontWeight:700,textAlign:'center',cursor:'pointer'},
           onClick:function(){
-            if(!window.confirm('Usunąć to wydarzenie z Google Calendar?'))return;
             var ev=selectedGcalEv;
+            if(!window.confirm('Usunąć to wydarzenie z Google Calendar?'+(eventDealKey(ev)?'\n\nTermin zostanie też wyczyszczony w dealu.':'')))return;
             var calId=ev._calId||'primary';
             function doDel(t){
               return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events/'+encodeURIComponent(ev.id),{
@@ -2979,6 +3120,7 @@ export function CRMKalendarz(p){
               })
               .then(function(r){
                 if(r.status===204||r.ok){
+                  syncDealFromGcalEvent(ev,null);
                   setSelectedGcalEv(null);
                   setGcalEvents(function(evs){return evs.filter(function(e){return e.id!==ev.id;});});
                 } else { alert('Błąd usuwania (HTTP '+r.status+').'); }
