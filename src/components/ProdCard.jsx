@@ -35,7 +35,7 @@ import {
   PRESTIGE_WIDTHS,
   SHUTTLE_BASE, SHUTTLE_DOPLATY, SHUTTLE_STEROWANIE, SHUTTLE_UCHWYTY,
   SHUTTLE_WIDTHS, shuttleUchwytyQty,
-  PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES,
+  PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES, PLISA_SL_OSPRZET_KOLORY, PLISA_GR_LABEL, plisaFabricList,
   calc, tapetaCalc, formatPLN, getPanelsForProd, jzLookup,
   lookup, mg, roundTo10, rrzLookup, arcGeom
 } from '../constants/data.js';
@@ -2435,8 +2435,15 @@ export function ProdCard(p){
     var PLISA_MANUAL="__manual__";
     var plKolekcja=c.plKolekcja||"";
     var plIsManual=plKolekcja===PLISA_MANUAL;
-    var plColl=PLISA_FABRICS.find(function(f){return f.name===plKolekcja;});
+    var plDach=c.plWariant==="dachowa";
+    var plColl=plisaFabricList(plDach).find(function(f){return f.name===plKolekcja;});
     form=ce(Fragment,null,
+      ce(Fld,{label:"WARIANT"},
+        ce("select",{value:plDach?"dachowa":"okienna",onChange:function(ev){p.onChange(mg(prod,{c:mg(c,{plWariant:ev.target.value==="dachowa"?"dachowa":null,plKolekcja:null,plKolorKod:null,plKolorOsprzetu:null,plTabliczka:null})}));},style:Object.assign({},IST,{width:"100%"})},
+          ce("option",{value:"okienna"},"Plisa okienna"),
+          ce("option",{value:"dachowa"},"Plisa dachowa SL")
+        )
+      ),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
         ce(Fld,{label:"SZEROKO\u015a\u0106 (mm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wMm||"",onChange:function(ev){sp("wMm",ev.target.value);},placeholder:"np. 900",style:IST})),
         ce(Fld,{label:"WYSOKO\u015a\u0106 (mm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hMm||"",onChange:function(ev){sp("hMm",ev.target.value);},placeholder:"np. 1400",style:IST}))
@@ -2444,8 +2451,8 @@ export function ProdCard(p){
       ce(Fld,{label:"TKANINA"},
         ce("select",{value:plKolekcja,onChange:function(ev){var v=ev.target.value;p.onChange(mg(prod,{c:mg(c,{plKolekcja:v,plKolorKod:null})}));},style:Object.assign({},IST,{width:"100%"})},
           ce("option",{value:""},"-- wybierz kolekcj\u0119 --"),
-          PLISA_FABRICS.map(function(f){return ce("option",{key:f.name,value:f.name},f.name);}),
-          ce("option",{value:PLISA_MANUAL},"Inna (wpisz r\u0119cznie)")
+          plisaFabricList(plDach).map(function(f){return ce("option",{key:f.name,value:f.name},f.name+(plDach?" (gr. "+PLISA_GR_LABEL[f.gr]+")":""));}),
+          plDach?null:ce("option",{value:PLISA_MANUAL},"Inna (wpisz r\u0119cznie)")
         )
       ),
       plIsManual?ce(Fld,{label:"NAZWA TKANINY (r\u0119cznie)"},
@@ -2456,6 +2463,8 @@ export function ProdCard(p){
           ?ce("input",{type:"text",value:c.plKolorManual||"",onChange:function(ev){sc("plKolorManual",ev.target.value);},placeholder:"np. Grafit",style:IST})
           :(!plColl
               ?ce("div",{style:{fontSize:13,color:"var(--t3)",padding:"10px 0"}},"najpierw wybierz tkanin\u0119")
+              :!plColl.colors.length
+              ?ce("input",{type:"text",value:c.plKolorManual||"",onChange:function(ev){sc("plKolorManual",ev.target.value);},placeholder:"wpisz kolor / kod",style:IST})
               :ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(84px,1fr))",gap:10,maxWidth:640}},
                   plColl.colors.map(function(code){
                     var isA=c.plKolorKod===code;
@@ -2478,9 +2487,15 @@ export function ProdCard(p){
       ce(Fld,{label:"KOLOR OSPRZ\u0118TU"},
         ce("select",{value:c.plKolorOsprzetu||"",onChange:function(ev){sc("plKolorOsprzetu",ev.target.value);},style:Object.assign({},IST,{width:"100%"})},
           ce("option",{value:""},"-- wybierz kolor --"),
-          PLISA_OSPRZET_KOLORY.map(function(k){return ce("option",{key:k.v,value:k.v},k.l+(k.drewno?" (drewnopodobny)":""));})
+          (plDach?PLISA_SL_OSPRZET_KOLORY:PLISA_OSPRZET_KOLORY).map(function(k){return ce("option",{key:k.v,value:k.v},k.l+(k.drewno?" (drewnopodobny)":""));})
         )
       ),
+      plDach?ce(Fld,{label:"NUMER TABLICZKI ZNAMIONOWEJ OKNA"},
+        ce("input",{type:"text",value:c.plTabliczka||"",onChange:function(ev){sc("plTabliczka",ev.target.value);},placeholder:"np. MK04 / CK02",style:IST})
+      ):null,
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:8}},plDach
+        ?"Wymiary A\xd7H: szeroko\u015b\u0107 i wysoko\u015b\u0107 mi\u0119dzy kraw\u0119dziami zewn\u0119trznymi."
+        :"Wymiary A\xd7H: szeroko\u015b\u0107 i wysoko\u015b\u0107 szyby razem z uszczelk\u0105 (\u22122 mm)."),
       ce("div",{style:{marginTop:12}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:15,color:"var(--t1)"}},
           ce("input",{type:"checkbox",checked:c.plDrabinka==="tak",onChange:function(ev){sc("plDrabinka",ev.target.checked?"tak":null);}}),

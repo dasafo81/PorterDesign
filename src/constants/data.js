@@ -6406,6 +6406,69 @@ export function plisaLookup(wMm,hMm){
   if(!row||row[wi]==null)return null;
   return {price:row[wi], widthUsed:PLISA_WIDTHS[wi], heightUsed:PLISA_HEIGHTS[hi]};
 }
+// ── PLISA DACHOWA — WARIANT SL ───────────────────────────────────────────────
+// Cennik Hanarol (str. 34): szerokość 400..1300 co 100 mm, wysokość 800..1800 co 100 mm, grupy cenowe 0..V.
+// PLISA_SL[szerokość] = wiersze wg PLISA_SL_HEIGHTS, kolumny = grupy 0,I,II,III,IV,V.
+export const PLISA_SL_HEIGHTS=[800,900,1000,1100,1200,1300,1400,1500,1600,1700,1800];
+export const PLISA_SL ={
+  400:[[230,234,242,255,261,290],[240,242,255,268,276,307],[251,255,267,281,290,327],[261,265,280,294,304,344],[272,276,291,308,321,362],[281,286,303,323,331,381],[291,298,314,335,348,397],[302,307,328,349,362,414],[313,321,339,362,377,434],[324,329,351,377,390,452],[334,341,363,389,406,470]],
+  500:[[242,248,261,276,282,321],[255,259,275,290,300,339],[267,272,286,304,314,360],[277,282,301,321,330,381],[287,294,313,335,348,403],[300,306,327,350,363,424],[309,317,339,364,380,445],[323,329,352,380,395,462],[331,339,365,395,411,482],[344,351,380,410,427,503],[355,363,392,425,445,524]],
+  600:[[259,263,279,297,306,350],[272,276,293,311,324,372],[282,287,307,329,341,396],[294,301,323,345,360,418],[306,313,336,362,378,441],[317,325,351,378,395,467],[329,338,364,395,412,488],[341,350,380,411,430,511],[352,363,393,427,448,535],[364,375,408,445,468,557],[377,387,424,459,482,580]],
+  700:[[273,277,297,314,328,378],[283,290,309,334,348,405],[298,303,327,351,365,428],[308,315,342,369,386,454],[323,329,357,386,406,480],[334,342,372,406,425,506],[348,356,387,424,446,532],[360,370,405,439,462,558],[371,384,419,458,481,583],[385,396,434,476,501,609],[396,410,451,495,522,634]],
+  800:[[286,294,314,336,351,408],[301,307,330,357,371,437],[313,323,349,377,393,467],[328,335,364,395,413,495],[341,350,381,414,435,522],[355,364,397,434,455,550],[366,378,413,453,478,579],[381,392,430,474,499,606],[393,406,448,494,521,637],[407,419,462,511,541,665],[419,433,480,530,563,692]],
+  900:[[301,307,330,357,371,437],[314,323,349,378,395,469],[329,338,366,397,418,499],[342,352,385,419,439,529],[357,366,403,439,462,561],[370,383,419,459,486,592],[385,396,437,481,508,623],[397,411,454,502,532,653],[412,426,474,523,556,684],[426,439,493,544,578,716],[439,455,508,565,600,746]],
+  1000:[[309,321,344,372,390,461],[325,334,363,395,413,496],[339,350,383,417,438,529],[355,365,401,439,462,563],[369,381,419,461,488,596],[384,396,438,485,513,629],[397,412,457,507,538,665],[412,427,476,529,561,697],[427,445,496,552,585,730],[441,458,515,574,612,764],[455,474,534,596,637,797]],
+  1100:[[325,334,363,393,412,493],[341,350,384,417,438,528],[356,366,403,441,467,564],[371,384,424,467,493,600],[386,399,445,491,517,637],[403,414,461,513,543,672],[417,433,481,536,570,709],[433,449,502,561,596,744],[448,467,523,584,623,780],[462,480,542,609,648,816],[478,499,563,632,675,852]],
+  1200:[[339,349,380,413,434,521],[356,365,401,438,461,559],[371,384,422,462,491,598],[387,399,445,491,517,638],[405,417,462,515,548,675],[419,434,485,541,574,714],[435,452,506,565,602,752],[452,470,528,591,629,791],[469,485,549,617,657,830],[482,502,570,642,686,869],[499,521,591,668,714,908]],
+  1300:[[351,362,396,431,454,549],[369,380,418,458,482,590],[385,397,440,485,515,630],[403,414,461,513,543,672],[418,433,483,540,572,713],[435,452,508,567,603,755],[452,470,529,593,632,796],[469,486,552,620,662,837],[485,506,577,647,693,879],[501,523,598,674,722,920],[520,542,620,701,750,961]]
+};
+// Dopłata za osprzęt w kolorach drewnopodobnych (wg szerokości mm)
+export const PLISA_SL_OSPRZET_DOPLATA ={400:10,500:12,600:13,700:16,800:17,900:19,1000:20,1100:24,1200:25,1300:28};
+// Dopłata za prowadnice w kolorze sosna (wg wysokości mm)
+export const PLISA_SL_PROWADNICE_SOSNA ={800:8,900:9,1000:9,1100:10,1200:11,1300:11,1400:12,1500:12,1600:13,1700:14,1800:14};
+// Kolory osprzętu plisy dachowej SL
+export const PLISA_SL_OSPRZET_KOLORY =[
+  {v:"sosna",   l:"Sosna",   drewno:true},
+  {v:"srebrny", l:"Srebrny", drewno:false}
+];
+// Grupy cenowe tkanin dla plisy dachowej (kolekcje bez kodów kolorów w PLISA_FABRICS → kolor wpisywany ręcznie)
+export const PLISA_SL_GRUPY =[
+  {name:"Allegro Pearl",    gr:1},
+  {name:"Aura",             gr:5},
+  {name:"Binomio",          gr:2},
+  {name:"Binomio Blackout", gr:3},
+  {name:"Binomio Stoffa",   gr:5},
+  {name:"Linea",            gr:2},
+  {name:"Linea Blackout",   gr:3},
+  {name:"Mistera",          gr:0},
+  {name:"Mistera Pearl",    gr:2},
+  {name:"Columba",          gr:3},
+  {name:"Zefir",            gr:2},
+  {name:"Toro Pearl",       gr:2},
+  {name:"Arizona Blackout", gr:4},
+  {name:"Atropa Blackout",  gr:4}
+];
+export const PLISA_GR_LABEL =["0","I","II","III","IV","V"];
+// Lista tkanin dla wariantu (dachowa=true → z grupami cenowymi SL)
+export function plisaFabricList(dach){
+  if(!dach)return PLISA_FABRICS;
+  return PLISA_SL_GRUPY.map(function(g){
+    var f=PLISA_FABRICS.find(function(x){return x.name===g.name;});
+    return {name:g.name,colors:f?f.colors:[],gr:g.gr};
+  });
+}
+export function plisaSlGrupa(kolekcja){
+  var g=PLISA_SL_GRUPY.find(function(x){return x.name===kolekcja;});
+  return g?g.gr:null;
+}
+export function plisaSlLookup(wMm,hMm,gr){
+  var w=PLISA_WIDTHS.find(function(x){return x>=wMm;});
+  var h=PLISA_SL_HEIGHTS.find(function(x){return x>=hMm;});
+  if(!w||!h||gr==null)return null;
+  var row=PLISA_SL[w][PLISA_SL_HEIGHTS.indexOf(h)];
+  return {price:row[gr],widthUsed:w,heightUsed:h};
+}
+
 // Miniaturki kolorów (tylko kolekcje z realnymi zdjęciami próbek: Binomio / Binomio Blackout / Binomio Stoffa)
 export const PLISA_FABRIC_IMG_BASE ="/plisa-fabrics/";
 export const PLISA_FABRIC_IMAGES ={
@@ -6774,20 +6837,29 @@ export function calc(p){
   }else if(p.type==="plisa"){
     var wMm=par.wMm||0,hMm=par.hMm||0;
     if(!wMm||!hMm)return{total:0,lines:[],warn:null};
-    var plRes=plisaLookup(wMm,hMm);
-    if(!plRes)return{total:0,lines:[],warn:"Wymiary poza zakresem cennika (maks. 1300\xd72500 mm)."};
+    var plDach=c.plWariant==="dachowa";
+    var plGr=plDach?plisaSlGrupa(c.plKolekcja):null;
+    if(plDach&&plGr==null)return{total:0,lines:[],warn:"Wybierz tkanin\u0119 \u2014 cena plisy dachowej zale\u017cy od grupy cenowej tkaniny."};
+    var plRes=plDach?plisaSlLookup(wMm,hMm,plGr):plisaLookup(wMm,hMm);
+    if(!plRes)return{total:0,lines:[],warn:plDach?"Wymiary poza zakresem cennika (maks. 1300\xd71800 mm).":"Wymiary poza zakresem cennika (maks. 1300\xd72500 mm)."};
     total=plRes.price;
-    var plColl=PLISA_FABRICS.find(function(f){return f.name===c.plKolekcja;});
-    var plFabLabel=plColl?(plColl.name+(c.plKolorKod?" "+c.plKolorKod:"")):(c.plKolekcjaManual?c.plKolekcjaManual+(c.plKolorManual?" "+c.plKolorManual:""):null);
-    lines.push("Plisa okienna (Gr.IV) "+plRes.widthUsed+"\xd7"+plRes.heightUsed+"mm \u2192 "+plRes.price+" z\u0142");
+    var plColl=plisaFabricList(plDach).find(function(f){return f.name===c.plKolekcja;});
+    var plFabLabel=plColl?(plColl.name+(c.plKolorKod?" "+c.plKolorKod:"")+(plDach&&!plColl.colors.length&&c.plKolorManual?" "+c.plKolorManual:"")):(c.plKolekcjaManual?c.plKolekcjaManual+(c.plKolorManual?" "+c.plKolorManual:""):null);
+    lines.push((plDach?"Plisa dachowa SL (Gr."+PLISA_GR_LABEL[plGr]+")":"Plisa okienna (Gr.IV)")+" "+plRes.widthUsed+"\xd7"+plRes.heightUsed+"mm \u2192 "+plRes.price+" z\u0142");
     if(plFabLabel)lines.push("Tkanina: "+plFabLabel);
-    var plOspCol=PLISA_OSPRZET_KOLORY.find(function(k){return k.v===c.plKolorOsprzetu;});
+    if(plDach&&c.plTabliczka)lines.push("Nr tabliczki znamionowej: "+c.plTabliczka);
+    var plOspCol=(plDach?PLISA_SL_OSPRZET_KOLORY:PLISA_OSPRZET_KOLORY).find(function(k){return k.v===c.plKolorOsprzetu;});
     if(plOspCol){
       lines.push("Kolor osprz\u0119tu: "+plOspCol.l);
       if(plOspCol.drewno){
-        var plDop=lookup(wMm,PLISA_OSPRZET_DOPLATA).p;
+        var plDop=plDach?lookup(wMm,PLISA_SL_OSPRZET_DOPLATA).p:lookup(wMm,PLISA_OSPRZET_DOPLATA).p;
         total+=plDop;
         lines.push("+ Dop\u0142ata osprz\u0119t drewnopodobny +"+plDop+" z\u0142");
+        if(plDach){
+          var plPros=PLISA_SL_PROWADNICE_SOSNA[plRes.heightUsed]||0;
+          total+=plPros;
+          lines.push("+ Dop\u0142ata prowadnice w kolorze sosna +"+plPros+" z\u0142");
+        }
       }
     }
     if(c.plDrabinka==="tak"){
@@ -7453,11 +7525,12 @@ export function buildOfferDetailRows(client){
         } else if(p.type==="plisa"){
           // Plisy okienne \u2014 producent zawsze Hanarol
           producent="Hanarol";
-          var plColl=PLISA_FABRICS.find(function(f){return f.name===pc.plKolekcja;});
-          modelSzycia=plColl?plColl.name:(pc.plKolekcjaManual||"-");
+          var plDachX=pc.plWariant==="dachowa";
+          var plColl=plisaFabricList(plDachX).find(function(f){return f.name===pc.plKolekcja;});
+          modelSzycia=(plDachX?"Dachowa SL \u2014 ":"")+(plColl?plColl.name:(pc.plKolekcjaManual||"-"));
           var plKolorLbl=pc.plKolorKod||pc.plKolorManual||"-";
-          var plOspCol=PLISA_OSPRZET_KOLORY.find(function(k){return k.v===pc.plKolorOsprzetu;});
-          tkaninaKolor=plKolorLbl+(plOspCol?" / osprz\u0119t: "+plOspCol.l:"");
+          var plOspCol=(plDachX?PLISA_SL_OSPRZET_KOLORY:PLISA_OSPRZET_KOLORY).find(function(k){return k.v===pc.plKolorOsprzetu;});
+          tkaninaKolor=plKolorLbl+(plOspCol?" / osprz\u0119t: "+plOspCol.l:"")+(plDachX&&pc.plTabliczka?" / tabliczka: "+pc.plTabliczka:"");
           szerokosc=par.wMm?(Math.round(par.wMm/10)+" cm"):"-";
           wysokosc=par.hMm?(Math.round(par.hMm/10)+" cm"):"-";
         }
