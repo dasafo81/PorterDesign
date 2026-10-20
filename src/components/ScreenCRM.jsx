@@ -2451,6 +2451,8 @@ export function CRMKalendarz(p){
   function gcalEventColor(ev){
     var k=eventDealKey(ev),pk=k&&parseDealKey(k);
     if(pk&&pk.field==="delivery_date")return "#10b981";
+    // Wydarzenia bez znacznika pdKey (starsze / dodane ręcznie) — rozpoznaj po tytule
+    if(!pk&&/^[^a-ząćęłńóśźż]*(monta[żz]|realizacja)/i.test(ev.summary||""))return "#10b981";
     return ev._calColor||"#4285f4";
   }
 
