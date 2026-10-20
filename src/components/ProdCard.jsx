@@ -24,7 +24,7 @@ import {
   PRESTIGE_PILOTY_SOMFY, PRESTIGE_CENTRALKI_SOMFY,
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
-  RS_C, RS_D, RS_E, RS_HEIGHTS,
+  RS_B, RS_C, RS_D, RS_E, RS_HEIGHTS,
   RS_IMG, RS_MASK_COLORS, RS_MOTORS, RS_OB_B, RS_OSPRZET_KOLORY,
   RS_OB_C, RS_OB_D, RS_PROFIL, RS_SUPP_WIDTHS,
   RS_WIDTHS, SB_STORAGE, SELLER, WIN_PRESETS,
@@ -1615,7 +1615,7 @@ export function ProdCard(p){
       // Grupa cenowa
       ce(Fld,{label:"GRUPA CENOWA"},
         ce("div",{style:{display:"flex",gap:8}},
-          ["C","D","E"].map(function(g){
+          ["B","C","D","E"].map(function(g){
             var isA=(c.sgrup||"C")===g;
             return ce("button",{key:g,onClick:function(){sc("sgrup",g);},style:{flex:1,padding:"12px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?700:400,cursor:"pointer"}},isA?"\u2713 "+g:g);
           })
