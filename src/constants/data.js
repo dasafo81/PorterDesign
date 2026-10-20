@@ -6275,6 +6275,12 @@ export const RS_MASK_COLORS =[
   {k:"chrom-mat",  l:"Chrom mat",    hex:"#9e9e9e",border:"#777",textColor:"#fff"},
   {k:"chrom-polysk",l:"Chrom po\u0142ysk",hex:"#d6d6d6",border:"#999",textColor:"#333"}
 ];
+// Kolor osprzętu Shadow RM (uchwyty + obciążnik)
+export const RS_OSPRZET_KOLORY =[
+  {k:"bialy",l:"Bia\u0142y"},
+  {k:"szary",l:"Szary"},
+  {k:"czarny",l:"Czarny"}
+];
 // Dopłaty stałe (brutto)
 export const RS_ZESTAW_ZYLKOWY =27.56; // zestaw do prowadzenia żyłkowego / kpl
 export const RS_LANCUSZEK =15.9;         // ozdobny obciążnik łańcuszka / szt
@@ -6762,6 +6768,9 @@ export function calc(p){
     if(!res)return{total:0,lines:[],warn:"Wymiary poza zakresem cennika (maks. 300\xd7300 cm)."};
     total=res.price;
     lines.push("Roleta Shadow RM (Gr."+sg+") "+res.widthUsed+"\xd7"+res.heightUsed+"cm \u2192 "+res.price+" z\u0142");
+    if(c.sKolorTkaniny)lines.push("Kolor tkaniny: "+c.sKolorTkaniny);
+    var rsOsp=RS_OSPRZET_KOLORY.find(function(k){return k.k===c.sKolorOsprzetu;});
+    if(rsOsp)lines.push("Kolor osprz\u0119tu: "+rsOsp.l);
     // Profil montażowy
     if(c.sprofil==="tak"){var pv=rsSuppLookup(RS_PROFIL,wCm);total+=pv;lines.push("+ Profil monta\u017cowy +"+pv+" z\u0142");}
     // Obciążnik

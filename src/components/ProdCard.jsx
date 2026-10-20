@@ -25,7 +25,7 @@ import {
   ROOM_PRESETS, RRZ_PREMIUM, RRZ_PREMIUM_ACC, RRZ_PREMIUM_LABELS,
   RRZ_SOMFY, RRZ_SOMFY_ACC, RRZ_SOMFY_LABELS, RS_BASE,
   RS_C, RS_D, RS_E, RS_HEIGHTS,
-  RS_IMG, RS_MASK_COLORS, RS_MOTORS, RS_OB_B,
+  RS_IMG, RS_MASK_COLORS, RS_MOTORS, RS_OB_B, RS_OSPRZET_KOLORY,
   RS_OB_C, RS_OB_D, RS_PROFIL, RS_SUPP_WIDTHS,
   RS_WIDTHS, SB_STORAGE, SELLER, WIN_PRESETS,
   KD_AKCESORIA, KD_KOLORY, KD_SZYNY, KD_ZASLEPKI,
@@ -1598,8 +1598,19 @@ export function ProdCard(p){
     form=ce(Fragment,null,
       // Wymiary
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
-        ce(Fld,{label:"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+        ce(Fld,{label:"X \u2014 SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 120",style:IST})),
+        ce(Fld,{label:"Y \u2014 WYSOKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 160",style:IST}))
+      ),
+      ce("div",{style:{fontSize:12,color:"var(--t3)",marginBottom:10}},"X = szeroko\u015b\u0107 tkaniny + uchwyty (uchwyty maj\u0105 4,4 cm). Y = wysoko\u015b\u0107 wn\u0119ki + h nadproża."),
+      // Kolor tkaniny i osprzętu
+      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
+        ce(Fld,{label:"KOLOR TKANINY"},ce("input",{type:"text",value:c.sKolorTkaniny||"",onChange:function(ev){sc("sKolorTkaniny",ev.target.value);},placeholder:"np. beż / kod",style:IST})),
+        ce(Fld,{label:"KOLOR OSPRZ\u0118TU (uchwyty + obci\u0105\u017cnik)"},
+          ce("select",{value:c.sKolorOsprzetu||"",onChange:function(ev){sc("sKolorOsprzetu",ev.target.value||null);},style:Object.assign({},IST,{width:"100%"})},
+            ce("option",{value:""},"-- wybierz kolor --"),
+            RS_OSPRZET_KOLORY.map(function(k){return ce("option",{key:k.k,value:k.k},k.l);})
+          )
+        )
       ),
       // Grupa cenowa
       ce(Fld,{label:"GRUPA CENOWA"},
@@ -1642,7 +1653,7 @@ export function ProdCard(p){
         )
       ),
       // Maskownica — bez opcji "Brak", kliknięcie aktywnej odznacza
-      ce(Fld,{label:"MASKOWNICA UCHWYTU (RM40)"},
+      ce(Fld,{label:"RODZAJ UCHWYTU \u2014 maskownica (RM40)"},
         ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
           [{k:"oval",l:"Oval 27,56 z\u0142"},{k:"kwadro",l:"Kwadro 33,92 z\u0142"},{k:"cube",l:"Cube 38,16 z\u0142"}].map(function(o){
             var isA=c.smask===o.k;
@@ -1665,12 +1676,8 @@ export function ProdCard(p){
           })
         )
       ):null,
-      // Dopłaty stałe
+      // Dopłaty stałe (zestaw żyłkowy usunięty z oferty; stare wyceny z c.szylko liczą się dalej w calc)
       ce("div",{style:{marginTop:4,display:"flex",flexDirection:"column",gap:8}},
-        ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:"var(--t1)"}},
-          ce("input",{type:"checkbox",checked:c.szylko==="tak",onChange:function(ev){sc("szylko",ev.target.checked?"tak":null);}}),
-          "Zestaw do prowadzenia \u017cy\u0142kowego +27,56 z\u0142/kpl"
-        ),
         ce("label",{style:{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:14,color:"var(--t1)"}},
           ce("input",{type:"checkbox",checked:c.slanc==="tak",onChange:function(ev){sc("slanc",ev.target.checked?"tak":null);}}),
           "Ozdobny obci\u0105\u017cnik \u0142a\u0144cuszka +15,90 z\u0142/szt"
