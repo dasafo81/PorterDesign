@@ -371,6 +371,29 @@ export function ModalDeal(p){
   var quoteVisitFeeVal=(adjD&&adjD.ve&&adjVisitIn>0)?roundTo10(adjVisitIn):0;
   var clientTotal=Math.max(0,roundTo10(quoteGross-quoteDiscountVal-quoteVisitFeeVal));
 
+  // Wycena zamrożona przy wystawieniu pierwszej faktury (deals.invoiced_quote, migracja 0065).
+  // To ona — a nie bieżąca wycena — jest podstawą rozliczenia, więc późniejsza zmiana
+  // (np. zamiennik tkaniny z magazynu) nie rusza kwoty drugiej faktury.
+  var sfq=useState(d.invoiced_quote||null),frozenQuote=sfq[0],setFrozenQuote=sfq[1];
+  var billTotal=(frozenQuote&&+frozenQuote.total>0)?+frozenQuote.total:clientTotal;
+  function buildQuoteSnapshot(invoiceNumber){
+    return {
+      frozen_at:new Date().toISOString(), total:clientTotal,
+      bez_montazu:quoteBezMontazu, montaz:quoteMontazVal, montaz_pct:Math.round(montazRateD*100),
+      rabat:quoteDiscountVal, wizyta:quoteVisitFeeVal,
+      rooms:quoteBreak.rooms.map(function(rm){return {name:rm.name,total:roundTo10(rm.total)};}),
+      invoice_number:invoiceNumber||null
+    };
+  }
+  function freezeQuote(snap){
+    var patch={invoiced_quote:snap};
+    return sbApi.updateDeal(d.id,patch).then(function(){
+      setFrozenQuote(snap);if(p.onPatch)p.onPatch(patch);
+    }).catch(function(e){
+      alert("Nie udało się zapisać podstawy faktur (czy uruchomiono migrację 0065?): "+((e&&e.message)||e));
+    });
+  }
+
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
   },[d.id]);
@@ -390,7 +413,7 @@ export function ModalDeal(p){
       var byDeal=mine.filter(function(x){return String(x.deal_id||"")===String(d.id);});
       var cands=byDeal.length?byDeal:mine;
       setAdvInvoices(cands);
-      var half=clientTotal/2,best=null;
+      var half=billTotal/2,best=null;
       cands.forEach(function(x){
         if(!best||Math.abs((+x.total_gross||0)-half)<Math.abs((+best.total_gross||0)-half))best=x;
       });
@@ -459,8 +482,8 @@ export function ModalDeal(p){
   var billList=billInvoices||[];
   var billInvoiced=billList.reduce(function(a,x){return a+(+x.total_gross||0);},0);
   var billPaid=billList.reduce(function(a,x){return a+billPaidAmount(x);},0);
-  var billRemaining=clientTotal>0?Math.max(0,clientTotal-billInvoiced):null;
-  var billDone=clientTotal>0&&billPaid>=clientTotal-10;
+  var billRemaining=billTotal>0?Math.max(0,billTotal-billInvoiced):null;
+  var billDone=billTotal>0&&billPaid>=billTotal-10;
   // Druga faktura: tylko gdy jest dokładnie jedna faktura (jeszcze nie wystawiono drugiej)
   // i — przy znanej wycenie — zostało do zafakturowania > 10 zł. Po wystawieniu drugiej
   // przycisk znika (na ewentualną dopłatę wystawia się fakturę wprost w module Faktury).
@@ -585,12 +608,18 @@ export function ModalDeal(p){
         buyer_email:cl.email||"",
         entity_id:ent&&ent.id?ent.id:undefined,
         notes:notes, invoice_items:[item]
-      }});
+      },snap:buildQuoteSnapshot()});
     }).finally(function(){setBillBusy(false);});
   }
 
   // Po wystawieniu w popupie: zamknij edytor i odśwież listę faktur w karcie
-  function onBillInvoiceSaved(){
+  function onBillInvoiceSaved(saved){
+    // Pierwsza faktura z karty: zamroź wycenę, z której została wystawiona
+    var snap=billEditor&&billEditor.snap;
+    if(snap){
+      snap.invoice_number=(saved&&saved.number)||null;
+      freezeQuote(snap);
+    }
     setBillEditor(null);
     loadBill();
   }
@@ -1234,7 +1263,45 @@ export function ModalDeal(p){
         // Sekcje układają się w kolumny (do 3, min. 360 px każda) — na szerokim ekranie widać więcej naraz
         ce("div",{style:{columnCount:3,columnWidth:360,columnGap:16}},
 
-        quoteBreak.rooms.length>0?ce(SectionCard,{icon:"📋",title:"Podgląd wyceny"},
+        frozenQuote?ce(SectionCard,{icon:"🔒",title:"Wycena — podstawa faktur"},
+          ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5,marginBottom:8}},
+            "Wycena wysłana klientowi, z której wystawiono pierwszą fakturę"+(frozenQuote.invoice_number?" ("+frozenQuote.invoice_number+")":"")+
+            (frozenQuote.frozen_at?" — zapisana "+fmtDate(frozenQuote.frozen_at):"")+
+            ". Druga faktura liczy się z tej kwoty, nawet gdy bieżąca wycena się zmieni."),
+          ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
+            (frozenQuote.rooms||[]).map(function(rm,i){
+              return ce("div",{key:i,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--t2)"}},
+                ce("span",null,rm.name),
+                ce("span",{style:{fontWeight:600,color:"var(--t1)"}},(+rm.total||0).toLocaleString("pl-PL")+" zł"));
+            })
+          ),
+          ce("div",{style:{borderTop:"1px solid var(--bd2)",paddingTop:8,display:"flex",flexDirection:"column",gap:4}},
+            +frozenQuote.montaz>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Montaż"+(frozenQuote.montaz_pct?" ("+frozenQuote.montaz_pct+"%)":"")),
+              ce("span",null,(+frozenQuote.montaz).toLocaleString("pl-PL")+" zł")):null,
+            +frozenQuote.rabat>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Rabat"),ce("span",null,"−"+(+frozenQuote.rabat).toLocaleString("pl-PL")+" zł")):null,
+            +frozenQuote.wizyta>0?ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Koszt wizyty pomiarowej"),ce("span",null,"−"+(+frozenQuote.wizyta).toLocaleString("pl-PL")+" zł")):null,
+            ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"var(--t1)"}},
+              ce("span",null,"Razem (podstawa faktur)"),ce("span",null,billTotal.toLocaleString("pl-PL")+" zł")),
+            ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--t3)"}},
+              ce("span",null,"Zafakturowano / do zafakturowania"),
+              ce("span",null,billFmt(billInvoiced)+" / "+billFmt(billRemaining||0)))
+          ),
+          Math.abs(clientTotal-billTotal)>=1?ce("div",{style:{marginTop:8,padding:"7px 9px",borderRadius:8,background:"var(--amber-l, var(--bg2))",
+            fontSize:11,color:"var(--t2)",lineHeight:1.5}},
+            "Bieżąca wycena: ",ce("b",null,clientTotal.toLocaleString("pl-PL")+" zł"),
+            " (różnica "+(clientTotal-billTotal>0?"+":"−")+Math.abs(clientTotal-billTotal).toLocaleString("pl-PL")+" zł). Faktury nadal liczone z wyceny zamrożonej.",
+            ce("div",null,ce("button",{onClick:function(){
+              if(confirm("Zastąpić podstawę faktur bieżącą wyceną ("+clientTotal.toLocaleString("pl-PL")+" zł)? Kwota do zafakturowania przeliczy się od nowa."))
+                freezeQuote(buildQuoteSnapshot(frozenQuote.invoice_number));
+            },style:{marginTop:4,border:"none",background:"none",padding:0,color:"var(--violet)",fontSize:11,fontWeight:700,cursor:"pointer",textDecoration:"underline"}},
+              "Zaktualizuj podstawę do bieżącej wyceny"))
+          ):null
+        ):null,
+
+        quoteBreak.rooms.length>0?ce(SectionCard,{icon:"📋",title:frozenQuote?"Bieżąca wycena (roboczo)":"Podgląd wyceny"},
           ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
             quoteBreak.rooms.map(function(rm,i){
               return ce("div",{key:i,style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--t2)"}},
@@ -1513,9 +1580,14 @@ export function ModalDeal(p){
               ce("div",{style:{fontSize:11,color:"var(--t2)",lineHeight:1.6,marginTop:4}},
                 "Zafakturowano: ",ce("b",null,billFmt(billInvoiced)),
                 " · Wpłacono: ",ce("b",null,billFmt(billPaid)),
-                clientTotal>0?ce("span",null," · Wycena: ",ce("b",null,billFmt(clientTotal))):null,
+                billTotal>0?ce("span",null," · Wycena"+(frozenQuote?" (podstawa faktur)":"")+": ",ce("b",null,billFmt(billTotal))):null,
                 billRemaining!==null?ce("span",null," · Do zafakturowania: ",ce("b",{style:{color:billRemaining>10?"var(--red, #ef4444)":"var(--gr)"}},billFmt(billRemaining))):null
               ),
+              (!frozenQuote&&clientTotal>0)?ce("button",{onClick:function(){
+                if(confirm("Zapisać bieżącą wycenę ("+clientTotal.toLocaleString("pl-PL")+" zł) jako stałą podstawę faktur tego zlecenia?"))
+                  freezeQuote(buildQuoteSnapshot(billList[0]&&billList[0].number));
+              },style:{marginTop:4,padding:"7px",borderRadius:9,border:"1px dashed var(--bd2)",background:"transparent",color:"var(--t2)",
+                fontSize:11,fontWeight:700,cursor:"pointer"}},"🔒 Zapisz bieżącą wycenę jako podstawę faktur"):null,
               canIssueSecond?ce("button",{onClick:issueSecondHalf,disabled:billBusy,
                 style:{marginTop:4,padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
                   fontSize:12,fontWeight:700,cursor:billBusy?"not-allowed":"pointer",opacity:billBusy?0.6:1}},
@@ -1572,8 +1644,8 @@ export function ModalDeal(p){
               ),
               (function(){
                 var sel=advInvoices.find(function(x){return String(x.id)===String(advInvoiceId);});
-                if(!sel||!(clientTotal>0))return null;
-                var half=clientTotal/2,diff=Math.abs((+sel.total_gross||0)-half);
+                if(!sel||!(billTotal>0))return null;
+                var half=billTotal/2,diff=Math.abs((+sel.total_gross||0)-half);
                 var ok=diff<=10;
                 return ce("div",{style:{fontSize:11,marginTop:6,lineHeight:1.4,color:ok?"var(--gr)":"var(--red, #ef4444)"}},
                   ok?"✓ Kwota zgodna z 50% wyceny ("+half.toLocaleString("pl-PL",{maximumFractionDigits:0})+" zł)"
