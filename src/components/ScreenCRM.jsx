@@ -74,6 +74,22 @@ export function dealTotal(cl){
   return roundTo10(base+add);
 }
 
+// Termin z bazy (timestamptz, ISO z strefą) → wartość dla <input type="datetime-local"> w czasie lokalnym.
+// Samo ucięcie stringa (slice) pokazywało czas UTC, czyli o 1-2 h inny niż w kalendarzu.
+export function dealDateToInput(v){
+  if(!v)return "";
+  var d=new Date(v);
+  if(isNaN(d.getTime()))return String(v).slice(0,16);
+  function z(n){return (n<10?"0":"")+n;}
+  return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+"T"+z(d.getHours())+":"+z(d.getMinutes());
+}
+// Wartość z <input type="datetime-local"> (czas lokalny, bez strefy) → ISO UTC do zapisu w bazie.
+export function dealDateFromInput(v){
+  if(!v)return null;
+  var d=new Date(v);
+  return isNaN(d.getTime())?v:d.toISOString();
+}
+
 export function fmtDate(iso){
   if(!iso)return null;
   var d=new Date(iso);
@@ -215,13 +231,13 @@ export function ModalDeal(p){
   var smz=useState(false),showMontaz=smz[0],setShowMontaz=smz[1];
 
   var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
-  var sv=useState(d.visit_date?d.visit_date.slice(0,16):""),visitDate=sv[0],setVisitDate=sv[1];
+  var sv=useState(dealDateToInput(d.visit_date)),visitDate=sv[0],setVisitDate=sv[1];
   var svd=useState(!!d.visit_done),visitDone=svd[0],setVisitDone=svd[1];
-  var sdel=useState(d.delivery_date?d.delivery_date.slice(0,16):""),delivDate=sdel[0],setDelivDate=sdel[1];
+  var sdel=useState(dealDateToInput(d.delivery_date)),delivDate=sdel[0],setDelivDate=sdel[1];
   var sid=useState(!!d.install_done),installDone=sid[0],setInstallDone=sid[1];
   var sinst=useState(d.installer_name||""),installerName=sinst[0],setInstallerName=sinst[1];
   var sinstcal=useState(d.installer_calendar_id||""),installerCalId=sinstcal[0],setInstallerCalId=sinstcal[1];
-  var sdel2=useState(d.delivery_date2?d.delivery_date2.slice(0,16):""),delivDate2=sdel2[0],setDelivDate2=sdel2[1];
+  var sdel2=useState(dealDateToInput(d.delivery_date2)),delivDate2=sdel2[0],setDelivDate2=sdel2[1];
   var sinst2=useState(d.installer_name2||""),installerName2=sinst2[0],setInstallerName2=sinst2[1];
   var sinstcal2=useState(d.installer_calendar_id2||""),installerCalId2=sinstcal2[0],setInstallerCalId2=sinstcal2[1];
   var sinslbl2=useState(d.install_label2||""),installLabel2=sinslbl2[0],setInstallLabel2=sinslbl2[1];
@@ -781,13 +797,13 @@ export function ModalDeal(p){
     setBusy(true);
     var patch={
       notes:notes,
-      visit_date:visitDate||null,
+      visit_date:dealDateFromInput(visitDate),
       visit_done:visitDone,
-      delivery_date:delivDate||null,
+      delivery_date:dealDateFromInput(delivDate),
       install_done:installDone,
       installer_name:installerName||null,
       installer_calendar_id:installerCalId||null,
-      delivery_date2:delivDate2||null,
+      delivery_date2:dealDateFromInput(delivDate2),
       installer_name2:installerName2||null,
       installer_calendar_id2:installerCalId2||null,
       install_label2:installLabel2||null,
@@ -828,11 +844,11 @@ export function ModalDeal(p){
     // zmianie w kalendarzyku (także przy przewijaniu miesięcy), więc zapis leci
     // dopiero z onBlur/Enter. Tu dodatkowo ucinamy powtórzenia tej samej wartości.
     var prev=persistedDatesRef.current[field];
-    if(prev===undefined)prev=(d[field]?String(d[field]).slice(0,16):"");
+    if(prev===undefined)prev=DEAL_DATE_FIELDS.indexOf(field)>=0?dealDateToInput(d[field]):(d[field]?String(d[field]).slice(0,16):"");
     if(prev===(val||"")) return;
     persistedDatesRef.current[field]=val||"";
     var patch={};
-    patch[field]=val||null;
+    patch[field]=DEAL_DATE_FIELDS.indexOf(field)>=0?dealDateFromInput(val):(val||null);
     patch.updated_at=new Date().toISOString();
     sbApi.updateDeal(d.id,patch)
       .then(function(){
