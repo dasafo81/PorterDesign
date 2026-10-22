@@ -548,13 +548,13 @@ export function ModalDeal(p){
     }
   }
 
-  function openInvoiceMail(inv){
+  function openInvoiceMail(inv,reminder){
     var idx=billList.findIndex(function(x){return x.id===inv.id;});
     setBillMailId(inv.id);setBillErr(null);
     Promise.all([
       sbApi.getInvoice(inv.id),
       sbApi.getInvoiceSettings().catch(function(){return null;}),
-      loadSystemTemplate("faktura")
+      loadSystemTemplate(reminder?"ponaglenie":"faktura")
     ]).then(function(res){
       var full=res[0];
       if(!full)throw new Error("Nie udało się pobrać faktury.");
@@ -566,8 +566,11 @@ export function ModalDeal(p){
       var part=billList.length>1?(idx===0?" (zaliczka)":" (pozostała część wartości zamówienia)"):"";
       // Treść z szablonu "faktura" (Poczta → Szablony)
       var tpl=res[2];
+      var daysLate=full.due_date?Math.max(0,Math.floor((Date.now()-new Date(full.due_date+"T23:59:59").getTime())/86400000)):0;
       var vars={numer:number,kwota:gross,czesc:part,
-        terminZdanie:due?"Termin płatności: <b>"+due+"</b>.":"",
+        terminZdanie:reminder
+          ?(due?" (termin: <b>"+due+"</b>"+(daysLate>0?", opóźnienie: "+daysLate+" dni":"")+")":"")
+          :(due?"Termin płatności: <b>"+due+"</b>.":""),
         sprzedawca:SELLER.shortName||"",podpis:String(SELLER.signature||"").replace(/\n/g,"<br>")};
       var body=dropEmptyParas(fillVars(tpl.body,vars));
       var invFile=new File([html],fname,{type:"text/html"});
@@ -578,7 +581,7 @@ export function ModalDeal(p){
       setMailAttachments([{id:"inv_"+Date.now(),name:fname,size:invFile.size,type:"upload",file:invFile}]);
       setBillMailIdx(idx);
       setBillMailInvId(inv.id);
-      setMailKind("faktura");
+      setMailKind(reminder?"ponaglenie":"faktura");
     }).catch(function(e){
       setBillErr((e&&e.message)||"Nie udało się przygotować wiadomości.");
     }).finally(function(){setBillMailId(null);});
@@ -1569,6 +1572,10 @@ export function ModalDeal(p){
                         needKsef?ce("button",{onClick:function(){sendBillToKsef(x);},disabled:!!billKsefId,
                           style:btn({opacity:billKsefId&&billKsefId!==x.id?0.5:1,cursor:billKsefId?"not-allowed":"pointer"})},
                           billKsefId===x.id?"⏳ KSeF...":((x.ksef_status==="error"||x.ksef_status==="offline")?"↻ KSeF":"→ KSeF")):null,
+                        overdue?ce("button",{onClick:function(){openInvoiceMail(x,true);},disabled:!!billMailId||!cl,
+                          title:"Wyślij klientowi przypomnienie o płatności",
+                          style:btn({borderColor:"var(--red, #ef4444)",color:"var(--red, #ef4444)",opacity:billMailId?0.5:1,cursor:billMailId?"not-allowed":"pointer"})},
+                          "⏰ Ponagl"):null,
                         ce("button",{onClick:function(){openInvoiceMail(x);},disabled:!!billMailId||!cl,
                           style:btn({opacity:billMailId&&billMailId!==x.id?0.5:1,cursor:billMailId?"not-allowed":"pointer"})},
                           billMailId===x.id?"⏳ Przygotowuję...":(sent?"📤 Wyślij ponownie":"📤 Wyślij klientowi"))
@@ -1928,7 +1935,7 @@ export function ModalDeal(p){
           }},"📤"),
           ce("div",{style:{flex:1,minWidth:0}},
             ce("div",{style:{fontSize:15,fontWeight:800,color:"var(--t1)"}},
-              mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":mailKind==="faktura"?"Faktura dla klienta":"Instrukcja prania i czyszczenia"
+              mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":mailKind==="faktura"?"Faktura dla klienta":mailKind==="ponaglenie"?"Ponaglenie do zapłaty":"Instrukcja prania i czyszczenia"
             ),
             ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:1}},"Wysyłka z Twojej skrzynki ("+mailProviderLabel()+")")
           ),

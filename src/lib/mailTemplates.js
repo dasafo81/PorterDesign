@@ -55,6 +55,18 @@ export var SYSTEM_TEMPLATES = {
     ]),
     files:[]
   },
+  ponaglenie: {
+    label:"Ponaglenie do zapłaty", icon:"⏰",
+    subject:"Przypomnienie o płatności — faktura nr {numer}",
+    body:J([
+      P("Dzień dobry,"),
+      P("uprzejmie przypominam, że termin płatności faktury nr <b>{numer}</b> na kwotę <b>{kwota}</b> upłynął{terminZdanie}."),
+      P("Jeśli wpłata została już zrealizowana, proszę potraktować tę wiadomość jako bezprzedmiotową. W przeciwnym razie bardzo proszę o uregulowanie należności w najbliższym możliwym terminie."),
+      P("Fakturę przesyłam ponownie w załączeniu. W razie jakichkolwiek pytań pozostaję do dyspozycji."),
+      P("Pozdrawiam serdecznie,<br>{podpis}")
+    ]),
+    files:[]
+  },
   faktura_zaliczkowa: {
     label:"Faktura zaliczkowa i OWU", icon:"💶",
     subject:"Faktura zaliczkowa nr {numer} i Ogólne Warunki Umowy",
@@ -101,6 +113,9 @@ export var TEMPLATE_USAGE = {
   faktura:{
     where:"Moduł Faktury → Wyślij fakturę oraz CRM, karta deala → wysyłka faktury dla klienta.",
     vars:"{numer}, {kwota}, {czesc}, {terminZdanie}, {sprzedawca}, {podpis}"},
+  ponaglenie:{
+    where:"CRM, karta deala → Rozliczenie z klientem → ⏰ Ponagl (przy fakturze po terminie).",
+    vars:"{numer}, {kwota}, {terminZdanie}, {sprzedawca}, {podpis}"},
   faktura_zaliczkowa:{
     where:"CRM, karta deala → wysyłka faktury zaliczkowej z OWU (OWU dołącza się automatycznie).",
     vars:"{numer}, {kwota}, {podpis}"},
@@ -121,7 +136,7 @@ export var TEMPLATE_USAGE = {
 // Szablony wywoływane tylko przez aplikację: zawierają zmienne, które znają wyłącznie
 // te przepływy, więc nie pokazujemy ich w liście zwykłej wiadomości w Poczcie.
 export var HIDDEN_IN_COMPOSE = {
-  faktura:1, faktura_zaliczkowa:1, zamowienie_osprzetu:1, zamowienie_tkaniny:1
+  faktura:1, ponaglenie:1, faktura_zaliczkowa:1, zamowienie_osprzetu:1, zamowienie_tkaniny:1
 };
 
 // Podstawia {zmienne}. Nieznane zostają bez zmian, puste akapity (zmienna bez wartości) znikają.
