@@ -785,7 +785,13 @@ export function generateSewingOrderPDF(client, modalData){
       r.note||""];
   });
 
-  var rOI=["<strong>Mechanizm system zamknięty</strong>","<strong>Szprosy 6mm w opcji front</strong>","<strong>Sprawdzenie tkaniny przed szyciem</strong>","<strong>Oznaczenie DUO: ① Zasłona, ② Firana</strong>"];
+  // Adnotacje zależne od modelu: szprosy dotyczą tylko Front, oznaczenie ①/② tylko Duo
+  var rHasFront=romanRows.some(function(r){return r.rModel==="front"||r.rDuoModel==="front";});
+  var rHasDuo=romanRows.some(function(r){return r.rModel==="duo";});
+  var rOI=["<strong>Mechanizm system zamknięty</strong>"];
+  if(rHasFront)rOI.push("<strong>Szprosy 6mm w opcji front</strong>");
+  rOI.push("<strong>Sprawdzenie tkaniny przed szyciem</strong>");
+  if(rHasDuo)rOI.push("<strong>Oznaczenie DUO: ① Zasłona, ② Firana</strong>");
   var hBcz=romanRows.some(function(r){return r.boczki&&r.boczki!=="nie"&&r.boczki!=="-";});
   if(hBcz)rOI.push("<strong>Boczki/maskownice:</strong> tak");
   var romanOptsHTML='<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Dodatkowe informacje</div>'+rOI.join(" &nbsp;&bull;&nbsp; ")+'</div>';
@@ -894,7 +900,12 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
       r.podszewka||'nie',
       r.note||''];
   });
-  var rOI2=['<strong>Mechanizm system zamknięty</strong>','<strong>Szprosy 6mm w opcji front</strong>','<strong>Sprawdzenie tkaniny przed szyciem</strong>','<strong>Oznaczenie DUO: ① Zasłona, ② Firana</strong>'];
+  var rHasFront2=romanRows2.some(function(r){return r.rModel==='front'||r.rDuoModel==='front';});
+  var rHasDuo2=romanRows2.some(function(r){return r.rModel==='duo';});
+  var rOI2=['<strong>Mechanizm system zamknięty</strong>'];
+  if(rHasFront2)rOI2.push('<strong>Szprosy 6mm w opcji front</strong>');
+  rOI2.push('<strong>Sprawdzenie tkaniny przed szyciem</strong>');
+  if(rHasDuo2)rOI2.push('<strong>Oznaczenie DUO: ① Zasłona, ② Firana</strong>');
   var hBcz2=romanRows2.some(function(r){return r.boczki&&r.boczki!=='nie'&&r.boczki!=='-';});
   if(hBcz2)rOI2.push('<strong>Boczki/maskownice:</strong> tak');
   var romanOptsHTML2='<div style="margin:4mm 0 6mm;padding:8px 14px;border:1px solid #c8c8c4;border-radius:5px;background:#f9f9f7;font-size:11px;line-height:1.9;"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#6b6b66;margin-bottom:4px;">Dodatkowe informacje</div>'+rOI2.join(' &nbsp;&bull;&nbsp; ')+'</div>';

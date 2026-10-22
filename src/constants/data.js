@@ -7991,6 +7991,8 @@ export function buildSewingRows(client){
             szStyle:"-",marszczenie:"-",tasma:"-",haczyk:"-",
             split:"-",bottom:"-",glide:"-",leadInSides:"-",
             _type:"roleta",
+            rModel:pc.rModel||"",
+            rDuoModel:pc.rDuoModel||"",
             note:prod.note||""
           });
           return;
