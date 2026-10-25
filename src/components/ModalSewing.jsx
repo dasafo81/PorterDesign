@@ -15,7 +15,7 @@ import {
   RS_C, RS_D, RS_E, RS_HEIGHTS,
   RS_OB_B, RS_OB_C, RS_OB_D, RS_PROFIL,
   RS_SUPP_WIDTHS, RS_WIDTHS, SB_STORAGE, WIN_PRESETS,
-  buildSewingRows, calc, getPanelsForProd, jzLookup,
+  buildSewingRows, sewFabKind, calc, getPanelsForProd, jzLookup,
   mg, roundTo10
 } from '../constants/data.js';
 import { generateFabricOrderPDF, getFabricOrderSuppliers, generateClientEmail,
@@ -495,7 +495,7 @@ export function ModalSewing(p){
                 style:{width:16,height:16,cursor:isUsed?'not-allowed':'pointer',accentColor:'var(--t1)',flexShrink:0}}),
               ce('div',{style:{fontSize:13,color:isUsed?'var(--t3)':'var(--t1)',lineHeight:1.4}},
                 ce('span',{style:{fontWeight:600}},r.room+' / '+r.win+' — '+r.type),
-                ce('span',{style:{color:'var(--t2)'}},' '+(r.fabric&&r.fabric!=='(brak)'?'\xb7 '+r.fabric:''+(r.fabric==='(brak)'?'\xb7 brak tkaniny':''))),
+                ce('span',{style:{color:'var(--t2)'}},' '+(r.fabric&&r.fabric!=='(brak)'?'\xb7 '+(sewFabKind(r)?'('+sewFabKind(r)+') ':'')+r.fabric:''+(r.fabric==='(brak)'?'\xb7 brak tkaniny':''))),
                 isUsed?ce('span',{style:{fontSize:11,color:'var(--t3)'}},' (ju\u017c przypisane)'):null
               )
             );

@@ -7917,6 +7917,15 @@ export function getPanelsForProd(prod){
   return out;
 }
 
+// Litera tkaniny w zleceniu szycia: Z = zasłonowa, F = firanowa (wg rodzaju produktu w wierszu)
+export function sewFabKind(r){
+  if(!r||r._type==="roleta"||r._type==="inne")return "";
+  var t=String(r.type||"");
+  if(/^firan/i.test(t))return "F";
+  if(/^zas/i.test(t))return "Z";
+  return "";
+}
+
 export function buildSewingRows(client){
   var rows=[];
   (client.rooms||[]).forEach(function(r){

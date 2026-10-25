@@ -4,7 +4,7 @@ const ce = React.createElement;
 
 import {
   BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES, karniszBrandLabel,
-  SELLER, buildFabricRows, buildSewingRows, calc,
+  SELLER, buildFabricRows, buildSewingRows, sewFabKind, calc,
   getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
   openPDFWindow, pdfStyles, resolvePDFAssets, roundTo10
 } from '../constants/data.js';
@@ -707,6 +707,13 @@ function buildCurtainOptionsHTML(curtainRows, sewOpts){
     +'</div>';
 }
 
+// Kółko z literą Z (zasłonowa) / F (firanowa) przy nazwie tkaniny w zleceniu szycia
+function sewFabBadge(r){
+  var k=sewFabKind(r);
+  if(!k)return '';
+  return '<span title="'+(k==='Z'?'Tkanina zas\u0142onowa':'Tkanina firanowa')+'" style="display:inline-block;width:14px;height:14px;line-height:13px;margin-right:5px;border:1.2px solid #1a1a18;border-radius:50%;text-align:center;font-size:9px;font-weight:700;vertical-align:1px;">'+k+'</span>';
+}
+
 // Zlecenie szycia musi rozróżniać konkretne okna: wiersze pogrupowane pod nagłówkiem "Pomieszczenie — okno"
 function sewGroupRows(rows, mapFn){
   var esc=function(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;');};
@@ -755,7 +762,7 @@ export function generateSewingOrderPDF(client, modalData){
   var tableHeader=["Lp.","Model szycia","Tkanina / Kolor","Producent","Szerokość","Wysokość","Podział","Podszewka","Uwagi"];
   var tableRows=sewGroupRows(curtainRows,function(r,i){
     var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
-    var tkaninaPlusKolor='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
+    var tkaninaPlusKolor=sewFabBadge(r)+'<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
     return [
       String(i+1),
       modelStr,
@@ -882,7 +889,7 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
   var tableHeader=['Lp.','Model szycia','Tkanina / Kolor','Producent','Szerokość','Wysokość','Podział','Podszewka','Uwagi'];
   var tableRows=sewGroupRows(curtainRows2,function(r,i){
     var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
-    var tkaninaPlusKolor='<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
+    var tkaninaPlusKolor=sewFabBadge(r)+'<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
     return [String(i+1),modelStr,tkaninaPlusKolor,r.prod||'-',
       r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
       r.split,r.podszewka||'nie',r.note||''];
