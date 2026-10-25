@@ -1687,7 +1687,7 @@ export function ModalDeal(p){
               style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
             }),
             gcalToken?ce("button",{
-              onClick:function(){addToGcal("Spotkanie pomiarowe",visitDate,"",function(dt,dur){persistDealDate("visit_date",dt,setVisitDate,true);persistDealDuration("visit_duration_min",dur);},"visit_date");},
+              onClick:function(){addToGcal("Pomiar",visitDate,"",function(dt,dur){persistDealDate("visit_date",dt,setVisitDate,true);persistDealDuration("visit_duration_min",dur);},"visit_date");},
               title:"Ustaw termin i dodaj do Google Calendar",
               style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:13,fontWeight:600,flexShrink:0,color:"var(--t1)"}
             },"📅 "+ (visitDate?"Zmień":"Ustaw termin")):null

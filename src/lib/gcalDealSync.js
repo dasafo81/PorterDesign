@@ -23,7 +23,7 @@ export function eventDealKey(ev) {
 }
 
 export function dealFieldTitle(field, deal) {
-  if (field === "visit_date") return "Spotkanie pomiarowe";
+  if (field === "visit_date") return "Pomiar";
   if (field === "delivery_date") return "Montaż";
   if (field === "delivery_date2") return (deal && deal.install_label2) || "Wieszanie";
   return "Follow-up";
