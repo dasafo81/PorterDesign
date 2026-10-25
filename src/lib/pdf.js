@@ -759,7 +759,7 @@ export function generateSewingOrderPDF(client, modalData){
   var hasBothTypes=curtainRows.length>0&&romanRows.length>0;
 
   // Tabela zasłon/firan — uproszczone kolumny
-  var tableHeader=["Lp.","Model szycia","Tkanina / Kolor","Producent","Szerokość","Wysokość","Podział","Podszewka","Uwagi"];
+  var tableHeader=["Lp.","Model szycia","Tkanina / Kolor","Producent","Szerokość","Wysokość","Podział","Dół","Podszewka","Uwagi"];
   var tableRows=sewGroupRows(curtainRows,function(r,i){
     var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
     var tkaninaPlusKolor=sewFabBadge(r)+'<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
@@ -771,6 +771,7 @@ export function generateSewingOrderPDF(client, modalData){
       r.wCm?(r.wCm+' cm'):'-',
       r.hCm?(r.hCm+' cm'):'-',
       r.split,
+      r.bottom&&r.bottom!=='-'?r.bottom:'-',
       r.podszewka||'nie',
       r.note||''
     ];
@@ -839,7 +840,7 @@ export function generateSewingOrderPDF(client, modalData){
       :'<p style="margin-top:6px;font-size:9px;color:#6b6b66">Termin: <strong>'+termStr+'</strong></p>')
     +'</div>'
     +'</div>'
-    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zasłony i firany — specyfikacja szycia",['3%','8%','16%','9%','8%','8%','14%','9%','25%'])+curtainOptionsHTML:"")
+    +(curtainRows.length?makeTableHTML(tableHeader,tableRows,"Zasłony i firany — specyfikacja szycia",['3%','8%','16%','9%','7%','7%','12%','10%','8%','20%'])+curtainOptionsHTML:"")
     +(romanRows.length?makeTableHTML(romanHeader,romanTableRows,"Rolety rzymskie \u2014 specyfikacja szycia",['3%','12%','13%','9%','6%','6%','7%','8%','9%','9%','8%','10%'])+romanOptsHTML+notesFieldHTML:"")
     +buildInneSewingTableHTML(inneRows)
     +notesBlock
@@ -886,13 +887,13 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
   var inneRows2=rows.filter(function(r){return r._type==='inne';});
   var romanRows2=rows.filter(function(r){return r._type==='roleta';});
   var hasBothTypes2=curtainRows2.length>0&&romanRows2.length>0;
-  var tableHeader=['Lp.','Model szycia','Tkanina / Kolor','Producent','Szerokość','Wysokość','Podział','Podszewka','Uwagi'];
+  var tableHeader=['Lp.','Model szycia','Tkanina / Kolor','Producent','Szerokość','Wysokość','Podział','Dół','Podszewka','Uwagi'];
   var tableRows=sewGroupRows(curtainRows2,function(r,i){
     var modelStr=r.szStyle+(r.marszczenie&&r.marszczenie!=='-'?' '+r.marszczenie:'');
     var tkaninaPlusKolor=sewFabBadge(r)+'<strong>'+r.fabric+'</strong>'+(r.kolor&&r.kolor!=='-'?'<br><span style="color:#6b6b66;font-size:10px">'+r.kolor+'</span>':'');
     return [String(i+1),modelStr,tkaninaPlusKolor,r.prod||'-',
       r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
-      r.split,r.podszewka||'nie',r.note||''];
+      r.split,(r.bottom&&r.bottom!=='-'?r.bottom:'-'),r.podszewka||'nie',r.note||''];
   });
   var curtainOptionsHTML2=buildCurtainOptionsHTML(curtainRows2,modalData.sewOpts||null);
   var romanHeader2=['Lp.','Model szycia','Tkanina / Kolor','Producent',
@@ -937,7 +938,7 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
     +'<div class="meta-block"><h4>Klient ko\u0144cowy</h4><p><strong>'+(client.name||'')+'</strong></p>'
     +'<p style="font-size:9px;color:#6b6b66;margin-top:4px">Termin: <strong>'+termStr+'</strong></p>'+'</div>'
     +'</div>'
-    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,'Zasłony i firany — specyfikacja szycia',['3%','8%','16%','9%','8%','8%','14%','9%','25%'])+curtainOptionsHTML2:'')
+    +(curtainRows2.length?makeTableHTML(tableHeader,tableRows,'Zasłony i firany — specyfikacja szycia',['3%','8%','16%','9%','7%','7%','12%','10%','8%','20%'])+curtainOptionsHTML2:'')
     +(romanRows2.length?makeTableHTML(romanHeader2,romanTableRows2,'Rolety rzymskie \u2014 specyfikacja szycia',['3%','12%','13%','9%','6%','6%','7%','8%','9%','9%','8%','10%'])+romanOptsHTML2+notesFieldHTML2:'')
     +buildInneSewingTableHTML(inneRows2)
     +notesBlock

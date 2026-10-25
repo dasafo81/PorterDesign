@@ -99,6 +99,7 @@ export function ModalSewing(p){
             r._type==='inne'?null:(isRoleta?sewRowInput(i,'rSystem','Mechanizm',110):sewRowInput(i,'marszczenie','Marszczenie',90)),
             r._type==='inne'?null:(isRoleta?sewRowInput(i,'stronaObslugi','Strona łańcuszka',110):sewRowInput(i,'split','Podział',110)),
             isRoleta?sewRowInput(i,'kolorLancuszka','Kolor łańcuszka',110):null,
+            (r._type==='inne'||isRoleta)?null:sewRowInput(i,'bottom','Dół',110),
             r._type==='inne'?null:sewRowInput(i,'podszewka','Podszewka',90),
             sewRowInput(i,'note','Uwagi',150)
           );
