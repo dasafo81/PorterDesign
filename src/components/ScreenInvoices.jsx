@@ -36,6 +36,18 @@ var PAY_STATUS_OPTIONS = [
   {id:"sent",     label:"Wysłana"}
 ];
 
+// Filtr listy wg statusu płatności — id (poza "all"/"unpaid") to etykiety zwracane przez payStatus().
+var STATUS_FILTER_OPTIONS = [
+  {id:"all",             label:"wszystkie"},
+  {id:"unpaid",          label:"nieopłacone"},
+  {id:"Przeterminowana", label:"przeterminowane"},
+  {id:"Częściowa",       label:"częściowo opłacone"},
+  {id:"Zapłacona",       label:"zapłacone"},
+  {id:"Wystawiona",      label:"wystawione"},
+  {id:"Wysłana",         label:"wysłane"},
+  {id:"Odrzucona",       label:"odrzucone"}
+];
+
 // ── Style helpers ───────────────────────────────────────────────────────────
 var inp = {
   padding:"9px 12px", fontSize:13, border:"1.5px solid var(--bd2)",
@@ -1716,6 +1728,8 @@ function InvoiceList(p){
   // pokazuje pustą listę — to zgodne z semantyką checkboxów, nie "zapomniany" filtr.
   var [filterDocTypes,setFilterDocTypes]=useState(function(){return FILTER_DOC_TYPES.map(function(d){return d.id;});});
   var [typeFilterOpen,setTypeFilterOpen]=useState(false);
+  // Filtr statusu płatności: all | unpaid (wszystko poza zapłaconymi) | etykieta z payStatus()
+  var [statusFilter,setStatusFilter]=useState("all");
   var [periodPreset,setPeriodPreset]=useState("month"); // month | prevMonth | year | all | custom
   var [customFrom,setCustomFrom]=useState("");
   var [customTo,setCustomTo]=useState("");
@@ -1839,9 +1853,31 @@ function InvoiceList(p){
     return acc;
   },{zakup:0,sprzedaz:0});
 
+  var payStatus=function(inv){
+    if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"var(--grd)"};
+    if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"var(--grd)"};
+    if(inv.payment_status==="partial")return {label:"Częściowa",color:"var(--amber)"};
+    // Odrzucona (klient odmówił zapłaty) — ma pierwszeństwo przed sprawdzeniem terminu,
+    // bo termin płatności przestaje mieć znaczenie, gdy faktura została odrzucona.
+    if(inv.payment_status==="rejected")return {label:"Odrzucona",color:"var(--red)"};
+    // Faktury zakupowe (wydatki) dostają status "received" zamiast "issued" —
+    // bez tego warunku termin płatności wydatków nigdy nie podświetlał się na
+    // czerwono, mimo że wizualnie jest do tego przygotowany (kolumna, wiersz, badge).
+    if((inv.status==="issued"||inv.status==="received")&&inv.due_date&&inv.due_date<todayISO()) return {label:"Przeterminowana",color:"var(--red)"};
+    if(inv.payment_status==="sent")   return {label:"Wysłana",color:"var(--violet)"};
+    return {label:"Wystawiona",color:"var(--t3)"};
+  };
   var list=tabInvoices.filter(function(inv){
     if(periodRange && !((inv.issue_date||"")>=periodRange.from && (inv.issue_date||"")<=periodRange.to)) return false;
     if(filterDocTypes.indexOf(inv.doc_type||"vat")<0) return false;
+    if(statusFilter!=="all"){
+      var psl=payStatus(inv).label;
+      if(statusFilter==="unpaid"){
+        // "Nieopłacone" = wszystko, co nie jest zapłacone (łącznie z częściowo opłaconymi,
+        // przeterminowanymi i odrzuconymi); szkice i anulowane nie są należnością.
+        if(inv.status==="draft"||inv.status==="cancelled"||psl==="Zapłacona") return false;
+      } else if(psl!==statusFilter) return false;
+    }
     if(search){
       var q=search.toLowerCase();
       var snap=inv.seller_snapshot||{};
@@ -1904,20 +1940,7 @@ function InvoiceList(p){
     return {rows:rows,tot:tot};
   })();
 
-  var payStatus=function(inv){
-    if(inv.payment_method==="gotówka"&&inv.status==="issued") return {label:"Zapłacona",color:"var(--grd)"};
-    if(inv.payment_status==="paid")   return {label:"Zapłacona",color:"var(--grd)"};
-    if(inv.payment_status==="partial")return {label:"Częściowa",color:"var(--amber)"};
-    // Odrzucona (klient odmówił zapłaty) — ma pierwszeństwo przed sprawdzeniem terminu,
-    // bo termin płatności przestaje mieć znaczenie, gdy faktura została odrzucona.
-    if(inv.payment_status==="rejected")return {label:"Odrzucona",color:"var(--red)"};
-    // Faktury zakupowe (wydatki) dostają status "received" zamiast "issued" —
-    // bez tego warunku termin płatności wydatków nigdy nie podświetlał się na
-    // czerwono, mimo że wizualnie jest do tego przygotowany (kolumna, wiersz, badge).
-    if((inv.status==="issued"||inv.status==="received")&&inv.due_date&&inv.due_date<todayISO()) return {label:"Przeterminowana",color:"var(--red)"};
-    if(inv.payment_status==="sent")   return {label:"Wysłana",color:"var(--violet)"};
-    return {label:"Wystawiona",color:"var(--t3)"};
-  };
+
 
   // Stosuje status wybrany z menu "Zapłacono". Dla "Częściowo opł." trzeba najpierw
   // zapytać o wpłaconą kwotę — otwiera modal zamiast zapisywać od razu. Reszta opcji
@@ -2087,6 +2110,10 @@ function InvoiceList(p){
       ce("input",{style:Object.assign({},inp,{maxWidth:260,flex:1}),
         value:search,onChange:function(e){setSearch(e.target.value);},
         placeholder:"🔍 Szukaj po numerze, nabywcy, NIP..."}),
+      ce("select",{value:statusFilter,onChange:function(e){setStatusFilter(e.target.value);},
+        title:"Filtruj wg statusu płatności",
+        style:Object.assign({},btnSecondary,{fontFamily:"inherit"},statusFilter!=="all"?{borderColor:"var(--violet)",color:"var(--violet)"}:{})},
+        STATUS_FILTER_OPTIONS.map(function(o){return ce("option",{key:o.id,value:o.id},"💳 Status: "+o.label);})),
       ce("button",{onClick:function(){setTypeFilterOpen(!typeFilterOpen);},
         style:Object.assign({},btnSecondary,typeFilterOpen?{borderColor:"var(--violet)",color:"var(--violet)"}:{})},
         "🏷️ Typ dokumentu ("+filterDocTypes.length+"/"+FILTER_DOC_TYPES.length+")"),
@@ -2203,7 +2230,7 @@ function InvoiceList(p){
 
     // Brak dokumentów
     list.length===0&&ce("div",{style:{textAlign:"center",padding:"40px 0",color:"var(--t3)",fontSize:14}},
-      search||!allTypesSelected?"Brak pasujących dokumentów w wybranym okresie.":"Brak dokumentów w wybranym okresie."),
+      search||!allTypesSelected||statusFilter!=="all"?"Brak pasujących dokumentów w wybranym okresie.":"Brak dokumentów w wybranym okresie."),
 
     // Tabela
     // Kontener z poziomym przewijaniem (overflowX:"auto") — suma szerokości kolumn
