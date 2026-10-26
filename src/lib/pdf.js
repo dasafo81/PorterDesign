@@ -589,6 +589,10 @@ export function buildSimplifiedPDFFromSelection(client,comm,montaz,selection,set
 // nie w połowie tekstu. Biblioteki ładowane dynamicznie (osobny chunk).
 export function htmlToPdfBase64(html){
   var A4W=794, A4H=1123, PAD_TOP=40; // px przy 96 dpi; PAD_TOP = górny margines stron 2+
+  // Dokumenty poziome (zlecenie szycia) oznaczają się meta pd-orientation=landscape —
+  // bez tego szerokie tabele były ucinane do szerokości pionowej kartki.
+  var landscape=/<meta\s+name=["']pd-orientation["']\s+content=["']landscape["']/i.test(html);
+  if(landscape){A4W=1123;A4H=794;}
   return Promise.all([import('html2canvas'),import('jspdf'),resolvePDFAssets(html)]).then(function(res){
     var html2canvas=res[0].default, JsPDF=res[1].jsPDF, full=res[2];
     var ifr=document.createElement("iframe");
@@ -600,7 +604,7 @@ export function htmlToPdfBase64(html){
       var done=false;function fin(){if(!done){done=true;resolve();}}
       ifr.onload=fin;
       // Te same marginesy co w wydruku (openPDFWindow)
-      full=full.replace("</head>","<style>body{padding:14mm 12mm !important;margin:0;}</style></head>");
+      full=full.replace("</head>","<style>body{padding:"+(landscape?"12mm 14mm":"14mm 12mm")+" !important;margin:0;}</style></head>");
       var d=ifr.contentDocument;d.open();d.write(full);d.close();
       setTimeout(fin,4000);
     }).then(function(){
@@ -631,7 +635,8 @@ export function htmlToPdfBase64(html){
       }
       return html2canvas(body,{scale:2,useCORS:true,logging:false,backgroundColor:"#ffffff",width:A4W,windowWidth:A4W,height:totalH,windowHeight:totalH})
         .then(function(canvas){
-          var pdf=new JsPDF({unit:"px",format:[A4W,A4H],orientation:"portrait",hotfixes:["px_scaling"],compress:true});
+          var orient=landscape?"landscape":"portrait";
+          var pdf=new JsPDF({unit:"px",format:[A4W,A4H],orientation:orient,hotfixes:["px_scaling"],compress:true});
           var k=canvas.width/A4W, y=0, page=0;
           while(y<totalH-2){
             var top=page===0?0:PAD_TOP, room=A4H-top-30, end=y+room;
@@ -647,7 +652,7 @@ export function htmlToPdfBase64(html){
             pc.width=canvas.width;pc.height=Math.ceil(sliceH*k);
             var ctx=pc.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,pc.width,pc.height);
             ctx.drawImage(canvas,0,Math.floor(y*k),canvas.width,Math.ceil(sliceH*k),0,0,pc.width,pc.height);
-            if(page>0)pdf.addPage([A4W,A4H],"portrait");
+            if(page>0)pdf.addPage([A4W,A4H],orient);
             pdf.addImage(pc.toDataURL("image/jpeg",0.92),"JPEG",0,top,A4W,sliceH);
             y=end;page++;
             if(page>20)break;
@@ -925,7 +930,7 @@ export function buildSewingOrderHtmlFromRows(rows, client, modalData){
     :'<div style="color:#a8a8a4;font-style:italic;font-size:10px">____________________________<br>____________________________</div>';
   var notesBlock=notes?('<div class="notes"><strong>Uwagi:</strong><br>'+notes.replace(/</g,'&lt;').replace(/\n/g,'<br>')+'</div>'):""; 
   var extraStyles='body{font-size:13px;}table{font-size:12px;border-collapse:collapse!important;border:1.5px solid #999!important;}caption{font-size:11px;}th{font-size:10px;padding:5px 8px;border:1px solid #999!important;background:#ebebeb!important;}td{padding:5px 8px;font-size:12px;line-height:1.5;border:1px solid #bbb!important;vertical-align:top;}tr:nth-child(even) td{background:#fafaf8;}';
-  var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zlecenie szycia</title>'
+  var h='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><meta name="pd-orientation" content="landscape"><title>Zlecenie szycia</title>'
     +pdfStyles().replace('@media print{@page{size:A4;','@media print{@page{size:A4 landscape;}')
     .replace('</style>',extraStyles+'</style>')
     +'</head><body>'

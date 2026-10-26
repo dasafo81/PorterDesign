@@ -226,10 +226,13 @@ export function ModalSewing(p){
     var house=splitHouse==='__custom__'?splitCustom:splitHouse;
     var selectedRows=selIds.map(function(i){return allRows[i];});
     generateSewingOrderPDFFromRows(selectedRows,p.client,{sewingHouse:house,notes:splitNotes,term:splitTerm,attachB64:splitAttach,sewOpts:opts});
-    var newUsed=usedIds.concat(selIds);
+    // Pozycje można wysłać ponownie (poprawione zlecenie) — bez duplikatów w usedIds.
+    var newUsed=usedIds.concat(selIds.filter(function(i){return usedIds.indexOf(i)<0;}));
     setUsedIds(newUsed);setSelIds([]);
     setSplitHouse(SEWING_HOUSES[0]);setSplitCustom('');setSplitNotes('');setSplitTerm('');setSplitAttach(null);setSplitAttachName('');
-    if(newUsed.length>=allRows.length) p.onClose();
+    // Zamykamy tylko, gdy ten podgląd właśnie domknął ostatnie nieprzypisane pozycje;
+    // ponowna wysyłka już przypisanych nie wyrzuca z ekranu.
+    if(newUsed.length>=allRows.length&&usedIds.length<allRows.length) p.onClose();
   }
 
   // Wysyłka zlecenia mailem do szwalni — ten sam dokument co podgląd, tylko jako
@@ -488,16 +491,16 @@ export function ModalSewing(p){
               key:i,
               style:{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:8,
                 border:'1.5px solid '+(isSel?'var(--t1)':isUsed?'var(--bd3)':'var(--bd2)'),
-                background:isUsed?'var(--bg3)':isSel?'var(--bd3)':'var(--bg)',
-                cursor:isUsed?'not-allowed':'pointer',opacity:isUsed?0.45:1,transition:'all .12s'}
+                background:isSel?'var(--bd3)':isUsed?'var(--bg3)':'var(--bg)',
+                cursor:'pointer',opacity:isUsed&&!isSel?0.7:1,transition:'all .12s'}
             },
-              ce('input',{type:'checkbox',checked:isSel,disabled:isUsed,
-                onChange:function(){if(!isUsed)toggleSel(i);},
-                style:{width:16,height:16,cursor:isUsed?'not-allowed':'pointer',accentColor:'var(--t1)',flexShrink:0}}),
-              ce('div',{style:{fontSize:13,color:isUsed?'var(--t3)':'var(--t1)',lineHeight:1.4}},
+              ce('input',{type:'checkbox',checked:isSel,
+                onChange:function(){toggleSel(i);},
+                style:{width:16,height:16,cursor:'pointer',accentColor:'var(--t1)',flexShrink:0}}),
+              ce('div',{style:{fontSize:13,color:isUsed&&!isSel?'var(--t3)':'var(--t1)',lineHeight:1.4}},
                 ce('span',{style:{fontWeight:600}},r.room+' / '+r.win+' — '+r.type),
                 ce('span',{style:{color:'var(--t2)'}},' '+(r.fabric&&r.fabric!=='(brak)'?'\xb7 '+(sewFabKind(r)?'('+sewFabKind(r)+') ':'')+r.fabric:''+(r.fabric==='(brak)'?'\xb7 brak tkaniny':''))),
-                isUsed?ce('span',{style:{fontSize:11,color:'var(--t3)'}},' (ju\u017c przypisane)'):null
+                isUsed?ce('span',{style:{fontSize:11,color:'var(--t3)'}},' (ju\u017c w zleceniu \u2014 zaznacz, by wys\u0142a\u0107 ponownie)'):null
               )
             );
           })
@@ -514,7 +517,7 @@ export function ModalSewing(p){
           style:{flex:1,padding:'15px 20px',borderRadius:12,border:'none',
             background:selIds.length?'var(--t1)':'var(--grm)',color:'#fff',
             fontSize:15,fontWeight:600,cursor:selIds.length?'pointer':'not-allowed',transition:'all .15s'}
-        },selIds.length?('\uD83D\uDC41\ufe0f Podgl\u0105d PDF ('+(usedIds.length+selIds.length)+'/'+allRows.length+')'):'\u2702\ufe0f Wybierz pozycje...'),
+        },selIds.length?('\uD83D\uDC41\ufe0f Podgl\u0105d PDF ('+(usedIds.length+selIds.filter(function(i){return usedIds.indexOf(i)<0;}).length)+'/'+allRows.length+')'):'\u2702\ufe0f Wybierz pozycje...'),
         ce('button',{onClick:mailSplitBatch,disabled:!selIds.length,
           style:{padding:'15px 20px',borderRadius:12,border:'1.5px solid var(--bd2)',background:'transparent',
             color:selIds.length?'var(--t1)':'var(--t3)',fontSize:15,fontWeight:600,
