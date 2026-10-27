@@ -31,8 +31,8 @@ export const ORDER_STEPS=[
   {field:"order_sewing",  label:"Szycie",  icon:"\u2702\uFE0F", doneLabel:"Szycie zlecone"}
 ];
 // Plik OWU dołączany do maila z fakturą zaliczkową (public/mail-att/)
-export const OWU_URL="/mail-att/Porter_Design_OWU.pdf";
-export const OWU_NAME="Porter_Design_OWU.pdf";
+export const OWU_URL="/mail-att/OWU.pdf";
+export const OWU_NAME="OWU.pdf";
 // Wstrzymane do czasu finalnej wersji OWU (uzupełnienie e-maila Wykonawcy w § 1). Zmień na true, aby włączyć sekcję.
 export const ADVANCE_MAIL_ENABLED=false;
 export const STAGE_ZAKONCZONE={id:"zakonczone",label:"Zako\u0144czone",color:"#6b7280",clientStatus:"zrealizowane",archiveDays:30};
@@ -550,14 +550,22 @@ export function ModalDeal(p){
 
   function openInvoiceMail(inv,reminder){
     var idx=billList.findIndex(function(x){return x.id===inv.id;});
+    // Pierwsza faktura (50% zaliczki) idzie z szablonem "faktura_zaliczkowa" i załącznikiem OWU
+    var advance=!reminder&&idx===0;
     setBillMailId(inv.id);setBillErr(null);
     Promise.all([
       sbApi.getInvoice(inv.id),
       sbApi.getInvoiceSettings().catch(function(){return null;}),
-      loadSystemTemplate(reminder?"ponaglenie":"faktura")
+      loadSystemTemplate(reminder?"ponaglenie":(advance?"faktura_zaliczkowa":"faktura")),
+      // brak pliku OWU nie może przejść po cichu (załączniki szablonu są best-effort); hosting potrafi
+      // zwrócić index.html zamiast 404, więc sprawdzamy też typ zawartości
+      advance?fetch(OWU_URL,{cache:"no-store"}).then(function(r){
+        return r.ok&&/pdf/i.test(r.headers.get("content-type")||"");
+      }).catch(function(){return false;}):Promise.resolve(true)
     ]).then(function(res){
       var full=res[0];
       if(!full)throw new Error("Nie udało się pobrać faktury.");
+      if(!res[3])throw new Error("Brak pliku OWU na serwerze ("+OWU_URL+").");
       var html=buildInvoicePDFHtml(full,res[1]||{},null);
       var number=full.number||"";
       var fname="Faktura-"+(number||"dokument").replace(/[^\w-]+/g,"_")+".html";
@@ -578,7 +586,9 @@ export function ModalDeal(p){
       setMailSubject(fillVars(tpl.subject,vars));
       setMailBodyText(body);
       setMailTo((cl&&cl.email)||full.buyer_email||"");
-      setMailAttachments([{id:"inv_"+Date.now(),name:fname,size:invFile.size,type:"upload",file:invFile}]);
+      var atts=[{id:"inv_"+Date.now(),name:fname,size:invFile.size,type:"upload",file:invFile}];
+      if(advance)atts.push({id:"owu_"+Date.now(),name:OWU_NAME,size:null,type:"template",url:OWU_URL});
+      setMailAttachments(atts);
       setBillMailIdx(idx);
       setBillMailInvId(inv.id);
       setMailKind(reminder?"ponaglenie":"faktura");
@@ -1935,7 +1945,7 @@ export function ModalDeal(p){
           }},"📤"),
           ce("div",{style:{flex:1,minWidth:0}},
             ce("div",{style:{fontSize:15,fontWeight:800,color:"var(--t1)"}},
-              mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":mailKind==="faktura"?"Faktura dla klienta":mailKind==="ponaglenie"?"Ponaglenie do zapłaty":"Instrukcja prania i czyszczenia"
+              mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":mailKind==="faktura"?(billMailIdx===0?"Faktura zaliczkowa i OWU":"Faktura dla klienta"):mailKind==="ponaglenie"?"Ponaglenie do zapłaty":"Instrukcja prania i czyszczenia"
             ),
             ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:1}},"Wysyłka z Twojej skrzynki ("+mailProviderLabel()+")")
           ),
