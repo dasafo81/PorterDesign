@@ -1049,6 +1049,32 @@ export function ModalDeal(p){
     setMailKind(kind);
   }
 
+  // Mail "potwierdzenie wpłaty + start realizacji": kwota i numer z ostatniej opłaconej faktury zlecenia,
+  // termin z deadline'u karty (bez deadline'u — standardowe ok. 4 tygodni)
+  function openPaymentStartMail(){
+    if(!cl)return;
+    setMailBusy(false);
+    loadSystemTemplate("wplata_start").then(function(tpl){
+      var paidInv=billList.filter(function(x){return billPaidAmount(x)>0;}).pop();
+      var wplata=paidInv?" "+billFmt(billPaidAmount(paidInv))+(paidInv.number?" (faktura nr "+paidInv.number+")":""):"";
+      var vars={wplata:wplata,
+        terminZdanie:deadline?"Planowany termin realizacji: <b>"+fmtDate(deadline)+"</b>.":"Czas realizacji wynosi ok. 4 tygodni od momentu rozpoczęcia."};
+      setMailErr(null);setMailMsg(null);
+      setMailSubject(fillVars(tpl.subject,vars));
+      setMailBodyText(dropEmptyParas(fillVars(tpl.body,vars)));
+      setMailTo(cl.email||"");
+      setMailAttachments([]);
+      setMailKind("wplata_start");
+    });
+  }
+
+  // Znacznik wysłania potwierdzenia wpłaty i startu realizacji (deals.payment_confirm_sent_at, migracja 0067)
+  function markPaymentStartSent(val){
+    var patch={payment_confirm_sent_at:val,updated_at:new Date().toISOString()};
+    sbApi.updateDeal(d.id,patch).then(function(){if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){alert("Nie udało się zapisać znacznika wysyłki (czy uruchomiona migracja 0067?): "+e.message);});
+  }
+
   // Dodaje plik wybrany ręcznie przez użytkownika (wysyłany bezpośrednio z File, bez uploadu do Storage)
   function addManualAttachment(file){
     if(!file)return;
@@ -1137,6 +1163,7 @@ export function ModalDeal(p){
       if(mailKind==="opinia")setReviewSent(true);
       else if(mailKind==="instrukcja")setWashingSent(true);
       else if(mailKind==="zaliczka")markAdvanceSent();
+      else if(mailKind==="wplata_start")markPaymentStartSent(new Date().toISOString());
       else if(mailKind==="faktura"){if(billMailIdx===0)markAdvanceSent();markBillInvoiceSent(billMailInvId);}
       setMailMsg("\u2705 Wiadomo\u015b\u0107 wys\u0142ana na "+toList.join(", "));
       setMailKind(null);
@@ -1816,6 +1843,20 @@ export function ModalDeal(p){
           )
         ),
 
+        ce(SectionCard,{icon:"✅",title:"Start realizacji",done:!!d.payment_confirm_sent_at},
+          ce(CheckRow,{
+            checked:!!d.payment_confirm_sent_at,
+            onChange:function(v){markPaymentStartSent(v?new Date().toISOString():null);},
+            label:"Wysłano potwierdzenie wpłaty i start realizacji",
+            sublabel:d.payment_confirm_sent_at?"Wysłano "+new Date(d.payment_confirm_sent_at).toLocaleDateString("pl-PL"):"Wpłata zarejestrowana, zlecenie rusza",
+            action:cl?ce("button",{
+              onClick:function(ev){ev.stopPropagation();openPaymentStartMail();},
+              title:"Wyślij klientowi potwierdzenie wpłaty i informację o rozpoczęciu realizacji",
+              style:{flexShrink:0,padding:"6px 10px",borderRadius:8,border:"1px solid var(--violet, #7c3aed)",background:"var(--bg)",color:"var(--violet, #7c3aed)",cursor:"pointer",fontSize:11,fontWeight:600}
+            },d.payment_confirm_sent_at?"✉ Wyślij ponownie":"✉ Wyślij"):null
+          })
+        ),
+
         ce(SectionCard,{icon:"⏳",title:"Deadline"},
           ce("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}},
             deadline?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1,minWidth:110}},"⏳ "+fmtDate(deadline))
@@ -1960,7 +2001,7 @@ export function ModalDeal(p){
           }},"📤"),
           ce("div",{style:{flex:1,minWidth:0}},
             ce("div",{style:{fontSize:15,fontWeight:800,color:"var(--t1)"}},
-              mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":mailKind==="faktura"?(billMailIdx===0?"Faktura zaliczkowa i OWU":"Faktura dla klienta"):mailKind==="ponaglenie"?"Ponaglenie do zapłaty":"Instrukcja prania i czyszczenia"
+              mailKind==="opinia"?"Prośba o opinię":mailKind==="zaliczka"?"Faktura zaliczkowa i OWU":mailKind==="faktura"?(billMailIdx===0?"Faktura zaliczkowa i OWU":"Faktura dla klienta"):mailKind==="ponaglenie"?"Ponaglenie do zapłaty":mailKind==="wplata_start"?"Potwierdzenie wpłaty i start realizacji":"Instrukcja prania i czyszczenia"
             ),
             ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:1}},"Wysyłka z Twojej skrzynki ("+mailProviderLabel()+")")
           ),

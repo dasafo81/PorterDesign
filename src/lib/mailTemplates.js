@@ -77,6 +77,17 @@ export var SYSTEM_TEMPLATES = {
     ]),
     files:[]
   },
+  wplata_start: {
+    label:"Potwierdzenie wpłaty i start realizacji", icon:"✅",
+    subject:"Potwierdzenie wpłaty i rozpoczęcie realizacji zamówienia",
+    body:J([
+      P("Dzień dobry,"),
+      P("potwierdzam zarejestrowanie wpłaty{wplata} i informuję, że rozpoczynamy realizację zamówienia."),
+      P("{terminZdanie}"),
+      P("Pozdrawiam,")
+    ]),
+    files:[]
+  },
   zamowienie_osprzetu: {
     label:"Zamówienie osprzętu", icon:"🔩",
     subject:"Zamówienie osprzętu — {clientName}",
@@ -116,6 +127,9 @@ export var TEMPLATE_USAGE = {
   faktura_zaliczkowa:{
     where:"CRM, karta deala → wysyłka faktury zaliczkowej z OWU (OWU dołącza się automatycznie).",
     vars:"{numer}, {kwota}"},
+  wplata_start:{
+    where:"CRM, karta deala → Start realizacji → ✉ Wyślij (potwierdzenie wpłaty i informacja o rozpoczęciu realizacji).",
+    vars:"{wplata}, {terminZdanie}"},
   zamowienie_osprzetu:{
     where:"Podgląd zamówienia osprzętu → Wyślij mailem.",
     vars:"{clientName}"},
@@ -133,7 +147,7 @@ export var TEMPLATE_USAGE = {
 // Szablony wywoływane tylko przez aplikację: zawierają zmienne, które znają wyłącznie
 // te przepływy, więc nie pokazujemy ich w liście zwykłej wiadomości w Poczcie.
 export var HIDDEN_IN_COMPOSE = {
-  faktura:1, ponaglenie:1, faktura_zaliczkowa:1, zamowienie_osprzetu:1, zamowienie_tkaniny:1
+  faktura:1, ponaglenie:1, faktura_zaliczkowa:1, wplata_start:1, zamowienie_osprzetu:1, zamowienie_tkaniny:1
 };
 
 // Podstawia {zmienne}. Nieznane zostają bez zmian, puste akapity (zmienna bez wartości) znikają.
