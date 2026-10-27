@@ -294,6 +294,8 @@ export function ModalDeal(p){
   var smt=useState(null),mailTpls=smt[0],setMailTpls=smt[1];
   var smk=useState(null),mailKind=smk[0],setMailKind=smk[1]; // "opinia" | "instrukcja" | "zaliczka" | null
   // Zaliczka 50% i OWU: faktury kandydujące do wysyłki, wybrana faktura, stan przygotowania maila
+  // Podpis z Poczta \u2192 Ustawienia pokazywany w oknie maila (doklejany przy wysy\u0142ce); undefined = \u0142adowanie, null = brak
+  var ssig=useState(undefined),mailSig=ssig[0],setMailSig=ssig[1];
   var sadvL=useState([]),advInvoices=sadvL[0],setAdvInvoices=sadvL[1];
   var sadvI=useState(""),advInvoiceId=sadvI[0],setAdvInvoiceId=sadvI[1];
   var sadvB=useState(false),advBusy=sadvB[0],setAdvBusy=sadvB[1];
@@ -393,6 +395,14 @@ export function ModalDeal(p){
       alert("Nie udało się zapisać podstawy faktur (czy uruchomiono migrację 0065?): "+((e&&e.message)||e));
     });
   }
+
+  React.useEffect(function(){
+    if(!mailKind)return;
+    var alive=true;
+    setMailSig(undefined);
+    mailGetActiveAccount().then(loadMailSignature).catch(function(){return null;}).then(function(sig){if(alive)setMailSig(sig||null);});
+    return function(){alive=false;};
+  },[mailKind]);
 
   React.useEffect(function(){
     sbApi.getAttachments(d.id).then(function(a){setAttachments(a||[]);});
@@ -1975,7 +1985,19 @@ export function ModalDeal(p){
           ce("div",{style:{display:"flex",flexDirection:"column",flex:1,minHeight:0}},
             ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Treść"),
             ce(RichTextEditor,{value:mailBodyText,onChange:setMailBodyText,minHeight:200,bg:"var(--bg2)",
-              placeholder:"Wpisz treść wiadomości…"})
+              placeholder:"Wpisz treść wiadomości…"}),
+            // Podpis z Poczta → Ustawienia — doklejany automatycznie przy wysyłce
+            mailSig===undefined?null
+              :mailSig
+                ?ce("div",{style:{marginTop:8,padding:"10px 12px",border:"1px dashed var(--bd2)",borderRadius:8,background:"var(--bg)"}},
+                  ce("div",{style:{fontSize:10,color:"var(--t3)",marginBottom:6,fontStyle:"italic"}},
+                    "ℹ️ Podpis (doklejany automatycznie) — zmienisz go w Poczta → Ustawienia."),
+                  mailSig.html?ce("div",{style:{fontSize:13,color:"var(--t1)",lineHeight:1.6},
+                    dangerouslySetInnerHTML:{__html:mailSig.html}}):null,
+                  mailSig.imageUrl?ce("img",{src:mailSig.imageUrl,alt:"",
+                    style:{maxWidth:200,maxHeight:90,display:"block",marginTop:mailSig.html?8:0}}):null)
+                :ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6,fontStyle:"italic"}},
+                  "ℹ️ Brak podpisu dla tego konta — ustaw go w Poczta → Ustawienia, a będzie doklejany do maili.")
           ),
           ce("div",null,
             ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Załączniki"),
