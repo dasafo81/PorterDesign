@@ -7,7 +7,7 @@ import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGc
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { DealCorrespondence } from './DealCorrespondence.jsx';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
-import { loadSystemTemplate, fillVars, dropEmptyParas } from '../lib/mailTemplates.js';
+import { loadSystemTemplate, fillVars, dropEmptyParas, loadMailSignature, appendSignature, signatureAttachment } from '../lib/mailTemplates.js';
 import { ACQ_DIRECT, ACQUISITION_OPTIONS, dealQuoteBreakdown, referralGross } from '../lib/referrals.js';
 import { buildInvoicePDFHtml, InvoiceEditor, calcLineFromGross, splitClientAddr } from './ScreenInvoices.jsx';
 const ce = React.createElement;
@@ -579,7 +579,7 @@ export function ModalDeal(p){
         terminZdanie:reminder
           ?(due?" (termin: <b>"+due+"</b>"+(daysLate>0?", opóźnienie: "+daysLate+" dni":"")+")":"")
           :(due?"Termin płatności: <b>"+due+"</b>.":""),
-        sprzedawca:SELLER.shortName||"",podpis:String(SELLER.signature||"").replace(/\n/g,"<br>")};
+        sprzedawca:SELLER.shortName||"",podpis:""};
       var body=dropEmptyParas(fillVars(tpl.body,vars));
       var invFile=new File([html],fname,{type:"text/html"});
       setMailErr(null);setMailMsg(null);
@@ -969,7 +969,7 @@ export function ModalDeal(p){
       var gross=(+full.total_gross||0).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
       // Treść z szablonu "faktura_zaliczkowa" (Poczta → Szablony)
       var tpl=res[3];
-      var vars={numer:number,kwota:gross,podpis:String(SELLER.signature||"").replace(/\n/g,"<br>")};
+      var vars={numer:number,kwota:gross,podpis:""};
       var body=dropEmptyParas(fillVars(tpl.body,vars));
       var invFile=new File([html],fname,{type:"text/html"});
       setMailErr(null);setMailMsg(null);
@@ -1090,24 +1090,29 @@ export function ModalDeal(p){
     var toList=String(mailTo||"").split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean);
     if(!toList.length){setMailErr("Podaj adres e-mail odbiorcy.");return;}
     setMailBusy(true);setMailErr(null);setMailMsg(null);
-    var tokenRef=null;
+    var tokenRef=null,sigRef=null;
     mailGetActiveAccount().then(function(acc){
       if(!acc){
         var e=new Error("Zaloguj si\u0119 do poczty (zak\u0142adka Poczta), a potem spr\u00f3buj ponownie.");
         e.code="MS_NO_ACCOUNT"; throw e;
       }
+      return loadMailSignature(acc);
+    }).then(function(sig){
+      sigRef=sig;
       return mailGetToken();
     }).then(function(token){
       tokenRef=token;
-      return buildGraphAttachments(mailAttachments);
-    }).then(function(graphAtts){
-      var isHtml=/<[a-z][\s\S]*>/i.test(mailBodyText||"");
+      return Promise.all([buildGraphAttachments(mailAttachments),signatureAttachment(sigRef)]);
+    }).then(function(res){
+      var graphAtts=res[0].slice();
+      if(res[1])graphAtts.push(res[1]);
+      // Podpis z Poczta \u2192 Ustawienia doklejany do ka\u017cdego maila
       var message={
         subject:mailSubject||"",
-        body:{contentType:isHtml?"HTML":"Text",content:mailBodyText||""},
+        body:{contentType:"HTML",content:appendSignature(mailBodyText||"",sigRef)},
         toRecipients:toList.map(function(addr){return {emailAddress:{address:addr}};})
       };
-      if(graphAtts&&graphAtts.length)message.attachments=graphAtts;
+      if(graphAtts.length)message.attachments=graphAtts;
       return mailFetch("https://graph.microsoft.com/v1.0/me/sendMail",{
         method:"POST",
         headers:{"Authorization":"Bearer "+tokenRef,"Content-Type":"application/json"},

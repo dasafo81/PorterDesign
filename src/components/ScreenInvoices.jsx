@@ -3,7 +3,7 @@ import { sbApi, ksefApi } from '../lib/supabase.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { InlineEdit, SELLER, hasBuiltinCatalog } from '../constants/data.js';
 import { syncReferralStatements, buildCommissionStatementHtml, DOC_PROWIZJA } from '../lib/referrals.js';
-import { loadSystemTemplate, fillVars, dropEmptyParas, bodyToText } from '../lib/mailTemplates.js';
+import { loadSystemTemplate, fillVars, dropEmptyParas, bodyToText, loadMailSignature, appendSignature, signatureAttachment } from '../lib/mailTemplates.js';
 const ce = React.createElement;
 
 // ── Stałe ──────────────────────────────────────────────────────────────────
@@ -2823,7 +2823,7 @@ function InvoiceDetailView(p){
     var vars={
       numer:currentInv.number||"",kwota:fmtMoney(currentInv.total_gross),czesc:"",
       terminZdanie:due?"Termin p\u0142atno\u015bci: <b>"+due+"</b>.":"",
-      sprzedawca:SELLER.shortName||"",podpis:String(SELLER.signature||"").replace(/\n/g,"<br>")
+      sprzedawca:SELLER.shortName||"",podpis:""
     };
     setMailSubject("Faktura "+(currentInv.number||""));
     setMailBodyText("");
@@ -2850,26 +2850,34 @@ function InvoiceDetailView(p){
     var to=String(mailTo||"").trim();
     if(!to) return;
     setMailBusy(true); setMailErr(null); setMailMsg(null);
+    var sigRef=null;
     mailGetActiveAccount().then(function(acc){
       if(!acc){
         var e=new Error("Zaloguj si\u0119 do poczty (zak\u0142adka Poczta), a potem spr\u00f3buj ponownie.");
         e.code="MS_NO_ACCOUNT"; throw e;
       }
-      return mailGetToken();
-    }).then(function(token){
+      return loadMailSignature(acc);
+    }).then(function(sig){
+      sigRef=sig;
+      return Promise.all([mailGetToken(),signatureAttachment(sig)]);
+    }).then(function(res){
+      var token=res[0];
       var html=buildInvoicePDFHtml(currentInv,p.settings||{},ksefQrUrl);
       var b64=btoa(unescape(encodeURIComponent(html)));
       var fileName="Faktura-"+(currentInv.number||"dokument").replace(/[^\w-]+/g,"_")+".html";
+      var atts=[{
+        "@odata.type":"#microsoft.graph.fileAttachment",
+        name:fileName,
+        contentType:"text/html",
+        contentBytes:b64
+      }];
+      if(res[1])atts.push(res[1]);
+      // Podpis z Poczta \u2192 Ustawienia doklejany do ka\u017cdego maila
       var message={
         subject:mailSubject||("Faktura "+(currentInv.number||"")),
-        body:{contentType:"Text",content:mailBodyText||""},
+        body:{contentType:"HTML",content:appendSignature(mailBodyText||"",sigRef)},
         toRecipients:[{emailAddress:{address:to}}],
-        attachments:[{
-          "@odata.type":"#microsoft.graph.fileAttachment",
-          name:fileName,
-          contentType:"text/html",
-          contentBytes:b64
-        }]
+        attachments:atts
       };
       return mailFetch("https://graph.microsoft.com/v1.0/me/sendMail",{
         method:"POST",

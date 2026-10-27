@@ -51,7 +51,7 @@ export var SYSTEM_TEMPLATES = {
       P("w załączeniu przesyłam fakturę nr <b>{numer}</b> na kwotę <b>{kwota}</b>{czesc}."),
       P("{terminZdanie}"),
       P("Dziękujemy za współpracę. W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-      P("Pozdrawiam serdecznie,<br>{podpis}")
+      P("Pozdrawiam,")
     ]),
     files:[]
   },
@@ -63,20 +63,17 @@ export var SYSTEM_TEMPLATES = {
       P("uprzejmie przypominam, że termin płatności faktury nr <b>{numer}</b> na kwotę <b>{kwota}</b> upłynął{terminZdanie}."),
       P("Jeśli wpłata została już zrealizowana, proszę potraktować tę wiadomość jako bezprzedmiotową. W przeciwnym razie bardzo proszę o uregulowanie należności w najbliższym możliwym terminie."),
       P("Fakturę przesyłam ponownie w załączeniu. W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-      P("Pozdrawiam serdecznie,<br>{podpis}")
+      P("Pozdrawiam,")
     ]),
     files:[]
   },
   faktura_zaliczkowa: {
     label:"Faktura zaliczkowa i OWU", icon:"💶",
-    subject:"Faktura zaliczkowa nr {numer} i Ogólne Warunki Umowy",
+    subject:"Faktura nr {numer} i Ogólne Warunki Umowy",
     body:J([
       P("Dzień dobry,"),
-      P("w załączeniu przesyłam fakturę zaliczkową nr <b>{numer}</b> na kwotę <b>{kwota}</b> (50% wartości zamówienia) oraz Ogólne Warunki Umowy (OWU)."),
-      P("<b>Rozpoczęcie zamówienia</b> następuje po wpłacie zaliczki w terminie wskazanym na fakturze. Zgodnie z OWU dokonanie zapłaty zadatku jest równoznaczne z zapoznaniem się z ich treścią i pełną akceptacją."),
-      P("<b>Czas realizacji</b> wynosi ok. 4 tygodni od momentu zaksięgowania wpłaty."),
-      P("W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-      P("Pozdrawiam serdecznie,<br>{podpis}")
+      P("w załączeniu przesyłamy fakturę nr <b>{numer}</b> oraz Ogólne Warunki Umowy (OWU)."),
+      P("Pozdrawiam,")
     ]),
     files:[]
   },
@@ -112,13 +109,13 @@ export var TEMPLATE_USAGE = {
     vars:"{clientName}, {honorific}, {total}, {zaliczka}"},
   faktura:{
     where:"Moduł Faktury → Wyślij fakturę oraz CRM, karta deala → wysyłka faktury dla klienta.",
-    vars:"{numer}, {kwota}, {czesc}, {terminZdanie}, {sprzedawca}, {podpis}"},
+    vars:"{numer}, {kwota}, {czesc}, {terminZdanie}, {sprzedawca}"},
   ponaglenie:{
     where:"CRM, karta deala → Rozliczenie z klientem → ⏰ Ponagl (przy fakturze po terminie).",
-    vars:"{numer}, {kwota}, {terminZdanie}, {sprzedawca}, {podpis}"},
+    vars:"{numer}, {kwota}, {terminZdanie}, {sprzedawca}"},
   faktura_zaliczkowa:{
     where:"CRM, karta deala → wysyłka faktury zaliczkowej z OWU (OWU dołącza się automatycznie).",
-    vars:"{numer}, {kwota}, {podpis}"},
+    vars:"{numer}, {kwota}"},
   zamowienie_osprzetu:{
     where:"Podgląd zamówienia osprzętu → Wyślij mailem.",
     vars:"{clientName}"},
@@ -188,4 +185,46 @@ export function loadSystemTemplate(id){
     return {id:id,label:row.label||(def&&def.label)||id,subject:row.subject||(def&&def.subject)||"",
       body:bodyToHtml(row.body||(def&&def.body)||""),files:files,fromDb:true};
   }).catch(function(){return fallback();});
+}
+
+// ── Podpis z Poczta → Ustawienia ─────────────────────────────────────────────
+// Doklejany do każdego maila wysyłanego z karty deala i z modułu Faktury (treść szablonu kończy się
+// samym „Pozdrawiam,"). Najpierw podpis konta, z którego idzie wysyłka (user_settings.signature_html
+// + obrazek). Brak podpisu albo błąd odczytu nie blokuje wysyłki.
+export function loadMailSignature(acc){
+  var email=acc&&(acc.username||acc.email)||"";
+  if(!email)return Promise.resolve(null);
+  return sbApi.getUserSettings(email).then(function(row){
+    if(!row||(!row.signature_html&&!row.signature_image_url))return null;
+    return {html:row.signature_html||"",imageUrl:row.signature_image_url||""};
+  }).catch(function(){return null;});
+}
+// Treść (HTML lub zwykły tekst) + podpis; obrazek jako <img src="cid:signature-image"> (patrz signatureAttachment).
+export function appendSignature(body, sig){
+  var html=bodyToHtml(body);
+  if(!sig)return html;
+  var blk="<br><div style=\"font-size:13px;color:#444;\">"+(sig.html||"");
+  if(sig.imageUrl){
+    blk+=(sig.html?"<br>":"")+"<img src=\"cid:signature-image\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">";
+  }
+  return html+blk+"</div>";
+}
+// Inline-załącznik Graph z obrazkiem podpisu (albo null, gdy brak obrazka / nie da się go pobrać).
+export function signatureAttachment(sig){
+  if(!sig||!sig.imageUrl)return Promise.resolve(null);
+  return fetch(sig.imageUrl).then(function(r){
+    if(!r.ok)throw new Error("Nie udało się pobrać obrazka podpisu");
+    var ct=r.headers.get("content-type")||"image/png";
+    return r.blob().then(function(blob){
+      return new Promise(function(resolve,reject){
+        var reader=new FileReader();
+        reader.onloadend=function(){
+          resolve({"@odata.type":"#microsoft.graph.fileAttachment",name:"signature.png",contentType:ct,
+            contentBytes:String(reader.result).split(",")[1]||"",isInline:true,contentId:"signature-image"});
+        };
+        reader.onerror=function(){reject(new Error("Błąd odczytu obrazka podpisu"));};
+        reader.readAsDataURL(blob);
+      });
+    });
+  }).catch(function(e){console.error("[podpis]",e);return null;});
 }
