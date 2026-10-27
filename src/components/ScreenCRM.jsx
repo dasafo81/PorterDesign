@@ -17,7 +17,7 @@ const ce = React.createElement;
 export const CRM_STAGES =[
   {id:"pomiar",     label:"Pomiar",     color:"#f59e0b", clientStatus:"nowe"},
   {id:"wycena",     label:"Wycena",     color:"#3b82f6", clientStatus:"nowe"},
-  {id:"zaliczka",   label:"Zaliczka 50% i OWS", color:"#ec4899", clientStatus:"nowe"},
+  {id:"zaliczka",   label:"Zaliczka 50% i OWU", color:"#ec4899", clientStatus:"nowe"},
   {id:"zamowienie", label:"Zamówienie", color:"#8b5cf6", clientStatus:"nowe"},
   {id:"realizacja", label:"Realizacja", color:"#10b981", clientStatus:"nowe"},
   {id:"montaz",     label:"Monta\u017c",     color:"#f97316", clientStatus:"nowe"},
@@ -3609,7 +3609,7 @@ export function ScreenCRM(p){
     var deal=(deals||[]).find(function(d){return String(d.id)===String(dealId);});
     var stageObj=CRM_STAGES.find(function(s){return s.id===stage;});
     var patch={stage:stage,updated_at:new Date().toISOString()};
-    // Zaliczka 50% i OWS → Zamówienie: deadline automatycznie +4 tygodnie (edytowalny w karcie deala)
+    // Zaliczka 50% i OWU → Zamówienie: deadline automatycznie +4 tygodnie (edytowalny w karcie deala)
     if(deal&&deal.stage==="zaliczka"&&stage==="zamowienie")patch.deadline=deadlineFromNow();
     // Znacznik wejścia do Realizacji (przypomnienie na kafelku po 10 dniach) —
     // ustawiany WYŁĄCZNIE tutaj, więc notatki/zmiana przypisanej osoby go nie zerują.
