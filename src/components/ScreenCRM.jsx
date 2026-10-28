@@ -153,7 +153,13 @@ function DealDateTimeInput(rp){
       onChange:function(ev){var nv=date+"T"+ev.target.value;rp.onChange(nv);rp.onCommit(nv);},
       title:"Godzina (co 30 min)",
       style:Object.assign({},base,{flex:"0 0 82px",minWidth:0})
-    },opts.map(function(o){return ce("option",{key:o,value:o},o);}))
+    },opts.map(function(o){return ce("option",{key:o,value:o},o);})),
+    date?ce("button",{
+      type:"button",
+      onClick:function(){rp.onChange("");rp.onCommit("");},
+      title:"Usuń termin",
+      style:{flex:"0 0 auto",padding:"0 10px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:14,color:"var(--t3)"}
+    },"✕"):null
   );
 }
 
@@ -1854,6 +1860,12 @@ export function ModalDeal(p){
               delivDate2?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
                 "📅 "+fmtDate(delivDate2)+(delivDate2.length>10?" "+delivDate2.slice(11,16):"")
               ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
+              delivDate2?ce("button",{
+                type:"button",
+                onClick:function(){persistDealDate("delivery_date2","",setDelivDate2);},
+                title:"Usuń termin",
+                style:{padding:"8px 10px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",cursor:"pointer",fontSize:14,color:"var(--t3)",flexShrink:0}
+              },"✕"):null,
               gcalToken?ce("button",{
                 onClick:function(){addToGcal(installLabel2||"Wieszanie",delivDate2,"",function(dt,dur){persistDealDate("delivery_date2",dt,setDelivDate2,true);persistDealDuration("delivery2_duration_min",dur);},"delivery_date2");},
                 title:"Ustaw termin i dodaj do Google Calendar",
