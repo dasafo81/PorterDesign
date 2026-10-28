@@ -3312,13 +3312,23 @@ export function ScreenInvoices(p){
           var isPaid=newStatus==="paid";
           var prevPatch={paid:inv.paid,paid_amount:inv.paid_amount||0,payment_status:inv.payment_status||"unpaid"};
           setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,{paid:isPaid,paid_amount:amount,payment_status:newStatus}):x;});});
-          sbApi.updateInvoice(inv.id,{paid:isPaid,paid_amount:amount,payment_status:newStatus}).then(function(){
+          // Kolumna `paid` nie jest w żadnej migracji (mogła powstać ręcznie) — gdy jej brak,
+          // zapis całego patcha padał i zmiana statusu cofała się po cichu. Wtedy ponawiamy
+          // bez `paid` (źródłem prawdy jest payment_status).
+          sbApi.updateInvoice(inv.id,{paid:isPaid,paid_amount:amount,payment_status:newStatus}).catch(function(e){
+            var msg=String((e&&e.message)||e).replace(/paid_amount/g,"");
+            if(/\bpaid\b/.test(msg)){
+              return sbApi.updateInvoice(inv.id,{paid_amount:amount,payment_status:newStatus});
+            }
+            throw e;
+          }).then(function(){
             // Opłacenie FV 50% dopisuje polecenie do zestawienia prowizji (błąd synchronizacji nie cofa płatności)
             syncReferralStatements().then(function(changed){
               if(changed)return sbApi.getInvoices().then(function(d){setInvoices(d||[]);});
             }).catch(function(e){console.error("[prowizje] synchronizacja zestawień",e);});
-          },function(){
+          },function(e){
             setInvoices(function(prev){return prev.map(function(x){return x.id===inv.id?Object.assign({},x,prevPatch):x;});});
+            alert("Nie udało się zmienić statusu płatności: "+((e&&e.message)||e));
           });
         },
         onToggleApproved:function(inv,val){
