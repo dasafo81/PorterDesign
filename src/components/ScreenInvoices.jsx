@@ -2243,7 +2243,7 @@ function InvoiceList(p){
       ce("div",{style:{overflowX:"auto",WebkitOverflowScrolling:"touch"}},
         ce("div",{style:{minWidth:1050}},
       // Nagłówek tabeli
-      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 90px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
+      ce("div",{style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 140px 100px 90px 90px",gap:6,padding:"10px 14px",borderBottom:"1px solid var(--bd2)",background:"var(--bg)",width:"100%"}},
         ["Numer","Typ","Kontrahent","Data","Termin pł.","Płatność","Brutto / Netto","Zapłacono","Zatwierdzono","Status",""].map(function(h,i){
           return ce("div",{key:i,style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.05em",textAlign:i===2?"left":(i>=7?"center":"right")}},h);
         })
@@ -2287,7 +2287,7 @@ function InvoiceList(p){
             background:isPartial?"linear-gradient(90deg, var(--gr) 50%, var(--red) 50%)":tone.bg,
             color:isPartial?"#fff":tone.fg
           };
-          return ce("div",{style:{textAlign:"center"}},
+          return ce("div",{onClick:function(e){e.stopPropagation();},style:{textAlign:"center"}},
             ce("button",{
               type:"button",
               disabled:forcedPaid,
@@ -2322,7 +2322,7 @@ function InvoiceList(p){
             if(e&&e.detail===0) return;
             (inv.ksef_number||inv.status==="issued")?(p.onView&&p.onView(inv)):p.onEdit(inv);
           },
-          style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 90px 100px 90px 90px",gap:6,padding:"11px 14px",
+          style:{display:"grid",gridTemplateColumns:"110px 130px minmax(180px,1fr) 95px 100px 90px 130px 140px 100px 90px 90px",gap:6,padding:"11px 14px",
             borderBottom:"1px solid var(--bd3)",cursor:isBusy?"wait":"pointer",transition:"background .12s",
             background:rowBg,width:"100%",opacity:isBusy?0.6:1,
             boxShadow:isPaidRow?"inset 3px 0 0 var(--gr)":"none"},
