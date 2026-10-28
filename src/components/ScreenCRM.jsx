@@ -120,6 +120,43 @@ export function gcalLink(title,date,desc){
 // Zdefiniowane w środku tworzyły nowy typ komponentu przy każdym renderze, przez co
 // React montował wszystkie sekcje od nowa: karta przewijała się do góry, a otwarty
 // natywny picker daty był niszczony w trakcie wybierania terminu.
+// Termin = data + godzina z listy co 30 min (domyślnie 9:00) zamiast natywnego datetime-local,
+// w którym godzinę trzeba było przewijać co minutę, a start był na aktualnej godzinie.
+// value: "YYYY-MM-DDTHH:mm" lub "". onChange — każda zmiana; onCommit — zapis (blur/Enter daty, wybór godziny).
+var DEAL_TIME_DEFAULT="09:00";
+var DEAL_TIME_OPTIONS=(function(){
+  var o=[];
+  for(var h=6;h<=22;h++){
+    var hh=(h<10?"0":"")+h;
+    o.push(hh+":00");
+    if(h<22)o.push(hh+":30");
+  }
+  return o;
+})();
+function DealDateTimeInput(rp){
+  var v=rp.value||"";
+  var date=v.slice(0,10);
+  var time=v.length>=16?v.slice(11,16):DEAL_TIME_DEFAULT;
+  var opts=DEAL_TIME_OPTIONS.indexOf(time)<0?DEAL_TIME_OPTIONS.concat([time]).sort():DEAL_TIME_OPTIONS;
+  var base=Object.assign({},rp.style||{});
+  return ce("div",{style:{display:"flex",gap:6,flex:"0 1 240px",minWidth:0}},
+    ce("input",{
+      type:"date",value:date,
+      onChange:function(ev){var d=ev.target.value;rp.onChange(d?d+"T"+time:"");},
+      onBlur:function(ev){var d=ev.target.value;rp.onCommit(d?d+"T"+time:"");},
+      onKeyDown:function(ev){if(ev.key==="Enter"){var d=ev.target.value;rp.onCommit(d?d+"T"+time:"");ev.target.blur();}},
+      title:rp.title,
+      style:Object.assign({},base,{flex:"1 1 130px",minWidth:0})
+    }),
+    ce("select",{
+      value:time,disabled:!date,
+      onChange:function(ev){var nv=date+"T"+ev.target.value;rp.onChange(nv);rp.onCommit(nv);},
+      title:"Godzina (co 30 min)",
+      style:Object.assign({},base,{flex:"0 0 82px",minWidth:0})
+    },opts.map(function(o){return ce("option",{key:o,value:o},o);}))
+  );
+}
+
 function CheckRow(rp){
   return ce("div",{
     style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:9,
@@ -1730,13 +1767,12 @@ export function ModalDeal(p){
             visitDate?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
               "📅 "+fmtDate(visitDate)+(visitDate.length>10?" "+visitDate.slice(11,16):"")
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
-            ce("input",{
-              type:"datetime-local",value:visitDate,
-              onChange:function(ev){setVisitDate(ev.target.value);},
-              onBlur:function(ev){persistDealDate("visit_date",ev.target.value,setVisitDate);},
-              onKeyDown:function(ev){if(ev.key==="Enter"){persistDealDate("visit_date",ev.target.value,setVisitDate);ev.target.blur();}},
+            ce(DealDateTimeInput,{
+              value:visitDate,
+              onChange:setVisitDate,
+              onCommit:function(val){persistDealDate("visit_date",val,setVisitDate);},
               title:"Termin spotkania (zapisywany od razu w dealu)",
-              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
+              style:Object.assign({},INP,{width:"auto"})
             }),
             gcalToken?ce("button",{
               onClick:function(){addToGcal("Pomiar",visitDate,"",function(dt,dur){persistDealDate("visit_date",dt,setVisitDate,true);persistDealDuration("visit_duration_min",dur);},"visit_date");},
@@ -1788,13 +1824,12 @@ export function ModalDeal(p){
             delivDate?ce("div",{style:{fontSize:13,color:"var(--t1)",flex:1}},
               "📅 "+fmtDate(delivDate)+(delivDate.length>10?" "+delivDate.slice(11,16):"")
             ):ce("div",{style:{fontSize:13,color:"var(--t3)",flex:1}},"Brak terminu"),
-            ce("input",{
-              type:"datetime-local",value:delivDate,
-              onChange:function(ev){setDelivDate(ev.target.value);},
-              onBlur:function(ev){persistDealDate("delivery_date",ev.target.value,setDelivDate);},
-              onKeyDown:function(ev){if(ev.key==="Enter"){persistDealDate("delivery_date",ev.target.value,setDelivDate);ev.target.blur();}},
+            ce(DealDateTimeInput,{
+              value:delivDate,
+              onChange:setDelivDate,
+              onCommit:function(val){persistDealDate("delivery_date",val,setDelivDate);},
               title:"Termin montażu (zapisywany od razu w dealu)",
-              style:Object.assign({},INP,{flex:"0 0 200px",width:"auto"})
+              style:Object.assign({},INP,{width:"auto"})
             }),
             gcalToken?ce("button",{
               onClick:function(){addToGcal("Montaż",delivDate,"",function(dt,dur){persistDealDate("delivery_date",dt,setDelivDate,true);persistDealDuration("delivery_duration_min",dur);},"delivery_date");},
