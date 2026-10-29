@@ -3083,7 +3083,7 @@ export function App(p){
     showVariantAdvisor&&curClient?ce(ModalVariantAdvisor,{client:curClient,onApply:applyVariantAdvisor,onClose:function(){setShowVariantAdvisor(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
     showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,tplFiles:emailPdf&&emailPdf.tplFiles,onSent:emailPdf&&emailPdf.onSent,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
-    showAIModal?ce(ModalAIValuation,{onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
+    showAIModal?ce(ModalAIValuation,{brandName:brandName,onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
       clientId:curClient.id,
@@ -3814,6 +3814,7 @@ export function ModalClientEmail(p){
 
 export function ModalAIValuation(p){
   var useState=React.useState,useRef=React.useRef,useEffect=React.useEffect;
+  var brandName=p.brandName||"";
   var sq1=useState({}),quizAnswers=sq1[0],setQuizAnswers=sq1[1];
   var DOTS=ce("span",null,
     ce("span",{style:{animation:"pulse 1.2s ease-in-out infinite",animationDelay:"0s",display:"inline-block",marginRight:3}},"•"),
