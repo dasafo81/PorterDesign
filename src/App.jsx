@@ -4031,7 +4031,7 @@ export function ModalAIValuation(p){
         system:buildSystemPrompt(),
         messages:apiMessages
       })
-    }).then(function(r){return r.json();}).then(function(d){
+    }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){return{error:{message:r.status===504?"Asystent odpowiada zbyt d\u0142ugo \u2014 spr\u00f3buj ponownie lub skr\u00f3\u0107 wiadomo\u015b\u0107.":"B\u0142\u0105d serwera AI ("+r.status+"). Spr\u00f3buj ponownie."}};}});}).then(function(d){
       if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
       var textBlock=d.content&&d.content.filter(function(b){return b.type==="text";})[0];var raw=textBlock?textBlock.text:"";
       var parsed=parseAIResponse(raw);
@@ -4175,7 +4175,7 @@ export function ModalAIValuation(p){
       fetch("/api/claude",{
         method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(getAccessToken()||"")},
         body:JSON.stringify({model:"claude-sonnet-5",system:buildSystemPrompt(),messages:apiMessages,max_tokens:3000})
-      }).then(function(r){return r.json();}).then(function(d){
+      }).then(function(r){return r.text().then(function(t){try{return JSON.parse(t);}catch(e){return{error:{message:r.status===504?"Asystent odpowiada zbyt d\u0142ugo \u2014 spr\u00f3buj ponownie lub skr\u00f3\u0107 wiadomo\u015b\u0107.":"B\u0142\u0105d serwera AI ("+r.status+"). Spr\u00f3buj ponownie."}};}});}).then(function(d){
         if(d.error){setError(d.error.message||"B\u0142\u0105d API");setLoading(false);return;}
         var textBlock=d.content&&d.content.filter(function(b){return b.type==="text";})[0];var raw=textBlock?textBlock.text:"";
         var resp=parseAIResponse(raw);
