@@ -175,6 +175,8 @@ export function App(p){
   // "Wstecz" wracało tam, a nie do listy wycen. Patrz pushModeReturn/popModeReturn niżej.
   var sModeReturn=useState(null),modeReturn=sModeReturn[0],setModeReturn=sModeReturn[1];
   var sOpenDealId=useState(null),openDealId=sOpenDealId[0],setOpenDealId=sOpenDealId[1];
+  // Wiadomość do otwarcia w module Poczta (z korespondencji w karcie deala): {id,out,convId,dealId}
+  var sOpenMail=useState(null),openMail=sOpenMail[0],setOpenMail=sOpenMail[1];
   var s3=useState(null),curClientId=s3[0],setCurClientId=s3[1];
   var s4=useState(null),curRoomId=s4[0],setCurRoomId=s4[1];
   var s5=useState(null),curWin=s5[0],setCurWin=s5[1];
@@ -3016,7 +3018,7 @@ export function App(p){
       ].concat(isSuperAdmin?[{id:"admin",label:"Admin",icon:"\u2699"}]:[]).map(function(tab){
         var active=appMode===tab.id;
         return ce("button",{key:tab.id,
-          onClick:function(){if(!tab.soon)setAppMode(tab.id);},
+          onClick:function(){if(!tab.soon){setOpenMail(null);setAppMode(tab.id);}},
           title:tab.label,
           className:"nav-tab pd-navbtn"+(active?" active":""),
           style:{
@@ -3047,6 +3049,10 @@ export function App(p){
           onDealsSync:setDeals,
           pushModeReturn:pushModeReturn,
           openDealId:openDealId,
+          onOpenMail:function(m,dealId){
+            setOpenMail({id:m.id,out:!!m.out,convId:m.convId||null,dealId:dealId});
+            setAppMode("mail");
+          },
           onOpenDealConsumed:function(){setOpenDealId(null);},
           onIssueInvoice:function(prefill){setPendingInvoice(prefill);setAppMode("faktury");},
           onClientStatusChange:function(clientId,status){
@@ -3054,8 +3060,15 @@ export function App(p){
           }
         })
       : appMode==="mail"
-        ? ce("div",{className:"pd-mail-h",style:{overflow:"hidden"}},
-            ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId})
+        ? ce(Fragment,null,
+            openMail&&openMail.dealId
+              ?ce("div",{style:{display:"flex",gap:8,marginBottom:12}},
+                  ce("button",{onClick:function(){var did=openMail.dealId;setOpenMail(null);setAppMode("crm");setOpenDealId(did);},title:"Wr\u00f3\u0107 do karty deala w CRM",style:{border:"none",background:"var(--bd3)",cursor:"pointer",padding:"7px 13px",color:"var(--violet)",fontSize:13,letterSpacing:"0.04em",display:"flex",alignItems:"center",gap:5,borderRadius:10,fontWeight:600}},"\u2190","Karta deala")
+                )
+              :null,
+            ce("div",{className:"pd-mail-h",style:{overflow:"hidden","--pd-mail-extra":(openMail&&openMail.dealId)?"48px":"0px"}},
+              ce(ScreenMail,{clients:clients,setScreen:setScreen,setCurClientId:setCurClientId,openMail:openMail,onOpenMailConsumed:function(){setOpenMail(function(o){return o?Object.assign({},o,{handled:true}):o;});}})
+            )
           )
       : appMode==="kalendarz"
         ? ce(CRMKalendarz,{deals:deals,clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
