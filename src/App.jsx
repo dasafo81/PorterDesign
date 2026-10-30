@@ -14,6 +14,7 @@ import {
   buildFabricOrderHtmlFromRows, buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, spreadDiscountOnRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
 } from './lib/pdf.js';
 import { RichTextEditor } from './components/MailShared.jsx';
+import { RecipientInput } from './components/RecipientInput.jsx';
 import { ModalClient, ModalNewQuoteFromClient } from './components/ModalClient.jsx';
 import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalCopyProduct, ModalConfirmTypeChange, ModalSimple, ModalVariantAdvisor } from './components/ModalRoom.jsx';
@@ -3459,9 +3460,6 @@ export function ModalClientEmail(p){
   var s7=useState(false),sent=s7[0],setSent=s7[1];
   var s8=useState(null),sendErr=s8[0],setSendErr=s8[1];
   var s9=useState(null),settings=s9[0],setSettings=s9[1];
-  var s10=useState([]),toSuggestions=s10[0],setToSuggestions=s10[1];
-  var s11=useState(false),showToSugg=s11[0],setShowToSugg=s11[1];
-  var toSuggTimer=React.useRef(null);
   var s12=useState([]),extraAtts=s12[0],setExtraAtts=s12[1];
   var extraAttInputRef=React.useRef(null);
   var pdfName=p.pdfName||"Oferta.pdf";
@@ -3679,7 +3677,9 @@ export function ModalClientEmail(p){
           });
       return sendReq.then(function(res){
         if(!res.ok)return res.json().catch(function(){return {};}).then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+res.status+")");});
-        sbApi.upsertMailRecipient(to,isClientAddr?(client.name||""):"").catch(function(){});
+        recips.forEach(function(r){
+          sbApi.upsertMailRecipient(r.emailAddress.address,isClientAddr?(client.name||""):"").catch(function(){});
+        });
         setSending(false);setSent(true);
         if(p.onSent){try{p.onSent();}catch(e){console.warn("[mail] onSent",e);}}
         setTimeout(function(){p.onClose();},1600);
@@ -3696,26 +3696,23 @@ export function ModalClientEmail(p){
   // Podpowiedzi w polu "Do" — historia odbiorców z Supabase (ten sam mechanizm co
   // w module Poczta) + Kontrahenci z bazy PD. Bez Graph People API — nie wymaga
   // dodatkowego scope'u/zgody na koncie Microsoft, bo nie dotyka Outlooka.
-  function fetchToSuggestions(q){
-    q=String(q||"").trim();
-    if(q.length<2){setToSuggestions([]);setShowToSugg(false);return;}
-    var ql=q.toLowerCase();
+  function fetchToSuggestions(q,cb){
+    var ql=String(q||"").toLowerCase();
     Promise.all([
-      sbApi.searchMailRecipients(q).catch(function(){return [];}),
+      sbApi.searchMailRecipients(ql).catch(function(){return [];}),
       sbApi.getContacts().then(function(rows){
         return (rows||[]).filter(function(c){
           return c.email&&((c.name||"").toLowerCase().indexOf(ql)>=0||c.email.toLowerCase().indexOf(ql)>=0);
         }).slice(0,8).map(function(c){return {name:c.name||c.email,email:c.email};});
       }).catch(function(){return [];})
     ]).then(function(results){
-      var hist=(results[0]||[]).map(function(r){return {name:r.name||r.email,email:r.email};});
+      var hist=(results[0]||[]).filter(function(r){return r.email&&!/[,;]/.test(r.email);}).map(function(r){return {name:r.name||r.email,email:r.email};});
       var seen={},merged=[];
       hist.concat(results[1]).forEach(function(s){
         var key=s.email.toLowerCase();
         if(!seen[key]){seen[key]=1;merged.push(s);}
       });
-      setToSuggestions(merged.slice(0,8));
-      setShowToSugg(merged.length>0);
+      cb(merged.slice(0,8));
     });
   }
 
@@ -3730,26 +3727,8 @@ export function ModalClientEmail(p){
         ce("button",{onClick:p.onClose,style:{border:"none",background:"none",cursor:"pointer",fontSize:22,color:"var(--t3)",lineHeight:1,padding:"0 4px"}},"\u00d7")
       ),
       ce("div",{style:{marginBottom:12,position:"relative"}},ce("div",{style:lbl},"Do"),
-        ce("input",{type:"email",value:toEmail,
-          onChange:function(ev){
-            var v=ev.target.value;setToEmail(v);
-            if(toSuggTimer.current)clearTimeout(toSuggTimer.current);
-            toSuggTimer.current=setTimeout(function(){fetchToSuggestions(v);},300);
-          },
-          onFocus:function(){if(toSuggestions.length)setShowToSugg(true);},
-          onBlur:function(){setTimeout(function(){setShowToSugg(false);},150);},
-          placeholder:p.to!=null?"adres e-mail odbiorcy":"adres e-mail klienta",style:inp}),
-        showToSugg&&toSuggestions.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,zIndex:20,
-            background:"var(--bg)",border:"1.5px solid var(--bd2)",borderRadius:10,marginTop:4,
-            maxHeight:220,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.18)"}},
-          toSuggestions.map(function(s){
-            return ce("div",{key:s.email,onMouseDown:function(e){e.preventDefault();setToEmail(s.email);setShowToSugg(false);},
-              style:{padding:"9px 12px",cursor:"pointer",fontSize:13,borderBottom:"1px solid var(--bd3)"}},
-              ce("div",{style:{fontWeight:600,color:"var(--t1)"}},s.name),
-              ce("div",{style:{fontSize:11,color:"var(--t3)"}},s.email)
-            );
-          })
-        ):null),
+        ce(RecipientInput,{value:toEmail,onChange:setToEmail,suggest:fetchToSuggestions,
+          placeholder:p.to!=null?"adres e-mail odbiorcy (kilka po przecinku)":"adres e-mail klienta (kilka po przecinku)",style:inp})),
       replyMsg?ce("div",{style:{marginBottom:12,padding:"10px 12px",borderRadius:10,border:"1.5px solid var(--bd2)"}},
         ce("label",{style:{display:"flex",gap:8,alignItems:"center",cursor:"pointer",fontSize:13,color:"var(--t1)"}},
           ce("input",{type:"checkbox",checked:asReply,onChange:function(ev){setAsReply(ev.target.checked);}}),

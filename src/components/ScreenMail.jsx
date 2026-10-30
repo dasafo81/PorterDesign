@@ -6,6 +6,7 @@ import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
 import { sbApi } from '../lib/supabase.js';
 import { guessMailServers } from '../lib/imapApi.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
+import { RecipientInput, parseRecipientList } from './RecipientInput.jsx';
 import { SYSTEM_TEMPLATES, TEMPLATE_USAGE, HIDDEN_IN_COMPOSE } from '../lib/mailTemplates.js';
 const ce = React.createElement;
 // Reeksport dla zgodnosci — definicje mieszkaja teraz w MailShared.jsx.
@@ -2205,9 +2206,6 @@ export function ScreenMail(p){
   // żeby podpis dało się wstawić między własną treścią a cytatem, a nie za nim.
   var sqt=us(""),quotedHtml=sqt[0],setQuotedHtml=sqt[1];
   var satt=us([]),attachments=satt[0],setAttachments=satt[1];
-  var scon=us([]),contactSug=scon[0],setContactSug=scon[1];
-  // Pole "Do:" ma fokus — spóźniona odpowiedź z Supabase nie może ponownie otworzyć listy po blur
-  var toFocusRef=React.useRef(false);
   var ssent=us(false),justSent=ssent[0],setJustSent=ssent[1];
   var ssending=us(false),sending=ssending[0],setSending=ssending[1];
   var scal=us(null),calMail=scal[0],setCalMail=scal[1];
@@ -2514,11 +2512,11 @@ export function ScreenMail(p){
     setAttachments(appAtts.concat(tplAtts));
   },[selClientId,selTemplate,dbTemplates,composeDirty]);
 
-  function onToChange(val){
-    setToEmail(val);
-    if(val.length<2){setContactSug([]);return;}
-    var q=val.toLowerCase();
-    var fc=clients.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).map(function(c){return {email:c.email,name:c.name,clientId:c.id,quoteNo:c.quote_no||null};});
+  // Podpowiedzi adresów dla pól Do / CC / UDW. q = ostatni wpisywany fragment (małe litery).
+  // withClients=true dodaje klientów z wycen (po wybraniu wiążą wycenę z mailem) — tylko dla "Do".
+  // cb woła się dwa razy: od razu z lokalnymi, potem po dociągnięciu historii z Supabase.
+  function suggestRecipients(q,cb,withClients){
+    var fc=withClients?clients.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).map(function(c){return {email:c.email,name:c.name,clientId:c.id,quoteNo:c.quote_no||null};}):[];
     // Kontrahenci (baza Kontrahenci) — dopisz tych, których nie ma jeszcze wśród klientów z wycen
     contacts.filter(function(c){return c.email&&((c.name||"").toLowerCase().includes(q)||c.email.toLowerCase().includes(q));}).forEach(function(c){
       if(!fc.find(function(x){return x.email.toLowerCase()===c.email.toLowerCase();}))fc.push({email:c.email,name:c.name});
@@ -2530,26 +2528,26 @@ export function ScreenMail(p){
       var addr=m.folder==="sent"?m.to:m.from;
       var nm=m.folder==="sent"?m.toName:m.fromName;
       if(!addr)return;
+      // Wysłany mail z wieloma odbiorcami ma w "to" listę po przecinku — nie jest jednym adresem
+      if(/[,;]/.test(addr))return;
       var al=addr.toLowerCase();
       if(seenMail[al])return;
       if(al.indexOf(q)===-1&&(nm||"").toLowerCase().indexOf(q)===-1)return;
       seenMail[al]=1;
       if(!fc.find(function(x){return x.email.toLowerCase()===al;}))fc.push({email:addr,name:nm||addr});
     });
+    // Pokaż lokalnych od razu, Supabase dopełni za chwilę
+    cb(fc.slice(0,8));
     // Dociągnij historię adresów z Supabase (cross-device, cross-session)
     sbApi.searchMailRecipients(q).then(function(rows){
-      // Dodatkowy filtr po stronie klienta — upewnij się że query nadal pasuje
-      var hist=(rows||[]).filter(function(r){
-        return r.email&&(r.email.toLowerCase().includes(q)||(r.name||"").toLowerCase().includes(q));
-      }).map(function(r){return {email:r.email,name:r.name||""};});
       var combined=fc.slice();
-      hist.forEach(function(h){if(!combined.find(function(x){return x.email.toLowerCase()===h.email.toLowerCase();}))combined.push(h);});
-      if(toFocusRef.current)setContactSug(combined.slice(0,8));
-    }).catch(function(){
-      if(toFocusRef.current)setContactSug(fc.slice(0,8));
-    });
-    // Pokaż lokalnych od razu, Supabase dopełni za chwilę
-    setContactSug(fc.slice(0,8));
+      (rows||[]).filter(function(r){
+        return r.email&&!/[,;]/.test(r.email)&&(r.email.toLowerCase().includes(q)||(r.name||"").toLowerCase().includes(q));
+      }).forEach(function(r){
+        if(!combined.find(function(x){return x.email.toLowerCase()===r.email.toLowerCase();}))combined.push({email:r.email,name:r.name||""});
+      });
+      cb(combined.slice(0,8));
+    }).catch(function(){});
   }
 
   // Czy treść maila (HTML z RichTextEditora) jest faktycznie pusta?
@@ -2788,7 +2786,9 @@ export function ScreenMail(p){
           setTimeout(function(){setRefreshKey(function(k){return k+1;});},6000);
           setSending(false); setJustSent(true);
           // Zapisz adres odbiorcy w historii (Supabase — działa cross-device)
-          sbApi.upsertMailRecipient(toEmail, toName).catch(function(){});
+          parseRecipientList(toEmail).concat(parseRecipientList(ccEmail),parseRecipientList(bccEmail)).forEach(function(addr,i,all){
+            sbApi.upsertMailRecipient(addr, all.length===1?toName:"").catch(function(){});
+          });
           setTimeout(function(){setJustSent(false);},3000);
           setToEmail(""); setSubject(""); setBody(""); setQuotedHtml(""); setAttachments([]); setSelClientId(null);
           setCcEmail(""); setBccEmail(""); setComposeDirty(false);
@@ -3252,24 +3252,11 @@ export function ScreenMail(p){
           style:{border:"none",background:"none",cursor:"pointer",fontSize:11,fontWeight:600,color:"var(--violet)",padding:"2px 4px"}},
           showCcBcc?"\u2212 Ukryj CC/UDW":"+ CC / UDW")
       ),
-      ce("input",{type:"email",value:toEmail,onChange:function(e){toFocusRef.current=true;onToChange(e.target.value);},onFocus:function(){toFocusRef.current=true;},onBlur:function(){toFocusRef.current=false;setTimeout(function(){setContactSug([]);},150);},placeholder:"adres@email.com",style:INP}),
-      contactSug.length>0?ce("div",{style:{position:"absolute",top:"100%",left:0,right:0,background:"var(--menu-bg)",border:"1px solid var(--bd2)",borderRadius:10,zIndex:9999,boxShadow:"0 10px 30px rgba(0,0,0,0.22)",overflow:"hidden",marginTop:2,maxHeight:280,overflowY:"auto"}},
-        contactSug.map(function(c){
-          return ce("div",{key:c.email+"|"+(c.clientId||""),onClick:function(){
-              // Klient z wyceną → powiąż (PDF z wyceny + placeholdery szablonu)
-              if(c.clientId)setSelClientId(String(c.clientId));
-              setToEmail(c.email);setContactSug([]);
-            },
-            style:{padding:"9px 12px",fontSize:13,cursor:"pointer",borderBottom:"1px solid var(--bd3)",display:"flex",alignItems:"center",gap:10,background:"transparent"}},
-            ce(Avatar,{size:28,bg:"#c8a96a",label:initials(c.name)}),
-            ce("div",null,
-              ce("div",{style:{fontWeight:600,color:"var(--t1)",fontSize:13}},c.name),
-              ce("div",{style:{color:"var(--t3)",fontSize:11}},c.email)
-            ),
-            c.clientId?ce("span",{style:{marginLeft:"auto",fontSize:10,fontWeight:700,color:"var(--grd)",background:"var(--grl)",borderRadius:10,padding:"2px 8px",whiteSpace:"nowrap"}},"\uD83D\uDCC4 "+(c.quoteNo||"wycena")):null
-          );
-        })
-      ):null,
+      ce(RecipientInput,{value:toEmail,onChange:setToEmail,suggest:function(q,cb){suggestRecipients(q,cb,true);},
+        onPick:function(c){
+          // Klient z wyceną → powiąż (PDF z wyceny + placeholdery szablonu)
+          if(c.clientId)setSelClientId(String(c.clientId));
+        },placeholder:"adres@email.com (kilka adres\u00f3w po przecinku)",style:INP}),
       selClient?ce("div",{style:{marginTop:6,display:"inline-flex",alignItems:"center",gap:6,padding:"3px 6px 3px 10px",borderRadius:20,fontSize:11,background:"var(--grl)",border:"1px solid var(--gr)",color:"var(--grd)",fontWeight:600}},
         "\uD83D\uDCC4 Powi\u0105zano z wycen\u0105: "+selClient.name+(selClient.quote_no?" ("+selClient.quote_no+")":""),
         ce("button",{onClick:function(){setSelClientId(null);},title:"Od\u0142\u0105cz wycen\u0119",
@@ -3278,11 +3265,11 @@ export function ScreenMail(p){
     ),
     (showCcBcc||ccEmail)?ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"CC (do wiadomo\u015bci):"),
-      ce("input",{type:"text",value:ccEmail,onChange:function(e){setCcEmail(e.target.value);},placeholder:"adresy oddzielone przecinkiem",style:INP})
+      ce(RecipientInput,{value:ccEmail,onChange:setCcEmail,suggest:function(q,cb){suggestRecipients(q,cb,false);},placeholder:"adresy oddzielone przecinkiem",style:INP})
     ):null,
     (showCcBcc||bccEmail)?ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"UDW (ukryte):"),
-      ce("input",{type:"text",value:bccEmail,onChange:function(e){setBccEmail(e.target.value);},placeholder:"adresy oddzielone przecinkiem",style:INP})
+      ce(RecipientInput,{value:bccEmail,onChange:setBccEmail,suggest:function(q,cb){suggestRecipients(q,cb,false);},placeholder:"adresy oddzielone przecinkiem",style:INP})
     ):null,
     ce("div",{style:{marginBottom:10}},
       ce("label",{style:Object.assign({},LSML,{display:"block",marginBottom:6})},"Temat"),
