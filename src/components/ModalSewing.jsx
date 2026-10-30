@@ -163,6 +163,8 @@ export function ModalSewing(p){
     return function(){
       document.removeEventListener('visibilitychange',onHide);
       window.removeEventListener('beforeunload',onBeforeUnload);
+      // Zamkniecie ekranu przed uplywem debounce 1.5 s nie moze gubic wpisanych danych.
+      sewingDraftFlushRef.current();
     };
   },[]);
   function resetSewingDraft(){
@@ -213,7 +215,8 @@ export function ModalSewing(p){
       termCurtains:hasBothSewTypes?termCurtains:term,
       termRolety:hasBothSewTypes?termRolety:term,
       attachB64:attachB64,sewOpts:opts});
-    p.onClose();
+    // Podglad otwiera sie w osobnym oknie — zostajemy na ekranie, zeby po obejrzeniu
+    // dalo sie poprawic dane albo wyslac to samo zlecenie mailem bez wpisywania od nowa.
   }
 
   function generateSplitBatch(){
@@ -228,11 +231,13 @@ export function ModalSewing(p){
     generateSewingOrderPDFFromRows(selectedRows,p.client,{sewingHouse:house,notes:splitNotes,term:splitTerm,attachB64:splitAttach,sewOpts:opts});
     // Pozycje można wysłać ponownie (poprawione zlecenie) — bez duplikatów w usedIds.
     var newUsed=usedIds.concat(selIds.filter(function(i){return usedIds.indexOf(i)<0;}));
-    setUsedIds(newUsed);setSelIds([]);
+    setUsedIds(newUsed);
+    // Wybor pozycji, szwalnia, termin i uwagi zostaja — po podgladzie mozna jeszcze
+    // wyslac to zlecenie mailem. Do nastepnego zlecenia sluzy przycisk "Kolejne zlecenie".
+  }
+  function startNextSplitOrder(){
+    setSelIds([]);
     setSplitHouse(SEWING_HOUSES[0]);setSplitCustom('');setSplitNotes('');setSplitTerm('');setSplitAttach(null);setSplitAttachName('');
-    // Zamykamy tylko, gdy ten podgląd właśnie domknął ostatnie nieprzypisane pozycje;
-    // ponowna wysyłka już przypisanych nie wyrzuca z ekranu.
-    if(newUsed.length>=allRows.length&&usedIds.length<allRows.length) p.onClose();
   }
 
   // Wysyłka zlecenia mailem do szwalni — ten sam dokument co podgląd, tylko jako
@@ -479,7 +484,8 @@ export function ModalSewing(p){
       mkSewingRowsEditor(),
       ce('div',{style:{background:'var(--bg2)',border:'1px solid var(--bd2)',borderRadius:10,padding:'10px 14px',fontSize:13}},
         ce('span',{style:{fontWeight:700,color:'var(--t1)'}},'Zlecenie '+(usedIds.length>0?'kolejne':'pierwsze')),
-        ce('span',{style:{color:'var(--t2)'}},' \u2014 pozosta\u0142o '+remaining+' pozycji')
+        ce('span',{style:{color:'var(--t2)'}},' \u2014 pozosta\u0142o '+remaining+' pozycji'),
+        usedIds.length>0?ce('button',{onClick:startNextSplitOrder,style:{marginLeft:12,border:'none',background:'none',cursor:'pointer',fontSize:12,color:'var(--t3)',padding:0,textDecoration:'underline'}},'\u2795 Kolejne zlecenie (wyczy\u015b\u0107 wyb\u00f3r)'):null
       ),
       ce('div',null,
         ce('label',{style:{fontSize:11,fontWeight:700,letterSpacing:'0.07em',color:'var(--t2)',textTransform:'uppercase',display:'block',marginBottom:10}},'WYBIERZ POZYCJE DO TEGO ZLECENIA'),
