@@ -120,6 +120,10 @@ export default async function handler(req) {
       messages: payload.messages,
     };
 
+    // Edge Functions musza zaczac odpowiadac w 25 s, a odpowiedz Claude potrafi trwac
+    // dluzej (dlugi mail + 3000 tokenow) -> 504. Dlatego pytamy Claude w trybie stream,
+    // a klientowi od razu zaczynamy wysylac biale znaki (JSON.parse je ignoruje)
+    // i na koncu doklejamy gotowy JSON w tym samym formacie co zwykla odpowiedz.
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -127,17 +131,71 @@ export default async function handler(req) {
         'anthropic-version': '2023-06-01',
         'x-api-key': apiKey,
       },
-      body: JSON.stringify(safePayload),
+      body: JSON.stringify({ ...safePayload, stream: true }),
     });
 
-    const data = await response.text();
+    if (!response.ok || !response.body) {
+      const data = await response.text();
+      return new Response(data, {
+        status: response.status,
+        headers: { 'Content-Type': 'application/json', ...cors },
+      });
+    }
 
-    return new Response(data, {
-      status: response.status,
-      headers: {
-        'Content-Type': 'application/json',
-        ...cors,
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const upstream = response.body.getReader();
+    const stream = new ReadableStream({
+      async start(controller) {
+        controller.enqueue(encoder.encode(' '));
+        let buffer = '';
+        let text = '';
+        let stopReason = null;
+        let usage = {};
+        let errorMessage = null;
+        const handleEvent = (block) => {
+          const dataLine = block.split('\n').find((l) => l.startsWith('data:'));
+          if (!dataLine) return;
+          let ev;
+          try { ev = JSON.parse(dataLine.slice(5).trim()); } catch { return; }
+          if (ev.type === 'message_start' && ev.message?.usage) {
+            usage = { ...usage, ...ev.message.usage };
+          } else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {
+            text += ev.delta.text || '';
+          } else if (ev.type === 'message_delta') {
+            if (ev.delta?.stop_reason) stopReason = ev.delta.stop_reason;
+            if (ev.usage) usage = { ...usage, ...ev.usage };
+          } else if (ev.type === 'error') {
+            errorMessage = ev.error?.message || 'Błąd usługi AI.';
+          }
+        };
+        try {
+          for (;;) {
+            const { done, value } = await upstream.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const blocks = buffer.split('\n\n');
+            buffer = blocks.pop();
+            blocks.forEach(handleEvent);
+            controller.enqueue(encoder.encode(' '));
+          }
+          if (buffer.trim()) handleEvent(buffer);
+        } catch (err) {
+          console.error('Claude stream error', err);
+          errorMessage = errorMessage || 'Przerwano połączenie z usługą AI.';
+        }
+        const result = errorMessage
+          ? { error: { message: errorMessage } }
+          : { type: 'message', role: 'assistant', content: [{ type: 'text', text }], stop_reason: stopReason, usage };
+        controller.enqueue(encoder.encode(JSON.stringify(result)));
+        controller.close();
       },
+      cancel() { upstream.cancel().catch(() => {}); },
+    });
+
+    return new Response(stream, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...cors },
     });
   } catch (err) {
     console.error('Claude proxy error', err);
