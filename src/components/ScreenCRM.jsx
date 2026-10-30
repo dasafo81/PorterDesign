@@ -126,13 +126,18 @@ export function gcalLink(title,date,desc){
 var DEAL_TIME_DEFAULT="09:00";
 var DEAL_TIME_OPTIONS=(function(){
   var o=[];
-  for(var h=6;h<=22;h++){
+  for(var h=6;h<=23;h++){
     var hh=(h<10?"0":"")+h;
     o.push(hh+":00");
-    if(h<22)o.push(hh+":30");
+    o.push(hh+":30");
   }
   return o;
 })();
+// Lista godzin co 30 min; zachowuje bieżącą wartość spoza siatki (np. 07:10 z istniejącego wydarzenia).
+function dealTimeOptions(cur){
+  return (cur&&DEAL_TIME_OPTIONS.indexOf(cur)<0?DEAL_TIME_OPTIONS.concat([cur]).sort():DEAL_TIME_OPTIONS)
+    .map(function(o){return ce("option",{key:o,value:o},o);});
+}
 function DealDateTimeInput(rp){
   var v=rp.value||"";
   var date=v.slice(0,10);
@@ -3220,19 +3225,30 @@ export function CRMKalendarz(p){
         ce('div',{style:{display:'flex',gap:10,marginBottom:12}},
           ce('div',{style:{flex:1}},
             ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'OD'),
-            ce('input',{
-              type:'time',value:newEvDraft.timeFrom,
-              onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{timeFrom:e.target.value});});},
+            ce('select',{
+              value:newEvDraft.timeFrom,
+              onChange:function(e){
+                var v=e.target.value;
+                setNewEvDraft(function(d){
+                  // Koniec przesuwa się razem ze startem (zachowaj czas trwania)
+                  var toMin=function(t){var a=String(t||'').split(':');return parseInt(a[0],10)*60+parseInt(a[1]||'0',10);};
+                  var dur=toMin(d.timeTo)-toMin(d.timeFrom);
+                  if(!(dur>0))dur=60;
+                  var m=Math.min(toMin(v)+dur,23*60+30);
+                  var nt=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+                  return Object.assign({},d,{timeFrom:v,timeTo:nt});
+                });
+              },
               style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
-            })
+            },dealTimeOptions(newEvDraft.timeFrom))
           ),
           ce('div',{style:{flex:1}},
             ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'DO'),
-            ce('input',{
-              type:'time',value:newEvDraft.timeTo,
+            ce('select',{
+              value:newEvDraft.timeTo,
               onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{timeTo:e.target.value});});},
               style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
-            })
+            },dealTimeOptions(newEvDraft.timeTo))
           )
         ),
         ce('div',{style:{marginBottom:16}},
