@@ -1333,10 +1333,10 @@ function MailPreview(p){
         mails.length>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,padding:"2px 8px",borderRadius:10,background:"var(--bg3)"}},mails.length+" wiadomo\u015bci"):null
       ),
       ce("div",{className:"pd-mail-actions",style:{display:"flex",gap:6,flexWrap:"wrap"}},
-        p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
+        p.activeFolder!=="trash"&&p.activeFolder!=="spam"
           ?ce("button",{onClick:function(){p.onReply&&p.onReply(head,bodies);},style:Object.assign({},BGHOST,{color:"var(--violet)",borderColor:"var(--violet)",fontWeight:600})},"\u21a9 Odpowiedz")
           :null,
-        p.activeFolder!=="sent"&&p.activeFolder!=="trash"&&p.activeFolder!=="spam"
+        p.activeFolder!=="trash"&&p.activeFolder!=="spam"&&(p.activeFolder!=="sent"||((head.toAll||[]).length+(head.ccAll||[]).length)>1)
           ?ce("button",{onClick:function(){
               if(!p.onReplyAll)return;
               var senderObj=head.from?{email:head.from,name:head.fromName||head.from}:null;
@@ -3439,7 +3439,10 @@ export function ScreenMail(p){
         ce(MailPreview,{thread:selThread,accessToken:accessToken,onTokenRefresh:function(tok){setAccessToken(tok);},onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
           flags:mailFlags,onToggleFlag:toggleFlag,
           onReply:function(head,bodyCache){
-            setToEmail(head.from||"");
+            // Mail z Wysłanych: "odpowiedź" to kolejna wiadomość do tych samych adresatów
+            var sentHead=head.folder==="sent";
+            setToEmail(sentHead?((head.toAll||[]).map(function(r){return r.email;}).join(", ")||head.to||""):(head.from||""));
+            setCcEmail("");
             var subj=head.subject||"";
             setSubject(subj.startsWith("Re:")?subj:"Re: "+subj);
             var cachedBody=bodyCache&&bodyCache[head.id];
@@ -3450,7 +3453,7 @@ export function ScreenMail(p){
                 :"<em style=\"color:#999\">"+(head.preview||"")+"</em>";
             var quoted="<br><br><blockquote style=\"border-left:3px solid #ccc;padding-left:14px;color:#555;margin:8px 0;font-size:13px\">"
               +"<div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">W dniu "
-              +new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from)+" napisa\u0142(a):</div>"
+              +new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from||(msAccount&&(msAccount.username||msAccount.email))||"Ja")+" napisa\u0142(a):</div>"
               +quoteHtml+"</blockquote>";
             setBody("");
             setQuotedHtml(quoted);
@@ -3483,7 +3486,7 @@ export function ScreenMail(p){
             var cachedBody=bodyCache&&bodyCache[head.id];
             var quoteHtml=cachedBody&&cachedBody.isHtml?cachedBody.content:cachedBody&&cachedBody.content?"<pre style=\"font-family:inherit;white-space:pre-wrap;margin:0\">"+String(cachedBody.content).replace(/</g,"&lt;")+"</pre>":"<em style=\"color:#999\">"+(head.preview||"")+"</em>";
             var quoted="<br><br><blockquote style=\"border-left:3px solid #ccc;padding-left:14px;color:#555;margin:8px 0;font-size:13px\">"
-              +"<div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">W dniu "+new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from)+" napisa\u0142(a):</div>"
+              +"<div style=\"font-size:11px;color:#999;margin-bottom:8px;font-style:italic\">W dniu "+new Date(head.date||"").toLocaleDateString("pl-PL")+" "+(head.fromName||head.from||(msAccount&&(msAccount.username||msAccount.email))||"Ja")+" napisa\u0142(a):</div>"
               +quoteHtml+"</blockquote>";
             setBody("");
             setQuotedHtml(quoted);
