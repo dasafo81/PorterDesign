@@ -221,7 +221,7 @@
     /* Ponizej progu uklad jest jak byl: topbar + zakladki nad trescia. 190px to
        wysokosc tego chrome — wartosc przeniesiona 1:1 ze starego inline style
        w App.jsx, zeby na tablecie w pionie nic sie nie zmienilo. */
-    .pd-mail-h{height:calc(100vh - 190px);height:calc(100dvh - 190px);}
+    .pd-mail-h{height:calc(100vh - 190px - var(--pd-mail-extra,0px));height:calc(100dvh - 190px - var(--pd-mail-extra,0px));}
     .pd-railtoggle{display:none;}
 
     /* ── Telefon (<=720px): kompaktowy pasek, mniej marginesow, poczta na caly ekran ── */
@@ -237,7 +237,7 @@
       /* W poczcie chowamy logo i kontrolki — zostaje sama nawigacja */
       .pd-shell:has(.pd-mail-h) .pd-brand,.pd-shell:has(.pd-mail-h) .pd-rail-foot{display:none;}
       .pd-shell:has(.pd-mail-h) .pd-rail{grid-template-areas:"nav nav";}
-      .pd-mail-h{height:calc(100vh - 100px);height:calc(100dvh - 100px);}
+      .pd-mail-h{height:calc(100vh - 100px - var(--pd-mail-extra,0px));height:calc(100dvh - 100px - var(--pd-mail-extra,0px));}
       .pd-mail-actions button{padding:6px 10px!important;font-size:12px!important;}
     }
 
@@ -305,7 +305,7 @@
       .pd-rail--collapsed ~ .pd-main{margin-left:78px;}
       /* Pasek stoi obok tresci, wiec nad Mailem nie ma juz topbara ani zakladek —
          odejmujemy padding powloki: 2 x (1.2rem App + 1rem .app-inner) = 4.4rem. */
-      .pd-mail-h{height:calc(100vh - 4.4rem);}
+      .pd-mail-h{height:calc(100vh - 4.4rem - var(--pd-mail-extra,0px));}
       /* W Mailu wysokosc jest sztywna = okno, wiec strona nie ma czego przewijac —
          blokujemy scroll dokumentu (stopka z wersja chowa sie pod krawedzia okna). */
       html:has(.pd-mail-h){overflow:hidden;}

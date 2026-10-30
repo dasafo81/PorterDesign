@@ -2181,6 +2181,7 @@ export function ScreenMail(p){
   var snf=us(false),showNF=snf[0],setShowNF=snf[1];
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
   var sloadingMails=us(false),loadingMails=sloadingMails[0],setLoadingMails=sloadingMails[1];
+  var smlo=us(false),mailsLoadedOnce=smlo[0],setMailsLoadedOnce=smlo[1];   // true po pierwszej próbie wczytania listy
   var srk=us(0),refreshKey=srk[0],setRefreshKey=srk[1];
   var sflg=us(getMailFlags),mailFlags=sflg[0],setMailFlags=sflg[1];   // flagi per tenant
   // ── Paginacja historii (per folder) + wyszukiwanie server-side ──
@@ -2302,6 +2303,39 @@ export function ScreenMail(p){
     setSelThread({key:key,mails:tMails,head:tMails[0],count:tMails.length});
   },[allMails,loadingMails,isMobile,activeFolder,selThread]);
 
+  // Przejście z karty deala (korespondencja z klientem): otwórz wskazaną wiadomość razem z jej wątkiem,
+  // żeby od razu dało się odpisać. Wiadomości spoza ostatnich 50 w folderze dociągamy po id.
+  ue(function(){
+    var om=p.openMail;
+    if(!om||om.handled||!logged||!accessToken||!mailsLoadedOnce||loadingMails)return;
+    var folder=om.out?"sent":"inbox";
+    function show(list){
+      var found=list.find(function(m){return m.id===om.id;});
+      if(!found)return false;
+      var key=found.conversationId||("solo_"+found.id);
+      var tMails=list.filter(function(m){return m.folder===found.folder&&(m.conversationId||("solo_"+m.id))===key;})
+        .sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+      autoOpenedRef.current=true;
+      mailNavigate(found.folder,{key:key,mails:tMails,head:tMails[0],count:tMails.length});
+      tMails.forEach(function(mm){if(mm.isRead===false)markAsRead(mm,true);});
+      p.onOpenMailConsumed&&p.onOpenMailConsumed();
+      return true;
+    }
+    if(show(allMails))return;
+    var alive=true;
+    withFreshToken(function(tok){
+      return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+encodeURIComponent(om.id)+"?$select="+encodeURIComponent(MAIL_SELECT),{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
+    }).then(function(data){
+      if(!alive)return;
+      if(!data){mailNavigate(folder);p.onOpenMailConsumed&&p.onOpenMailConsumed();return;}
+      var nm=mapGraphMsg(data,folder);
+      var merged=allMails.concat([nm]);
+      setAllMails(merged);
+      if(!show(merged)){mailNavigate(folder);p.onOpenMailConsumed&&p.onOpenMailConsumed();}
+    }).catch(function(){if(alive){mailNavigate(folder);p.onOpenMailConsumed&&p.onOpenMailConsumed();}});
+    return function(){alive=false;};
+  },[p.openMail,logged,accessToken,mailsLoadedOnce,loadingMails]);
+
   // Sprawdź czy user wraca z redirect MS lub ma aktywną sesję
   ue(function(){
     var mailProvider = getMailProvider();
@@ -2403,7 +2437,7 @@ export function ScreenMail(p){
       if(e&&e.code==="MS_INTERACTION_REQUIRED"){
         setLogged(false);setAccessToken(null);setMsAccount(null);
       }
-      setLoadingMails(false);
+      setLoadingMails(false);setMailsLoadedOnce(true);
       return null;
     }).then(function(results){
       if(!results)return;
@@ -2456,7 +2490,7 @@ export function ScreenMail(p){
         spam:spamData["@odata.nextLink"]||null
       });
       setSearchResults(null);setSearchNextLink(null); // odświeżenie resetuje wyszukiwanie
-      setLoadingMails(false);
+      setLoadingMails(false);setMailsLoadedOnce(true);
     });
   },[accessToken,refreshKey]);
 

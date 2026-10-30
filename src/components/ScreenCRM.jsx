@@ -1770,7 +1770,7 @@ export function ModalDeal(p){
         ):null,
 
         ce(SectionCard,{icon:"✉️",title:"Korespondencja z klientem"},
-          ce(DealCorrespondence,{email:(cl&&cl.email)||d.buyer_email||""})
+          ce(DealCorrespondence,{email:(cl&&cl.email)||d.buyer_email||"",onOpenMail:p.onOpenMail?function(m){p.onOpenMail(m,d.id);}:null})
         ),
 
         ce(SectionCard,{icon:"📅",title:"Spotkanie",done:visitDone},
@@ -3913,6 +3913,7 @@ export function ScreenCRM(p){
       onClose:function(){setModalDeal(null);},
       onGoToClient:function(){goToClient(modalDeal.client_id,modalDeal.id);},
       onGoToSummary:function(){goToClientSummary(modalDeal.client_id,modalDeal.id);},
+      onOpenMail:p.onOpenMail,
       onIssueInvoice:p.onIssueInvoice
     }):null
   );

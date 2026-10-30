@@ -8,7 +8,7 @@ var ce = React.createElement;
 // Szuka w skrzynce (Outlook / Gmail / własna — przez mailFetch) wiadomości odebranych
 // od klienta i wysłanych do niego, po jego adresie e-mail, i pokazuje je jako jedną
 // oś czasu. Nic nie jest kopiowane do bazy — skrzynka pozostaje źródłem prawdy.
-var SELECT = "subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,hasAttachments";
+var SELECT = "subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,hasAttachments,conversationId";
 var PER_FOLDER = 25;
 
 function addrOf(r) { return String((r && r.emailAddress && r.emailAddress.address) || "").toLowerCase(); }
@@ -29,7 +29,7 @@ function fetchFolder(token, folder, email) {
     return (data.value || []).filter(function (m) { return involves(m, email); }).map(function (m) {
       var out = folder === "sentItems";
       return {
-        id: m.id, out: out, subject: m.subject || "(bez tematu)", preview: m.bodyPreview || "",
+        id: m.id, convId: m.conversationId || null, out: out, subject: m.subject || "(bez tematu)", preview: m.bodyPreview || "",
         date: (out ? m.sentDateTime : m.receivedDateTime) || m.receivedDateTime || m.sentDateTime || "",
         hasAtt: !!m.hasAttachments,
         who: out ? (m.toRecipients || []).map(function (r) { return r.emailAddress.name || r.emailAddress.address; }).join(", ")
@@ -224,13 +224,18 @@ function MailRow(p) {
       ce("div", { style: { fontSize: 12, color: "var(--t2)", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 200, overflowY: "auto" } },
         busy ? "Wczytywanie…" : (body || m.preview)
       ),
-      m.hasAtt ? ce(Attachments, { mid: m.id }) : null
+      m.hasAtt ? ce(Attachments, { mid: m.id }) : null,
+      p.onOpenMail ? ce("button", {
+        onClick: function () { p.onOpenMail(m); },
+        title: "Otwórz tę wiadomość w module Poczta, aby odpisać",
+        style: { marginTop: 10, padding: "6px 12px", borderRadius: 8, border: "none", background: "var(--t1)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }
+      }, "✉ Otwórz w Poczcie i odpisz") : null
     ) : null
   );
 }
 
 export function DealCorrespondence(p) {
-  // p.email — adres klienta
+  // p.email — adres klienta, p.onOpenMail(m) — przejście do wiadomości w module Poczta
   var email = String(p.email || "").trim().toLowerCase();
   var sRows = useState(null), rows = sRows[0], setRows = sRows[1];
   var sErr = useState(null), err = sErr[0], setErr = sErr[1];
@@ -266,7 +271,7 @@ export function DealCorrespondence(p) {
     err ? ce("div", { style: { fontSize: 12, color: "var(--rd, #c0392b)" } }, err) : null,
     (!busy && !err && rows && !rows.length) ? ce("div", { style: { fontSize: 12, color: "var(--t3)" } }, "Brak wiadomości wymienionych z " + email + ".") : null,
     (rows && rows.length) ? ce("div", { style: { display: "flex", flexDirection: "column", gap: 6, maxHeight: 350, overflowY: "auto", paddingRight: 4 } },
-      rows.map(function (m) { return ce(MailRow, { key: m.id, m: m }); })
+      rows.map(function (m) { return ce(MailRow, { key: m.id, m: m, onOpenMail: p.onOpenMail }); })
     ) : null,
     ce("button", {
       onClick: function () { setTick(tick + 1); }, disabled: busy,
