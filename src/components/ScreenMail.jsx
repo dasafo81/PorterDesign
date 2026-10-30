@@ -647,12 +647,14 @@ function MailList(p){
   var sourceMails=(searching&&p.searchResults!=null)?p.searchResults:(p.mails||[]);
 
   // Pole do wyszukiwania zależne od folderu (Inbox: from, Sent: to)
+  // Wyszukiwanie obejmuje Odebrane i Wysłane naraz — kierunek wiadomości bierzemy z jej własnego folderu
+  function showsRecipient(m){return (searching&&p.searchResults!=null)?m.folder==="sent":!isInbox;}
   function searchableText(m){
-    if(isInbox)return ((m.fromName||"")+" "+(m.from||"")+" "+(m.subject||"")+" "+(m.preview||"")).toLowerCase();
+    if(!showsRecipient(m))return ((m.fromName||"")+" "+(m.from||"")+" "+(m.subject||"")+" "+(m.preview||"")).toLowerCase();
     return ((m.toName||"")+" "+(m.to||"")+" "+(m.subject||"")+" "+(m.preview||"")).toLowerCase();
   }
   function displayName(m){
-    if(isInbox)return m.fromName||m.from||"(bez nadawcy)";
+    if(!showsRecipient(m))return m.fromName||m.from||"(bez nadawcy)";
     return m.toName||m.to||"(bez adresata)";
   }
 
@@ -819,7 +821,9 @@ function MailList(p){
                 ),
                 ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},searching?fmtMailDateFull(m.date):fmtMailDate(m.date))
               ),
-              ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t1)",fontWeight:unread?700:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.subject),
+              ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t1)",fontWeight:unread?700:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
+                (searching&&p.searchResults!=null&&m.folder!==p.folder)?ce("span",{style:{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--violet)",background:"var(--violet-l)",borderRadius:6,padding:"1px 6px",marginRight:6}},m.folder==="sent"?"Wys\u0142ane":"Odebrane"):null,
+                m.subject),
               ce("div",{style:{fontSize:11,color:"var(--t2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.preview),
               (m.attachments&&m.attachments.length>0)?ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:4}},
                 "\uD83D\uDCCE ",m.attachments.length," za\u0142."
@@ -2188,7 +2192,8 @@ export function ScreenMail(p){
   var slm=us(false),loadingMore=slm[0],setLoadingMore=slm[1];
   var ssr=us(null),searchResults=ssr[0],setSearchResults=ssr[1]; // null = brak aktywnego wyszukiwania
   var ssrl=us(false),searchLoading=ssrl[0],setSearchLoading=ssrl[1];
-  var ssnl=us(null),searchNextLink=ssnl[0],setSearchNextLink=ssnl[1];
+  var ssnl=us(null),searchNextLink=ssnl[0],setSearchNextLink=ssnl[1];   // {folder:nextLink} albo null
+  var searchSeq=React.useRef(0);
   var ssel=us(null),selThread=ssel[0],setSelThread=ssel[1];
   var sdr=us(function(){try{return JSON.parse(localStorage.getItem("pd_mail_drafts")||"[]");}catch(e){return[];}}),drafts=sdr[0],setDrafts=sdr[1];
   var sc=us(null),selClientId=sc[0],setSelClientId=sc[1];
@@ -2983,44 +2988,67 @@ export function ScreenMail(p){
 
   // Wyszukiwanie server-side (Graph $search): nadawca, adresat, temat I TREŚĆ w CAŁEJ historii folderu.
   // $search nie łączy się z $orderby → sortujemy wyniki po dacie po stronie klienta.
+  // Szukamy równolegle w Odebranych i Wysłanych (+ otwarty folder) — tak samo jak karta deala,
+  // inaczej mail wysłany do klienta nie znajdzie się z poziomu Skrzynki. Linki "dalej" trzymamy per folder.
+  function searchFolders(folder){
+    var list=[GRAPH_FOLDER[folder]?folder:"inbox","inbox","sent"];
+    return list.filter(function(f,i){return list.indexOf(f)===i;});
+  }
   function runSearch(folder,query){
     var q=(query||"").trim();
+    var seq=++searchSeq.current;
     if(!q){setSearchResults(null);setSearchNextLink(null);setSearchLoading(false);return;}
-    var gf=GRAPH_FOLDER[folder]||"inbox";
-    var url="https://graph.microsoft.com/v1.0/me/mailFolders/"+gf+"/messages"
-      +"?$search="+encodeURIComponent('"'+q+'"')
-      +"&$top=25&$select="+encodeURIComponent(MAIL_SELECT);
     setSearchLoading(true);
     withFreshToken(function(tok){
-      return mailFetch(url,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
-    }).then(function(data){
-      if(!data){setSearchResults([]);setSearchNextLink(null);setSearchLoading(false);return;}
-      var mapped=(data.value||[]).map(function(m){return mapGraphMsg(m,folder);});
+      return Promise.all(searchFolders(folder).map(function(f){
+        var url="https://graph.microsoft.com/v1.0/me/mailFolders/"+(GRAPH_FOLDER[f]||"inbox")+"/messages"
+          +"?$search="+encodeURIComponent('"'+q+'"')
+          +"&$top=25&$select="+encodeURIComponent(MAIL_SELECT);
+        return mailFetch(url,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;})
+          .then(function(data){return {folder:f,data:data};}).catch(function(){return {folder:f,data:null};});
+      }));
+    }).then(function(parts){
+      if(seq!==searchSeq.current)return;   // przyszła nowsza fraza — ta odpowiedź jest nieaktualna
+      var mapped=[],links={};
+      parts.forEach(function(pt){
+        if(!pt.data)return;
+        (pt.data.value||[]).forEach(function(m){mapped.push(mapGraphMsg(m,pt.folder));});
+        if(pt.data["@odata.nextLink"])links[pt.folder]=pt.data["@odata.nextLink"];
+      });
       mapped.sort(function(a,b){return new Date(b.date)-new Date(a.date);});
       setSearchResults(mapped);
-      setSearchNextLink(data["@odata.nextLink"]||null);
+      setSearchNextLink(Object.keys(links).length?links:null);
       setSearchLoading(false);
-    }).catch(function(){setSearchResults([]);setSearchNextLink(null);setSearchLoading(false);});
+    }).catch(function(){if(seq!==searchSeq.current)return;setSearchResults([]);setSearchNextLink(null);setSearchLoading(false);});
   }
 
-  // Kolejna strona wyników wyszukiwania
-  function loadMoreSearch(folder){
+  // Kolejna strona wyników wyszukiwania (z każdego folderu, który ma jeszcze wyniki)
+  function loadMoreSearch(){
     if(!searchNextLink||searchLoading)return;
-    setSearchLoading(true);var link=searchNextLink;
+    var seq=searchSeq.current;
+    setSearchLoading(true);var links=searchNextLink;
     withFreshToken(function(tok){
-      return mailFetch(link,{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;});
-    }).then(function(data){
-      if(!data){setSearchLoading(false);return;}
-      var mapped=(data.value||[]).map(function(m){return mapGraphMsg(m,folder);});
+      return Promise.all(Object.keys(links).map(function(f){
+        return mailFetch(links[f],{headers:{"Authorization":"Bearer "+tok}}).then(function(r){return r.ok?r.json():null;})
+          .then(function(data){return {folder:f,data:data};}).catch(function(){return {folder:f,data:null};});
+      }));
+    }).then(function(parts){
+      if(seq!==searchSeq.current)return;
+      var mapped=[],next={};
+      parts.forEach(function(pt){
+        if(!pt.data)return;
+        (pt.data.value||[]).forEach(function(m){mapped.push(mapGraphMsg(m,pt.folder));});
+        if(pt.data["@odata.nextLink"])next[pt.folder]=pt.data["@odata.nextLink"];
+      });
       setSearchResults(function(prev){
         var base=prev||[];var seen={};base.forEach(function(m){seen[m.id]=true;});
         var merged=base.concat(mapped.filter(function(m){return !seen[m.id];}));
         merged.sort(function(a,b){return new Date(b.date)-new Date(a.date);});
         return merged;
       });
-      setSearchNextLink(data["@odata.nextLink"]||null);
+      setSearchNextLink(Object.keys(next).length?next:null);
       setSearchLoading(false);
-    }).catch(function(){setSearchLoading(false);});
+    }).catch(function(){if(seq===searchSeq.current)setSearchLoading(false);});
   }
 
   function markAsRead(mail,readVal){
@@ -3452,7 +3480,7 @@ export function ScreenMail(p){
           },
           onMarkRead:function(mail,val){markAsRead(mail,val);},
           onToggleImportant:function(mail){toggleImportant(mail);},
-          customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMail(m);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:activeFolder})
+          customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMail(m);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:(selThread&&selThread.head&&selThread.head.folder)||activeFolder})
       )
     );
   }
