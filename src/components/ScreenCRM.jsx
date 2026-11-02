@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
-import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor } from '../lib/gcalDealSync.js';
+import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor, moveDealTwins, dealStartDate, dealFieldTitle } from '../lib/gcalDealSync.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { DealCorrespondence } from './DealCorrespondence.jsx';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
@@ -2562,7 +2562,7 @@ export function CRMKalendarz(p){
     var calId=ev._calId||'primary';
     setNewEvDraft({title:ev.summary||'',date:dateStr,timeFrom:timeFrom,timeTo:timeTo,
       description:ev.description||'',saving:false,selectedCals:[calId],
-      _editId:ev.id,_editCalId:calId,_crmDealId:ev._crmDealId||null,_pdEv:eventDealKey(ev)?ev:null,
+      _editId:ev.id,_editCalId:calId,_crmDealId:ev._crmDealId||null,_pdEv:eventDealKey(ev)?ev:null,_rawEv:ev._crmDealId?null:ev,
       _crmDateField:ev._crmDateField||null});
     setSelectedGcalEv(null);
   }
@@ -2597,7 +2597,17 @@ export function CRMKalendarz(p){
         crmPatch[ev._crmDateField||"delivery_date"]=crmDateTime.toISOString();
         crmPatch[DEAL_DURATION_FIELD[ev._crmDateField||"delivery_date"]]=Math.round((end-start)/60000);
         setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
-        sbApi.updateDeal(ev._crmDealId,crmPatch)
+        // Jeśli ten termin ma już starsze wydarzenie w Google (bez znacznika), przenieś je razem
+        // z terminem — inaczej zostanie na starej godzinie, a synchronizacja doda drugie.
+        var crmField=ev._crmDateField||"delivery_date";
+        var crmDeal=calendarDeals.find(function(x){return String(x.id)===String(ev._crmDealId);});
+        var crmClient=crmDeal&&(p.clients||[]).find(function(c){return String(c.id)===String(crmDeal.client_id);});
+        var crmOld=crmDeal&&crmDeal[crmField]?dealStartDate(crmDeal[crmField]):null;
+        (crmOld&&crmClient&&crmClient.name
+          ? moveDealTwins(gcalCtx(),calList,{key:dealKey(ev._crmDealId,crmField),clientName:crmClient.name,oldStart:crmOld,newStart:crmDateTime,newEnd:end})
+          : Promise.resolve())
+          .catch(function(e){console.warn("[gcal] kopie wydarzenia",e);})
+          .then(function(){return sbApi.updateDeal(ev._crmDealId,crmPatch);})
           .then(function(){
             setCalendarDeals(function(deals){
               return deals.map(function(deal){
@@ -2608,6 +2618,7 @@ export function CRMKalendarz(p){
             });
             setNewEvDraft(null);
             setSelectedGcalEv(null);
+            fetchEvents(gcalToken);
           })
           .catch(function(e){
             setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
@@ -2619,6 +2630,9 @@ export function CRMKalendarz(p){
       var patchBody={summary:ev.title.trim(),description:ev.description||'',
         start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
         end:{dateTime:end.toISOString(),timeZone:'Europe/Warsaw'}};
+      // Wydarzenie powiązane z terminem deala (też starsze, bez znacznika): oznacz je i przenieś kopie
+      var editLink=ev._rawEv?dealLinkForEvent(ev._rawEv):null;
+      if(editLink&&!eventDealKey(ev._rawEv))patchBody.extendedProperties={"private":{pdKey:editLink.key}};
       function doPatch(t){
         return fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(patchCalId)+'/events/'+encodeURIComponent(ev._editId),{
           method:'PATCH',headers:{Authorization:'Bearer '+t,'Content-Type':'application/json'},
@@ -2632,7 +2646,10 @@ export function CRMKalendarz(p){
           return r;
         })
         .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);})
-        .then(function(){if(ev._pdEv&&!(ev._pdEv.start&&ev._pdEv.start.date&&!ev._pdEv.start.dateTime))syncDealFromGcalEvent(ev._pdEv,start);setNewEvDraft(null);fetchEvents(gcalToken);})
+        .then(function(){
+          return editLink?relinkDealEvent(ev._rawEv,editLink,start,end):null;
+        })
+        .then(function(){setNewEvDraft(null);fetchEvents(gcalToken);})
         .catch(function(){
           setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
           alert('B\u0142\u0105d edycji wydarzenia.');
@@ -2787,17 +2804,62 @@ export function CRMKalendarz(p){
 
   // Wydarzenie Google powiązane z dealem (znacznik pdKey) — zmiana/usunięcie terminu
   // ma się odbić także w dealu, inaczej CRM i Google rozjadą się. newStart=null → czyści datę.
-  function syncDealFromGcalEvent(raw,newStart){
-    var k=raw&&eventDealKey(raw);
+  function syncDealByKey(k,newStart){
     var pk=k&&parseDealKey(k);
-    if(!pk||DEAL_DATE_FIELDS.indexOf(pk.field)<0)return;
+    if(!pk||DEAL_DATE_FIELDS.indexOf(pk.field)<0)return Promise.resolve();
     var patch={};
     patch[pk.field]=newStart?newStart.toISOString():null;
-    sbApi.updateDeal(pk.dealId,patch).then(function(){
+    return sbApi.updateDeal(pk.dealId,patch).then(function(){
       setCalendarDeals(function(deals){
         return deals.map(function(deal){return String(deal.id)===String(pk.dealId)?Object.assign({},deal,patch):deal;});
       });
     }).catch(function(e){console.warn("[deal] nie udało się zaktualizować terminu w dealu",e);});
+  }
+  function syncDealFromGcalEvent(raw,newStart){
+    return syncDealByKey(raw&&eventDealKey(raw),newStart);
+  }
+
+  function gcalCtx(){
+    return {token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+  }
+
+  // Do którego terminu deala należy wydarzenie Google? Ze znacznika pdKey, a dla starszych
+  // wydarzeń (dodanych z karty deala, zanim dostały znacznik) — po kliencie w nazwie i godzinie
+  // startu równej terminowi w dealu. Zwraca {key,clientName} albo null.
+  function dealLinkForEvent(raw){
+    var sdt=raw&&raw.start&&raw.start.dateTime;
+    if(!sdt)return null;
+    var k=eventDealKey(raw),pk=k&&parseDealKey(k);
+    var summary=raw.summary||"";
+    if(pk&&DEAL_DATE_FIELDS.indexOf(pk.field)>=0){
+      var kd=calendarDeals.find(function(x){return String(x.id)===String(pk.dealId);});
+      var kc=kd&&(p.clients||[]).find(function(c){return String(c.id)===String(kd.client_id);});
+      return {key:k,clientName:kc?kc.name:null};
+    }
+    if(k)return null;
+    var s=new Date(sdt),best=null;
+    calendarDeals.forEach(function(deal){
+      var cl=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);});
+      if(!cl||!cl.name||summary.indexOf(cl.name)<0)return;
+      DEAL_DATE_FIELDS.forEach(function(f){
+        if(!deal[f])return;
+        var ds=dealStartDate(deal[f]);
+        if(!ds||Math.abs(ds-s)>=60000)return;
+        var titled=summary.toLowerCase().indexOf(dealFieldTitle(f,deal).toLowerCase())===0;
+        if(!best||(titled&&!best.titled))best={key:dealKey(deal.id,f),clientName:cl.name,titled:titled};
+      });
+    });
+    return best;
+  }
+
+  // Po zmianie godziny jednej kopii wydarzenia: przenieś pozostałe kopie (kalendarz główny / montażysty),
+  // oznacz je znacznikiem deala i zapisz nowy termin w dealu — żeby nic się nie zdublowało.
+  function relinkDealEvent(raw,link,newStart,newEnd){
+    var oldStart=new Date(raw.start.dateTime);
+    return moveDealTwins(gcalCtx(),calList,{key:link.key,clientName:link.clientName,oldStart:oldStart,
+      newStart:newStart,newEnd:newEnd,skipCalId:raw._calId||"primary",skipId:raw.id})
+      .catch(function(e){console.warn("[gcal] kopie wydarzenia",e);})
+      .then(function(){return syncDealByKey(link.key,newStart);});
   }
 
   // ── Przeniesienie zdarzenia GCal na inny dzień i/lub godzinę (drag&drop) ──
@@ -2835,6 +2897,9 @@ export function CRMKalendarz(p){
       newEndObj={dateTime:ne2.toISOString(),timeZone:'Europe/Warsaw'};
       body={start:newStartObj,end:newEndObj};
     }
+    // Termin deala (też starsze wydarzenie bez znacznika): oznacz i przenieś razem z kopiami
+    var dragLink=isAllDay?null:dealLinkForEvent(raw);
+    if(dragLink&&!eventDealKey(raw))body.extendedProperties={"private":{pdKey:dragLink.key}};
     var prevSnapshot=gcalEvents;
     setGcalEvents(function(evs){
       return evs.map(function(e){
@@ -2852,7 +2917,10 @@ export function CRMKalendarz(p){
         if(r.status===401){return gcalGetToken().then(function(fresh){setGcalToken(fresh);return doPatch(fresh);});}
         return r;
       })
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);if(!isAllDay)syncDealFromGcalEvent(raw,new Date(newStartObj.dateTime));})
+      .then(function(r){
+        if(!r.ok)throw new Error('HTTP '+r.status);
+        if(dragLink)relinkDealEvent(raw,dragLink,new Date(newStartObj.dateTime),new Date(newEndObj.dateTime)).then(function(){fetchEvents(gcalToken);});
+      })
       .catch(function(){
         setGcalEvents(prevSnapshot);
         fetchEvents(gcalToken);

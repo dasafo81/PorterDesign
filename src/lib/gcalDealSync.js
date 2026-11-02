@@ -125,6 +125,47 @@ export function upsertDealEvent(ctx, o) {
   });
 }
 
+// Przenosi „bliźniacze” kopie wydarzenia (kalendarz główny + kalendarz montażysty) na nowy termin,
+// zamiast zostawiać je na starej godzinie (stąd bywały duplikaty). Szuka w każdym kalendarzu:
+//  • wydarzeń ze znacznikiem pdKey = o.key,
+//  • starszych wydarzeń bez znacznika, które startują o oldStart i mają w nazwie klienta.
+// Wszystkie dostają nowy start/koniec oraz znacznik pdKey.
+// o: { key, clientName, oldStart:Date|null, newStart:Date, newEnd:Date, skipCalId, skipId }
+export function moveDealTwins(ctx, calList, o) {
+  var cals = (calList && calList.length) ? calList : [{ id: "primary" }];
+  return Promise.all(cals.map(function (c) {
+    var base = API + encodeURIComponent(c.id) + "/events";
+    var byKey = req(ctx, base + "?privateExtendedProperty=" + encodeURIComponent("pdKey=" + o.key) + "&maxResults=10")
+      .then(json).then(function (d) { return d.items || []; });
+    var legacy = (o.oldStart && o.clientName)
+      ? req(ctx, base + "?singleEvents=true&timeMin=" + encodeURIComponent(o.oldStart.toISOString())
+          + "&timeMax=" + encodeURIComponent(new Date(o.oldStart.getTime() + 60000).toISOString())
+          + "&q=" + encodeURIComponent(o.clientName))
+          .then(json).then(function (d) {
+            return (d.items || []).filter(function (e) {
+              var s = e.start && e.start.dateTime;
+              return s && Math.abs(new Date(s) - o.oldStart) < 60000 && !eventDealKey(e)
+                && (e.summary || "").indexOf(o.clientName) >= 0;
+            });
+          })
+      : Promise.resolve([]);
+    return Promise.all([byKey, legacy]).then(function (r) {
+      var seen = {}, list = [];
+      r[0].concat(r[1]).forEach(function (e) {
+        if (seen[e.id] || e.status === "cancelled") return;
+        if (c.id === o.skipCalId && e.id === o.skipId) return;
+        seen[e.id] = true; list.push(e);
+      });
+      return Promise.all(list.map(function (e) {
+        return req(ctx, base + "/" + encodeURIComponent(e.id), {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start: tzTime(o.newStart), end: tzTime(o.newEnd), extendedProperties: { "private": { pdKey: o.key } } })
+        }).then(json);
+      }));
+    }).catch(function (e) { console.warn("[gcal] przenoszenie kopii wydarzenia nie powiodło się", c.id, e); });
+  }));
+}
+
 // Kalendarz montażysty: z jawnie zapisanego id, a gdy go brak (UI go nie ustawia) —
 // po nazwie montażysty zawartej w nazwie kalendarza, tak jak w oknie „Dodaj do kalendarza".
 export function installerCalendarId(deal, field, calList) {
