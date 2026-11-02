@@ -1269,6 +1269,18 @@ export function App(p){
     cands.sort(function(a,b){return (b.role==="dostawca"||b.role==="oba"?1:0)-(a.role==="dostawca"||a.role==="oba"?1:0);});
     return cands.length?cands[0].email:"";
   }
+  // Znacznik wysłania wyceny klientowi (deals.quote_sent_at, migracja 0069) — widoczny w karcie deala.
+  // Wołane dopiero po udanej wysyłce (ModalClientEmail → onSent).
+  function markQuoteSent(kind){
+    if(!curDeal)return;
+    var now=new Date().toISOString();
+    var patch={quote_sent_at:now,quote_sent_kind:kind,updated_at:now};
+    sbApi.updateDeal(curDeal.id,patch).then(function(){
+      setDeals(function(prev){return (prev||[]).map(function(d){return d.id===curDeal.id?Object.assign({},d,patch):d;});});
+    }).catch(function(e){
+      alert("Mail został wysłany, ale nie udało się zapisać znacznika wysyłki wyceny (czy uruchomiona migracja 0069 w Supabase?): "+((e&&e.message)||""));
+    });
+  }
   function mailDoc(html,name,opts){
     if(!html){alert("Brak tre\u015bci dokumentu do wys\u0142ania.");return;}
     opts=opts||{};
@@ -2143,7 +2155,7 @@ export function App(p){
       }
       var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"",mailDiscountVal,mailVisitFeeVal);
       if(!html){alert("Brak pozycji do wyceny.");return;}
-      mailDoc(html,"Oferta - "+(curClient.name||"klient")+".pdf",{});
+      mailDoc(html,"Oferta - "+(curClient.name||"klient")+".pdf",{onSent:function(){markQuoteSent("uproszczona");}});
     }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
@@ -2454,7 +2466,7 @@ export function App(p){
         ce("button",{onClick:function(){
           var vu2=offerValidUntil?new Date(offerValidUntil):null;
           mailDoc(buildOfferPDFHtmlFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu2,previewDiscountVal,previewVisitFeeVal),
-            "Wycena - "+(curClient.name||"klient")+".pdf");
+            "Wycena - "+(curClient.name||"klient")+".pdf",{onSent:function(){markQuoteSent("szczegolowa");}});
         },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
@@ -2788,7 +2800,7 @@ export function App(p){
         simplDiscountVal=0;
       }
       mailDoc(buildSimplifiedPDFHtmlFromRows(curClient,simplRowsOut,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal),
-        "Oferta - "+(curClient.name||"klient")+".pdf",{template:"wstepna"});
+        "Oferta - "+(curClient.name||"klient")+".pdf",{template:"wstepna",onSent:function(){markQuoteSent("uproszczona");}});
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
     var simplShownDiscount=calcSimplDiscount(roundTo10(simplGrandTotal)+(montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(simplGrandTotal*((+montazInput||0)/100))));

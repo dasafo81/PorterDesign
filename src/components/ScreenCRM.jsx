@@ -1769,6 +1769,14 @@ export function ModalDeal(p){
           },advBusy?"⏳ Przygotowuję…":(d.advance_sent_at?"✉ Wyślij ponownie fakturę + OWU":"✉ Wyślij fakturę + OWU"))
         ):null,
 
+        ce(SectionCard,{icon:"📨",title:"Wycena wysłana klientowi",done:!!d.quote_sent_at},
+          d.quote_sent_at
+            ?ce("div",{style:{fontSize:12,color:"var(--gr)"}},
+              "✓ Wysłano "+new Date(d.quote_sent_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})
+              +(d.quote_sent_kind?" ("+(d.quote_sent_kind==="uproszczona"?"wycena uproszczona":"wycena szczegółowa")+")":""))
+            :ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Brak śladu wysyłki wyceny z aplikacji (ekran Podsumowanie → Mail do klienta). Mail wysłany poza aplikacją nie jest tu widoczny.")
+        ),
+
         ce(SectionCard,{icon:"✉️",title:"Korespondencja z klientem"},
           ce(DealCorrespondence,{email:(cl&&cl.email)||d.buyer_email||"",onOpenMail:p.onOpenMail?function(m){p.onOpenMail(m,d.id);}:null})
         ),
