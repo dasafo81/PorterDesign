@@ -1247,9 +1247,12 @@ export function App(p){
     return String(t||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\u0142/g,"l")
       .split(/\s[\u2014\u2013-]\s|,/)[0].replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
   }
+  // Adresy zamówień narzucone na stałe (mają pierwszeństwo przed e-mailem z Kontrahentów).
+  var SUPPLIER_ORDER_EMAILS={dekoma:"orders@dekoma.eu"};
   function findSupplierEmail(contacts,supplier){
     var key=normSupName(supplier);
     if(!key||key.length<3)return "";
+    if(SUPPLIER_ORDER_EMAILS[key])return SUPPLIER_ORDER_EMAILS[key];
     var cands=(contacts||[]).filter(function(c){
       if(!c.email)return false;
       var n=normSupName(c.name);
