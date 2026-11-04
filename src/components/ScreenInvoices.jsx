@@ -83,6 +83,58 @@ var btnDanger = {
 function invDirection(inv){
   return (inv&&inv.direction) || (inv&&inv.doc_type==="zakup" ? "zakup" : "sprzedaz");
 }
+// ── KOREKTY FAKTUR (FA(3) RodzajFaktury=KOR) ───────────────────────────────
+// Model (migracja 0070): invoice_items korekty = stan PO, correction_original = zamrożony stan
+// PRZED, a total_net/vat/gross korekty = RÓŻNICA (po − przed) — dokładnie to, co idzie do
+// P_13_x/P_14_x/P_15 w XML i do sum na liście (korekta in minus = kwota ujemna).
+var CORR_TYPES = [
+  {id:2, label:"2 \u2014 w dacie wystawienia korekty (np. rabat, zwrot, zmiana umowy po sprzeda\u017cy)"},
+  {id:1, label:"1 \u2014 w dacie faktury pierwotnej (np. b\u0142\u0105d na fakturze: cena, ilo\u015b\u0107, stawka)"},
+  {id:3, label:"3 \u2014 w innej dacie"}
+];
+function round2(n){ return Math.round((+n||0)*100)/100; }
+function sumItems(items,field){ return round2((items||[]).reduce(function(a,it){return a+(+it[field]||0);},0)); }
+// Czy dokument mo\u017cna skorygowa\u0107 korekt\u0105 sprzeda\u017cow\u0105 (nie: proforma, EKO, zestawienie prowizji,
+// faktura zakupowa ani sama korekta — kolejn\u0105 korekt\u0119 robimy do faktury pierwotnej).
+export function canCorrectInvoice(inv){
+  if(!inv||inv.status!=="issued") return false;
+  if(invDirection(inv)==="zakup") return false;
+  return ["proforma","eko","korekta","zakup",DOC_PROWIZJA].indexOf(inv.doc_type)<0;
+}
+// Szkic korekty (prefill edytora). orig = faktura pierwotna z pozycjami; prev = ostatnia
+// niezanulowana korekta tej faktury (jej invoice_items to aktualny stan, wi\u0119c to ona jest
+// punktem wyj\u015bcia "przed" kolejnej korekty) lub null.
+export function buildCorrectionDraft(orig,prev){
+  var basis=prev||orig;
+  var beforeItems=(basis.invoice_items||[]).slice().sort(function(a,b){return (+a.position||0)-(+b.position||0);}).map(function(it,i){
+    return {position:+it.position||i+1,name:it.name||"",quantity:+it.quantity||1,unit:it.unit||"szt",
+      unit_net:+it.unit_net||0,vat_rate:+it.vat_rate,line_net:+it.line_net||0,line_vat:+it.line_vat||0,
+      line_gross:+it.line_gross||0,pkwiu:it.pkwiu||""};
+  });
+  return {
+    doc_type:"korekta", direction:"sprzedaz",
+    corrects_invoice_id:orig.id, correction_reason:"", correction_type:2,
+    correction_original:{
+      // Odniesienie do faktury PIERWOTNEJ (DaneFaKorygowanej). Numer KSeF tylko gdy potwierdzony —
+      // przy statusie "sent" w ksef_number siedzi numer sesji, nie numer faktury.
+      original:{id:orig.id,number:orig.number||"",issue_date:orig.issue_date||"",sale_date:orig.sale_date||"",
+        ksef_status:orig.ksef_status||"none",
+        ksef_number:(orig.ksef_status==="confirmed"&&orig.ksef_number)?orig.ksef_number:null},
+      buyer:{name:basis.buyer_name||"",nip:basis.buyer_nip||"",address:basis.buyer_address||"",
+        postal:basis.buyer_postal||"",city:basis.buyer_city||""},
+      items:beforeItems
+    },
+    payment_method:basis.payment_method, kasowa:basis.kasowa,
+    sale_date:basis.sale_date||orig.sale_date,
+    client_id:orig.client_id, deal_id:orig.deal_id, contact_id:orig.contact_id,
+    buyer_name:basis.buyer_name, buyer_nip:basis.buyer_nip, buyer_address:basis.buyer_address,
+    buyer_postal:basis.buyer_postal, buyer_city:basis.buyer_city, buyer_email:basis.buyer_email,
+    seller_snapshot:orig.seller_snapshot, entity_id:orig.entity_id,
+    invoice_items:beforeItems.map(function(it){
+      return Object.assign({},it,{corrected_position:it.position,unit_gross:it.quantity?+(it.line_gross/it.quantity).toFixed(4):0});
+    })
+  };
+}
 function fmtVat(r){ return r===-1?"zw":(r+"% VAT"); }
 function fmtMoney(v){ return (+(v||0)).toFixed(2).replace(".",",")+" zł"; }
 function fmtDate(d){ if(!d)return "—"; var p=d.split("-"); return p[2]+"."+p[1]+"."+p[0]; }
@@ -276,6 +328,12 @@ export function InvoiceEditor(p){
   var today=todayISO();
   var initInv=p.invoice||{};
   var [docType,setDocType]=useState(initInv.doc_type||"vat");
+  // Korekta: stan "przed" jest zamrożony w correction_original (patrz buildCorrectionDraft).
+  // Edytor działa wtedy na stanie "po" i liczy różnicę względem tego snapshotu.
+  var corrOrig=initInv.correction_original||null;
+  var isCorrection=initInv.doc_type==="korekta"&&!!corrOrig&&Array.isArray(corrOrig.items);
+  var [corrReason,setCorrReason]=useState(initInv.correction_reason||"");
+  var [corrType,setCorrType]=useState(+initInv.correction_type||2);
   // Kierunek: sprzedażowa (domyślnie) lub zakupowa (faktura kosztowa od dostawcy).
   // Niezależny od docType — faktura zakupowa też może być np. EKO albo proformą.
   var [direction,setDirection]=useState(initInv.direction||(initInv.doc_type==="zakup"?"zakup":"sprzedaz"));
@@ -676,6 +734,29 @@ export function InvoiceEditor(p){
   var totalNet=totalsPerRate.reduce(function(a,r){return a+r.net;},0);
   var totalVat=totalsPerRate.reduce(function(a,r){return a+r.vat;},0);
   var totalGross=totalsPerRate.reduce(function(a,r){return a+r.gross;},0);
+  // Korekta: nagłówek faktury niesie RÓŻNICĘ (po − przed); stan "przed" pochodzi ze snapshotu.
+  var beforeItems=isCorrection?corrOrig.items:[];
+  var beforeNet=sumItems(beforeItems,"line_net"), beforeVat=sumItems(beforeItems,"line_vat"), beforeGross=sumItems(beforeItems,"line_gross");
+  var hdrNet=isCorrection?round2(totalNet-beforeNet):totalNet;
+  var hdrVat=isCorrection?round2(totalVat-beforeVat):totalVat;
+  var hdrGross=isCorrection?round2(totalGross-beforeGross):totalGross;
+  // Czy cokolwiek się zmieniło względem stanu "przed" (pozycje albo dane nabywcy).
+  function correctionChanged(){
+    if(!isCorrection) return true;
+    var norm=function(x){return String(x==null?"":x).replace(/\s+/g," ").trim().toLowerCase();};
+    var ob=corrOrig.buyer||{};
+    var buyerSame=norm(ob.name)===norm(buyerName)&&norm(String(ob.nip||"").replace(/[\s-]/g,""))===norm(String(buyerNip||"").replace(/[\s-]/g,""))
+      &&norm(ob.address)===norm(buyerAddr)&&norm(ob.postal)===norm(buyerPostal)&&norm(ob.city)===norm(buyerCity);
+    if(!buyerSame) return true;
+    if(effItems.length!==beforeItems.length) return true;
+    return effItems.some(function(it,i){
+      var b=beforeItems.filter(function(x){return x.position===it.corrected_position;})[0];
+      if(!b||it.corrected_position==null) return true;
+      return norm(it.name)!==norm(b.name)||norm(it.unit)!==norm(b.unit)||(+it.quantity||0)!==(+b.quantity||0)
+        ||Math.abs((+it.unit_net||0)-(+b.unit_net||0))>0.00005||(+it.vat_rate)!==(+b.vat_rate)
+        ||Math.abs((+it.line_gross||0)-(+b.line_gross||0))>0.005;
+    });
+  }
 
   // \u2500\u2500 Rabat kwotowy \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   // Rabat podawany jest jako kwota BRUTTO i rozk\u0142adany proporcjonalnie na wszystkie
@@ -736,6 +817,13 @@ export function InvoiceEditor(p){
     // Numeracja wlasna z odznaczonym "Auto" — numer musi byc podany.
     if(!isSupplierNumberedPurchase&&!autoNumber&&!numberLocked&&!ownNumber.trim())
       return "Podaj numer dokumentu albo zaznacz \"Auto\"";
+    if(isCorrection){
+      if(!corrReason.trim()) return "Podaj przyczynę korekty";
+      if(!correctionChanged()) return "Korekta nie zmienia niczego w stosunku do faktury korygowanej — popraw pozycje albo dane nabywcy";
+      // Korekta "do zera" (wszystkie pozycje usunięte) jest dozwolona; nazwy sprawdzamy tylko u pozostałych.
+      if(items.some(function(it){return !String(it.name||"").trim();})) return "Każda pozycja musi mieć nazwę";
+      return null;
+    }
     if(items.length===0) return "Brak pozycji";
     if(items.some(function(it){return !it.name.trim();})) return "Każda pozycja musi mieć nazwę";
     return null;
@@ -768,7 +856,7 @@ export function InvoiceEditor(p){
       buyer_city:    isZakupDir?sellerCity:buyerCity,
       buyer_email:   isZakupDir?sellerEmail:buyerEmail,
       notes:notes,
-      total_net:totalNet, total_vat:totalVat, total_gross:totalGross,
+      total_net:hdrNet, total_vat:hdrVat, total_gross:hdrGross,
       // Przypisz fakture do podmiotu: dla istniejacej zachowaj jej podmiot,
       // dla nowej uzyj aktywnego (gdy brak — trigger DB ustawi domyslny).
       entity_id: (initInv.entity_id)||(ent.id)||undefined,
@@ -782,12 +870,21 @@ export function InvoiceEditor(p){
         }
     };
     if(isZakupDir&&docType!=="proforma"&&docType!=="eko") header.number=purchaseNumber.trim();
+    // Pola korekty wysyłamy WYŁĄCZNIE dla korekty — zwykłe faktury działają także przed uruchomieniem migracji 0070.
+    if(isCorrection){
+      header.doc_type="korekta"; header.direction="sprzedaz";
+      header.corrects_invoice_id=initInv.corrects_invoice_id||null;
+      header.correction_reason=corrReason.trim();
+      header.correction_type=corrType;
+      header.correction_original=corrOrig;
+    }
 
     var isRealPurchaseDoc=isZakupDir&&docType!=="proforma"&&docType!=="eko";
     var numPeriod=periodKey(numberingReset,issueDate||todayISO());
     // EKO i proforma maja wlasne, oddzielne numeracje (z prefiksem) — nie wchodza w numeracje faktur VAT.
     var numFmt=docType==="eko"?"EKO/{nr}/{MM}"
       :docType==="proforma"?"PRO/{nr}/{MM}/{YYYY}"
+      :isCorrection?"KOR/{nr}/{MM}/{YYYY}"
       :numberingFormat;
     var selfId=(p.invoice&&p.invoice.id)||null;
 
@@ -894,13 +991,16 @@ export function InvoiceEditor(p){
       var itemsToSave=effItems.map(function(it,i){
         var effNet=+(it.line_net)||0;
         var effVatAmt=+(it.line_vat)||0;
-        return {
+        var row={
           position:i+1, name:it.name, quantity:+(it.quantity)||1,
           unit:it.unit||"szt", unit_net:+(it.unit_net)||0,
           vat_rate:+(it.vat_rate), line_net:effNet,
           line_vat:effVatAmt, line_gross:effNet+effVatAmt,
           pkwiu:it.pkwiu||""
         };
+        // Korekta: która pozycja stanu "przed" jest tu poprawiana (null = pozycja dodana korektą).
+        if(isCorrection) row.corrected_position=(it.corrected_position==null?null:+it.corrected_position);
+        return row;
       });
       return sbApi.replaceInvoiceItems(invId,itemsToSave).then(function(){
         // Sprzedażowe dokumenty są wystawione od razu; zakupowe proformy/EKO
@@ -919,7 +1019,10 @@ export function InvoiceEditor(p){
     })
     .catch(function(e){
       setBusy(false);
-      setErr(e.message||"Błąd zapisu");
+      var m=String(e&&e.message||"");
+      if(isCorrection&&/correction_|corrected_position|corrects_invoice/.test(m))
+        setErr("Baza nie ma jeszcze pól korekt — uruchom migrację 0070_invoice_corrections.sql w Supabase (SQL Editor) i spróbuj ponownie. ("+m+")");
+      else setErr(m||"Błąd zapisu");
     });
   }
 
@@ -933,22 +1036,44 @@ export function InvoiceEditor(p){
     ce("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:20}},
       ce("button",{onClick:p.onClose,style:Object.assign({},btnSecondary,{padding:"7px 12px"})},"\u2190 Wróć"),
       ce("h2",{style:{margin:0,fontSize:18,fontWeight:700,color:"var(--t1)",flex:1}},
-        isNew?"Nowa faktura":"Edycja faktury"+(p.invoice&&p.invoice.number?" — "+p.invoice.number:"")),
+        isCorrection?(isNew?"Nowa faktura korygująca":"Edycja faktury korygującej"+(p.invoice&&p.invoice.number?" — "+p.invoice.number:""))
+          :(isNew?"Nowa faktura":"Edycja faktury"+(p.invoice&&p.invoice.number?" — "+p.invoice.number:""))),
       p.invoice&&p.invoice.status==="issued"&&
         ce("span",{style:{fontSize:11,fontWeight:700,background:"var(--pink-l)",color:"var(--pink)",borderRadius:20,padding:"3px 10px"}},"WYSTAWIONA")
     ),
 
     err&&ce("div",{style:{background:"var(--red-l)",border:"1px solid var(--red-border)",borderRadius:10,padding:"10px 14px",fontSize:13,color:"var(--red)",marginBottom:14}},"\u26A0\uFE0F "+err),
 
+    // ── SEKCJA: Korekta (tylko dla faktury korygującej) ──
+    isCorrection&&ce("div",{style:Object.assign({},card,{border:"1px solid var(--pink)"})},
+      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\u21A9\uFE0F Faktura korygująca"),
+      ce("div",{style:{fontSize:13,color:"var(--t2)",marginBottom:10,lineHeight:1.6}},
+        "Dotyczy faktury nr ",ce("strong",null,(corrOrig.original&&corrOrig.original.number)||"\u2014"),
+        " z dnia "+fmtDate(corrOrig.original&&corrOrig.original.issue_date),
+        corrOrig.original&&corrOrig.original.ksef_number
+          ?ce("div",{style:{fontSize:11,color:"var(--t3)"}},"Numer KSeF: "+corrOrig.original.ksef_number)
+          :null),
+      corrOrig.original&&!corrOrig.original.ksef_number&&ce("div",{style:{background:"var(--amber-l,var(--bg2))",border:"1px solid var(--amber)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--amber)",marginBottom:10}},
+        "\u26A0\uFE0F Faktura korygowana nie ma numeru KSeF (nie wysłano jej albo czeka na potwierdzenie). Korekta zostanie wysłana z oznaczeniem „faktura wystawiona poza KSeF”. Jeśli faktura pierwotna powinna była trafić do KSeF, wyślij ją najpierw."),
+      fldRow("Przyczyna korekty *",
+        ce("input",{style:inp,value:corrReason,maxLength:500,placeholder:"Np. udzielony rabat, błędna ilość, zwrot towaru, błąd w danych nabywcy",
+          onChange:function(e){setCorrReason(e.target.value);}})),
+      fldRow("Skutek w VAT",
+        ce("select",{style:inp,value:corrType,onChange:function(e){setCorrType(+e.target.value);}},
+          CORR_TYPES.map(function(t){return ce("option",{key:t.id,value:t.id},t.label);}))),
+      ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5}},
+        "Pozycje poniżej są stanem PO korekcie — popraw ilość/cenę/stawkę, usuń albo dodaj pozycje. W KSeF pójdzie stan przed i po oraz różnica. Dane nabywcy też możesz poprawić (np. błędny NIP) — w KSeF zostaną wskazane dane przed i po korekcie. Wybór „Skutek w VAT” ustal z księgową.")
+    ),
+
     // ── SEKCJA: Rodzaj / daty ──
     ce("div",{style:card},
       ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83D\uDCC4 Dokument"),
       fldRow("Kierunek",
-        ce("select",{style:inp,value:direction,onChange:function(e){setDirection(e.target.value);}},
+        ce("select",{style:inp,value:direction,disabled:isCorrection,onChange:function(e){setDirection(e.target.value);}},
           ce("option",{value:"sprzedaz"},"\uD83D\uDCE4 Sprzeda\u017cowa (wystawiamy)"),
           ce("option",{value:"zakup"},"\uD83D\uDCE5 Zakupowa / kosztowa (od dostawcy)"))),
       fldRow("Typ dokumentu",
-        ce("select",{style:inp,value:docType,onChange:function(e){
+        ce("select",{style:inp,value:docType,disabled:isCorrection,onChange:function(e){
           var v=e.target.value;
           setDocType(v);
           // Licznik numeracji jest per doc_type — po zmianie typu istniejacego dokumentu
@@ -956,7 +1081,10 @@ export function InvoiceEditor(p){
           // typu docelowego, inaczej faktura VAT zostaje z numerem proformy.
           if(initInv.id&&!numberLocked) setAutoNumber(v!==initInv.doc_type);
         }},
-          DOC_TYPES.map(function(d){return ce("option",{key:d.id,value:d.id},d.label);}))),
+          // "Korekta" nie jest zwykłym typem do wyboru — bez odniesienia do faktury pierwotnej nie da się
+          // jej wysłać do KSeF. Wystawia się ją przyciskiem w widoku faktury; opcja zostaje tylko tam,
+          // gdzie dokument już jest korektą (np. zaimportowaną z KSeF).
+          DOC_TYPES.filter(function(d){return d.id!=="korekta"||initInv.doc_type==="korekta";}).map(function(d){return ce("option",{key:d.id,value:d.id},d.label);}))),
       direction==="zakup"&&docType!=="proforma"&&docType!=="eko"&&ce("div",{style:{background:"var(--violet-l)",border:"1px solid var(--violet)",borderRadius:8,padding:"8px 12px",fontSize:12,color:"var(--violet)",marginTop:4,marginBottom:10}},
         "\uD83D\uDCE5 Faktura kosztowa — rejestrujemy dokument otrzymany od dostawcy. Numer nadaje dostawca (wpisz poni\u017cej), nie generujemy w\u0142asnej numeracji."),
       direction==="zakup"&&docType!=="proforma"&&docType!=="eko"&&fldRow("Numer faktury",
@@ -1152,7 +1280,24 @@ export function InvoiceEditor(p){
 
     // ── SEKCJA: Pozycje ──
     ce("div",{style:card},
-      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},"\uD83D\uDCCB Pozycje"),
+      ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginBottom:12,borderBottom:"1px solid var(--bd3)",paddingBottom:8}},isCorrection?"\uD83D\uDCCB Pozycje po korekcie":"\uD83D\uDCCB Pozycje"),
+
+      // Stan PRZED korektą (tylko do odczytu) — dla porównania z edytowanymi pozycjami poniżej
+      isCorrection&&ce("div",{style:{marginBottom:14,padding:"10px 12px",background:"var(--bg)",border:"1px dashed var(--bd2)",borderRadius:8}},
+        ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}},"Stan przed korektą"),
+        beforeItems.map(function(b,i){
+          return ce("div",{key:i,style:{display:"grid",gridTemplateColumns:"1fr 60px 70px 90px 90px",gap:6,fontSize:12,color:"var(--t2)",padding:"3px 0"}},
+            ce("div",null,b.name),
+            ce("div",{style:{textAlign:"right"}},String(b.quantity).replace(".",",")),
+            ce("div",{style:{textAlign:"right"}},fmtVat(b.vat_rate)),
+            ce("div",{style:{textAlign:"right"}},fmtMoney(b.line_net)),
+            ce("div",{style:{textAlign:"right",fontWeight:600}},fmtMoney(b.line_gross)));
+        }),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 60px 70px 90px 90px",gap:6,fontSize:12,fontWeight:700,color:"var(--t1)",borderTop:"1px solid var(--bd3)",marginTop:4,paddingTop:4}},
+          ce("div",null,"Razem przed korektą"),ce("div"),ce("div"),
+          ce("div",{style:{textAlign:"right"}},fmtMoney(beforeNet)),
+          ce("div",{style:{textAlign:"right"}},fmtMoney(beforeGross)))
+      ),
 
       // Nagłówki kolumn
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 60px 70px 80px 80px 70px 90px 90px 28px",gap:6,marginBottom:4}},
@@ -1200,11 +1345,25 @@ export function InvoiceEditor(p){
             ce("div",{style:{textAlign:"right"}},"Brutto")
           ),
           ce("div",{style:{display:"grid",gridTemplateColumns:"80px 110px 110px 120px",gap:10,borderTop:"2px solid var(--t1)",paddingTop:6,fontWeight:700,fontSize:14,color:"var(--t1)"}},
-            ce("div",{style:{textAlign:"right"}},"SUMA"),
+            ce("div",{style:{textAlign:"right"}},isCorrection?"PO":"SUMA"),
             ce("div",{style:{textAlign:"right"}},fmtMoney(totalNet)),
             ce("div",{style:{textAlign:"right"}},fmtMoney(totalVat)),
             ce("div",{style:{textAlign:"right"}},fmtMoney(totalGross))
-          )
+          ),
+          isCorrection&&ce("div",{style:{display:"grid",gridTemplateColumns:"80px 110px 110px 120px",gap:10,fontSize:12,color:"var(--t3)",paddingTop:4}},
+            ce("div",{style:{textAlign:"right"}},"PRZED"),
+            ce("div",{style:{textAlign:"right"}},fmtMoney(beforeNet)),
+            ce("div",{style:{textAlign:"right"}},fmtMoney(beforeVat)),
+            ce("div",{style:{textAlign:"right"}},fmtMoney(beforeGross))
+          ),
+          isCorrection&&ce("div",{style:{display:"grid",gridTemplateColumns:"80px 110px 110px 120px",gap:10,borderTop:"2px solid var(--pink)",paddingTop:6,fontWeight:700,fontSize:14,color:hdrGross<0?"var(--red)":"var(--t1)"}},
+            ce("div",{style:{textAlign:"right"}},"RÓŻNICA"),
+            ce("div",{style:{textAlign:"right"}},fmtMoney(hdrNet)),
+            ce("div",{style:{textAlign:"right"}},fmtMoney(hdrVat)),
+            ce("div",{style:{textAlign:"right"}},fmtMoney(hdrGross))
+          ),
+          isCorrection&&hdrGross!==0&&ce("div",{style:{fontSize:11,color:"var(--t3)"}},
+            hdrGross<0?"Korekta in minus \u2014 zwrot / obniżenie należności o "+fmtMoney(-hdrGross):"Korekta in plus \u2014 dopłata "+fmtMoney(hdrGross))
         )
       )
     ),
@@ -1223,7 +1382,7 @@ export function InvoiceEditor(p){
     ce("div",{style:{display:"flex",gap:10,justifyContent:"flex-end",marginTop:4}},
       ce("button",{onClick:p.onClose,style:btnSecondary,disabled:busy},"Anuluj"),
       ce("button",{onClick:function(){save();},style:btnPrimary,disabled:busy},
-        busy?"\u23F3 Zapisuję...":(isNew?(direction==="zakup"?"\u2705 Zapisz fakturę kosztową":"\u2705 Wystaw fakturę"):"\uD83D\uDCBE Zapisz zmiany"))
+        busy?"\u23F3 Zapisuję...":(isNew?(isCorrection?"\u2705 Wystaw fakturę korygującą":direction==="zakup"?"\u2705 Zapisz fakturę kosztową":"\u2705 Wystaw fakturę"):"\uD83D\uDCBE Zapisz zmiany"))
     )
   );
 }
@@ -2638,7 +2797,39 @@ export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
     qrUrl="https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=0&data="+encodeURIComponent(ksefQrUrl);
   }
 
-  var rowsHtml=items.map(function(it,i){
+  // Korekta: stan przed/po + różnica. inv.invoice_items = stan PO, correction_original.items = stan PRZED,
+  // total_* = różnica (po − przed).
+  var corrOrig=(inv.doc_type==="korekta"&&inv.correction_original&&Array.isArray(inv.correction_original.items))?inv.correction_original:null;
+  var corrBefore=corrOrig?corrOrig.items:[];
+  var corrOrigRef=(corrOrig&&corrOrig.original)||{};
+  var esc=function(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");};
+  var itemRowHtml=function(it,no,bg){
+    var rate=it.vat_rate;
+    var vl=rate===-1?"zw":(rate+"%");
+    var qty=+(it.quantity||1);
+    var unitGross=qty?(+(it.line_gross||0)/qty):0;
+    return "<tr"+(bg?" style='background:"+bg+"'":"")+">"
+      +"<td>"+no+"</td><td style='text-align:left'>"+String(it.name||"")+"</td>"
+      +"<td>"+String(qty).replace(".",",")+"</td><td>"+String(it.unit||"szt")+"</td>"
+      +"<td>"+fmtM(unitGross)+"</td><td>"+fmtM(it.line_net)+"</td><td>"+vl+"</td>"
+      +"<td>"+fmtM(it.line_vat)+"</td><td style='font-weight:700'>"+fmtM(it.line_gross)+"</td></tr>";
+  };
+  var sumRowHtml=function(lbl,net,vat,gr,strong){
+    return "<tr style='"+(strong?"font-weight:700;background:#f0f0f0":"background:#f7f7f7")+"'><td colspan='5' style='text-align:right'>"+lbl+"</td>"
+      +"<td style='text-align:right'>"+fmtM(net)+"</td><td></td><td style='text-align:right'>"+fmtM(vat)+"</td><td style='text-align:right'>"+fmtM(gr)+"</td></tr>";
+  };
+  var sumOf=function(arr,f){return arr.reduce(function(a,it){return a+(+it[f]||0);},0);};
+  var rowsHtml;
+  if(corrOrig){
+    var afterNet=sumOf(items,"line_net"), afterVat=sumOf(items,"line_vat"), afterGross=sumOf(items,"line_gross");
+    var secRow=function(t){return "<tr><td colspan='9' style='text-align:left;font-weight:700;background:#fafafa;padding:6px'>"+t+"</td></tr>";};
+    rowsHtml=secRow("Stan przed korektą")
+      +corrBefore.map(function(it,i){return itemRowHtml(it,i+1,"#fafafa");}).join("")
+      +sumRowHtml("Razem przed korektą:",sumOf(corrBefore,"line_net"),sumOf(corrBefore,"line_vat"),sumOf(corrBefore,"line_gross"),false)
+      +secRow("Stan po korekcie")
+      +(items.length?items.map(function(it,i){return itemRowHtml(it,i+1,"");}).join(""):"<tr><td colspan='9' style='text-align:left;color:#666'>— brak pozycji (korekta do zera) —</td></tr>")
+      +sumRowHtml("Razem po korekcie:",afterNet,afterVat,afterGross,false);
+  } else rowsHtml=items.map(function(it,i){
     var rate=it.vat_rate;
     var vl=rate===-1?"zw":(rate+"%");
     var qty=+(it.quantity||1);
@@ -2702,7 +2893,7 @@ export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
     +"<tr><td>Data sprzeda\u017cy:</td><td>"+fmtD(inv.sale_date)+"</td></tr></table>"
     +"</div>"
     +"<div class='pay-row'>"
-    +"<div>Termin p\u0142atno\u015bci: "+fmtD(inv.due_date)+"<br>Spos\u00f3b p\u0142atno\u015bci: "+(inv.payment_method||"przelew").replace(/^./,function(c){return c.toUpperCase();})+"</div>"
+    +"<div>"+((corrOrig&&gross<=0)?"":"Termin p\u0142atno\u015bci: "+fmtD(inv.due_date)+"<br>")+"Spos\u00f3b p\u0142atno\u015bci: "+(inv.payment_method||"przelew").replace(/^./,function(c){return c.toUpperCase();})+"</div>"
     +(selBank?"<div style='text-align:right'>Numer konta: "+selBank+"</div>"
       :(previewMode?"<div style='text-align:right;color:#c0392b'>\u26A0\uFE0F "+(isZakup?"Brak numeru konta kontrahenta na fakturze":"Brak numeru konta w Ustawieniach")+"</div>":"<div></div>"))
     +"</div>"
@@ -2714,14 +2905,22 @@ export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
     +(partyBottom.street||partyBottom.city?"<br>"+fmtAddr(partyBottom.street,partyBottom.postal,partyBottom.city):"")
     +(partyBottom.nip?"<br>NIP: "+partyBottom.nip:"")+"</p></div>"
     +"</div>"
+    +(corrOrig
+      ? "<div class='notes-box' style='margin-top:0;margin-bottom:4mm'><div class='notes-head'>Korekta faktury</div>"
+        +"Dotyczy faktury nr <strong>"+esc(corrOrigRef.number||"")+"</strong> z dnia "+fmtD(corrOrigRef.issue_date)
+        +(corrOrigRef.ksef_number?" (nr KSeF: "+esc(corrOrigRef.ksef_number)+")":"")
+        +(inv.correction_reason?"<br>Przyczyna korekty: "+esc(inv.correction_reason):"")+"</div>"
+      : "")
     +"<table class='items'><thead><tr>"
     +"<th>Lp.</th><th>Nazwa produktu / us\u0142ugi</th><th>Ilo\u015b\u0107</th><th>Jedn.</th>"
     +"<th>Cena jedn.<br>brutto</th><th>Warto\u015b\u0107<br>netto</th><th>Stawka<br>VAT</th>"
     +"<th>Warto\u015b\u0107<br>VAT</th><th>Warto\u015b\u0107<br>brutto</th>"
     +"</tr></thead><tbody>"+rowsHtml+"</tbody>"
-    +"<tfoot><tr><td colspan='5' style='text-align:right'>Suma:</td>"
-    +"<td>"+fmtM(inv.total_net)+"</td><td>"+(items[0]&&items[0].vat_rate===-1?"zw":"23%")+"</td>"
-    +"<td>"+fmtM(inv.total_vat)+"</td><td>"+fmtM(inv.total_gross)+"</td></tr></tfoot>"
+    +"<tfoot>"+(corrOrig
+      ? sumRowHtml("Różnica (korekta):",inv.total_net,inv.total_vat,inv.total_gross,true)
+      : "<tr><td colspan='5' style='text-align:right'>Suma:</td>"
+        +"<td>"+fmtM(inv.total_net)+"</td><td>"+(items[0]&&items[0].vat_rate===-1?"zw":"23%")+"</td>"
+        +"<td>"+fmtM(inv.total_vat)+"</td><td>"+fmtM(inv.total_gross)+"</td></tr>")+"</tfoot>"
     +"</table>"
     +"<div class='totals'>"
     +(qrUrl
@@ -2730,10 +2929,14 @@ export function buildInvoicePDFHtml(inv,settings,ksefQrUrl,previewMode){
         +"</div>"
       : "<div></div>")
     +"<table>"
-    +"<tr><td>\u0141\u0105cznie:</td><td>"+fmtM(gross)+" PLN</td></tr>"
-    +"<tr class='grand'><td>Do zap\u0142aty:</td><td>"+fmtM(remaining)+" PLN</td></tr>"
+    +(corrOrig
+      ? "<tr><td>Różnica brutto:</td><td>"+fmtM(gross)+" PLN</td></tr>"
+        +(gross>0?"<tr class='grand'><td>Do dopłaty:</td><td>"+fmtM(gross)+" PLN</td></tr>"
+          :gross<0?"<tr class='grand'><td>Do zwrotu:</td><td>"+fmtM(-gross)+" PLN</td></tr>":"")
+      : "<tr><td>\u0141\u0105cznie:</td><td>"+fmtM(gross)+" PLN</td></tr>"
+        +"<tr class='grand'><td>Do zap\u0142aty:</td><td>"+fmtM(remaining)+" PLN</td></tr>")
     +"</table></div>"
-    +"<div class='slownie'><strong>S\u0142ownie:</strong> "+numberToWordsPL(gross)+"</div>"
+    +"<div class='slownie'><strong>S\u0142ownie:</strong> "+(gross<0?"minus ":"")+numberToWordsPL(Math.abs(gross))+"</div>"
     +(inv.notes?"<div class='notes-box'><div class='notes-head'>Uwagi</div>"+String(inv.notes)+"</div>"
       :(previewMode?"<div class='notes-box'><div class='notes-head'>Uwagi</div><span style='color:#999'>\u2014 brak uwag \u2014</span></div>":""))
     +(inv.kasowa===true||inv.kasowa==="true"?"<div class='kasowa'>Metoda Kasowa</div>":"")
@@ -2754,6 +2957,17 @@ function InvoiceDetailView(p){
   // Adresat maila — edytowalny, domyślnie aktualny e-mail klienta z CRM
   var [mailTo,setMailTo]=useState("");
   var [currentInv,setCurrentInv]=useState(p.invoice||{});
+  // Korekty tej faktury (lista w widoku) + stan przycisku "Wystaw fakturę korygującą"
+  var [corrections,setCorrections]=useState([]);
+  var [corrBusy,setCorrBusy]=useState(false);
+  var [corrErr,setCorrErr]=useState(null);
+  useEffect(function(){
+    if(!currentInv.id||!canCorrectInvoice(currentInv)){ setCorrections([]); return; }
+    var alive=true;
+    sbApi.getCorrectionsOf(currentInv.id).then(function(rows){ if(alive) setCorrections(rows||[]); })
+      .catch(function(){ /* migracja 0070 jeszcze nie uruchomiona — brak listy korekt */ });
+    return function(){ alive=false; };
+  },[currentInv.id,currentInv.status]);
   // Oficjalny URL weryfikacji KSeF (Kod QR I). Liczony async z SHA-256 XML-a przy zmianie
   // faktury/statusu. Gdy faktura sie nie kwalifikuje (nie confirmed, brak xml, zakupowa/EKO/proforma)
   // helper zwraca null i QR znika z widoku i PDF-a.
@@ -2825,7 +3039,7 @@ function InvoiceDetailView(p){
       terminZdanie:due?"Termin p\u0142atno\u015bci: <b>"+due+"</b>.":"",
       sprzedawca:SELLER.shortName||"",podpis:""
     };
-    setMailSubject("Faktura "+(currentInv.number||""));
+    setMailSubject((currentInv.doc_type==="korekta"?"Faktura korygująca ":"Faktura ")+(currentInv.number||""));
     setMailBodyText("");
     loadSystemTemplate("faktura").then(function(tpl){
       if(!tpl)return;
@@ -2874,7 +3088,7 @@ function InvoiceDetailView(p){
       if(res[1])atts.push(res[1]);
       // Podpis z Poczta \u2192 Ustawienia doklejany do ka\u017cdego maila
       var message={
-        subject:mailSubject||("Faktura "+(currentInv.number||"")),
+        subject:mailSubject||((currentInv.doc_type==="korekta"?"Faktura korygująca ":"Faktura ")+(currentInv.number||"")),
         body:{contentType:"HTML",content:appendSignature(mailBodyText||"",sigRef)},
         toRecipients:[{emailAddress:{address:to}}],
         attachments:atts
@@ -2901,6 +3115,25 @@ function InvoiceDetailView(p){
       else if(e&&e.code==="MS_INTERACTION_REQUIRED") setMailErr("Sesja poczty wygas\u0142a \u2014 zaloguj si\u0119 ponownie w zak\u0142adce Poczta.");
       else setMailErr(e.message||"Nieznany b\u0142\u0105d wysy\u0142ki");
     }).finally(function(){ setMailBusy(false); });
+  }
+
+  // Wystaw fakturę korygującą: pobieramy ŚWIEŻY stan faktury (z pozycjami) i jej dotychczasowych korekt —
+  // punktem wyjścia "przed" jest ostatnia obowiązująca korekta albo sama faktura pierwotna.
+  function startCorrection(){
+    setCorrBusy(true); setCorrErr(null);
+    Promise.all([sbApi.getInvoice(currentInv.id),sbApi.getCorrectionsOf(currentInv.id)]).then(function(res){
+      var orig=res[0]||currentInv;
+      if(!canCorrectInvoice(orig)) throw new Error("Tej faktury nie można skorygować.");
+      if(orig.ksef_status==="sent"||orig.ksef_status==="pending")
+        throw new Error("Faktura czeka na potwierdzenie w KSeF — wystaw korektę po jej potwierdzeniu.");
+      var prev=(res[1]||[])[0]||null;
+      p.onCorrect(buildCorrectionDraft(orig,prev));
+    }).catch(function(e){
+      var m=String(e&&e.message||"");
+      setCorrErr(/corrects_invoice_id|correction_/.test(m)
+        ?"Baza nie ma jeszcze pól korekt — uruchom migrację 0070_invoice_corrections.sql w Supabase (SQL Editor)."
+        :(m||"Nie udało się przygotować korekty"));
+    }).finally(function(){ setCorrBusy(false); });
   }
 
   function sendToKsef(){
@@ -2944,9 +3177,12 @@ function InvoiceDetailView(p){
         padding:"14px 18px",marginBottom:20,display:"flex",alignItems:"center",gap:12}},
         ce("span",{style:{fontSize:24}},"\u2705"),
         ce("div",null,
-          ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--gr)"}},"Faktura wystawiona"),
+          ce("div",{style:{fontSize:14,fontWeight:700,color:"var(--gr)"}},currentInv.doc_type==="korekta"?"Faktura korygująca wystawiona":"Faktura wystawiona"),
           ce("div",{style:{fontSize:12,color:"var(--grd)",marginTop:2}},
-            "Pobierz PDF i wy\u015blij klientowi, nast\u0119pnie wy\u015blij do KSeF.")
+            currentInv.doc_type==="korekta"&&currentInv.correction_original&&currentInv.correction_original.original
+              ?("Do faktury nr "+(currentInv.correction_original.original.number||"")+" z dnia "+fmtDate(currentInv.correction_original.original.issue_date)
+                +(currentInv.correction_reason?" \u2022 przyczyna: "+currentInv.correction_reason:"")+". Pobierz PDF, wyślij klientowi i wyślij do KSeF.")
+              :"Pobierz PDF i wy\u015blij klientowi, nast\u0119pnie wy\u015blij do KSeF.")
         )
       ),
     // Podgl\u0105d faktury \u2014 renderowany od razu, bez potrzeby pobierania PDF.
@@ -3025,7 +3261,33 @@ function InvoiceDetailView(p){
       ksefMsg&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"var(--grl)",
         borderRadius:8,fontSize:12,color:"var(--gr)"}},ksefMsg),
       ksefErr&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"var(--red-l)",
-        borderRadius:8,fontSize:12,color:"var(--red)"}},"\u26A0\uFE0F "+ksefErr)
+        borderRadius:8,fontSize:12,color:"var(--red)"}},"\u26A0\uFE0F "+ksefErr),
+      // Korekta faktury (także wysłanej do KSeF) — osobny dokument z odniesieniem do faktury pierwotnej
+      canCorrectInvoice(currentInv)&&ce("div",{style:{height:1,background:"var(--bd2)",margin:"14px 0"}}),
+      canCorrectInvoice(currentInv)&&ce("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}},
+        ce("div",{style:{flex:1,minWidth:200}},
+          ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:3}},"Korekta faktury"),
+          ce("div",{style:{fontSize:12,color:"var(--t3)"}},
+            ksefOk?"Faktura jest w KSeF \u2014 błędy poprawia się fakturą korygującą (ta faktura pozostaje bez zmian)."
+              :"Faktura korygująca z odniesieniem do tej faktury.")),
+        ce("button",{onClick:startCorrection,disabled:corrBusy||ksefSent,
+          title:ksefSent?"Poczekaj na potwierdzenie faktury w KSeF":"",
+          style:Object.assign({},corrBusy||ksefSent
+            ?{border:"1px solid var(--bd2)",background:"var(--bg2)",color:"var(--t3)",cursor:"not-allowed"}
+            :{border:"1px solid var(--pink)",background:"var(--bg)",color:"var(--pink)",cursor:"pointer"},
+            {borderRadius:9,padding:"10px 20px",fontSize:13,fontWeight:600})},
+          corrBusy?"\u23F3 Przygotowuję...":"\u21A9\uFE0F Wystaw fakturę korygującą")
+      ),
+      corrErr&&ce("div",{style:{marginTop:10,padding:"8px 12px",background:"var(--red-l)",
+        borderRadius:8,fontSize:12,color:"var(--red)"}},"\u26A0\uFE0F "+corrErr),
+      corrections.length>0&&ce("div",{style:{marginTop:12}},
+        ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.06em",textTransform:"uppercase",marginBottom:6}},"Korekty tej faktury"),
+        corrections.map(function(c){
+          return ce("div",{key:c.id,style:{display:"flex",justifyContent:"space-between",gap:10,fontSize:12,color:"var(--t2)",padding:"4px 0",borderTop:"1px solid var(--bd3)"}},
+            ce("span",null,(c.number||"\u2014")+" \u2022 "+fmtDate(c.issue_date)+(c.ksef_status==="confirmed"?" \u2022 \u2705 KSeF":c.ksef_status==="sent"?" \u2022 \u23F3 KSeF":"")),
+            ce("span",{style:{fontWeight:600,color:(+c.total_gross||0)<0?"var(--red)":"var(--t1)"}},fmtMoney(c.total_gross)));
+        })
+      )
     ),
     // Modal: podgląd / edycja treści maila przed wysyłką faktury
     mailModalOpen&&ce("div",{
@@ -3354,6 +3616,7 @@ export function ScreenInvoices(p){
       invoice:detailInv,
       settings:settings||{},
       onEdit:function(){ setEditInv(detailInv); invoiceNavigate("editor"); },
+      onCorrect:function(draft){ setEditInv(draft); invoiceNavigate("editor"); },
       onClose:function(){invoiceNavigate("list");}
     }),
 

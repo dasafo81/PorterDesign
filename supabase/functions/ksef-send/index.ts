@@ -59,36 +59,50 @@ function adresXml(l1: string, l2: string): string {
   return `<Adres><KodKraju>PL</KodKraju><AdresL1>${escXml(a || b)}</AdresL1>${a && b ? `<AdresL2>${escXml(b)}</AdresL2>` : ""}</Adres>`;
 }
 
-// deno-lint-ignore no-explicit-any
-function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings: Record<string,any>): string {
-  const s = inv.seller_snapshot || {};
-  const sellerNip = (s.nip || settings.seller_nip || "").replace(/[\s-]/g, "").replace(/^PL/i, "");
-  const buyerNip  = (inv.buyer_nip || "").replace(/[\s-]/g, "").replace(/^PL/i, "");
-  const vatGroups: Record<string,{net:number;vat:number}> = {};
-  for (const it of (items||[])) {
-    const k = String(it.vat_rate);
-    if (!vatGroups[k]) vatGroups[k] = { net:0, vat:0 };
-    vatGroups[k].net += round2(it.line_net);
-    vatGroups[k].vat += round2(it.line_vat);
-  }
-  const totalNet   = fmt2(items.reduce((a,i) => a+round2(i.line_net),   0));
-  const totalVat   = fmt2(items.reduce((a,i) => a+round2(i.line_vat),   0));
-  const totalGross = fmt2(items.reduce((a,i) => a+round2(i.line_gross), 0));
-  const pozycje = items.map((it,idx) => {
-    return `
+// ── FA3-BEGIN ── (czysta logika XML bez I/O; scripts/test_ksef_correction.mjs wycina ten blok)
+type Row = Record<string, any>; // deno-lint-ignore-line no-explicit-any
+
+// Faktura pierwotna, do ktorej odnosi sie korekta (DaneFaKorygowanej).
+// ksefNumber: tylko prawdziwy numer KSeF (faktura potwierdzona) — inaczej null => NrKSeFN=1.
+interface CorrectedRef { number: string; issueDate: string; ksefNumber: string | null }
+
+function normStr(s: unknown): string { return String(s ?? "").replace(/\s+/g, " ").trim().toLowerCase(); }
+function normNip(s: unknown): string { return String(s ?? "").replace(/[\s-]/g, "").replace(/^PL/i, ""); }
+
+function podmiot2Xml(tag: string, nip: string, name: string, addrL1: string, addrL2: string): string {
+  return `<${tag}>
+    <DaneIdentyfikacyjne>${nip?`<NIP>${escXml(nip)}</NIP>`:`<BrakID>1</BrakID>`}<Nazwa>${escXml(name)}</Nazwa></DaneIdentyfikacyjne>
+    ${adresXml(addrL1, addrL2)}
+  </${tag}>`;
+}
+
+function faWierszXml(nr: number, it: Row, stanPrzed: boolean): string {
+  return `
     <FaWiersz>
-      <NrWierszaFa>${idx+1}</NrWierszaFa>
+      <NrWierszaFa>${nr}</NrWierszaFa>
       <P_7>${escXml(it.name||"")}</P_7>
       ${it.pkwiu?`<PKWiU>${escXml(it.pkwiu)}</PKWiU>`:""}
       <P_8A>${escXml(it.unit||"szt")}</P_8A>
       <P_8B>${fmt2(it.quantity)}</P_8B>
       <P_9A>${fmt2(it.unit_net)}</P_9A>
       <P_11>${fmt2(it.line_net)}</P_11>
-      <P_12>${it.vat_rate===-1?"zw":String(Math.round(+it.vat_rate))}</P_12>
+      <P_12>${+it.vat_rate===-1?"zw":String(Math.round(+it.vat_rate))}</P_12>${stanPrzed?`
+      <StanPrzed>1</StanPrzed>`:""}
     </FaWiersz>`;
-  }).join("");
-  const stawki = Object.keys(vatGroups).map(Number).sort((a,b)=>b-a).map(r => {
-    const g = vatGroups[r];
+}
+
+function sumByRate(items: Row[], sign: number, acc: Record<string,{net:number;vat:number}>) {
+  for (const it of items) {
+    const k = String(it.vat_rate);
+    if (!acc[k]) acc[k] = { net:0, vat:0 };
+    acc[k].net += sign * round2(it.line_net);
+    acc[k].vat += sign * round2(it.line_vat);
+  }
+}
+
+function stawkiXml(vatGroups: Record<string,{net:number;vat:number}>): string {
+  return Object.keys(vatGroups).map(Number).sort((a,b)=>b-a).map(r => {
+    const g = vatGroups[String(r)];
     if (r === 23 || r === 22) return `
     <P_13_1>${fmt2(g.net)}</P_13_1><P_14_1>${fmt2(g.vat)}</P_14_1>`;
     if (r === 8 || r === 7) return `
@@ -102,6 +116,59 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     return `
     <P_13_1>${fmt2(g.net)}</P_13_1><P_14_1>${fmt2(g.vat)}</P_14_1>`;
   }).join("");
+}
+
+// Faktura korygujaca FA(3): RodzajFaktury=KOR + DaneFaKorygowanej, a pozycje i sumy wg zasad MF:
+//   * FaWiersz: dla kazdej linii stan PRZED (StanPrzed=1) i stan PO korekcie, ten sam NrWierszaFa
+//     dla tej samej linii; linia usunieta ma tylko wiersz "przed", dodana tylko "po",
+//   * P_13_x / P_14_x / P_15 to ROZNICE (po - przed) — moga byc ujemne.
+// inv.invoice_items = stan PO, inv.correction_original.items = stan PRZED.
+// deno-lint-ignore no-explicit-any
+function buildFA3(inv: Record<string,any>, items: Row[], settings: Record<string,any>, corrected?: CorrectedRef | null): string {
+  const isKor = inv.doc_type === "korekta";
+  if (isKor && !corrected) throw new Error("Brak danych faktury korygowanej");
+  const snapOrig: Row = (isKor && inv.correction_original) || {};
+  const before: Row[] = isKor ? (snapOrig.items || []) : [];
+  const s = inv.seller_snapshot || {};
+  const sellerNip = (s.nip || settings.seller_nip || "").replace(/[\s-]/g, "").replace(/^PL/i, "");
+  const buyerNip  = (inv.buyer_nip || "").replace(/[\s-]/g, "").replace(/^PL/i, "");
+
+  // Sumy per stawka: zwykla faktura = stan po; korekta = po - przed (tylko stawki z niezerowa roznica).
+  let vatGroups: Record<string,{net:number;vat:number}> = {};
+  sumByRate(items, 1, vatGroups);
+  if (isKor) {
+    sumByRate(before, -1, vatGroups);
+    vatGroups = Object.fromEntries(Object.entries(vatGroups).filter(([, g]) =>
+      Math.abs(round2(g.net)) > 0 || Math.abs(round2(g.vat)) > 0));
+  }
+  const sumGross = (rows: Row[]) => rows.reduce((a,i) => a+round2(i.line_gross), 0);
+  const totalGross = fmt2(sumGross(items) - (isKor ? sumGross(before) : 0));
+
+  // Pozycje. Zwykla faktura: jak dotad. Korekta: pary przed/po wg corrected_position.
+  let pozycje = "";
+  if (!isKor) {
+    pozycje = items.map((it,idx) => faWierszXml(idx+1, it, false)).join("");
+  } else {
+    const rows: Array<{ nr: number; before?: Row; after?: Row }> = [];
+    const byNr = new Map<number, { nr: number; before?: Row; after?: Row }>();
+    for (const b of before) {
+      const e = { nr: +b.position, before: b };
+      rows.push(e); byNr.set(e.nr, e);
+    }
+    let nextNew = before.reduce((m, b) => Math.max(m, +b.position || 0), 0) + 1;
+    for (const a of items) {
+      const target = a.corrected_position != null ? byNr.get(+a.corrected_position) : undefined;
+      if (target && !target.after) { target.after = a; continue; }
+      const e = { nr: nextNew++, after: a };
+      rows.push(e);
+    }
+    rows.sort((x, y) => x.nr - y.nr);
+    pozycje = rows.map(r =>
+      (r.before ? faWierszXml(r.nr, r.before, true) : "") + (r.after ? faWierszXml(r.nr, r.after, false) : "")
+    ).join("");
+  }
+  const stawki = stawkiXml(vatGroups);
+
   // Oficjalne kody FA(3): 1-gotówka, 2-karta, 3-bon, 4-czek, 5-kredyt, 6-przelew, 7-mobilna.
   // Wczesniej "karta" i "BLIK" mapowaly sie na "5" (kredyt) zamiast poprawnych "2" (karta)
   // i "7" (mobilna) — wysylane faktury zglaszaly do KSeF zla forme platnosci.
@@ -117,6 +184,34 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
   // Z Uwag wycinamy fraze "metoda kasowa" — recznie wpisana notatka nie moze
   // odtworzyc tej samej sprzecznosci w DodatkowyOpis.
   const opis = String(inv.notes || "").replace(/metoda\s+kasowa/gi, "").replace(/\s{2,}/g, " ").trim();
+
+  // ── Dane korekty ──────────────────────────────────────────────────────────
+  let korXml = "";
+  if (isKor) {
+    const c = corrected as CorrectedRef;
+    const reason = String(inv.correction_reason || "").trim().slice(0, 500);
+    const typ = [1,2,3].includes(+inv.correction_type) ? +inv.correction_type : 2;
+    // Podmiot2K: gdy korekta zmienia dane nabywcy (np. bledny NIP), w Podmiot2K idzie stan PRZED,
+    // a w Podmiot2 — stan po korekcie.
+    const ob: Row = snapOrig.buyer || {};
+    const obChanged = !!(ob.name || ob.nip) && (
+      normNip(ob.nip) !== buyerNip ||
+      normStr(ob.name) !== normStr(inv.buyer_name) ||
+      normStr((ob.address||"")+" "+(ob.postal||"")) !== normStr((inv.buyer_address||"")+" "+(inv.buyer_postal||"")) ||
+      normStr(ob.city) !== normStr(inv.buyer_city));
+    korXml = `
+    ${reason?`<PrzyczynaKorekty>${escXml(reason)}</PrzyczynaKorekty>`:""}
+    <TypKorekty>${typ}</TypKorekty>
+    <DaneFaKorygowanej>
+      <DataWystFaKorygowanej>${isoDate(c.issueDate)}</DataWystFaKorygowanej>
+      <NrFaKorygowanej>${escXml(c.number)}</NrFaKorygowanej>
+      ${c.ksefNumber?`<NrKSeF>1</NrKSeF><NrKSeFFaKorygowanej>${escXml(c.ksefNumber)}</NrKSeFFaKorygowanej>`:`<NrKSeFN>1</NrKSeFN>`}
+    </DaneFaKorygowanej>${obChanged?`
+    ${podmiot2Xml("Podmiot2K", normNip(ob.nip), String(ob.name||""), (ob.address||"")+" "+(ob.postal||""), String(ob.city||""))}`:""}`;
+  }
+  const grossDiff = +totalGross;
+  // Termin platnosci ma sens tylko gdy cos doplacamy/doplaca klient; korekta in minus = zwrot.
+  const showTermin = inv.due_date && (!isKor || grossDiff > 0);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Faktura xmlns="http://crd.gov.pl/wzor/2025/06/25/13775/" xmlns:etd="http://crd.gov.pl/xml/schematy/dziedzinowe/mf/2022/01/05/eD/DefinicjeTypy/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <Naglowek>
@@ -142,17 +237,18 @@ function buildFA3(inv: Record<string,any>, items: Record<string,any>[], settings
     <P_6>${isoDate(inv.sale_date||inv.issue_date)}</P_6>${stawki}
     <P_15>${totalGross}</P_15>
     <Adnotacje><P_16>${p16}</P_16><P_17>2</P_17><P_18>2</P_18><P_18A>2</P_18A><Zwolnienie><P_19N>1</P_19N></Zwolnienie><NoweSrodkiTransportu><P_22N>1</P_22N></NoweSrodkiTransportu><P_23>2</P_23><PMarzy><P_PMarzyN>1</P_PMarzyN></PMarzy></Adnotacje>
-    <RodzajFaktury>VAT</RodzajFaktury>
+    <RodzajFaktury>${isKor?"KOR":"VAT"}</RodzajFaktury>${korXml}
     ${opis?`<DodatkowyOpis><Klucz>Uwagi</Klucz><Wartosc>${escXml(opis.slice(0,512))}</Wartosc></DodatkowyOpis>`:""}
     ${pozycje}
     <Platnosc>
-      ${inv.due_date?`<TerminPlatnosci><Termin>${isoDate(inv.due_date)}</Termin></TerminPlatnosci>`:""}
+      ${showTermin?`<TerminPlatnosci><Termin>${isoDate(inv.due_date)}</Termin></TerminPlatnosci>`:""}
       <FormaPlatnosci>${payCode}</FormaPlatnosci>
       ${(s.bank||settings.seller_bank)?`<RachunekBankowy><NrRB>${escXml((s.bank||settings.seller_bank||"").replace(/\s/g,""))}</NrRB></RachunekBankowy>`:""}
     </Platnosc>
   </Fa>
 </Faktura>`;
 }
+// ── FA3-END ──
 
 // Importuje klucz publiczny RSA z certyfikatu X.509 (DER lub PEM).
 // Deno wspiera "x509" jako format importu od v1.33 — używamy tego zamiast ręcznego ASN.1.
@@ -233,8 +329,37 @@ Deno.serve(async (req: Request) => {
   if (inv.ksef_status === "confirmed") return jsonRes({ error: `Już w KSeF (nr: ${inv.ksef_number})` }, 400);
 
   const settings = settR.ok ? ((await settR.json())||[])[0]||{} : {};
-  const items = inv.invoice_items || [];
-  const xml = buildFA3(inv, items, settings);
+  // Pozycje w kolejnosci wg position (PostgREST embed nie gwarantuje sortowania).
+  const items = ((inv.invoice_items || []) as Row[]).slice().sort((a, b) => (+a.position||0) - (+b.position||0));
+
+  // Korekta: odniesienie do faktury pierwotnej (DaneFaKorygowanej). Stan faktury pierwotnej
+  // czytamy NA ZYWO — numer KSeF mogl pojawic sie dopiero po utworzeniu korekty — a snapshot
+  // z chwili tworzenia korekty jest tylko fallbackiem (np. gdy pierwotna zostala usunieta).
+  let corrected: CorrectedRef | null = null;
+  if (inv.doc_type === "korekta") {
+    if (!Array.isArray(inv.correction_original?.items))
+      return jsonRes({ error: "Ta korekta nie ma zapisanego stanu faktury sprzed korekty — nie można wygenerować poprawnego XML. Wystaw korektę od nowa z widoku faktury pierwotnej (przycisk „Wystaw fakturę korygującą”)." }, 400);
+    const snapO = (inv.correction_original || {}).original || {};
+    let live: Row | null = null;
+    if (inv.corrects_invoice_id) {
+      const oR = await fetch(
+        `${SB_URL}/rest/v1/invoices?id=eq.${inv.corrects_invoice_id}&tenant_id=eq.${auth.tenantId}&select=id,number,issue_date,ksef_status,ksef_number`,
+        { headers: sbH });
+      live = oR.ok ? ((await oR.json())?.[0] || null) : null;
+    }
+    const number = String((live?.number ?? snapO.number) || "");
+    const issueDate = String((live?.issue_date ?? snapO.issue_date) || "");
+    if (!number || !issueDate)
+      return jsonRes({ error: "Korekta nie wskazuje faktury korygowanej (brak numeru lub daty). Wystaw ją ponownie z widoku faktury pierwotnej." }, 400);
+    if (live && (live.ksef_status === "sent" || live.ksef_status === "pending"))
+      return jsonRes({ error: "Faktura korygowana (" + number + ") jest jeszcze przetwarzana przez KSeF. Poczekaj na jej potwierdzenie i wyślij korektę ponownie." }, 400);
+    // ksef_number to prawdziwy numer KSeF TYLKO przy statusie 'confirmed' (przy 'sent' trzymamy tam numer sesji).
+    const ksefNumber = live
+      ? (live.ksef_status === "confirmed" && live.ksef_number ? String(live.ksef_number) : null)
+      : (snapO.ksef_number ? String(snapO.ksef_number) : null);
+    corrected = { number, issueDate, ksefNumber };
+  }
+  const xml = buildFA3(inv, items, settings, corrected);
   const xmlBytes = new TextEncoder().encode(xml);
 
   try {

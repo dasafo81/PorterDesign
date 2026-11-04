@@ -489,6 +489,11 @@ export const sbApi = {
     var patch=Object.assign({},data,{updated_at:new Date().toISOString()});
     return sbFetch("PATCH","invoices?id=eq."+id,patch);
   },
+  // Korekty danej faktury (z pozycjami), najnowsze pierwsze. Bez zanulowanych — liczy sie
+  // ostatnia obowiazujaca korekta, bo jej stan "po" jest stanem "przed" kolejnej.
+  getCorrectionsOf: function(invoiceId){
+    return sbFetch("GET","invoices?corrects_invoice_id=eq."+encodeURIComponent(invoiceId)+"&status=neq.cancelled&select=*,invoice_items(*)&order=created_at.desc");
+  },
   deleteInvoice: function(id){
     return sbFetch("DELETE","invoices?id=eq."+id);
   },
