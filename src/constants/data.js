@@ -7698,7 +7698,7 @@ export function buildOfferDetailRows(client){
           qty:rowQty,unit:tpD?tpD.unit:(isKurtain?"kpl.":"szt."),
           name:name,_prodLabel:prodLabel,_nameLoc:nameLoc,
           modelSzycia:modelSzycia,tkaninaKolor:tkaninaKolor,producent:producent,
-          szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,note:p.note||null,
+          szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,note:p.note||null,installNote:p.installNote||null,
           total:total,cenaJedn:total/rowQty
         });
       });
