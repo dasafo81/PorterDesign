@@ -20,7 +20,7 @@ import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalCopyProduct, ModalConfirmTypeChange, ModalSimple, ModalVariantAdvisor } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
-import { ScreenCRM, CRMKalendarz, CRM_STAGES, dealTotal } from './components/ScreenCRM.jsx';
+import { ScreenCRM, CRMKalendarz, CRM_STAGES, ORDER_STEPS, dealTotal } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 import { loadSystemTemplate, HIDDEN_IN_COMPOSE } from './lib/mailTemplates.js';
 const ce = React.createElement;
@@ -2946,8 +2946,20 @@ export function App(p){
         if(!prevOrders.length&&latest.sewing_house)prevOrders=[{house:latest.sewing_house,sent_date:latest.sewing_sent_date?String(latest.sewing_sent_date).slice(0,10):null,term:latest.sewing_term||null}];
         var patch={sewing_house:houseName,sewing_sent_date:today,sewing_term:term||null,
           sewing_orders:prevOrders.concat([{house:houseName,sent_date:today,term:term||null}]),updated_at:now.toISOString()};
+        // Wysłane zlecenie = krok "Szycie zlecone" w Etapach zamówienia odhaczony automatycznie.
+        // Gdy to ostatni brakujący krok, a deal jest w Zamówieniu — przejście do Realizacji
+        // (tak samo jak przy ręcznym odhaczeniu w CRM: moveStage w ScreenCRM).
+        patch.order_sewing=true;
+        var movedToRealizacja=false;
+        if(latest.stage==="zamowienie"&&ORDER_STEPS.every(function(st){return st.field==="order_sewing"||!!latest[st.field];})){
+          patch.stage="realizacja";patch.realizacja_since=now.toISOString();movedToRealizacja=true;
+        }
         sbApi.updateDeal(curDeal.id,patch).then(function(){
           setDeals(function(prev){return (prev||[]).map(function(d){return d.id===curDeal.id?Object.assign({},d,patch):d;});});
+          if(movedToRealizacja&&curDeal.client_id){
+            sbApi.updateClientStatus(curDeal.client_id,"nowe");
+            setClients(function(cs){return cs.map(function(c){return String(c.id)===String(curDeal.client_id)?Object.assign({},c,{status:"nowe"}):c;});});
+          }
         }).catch(function(e){console.warn("[deal] szwalnia nie zapisana",e&&e.message);});
       }});
   }
