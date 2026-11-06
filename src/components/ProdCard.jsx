@@ -173,6 +173,26 @@ export function FabPicker(p){
 
 // ── MODALS ─────────────────────────────────────────────────────────────────
 
+// Opcjonalne "uwagi do montażu" pod produktem — rozwijane przyciskiem z młoteczkiem.
+// Treść trzymana w prod.installNote; sekcja zwinięta, dopóki użytkownik jej nie otworzy.
+function InstallNote(p){
+  var prod=p.prod;
+  var os=useState(false);var open=os[0],setOpen=os[1];
+  var has=!!(prod.installNote&&String(prod.installNote).trim());
+  return ce("div",{style:{marginTop:12}},
+    ce("button",{type:"button",onClick:function(){setOpen(!open);},title:"Uwagi do monta\u017cu","aria-expanded":open,"aria-label":"Uwagi do monta\u017cu",
+      style:{display:"inline-flex",alignItems:"center",gap:8,padding:"7px 12px",borderRadius:9,border:"1.5px solid "+((open||has)?"var(--t1)":"var(--bd2)"),background:(open||has)?"var(--bg2)":"var(--bg)",color:"var(--t1)",fontSize:13,fontWeight:600,cursor:"pointer"}},
+      ce("span",{style:{fontSize:16,lineHeight:1}},"\uD83D\uDD28"),
+      "Uwagi do monta\u017cu",
+      has&&!open?ce("span",{style:{width:8,height:8,borderRadius:4,background:"var(--gr)",display:"inline-block"}}):null
+    ),
+    open?ce("textarea",{value:prod.installNote||"",rows:3,autoFocus:true,
+      onChange:function(ev){p.onChange(mg(prod,{installNote:ev.target.value||undefined}));},
+      placeholder:"np. monta\u017c do sufitu, ods\u0142oni\u0119ta rura, drabina potrzebna...",
+      style:{display:"block",width:"100%",marginTop:8,padding:"10px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical"}}):null
+  );
+}
+
 export function ProdCard(p){
   var prod=p.prod,c=prod.c||{},par=prod.par||{};
   function sc(k,v){p.onChange(mg(prod,{c:mg(c,{[k]:v})}));}
@@ -2695,6 +2715,7 @@ export function ProdCard(p){
       ce("div",{style:{paddingTop:12,marginTop:4}},
         ce("label",{style:{fontSize:11,fontWeight:700,color:"var(--t3)",letterSpacing:"0.1em",textTransform:"uppercase",display:"block",marginBottom:6}},"UWAGA (opcjonalnie)"),
         ce("input",{type:"text",value:prod.note||"",onChange:function(ev){p.onChange(mg(prod,{note:ev.target.value||undefined}));},placeholder:"np. inny kolor, specjalna prośba...",style:{width:"100%",padding:"10px 14px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",boxSizing:"border-box"}})
+        ,ce(InstallNote,{prod:prod,onChange:p.onChange})
       )
     ),
     pendingType?ce(ModalConfirmTypeChange,{
