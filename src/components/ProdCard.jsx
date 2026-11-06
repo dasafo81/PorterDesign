@@ -36,7 +36,7 @@ import {
   SHUTTLE_BASE, SHUTTLE_DOPLATY, SHUTTLE_STEROWANIE, SHUTTLE_UCHWYTY,
   SHUTTLE_WIDTHS, shuttleUchwytyQty,
   PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES, PLISA_SL_OSPRZET_KOLORY, PLISA_GR_LABEL, plisaFabricList,
-  calc, tapetaCalc, formatPLN, getPanelsForProd, jzLookup,
+  calc, tapetaCalc, formatPLN, getPanelsForProd, pillowFabricMetry, jzLookup,
   lookup, mg, roundTo10, rrzLookup, arcGeom
 } from '../constants/data.js';
 import { generateFabricOrderPDF, generateClientEmail,
@@ -2656,7 +2656,17 @@ export function ProdCard(p){
           ce(Fld,{label:innyKat==="poduszki"?"SZEROKO\u015a\u0106 POSZEWKI (cm)":"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 50",style:IST})),
           ce(Fld,{label:innyKat==="poduszki"?"WYSOKO\u015a\u0106 POSZEWKI (cm)":"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 50",style:IST}))
         ),
-        ce(Fld,{label:"TKANINA / KOLOR (do zlecenia szycia)"},ce("input",{type:"text",value:prod.innyTkanina||"",onChange:function(ev){p.onChange(mg(prod,{innyTkanina:ev.target.value||undefined}));},placeholder:"np. Velvet 12 beż",style:Object.assign({},IST,{width:"100%"})}))
+        innyKat==="poduszki"?ce(Fragment,null,
+          ce(Fld,{label:"KOLOR TKANINY"},ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, beż...",style:Object.assign({},IST,{width:"100%"})})),
+          ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabManName:prod.fabManName,onSelect:sf,onManual:sfm,onManualW:sfmW,onManualName:sfmN}),
+          (function(){
+            var pm=pillowFabricMetry(prod);
+            var hasFab=!!(prod.fabName||prod.fabMan!=null||prod.fabManName);
+            if(pm>0)return ce("div",{style:{fontSize:14,color:"var(--grd)",fontWeight:600}},"Do zam\u00f3wienia: "+String(pm).replace(".",",")+" mb tkaniny");
+            return ce("div",{style:{fontSize:13,color:"var(--t2)"}},hasFab?"Podaj wymiary poszewki i szeroko\u015b\u0107 tkaniny (przy r\u0119cznej tkaninie: \u201eWys. belki\u201d), \u017ceby policzy\u0107 zapotrzebowanie.":"Wybierz tkanin\u0119, \u017ceby policzy\u0107 zapotrzebowanie na materia\u0142.");
+          })(),
+          ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Wyliczenie: poszewka kopertowa (szwy 1,5 cm, zak\u0142adka 10 cm), pasy uk\u0142adane wzd\u0142u\u017c szeroko\u015bci belki.")
+        ):ce(Fld,{label:"TKANINA / KOLOR (do zlecenia szycia)"},ce("input",{type:"text",value:prod.innyTkanina||"",onChange:function(ev){p.onChange(mg(prod,{innyTkanina:ev.target.value||undefined}));},placeholder:"np. Velvet 12 beż",style:Object.assign({},IST,{width:"100%"})}))
       ):null,
       innyKat?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),

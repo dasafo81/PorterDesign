@@ -7779,6 +7779,22 @@ export function getPasyParityKorekta(client){
   return out;
 }
 
+// Zapotrzebowanie na tkaninę na poduszki (poszewki kopertowe): pas = przód + tył z zakładką,
+// szerokość pasa = szer. poszewki + 3 cm na szwy, długość = 2 × wys. + 16 cm (szwy + zakładka 10 cm).
+// Pasy układane wzdłuż szerokości belki (kierunek wzoru zachowany); gdy poszewka jest szersza
+// niż belka — pas obrócony. Zwraca metry bieżące zaokrąglone w górę do 0,1 m (0 = brak danych).
+export function pillowFabricMetry(prod){
+  var par=prod.par||{};
+  var w=+par.wCm||0,h=+par.hCm||0,fw=+prod.fabW||0;
+  var qty=Math.max(1,Math.floor(+par.qty||1));
+  if(!(w>0&&h>0&&fw>0))return 0;
+  var a=w+3,b=2*h+16,len=0;
+  if(a<=fw){len=Math.ceil(qty/Math.floor(fw/a))*b;}
+  else if(b<=fw){len=Math.ceil(qty/Math.floor(fw/b))*a;}
+  else return 0;
+  return Math.ceil(len/10)/10;
+}
+
 export function buildFabricRows(client){
   // One row per window: {prod, fabName, kolor, width, metry, room, win, note}
   // Obsługuje: zaslona, firana, roleta (w tym Duo)
@@ -7787,6 +7803,23 @@ export function buildFabricRows(client){
     (r.windows||[]).forEach(function(w){
       (w.products||[]).forEach(function(p){
         var pc=p.c||{};
+        // ── poduszki (kategoria produktu "Inny") ─────────────────────
+        if(p.type==="inny"&&p.innyKat==="poduszki"){
+          if(!(p.fabName||p.fabMan!=null||p.fabManName))return;
+          var pdQty=Math.max(1,Math.floor(+(p.par||{}).qty||1));
+          rows.push({
+            fabName:p.fabName||(p.fabManName||"tkanina"),
+            prod:p.fabName?((getFabricEffective(p.fabName)||{prod:"-"}).prod||"-"):"-",
+            kolor:pc.kolor||"-",
+            brutto:p.fabMan||p.fabP||0,
+            width:p.fabW||null,
+            metry:pillowFabricMetry(p),
+            room:r.name,
+            win:w.name,
+            note:(p.innyNazwa||"Poduszki")+" \u00d7 "+pdQty+(p.note?" \u2014 "+p.note:"")
+          });
+          return;
+        }
         // ── zasłony i firany ─────────────────────────────────────────
         if(p.type==="zaslona"||p.type==="firana"){
           var panels=getPanelsForProd(p);
@@ -7937,8 +7970,8 @@ export function buildSewingRows(client){
           rows.push({
             room:r.name,win:w.name,
             type:prod.innyNazwa||(prod.innyKat==="poduszki"?"Poduszki":"Narzuta"),
-            fabric:prod.innyTkanina||"tkanina",
-            prod:"-",kolor:"-",
+            fabric:(prod.fabName||prod.fabManName||prod.innyTkanina||"tkanina")+((prod.c||{}).kolor?" / "+prod.c.kolor:""),
+            prod:prod.fabName?((getFabricEffective(prod.fabName)||{prod:"-"}).prod||"-"):"-",kolor:"-",
             wCm:inPar.wCm||null,hCm:inPar.hCm||null,
             qty:inPar.qty||1,
             szStyle:"-",marszczenie:"-",split:"-",podszewka:"nie",
