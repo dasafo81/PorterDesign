@@ -663,6 +663,17 @@ export function ModalDeal(p){
     setBillBusy(true);setBillErr(null);
     sbApi.getClientOffers(cl.id).catch(function(){return [];}).then(function(offers){
       var o=(offers||[])[0]||null;
+      if(o)return o;
+      // Brak oferty w tabeli offers (np. wycena poszła mailem albo zapis w tle się nie udał),
+      // a klient ma numer wyceny i kwotę: zapisujemy ofertę teraz, żeby faktura miała
+      // z czym się powiązać. total_gross = kwota po rabacie/koszcie wizyty (jak podstawa
+      // tej faktury), więc ponowny wybór oferty w fakturze daje tę samą kwotę.
+      if(!cl.quote_no)return null;
+      return sbApi.addOffer({
+        client_id:cl.id, number:cl.quote_no, kind:"uproszczona",
+        total_gross:clientTotal, valid_until:null, notes:"", discount_amount:0
+      }).catch(function(e){console.error("Błąd zapisu oferty:",e);return null;});
+    }).then(function(o){
       var s=billSettings||{};
       var exempt=!!(ent&&ent.vat_status==="zwolniony");
       var vr=exempt?-1:(+(s.default_vat)||23);

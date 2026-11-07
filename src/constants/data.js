@@ -7435,6 +7435,20 @@ function persistOffer(client,number,kind,total,validUntil,notes,discount){
   }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
 }
 
+// Zapis oferty przy WYSYŁCE mailem (a nie tylko przy "Podgląd PDF"). Bez tego oferta
+// wysłana klientowi mailem nie trafiała do tabeli offers, więc w module Faktury lista
+// "Powiązana oferta" była pusta. Kwota = suma wierszy + montaż (jak w generate*PDFFromRows).
+// rows: wiersze wyceny uproszczonej (rd.total) albo szczegółowej (r.total).
+export function persistOfferFromRows(client,kind,rows,montaz,validUntil,notes,discount){
+  var offerTotal=(rows||[]).reduce(function(a,r){return a+(+r.total||0);},0);
+  var montazParam=montaz||0;
+  var montazModeV=montazParam.mode||"percent";
+  var montazInputV=montazParam.mode?montazParam.value:montazParam;
+  var montazPctV=montazModeV==="amount"?0:montazInputV;
+  var montazAmount=montazModeV==="amount"?roundTo10(montazInputV):(montazPctV>0?roundTo10(offerTotal*montazPctV):0);
+  persistOffer(client,getPDFOfferNumber(client),kind,offerTotal+montazAmount,validUntil,notes,discount);
+}
+
 // Zwraca czytelny opis szczegółów produktu (tkanina/kolor/kolor lameli/kolor karnisza)
 // używany we wszystkich PDF-ach ofertowych (Wycena PDF, Wycena Uproszczona, Oferta).
 export function productDetailText(p){

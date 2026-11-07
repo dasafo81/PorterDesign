@@ -8,7 +8,7 @@ import {
   SEWING_HOUSES, buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
   buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
-  getPanelsForProd, mg, openPDFWindow, roundTo10
+  getPanelsForProd, mg, openPDFWindow, roundTo10, persistOfferFromRows
 } from './constants/data.js';
 import {
   buildFabricOrderHtmlFromRows, buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, spreadDiscountOnRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
@@ -2158,7 +2158,10 @@ export function App(p){
       }
       var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"",mailDiscountVal,mailVisitFeeVal);
       if(!html){alert("Brak pozycji do wyceny.");return;}
-      mailDoc(html,"Oferta - "+(curClient.name||"klient")+".pdf",{onSent:function(){markQuoteSent("uproszczona");}});
+      mailDoc(html,"Oferta - "+(curClient.name||"klient")+".pdf",{onSent:function(){
+        persistOfferFromRows(curClient,"uproszczona",rows,montazP,null,"",mailDiscountVal);
+        markQuoteSent("uproszczona");
+      }});
     }
     var sRooms=sortRoomsWithVariants((curClient.rooms||[]).filter(function(r){return(r.windows||[]).length>0;}));
 
@@ -2469,7 +2472,10 @@ export function App(p){
         ce("button",{onClick:function(){
           var vu2=offerValidUntil?new Date(offerValidUntil):null;
           mailDoc(buildOfferPDFHtmlFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu2,previewDiscountVal,previewVisitFeeVal),
-            "Wycena - "+(curClient.name||"klient")+".pdf",{onSent:function(){markQuoteSent("szczegolowa");}});
+            "Wycena - "+(curClient.name||"klient")+".pdf",{onSent:function(){
+              persistOfferFromRows(curClient,"szczegolowa",offerPreviewRows,previewMontazParam,vu2,offerNotes,previewDiscountVal);
+              markQuoteSent("szczegolowa");
+            }});
         },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
       )
     );
@@ -2803,7 +2809,10 @@ export function App(p){
         simplDiscountVal=0;
       }
       mailDoc(buildSimplifiedPDFHtmlFromRows(curClient,simplRowsOut,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal),
-        "Oferta - "+(curClient.name||"klient")+".pdf",{template:"wstepna",onSent:function(){markQuoteSent("uproszczona");}});
+        "Oferta - "+(curClient.name||"klient")+".pdf",{template:"wstepna",onSent:function(){
+          persistOfferFromRows(curClient,"uproszczona",simplRowsOut,simplMontazP,vu,"",simplDiscountVal);
+          markQuoteSent("uproszczona");
+        }});
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
     var simplShownDiscount=calcSimplDiscount(roundTo10(simplGrandTotal)+(montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(simplGrandTotal*((+montazInput||0)/100))));
