@@ -264,7 +264,7 @@ export function ProdCard(p){
     // inaczej samo przeklikanie marek na pustym produkcie odpalaloby modal.
     var meaningfulC=Object.keys(pr.c||{}).filter(function(k){return k!=="split"&&k!=="kBrand";});
     return !!(pr.fabName||pr.fabMan||pr.mp!=null||pr.innyNazwa||pr.innyKat||pr.innyTkanina||
-      (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.len||pr.par.wMm||pr.par.hMm||pr.par.wallW||pr.par.wallH))||
+      (pr.par&&(pr.par.wCm||pr.par.hCm||pr.par.lCm||pr.par.len||pr.par.wMm||pr.par.hMm||pr.par.wallW||pr.par.wallH||pr.par.roomW))||
       meaningfulC.length>0||
       (pr.kdSzyny&&pr.kdSzyny.length>0)||
       (pr.kdAkc&&Object.keys(pr.kdAkc).length>0)||
@@ -276,41 +276,70 @@ export function ProdCard(p){
   var stc=useState(""),tapCol=stc[0],setTapCol=stc[1];
   var src=useState(false),showRemoveConfirm=src[0],setShowRemoveConfirm=src[1];
   // Wymiary przenoszone przy "Zmien, zachowujac wymiary" (zmiana typu).
-  // Rodziny: kurt (zaslona/firana), okno (roleta/shadow/zaluzja/plisa), rail (szyny/karnisze).
+  // Rodziny: wh (zaslona/firana/roleta/shadow/zaluzja/plisa/tapeta — szerokosc x wysokosc),
+  // rail (szyna KS, karnisze elektryczne, Shuttle, dekoracyjny — dlugosc, szer./wys. pomieszczenia).
   // Miedzy rodzinami nic nie przenosimy (szer. okna != dlugosc karnisza) -> null -> brak trzeciej opcji.
-  function carryDims(fromT,toT,pr,cc){
-    var RAIL=["karnisz","prestige_round","prestige_square","shuttle"];
-    function fam(t){
-      if(t==="zaslona"||t==="firana")return "kurt";
-      if(t==="roleta"||t==="shadow"||t==="zaluzja"||t==="plisa")return "okno";
-      return RAIL.indexOf(t)>=0?"rail":null;
-    }
+  // 5. argument (tSet) = p.c nowego typu (marka karnisza), potrzebny do doboru listy dlugosci.
+  function carryDims(fromT,toT,pr,cc,tSet){
+    var WH=["zaslona","firana","roleta","shadow","zaluzja","plisa","tapeta"];
+    var RAIL=["karnisz","prestige_round","prestige_square","shuttle","szyna","karnisz_dek"];
+    var RAIL_H={szyna:"hKs",karnisz:"hKm",prestige_round:"hPres",prestige_square:"hPres",karnisz_dek:"hDek"};
+    function fam(t){return WH.indexOf(t)>=0?"wh":RAIL.indexOf(t)>=0?"rail":null;}
     var ff=fam(fromT),tf=fam(toT);
     if(!ff||ff!==tf)return null;
-    pr=pr||{};cc=cc||{};
+    pr=pr||{};cc=cc||{};tSet=tSet||{};
     function n(v){var x=parseFloat(String(v==null?"":v).replace(",","."));return x>0?x:0;}
-    var np={},nc={};
+    var np={},nc={},info="";
     if(ff==="rail"){
-      if(!n(pr.len))return null;
-      np=Object.assign({},pr);
-    }else if(ff==="kurt"){
-      if(!n(pr.wCm)&&!n(pr.hCm))return null;
+      // Dlugosc: karnisz dekoracyjny nie ma jednej dlugosci (ma liste szyn w kdSzyny).
+      var len=toT==="karnisz_dek"?0:n(pr.len);
+      var roomW=n(pr.roomW);
+      var hFrom=n(pr[RAIL_H[fromT]]);
+      if(!len&&!roomW&&!hFrom)return null;
+      if(len){
+        // Listy rozwijane maja tylko standardowe dlugosci — dobierz najblizsza nie mniejsza.
+        var lst=toT==="shuttle"?SHUTTLE_WIDTHS
+          :toT==="karnisz"?(tSet.kBrand==="somfy"?MD_WIDTHS:PL_WIDTHS)
+          :(toT==="prestige_round"||toT==="prestige_square")?(tSet.kBrand==="somfy"?MD_WIDTHS:PRESTIGE_WIDTHS)
+          :null;
+        if(lst){var std=lst.find(function(w){return w>=len;});if(std)len=std;}
+        np.len=len;
+        var qty=pr.qty;if(qty!=null&&qty!=="")np.qty=qty;
+        var pts=pr.pt!=null&&pr.pt!==""?pr.pt:pr.pts;
+        if(pts!=null&&pts!==""){np[toT==="szyna"?"pts":"pt"]=pts;}
+        ["arc","arcDepth","arcChord"].forEach(function(k){if(pr[k]!=null&&pr[k]!=="")np[k]=pr[k];});
+        if(toT==="shuttle")np.shUchQty=shuttleUchwytyQty(len)||"";
+      }
+      if(roomW)np.roomW=pr.roomW;
+      if(hFrom&&RAIL_H[toT])np[RAIL_H[toT]]=pr[RAIL_H[fromT]];
+      if(!np.len&&!np.roomW&&!np[RAIL_H[toT]])return null;
+      info=np.len?(np.len+" cm"):(np.roomW?("pomieszczenie "+np.roomW+" cm"):("wys. "+np[RAIL_H[toT]]+" cm"));
+      return {par:np,c:nc,info:info};
+    }
+    // Rodzina wh: szerokosc x wysokosc (w cm; plisa w mm)
+    var w,h;
+    if(fromT==="plisa"){w=Math.round(n(pr.wMm)/10);h=Math.round(n(pr.hMm)/10);}
+    else if(fromT==="tapeta"){w=n(pr.wallW);h=n(pr.wallH);}
+    else{w=n(pr.wCm);h=n(fromT==="zaluzja"?pr.lCm:pr.hCm);}
+    if(!w&&!h)return null;
+    if((fromT==="zaslona"||fromT==="firana")&&(toT==="zaslona"||toT==="firana")){
+      // zasłona <-> firana: przenosimy caly podzial (lewa/prawa czesc, roznica wysokosci)
       np=Object.assign({},pr);
       ["split","leftW","rightW","hDiff","leftH","rightH"].forEach(function(k){if(cc[k]!=null)nc[k]=cc[k];});
     }else{
-      var w,h;
-      if(fromT==="plisa"){w=Math.round(n(pr.wMm)/10);h=Math.round(n(pr.hMm)/10);}
-      else{w=n(pr.wCm);h=n(fromT==="zaluzja"?pr.lCm:pr.hCm);}
-      if(!w&&!h)return null;
       if(toT==="plisa"){if(w)np.wMm=w*10;if(h)np.hMm=h*10;}
+      else if(toT==="tapeta"){if(w)np.wallW=w;if(h)np.wallH=h;}
       else{if(w)np.wCm=w;if(h)np[toT==="zaluzja"?"lCm":"hCm"]=h;}
+      // Nadproze: tylko rolety rzymskie <-> zaluzje (jedyne z tym polem)
+      var nad=fromT==="zaluzja"?n(pr.nadprozeCm):fromT==="roleta"?n(pr.hNadproza):0;
+      if(nad){if(toT==="zaluzja")np.nadprozeCm=nad;else if(toT==="roleta")np.hNadproza=nad;}
     }
-    var info=np.len?(np.len+" cm")
-      :np.wMm?((np.wMm||"?")+"\u00d7"+(np.hMm||"?")+" mm")
-      :((np.wCm||"?")+"\u00d7"+(np.hCm||np.lCm||"?")+" cm");
+    info=np.wMm?((np.wMm||"?")+"×"+(np.hMm||"?")+" mm")
+      :np.wallW||np.wallH?((np.wallW||"?")+"×"+(np.wallH||"?")+" cm")
+      :((np.wCm||"?")+"×"+(np.hCm||np.lCm||"?")+" cm");
     return {par:np,c:nc,info:info};
   }
-  var keep=pendingType?carryDims(prod.type,pendingType.type||pendingType.id,par,c):null;
+  var keep=pendingType?carryDims(prod.type,pendingType.type||pendingType.id,par,c,pendingType.set):null;
   // \u2500\u2500 SELEKTOR TYPU: grupy + marka/model dla karniszy elektrycznych \u2500\u2500\u2500\u2500\u2500\u2500
   var KARN_EL_IDS=["karnisz","prestige_round","prestige_square","shuttle"];
   var isKarnEl=KARN_EL_IDS.indexOf(prod.type)>=0;
