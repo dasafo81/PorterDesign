@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
-import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows } from '../constants/data.js';
+import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows, listSewnItems } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor, moveDealTwins, dealStartDate, dealFieldTitle } from '../lib/gcalDealSync.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
@@ -317,6 +317,28 @@ export function ModalDeal(p){
     var patch={sewing_orders:next,updated_at:new Date().toISOString()};
     sbApi.updateDeal(d.id,patch).then(function(){setSewingOrders(next);setNewSewOrder(null);if(p.onPatch)p.onPatch(patch);})
       .catch(function(e){alert("Błąd zapisu: "+e.message);});
+  }
+  // Odebrane ze szwalni (na stanie, gotowe do montażu): {id produktu: data odbioru}.
+  // Pozycje pochodzą z wyceny klienta (zasłony, firany, rolety, narzuty/poduszki).
+  var ssr=useState(function(){return d.sewing_received&&typeof d.sewing_received==="object"?d.sewing_received:{};}),sewingReceived=ssr[0],setSewingReceived=ssr[1];
+  var sewnItems=cl?listSewnItems(cl):[];
+  var sewnReceivedCount=sewnItems.filter(function(it){return !!sewingReceived[it.key];}).length;
+  function saveSewingReceived(next){
+    var prev=sewingReceived;
+    setSewingReceived(next);
+    var patch={sewing_received:next,updated_at:new Date().toISOString()};
+    sbApi.updateDeal(d.id,patch).then(function(){if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){setSewingReceived(prev);alert("Błąd zapisu (czy migracja 0071 została uruchomiona w Supabase?): "+e.message);});
+  }
+  function toggleSewnReceived(key){
+    var next=Object.assign({},sewingReceived);
+    if(next[key])delete next[key];else next[key]=new Date().toISOString().slice(0,10);
+    saveSewingReceived(next);
+  }
+  function setAllSewnReceived(on){
+    var next=Object.assign({},sewingReceived);
+    sewnItems.forEach(function(it){if(on){if(!next[it.key])next[it.key]=new Date().toISOString().slice(0,10);}else delete next[it.key];});
+    saveSewingReceived(next);
   }
   var sst=useState(d.sewing_term||""),sewingTerm=sst[0],setSewingTerm=sst[1];
   var ssd=useState(d.sewing_sent_date?d.sewing_sent_date.slice(0,10):""),sewingSentDate=ssd[0],setSewingSentDate=ssd[1];
@@ -1355,6 +1377,9 @@ export function ModalDeal(p){
           clientTotal>0?ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.9)",fontWeight:700}},
             clientTotal.toLocaleString("pl-PL")+" zł"
           ):null,
+          sewnReceivedCount>0?ce("span",{title:"Uszyte zasłony/rolety odebrane ze szwalni — gotowe do montażu",style:{background:sewnReceivedCount===sewnItems.length?"#10b981":"rgba(255,255,255,0.2)",borderRadius:20,padding:"3px 12px",fontSize:12,color:"#fff",fontWeight:600}},
+            "📦 Na stanie: "+sewnReceivedCount+"/"+sewnItems.length+(sewnReceivedCount===sewnItems.length?" ✓ gotowe do montażu":"")
+          ):null,
           ce("div",{style:{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}},
             ce("button",{onClick:p.onGoToClient,style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
               "→ Wycena"
@@ -1994,6 +2019,25 @@ export function ModalDeal(p){
                   ce("button",{onClick:function(){setNewSewOrder(null);},style:{padding:"8px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:13}},"Anuluj")))
             :ce("button",{onClick:function(){setNewSewOrder({house:"",sent_date:"",term:""});},style:{alignSelf:"flex-start",padding:"6px 12px",borderRadius:9,border:"1px dashed var(--bd2)",background:"none",color:"var(--t2)",cursor:"pointer",fontSize:12}},"+ Dodaj zlecenie")
         ),
+
+        // Odebrane ze szwalni — odhaczasz, co z wyceny jest już uszyte i leży na stanie;
+        // licznik widać w nagłówku karty i na kafelku deala w CRM.
+        sewnItems.length?ce(SectionCard,{icon:"📦",title:"Odebrane ze szwalni (na stanie)",done:sewnReceivedCount===sewnItems.length},
+          ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5}},
+            "Zaznacz uszyte zasłony i rolety, które już odebrałeś — będą widoczne jako gotowe do montażu. Odebrano: "+sewnReceivedCount+" z "+sewnItems.length+"."),
+          sewnItems.map(function(it,i){
+            var rcv=sewingReceived[it.key];
+            var showRoom=i===0||sewnItems[i-1].room!==it.room;
+            return ce(Fragment,{key:it.key},
+              showRoom&&it.room?ce("div",{style:{fontSize:11,fontWeight:700,color:"var(--t2)",textTransform:"uppercase",letterSpacing:"0.06em",marginTop:i===0?0:4}},it.room):null,
+              ce(CheckRow,{checked:!!rcv,onChange:function(){toggleSewnReceived(it.key);},
+                label:it.label+(it.qty>1?" ×"+it.qty:"")+(it.win?" — "+it.win:""),
+                sublabel:[it.fabric,it.dim,rcv?"odebrano "+fmtSewDate(rcv):""].filter(Boolean).join("\n")}));
+          }),
+          ce("div",{style:{display:"flex",gap:8}},
+            sewnReceivedCount<sewnItems.length?ce("button",{onClick:function(){setAllSewnReceived(true);},style:{padding:"6px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",cursor:"pointer",fontSize:12}},"Zaznacz wszystko"):null,
+            sewnReceivedCount>0?ce("button",{onClick:function(){setAllSewnReceived(false);},style:{padding:"6px 12px",borderRadius:9,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t3)",cursor:"pointer",fontSize:12}},"Wyczyść"):null)
+        ):null,
 
         ce(SectionCard,{icon:"🌟",title:"Obsługa posprzedażowa",done:reviewSent&&invoiceSent&&washingSent},
           ce(CheckRow,{
@@ -3578,6 +3622,10 @@ function DealCard(cp){
   // Przypomnienie: deal wisi w Realizacji ≥10 dni — sprawdzić status zamówienia w szwalni
   var daysInRealizacja=sid==="realizacja"&&deal.realizacja_since?Math.floor((Date.now()-new Date(deal.realizacja_since).getTime())/86400000):0;
   var showStuckWarning=sid==="realizacja"&&daysInRealizacja>=10;
+  // Uszyte i odebrane ze szwalni (na stanie) — liczymy tylko, gdy cokolwiek odhaczono.
+  var recvMap=deal.sewing_received&&typeof deal.sewing_received==="object"?deal.sewing_received:null;
+  var sewnAll=cl&&recvMap&&Object.keys(recvMap).length?listSewnItems(cl):[];
+  var sewnRecv=sewnAll.filter(function(it){return !!recvMap[it.key];}).length;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
       ref:provided.innerRef
@@ -3626,6 +3674,12 @@ function DealCard(cp){
           ce("span",null,"\uD83E\uDE9D"),ce("span",null,(deal.install_label2||"Wieszanie")+": "+fmtDate(deal.delivery_date2))
         ):null
       ):null,
+      sewnRecv>0?ce("div",{
+        title:"Uszyte zasłony/rolety odebrane ze szwalni"+(sewnRecv===sewnAll.length?" — komplet, gotowe do montażu":""),
+        style:{display:"inline-block",marginTop:6,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,
+          background:sewnRecv===sewnAll.length?"#10b981":"var(--bg2)",color:sewnRecv===sewnAll.length?"#fff":"var(--t2)",
+          border:"1px solid "+(sewnRecv===sewnAll.length?"#10b981":"var(--bd2)")}
+      },"📦 Na stanie "+sewnRecv+"/"+sewnAll.length+(sewnRecv===sewnAll.length?" ✓":"")):null,
       sid==="zamowienie"?ce("div",{style:{display:"flex",flexWrap:"wrap",gap:4,marginTop:7}},
         ORDER_STEPS.map(function(st){
           var on=!!deal[st.field];

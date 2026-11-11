@@ -8110,6 +8110,34 @@ export function buildSewingRows(client){
 }
 
 
+// Lista pozycji szytych na zamówienie (zasłony, firany, rolety, narzuty/poduszki) z wyceny klienta —
+// do odhaczania "odebrane ze szwalni / na stanie" w karcie deala. Klucz = id produktu
+// (deal.sewing_received = {klucz: data odbioru YYYY-MM-DD}); brak id → klucz z pozycji w wycenie.
+// Wiersz opisowy bierzemy z buildSewingRows (jeden produkt = jeden wiersz), żeby opis
+// zgadzał się ze zleceniem szycia.
+export function listSewnItems(client){
+  var items=[];
+  (client&&client.rooms||[]).forEach(function(r,ri){
+    (r.windows||[]).forEach(function(w,wi){
+      (w.products||[]).forEach(function(prod,pi){
+        var one=buildSewingRows({rooms:[{name:r.name,windows:[{name:w.name,products:[prod]}]}]})[0];
+        if(!one)return;
+        var dim=[one.wCm,one.hCm].map(function(v){return v==null||v==="-"?"":String(v).replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();}).filter(Boolean).join(" \u00d7 ");
+        items.push({
+          key:prod.id!=null?String(prod.id):("pos_"+ri+"_"+wi+"_"+pi),
+          room:r.name||"",win:w.name||"",
+          label:one.type,
+          fabric:[one.fabric,one.kolor&&one.kolor!=="-"&&String(one.fabric).indexOf(one.kolor)===-1?one.kolor:""].filter(Boolean).join(" / "),
+          dim:dim?dim+" cm":"",
+          qty:one.qty||1
+        });
+      });
+    });
+  });
+  return items;
+}
+
+
 // Generic HTML→PDF via print dialog (window.print in iframe)
 // Placeholdery podmieniane w openPDFWindow na realny base64 z ./pdfAssets.js
 // (patrz komentarz tam). Wszystkie generatory PDF przechodza przez openPDFWindow,
