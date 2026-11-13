@@ -591,7 +591,7 @@ export function ModalDeal(p){
       var list=byDeal.length?byDeal:sales.filter(function(x){
         return !x.deal_id&&cl&&x.client_id&&String(x.client_id)===String(cl.id);
       });
-      list.sort(function(a,b){return String(a.issue_date||a.created_at||"").localeCompare(String(b.issue_date||b.created_at||""));});
+      list.sort(function(a,b){return String(a.issue_date||a.created_at||"").localeCompare(String(b.issue_date||b.created_at||""))||String(a.created_at||"").localeCompare(String(b.created_at||""));});
       setBillInvoices(list);
       setBillEntities(res[1]||[]);
       setBillSettings(res[2]||{});
@@ -941,6 +941,21 @@ export function ModalDeal(p){
     var idx=billList.findIndex(function(x){return x.id===id;});
     var othersUnsent=billList.some(function(x,i){return i>0&&x.id!==id&&!x.sent_at;});
     if(idx>0&&!othersUnsent)markInvoiceSent();
+  }
+
+  // Cofnięcie znacznika wysyłki (invoices.sent_at = null) — np. gdy fakturę zmieniono po wysłaniu
+  function unmarkBillInvoiceSent(id){
+    if(!id)return;
+    setBillInvoices(function(prev){return (prev||[]).map(function(x){return x.id===id?Object.assign({},x,{sent_at:null}):x;});});
+    sbApi.updateInvoice(id,{sent_at:null}).catch(function(e){console.error("[deal] cofnięcie sent_at",e);});
+    // Stare znaczniki deala też czyścimy, żeby fallback dla zleceń sprzed migracji 0054 nie przywrócił "wysłano"
+    var idx=billList.findIndex(function(x){return x.id===id;});
+    var patch=idx===0?{advance_sent_at:null}:(idx>0?{invoice_sent:false}:null);
+    if(!patch)return;
+    if(idx>0)setInvoiceSent(false);
+    patch.updated_at=new Date().toISOString();
+    sbApi.updateDeal(d.id,patch).then(function(){if(p.onPatch)p.onPatch(patch);})
+      .catch(function(e){console.error("[deal] cofnięcie znacznika deala",e);});
   }
 
   // Wysyłka do KSeF z karty deala — ta sama ścieżka co przycisk w szczególe faktury
@@ -1968,14 +1983,20 @@ export function ModalDeal(p){
                   (function(){
                     var isFirst=billList[0]&&billList[0].id===x.id;
                     // Źródło prawdy: invoices.sent_at (moduł Faktury i karta deala). Fallback: stare znaczniki deala.
-                    var sentAt=x.sent_at||(isFirst?d.advance_sent_at:null);
-                    var sent=!!x.sent_at||(isFirst?!!d.advance_sent_at:(billList.length>1&&invoiceSent));
+                    // Stare znaczniki deala (advance_sent_at / invoice_sent) tylko dla zleceń sprzed migracji 0054,
+                    // gdzie żadna faktura nie ma sent_at — inaczej nowa faktura (np. EKO) wyglądałaby na wysłaną.
+                    var legacy=!billList.some(function(i){return !!i.sent_at;});
+                    var sentAt=x.sent_at||((legacy&&isFirst)?d.advance_sent_at:null);
+                    var sent=!!x.sent_at||(legacy&&(isFirst?!!d.advance_sent_at:(billList.length>1&&invoiceSent)));
                     var needKsef=x.doc_type!=="eko"&&["confirmed","sent","pending"].indexOf(x.ksef_status)<0;
                     var btn=function(extra){return Object.assign({padding:"5px 10px",borderRadius:8,border:"1px solid var(--bd2)",background:"transparent",
                       color:"var(--t1)",fontSize:11,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"},extra||{});};
                     return ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:6}},
                       sent
-                        ?ce("span",{style:{fontSize:11,color:"var(--gr)"}},"✓ Wysłano klientowi"+(sentAt?" "+new Date(sentAt).toLocaleDateString("pl-PL"):""))
+                        ?ce("span",{style:{fontSize:11,color:"var(--gr)"}},"✓ Wysłano klientowi"+(sentAt?" "+new Date(sentAt).toLocaleDateString("pl-PL"):""),
+                            x.sent_at?ce("span",{title:"Cofnij znacznik wysyłki (np. faktura była zmieniana po wysłaniu)",
+                              onClick:function(){if(confirm("Cofnąć znacznik „wysłano” dla faktury "+(x.number||"")+"?"))unmarkBillInvoiceSent(x.id);},
+                              style:{marginLeft:6,color:"var(--t3)",cursor:"pointer",textDecoration:"underline dotted"}},"cofnij"):null)
                         :ce("span",{title:"Kliknij, jeśli faktura została wysłana poza aplikacją",
                             onClick:function(){if(confirm("Oznaczyć fakturę "+(x.number||"")+" jako wysłaną do klienta?"))markBillInvoiceSent(x.id);},
                             style:{fontSize:11,color:"var(--t3)",cursor:"pointer",textDecoration:"underline dotted"}},"Nie wysłano"),
