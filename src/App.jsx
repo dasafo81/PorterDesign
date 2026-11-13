@@ -477,8 +477,14 @@ export function App(p){
     setDiscountEnabled(!!(adj&&adj.de));
     setDiscountMode(adj&&adj.dm==="percent"?"percent":"amount");
     setDiscountInput(adj&&adj.di!=null?String(adj.di):"");
-    setVisitFeeEnabled(!!(adj&&adj.ve));
-    setVisitFeeInput(adj&&adj.vi!=null?String(adj.vi):"250");
+    // Koszt wizyty: baza (kolumny z migracji 0072) ma pierwszeństwo, localStorage to zapas
+    if(cl&&cl.visit_fee_enabled!==undefined){
+      setVisitFeeEnabled(!!cl.visit_fee_enabled);
+      setVisitFeeInput(cl.visit_fee!=null&&cl.visit_fee!==""?String(cl.visit_fee):"250");
+    }else{
+      setVisitFeeEnabled(!!(adj&&adj.ve));
+      setVisitFeeInput(adj&&adj.vi!=null?String(adj.vi):"250");
+    }
     adjOwnerRef.current=curClientId;
     setCommissionInput(cl&&cl.commission!=null?String(cl.commission):"");
     setMontazInput(cl&&cl.install_fee!=null?String(cl.install_fee):"");
@@ -641,9 +647,20 @@ export function App(p){
           var ok=window.confirm("UWAGA \u2014 ta zmiana usuwa "+(before-after)+" z "+before+" produkt\u00f3w tego klienta.\n\nJe\u015bli to nie by\u0142o zamierzone, kliknij Anuluj i od\u015bwie\u017c stron\u0119 (F5).\n\nZapisa\u0107 mimo to?");
           if(!ok)return cs;
         }
-        saveClientToSb(id,Object.assign({name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null,karnisz_draft:newCl.karnisz_draft||null,fabric_draft:newCl.fabric_draft||null,simpl_draft:newCl.simpl_draft||null,sewing_draft:newCl.sewing_draft||null},newCl.quote_label!==undefined?{quote_label:newCl.quote_label||null}:{}));
+        saveClientToSb(id,Object.assign({name:newCl.name,addr:newCl.addr,phone:newCl.phone||'',email:newCl.email||'',rooms:newCl.rooms,commission:newCl.commission||'',install_fee:newCl.install_fee||'',install_fee_mode:newCl.install_fee_mode||'percent',offer_draft:newCl.offer_draft||null,karnisz_draft:newCl.karnisz_draft||null,fabric_draft:newCl.fabric_draft||null,simpl_draft:newCl.simpl_draft||null,sewing_draft:newCl.sewing_draft||null},newCl.quote_label!==undefined?{quote_label:newCl.quote_label||null}:{},newCl.visit_fee_enabled!==undefined?{visit_fee_enabled:!!newCl.visit_fee_enabled,visit_fee:newCl.visit_fee!=null?String(newCl.visit_fee):null}:{}));
       }
       return updated;
+    });
+  }
+
+  // Koszt wizyty pomiarowej zapamiętywany na kliencie (clients.visit_fee_enabled / visit_fee,
+  // migracja 0072) — tak samo jak Polecenie i Montaż. Pola trafiają do zapisu tylko gdy
+  // kolumny istnieją (klient załadowany z bazy po migracji ma visit_fee_enabled !== undefined),
+  // żeby brak migracji nie zablokował zapisu całej karty klienta; wtedy zostaje localStorage.
+  function persistVisitFee(patch){
+    if(!curClientId)return;
+    updateClient(curClientId,function(cl){
+      return cl.visit_fee_enabled===undefined?cl:mg(cl,patch);
     });
   }
 
@@ -713,6 +730,7 @@ export function App(p){
       install_fee:cl.install_fee||null,
       install_fee_mode:cl.install_fee_mode||"percent"
     };
+    if(cl.visit_fee_enabled!==undefined){payload.visit_fee_enabled=!!cl.visit_fee_enabled;payload.visit_fee=cl.visit_fee!=null?String(cl.visit_fee):null;}
     if(cl.quote_label)payload.quote_label=cl.quote_label;
     sbApi.addClientFull(payload).then(function(data){
       var newCl=data&&data[0]?data[0]:mg(payload,{id:Date.now()});
@@ -2316,10 +2334,10 @@ export function App(p){
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,marginTop:0,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
-          ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){setVisitFeeEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
+          ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){var on=ev.target.checked;setVisitFeeEnabled(on);persistVisitFee({visit_fee_enabled:on,visit_fee:visitFeeInput});},style:{width:16,height:16,cursor:"pointer"}}),
           ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"Koszt wizyty pomiarowej")
         ),
-        visitFeeEnabled?ce("input",{type:"text",inputMode:"decimal",value:visitFeeInput,onChange:function(ev){setVisitFeeInput(ev.target.value);},placeholder:"np. 250",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
+        visitFeeEnabled?ce("input",{type:"text",inputMode:"decimal",value:visitFeeInput,onChange:function(ev){var v=ev.target.value;setVisitFeeInput(v);persistVisitFee({visit_fee:v});},placeholder:"np. 250",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
         visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł"):null,
         visitFeeEnabled&&visitFeeInput?ce("span",{style:{fontSize:13,color:"var(--gr)",fontWeight:600}},"\u2212"+visitFeeInput+" zł"):null,
         visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)",flexBasis:"100%"}},"zostanie odliczony od kosztu ca\u0142kowitego"):null
@@ -2445,10 +2463,10 @@ export function App(p){
       ),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}},
         ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}},
-          ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){setVisitFeeEnabled(ev.target.checked);},style:{width:16,height:16,cursor:"pointer"}}),
+          ce("input",{type:"checkbox",checked:visitFeeEnabled,onChange:function(ev){var on=ev.target.checked;setVisitFeeEnabled(on);persistVisitFee({visit_fee_enabled:on,visit_fee:visitFeeInput});},style:{width:16,height:16,cursor:"pointer"}}),
           ce("span",{style:{fontSize:13,fontWeight:600,color:"var(--t2)"}},"\uD83D\uDE97 Koszt wizyty")
         ),
-        visitFeeEnabled?ce("input",{type:"text",inputMode:"decimal",value:visitFeeInput,onChange:function(ev){setVisitFeeInput(ev.target.value);},placeholder:"kwota",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
+        visitFeeEnabled?ce("input",{type:"text",inputMode:"decimal",value:visitFeeInput,onChange:function(ev){var v=ev.target.value;setVisitFeeInput(v);persistVisitFee({visit_fee:v});},placeholder:"kwota",style:{width:100,padding:"8px 12px",fontSize:14,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",textAlign:"right"}}):null,
         visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł"):null,
         visitFeeEnabled?ce("span",{style:{fontSize:12,color:"var(--t3)",flexBasis:"100%"}},"zostanie odliczony od kosztu całkowitego"):null
       ),
