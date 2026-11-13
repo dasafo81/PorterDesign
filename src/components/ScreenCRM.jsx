@@ -108,6 +108,20 @@ export function fmtDate(iso){
   return d.toLocaleDateString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric"});
 }
 
+// Domyślny czas realizacji (w tygodniach) w mailu z potwierdzeniem wpłaty; ostatni wybór zapamiętany w przeglądarce
+var REALIZATION_WEEKS_DEFAULT=6;
+var REALIZATION_WEEKS_KEY="pd_realization_weeks";
+function readRealizationWeeks(){
+  try{
+    var n=parseInt(localStorage.getItem(REALIZATION_WEEKS_KEY),10);
+    if(n>=1&&n<=26)return n;
+  }catch(e){}
+  return REALIZATION_WEEKS_DEFAULT;
+}
+function saveRealizationWeeks(n){
+  try{localStorage.setItem(REALIZATION_WEEKS_KEY,String(n));}catch(e){}
+}
+
 // Deadline zamówienia: 4 tygodnie od dziś, jako lokalna data YYYY-MM-DD
 export function deadlineFromNow(){
   var t=new Date();
@@ -376,6 +390,9 @@ export function ModalDeal(p){
   // Szablony maili "Opinia - swobodna" / "Instrukcja prania i czyszczenia" oraz stan modala wysyłki
   var smt=useState(null),mailTpls=smt[0],setMailTpls=smt[1];
   var smk=useState(null),mailKind=smk[0],setMailKind=smk[1]; // "opinia" | "instrukcja" | "zaliczka" | null
+  // Mail "potwierdzenie wpłaty i start realizacji": wybrana liczba tygodni realizacji (pamiętana między mailami)
+  var smw=useState(readRealizationWeeks),mailWeeks=smw[0],setMailWeeks=smw[1];
+  var payTplRef=useRef(null);
   // Zaliczka 50% i OWU: faktury kandydujące do wysyłki, wybrana faktura, stan przygotowania maila
   // Podpis z Poczta \u2192 Ustawienia pokazywany w oknie maila (doklejany przy wysy\u0142ce); undefined = \u0142adowanie, null = brak
   var ssig=useState(undefined),mailSig=ssig[0],setMailSig=ssig[1];
@@ -1185,22 +1202,41 @@ export function ModalDeal(p){
   }
 
   // Mail "potwierdzenie wpłaty + start realizacji": kwota i numer z ostatniej opłaconej faktury zlecenia,
-  // termin z deadline'u karty (bez deadline'u — standardowe ok. 4 tygodni)
+  // termin: liczba tygodni wybierana w oknie maila (domyślnie 6) albo data z deadline'u karty ("deadline")
+  function paymentStartVars(tpl,weeks){
+    var paidInv=billList.filter(function(x){return billPaidAmount(x)>0;}).pop();
+    var wplata=paidInv?" "+billFmt(billPaidAmount(paidInv))+(paidInv.number?" (faktura nr "+paidInv.number+")":""):"";
+    var useDeadline=weeks==="deadline"&&deadline;
+    var n=parseInt(weeks,10)||REALIZATION_WEEKS_DEFAULT;
+    return {wplata:wplata,
+      terminZdanie:useDeadline?"Planowany termin realizacji: <b>"+fmtDate(deadline)+"</b>."
+        :"Czas realizacji wynosi ok. "+n+(n===1?" tygodnia":" tygodni")+" od momentu zaksięgowania wpłaty."};
+  }
+  function fillPaymentStartMail(tpl,weeks){
+    var vars=paymentStartVars(tpl,weeks);
+    setMailSubject(fillVars(tpl.subject,vars));
+    setMailBodyText(dropEmptyParas(fillVars(tpl.body,vars)));
+  }
   function openPaymentStartMail(){
     if(!cl)return;
     setMailBusy(false);
     loadSystemTemplate("wplata_start").then(function(tpl){
-      var paidInv=billList.filter(function(x){return billPaidAmount(x)>0;}).pop();
-      var wplata=paidInv?" "+billFmt(billPaidAmount(paidInv))+(paidInv.number?" (faktura nr "+paidInv.number+")":""):"";
-      var vars={wplata:wplata,
-        terminZdanie:deadline?"Planowany termin realizacji: <b>"+fmtDate(deadline)+"</b>.":"Czas realizacji wynosi ok. 4 tygodni od momentu rozpoczęcia."};
+      payTplRef.current=tpl;
+      var weeks=readRealizationWeeks();
+      setMailWeeks(weeks);
       setMailErr(null);setMailMsg(null);
-      setMailSubject(fillVars(tpl.subject,vars));
-      setMailBodyText(dropEmptyParas(fillVars(tpl.body,vars)));
+      fillPaymentStartMail(tpl,weeks);
       setMailTo(cl.email||"");
       setMailAttachments([]);
       setMailKind("wplata_start");
     });
+  }
+  // Zmiana liczby tygodni odtwarza treść maila z szablonu (nadpisuje ręczne zmiany w treści)
+  function changePaymentWeeks(v){
+    var weeks=v==="deadline"?"deadline":parseInt(v,10);
+    setMailWeeks(weeks);
+    if(weeks!=="deadline")saveRealizationWeeks(weeks);
+    if(payTplRef.current)fillPaymentStartMail(payTplRef.current,weeks);
   }
 
   // Znacznik wysłania potwierdzenia wpłaty i startu realizacji (deals.payment_confirm_sent_at, migracja 0067)
@@ -2242,6 +2278,17 @@ export function ModalDeal(p){
             ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5}},
               "Możesz dodać kilka adresów oddzielając przecinkiem — np. mąż/żona klientki")
           ),
+          mailKind==="wplata_start"?ce("div",null,
+            ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Czas realizacji"),
+            ce("select",{value:String(mailWeeks),onChange:function(ev){changePaymentWeeks(ev.target.value);},style:INP},
+              deadline?ce("option",{value:"deadline"},"Data z deadline'u karty ("+fmtDate(deadline)+")"):null,
+              [1,2,3,4,5,6,7,8,9,10,11,12].map(function(n){
+                return ce("option",{key:n,value:String(n)},"ok. "+n+" "+(n===1?"tydzień":(n>=2&&n<=4)?"tygodnie":"tygodni"));
+              })
+            ),
+            ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5}},
+              "Zmiana wstawia termin do treści maila od nowa (nadpisuje ręczne poprawki w treści).")
+          ):null,
           ce("div",null,
             ce("label",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.07em",color:"var(--t2)",textTransform:"uppercase",display:"block",marginBottom:6}},"Temat"),
             ce("input",{value:mailSubject,onChange:function(ev){setMailSubject(ev.target.value);},style:INP})
