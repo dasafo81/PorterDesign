@@ -65,6 +65,18 @@ export function clientTotal2(cl){
   return comm>0?sum*(1+comm/100):sum;
 }
 
+// Koszt wizyty pomiarowej odliczany od wyceny. Źródło prawdy to klient w bazie (migracja 0072),
+// więc wynik jest taki sam na każdym urządzeniu; localStorage (pd_adj_) tylko jako zapas, gdy kolumn
+// jeszcze nie ma. Zwraca kwotę w zł (0 = bez odliczenia), zaokrągloną do 10 zł.
+export function dealVisitFee(cl,adj){
+  if(cl&&cl.visit_fee_enabled!==undefined){
+    var v=+String(cl.visit_fee==null?"":cl.visit_fee).replace(",",".")||0;
+    return (cl.visit_fee_enabled&&v>0)?roundTo10(v):0;
+  }
+  var vi=adj?(+String(adj.vi).replace(",",".")||0):0;
+  return (adj&&adj.ve&&vi>0)?roundTo10(vi):0;
+}
+
 // Wartość deala tak jak na karcie w Kanbanie: wycena (warianty A + prowizja) + montaż, zaokrąglone do 10 zł
 export function dealTotal(cl){
   if(!cl)return 0;
@@ -439,9 +451,8 @@ export function ModalDeal(p){
   try{adjD=cl?JSON.parse(localStorage.getItem("pd_adj_"+cl.id)||"null"):null;}catch(e){}
   var quoteGross=roundTo10(quoteBreak.total+quoteMontazVal);
   var adjDiscountIn=adjD?(+String(adjD.di).replace(",",".")||0):0;
-  var adjVisitIn=adjD?(+String(adjD.vi).replace(",",".")||0):0;
   var quoteDiscountVal=(adjD&&adjD.de&&adjDiscountIn>0)?(adjD.dm==="percent"?roundTo10(quoteGross*adjDiscountIn/100):roundTo10(adjDiscountIn)):0;
-  var quoteVisitFeeVal=(adjD&&adjD.ve&&adjVisitIn>0)?roundTo10(adjVisitIn):0;
+  var quoteVisitFeeVal=dealVisitFee(cl,adjD);
   var clientTotal=Math.max(0,roundTo10(quoteGross-quoteDiscountVal-quoteVisitFeeVal));
 
   // Wycena zamrożona przy wystawieniu pierwszej faktury (deals.invoiced_quote, migracja 0065).
@@ -449,7 +460,31 @@ export function ModalDeal(p){
   // (np. zamiennik tkaniny z magazynu) nie rusza kwoty drugiej faktury.
   var sfq=useState(d.invoiced_quote||null),frozenQuote=sfq[0],setFrozenQuote=sfq[1];
   var billTotal=(frozenQuote&&+frozenQuote.total>0)?+frozenQuote.total:clientTotal;
-  function buildQuoteSnapshot(invoiceNumber){
+  // Wycena faktycznie wysłana/wygenerowana dla klienta = najnowsza oferta z tabeli offers.
+  // Kwota na ofercie: total_gross (pozycje + montaż) − rabat − koszt wizyty (migracja 0073),
+  // czyli to samo "Razem", które klient widział w PDF/mailu. Karta deala liczy "bieżącą" wycenę
+  // na żywo z klienta, więc po późniejszych zmianach obie kwoty mogą się różnić.
+  var sofr=useState(null),sentOffer=sofr[0],setSentOffer=sofr[1];
+  React.useEffect(function(){
+    if(!cl)return;
+    var alive=true;
+    sbApi.getClientOffers(cl.id).then(function(rows){if(alive)setSentOffer((rows||[])[0]||null);}).catch(function(){});
+    return function(){alive=false;};
+  },[cl&&cl.id]);
+  var sentTotal=sentOffer?Math.max(0,roundTo10((+sentOffer.total_gross||0)-(+sentOffer.discount_amount||0)-(+sentOffer.visit_fee||0))):0;
+  // Pierwsza faktura (jeszcze bez zamrożonej wyceny): gdy kwota wysłana różni się od bieżącej,
+  // domyślnie liczymy od wysłanej — klient dostał ją mailem i tę zna.
+  var sbp=useState("sent"),basisPick=sbp[0],setBasisPick=sbp[1];
+  var sentMismatchFirst=!frozenQuote&&sentTotal>0&&Math.abs(sentTotal-clientTotal)>=1;
+  var firstFromSent=sentMismatchFirst&&basisPick==="sent";
+  var firstBasis=firstFromSent?sentTotal:clientTotal;
+  function buildQuoteSnapshot(invoiceNumber,fromSent){
+    if(fromSent&&sentTotal>0)return {
+      frozen_at:new Date().toISOString(), total:sentTotal, source:"offer",
+      offer_id:sentOffer.id, offer_number:sentOffer.number||null,
+      bez_montazu:null, montaz:0, montaz_pct:0, rabat:0, wizyta:0, rooms:[],
+      invoice_number:invoiceNumber||null
+    };
     return {
       frozen_at:new Date().toISOString(), total:clientTotal,
       bez_montazu:quoteBezMontazu, montaz:quoteMontazVal, montaz_pct:Math.round(montazRateD*100),
@@ -681,7 +716,9 @@ export function ModalDeal(p){
   // Pierwsza faktura (50% wyceny) wystawiana z karty deala — wybrany podmiot decyduje o VAT
   // (Paulina: stawka domyślna, Damian: zw. z art. 113). Nabywca z klienta, oferta = najnowsza oferta klienta.
   function issueFirstHalf(ent){
-    if(!cl||!(clientTotal>0))return;
+    if(!cl||!(firstBasis>0))return;
+    // Kwota, od której liczymy fakturę, i skąd pochodzi — ustalone w chwili kliknięcia
+    var basisTotal=firstBasis,basisFromSent=firstFromSent;
     setBillBusy(true);setBillErr(null);
     sbApi.getClientOffers(cl.id).catch(function(){return [];}).then(function(offers){
       var o=(offers||[])[0]||null;
@@ -693,13 +730,13 @@ export function ModalDeal(p){
       if(!cl.quote_no)return null;
       return sbApi.addOffer({
         client_id:cl.id, number:cl.quote_no, kind:"uproszczona",
-        total_gross:clientTotal, valid_until:null, notes:"", discount_amount:0
+        total_gross:basisTotal, valid_until:null, notes:"", discount_amount:0
       }).catch(function(e){console.error("Błąd zapisu oferty:",e);return null;});
     }).then(function(o){
       var s=billSettings||{};
       var exempt=!!(ent&&ent.vat_status==="zwolniony");
       var vr=exempt?-1:(+(s.default_vat)||23);
-      var gross=+(clientTotal/2).toFixed(2);
+      var gross=+(basisTotal/2).toFixed(2);
       var item=Object.assign({position:1,name:"Aranżacje okienne",quantity:1,unit:s.default_unit||"szt",vat_rate:vr,pkwiu:""},
         calcLineFromGross(gross,1,vr),{unit_gross:gross});
       var sa=(cl.postal||cl.city)?{addr:cl.addr||"",postal:cl.postal||"",city:cl.city||""}:splitClientAddr(cl.addr);
@@ -713,7 +750,7 @@ export function ModalDeal(p){
         buyer_email:cl.email||"",
         entity_id:ent&&ent.id?ent.id:undefined,
         notes:notes, invoice_items:[item]
-      },snap:buildQuoteSnapshot()});
+      },snap:buildQuoteSnapshot(null,basisFromSent)});
     }).finally(function(){setBillBusy(false);});
   }
 
@@ -1405,7 +1442,9 @@ export function ModalDeal(p){
 
         frozenQuote?ce(SectionCard,{icon:"🔒",title:"Wycena — podstawa faktur"},
           ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5,marginBottom:8}},
-            "Wycena wysłana klientowi, z której wystawiono pierwszą fakturę"+(frozenQuote.invoice_number?" ("+frozenQuote.invoice_number+")":"")+
+            (frozenQuote.source==="offer"
+              ?"Kwota z oferty wysłanej klientowi"+(frozenQuote.offer_number?" ("+frozenQuote.offer_number+")":"")+(frozenQuote.invoice_number?", od której wystawiono pierwszą fakturę ("+frozenQuote.invoice_number+")":"")
+              :"Wycena wysłana klientowi, z której wystawiono pierwszą fakturę"+(frozenQuote.invoice_number?" ("+frozenQuote.invoice_number+")":""))+
             (frozenQuote.frozen_at?" — zapisana "+fmtDate(frozenQuote.frozen_at):"")+
             ". Druga faktura liczy się z tej kwoty, nawet gdy bieżąca wycena się zmieni."),
           ce("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:10}},
@@ -1439,6 +1478,32 @@ export function ModalDeal(p){
             },style:{marginTop:4,border:"none",background:"none",padding:0,color:"var(--violet)",fontSize:11,fontWeight:700,cursor:"pointer",textDecoration:"underline"}},
               "Zaktualizuj podstawę do bieżącej wyceny"))
           ):null
+        ):null,
+
+        // Wycena faktycznie wysłana klientowi (najnowsza oferta) obok bieżącego podglądu z karty
+        sentTotal>0?ce(SectionCard,{icon:"📨",title:"Wycena wysłana klientowi"+(sentOffer.number?" — "+sentOffer.number:"")},
+          ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:14,fontWeight:700,color:"var(--t1)"}},
+            ce("span",null,"Kwota z oferty"+(sentOffer.created_at?" ("+fmtDate(sentOffer.created_at)+")":"")),
+            ce("span",null,sentTotal.toLocaleString("pl-PL")+" zł")),
+          ((+sentOffer.discount_amount||0)>0||(+sentOffer.visit_fee||0)>0)?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:2}},
+            "po odliczeniu"+((+sentOffer.discount_amount||0)>0?" rabatu "+(+sentOffer.discount_amount).toLocaleString("pl-PL")+" zł":"")
+            +(((+sentOffer.discount_amount||0)>0&&(+sentOffer.visit_fee||0)>0)?" i":"")
+            +((+sentOffer.visit_fee||0)>0?" kosztu wizyty "+(+sentOffer.visit_fee).toLocaleString("pl-PL")+" zł":"")):null,
+          (function(){
+            var cmp=frozenQuote?billTotal:clientTotal;
+            var diff=sentTotal-cmp;
+            if(Math.abs(diff)<1)return ce("div",{style:{fontSize:11,color:"var(--gr)",marginTop:6}},
+              "✓ Zgodna z "+(frozenQuote?"podstawą faktur":"bieżącą wyceną w karcie"));
+            return ce("div",{style:{marginTop:8,padding:"7px 9px",borderRadius:8,background:"var(--amber-l, var(--bg2))",fontSize:11,color:"var(--t2)",lineHeight:1.5}},
+              (frozenQuote?"Podstawa faktur: ":"Bieżąca wycena w karcie: "),ce("b",null,cmp.toLocaleString("pl-PL")+" zł"),
+              " (wysłana jest o "+Math.abs(diff).toLocaleString("pl-PL")+" zł "+(diff>0?"wyższa":"niższa")+"). Sprawdź, którą kwotę klient dostał w mailu.",
+              frozenQuote?ce("div",null,ce("button",{onClick:function(){
+                if(confirm("Ustawić podstawę faktur na kwotę wysłaną klientowi ("+sentTotal.toLocaleString("pl-PL")+" zł)? Kwota do zafakturowania przeliczy się od nowa."))
+                  freezeQuote(buildQuoteSnapshot(frozenQuote.invoice_number,true));
+              },style:{marginTop:4,border:"none",background:"none",padding:0,color:"var(--violet)",fontSize:11,fontWeight:700,cursor:"pointer",textDecoration:"underline"}},
+                "Ustaw podstawę faktur na kwotę wysłaną")):null
+            );
+          })()
         ):null,
 
         quoteBreak.rooms.length>0?ce(SectionCard,{icon:"📋",title:frozenQuote?"Bieżąca wycena (roboczo)":"Podgląd wyceny"},
@@ -1658,10 +1723,23 @@ export function ModalDeal(p){
           billList.length===0
             ?ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
               ce("div",{style:{fontSize:12,color:"var(--t3)",lineHeight:1.5}},
-                "Brak faktur sprzedażowych powiązanych z tym zleceniem."+(clientTotal>0
-                  ?" Zaliczka 50%: "+billFmt(clientTotal/2)+"."
+                "Brak faktur sprzedażowych powiązanych z tym zleceniem."+(firstBasis>0
+                  ?" Zaliczka 50%: "+billFmt(firstBasis/2)+(firstFromSent?" (z kwoty wysłanej klientowi).":".")
                   :" Brak kwoty wyceny — uzupełnij wycenę, aby wystawić zaliczkę.")),
-              (clientTotal>0&&cl)?(billEntities.length?billEntities:[{}]).map(function(ent){
+              sentMismatchFirst?ce("div",{style:{padding:"8px 10px",borderRadius:8,background:"var(--amber-l, var(--bg2))",fontSize:11,color:"var(--t2)",lineHeight:1.5}},
+                ce("div",{style:{fontWeight:700,marginBottom:4}},"⚠ Wycena wysłana klientowi różni się od bieżącej w karcie"),
+                ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+                  [["sent","Wysłana: "+sentTotal.toLocaleString("pl-PL")+" zł"],["current","Bieżąca: "+clientTotal.toLocaleString("pl-PL")+" zł"]].map(function(o){
+                    var on=basisPick===o[0];
+                    return ce("button",{key:o[0],type:"button",onClick:function(){setBasisPick(o[0]);},
+                      style:{padding:"5px 10px",borderRadius:7,fontSize:11,fontWeight:700,cursor:"pointer",
+                        border:"1.5px solid "+(on?"var(--t1)":"var(--bd2)"),background:on?"var(--t1)":"transparent",color:on?"#fff":"var(--t2)"}},
+                      (on?"● ":"○ ")+o[1]);
+                  })
+                ),
+                ce("div",{style:{marginTop:4}},"Faktura 50% zostanie wystawiona od kwoty zaznaczonej powyżej.")
+              ):null,
+              (firstBasis>0&&cl)?(billEntities.length?billEntities:[{}]).map(function(ent){
                 return ce("button",{key:ent.id||"def",onClick:function(){issueFirstHalf(ent);},disabled:billBusy||!billSettings,
                   style:{padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
                     fontSize:12,fontWeight:700,cursor:(billBusy||!billSettings)?"not-allowed":"pointer",opacity:(billBusy||!billSettings)?0.6:1}},
@@ -3608,9 +3686,8 @@ function DealCard(cp){
   var adj=null;
   try{adj=cl?JSON.parse(localStorage.getItem("pd_adj_"+cl.id)||"null"):null;}catch(e){}
   var adjDiscIn=adj?(+String(adj.di).replace(",",".")||0):0;
-  var adjVisitIn=adj?(+String(adj.vi).replace(",",".")||0):0;
   var discVal=(adj&&adj.de&&adjDiscIn>0)?(adj.dm==="percent"?roundTo10(gross*adjDiscIn/100):roundTo10(adjDiscIn)):0;
-  var visitVal=(adj&&adj.ve&&adjVisitIn>0)?roundTo10(adjVisitIn):0;
+  var visitVal=dealVisitFee(cl,adj);
   var total=gross>0?Math.max(0,roundTo10(gross-discVal-visitVal)):0;
   // Terminy na karcie zależne od etapu: Pomiar → termin pomiaru; Zamówienie/Realizacja → deadline;
   // Montaż → deadline + termin montażu

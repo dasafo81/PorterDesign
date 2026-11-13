@@ -564,13 +564,23 @@ export function generateSimplifiedPDFFromRows(client,roomsData,montaz,validUntil
   // Zapis w tle do historii ofert klienta (pozwala później wystawić fakturę
   // "na podstawie" tej oferty) — nie blokuje otwarcia okna PDF.
   if(client&&client.id){
-    sbApi.addOffer({
+    var offerPayload={
       client_id:client.id, number:offerNo, kind:"uproszczona",
       total_gross:roundTo10((offerTotal+montazAmount)||0),
       valid_until:((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil.toISOString().slice(0,10):null,
       notes:titleSuffix||"",
       discount_amount:roundTo10(+discount>0?+discount:0)
-    }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
+    };
+    // Koszt wizyty (migracja 0073) tylko gdy > 0; bez kolumny ponawiamy zapis bez niego.
+    var vfee=roundTo10(+visitFee>0?+visitFee:0);
+    if(vfee>0){
+      sbApi.addOffer(Object.assign({},offerPayload,{visit_fee:vfee})).catch(function(e){
+        console.error("Błąd zapisu oferty z kosztem wizyty (migracja 0073?):",e);
+        return sbApi.addOffer(offerPayload).catch(function(e2){console.error("Błąd zapisu oferty:",e2);});
+      });
+    }else{
+      sbApi.addOffer(offerPayload).catch(function(e){console.error("Błąd zapisu oferty:",e);});
+    }
   }
   openPDFWindow(html,(client.name||"")+" - Oferta "+offerNo+(titleSuffix||""));
 }

@@ -7422,9 +7422,9 @@ export function getPDFOfferNumber(client){
 // później wystawić fakturę "na podstawie" tej oferty). Działa w tle: nie jest
 // await-owana przed otwarciem okna PDF, żeby nie zablokować popupu, a błąd
 // zapisu nie przerywa generowania oferty (klient i tak dostaje PDF).
-function persistOffer(client,number,kind,total,validUntil,notes,discount){
+function persistOffer(client,number,kind,total,validUntil,notes,discount,visitFee){
   if(!client||!client.id)return;
-  sbApi.addOffer({
+  var payload={
     client_id:client.id,
     number:number,
     kind:kind,
@@ -7432,21 +7432,32 @@ function persistOffer(client,number,kind,total,validUntil,notes,discount){
     valid_until:((validUntil instanceof Date)&&!isNaN(validUntil))?validUntil.toISOString().slice(0,10):null,
     notes:notes||"",
     discount_amount:roundTo10(+discount>0?+discount:0)
-  }).catch(function(e){console.error("Błąd zapisu oferty:",e);});
+  };
+  // Koszt wizyty (migracja 0073) — dołączany tylko gdy > 0; gdy kolumny jeszcze nie ma,
+  // ponawiamy zapis bez niego, żeby sama oferta nie przepadła.
+  var vf=roundTo10(+visitFee>0?+visitFee:0);
+  if(vf>0){
+    sbApi.addOffer(Object.assign({},payload,{visit_fee:vf})).catch(function(e){
+      console.error("Błąd zapisu oferty z kosztem wizyty (migracja 0073?):",e);
+      return sbApi.addOffer(payload).catch(function(e2){console.error("Błąd zapisu oferty:",e2);});
+    });
+    return;
+  }
+  sbApi.addOffer(payload).catch(function(e){console.error("Błąd zapisu oferty:",e);});
 }
 
 // Zapis oferty przy WYSYŁCE mailem (a nie tylko przy "Podgląd PDF"). Bez tego oferta
 // wysłana klientowi mailem nie trafiała do tabeli offers, więc w module Faktury lista
 // "Powiązana oferta" była pusta. Kwota = suma wierszy + montaż (jak w generate*PDFFromRows).
 // rows: wiersze wyceny uproszczonej (rd.total) albo szczegółowej (r.total).
-export function persistOfferFromRows(client,kind,rows,montaz,validUntil,notes,discount){
+export function persistOfferFromRows(client,kind,rows,montaz,validUntil,notes,discount,visitFee){
   var offerTotal=(rows||[]).reduce(function(a,r){return a+(+r.total||0);},0);
   var montazParam=montaz||0;
   var montazModeV=montazParam.mode||"percent";
   var montazInputV=montazParam.mode?montazParam.value:montazParam;
   var montazPctV=montazModeV==="amount"?0:montazInputV;
   var montazAmount=montazModeV==="amount"?roundTo10(montazInputV):(montazPctV>0?roundTo10(offerTotal*montazPctV):0);
-  persistOffer(client,getPDFOfferNumber(client),kind,offerTotal+montazAmount,validUntil,notes,discount);
+  persistOffer(client,getPDFOfferNumber(client),kind,offerTotal+montazAmount,validUntil,notes,discount,visitFee);
 }
 
 // Zwraca czytelny opis szczegółów produktu (tkanina/kolor/kolor lameli/kolor karnisza)
@@ -8370,7 +8381,7 @@ export function generateOfferPDFFromRows(client,rows,montaz,offerNotes,validUnti
   var montazInputV=montazParam.mode?montazParam.value:montazParam;
   var montazPctV=montazModeV==="amount"?0:montazInputV;
   var montazAmount=montazModeV==="amount"?roundTo10(montazInputV):(montazPctV>0?roundTo10(offerTotal*montazPctV):0);
-  persistOffer(client,offerNo,"szczegolowa",offerTotal+montazAmount,validUntil,offerNotes,discount);
+  persistOffer(client,offerNo,"szczegolowa",offerTotal+montazAmount,validUntil,offerNotes,discount,visitFee);
   openPDFWindow(html, offerNo,{landscape:true});
 }
 

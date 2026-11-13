@@ -2177,7 +2177,7 @@ export function App(p){
       var html=buildSimplifiedPDFHtmlFromRows(curClient,rows,montazP,null,"",mailDiscountVal,mailVisitFeeVal);
       if(!html){alert("Brak pozycji do wyceny.");return;}
       mailDoc(html,"Oferta - "+(curClient.name||"klient")+".pdf",{onSent:function(){
-        persistOfferFromRows(curClient,"uproszczona",rows,montazP,null,"",mailDiscountVal);
+        persistOfferFromRows(curClient,"uproszczona",rows,montazP,null,"",mailDiscountVal,mailVisitFeeVal);
         markQuoteSent("uproszczona");
       }});
     }
@@ -2491,7 +2491,7 @@ export function App(p){
           var vu2=offerValidUntil?new Date(offerValidUntil):null;
           mailDoc(buildOfferPDFHtmlFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu2,previewDiscountVal,previewVisitFeeVal),
             "Wycena - "+(curClient.name||"klient")+".pdf",{onSent:function(){
-              persistOfferFromRows(curClient,"szczegolowa",offerPreviewRows,previewMontazParam,vu2,offerNotes,previewDiscountVal);
+              persistOfferFromRows(curClient,"szczegolowa",offerPreviewRows,previewMontazParam,vu2,offerNotes,previewDiscountVal,previewVisitFeeVal);
               markQuoteSent("szczegolowa");
             }});
         },style:{padding:"14px 20px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t1)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"\u2709\uFE0F Wy\u015blij mailem")
@@ -2828,7 +2828,7 @@ export function App(p){
       }
       mailDoc(buildSimplifiedPDFHtmlFromRows(curClient,simplRowsOut,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal),
         "Oferta - "+(curClient.name||"klient")+".pdf",{template:"wstepna",onSent:function(){
-          persistOfferFromRows(curClient,"uproszczona",simplRowsOut,simplMontazP,vu,"",simplDiscountVal);
+          persistOfferFromRows(curClient,"uproszczona",simplRowsOut,simplMontazP,vu,"",simplDiscountVal,simplVisitFeeVal);
           markQuoteSent("uproszczona");
         }});
     }
