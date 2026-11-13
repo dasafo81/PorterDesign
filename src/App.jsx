@@ -2834,6 +2834,20 @@ export function App(p){
     }
     var simplGrandTotal=simplEditableRows.reduce(function(a,rd){return a+rd.windows.reduce(function(b,wd){return b+wd.items.reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
     var simplShownDiscount=calcSimplDiscount(roundTo10(simplGrandTotal)+(montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(simplGrandTotal*((+montazInput||0)/100))));
+    // Pasek podsumowania kosztow — te same skladniki co w Podsumowaniu / wycenie szczegolowej.
+    // Polecenie jest juz wliczone w ceny pozycji, wiec wydzielamy je z sumy (produkty = suma/(1+polecenie)).
+    var simplCommPct=(+commissionInput||0)/100;
+    var simplGrandRounded=roundTo10(simplGrandTotal);
+    var simplProductsVal=simplCommPct>0?roundTo10(simplGrandTotal/(1+simplCommPct)):simplGrandRounded;
+    var simplCommVal=simplGrandRounded-simplProductsVal;
+    var simplBarMontazVal=montazMode==="amount"?roundTo10(+montazInput||0):roundTo10(simplGrandTotal*((+montazInput||0)/100));
+    var simplBarVisitFee=(visitFeeEnabled&&(+visitFeeInput)>0)?roundTo10(+visitFeeInput):0;
+    var simplFinalTotal=Math.max(0,roundTo10(simplGrandRounded+simplBarMontazVal-simplShownDiscount-simplBarVisitFee));
+    var simplBarRow=function(label,val,minus){
+      return ce("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13,color:"var(--t2)"}},
+        ce("span",null,label),
+        ce("span",{style:{fontVariantNumeric:"tabular-nums"}},(minus?"\u2212":"")+val+" z\u0142"));
+    };
     function resetSimplPreviewFromSource(){
       if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny (wg bieżących wariantów)?\n\nNadpisze to zmiany etykiet i cen wprowadzone na tym ekranie."))return;
       var freshGroups=buildSimplifiedGroups(curClient);
@@ -2939,9 +2953,16 @@ export function App(p){
           ce("span",{style:{fontSize:13,color:"var(--t2)"}},"Rabat ukryty (naliczony w cenach, bez osobnej linii na wycenie)")
         ):null
       ),
-      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,marginTop:16}},
-        ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},simplShownDiscount>0?"\u0141\u0105cznie po rabacie (\u2212"+simplShownDiscount+" zł)":"\u0141\u0105cznie"),
-        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},Math.max(0,roundTo10(simplGrandTotal)-simplShownDiscount)+" zł")
+      ce("div",{style:{background:"var(--bg)",boxShadow:"var(--nm-out)",borderRadius:16,padding:"20px 22px",display:"flex",flexDirection:"column",gap:6,marginBottom:16,marginTop:16}},
+        simplBarRow("\u0141\u0105cznie",simplProductsVal),
+        simplBarRow("Polecenie"+(simplCommPct>0?" ("+commissionInput+"%)":""),simplCommVal),
+        simplBarRow("Monta\u017c"+(montazInput?" ("+(montazMode==="amount"?"kwota":montazInput+"%")+")":""),simplBarMontazVal),
+        simplShownDiscount>0?simplBarRow("Rabat",simplShownDiscount,true):null,
+        simplBarVisitFee>0?simplBarRow("Koszt wizyty (odliczony)",simplBarVisitFee,true):null,
+        ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid var(--bd2)",paddingTop:10,marginTop:4}},
+          ce("span",{style:{fontSize:14,color:"var(--t2)",letterSpacing:"0.04em"}},"Razem"),
+          ce("span",{style:{fontSize:22,fontWeight:800,color:"var(--t1)"}},simplFinalTotal+" z\u0142")
+        )
       ),
       ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:16}},
         ce("label",{style:{fontSize:13,color:"var(--t2)"}},"Oferta ważna do:"),
