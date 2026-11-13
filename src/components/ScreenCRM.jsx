@@ -417,6 +417,9 @@ export function ModalDeal(p){
   var sblAll=useState([]),billUnlinked=sblAll[0],setBillUnlinked=sblAll[1];
   var sblO=useState(false),billLinkOpen=sblO[0],setBillLinkOpen=sblO[1];
   var sblQ=useState(""),billLinkQuery=sblQ[0],setBillLinkQuery=sblQ[1];
+  // Dowolna faktura rozliczenia (typ VAT/EKO, kwota, podmiot) — do konfiguracji innych niż 2×50%,
+  // np. 3 faktury: 2 zwykłe + 1 EKO. null = panel zamknięty.
+  var sbc=useState(null),billCustom=sbc[0],setBillCustom=sbc[1]; // {type,mode,amount,pct,entityId}
   var sblB=useState(null),billLinkBusyId=sblB[0],setBillLinkBusyId=sblB[1];
   var smb=useState(false),mailBusy=smb[0],setMailBusy=smb[1];
   var sme=useState(null),mailErr=sme[0],setMailErr=sme[1];
@@ -604,8 +607,9 @@ export function ModalDeal(p){
   // przy pierwszym załadowaniu listy faktur — bez czekania na kolejną wysyłkę.
   React.useEffect(function(){
     if(!billInvoices||invoiceSent)return;
-    var hasLaterSent=billInvoices.some(function(x,i){return i>0&&!!x.sent_at;});
-    if(hasLaterSent)markInvoiceSent();
+    // Przy 3+ fakturach "Wysłano fakturę (FV)" dopiero gdy wysłano wszystkie po zaliczce.
+    var later=billInvoices.slice(1);
+    if(later.length>0&&later.every(function(x){return !!x.sent_at;}))markInvoiceSent();
   },[billInvoices]);
 
   // Powiązanie istniejącej, dotąd niepodpiętej faktury z tym zleceniem (deal_id), a gdy
@@ -683,6 +687,133 @@ export function ModalDeal(p){
     }).finally(function(){setBillBusy(false);});
   }
 
+  // ── DOWOLNA FAKTURA ROZLICZENIA (np. 3 faktury: 2 zwykłe + 1 EKO) ─────────
+  // Podstawa % wyceny i "reszta": przy pierwszej fakturze — kwota z wyceny (firstBasis),
+  // później — wycena zamrożona (billTotal) pomniejszona o już zafakturowane.
+  var customBasis=billList.length?billTotal:firstBasis;
+  var customRest=billList.length?billRemaining:(firstBasis>0?firstBasis:null);
+  function openBillCustom(){
+    var first=billList[0];
+    var entId=(first&&first.entity_id)||(billEntities[0]&&billEntities[0].id)||"";
+    setBillErr(null);
+    setBillCustom({type:"vat",mode:(customRest!==null&&customRest>10)?"rest":"amount",amount:"",pct:"",entityId:entId});
+  }
+  function billCustomAmount(c){
+    if(!c)return 0;
+    if(c.mode==="rest")return customRest>0?+customRest.toFixed(2):0;
+    if(c.mode==="pct")return +(customBasis*(+String(c.pct).replace(",",".")||0)/100).toFixed(2);
+    return +(+String(c.amount).replace(",",".")||0).toFixed(2);
+  }
+  function issueCustomInvoice(){
+    var c=billCustom;
+    if(!c||!cl)return;
+    var gross=billCustomAmount(c);
+    if(!(gross>0)){setBillErr("Podaj kwotę faktury większą od zera.");return;}
+    if(customRest!==null&&gross>customRest+10&&
+      !confirm("Kwota "+billFmt(gross)+" jest większa niż pozostałe do zafakturowania ("+billFmt(customRest)+"). Kontynuować?"))return;
+    var ent=billEntities.find(function(e){return String(e.id)===String(c.entityId);})||{};
+    var eko=c.type==="eko";
+    var exempt=!!(ent.vat_status==="zwolniony");
+    var s=billSettings||{};
+    var first=billList[0];
+    var isFirstInv=!first;
+    var basisTotal=firstBasis,basisFromSent=firstFromSent;
+    setBillBusy(true);setBillErr(null);
+    (first?sbApi.getInvoice(first.id):Promise.resolve(null)).then(function(full){
+      if(first&&!full)throw new Error("Nie udało się pobrać pierwszej faktury.");
+      // Oferta: jak na pierwszej fakturze; przy pierwszej — najnowsza oferta klienta
+      // (a gdy jej brak, a klient ma numer wyceny — zapisujemy ją, jak przy "Wystaw fakturę 50%").
+      var offerP=full
+        ?Promise.resolve(full.offer_id?{id:full.offer_id,number:full.offer_number||""}:null)
+        :sbApi.getClientOffers(cl.id).catch(function(){return [];}).then(function(offers){
+          var o=(offers||[])[0]||null;
+          if(o)return o;
+          if(!cl.quote_no||!(basisTotal>0))return null;
+          return sbApi.addOffer({client_id:cl.id,number:cl.quote_no,kind:"uproszczona",total_gross:basisTotal,
+            valid_until:null,notes:"",discount_amount:0}).catch(function(){return null;});
+        });
+      return offerP.then(function(o){
+        var srcItems=(full&&full.invoice_items)||[];
+        var it0=srcItems[0]||null;
+        // Stawka VAT: EKO zawsze 0%; zwykła — jak na pierwszej fakturze tego samego podmiotu
+        // (o ile nie była EKO), w przeciwnym razie wg statusu VAT wybranego podmiotu.
+        var vr;
+        if(eko)vr=0;
+        else if(it0&&full.doc_type!=="eko"&&String(full.entity_id||"")===String(ent.id||""))vr=it0.vat_rate;
+        else vr=exempt?-1:(+(s.default_vat)||23);
+        var item=Object.assign({position:1,name:"Aranżacje okienne",quantity:1,
+          unit:(it0&&it0.unit)||s.default_unit||"szt",vat_rate:vr,pkwiu:""},
+          calcLineFromGross(gross,1,vr),{unit_gross:gross});
+        var sa=full?null:((cl.postal||cl.city)?{addr:cl.addr||"",postal:cl.postal||"",city:cl.city||""}:splitClientAddr(cl.addr));
+        var inv={
+          doc_type:eko?"eko":"vat", direction:"sprzedaz",
+          payment_method:full?full.payment_method:(s.default_payment_method||"przelew"),
+          client_id:(full&&full.client_id)||cl.id, deal_id:d.id,
+          contact_id:full?(full.contact_id||null):(cl.contact_id||null),
+          offer_id:o?o.id:null, offer_number:o?(o.number||""):"",
+          buyer_name:full?full.buyer_name:(cl.name||""), buyer_nip:full?full.buyer_nip:(cl.nip||""),
+          buyer_address:full?full.buyer_address:(sa.addr||""), buyer_postal:full?full.buyer_postal:(sa.postal||""),
+          buyer_city:full?full.buyer_city:(sa.city||""), buyer_email:full?full.buyer_email:(cl.email||""),
+          entity_id:ent.id||(full?full.entity_id:undefined),
+          notes:(!eko&&exempt)?"Zwolnienie z VAT na podstawie art. 113 ust. 1 ustawy o VAT":"",
+          invoice_items:[item]
+        };
+        if(full&&full.seller_snapshot&&String(full.entity_id||"")===String(ent.id||""))inv.seller_snapshot=full.seller_snapshot;
+        setBillEditor({entity:ent,invoice:inv,
+          snap:isFirstInv?buildQuoteSnapshot(null,basisFromSent):undefined});
+        setBillCustom(null);
+      });
+    }).catch(function(e){
+      setBillErr((e&&e.message)||"Nie udało się przygotować faktury.");
+    }).finally(function(){setBillBusy(false);});
+  }
+
+  // Panel "Kolejna faktura": typ dokumentu, kwota (reszta / kwota / % wyceny) i podmiot.
+  function renderBillCustom(){
+    var c=billCustom;
+    var btnOpen=function(label){return ce("button",{onClick:openBillCustom,disabled:billBusy||!billSettings||!cl,
+      style:{marginTop:4,padding:"9px",borderRadius:9,border:"1px dashed var(--bd2)",background:"transparent",color:"var(--t1)",
+        fontSize:12,fontWeight:700,cursor:(billBusy||!billSettings||!cl)?"not-allowed":"pointer",opacity:(billBusy||!billSettings||!cl)?0.6:1}},label);};
+    if(!c)return btnOpen(billList.length?"➕ Kolejna faktura (inna kwota / EKO)…":"➕ Inna konfiguracja faktur (kwota / EKO)…");
+    var upd=function(patch){setBillCustom(function(s){return Object.assign({},s,patch);});};
+    var chip=function(on,label,onClick){return ce("button",{type:"button",onClick:onClick,
+      style:{padding:"5px 10px",borderRadius:7,fontSize:11,fontWeight:700,cursor:"pointer",
+        border:"1.5px solid "+(on?"var(--t1)":"var(--bd2)"),background:on?"var(--t1)":"transparent",color:on?"#fff":"var(--t2)"}},label);};
+    var lbl=function(t){return ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",margin:"6px 0 3px"}},t);};
+    var amt=billCustomAmount(c);
+    var modes=[];
+    if(customRest!==null&&customRest>0)modes.push(["rest","Reszta "+billFmt(customRest)]);
+    modes.push(["amount","Kwota brutto"]);
+    if(customBasis>0)modes.push(["pct","% wyceny"]);
+    return ce("div",{style:{marginTop:6,padding:"10px 12px",borderRadius:10,border:"1px solid var(--bd2)",background:"var(--bg2, #f4f4f2)"}},
+      ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--t1)"}},billList.length?"➕ Kolejna faktura":"➕ Pierwsza faktura — własna kwota / typ"),
+      lbl("TYP DOKUMENTU"),
+      ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+        chip(c.type==="vat","Faktura VAT",function(){upd({type:"vat"});}),
+        chip(c.type==="eko","Dokument EKO (0% VAT, gotówka)",function(){upd({type:"eko"});})),
+      lbl("KWOTA"),
+      ce("div",{style:{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}},
+        modes.map(function(m){return chip(c.mode===m[0],m[1],function(){upd({mode:m[0]});});}),
+        c.mode==="amount"?ce("input",{type:"text",inputMode:"decimal",value:c.amount,placeholder:"kwota brutto zł",autoFocus:true,
+          onChange:function(ev){upd({amount:ev.target.value});},style:Object.assign({},INP,{width:130,textAlign:"right"})}):null,
+        c.mode==="pct"?ce("input",{type:"text",inputMode:"decimal",value:c.pct,placeholder:"% wyceny",autoFocus:true,
+          onChange:function(ev){upd({pct:ev.target.value});},style:Object.assign({},INP,{width:100,textAlign:"right"})}):null),
+      billEntities.length>1?ce("div",null,lbl("PODMIOT"),
+        ce("select",{value:c.entityId,onChange:function(ev){upd({entityId:ev.target.value});},style:INP},
+          billEntities.map(function(e){return ce("option",{key:e.id,value:e.id},(e.name||"Podmiot")+(e.vat_status==="zwolniony"?" (zw. VAT)":""));}))):null,
+      ce("div",{style:{fontSize:11,color:"var(--t2)",marginTop:8}},
+        "Kwota faktury: ",ce("b",null,amt>0?billFmt(amt):"—"),
+        c.type==="eko"?" · numer EKO/nr/miesiąc, bez KSeF":""),
+      ce("div",{style:{display:"flex",gap:8,marginTop:8}},
+        ce("button",{onClick:issueCustomInvoice,disabled:billBusy||!(amt>0),
+          style:{flex:1,padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",fontSize:12,fontWeight:700,
+            cursor:(billBusy||!(amt>0))?"not-allowed":"pointer",opacity:(billBusy||!(amt>0))?0.6:1}},
+          billBusy?"⏳ Przygotowuję...":"🧾 Przygotuj fakturę"),
+        ce("button",{onClick:function(){setBillCustom(null);setBillErr(null);},
+          style:{padding:"9px 14px",borderRadius:9,border:"1px solid var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:12,fontWeight:700,cursor:"pointer"}},"Anuluj"))
+    );
+  }
+
   // Mail z fakturą do klienta — ten sam modal i wysyłka co Opinia / Instrukcja / Zaliczka.
   // Załącznik: HTML faktury z tego samego generatora co moduł Faktury (jak w openAdvanceMail).
   // Podgląd dowolnego załącznika w oknie wysyłki maila — plik wgrany ręcznie (html faktury,
@@ -720,7 +851,7 @@ export function ModalDeal(p){
       var fname="Faktura-"+(number||"dokument").replace(/[^\w-]+/g,"_")+".html";
       var gross=billFmt(full.total_gross);
       var due=full.due_date?String(full.due_date).split("-").reverse().join("."):"";
-      var part=billList.length>1?(idx===0?" (zaliczka)":" (pozostała część wartości zamówienia)"):"";
+      var part=billList.length>1?(idx===0?" (zaliczka)":(idx===billList.length-1?" (pozostała część wartości zamówienia)":" (kolejna część wartości zamówienia)")):"";
       // Treść z szablonu "faktura" (Poczta → Szablony)
       var tpl=res[2];
       var daysLate=full.due_date?Math.max(0,Math.floor((Date.now()-new Date(full.due_date+"T23:59:59").getTime())/86400000)):0;
@@ -808,7 +939,8 @@ export function ModalDeal(p){
     // Druga (i kolejne) faktura wysłana klientowi — niezależnie czy mailem z tej karty, czy
     // ręcznym oznaczeniem "Nie wysłano" — odhaczamy też ogólny checkbox "Wysłano fakturę (FV)".
     var idx=billList.findIndex(function(x){return x.id===id;});
-    if(idx>0)markInvoiceSent();
+    var othersUnsent=billList.some(function(x,i){return i>0&&x.id!==id&&!x.sent_at;});
+    if(idx>0&&!othersUnsent)markInvoiceSent();
   }
 
   // Wysyłka do KSeF z karty deala — ta sama ścieżka co przycisk w szczególe faktury
@@ -1810,6 +1942,7 @@ export function ModalDeal(p){
                     fontSize:12,fontWeight:700,cursor:(billBusy||!billSettings)?"not-allowed":"pointer",opacity:(billBusy||!billSettings)?0.6:1}},
                   billBusy?"⏳ Przygotowuję...":"🧾 Wystaw fakturę 50%"+(ent.name?" — "+ent.name:"")+(ent.vat_status==="zwolniony"?" (zw. VAT)":""));
               }):null,
+              cl?renderBillCustom():null,
               billErr?ce("div",{style:{fontSize:11,color:"var(--red, #ef4444)"}},billErr):null
             )
             :ce("div",{style:{display:"flex",flexDirection:"column",gap:6}},
@@ -1879,6 +2012,7 @@ export function ModalDeal(p){
                 style:{marginTop:4,padding:"9px",borderRadius:9,border:"none",background:"var(--t1)",color:"#fff",
                   fontSize:12,fontWeight:700,cursor:billBusy?"not-allowed":"pointer",opacity:billBusy?0.6:1}},
                 billBusy?"⏳ Przygotowuję...":(billRemaining!==null?"🧾 Wystaw drugą fakturę — reszta "+billFmt(billRemaining):"🧾 Wystaw drugą fakturę")):null,
+              cl?renderBillCustom():null,
               billErr?ce("div",{style:{fontSize:11,color:"var(--red, #ef4444)"}},billErr):null
             ),
           billUnlinked.length>0?ce("div",{style:{marginTop:10,paddingTop:10,borderTop:"1px solid var(--bd3)"}},
