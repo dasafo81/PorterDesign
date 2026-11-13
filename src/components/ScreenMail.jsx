@@ -2632,21 +2632,39 @@ export function ScreenMail(p){
   // Dociąga oryginalne załączniki przekazywanej wiadomości (Przekaż) i dokłada je do kompozytora.
   // GET .../attachments zwraca metadane + contentBytes od razu dla plików <3MB; większe pliki
   // wymagają osobnego GET na pojedynczy załącznik (tak jak downloadAttachment w MailPreview).
-  function forwardOriginalAttachments(mid){
+  // Pomijamy tylko obrazki osadzone w treści (podpis, logo — wskazuje je "cid:" w body).
+  // Flaga isInline sama nie wystarcza: część programów pocztowych (np. Apple Mail) oznacza nią
+  // zwykłe pliki (PDF, zdjęcia), które użytkownik chce przekazać dalej.
+  // Błędy pokazujemy użytkownikowi — wcześniej załączniki znikały bez żadnej informacji.
+  function forwardOriginalAttachments(mid,bodyHtml){
+    var html=String(bodyHtml||"").toLowerCase();
+    var failed=[];
+    function isEmbedded(a){
+      if(!a.isInline)return false;
+      var cid=String(a.contentId||"").replace(/^<|>$/g,"").toLowerCase();
+      if(cid&&html)return html.indexOf("cid:"+cid)!==-1;
+      return String(a.contentType||"").indexOf("image/")===0; // brak treści do porównania: obrazek inline = podpis
+    }
     mailGetToken().then(function(tok){
       var useTok=tok||accessToken;
       if(tok)setAccessToken(tok);
       return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments",{
         headers:{"Authorization":"Bearer "+useTok}
-      }).then(function(r){return r.ok?r.json():null;}).then(function(data){
-        var list=(data&&data.value||[]).filter(function(a){return !a.isInline;});
+      }).then(function(r){
+        if(!r.ok)throw new Error("Nie udało się pobrać listy załączników (HTTP "+r.status+")");
+        return r.json();
+      }).then(function(data){
+        var list=(data&&data.value||[]).filter(function(a){return !isEmbedded(a);});
         return Promise.all(list.map(function(a){
           if(a.contentBytes)return a;
           return mailFetch("https://graph.microsoft.com/v1.0/me/messages/"+mid+"/attachments/"+a.id,{
             headers:{"Authorization":"Bearer "+useTok}
           }).then(function(r2){return r2.ok?r2.json():null;})
-            .then(function(full){return full&&full.contentBytes?Object.assign({},a,{contentBytes:full.contentBytes}):null;})
-            .catch(function(){return null;});
+            .then(function(full){
+              if(full&&full.contentBytes)return Object.assign({},a,{contentBytes:full.contentBytes});
+              failed.push(a.name||"załącznik");return null;
+            })
+            .catch(function(){failed.push(a.name||"załącznik");return null;});
         }));
       });
     }).then(function(list){
@@ -2654,7 +2672,11 @@ export function ScreenMail(p){
         return {id:"fwd_"+a.id,name:a.name,size:a.size,type:"fwd",contentBytes:a.contentBytes,contentType:a.contentType||"application/octet-stream"};
       });
       if(fwdAtts.length)setAttachments(function(prev){return prev.concat(fwdAtts);});
-    }).catch(function(){});
+      if(failed.length)alert("Nie udało się dołączyć: "+failed.join(", ")+".\nMożesz dodać je ręcznie przyciskiem „Dodaj plik”.");
+      else if(!fwdAtts.length)alert("Nie znaleziono załączników do dołączenia (wiadomość zawiera tylko obrazki osadzone w treści).");
+    }).catch(function(e){
+      alert("Nie udało się dołączyć załączników: "+((e&&e.message)||"błąd połączenia")+".\nMożesz dodać je ręcznie przyciskiem „Dodaj plik”.");
+    });
   }
 
   function openDraft(d){
@@ -3533,7 +3555,7 @@ export function ScreenMail(p){
             mailNavigate("compose");
             // Oryginał ma załączniki — zapytaj, czy dołączyć je do przekazywanej wiadomości
             if(head.hasAttachments&&window.confirm("Ta wiadomość ma załączniki. Czy dołączyć je do przekazywanej wiadomości?")){
-              forwardOriginalAttachments(head.id);
+              forwardOriginalAttachments(head.id,cachedBody&&cachedBody.isHtml?cachedBody.content:"");
             }
           },
           onMarkRead:function(mail,val){markAsRead(mail,val);},
