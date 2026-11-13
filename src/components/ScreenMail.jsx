@@ -256,6 +256,22 @@ function recipObjs(list){
   }).filter(Boolean);
 }
 
+// Adres, na który ma pójść odpowiedź. Formularz kontaktowy wysyła maila "od nas do nas",
+// więc nadawca (From) to własna skrzynka — prawdziwy autor zgłoszenia jest w Reply-To
+// albo, gdy formularz go nie ustawia, w treści ("E-mail: ...").
+function replyTarget(head,bodyCache,own){
+  var ownLc=String(own||"").toLowerCase();
+  var rt=head.replyTo&&String(head.replyTo).toLowerCase()!==ownLc?{email:head.replyTo,name:head.replyToName||head.replyTo}:null;
+  if(rt)return rt;
+  if(head.from&&String(head.from).toLowerCase()!==ownLc)return {email:head.from,name:head.fromName||head.from};
+  // Nadawca = my sami, brak Reply-To: szukamy adresu z etykietą w treści zgłoszenia
+  var cached=bodyCache&&bodyCache[head.id];
+  var text=cached&&cached.content?(cached.isHtml?htmlToText(cached.content):String(cached.content)):"";
+  var m=text.match(/(?:e-?mail|adres\s+e-?mail|mail)\s*[:\-]\s*<?([^\s<>"',;:]+@[^\s<>"',;:]+\.[^\s<>"',;:]*[A-Za-z])/i);
+  if(m&&m[1].toLowerCase()!==ownLc)return {email:m[1],name:m[1]};
+  return head.from?{email:head.from,name:head.fromName||head.from}:null;
+}
+
 function fmtBytes(n){
   if(!n)return "";
   if(n<1024)return n+"B";
@@ -874,6 +890,8 @@ function mapGraphMsg(m,folder){
     fromName:isSent?"":(fromAddr.name||fromAddr.address||""),
     to:isSent?(rec.address||""):"",
     toName:isSent?(rec.name||rec.address||""):"",
+    replyTo:isSent?"":((m.replyTo&&m.replyTo[0]&&m.replyTo[0].emailAddress&&m.replyTo[0].emailAddress.address)||""),
+    replyToName:isSent?"":((m.replyTo&&m.replyTo[0]&&m.replyTo[0].emailAddress&&m.replyTo[0].emailAddress.name)||""),
     cc:fmtRecipients(m.ccRecipients),
     toAll:recipObjs(m.toRecipients),
     ccAll:recipObjs(m.ccRecipients),
@@ -1339,7 +1357,7 @@ function MailPreview(p){
         p.activeFolder!=="trash"&&p.activeFolder!=="spam"&&(p.activeFolder!=="sent"||((head.toAll||[]).length+(head.ccAll||[]).length)>1)
           ?ce("button",{onClick:function(){
               if(!p.onReplyAll)return;
-              var senderObj=head.from?{email:head.from,name:head.fromName||head.from}:null;
+              var senderObj=replyTarget(head,bodies,msAccount&&(msAccount.email||msAccount.username));
               var toList=(senderObj?[senderObj]:[]).concat(head.toAll||[]);
               p.onReplyAll(head,bodies,toList,head.ccAll||[]);
             },style:Object.assign({},BGHOST,{color:"var(--violet)",opacity:0.75})},"\u21a9 Odpowiedz wszystkim")
@@ -2422,7 +2440,7 @@ export function ScreenMail(p){
     if(!accessToken)return;
     setLoadingMails(true);
 
-    var inboxUrl="https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead,importance&$orderby=receivedDateTime desc";
+    var inboxUrl="https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$select=subject,from,replyTo,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead,importance&$orderby=receivedDateTime desc";
     var sentUrl="https://graph.microsoft.com/v1.0/me/mailFolders/sentItems/messages?$top=50&$select=subject,toRecipients,ccRecipients,sentDateTime,bodyPreview,hasAttachments,categories,conversationId,importance&$orderby=sentDateTime desc";
     var trashUrl="https://graph.microsoft.com/v1.0/me/mailFolders/deletedItems/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead&$orderby=receivedDateTime desc";
     var spamUrl="https://graph.microsoft.com/v1.0/me/mailFolders/junkEmail/messages?$top=50&$select=subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead&$orderby=receivedDateTime desc";
@@ -2452,6 +2470,8 @@ export function ScreenMail(p){
         return {
           id:m.id,folder:"inbox",
           from:fromAddr.address||"",fromName:fromAddr.name||fromAddr.address||"",
+          replyTo:(m.replyTo&&m.replyTo[0]&&m.replyTo[0].emailAddress&&m.replyTo[0].emailAddress.address)||"",
+          replyToName:(m.replyTo&&m.replyTo[0]&&m.replyTo[0].emailAddress&&m.replyTo[0].emailAddress.name)||"",
           to:"",toName:"",
           cc:fmtRecipients(m.ccRecipients),
           toAll:recipObjs(m.toRecipients),
@@ -2999,7 +3019,7 @@ export function ScreenMail(p){
     });
   }
   var GRAPH_FOLDER={inbox:"inbox",sent:"sentItems",trash:"deletedItems",spam:"junkEmail"};
-  var MAIL_SELECT="subject,from,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead,importance";
+  var MAIL_SELECT="subject,from,replyTo,toRecipients,ccRecipients,receivedDateTime,sentDateTime,bodyPreview,hasAttachments,categories,conversationId,isRead,importance";
 
   // Doładuj starsze wiadomości bieżącego folderu (podąża za @odata.nextLink)
   function loadMore(folder){
@@ -3441,7 +3461,8 @@ export function ScreenMail(p){
           onReply:function(head,bodyCache){
             // Mail z Wysłanych: "odpowiedź" to kolejna wiadomość do tych samych adresatów
             var sentHead=head.folder==="sent";
-            setToEmail(sentHead?((head.toAll||[]).map(function(r){return r.email;}).join(", ")||head.to||""):(head.from||""));
+            var replyTgt=sentHead?null:replyTarget(head,bodyCache,msAccount&&(msAccount.email||msAccount.username));
+            setToEmail(sentHead?((head.toAll||[]).map(function(r){return r.email;}).join(", ")||head.to||""):(replyTgt?replyTgt.email:(head.from||"")));
             setCcEmail("");
             var subj=head.subject||"";
             setSubject(subj.startsWith("Re:")?subj:"Re: "+subj);

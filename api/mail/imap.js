@@ -193,6 +193,7 @@ async function toGraph(path, m) {
     receivedDateTime: date,
     sentDateTime: date,
     from: addr((env.from || [])[0]),
+    replyTo: addrList(env.replyTo),
     toRecipients: addrList(env.to),
     ccRecipients: addrList(env.cc),
     hasAttachments: hasAttachment(m.bodyStructure),

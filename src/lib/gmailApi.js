@@ -233,6 +233,7 @@ function toGraphMessage(m, labels) {
     receivedDateTime: iso,
     sentDateTime: iso,
     from: h.from ? parseAddress(h.from) : null,
+    replyTo: parseAddressList(h["reply-to"]),
     toRecipients: parseAddressList(h.to),
     ccRecipients: parseAddressList(h.cc),
     // format=metadata nie zwraca części MIME; multipart/mixed to niemal zawsze załącznik.
@@ -258,7 +259,7 @@ async function mapPool(items, limit, fn) {
 }
 
 var META_FIELDS = "id,threadId,labelIds,snippet,internalDate,payload/headers";
-var META_HEADERS = ["Subject", "From", "To", "Cc", "Date", "Content-Type"]
+var META_HEADERS = ["Subject", "From", "Reply-To", "To", "Cc", "Date", "Content-Type"]
   .map(function(n) { return "metadataHeaders=" + n; }).join("&");
 
 async function listFolder(auth, folderKey, sp, selfUrl) {
