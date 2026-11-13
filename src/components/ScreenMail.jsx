@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { roundTo10, buildOfferPDFHtml, buildOfferDetailRows, resolvePDFAssets, SELLER } from '../constants/data.js';
+import { roundTo10, buildOfferPDFHtml, buildOfferDetailRows, resolvePDFAssets, persistOfferFromRows, SELLER } from '../constants/data.js';
 import { buildSimplifiedRows, buildSimplifiedPDFHtmlFromRows, htmlToPdfBase64 } from '../lib/pdf.js';
 import { mailLogin, mailConnectCustom, mailLogout, mailGetToken, mailGetActiveAccount, mailFetch, getMailProvider, mailAuthIssue } from '../lib/mailClient.js';
 import { consumeBrokerCallback, brokerTokenRetry } from '../lib/oauthBroker.js';
@@ -159,21 +159,29 @@ function defaultSimplSelection(client){
   });
   return sel;
 }
-function buildAppPdfHtml(id,client){
+// Treść PDF-a wyceny + dane do zapisu oferty (offers), żeby kwota faktycznie wysłana mailem
+// z Poczty trafiała do bazy tak samo jak przy wysyłce z Podsumowania.
+function buildAppPdfParts(id,client){
   var pp=clientPdfParams(client);
   if(id==="pdf_uproszczona"){
     var rows=buildSimplifiedRows(client,defaultSimplSelection(client),pp.comm);
     var base=rows.reduce(function(a,rd){return a+(rd.windows||[]).reduce(function(b,wd){return b+(wd.items||[]).reduce(function(c,it){return c+(+it.total||0);},0);},0);},0);
     var ad=clientAdjustments(client,base);
-    return buildSimplifiedPDFHtmlFromRows(client,rows,ad.montaz,null,"",ad.discount,ad.visitFee);
+    return {html:buildSimplifiedPDFHtmlFromRows(client,rows,ad.montaz,null,"",ad.discount,ad.visitFee),
+      meta:{kind:"uproszczona",base:base,montaz:ad.montaz,discount:ad.discount,visitFee:ad.visitFee}};
   }
   if(id==="pdf_oferta"){
     var dRows=buildOfferDetailRows(client)||[];
     var dBase=dRows.reduce(function(a,r){return a+(pp.comm>0?roundTo10(r.total*(1+pp.comm)):(+r.total||0));},0);
     var da=clientAdjustments(client,dBase);
-    return buildOfferPDFHtml(client,pp.comm,da.montaz,"",null,da.discount,da.visitFee);
+    return {html:buildOfferPDFHtml(client,pp.comm,da.montaz,"",null,da.discount,da.visitFee),
+      meta:{kind:"szczegolowa",base:dBase,montaz:da.montaz,discount:da.discount,visitFee:da.visitFee}};
   }
   return null;
+}
+function buildAppPdfHtml(id,client){
+  var r=buildAppPdfParts(id,client);
+  return r?r.html:null;
 }
 function appPdfName(id,client){
   var who=(client.name||"klient").replace(/[\\/:*?"<>|]/g,"").trim();
@@ -2260,20 +2268,21 @@ export function ScreenMail(p){
     if(!todo.length)return;
     var cl=selClient;
     var jobs=todo.map(function(a){
-      return {srcId:a.id,key:"pdfd_"+a.id+"_"+cl.id+"_"+Date.now(),name:appPdfName(a.id,cl),html:buildAppPdfHtml(a.id,cl)};
+      var parts=buildAppPdfParts(a.id,cl);
+      return {srcId:a.id,key:"pdfd_"+a.id+"_"+cl.id+"_"+Date.now(),name:appPdfName(a.id,cl),html:parts?parts.html:null,meta:parts?parts.meta:null};
     });
     setAttachments(function(prev){
       return prev.map(function(a){
         var j=a.type==="app"&&jobs.find(function(x){return x.srcId===a.id;});
         if(!j)return a;
-        return j.html?{id:j.key,srcId:j.srcId,name:j.name,type:"pdfdata",pending:true}
+        return j.html?{id:j.key,srcId:j.srcId,name:j.name,type:"pdfdata",pending:true,offerMeta:j.meta,offerClientId:cl.id}
                      :{id:j.key,srcId:j.srcId,name:j.name,type:"pdfdata",error:true};
       });
     });
     jobs.forEach(function(j){
       if(!j.html)return;
       htmlToPdfBase64(j.html).then(function(b64){
-        setAttachments(function(prev){return prev.map(function(a){return a.id===j.key?{id:a.id,srcId:a.srcId,name:a.name,type:"pdfdata",contentBytes:b64,size:Math.round(b64.length*3/4)}:a;});});
+        setAttachments(function(prev){return prev.map(function(a){return a.id===j.key?{id:a.id,srcId:a.srcId,name:a.name,type:"pdfdata",contentBytes:b64,size:Math.round(b64.length*3/4),offerMeta:a.offerMeta,offerClientId:a.offerClientId}:a;});});
       }).catch(function(e){
         console.error("htmlToPdfBase64",e);
         setAttachments(function(prev){return prev.map(function(a){return a.id===j.key?{id:a.id,srcId:a.srcId,name:a.name,type:"pdfdata",error:true}:a;});});
@@ -2809,6 +2818,25 @@ export function ScreenMail(p){
     return txt.slice(0,255);
   }
 
+  // Wycena wysłana z Poczty jako załącznik (PDF z aplikacji): zapisujemy ją jako ofertę klienta
+  // (offers, z rabatem i kosztem wizyty) oraz znacznik wysłania na jego zleceniu — tak jak przy
+  // wysyłce z Podsumowania. Dzięki temu karta deala zna kwotę, którą klient faktycznie dostał.
+  function recordSentQuotes(sentAtts,cl){
+    var qs=(sentAtts||[]).filter(function(a){return a.type==="pdfdata"&&a.contentBytes&&a.offerMeta;});
+    if(!qs.length||!cl)return;
+    qs.forEach(function(a){
+      var m=a.offerMeta;
+      persistOfferFromRows(cl,m.kind,[{total:m.base}],m.montaz,null,"",m.discount,m.visitFee);
+    });
+    var now=new Date().toISOString();
+    var kind=qs[qs.length-1].offerMeta.kind;
+    sbApi.getDeals().then(function(rows){
+      var mine=(rows||[]).filter(function(d){return String(d.client_id)===String(cl.id)&&!d.closed_at;});
+      if(!mine.length)return;
+      return sbApi.updateDeal(mine[mine.length-1].id,{quote_sent_at:now,quote_sent_kind:kind,updated_at:now});
+    }).catch(function(e){console.warn("[mail] znacznik wysłania wyceny",e);});
+  }
+
   function handleSend(){
     if(!toEmail||!subject||bodyEmpty)return;
     if(attachments.some(function(a){return a.pending;})){alert("Poczekaj chwil\u0119 \u2014 PDF wyceny jeszcze si\u0119 generuje.");return;}
@@ -2853,6 +2881,7 @@ export function ScreenMail(p){
         .then(function(r){
           if(!r.ok)return r.json().then(function(e){throw new Error(e.error&&e.error.message?e.error.message:"B\u0142\u0105d wysy\u0142ania ("+r.status+")");});
           var sentAtts=attachments.slice();
+          recordSentQuotes(sentAtts,selClient);
           var nm={id:"m_"+Date.now(),folder:"sent",to:toEmail,toName:toName,
             subject:subject,date:new Date().toISOString(),preview:htmlToPreview(body).slice(0,80)+"...",
             body:body+(quotedHtml||""),attachments:sentAtts,
