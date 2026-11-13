@@ -471,6 +471,18 @@ export function ModalDeal(p){
     sbApi.getClientOffers(cl.id).then(function(rows){if(alive)setSentOffer((rows||[])[0]||null);}).catch(function(){});
     return function(){alive=false;};
   },[cl&&cl.id]);
+  // Ręczna korekta kosztu wizyty na wysłanej ofercie — dla ofert sprzed migracji 0073, które
+  // go nie zapamiętały, mimo że klient dostał kwotę po jego odjęciu.
+  var svf=useState(null),sentVisitEdit=svf[0],setSentVisitEdit=svf[1]; // null = zamknięte, string = wpisywana kwota
+  function saveSentVisitFee(){
+    if(!sentOffer)return;
+    var v=roundTo10(+String(sentVisitEdit).replace(",",".")||0);
+    sbApi.updateOffer(sentOffer.id,{visit_fee:v}).then(function(){
+      setSentOffer(Object.assign({},sentOffer,{visit_fee:v}));setSentVisitEdit(null);
+    }).catch(function(e){
+      alert("Nie udało się zapisać kosztu wizyty na ofercie (czy uruchomiono migrację 0073?): "+((e&&e.message)||e));
+    });
+  }
   var sentTotal=sentOffer?Math.max(0,roundTo10((+sentOffer.total_gross||0)-(+sentOffer.discount_amount||0)-(+sentOffer.visit_fee||0))):0;
   // Pierwsza faktura (jeszcze bez zamrożonej wyceny): gdy kwota wysłana różni się od bieżącej,
   // domyślnie liczymy od wysłanej — klient dostał ją mailem i tę zna.
@@ -1489,6 +1501,19 @@ export function ModalDeal(p){
             "po odliczeniu"+((+sentOffer.discount_amount||0)>0?" rabatu "+(+sentOffer.discount_amount).toLocaleString("pl-PL")+" zł":"")
             +(((+sentOffer.discount_amount||0)>0&&(+sentOffer.visit_fee||0)>0)?" i":"")
             +((+sentOffer.visit_fee||0)>0?" kosztu wizyty "+(+sentOffer.visit_fee).toLocaleString("pl-PL")+" zł":"")):null,
+          sentVisitEdit===null
+            ?ce("button",{type:"button",onClick:function(){setSentVisitEdit(String((+sentOffer.visit_fee||0)>0?+sentOffer.visit_fee:(quoteVisitFeeVal||250)));},
+              style:{marginTop:4,border:"none",background:"none",padding:0,color:"var(--t3)",fontSize:11,cursor:"pointer",textDecoration:"underline dotted"}},
+              (+sentOffer.visit_fee||0)>0?"✎ Popraw koszt wizyty na ofercie":"✎ Mail zawierał odjęty koszt wizyty? Dopisz go do oferty")
+            :ce("div",{style:{display:"flex",gap:6,alignItems:"center",marginTop:6,flexWrap:"wrap"}},
+              ce("span",{style:{fontSize:11,color:"var(--t3)"}},"Koszt wizyty odjęty w ofercie:"),
+              ce("input",{value:sentVisitEdit,autoFocus:true,inputMode:"decimal",onChange:function(ev){setSentVisitEdit(ev.target.value);},
+                style:Object.assign({},INP,{width:90,padding:"5px 8px",textAlign:"right"})}),
+              ce("span",{style:{fontSize:11,color:"var(--t3)"}},"zł (0 = brak)"),
+              ce("button",{type:"button",onClick:saveSentVisitFee,
+                style:{padding:"5px 10px",borderRadius:7,border:"none",background:"var(--t1)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}},"Zapisz"),
+              ce("button",{type:"button",onClick:function(){setSentVisitEdit(null);},
+                style:{border:"none",background:"none",color:"var(--t3)",fontSize:11,cursor:"pointer"}},"Anuluj")),
           (function(){
             var cmp=frozenQuote?billTotal:clientTotal;
             var diff=sentTotal-cmp;
