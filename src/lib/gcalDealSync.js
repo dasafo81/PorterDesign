@@ -208,16 +208,23 @@ export function syncDealDateToGcal(ctx, deal, client, field, calList) {
   if (deal.title) parts.push("Deal: " + deal.title);
   var title = dealFieldTitle(field, deal);
 
-  var base = {
-    key: dealKey(deal.id, field),
-    summary: title + (client && client.name ? " — " + client.name : ""),
-    description: parts.join("\n"),
-    location: addr,
-    start: start,
-    durMin: defaultDurMin(field, deal),
-    clientName: client && client.name
-  };
-  return Promise.all(targets.map(function (calId) {
-    return upsertDealEvent(ctx, Object.assign({}, base, { calId: calId }));
-  })).then(function () { return { missingInstaller: missingInstaller }; });
+  // Termin montażowy: link do listy „Do montażu” (ctx.montazLink(deal, client) → Promise<url|null>)
+  var isInstall = field === "delivery_date" || field === "delivery_date2";
+  var linkP = (isInstall && ctx.montazLink && client) ? ctx.montazLink(deal, client).catch(function () { return null; }) : Promise.resolve(null);
+
+  return linkP.then(function (montazUrl) {
+    if (montazUrl) parts.push("Do montażu (lista dla montażysty): " + montazUrl);
+    var base = {
+      key: dealKey(deal.id, field),
+      summary: title + (client && client.name ? " — " + client.name : ""),
+      description: parts.join("\n"),
+      location: addr,
+      start: start,
+      durMin: defaultDurMin(field, deal),
+      clientName: client && client.name
+    };
+    return Promise.all(targets.map(function (calId) {
+      return upsertDealEvent(ctx, Object.assign({}, base, { calId: calId }));
+    }));
+  }).then(function () { return { missingInstaller: missingInstaller }; });
 }

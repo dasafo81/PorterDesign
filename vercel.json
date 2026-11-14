@@ -34,6 +34,10 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/m/:token",
+      "destination": "/api/montaz?t=:token"
+    },
+    {
       "source": "/register",
       "destination": "/register.html"
     },
