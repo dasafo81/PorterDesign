@@ -2371,61 +2371,109 @@ export function ProdCard(p){
     var kdSzyny=prod.kdSzyny||[];
     var kdAkc=prod.kdAkc||{};
     var kdKolor=prod.kdKolor||"bialy_mat";
+    var KDL={fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8};
+    var kdSeg0=kdSzyny[0]||{};
+    function kdSetSeg0(patch){var ns=kdSzyny.slice();ns[0]=mg(kdSeg0,patch);p.onChange(mg(prod,{kdSzyny:ns}));}
+    function kdPLN(x){return x.toFixed(2).replace(".",",")+" zł";}
+    function kdPrice(ids){return ids.reduce(function(sum,id){var a=KD_AKCESORIA.find(function(x){return x.id===id;});return sum+(a?a.cena:0);},0);}
+    // Akcesoria grupowane w pozycje: uchwyt + zaslepka = 1 pozycja, wspornik scienny = podstawa + trzpien itd.
+    // Pod spodem nadal zapisujemy pojedyncze id z KD_AKCESORIA (kdAkc), wiec cennik i zamowienia sie nie zmieniaja.
+    var kdBocz="wsp_bocz_"+kdR;
+    var KD_GR=[
+      {key:"uch",label:"Uchwyt sufitowy",variants:[{l:"",ids:["uch_suf"]}]},
+      {key:"uchw",label:"Uchwyt sufitowy wklikiwany + zaślepka",variants:[{l:"",ids:["uch_suf_wkl","zas_uch_wkl"]}]},
+      {key:"wsps",label:"Wspornik sufitowy",variants:[{l:"",ids:["wsp_suf"]}]},
+      {key:"wspc",label:"Wspornik ścienny (podstawa + trzpień)",variants:[{l:"trzpień 9 cm",ids:["pod_wsp","trz_wsp_9"]},{l:"trzpień reg. 9–14 cm",ids:["pod_wsp","trz_wsp_914"]}]},
+      {key:"wspp",label:"Wspornik podw\xf3jny",variants:[{l:"",ids:["wsp_podw"]}]},
+      {key:"wspb",label:"Wspornik boczny "+kdR+" mm",variants:[{l:"",ids:[kdBocz]}]},
+      {key:"lac",label:"Łącznik szyny",variants:[{l:"",ids:["lac_szyny"]}]}
+    ];
+    function kdAllIds(g){var o=[];g.variants.forEach(function(v){v.ids.forEach(function(id){if(o.indexOf(id)<0)o.push(id);});});return o;}
+    function kdSetGroup(g,vIdx,qty){
+      var na=mg(kdAkc,{});
+      kdAllIds(g).forEach(function(id){delete na[id];});
+      if(qty!==null)g.variants[vIdx].ids.forEach(function(id){na[id]=qty;});
+      p.onChange(mg(prod,{kdAkc:na}));
+    }
     form=ce(Fragment,null,
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
-        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hDek||"",onChange:function(ev){sp("hDek",ev.target.value);},placeholder:"\u2013",style:IST}))
+      ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12,marginBottom:10}},
+        ce(Fld,{label:"SZEROKOŚĆ POM. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"WYSOKOŚĆ POM. (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hDek||"",onChange:function(ev){sp("hDek",ev.target.value);},placeholder:"–",style:IST})),
+        ce(Fld,{label:"DŁUGOŚĆ (cm)"},
+          ce("select",{value:kdSeg0.len||"",onChange:function(ev){kdSetSeg0({len:ev.target.value?Number(ev.target.value):null});},style:Object.assign({},IST,{cursor:"pointer"})},
+            ce("option",{value:""},"— wybierz —"),
+            kdLengths.map(function(l){return ce("option",{key:l,value:l},l+" cm");})
+          )
+        ),
+        ce(Fld,{label:"ILOŚĆ SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:kdSeg0.qty||"",onChange:function(ev){kdSetSeg0({qty:ev.target.value.replace(/\D/g,"")});},placeholder:"1",style:IST}))
       ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ROZMIAR PROFILU"),
-        ce("div",{style:{display:"flex",gap:10}},
-          [{v:20,l:"20 mm"},{v:30,l:"30 mm"}].map(function(r){
-            var isA=kdR===r.v;
-            return ce("div",{key:r.v,onClick:function(){p.onChange(mg(prod,{kdRozmiar:r.v,kdSzyny:[]}));},style:{padding:"12px 24px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
-              isA?"\u2713 "+r.l:r.l
-            );
-          })
-        )
-      ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"KOLOR"),
-        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:10,marginTop:4}},
-          KD_KOLORY.map(function(k){
-            var isA=kdKolor===k.id;
-            return ce("div",{key:k.id,onClick:function(){p.onChange(mg(prod,{kdKolor:k.id}));},title:k.label,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:4,cursor:"pointer"}},
-              ce("div",{style:{width:36,height:36,borderRadius:"50%",background:k.bg,border:isA?"3px solid var(--t1)":"3px solid transparent",boxShadow:isA?"0 0 0 2px var(--t1)":"0 1px 3px rgba(0,0,0,0.2)",transition:"all .15s"}}),
-              ce("span",{style:{fontSize:10,color:isA?"var(--t1)":"var(--t2)",fontWeight:isA?700:400,textAlign:"center",maxWidth:56,lineHeight:1.2}},k.label)
-            );
-          })
-        )
-      ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"ODCINKI SZYNY"),
-        ce(Fragment,null,
-          kdSzyny.map(function(seg,idx){
-            return ce("div",{key:idx,style:{display:"grid",gridTemplateColumns:"1fr 80px 40px",gap:8,marginBottom:8,alignItems:"center"}},
-              ce("select",{value:seg.len||"",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{len:Number(ev.target.value)}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{cursor:"pointer"})},
-                ce("option",{value:""},"\u2014 d\u0142ugo\u015b\u0107 \u2014"),
-                kdLengths.map(function(l){return ce("option",{key:l,value:l},l+" cm \u2014 "+Math.round(kdSzT[l])+" z\u0142");})
-              ),
-              ce("input",{type:"text",inputMode:"numeric",value:seg.qty||"",placeholder:"szt.",onChange:function(ev){var ns=kdSzyny.map(function(s,i){return i===idx?mg(s,{qty:Number(ev.target.value)||1}):s;});p.onChange(mg(prod,{kdSzyny:ns}));},style:Object.assign({},IST,{textAlign:"center"})}),
-              ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.filter(function(_,i){return i!==idx;})}));},style:{cursor:"pointer",color:"var(--t2)",fontSize:18,textAlign:"center",padding:4,borderRadius:6,border:"1px solid var(--bd2)",userSelect:"none",lineHeight:1.2}},"\xd7")
-            );
-          }),
-          ce("div",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.concat([{len:null,qty:1}])}));},style:{display:"inline-flex",alignItems:"center",gap:8,cursor:"pointer",padding:"10px 18px",borderRadius:8,border:"1.5px dashed var(--bd2)",color:"var(--t2)",fontSize:13,marginTop:4,userSelect:"none",transition:"border-color .15s"}},
-            "+ Dodaj odcinek"
+      kdSzyny.length>1?ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,marginBottom:10}},
+        ce("span",{style:{fontSize:12,color:"var(--t3)"}},"Dodatkowe odcinki (z wcześniejszej wyceny):"),
+        kdSzyny.slice(1).map(function(seg,i){
+          var idx=i+1;
+          return ce("span",{key:idx,style:{display:"inline-flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:8,border:"1px solid var(--bd2)",fontSize:12,color:"var(--t1)"}},
+            (seg.len||"?")+" cm \xd7 "+(parseInt(seg.qty)||1),
+            ce("span",{onClick:function(){p.onChange(mg(prod,{kdSzyny:kdSzyny.filter(function(_,j){return j!==idx;})}));},style:{cursor:"pointer",color:"var(--t2)",fontSize:15,lineHeight:1,userSelect:"none"}},"\xd7")
+          );
+        })
+      ):null,
+      ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"flex-start",columnGap:24,rowGap:12,marginBottom:14}},
+        ce("div",null,
+          ce("label",{style:KDL},"ROZMIAR PROFILU"),
+          ce("div",{style:{display:"flex",gap:8}},
+            [{v:20,l:"20 mm"},{v:30,l:"30 mm"}].map(function(r){
+              var isA=kdR===r.v;
+              return ce("button",{key:r.v,onClick:function(){
+                if(isA)return;
+                // przenosimy wspornik boczny na wlasciwy rozmiar profilu
+                var na=mg(kdAkc,{});var oldId="wsp_bocz_"+kdR,newId="wsp_bocz_"+r.v;
+                if(na[oldId]!==undefined){na[newId]=na[oldId];delete na[oldId];}
+                p.onChange(mg(prod,{kdRozmiar:r.v,kdSzyny:[],kdAkc:na}));
+              },style:{padding:"10px 18px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+                isA?"✓ "+r.l:r.l
+              );
+            })
+          )
+        ),
+        ce("div",null,
+          ce("label",{style:KDL},"KOLOR"),
+          ce("div",{style:{display:"flex",flexWrap:"wrap",gap:10}},
+            KD_KOLORY.map(function(k){
+              var isA=kdKolor===k.id;
+              return ce("div",{key:k.id,onClick:function(){p.onChange(mg(prod,{kdKolor:k.id}));},title:k.label,style:{display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer"}},
+                ce("div",{style:{width:30,height:30,borderRadius:"50%",background:k.bg,border:isA?"3px solid var(--t1)":"3px solid transparent",boxShadow:isA?"0 0 0 2px var(--t1)":"0 1px 3px rgba(0,0,0,0.2)",transition:"all .15s"}}),
+                ce("span",{style:{fontSize:10,color:isA?"var(--t1)":"var(--t2)",fontWeight:isA?700:400,textAlign:"center",maxWidth:56,lineHeight:1.2}},k.label)
+              );
+            })
           )
         )
       ),
       ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"AKCESORIA"),
-        ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
-          KD_AKCESORIA.map(function(a){
-            var qty=kdAkc[a.id]||0;
-            var checked=qty>0;
-            return ce("div",{key:a.id,style:{display:"grid",gridTemplateColumns:"24px 1fr 70px",gap:10,alignItems:"center",padding:"8px 10px",borderRadius:8,background:checked?"var(--bg2)":"transparent",border:"1px solid "+(checked?"var(--bd2)":"transparent"),transition:"all .15s"}},
-              ce("input",{type:"checkbox",checked:checked,onChange:function(ev){var na=mg(kdAkc,{});if(ev.target.checked){na[a.id]=1;}else{delete na[a.id];}p.onChange(mg(prod,{kdAkc:na}));},style:{width:16,height:16,cursor:"pointer"}}),
-              ce("span",{style:{fontSize:13,color:checked?"var(--t1)":"var(--t2)"}},a.label+" ("+Math.round(a.cena)+" z\u0142/szt.)"),
-              checked?ce("input",{type:"text",inputMode:"numeric",value:qty,onChange:function(ev){var na=mg(kdAkc,{});na[a.id]=Number(ev.target.value)||1;p.onChange(mg(prod,{kdAkc:na}));},style:Object.assign({},IST,{textAlign:"center",padding:"4px 8px"})}):null
+        ce("label",{style:KDL},"AKCESORIA"),
+        ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:6}},
+          KD_GR.map(function(g){
+            var all=kdAllIds(g);
+            var present=all.filter(function(id){return kdAkc[id]!==undefined;});
+            var checked=present.length>0;
+            var vIdx=0;
+            if(checked){
+              var full=g.variants.findIndex(function(v){return v.ids.every(function(id){return kdAkc[id]!==undefined;});});
+              vIdx=full>=0?full:Math.max(0,g.variants.findIndex(function(v){return v.ids.some(function(id){return kdAkc[id]!==undefined;});}));
+            }
+            var v=g.variants[vIdx];
+            var qty=checked?kdAkc[present[0]]:"";
+            return ce("div",{key:g.key,style:{display:"grid",gridTemplateColumns:"20px minmax(0,1fr) 56px",gap:8,alignItems:"center",padding:"6px 8px",borderRadius:8,background:checked?"var(--bg2)":"transparent",border:"1px solid "+(checked?"var(--bd2)":"transparent"),transition:"all .15s"}},
+              ce("input",{type:"checkbox",checked:checked,onChange:function(ev){kdSetGroup(g,vIdx,ev.target.checked?1:null);},style:{width:16,height:16,cursor:"pointer"}}),
+              ce("span",{style:{fontSize:13,color:checked?"var(--t1)":"var(--t2)",lineHeight:1.25}},
+                g.label+" ("+kdPLN(kdPrice(v.ids))+"/szt.)",
+                (checked&&g.variants.length>1)?ce("select",{value:vIdx,onChange:function(ev){kdSetGroup(g,Number(ev.target.value),qty);},style:Object.assign({},IST,{cursor:"pointer",padding:"2px 6px",fontSize:12,marginLeft:6,width:"auto",display:"inline-block"})},
+                  g.variants.map(function(vv,i){return ce("option",{key:i,value:i},vv.l+" ("+kdPLN(kdPrice(vv.ids))+")");})
+                ):null
+              ),
+              checked?ce("input",{type:"text",inputMode:"numeric",value:qty,placeholder:"1",
+                onChange:function(ev){kdSetGroup(g,vIdx,ev.target.value.replace(/\D/g,""));},
+                onBlur:function(){if(qty===""||!(parseInt(qty)>0))kdSetGroup(g,vIdx,1);},
+                style:Object.assign({},IST,{textAlign:"center",padding:"4px 8px"})}):ce("span",null)
             );
           })
         )
@@ -2626,7 +2674,7 @@ export function ProdCard(p){
   }
 
   // ▼ NOWE: szerokość pomieszczenia — wszystkie karnisze/szyny
-  if(["karnisz","prestige_round","prestige_square","shuttle","karnisz_dek"].indexOf(prod.type)>=0){
+  if(["karnisz","prestige_round","prestige_square","shuttle"].indexOf(prod.type)>=0){
     // Wysokosc pomieszczenia (tylko karnisze elektryczne Premium/Somfy/Prestige) — w jednej linii z szerokoscia.
     var roomHKey=prod.type==="karnisz"?"hKm":(prod.type==="prestige_round"||prod.type==="prestige_square")?"hPres":null;
     form=ce(Fragment,null,

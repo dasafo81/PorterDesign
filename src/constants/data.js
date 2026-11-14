@@ -7221,11 +7221,11 @@ export function calc(p){
     var kdT=0;
     kdSzL.forEach(function(s){
       var cena=kdSzT[s.len]||0;
-      var q=s.qty||1;
+      var q=parseInt(s.qty)||1;
       kdT+=cena*q;
       if(cena>0) lines.push("Szyna "+kdR+"mm / "+s.len+"cm"+(q>1?" x"+q:"")+" = "+formatPLN(cena*q));
     });
-    if(kdSzL.length>0){
+    if(kdSzL.some(function(s){return (kdSzT[s.len]||0)>0;})){
       var kdZ=KD_ZASLEPKI[kdR]||0;
       kdT+=kdZ*2;
       lines.push("Za\u015blepki "+kdR+"mm x2 = "+formatPLN(kdZ*2));
@@ -8555,12 +8555,13 @@ export function buildHardwareRows(client){
           var kdKolorObj=KD_KOLORY.find(function(k){return k.id===p.kdKolor;});
           var kdLabel="Karnisz dekoracyjny \u00d8"+kdR+"mm";
           (p.kdSzyny||[]).forEach(function(seg){
-            if(!seg||!seg.dlugosc)return;
+            var kdLen=seg&&(seg.len||seg.dlugosc);
+            if(!kdLen)return;
             rows.push({
               room:r.name,win:w.name,type:kdLabel,
               kolorTxt:kdKolorObj?kdKolorObj.label:"",
               roomW:(p.par||{}).roomW||"",
-              len:seg.dlugosc,qty:seg.qty||1,
+              len:kdLen,qty:parseInt(seg.qty)||1,
               arc:0,arcDepth:null,arcChord:null,pts:0,
               motorSide:null,motorType:null,
               category:"karnisz_dekoracyjny",
