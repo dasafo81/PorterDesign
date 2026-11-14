@@ -246,51 +246,63 @@ function SectionCard(rp){
 
 // Widok "Do montażu" — checklista z Wyceny szczegółowej (buildOfferDetailRows):
 // wszystkie produkty pogrupowane wg pomieszczenia, z wymiarami i uwagami przy
-// pozycji, bez cen — do szybkiego podglądu przez ekipę montażową z poziomu karty deala.
-// Zdefiniowany poza ModalDeal z tego samego powodu co CheckRow/SectionCard powyżej.
-function ModalMontazPodglad(p){
-  var cl=p.client||{};
-  var rows=buildOfferDetailRows(cl);
-  return ce("div",{style:{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:2200,display:"flex",alignItems:"center",justifyContent:"center",padding:"12px"}},
-    ce("div",{style:{background:"var(--bg)",width:"100%",maxWidth:720,borderRadius:18,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}},
-      ce("div",{style:{padding:"18px 20px",borderBottom:"1px solid var(--bd2)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"var(--bg)",zIndex:1}},
-        ce("div",null,
-          ce("div",{style:{fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",color:"var(--t3)",marginBottom:2}},"🔧 Do montażu"),
-          ce("div",{style:{fontSize:17,fontWeight:700,color:"var(--t1)"}},cl.name||""),
-          (cl.addr||cl.city)?ce("div",{style:{fontSize:13,color:"var(--t2)",marginTop:2}},
-            "📍 "+[cl.addr,[cl.postal,cl.city].filter(Boolean).join(" ")].filter(Boolean).join(", ")
-          ):null
-        ),
-        ce("button",{onClick:p.onClose,style:{border:"none",background:"var(--bg2)",borderRadius:8,width:30,height:30,fontSize:16,cursor:"pointer",color:"var(--t2)"}},"×")
-      ),
-      ce("div",{style:{padding:"16px 20px 24px"}},
-        !rows.length
-          ?ce("div",{style:{fontSize:13,color:"var(--t3)",textAlign:"center",padding:"24px 0"}},"Brak pozycji w wycenie.")
-          :rows.map(function(r,i){
-            var prevRoom=i>0?rows[i-1].room:null;
-            var isNewRoom=r.room!==prevRoom;
-            var wymiary=[r.szerokosc&&r.szerokosc!=="-"?r.szerokosc:null,r.wysokosc&&r.wysokosc!=="-"?r.wysokosc:null].filter(Boolean).join(" × ");
-            return ce(Fragment,{key:i},
-              isNewRoom?ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)",marginTop:i===0?0:18,marginBottom:8,paddingBottom:6,borderBottom:"1px solid var(--bd2)"}},r.room):null,
-              ce("div",{style:{padding:"10px 0",borderBottom:"1px dashed var(--bd2)"}},
-                ce("div",{style:{display:"flex",justifyContent:"space-between",gap:10,alignItems:"baseline"}},
-                  ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)"}},r.name),
-                  r.qty>1?ce("div",{style:{fontSize:12,color:"var(--t3)",whiteSpace:"nowrap"}},r.qty+" "+(r.unit||"szt.")):null
-                ),
-                // Rodzaj szycia (Wave/Flex/Fałda/taśma dla zasłon i firan, Flex/Wave dla
-                // szyn KS) — kluczowe, żeby wiedzieć jaki osprzęt (maskownica, suwaki,
-                // haczyki) przygotować przed montażem.
-                r.modelSzycia&&r.modelSzycia!=="-"?ce("div",{style:{fontSize:12,fontWeight:600,color:"var(--t1)",marginTop:3}},r.modelSzycia):null,
-                wymiary?ce("div",{style:{fontSize:12,color:"var(--t2)",marginTop:3}},wymiary):null,
-                r.podzial&&r.podzial!=="-"?ce("div",{style:{fontSize:12,color:"var(--t3)",marginTop:2}},r.podzial):null,
-                r.note?ce("div",{style:{fontSize:12,color:"#a86b00",marginTop:4,fontStyle:"italic"}},"Uwaga: "+r.note):null,
-                r.installNote?ce("div",{style:{fontSize:12,color:"var(--t1)",marginTop:4,padding:"6px 10px",background:"var(--bg2)",borderRadius:8,whiteSpace:"pre-line"}},"\uD83D\uDD28 "+r.installNote):null
-              )
-            );
-          })
-      )
-    )
-  );
+// pozycji, bez cen — do szybkiego podglądu/wydruku przez ekipę montażową.
+// Otwierany w osobnym oknie przeglądarki (jak podgląd faktury); musi być wywołany
+// synchronicznie z kliknięcia, inaczej przeglądarka zablokuje popup.
+function openMontazWindow(cl){
+  function esc(v){return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  var rows=buildOfferDetailRows(cl||{});
+  var addr=[cl.addr||cl.street,[cl.postal,cl.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  var body="";
+  if(!rows.length){
+    body='<p class="empty">Brak pozycji w wycenie.</p>';
+  }else{
+    rows.forEach(function(r,i){
+      if(i===0||r.room!==rows[i-1].room)body+='<h2>'+esc(r.room)+'</h2>';
+      var wymiary=[r.szerokosc&&r.szerokosc!=="-"?r.szerokosc:null,r.wysokosc&&r.wysokosc!=="-"?r.wysokosc:null].filter(Boolean).join(" \u00d7 ");
+      var multi=r.qty>1;
+      body+='<div class="item'+(multi?' multi':'')+'">'
+        +'<div class="head">'
+        +(multi?'<span class="qty">'+esc(r.qty)+'\u00d7</span>':'')
+        +'<span class="name">'+esc(r.name)+'</span>'
+        +(multi&&r.unit?'<span class="unit">'+esc(r.unit)+'</span>':'')
+        +'</div>'
+        +(r.modelSzycia&&r.modelSzycia!=="-"?'<div class="model">'+esc(r.modelSzycia)+'</div>':'')
+        +(wymiary?'<div class="dim">'+esc(wymiary)+'</div>':'')
+        +(r.podzial&&r.podzial!=="-"?'<div class="sub">'+esc(r.podzial)+'</div>':'')
+        +(r.note?'<div class="note">Uwaga: '+esc(r.note)+'</div>':'')
+        +(r.installNote?'<div class="inst">\uD83D\uDD28 '+esc(r.installNote)+'</div>':'')
+        +'</div>';
+    });
+  }
+  var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    +'<title>Do monta\u017cu \u2014 '+esc(cl.name||"")+'</title><style>'
+    +'body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;max-width:760px;margin:0 auto;padding:20px 18px 40px;font-size:14px}'
+    +'.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #1a1a1a;padding-bottom:10px;margin-bottom:6px}'
+    +'.lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#777}'
+    +'.cn{font-size:20px;font-weight:700;margin-top:2px}.ad{font-size:13px;color:#555;margin-top:3px}'
+    +'button{border:1px solid #bbb;background:#f4f4f4;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}'
+    +'h2{font-size:15px;margin:22px 0 6px;padding-bottom:5px;border-bottom:1px solid #ccc}'
+    +'.item{padding:10px 0;border-bottom:1px dashed #ccc;page-break-inside:avoid}'
+    +'.item.multi{background:#fff7e0;border-left:5px solid #e08a00;padding-left:10px;border-radius:4px;margin:4px 0}'
+    +'.head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'
+    +'.name{font-weight:600;font-size:14px}'
+    +'.qty{background:#e08a00;color:#fff;font-weight:800;font-size:20px;line-height:1;padding:5px 11px;border-radius:8px;white-space:nowrap}'
+    +'.unit{font-size:12px;color:#8a5a00;font-weight:700}'
+    +'.model{font-weight:600;font-size:13px;margin-top:4px}.dim{font-size:13px;color:#444;margin-top:3px}.sub{font-size:12px;color:#777;margin-top:2px}'
+    +'.note{font-size:13px;color:#a86b00;font-style:italic;margin-top:5px}'
+    +'.inst{font-size:13px;margin-top:5px;padding:6px 10px;background:#f1f1f1;border-radius:8px;white-space:pre-line}'
+    +'.empty{text-align:center;color:#888;padding:30px 0}'
+    +'@media print{button{display:none}.item.multi{-webkit-print-color-adjust:exact;print-color-adjust:exact}.qty{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    +'</style></head><body>'
+    +'<div class="top"><div><div class="lbl">\uD83D\uDD27 Do monta\u017cu</div><div class="cn">'+esc(cl.name||"")+'</div>'
+    +(addr?'<div class="ad">\uD83D\uDCCD '+esc(addr)+'</div>':'')+'</div>'
+    +'<button onclick="window.print()">Drukuj</button></div>'
+    +body+'</body></html>';
+  var w=window.open("","_blank");
+  if(!w){alert("Zablokowano popup. Zezwól na wyskakujące okna.");return;}
+  w.document.write(html);
+  w.document.close();
 }
 
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
@@ -301,9 +313,6 @@ export function ModalDeal(p){
   var gsiReady=!!p.gsiReady;
   var calList=p.calList||[];
   var cl=p.client;
-  // Widok "Do montażu" — lista wszystkich produktów z wyceny szczegółowej
-  // (wymiary, podział, uwagi), bez cen — do wydruku/podglądu dla ekipy montażowej.
-  var smz=useState(false),showMontaz=smz[0],setShowMontaz=smz[1];
 
   var sn=useState(d.notes||""),notes=sn[0],setNotes=sn[1];
   var sv=useState(dealDateToInput(d.visit_date)),visitDate=sv[0],setVisitDate=sv[1];
@@ -1622,7 +1631,7 @@ export function ModalDeal(p){
             ),
             // Lista wszystkich produktow z wyceny szczegolowej (wymiary + uwagi,
             // bez cen) — checklista dla ekipy montazowej, bez wychodzenia z karty deala.
-            cl?ce("button",{onClick:function(){setShowMontaz(true);},style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
+            cl?ce("button",{onClick:function(){openMontazWindow(cl);},style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
               "🔧 Do montażu"
             ):null,
             // Wyrazisty (bialy, pelny) przycisk — glowne CTA karty deala, zeby bylo
@@ -2605,8 +2614,7 @@ export function ModalDeal(p){
           },gcalDraft.saving?"⏳ Dodaję...":"✅ Dodaj do kalendarza")
         )
       )
-    ):null,
-    showMontaz?ce(ModalMontazPodglad,{client:cl,deal:d,onClose:function(){setShowMontaz(false);}}):null
+    ):null
   );
 }
 
