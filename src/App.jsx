@@ -212,8 +212,9 @@ export function App(p){
   var sKarniszBase=useState([]),karniszBaseRows=sKarniszBase[0],setKarniszBaseRows=sKarniszBase[1];
   var sKarniszNotes=useState(HW_ROLETY_NOTES_DEFAULT),karniszNotes=sKarniszNotes[0],setKarniszNotes=sKarniszNotes[1];
   var sKarniszNotesKs=useState(""),karniszNotesKs=sKarniszNotesKs[0],setKarniszNotesKs=sKarniszNotesKs[1];
+  var sKarniszNotesKr=useState(""),karniszNotesKr=sKarniszNotesKr[0],setKarniszNotesKr=sKarniszNotesKr[1];
   var karniszDraftRef=React.useRef(null);
-  karniszDraftRef.current={baseRows:karniszBaseRows,rows:karniszPreviewRows,notes:karniszNotes,notesKs:karniszNotesKs};
+  karniszDraftRef.current={baseRows:karniszBaseRows,rows:karniszPreviewRows,notes:karniszNotes,notesKs:karniszNotesKs,notesKr:karniszNotesKr};
   var karniszDraftDirtyRef=React.useRef(false);
   var sFabricRows=useState([]),fabricPreviewRows=sFabricRows[0],setFabricPreviewRows=sFabricRows[1];
   var sFabricBase=useState([]),fabricBaseRows=sFabricBase[0],setFabricBaseRows=sFabricBase[1];
@@ -1164,7 +1165,7 @@ export function App(p){
     karniszDraftDirtyRef.current=true;
     var t=setTimeout(function(){karniszDraftFlushRef.current();},1500);
     return function(){clearTimeout(t);};
-  },[karniszPreviewRows,karniszNotes,karniszNotesKs,screen,curClientId]);
+  },[karniszPreviewRows,karniszNotes,karniszNotesKs,karniszNotesKr,screen,curClientId]);
 
   var fabricDraftFlushRef=React.useRef(function(){});
   fabricDraftFlushRef.current=function(){
@@ -2110,6 +2111,7 @@ export function App(p){
       setKarniszPreviewRows(baseUnchanged&&draft.rows?draft.rows:baseRows);
       setKarniszNotes(draft&&draft.notes!=null?draft.notes:HW_ROLETY_NOTES_DEFAULT);
       setKarniszNotesKs(draft&&draft.notesKs!=null?draft.notesKs:"");
+      setKarniszNotesKr(draft&&draft.notesKr!=null?draft.notesKr:"");
       setScreen("karniszPreview");
     }
     function openFabricPreview(){
@@ -2503,8 +2505,6 @@ export function App(p){
     );
   }
   else if(screen==="karniszPreview"&&curClient){
-    function hwNoPrice(r){return r.category==="rolety"||r.category==="szyna_ks";} // ceny nie trafiają na zamówienie rolet i szyn KS
-    var karniszTotal=karniszPreviewRows.reduce(function(a,r){return (r.skip||hwNoPrice(r))?a:a+(+r.total||0);},0);
     function setKarniszField(i,key,v){
       setKarniszPreviewRows(function(prev){return prev.map(function(x,xi){
         if(xi!==i)return x;
@@ -2522,6 +2522,7 @@ export function App(p){
       setKarniszPreviewRows(freshRows);
       setKarniszNotes(HW_ROLETY_NOTES_DEFAULT);
       setKarniszNotesKs("");
+      setKarniszNotesKr("");
     }
 
     // Dostawca wiersza (z fallbackiem do domyślnego dla kategorii) — jak w buildHardwarePDFHtmlFromRows.
@@ -2540,7 +2541,7 @@ export function App(p){
     function previewHwForSupplier(key){
       var rows=hwRowsForSupplier(key);
       if(!rows.length){alert("Brak zaznaczonych pozycji dla tego dostawcy.");return;}
-      generateHardwareOrderPDFFromRows(curClient,rows,{rolNotes:karniszNotes,ksNotes:karniszNotesKs});
+      generateHardwareOrderPDFFromRows(curClient,rows,{rolNotes:karniszNotes,ksNotes:karniszNotesKs,krNotes:karniszNotesKr});
     }
     // Ten sam dokument co podgląd, ale tylko dla jednego dostawcy i na jego adres z Kontrahentów.
     function mailHwForSupplier(key){
@@ -2548,7 +2549,7 @@ export function App(p){
       if(!rows.length){alert("Brak zaznaczonych pozycji dla tego dostawcy.");return;}
       var sup=KARNISZ_SUPPLIERS.find(function(s){return s.key===key;});
       var supName=sup?sup.label:key;
-      mailDoc(buildHardwarePDFHtmlFromRows(curClient,rows,{rolNotes:karniszNotes,ksNotes:karniszNotesKs}),
+      mailDoc(buildHardwarePDFHtmlFromRows(curClient,rows,{rolNotes:karniszNotes,ksNotes:karniszNotesKs,krNotes:karniszNotesKr}),
         "Zamowienie osprzetu - "+supName.split(",")[0]+".pdf",
         {to:"",supplier:supName,templateId:"zamowienie_osprzetu",noTemplates:true});
     }
@@ -2566,13 +2567,12 @@ export function App(p){
           karniszPreviewRows.forEach(function(r,i){if(effHwSupplier(r)===sup.key)idxs.push(i);});
           if(!idxs.length)return null;
           var selN=idxs.filter(function(i){return !karniszPreviewRows[i].skip;}).length;
-          var supTotal=idxs.reduce(function(a,i){var r=karniszPreviewRows[i];return (r.skip||hwNoPrice(r))?a:a+(+r.total||0);},0);
           return ce("div",{key:sup.key,style:{marginBottom:20}},
             ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:8}},
               ce("div",null,
                 ce("div",{style:{fontSize:13,fontWeight:700,color:"var(--t1)"}},"🪝 "+sup.label),
                 ce("div",{style:{fontSize:11,color:"var(--t3)"}},
-                  "Zaznaczone: "+selN+" z "+idxs.length+(supTotal>0?" · "+roundTo10(supTotal)+" zł":"")+" · ",
+                  "Zaznaczone: "+selN+" z "+idxs.length+" · ",
                   ce("a",{href:"#",onClick:function(ev){ev.preventDefault();setHwSupplierSelected(sup.key,selN<idxs.length);},style:{color:"var(--t2)"}},selN<idxs.length?"zaznacz wszystko":"odznacz wszystko")
                 )
               ),
@@ -2591,6 +2591,7 @@ export function App(p){
               // karniszy/szyn) — całą specyfikę (model, system, łańcuszek, strona)
               // niesie już edytowalne pole "Typ", więc te pola tu tylko myliłyby.
               var isRolety=r.category==="rolety";
+              var isKr=r.category==="karnisz_elektryczny"||r.category==="karnisz_dekoracyjny";
               return ce("div",{key:i,style:{padding:"12px 14px",background:"var(--bg2)",borderRadius:12,marginBottom:8,border:"1px solid var(--bd3)",opacity:r.skip?0.5:1}},
                 ce("label",{style:{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:6}},
                   ce("input",{type:"checkbox",checked:!r.skip,onChange:function(ev){setKarniszField(i,"skip",!ev.target.checked);},style:{width:16,height:16,cursor:"pointer",flexShrink:0}}),
@@ -2598,14 +2599,10 @@ export function App(p){
                 ),
                 ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}},
                   karniszFieldInput(i,"roomWin","Pomieszczenie",200),
-                  karniszFieldInput(i,"type","Typ",isRolety?230:180),
-                  hwNoPrice(r)?null:ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:"auto"}},
-                    ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){setKarniszField(i,"total",ev.target.value);},style:{width:100,padding:"8px 10px",fontSize:14,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
-                    ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł")
-                  )
+                  karniszFieldInput(i,"type","Typ",isRolety?230:180)
                 ),
                 ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:8}},
-                  karniszFieldInput(i,"len",isRolety?"Szerokość (cm)":"Długość (cm)",100),
+                  isKr?karniszFieldInput(i,"roomW","Szerokość pomieszczenia (cm)",190):karniszFieldInput(i,"len",isRolety?"Szerokość (cm)":"Długość (cm)",100),
                   karniszFieldInput(i,"qty","Ilość",70),
                   isRolety?karniszFieldInput(i,"model","Model",110):null,
                   isRolety?karniszFieldInput(i,"hCm","Wysokość (cm)",100):null,
@@ -2613,12 +2610,14 @@ export function App(p){
                   isRolety?karniszFieldInput(i,"system","Sterowanie",120):null,
                   isRolety?karniszFieldInput(i,"strona","Strona",100):null,
                   isRolety?karniszFieldInput(i,"lancuszek","Łańcuszek",140):null,
-                  isRolety?null:karniszFieldInput(i,"arc",r.category==="szyna_ks"?"Gięcie po łuku (mb)":"Gięcie łuk (mb)",r.category==="szyna_ks"?140:110),
-                  isRolety?null:karniszFieldInput(i,"arcDepth","Głęb. łuku (cm)",110),
-                  isRolety?null:karniszFieldInput(i,"arcChord","Cięciwa łuku (cm)",120),
-                  isRolety?null:karniszFieldInput(i,"pts",r.category==="szyna_ks"?"Gięcie punktowe (szt.)":"Gięcie pkt",r.category==="szyna_ks"?150:90),
-                  (isRolety||r.category==="szyna_ks")?null:karniszFieldInput(i,"motorSide","Strona silnika",110),
-                  (isRolety||r.category==="szyna_ks")?null:karniszFieldInput(i,"motorType","Typ silnika",110)
+                  r.category==="szyna_ks"?karniszFieldInput(i,"arc","Gięcie po łuku (mb)",140):null,
+                  r.category==="szyna_ks"?karniszFieldInput(i,"arcDepth","Głęb. łuku (cm)",110):null,
+                  r.category==="szyna_ks"?karniszFieldInput(i,"arcChord","Cięciwa łuku (cm)",120):null,
+                  isRolety?null:karniszFieldInput(i,"pts","Gięcie punktowe (szt.)",150),
+                  isKr?karniszFieldInput(i,"motorName","Silnik",130):null,
+                  isKr?karniszFieldInput(i,"motorSide","Strona silnika",110):null,
+                  isKr?karniszFieldInput(i,"motorType","Typ silnika",110):null,
+                  r.category==="karnisz_dekoracyjny"?karniszFieldInput(i,"kolorTxt","Kolor",130):null
                 ),
                 ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
                   ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t2)"}},"Dostawca:"),
@@ -2642,20 +2641,21 @@ export function App(p){
           ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"\uD83D\uDCDD Uwagi do zamówienia rolet"),
           ce("textarea",{value:karniszNotes,onChange:function(ev){setKarniszNotes(ev.target.value);},rows:2,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
         ):null,
+      karniszPreviewRows.some(function(r){return r.category==="karnisz_elektryczny"||r.category==="karnisz_dekoracyjny";})
+        ?ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
+          ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"\uD83D\uDCDD Uwagi do zamówienia karniszy"),
+          ce("textarea",{value:karniszNotesKr,onChange:function(ev){setKarniszNotesKr(ev.target.value);},rows:2,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
+        ):null,
       karniszPreviewRows.some(function(r){return r.category==="szyna_ks";})
         ?ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
           ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"\uD83D\uDCDD Uwagi do zamówienia szyn KS"),
           ce("textarea",{value:karniszNotesKs,onChange:function(ev){setKarniszNotesKs(ev.target.value);},rows:2,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
         ):null,
-      karniszTotal>0?ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
-        ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},"Łącznie"),
-        ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(karniszTotal)+" zł")
-      ):null,
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("← Wstecz",function(){setScreen("sum");},false),
         ce("button",{onClick:resetKarniszPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"🔄 Wypełnij od nowa"),
         ce("button",{disabled:!hwSelCount,onClick:function(){
-          generateHardwareOrderPDFFromRows(curClient,karniszPreviewRows.filter(function(r){return !r.skip;}),{rolNotes:karniszNotes,ksNotes:karniszNotesKs});
+          generateHardwareOrderPDFFromRows(curClient,karniszPreviewRows.filter(function(r){return !r.skip;}),{rolNotes:karniszNotes,ksNotes:karniszNotesKs,krNotes:karniszNotesKr});
           setScreen("sum");
         },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52,opacity:hwSelCount?1:0.5}},"👁️ Podgląd PDF (wszyscy dostawcy)")
       )

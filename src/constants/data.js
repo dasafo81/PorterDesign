@@ -8506,9 +8506,15 @@ export function karniszBrandLabel(pc){
   return "Karnisz elektryczny "+(pc.km||"slim").toUpperCase();
 }
 
-function prestigeKolorTag(pc){
+function prestigeKolorName(pc){
   var k=PRESTIGE_KOLORY.find(function(x){return x.v===(pc||{}).pKolor;});
-  return k?" — "+k.l:"";
+  return k?k.l:"";
+}
+function prestigeMotorName(pc){
+  pc=pc||{};
+  var lista=pc.kBrand==="somfy"?MD_NAPEDY:PRESTIGE_NAPEDY;
+  var n=lista.find(function(x){return x.v===pc.pn;})||lista[0];
+  return n?n.l:"";
 }
 
 // Zam\u00f3wienie Osprz\u0119tu \u2014 zast\u0119puje dawne "Zam\u00f3wienie karniszy". Cztery kategorie
@@ -8552,11 +8558,13 @@ export function buildHardwareRows(client){
         if(p.type==="karnisz_dek"){
           var kdR=p.kdRozmiar||20;
           var kdKolorObj=KD_KOLORY.find(function(k){return k.id===p.kdKolor;});
-          var kdLabel="Karnisz dekoracyjny \u00d8"+kdR+"mm"+(kdKolorObj?" \u2014 "+kdKolorObj.label:"");
+          var kdLabel="Karnisz dekoracyjny \u00d8"+kdR+"mm";
           (p.kdSzyny||[]).forEach(function(seg){
             if(!seg||!seg.dlugosc)return;
             rows.push({
               room:r.name,win:w.name,type:kdLabel,
+              kolorTxt:kdKolorObj?kdKolorObj.label:"",
+              roomW:(p.par||{}).roomW||"",
               len:seg.dlugosc,qty:seg.qty||1,
               arc:0,arcDepth:null,arcChord:null,pts:0,
               motorSide:null,motorType:null,
@@ -8572,18 +8580,25 @@ export function buildHardwareRows(client){
         var typLabel;
         var category;
         var kolor=null; // tylko szyna KS i karnisz elektryczny \u2014 kolor do wyboru na zam\u00f3wieniu
+        var motorName=""; // nazwa napędu (np. AM75 3W) — karnisze elektryczne i Prestige
+        var kolorTxt="";  // kolor podany tekstem (Prestige)
         if(p.type==="karnisz"){
-          typLabel=karniszBrandLabel(pc);
+          typLabel=karniszBrandLabel(pc).split(" \u2014 ")[0];
+          motorName=pc.kBrand==="premium"?((PL_NAPEDY.find(function(x){return x.v===(pc.plNap||"am75_3w");})||{}).l||"")
+            :pc.kBrand==="somfy"?((MD_NAPEDY.find(function(x){return x.v===(pc.mdNap||"movelite_wt");})||{}).l||"")
+            :((KN_LIST.find(function(x){return x.v===(pc.kn||"am75");})||{}).l||"");
           category="karnisz_elektryczny";
           kolor=pc.kBrand==="premium"?(pc.plKolor||"bialy"):pc.kBrand==="somfy"?(pc.mdSlim?(pc.mdKolor||"bialy"):"bialy"):"bialy";
         }else if(p.type==="shuttle"){
           typLabel="Karnisz Shuttle L"+((pc.shFes&&pc.shFes!=="brak")?(" FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):" (suwaki)");
           category="karnisz_dekoracyjny";
         }else if(p.type==="prestige_round"){
-          typLabel="Karnisz Prestige ROUND ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
+          typLabel="Karnisz Prestige ROUND";
+          motorName=prestigeMotorName(pc);kolorTxt=prestigeKolorName(pc);
           category="karnisz_dekoracyjny";
         }else if(p.type==="prestige_square"){
-          typLabel="Karnisz Prestige SQUARE ("+(pc.pn||"am75_3w")+")"+prestigeKolorTag(pc);
+          typLabel="Karnisz Prestige SQUARE";
+          motorName=prestigeMotorName(pc);kolorTxt=prestigeKolorName(pc);
           category="karnisz_dekoracyjny";
         }else if(pc.ksBrand==="marcin"){
           typLabel="Szyna KS Marcin Dekor";
@@ -8605,6 +8620,9 @@ export function buildHardwareRows(client){
           room:r.name,
           win:w.name,
           type:typLabel,
+          motorName:motorName,
+          kolorTxt:kolorTxt,
+          roomW:par.roomW||"",
           len:len,
           qty:par.qty||1,
           arc:par.arc||0,
@@ -8714,6 +8732,7 @@ export function buildHardwarePDFHtmlFromRows(client,rows,opts){
   if(!rows||!rows.length)return null;
   opts=opts||{};
   var ksNotes=opts.ksNotes!=null?String(opts.ksNotes):"";
+  var krNotes=opts.krNotes!=null?String(opts.krNotes):"";
   var rolNotes=opts.rolNotes!=null?String(opts.rolNotes):HW_ROLETY_NOTES_DEFAULT;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
@@ -8789,36 +8808,35 @@ export function buildHardwarePDFHtmlFromRows(client,rows,opts){
       )+notesBlock(ksNotes);
     }
 
-    // Pozostały osprzęt (szyny, karnisze) — dotychczasowy szablon.
+    // Karnisze (elektryczne, dekoracyjne): szerokość pomieszczenia, napęd, strona i typ silnika, kolor, gięcie punktowe.
     var othHTML="";
     if(supRows.length){
-      var tableRows=supRows.map(function(r){
-        var motorDesc=r.motorSide?(String(r.motorSide).charAt(0).toUpperCase()+String(r.motorSide).slice(1))+(r.motorType?" / "+(String(r.motorType).charAt(0).toUpperCase()+String(r.motorType).slice(1)):""):"–";
-        var kolorLbl=(RAIL_SLIM_KOLORY.find(function(k){return k.v===r.kolor;})||{}).l;
+      var cap=function(t){t=String(t||"");return t?t.charAt(0).toUpperCase()+t.slice(1):"-";};
+      var krTable=supRows.map(function(r){
+        var kolorLbl=r.kolorTxt||(RAIL_SLIM_KOLORY.find(function(k){return k.v===r.kolor;})||{}).l||r.kolor||"";
         return [
           hardwareRoomLabel(r),
-          r.type+(kolorLbl?" — kolor: "+kolorLbl:""),
-          r.len?r.len+"cm":"-",
+          r.type||"-",
+          r.roomW?r.roomW+" cm":"-",
           (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
-          r.arc?r.arc+" mb":"–",
-          (function(){var g=arcGeom(r.arcChord,r.arcDepth);return (r.arcDepth?r.arcDepth+" cm":"–")+(r.arcChord?"<br><span style=\"font-size:8px;color:#6b6b66\">ci\u0119ciwa "+r.arcChord+" cm"+(g?", R\u2248"+Math.round(g.R)+" cm":"")+"</span>":"");})(),
-          r.pts?r.pts+" szt.":"–",
-          motorDesc,
-          (+r.total||0)>0?(+r.total).toFixed(2).replace(".",",")+" zł":"–"
+          r.pts?r.pts+" szt.":"\u2013",
+          r.motorName||"-",
+          r.motorName?cap(r.motorSide):"-",
+          r.motorName?cap(r.motorType):"-",
+          kolorLbl||"-"
         ];
       });
       othHTML=makeTableHTML(
-        ["Pom. / Okno","Typ","D\u0142ugo\u015b\u0107","Ilo\u015b\u0107","Gi\u0119cie \u0142uk","G\u0142\u0119b. \u0142uku","Gi\u0119cie pkt","Silnik / Typ","Warto\u015b\u0107"],
-        tableRows,
-        "Pozycje do zam\xf3wienia"
-      )+"<div class=\"notes\" style=\"margin-top:4mm\">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma p\u0142atno\u015bci: _________________</div>";
+        ["Pomieszczenie","Typ","Szeroko\u015b\u0107 pomieszczenia","Ilo\u015b\u0107","Gi\u0119cie punktowe","Silnik","Strona silnika","Typ silnika","Kolor"],
+        krTable,
+        "Karnisze \u2014 do zam\xf3wienia"
+      )+notesBlock(krNotes);
     }
 
     var pageBreak=si>0?"<div style=\"page-break-before:always;padding-top:10mm;\"></div>":"";
-    // Adres klienta tylko na zamówieniach karniszy — na roletach i szynach KS go nie podajemy.
-    var clientAddr=(supRows.length&&client.addr)?" \u2014 "+client.addr:"";
+    // Adresu klienta na zamówieniu osprzętu nie podajemy.
 
-    return pageBreak+"\n    <div class=\"supplier-header\">\n      <div class=\"supplier-name\">"+sup.label+"</div>\n      <div class=\"supplier-meta\">Zamawiaj\u0105cy: <strong>"+SELLER.name+"</strong>  |  Tel.: "+SELLER.tel+"  |  E-mail: "+SELLER.email+"</div>\n      <div class=\"supplier-meta\">Klient ko\u0144cowy: <strong>"+client.name+"</strong>"+clientAddr+"  |  Data: "+dateStr+"</div>\n    </div>\n    "+rolHTML+ksHTML+othHTML;
+    return pageBreak+"\n    <div class=\"supplier-header\">\n      <div class=\"supplier-name\">"+sup.label+"</div>\n      <div class=\"supplier-meta\">Zamawiaj\u0105cy: <strong>"+SELLER.name+"</strong>  |  Tel.: "+SELLER.tel+"  |  E-mail: "+SELLER.email+"</div>\n      <div class=\"supplier-meta\">Klient ko\u0144cowy: <strong>"+client.name+"</strong>  |  Data: "+dateStr+"</div>\n    </div>\n    "+rolHTML+ksHTML+othHTML;
   }).join("");
 
   var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n    .notes-block{margin-top:4mm;font-size:10px;color:#3a3a38;}\n    .notes-block .lbl{font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-size:9px;color:#6b6b66;margin-bottom:3px;}\n    .notes-block .val{line-height:1.5;}\n  ";
