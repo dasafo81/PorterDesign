@@ -306,7 +306,7 @@ function openMontazWindow(cl){
 }
 
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
-// Podpowiedź w etapie Montaż: które szyny KS z wyceny klienta można zrobić ze ścinków
+// Podpowiedź w etapie Montaż: które szyny KS z wyceny klienta można wziąć z magazynu
 // w magazynie (Magazyn → Szyny KS). Tylko podpowiada — niczego nie rezerwuje ani nie usuwa.
 function RailScrapHint(rp){
   var s1=useState(rp.scraps||null),scraps=s1[0],setScraps=s1[1];
@@ -326,7 +326,7 @@ function RailScrapHint(rp){
       ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--t2)",textTransform:"uppercase"}},"\uD83D\uDCCF Szyny z magazynu"),
       ce("span",{style:{marginLeft:"auto",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,
         background:found?"rgba(16,185,129,0.12)":"var(--bg)",color:found?"#059669":"var(--t3)",border:"1px solid "+(found?"rgba(16,185,129,0.4)":"var(--bd2)")}},
-        "ze ścinków: "+found+"/"+needs.length)
+        "z magazynu: "+found+"/"+needs.length)
     ),
     needs.map(function(n,i){
       var label=(n.room?n.room+" / ":"")+(n.win||"")+" \u2014 "+n.type+", "+n.len+" cm"+(n.pieces>1?" ("+n.piece+"/"+n.pieces+")":"");
@@ -334,12 +334,12 @@ function RailScrapHint(rp){
         ce("span",{style:{color:"var(--t1)"}},label),
         n.scrap
           ?ce("span",{style:{color:"#059669",fontWeight:600,textAlign:"right",flexShrink:0}},
-            "\u2713 ścinek "+n.scrap.length_cm+" cm"+(n.scrap.color?" ("+n.scrap.color+")":"")+(n.spare>0?" \u00b7 zostanie "+n.spare+" cm":""))
+            "\u2713 szyna "+n.scrap.length_cm+" cm"+(n.scrap.color?" ("+n.scrap.color+")":"")+(n.spare>0?" \u00b7 zostanie "+n.spare+" cm":""))
           :ce("span",{style:{color:"var(--t3)",textAlign:"right",flexShrink:0}},"brak w magazynie")
       );
     }),
     ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:6,lineHeight:1.4}},
-      "Podpowiedź wg koloru i długości. Magazyn nie jest zmieniany — po użyciu ścinka usuń go w Magazyn \u2192 Szyny KS.")
+      "Podpowiedź wg koloru i długości. Magazyn nie jest zmieniany — po użyciu szyny zaktualizuj stan w Magazyn \u2192 Szyny KS.")
   );
 }
 
@@ -3980,7 +3980,7 @@ function DealCard(cp){
   var recvMap=deal.sewing_received&&typeof deal.sewing_received==="object"?deal.sewing_received:null;
   var sewnAll=cl&&recvMap&&Object.keys(recvMap).length?listSewnItems(cl):[];
   var sewnRecv=sewnAll.filter(function(it){return !!recvMap[it.key];}).length;
-  // Szyny KS z wyceny, które da się zrobić ze ścinków w magazynie (tylko kolumna Montaż).
+  // Szyny KS z wyceny, które można wziąć z magazynu (tylko kolumna Montaż).
   var railNeeds=[];
   if(sid==="montaz"&&cl&&cp.railScraps&&cp.railScraps.length){
     try{railNeeds=matchRailScraps(cl,cp.railScraps);}catch(e){railNeeds=[];}
@@ -4059,7 +4059,7 @@ function DealCard(cp){
         })
       ):null,
       railFound>0?ce("div",{
-        title:"Ścinki szyn KS z magazynu pasujące do szyn z wyceny — szczegóły w karcie deala (Montaż)",
+        title:"Szyny KS z magazynu pasujące do szyn z wyceny — szczegóły w karcie deala (Montaż)",
         style:{display:"inline-block",marginTop:6,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,
           background:"rgba(16,185,129,0.12)",color:"#059669",border:"1px solid rgba(16,185,129,0.4)"}
       },"\uD83D\uDCCF Szyny z magazynu "+railFound+"/"+railNeeds.length):null,
@@ -4198,7 +4198,7 @@ export function ScreenCRM(p){
   var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
   var sTeam=useState([]),teamUsers=sTeam[0],setTeamUsers=sTeam[1];
 
-  // Ścinki szyn KS z magazynu — do podpowiedzi na kartach w kolumnie Montaż
+  // Szyny KS z magazynu — do podpowiedzi na kartach w kolumnie Montaż
   var sRail=useState(null),railScraps=sRail[0],setRailScraps=sRail[1];
   React.useEffect(function(){
     sbApi.getRailScraps().then(function(data){setRailScraps(data||[]);}).catch(function(){setRailScraps([]);});

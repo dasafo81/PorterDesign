@@ -191,7 +191,7 @@ function ItemCard(p) {
   );
 }
 
-// ── Modal dodaj ścinke szyny ──────────────────────────────────────────────────
+// ── Modal dodaj szynę ──────────────────────────────────────────────────
 
 // ── Zakładka: Szyny KS ───────────────────────────────────────────────────────
 function ModalScrap(p) {
@@ -220,7 +220,7 @@ function ModalScrap(p) {
   return ce("div", { style: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.38)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 } },
     ce("div", { style: { background: "var(--bg)", borderRadius: 18, padding: "24px 22px", width: "100%", maxWidth: 360, boxShadow: "0 20px 60px rgba(0,0,0,0.20)" } },
       ce("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 } },
-        ce("div", { style: { fontSize: 16, fontWeight: 700 } }, "\uD83D\uDCCF Nowa \u015bcinka"),
+        ce("div", { style: { fontSize: 16, fontWeight: 700 } }, "\uD83D\uDCCF Nowa szyna"),
         ce("button", { onClick: p.onClose, style: { border: "none", background: "none", cursor: "pointer", fontSize: 20, color: "var(--t3)" } }, "\u00D7")
       ),
       err && ce("div", { style: { background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 12px", fontSize: 12, color: "#b91c1c", marginBottom: 12 } }, err),
@@ -272,7 +272,7 @@ function ModalScrap(p) {
 
       ce("div", { style: { display: "flex", gap: 10 } },
         ce("button", { onClick: p.onClose, style: { flex: 1, padding: 12, borderRadius: 10, border: "1.5px solid var(--bd2)", background: "var(--bg2)", color: "var(--t2)", fontSize: 13, fontWeight: 600, cursor: "pointer" } }, "Anuluj"),
-        ce("button", { onClick: save, disabled: busy, style: { flex: 2, padding: 12, borderRadius: 10, border: "none", background: "var(--violet)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1 } }, busy ? "Dodaję..." : ((parseInt(qty) || 1) > 1 ? "+ Dodaj " + (parseInt(qty) || 1) + " szt." : "+ Dodaj ścinkę"))
+        ce("button", { onClick: save, disabled: busy, style: { flex: 2, padding: 12, borderRadius: 10, border: "none", background: "var(--violet)", color: "#fff", fontSize: 13, fontWeight: 700, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1 } }, busy ? "Dodaję..." : ((parseInt(qty) || 1) > 1 ? "+ Dodaj " + (parseInt(qty) || 1) + " szt." : "+ Dodaj szynę"))
       )
     )
   );
@@ -294,7 +294,7 @@ function TabRails(p) {
   useEffect(function() { reload(); }, []);
 
   function handleDelete(scrap) {
-    if (!confirm("Usun\u0105\u0107 \u015bcink\u0119 " + scrap.length_cm + " cm (" + scrap.color + ", " + scrap.rail_type + ")?")) return;
+    if (!confirm("Usun\u0105\u0107 szyn\u0119 " + scrap.length_cm + " cm (" + scrap.color + ", " + scrap.rail_type + ")?")) return;
     sbApi.deleteRailScrap(scrap.id)
       .then(function() { setScraps(function(prev) { return prev.filter(function(x) { return x.id !== scrap.id; }); }); })
       .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
@@ -366,7 +366,7 @@ function TabRails(p) {
       ),
       ce("button", { onClick: function() { setShowModal(true); },
         style: { padding: "8px 16px", background: "var(--violet)", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: 700, fontSize: 13 } },
-        "+ Dodaj \u015bcink\u0119")
+        "+ Dodaj szyn\u0119")
     ),
 
     // Filtr typ
@@ -380,7 +380,7 @@ function TabRails(p) {
 
     err && ce("div", { style: { color: "#dc2626", fontSize: 13, marginBottom: 10 } }, err),
     loading && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "\u23f3 \u0141adowanie..."),
-    !loading && filtered.length === 0 && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak \u015bcinek."),
+    !loading && filtered.length === 0 && ce("div", { style: { color: "var(--t3)", fontSize: 13, padding: "20px 0" } }, "Brak szyn."),
 
     // Tabela 3-kolumnowa
     !loading && filtered.length > 0 && ce("div", { style: { border: "0.5px solid var(--bd2)", borderRadius: 12, overflow: "hidden" } },

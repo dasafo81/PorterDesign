@@ -8588,7 +8588,7 @@ export function buildHardwareRows(client){
   return rows;
 }
 
-// ── Ścinki szyn KS z magazynu → szyny z wyceny klienta ───────────────────────
+// ── Szyny KS z magazynu (pełne długości i odcinki) → szyny z wyceny klienta ───────────────────────
 // Kolor sprowadzony do rodziny (wycena: bialy/czarny/szary, magazyn: "biała",
 // "czarna", "off white" itd.). Nieznany kolor zwraca się jako tekst bez polskich znaków.
 export function railScrapColorKey(v){
@@ -8602,7 +8602,7 @@ export function railScrapColorKey(v){
 }
 
 // Rozbija szyny KS z wyceny na pojedyncze odcinki (qty × długość) i do każdego dobiera
-// ścinek z magazynu: ten sam kolor, długość >= potrzebnej, a z pasujących — najkrótszy
+// szynę z magazynu: ten sam kolor, długość >= potrzebnej, a z pasujących — najkrótszy
 // (najmniejszy odpad). Każdy ścinek jest użyty najwyżej raz. Najdłuższe odcinki mają
 // pierwszeństwo. Zwraca listę odcinków w kolejności z wyceny:
 //   {room,win,type,len,color,piece,pieces,scrap:(wiersz rail_scraps|null),spare:(cm zapasu|null)}
