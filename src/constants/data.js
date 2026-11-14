@@ -8601,36 +8601,64 @@ export function railScrapColorKey(v){
   return s;
 }
 
-// Rozbija szyny KS z wyceny na pojedyncze odcinki (qty × długość) i do każdego dobiera
-// szynę z magazynu: ten sam kolor, długość >= potrzebnej, a z pasujących — najkrótszy
-// (najmniejszy odpad). Każdy ścinek jest użyty najwyżej raz. Najdłuższe odcinki mają
-// pierwszeństwo. Zwraca listę odcinków w kolejności z wyceny:
-//   {room,win,type,len,color,piece,pieces,scrap:(wiersz rail_scraps|null),spare:(cm zapasu|null)}
+// Rozbija szyny KS z wyceny na pojedyncze odcinki (qty × długość) i układa je na szynach
+// z magazynu tak, żeby zużyć jak najmniej szyn: kilka odcinków może iść z jednej szyny
+// (np. 2 × 250 cm z jednej 580 cm). Tylko ten sam kolor i typ KS. Odcinki od najdłuższego:
+// najpierw próbujemy dociąć z szyny już "otwartej" (tej o najmniejszym pasującym zapasie),
+// a gdy nic się nie mieści — otwieramy nową, najkrótszą z pasujących.
+// Zwraca {needs,rails}:
+//   needs — odcinki w kolejności z wyceny: {room,win,type,len,color,piece,pieces,
+//           scrap:(wiersz rail_scraps|null),railNo:(nr szyny|null),spare:(cm zostaje na całej szynie)}
+//   rails — szyny do wzięcia z magazynu: {no,scrap,cuts:[odcinki],spare}
 // Funkcja tylko podpowiada — niczego nie zapisuje ani nie rezerwuje w magazynie.
-export function matchRailScraps(client,scraps){
+export function planRailScraps(client,scraps){
   var needs=[];
   buildHardwareRows(client||{}).forEach(function(r){
     if(r.category!=="szyna_ks"||!(r.len>0))return;
     var q=Math.max(1,parseInt(r.qty)||1);
     for(var i=0;i<q;i++){
-      needs.push({room:r.room,win:r.win,type:r.type,len:r.len,color:r.kolor,piece:i+1,pieces:q,scrap:null,spare:null});
+      needs.push({room:r.room,win:r.win,type:r.type,len:r.len,color:r.kolor,piece:i+1,pieces:q,scrap:null,railNo:null,spare:null});
     }
   });
-  var used={};
   var pool=(scraps||[]).filter(function(s){
     var t=String(s.rail_type||"").trim().toLowerCase();
     return (t===""||t==="ks"||t==="szyna ks")&&s.length_cm>0;
   });
+  var usedRail={};
+  var open=[]; // szyny już w użyciu: {scrap,left,cuts}
   needs.slice().sort(function(a,b){return b.len-a.len;}).forEach(function(n){
     var key=railScrapColorKey(n.color);
     var best=null;
-    pool.forEach(function(s){
-      if(used[s.id]||s.length_cm<n.len||railScrapColorKey(s.color)!==key)return;
-      if(!best||s.length_cm<best.length_cm)best=s;
+    // 1) dociąć z już otwartej szyny tego koloru (najmniejszy pasujący zapas)
+    open.forEach(function(o){
+      if(railScrapColorKey(o.scrap.color)!==key||o.left<n.len)return;
+      if(!best||o.left<best.left)best=o;
     });
-    if(best){used[best.id]=true;n.scrap=best;n.spare=best.length_cm-n.len;}
+    // 2) otworzyć nową — najkrótszą pasującą
+    if(!best){
+      var cand=null;
+      pool.forEach(function(sc){
+        if(usedRail[sc.id]||sc.length_cm<n.len||railScrapColorKey(sc.color)!==key)return;
+        if(!cand||sc.length_cm<cand.length_cm)cand=sc;
+      });
+      if(cand){usedRail[cand.id]=true;best={scrap:cand,left:cand.length_cm,cuts:[]};open.push(best);}
+    }
+    if(best){best.left-=n.len;best.cuts.push(n);n.scrap=best.scrap;n.rail=best;}
   });
-  return needs;
+  var rails=open.map(function(o,i){return {no:i+1,scrap:o.scrap,cuts:o.cuts,spare:o.left};});
+  // numeracja szyn wg kolejności pierwszego odcinka w wycenie
+  rails.sort(function(a,b){return needs.indexOf(a.cuts[0])-needs.indexOf(b.cuts[0])||0;});
+  rails.forEach(function(r,i){r.no=i+1;});
+  needs.forEach(function(n){
+    if(n.rail){var r=rails.filter(function(x){return x.cuts.indexOf(n)>=0;})[0];n.railNo=r.no;n.spare=r.spare;}
+    delete n.rail;
+  });
+  return {needs:needs,rails:rails};
+}
+
+// Sam podział odcinków (bez listy szyn) — dla znacznika na kafelku.
+export function matchRailScraps(client,scraps){
+  return planRailScraps(client,scraps).needs;
 }
 
 // Buduje HTML Zamówienia Osprzętu z już gotowych (ewentualnie ręcznie

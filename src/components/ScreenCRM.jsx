@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
-import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows, listSewnItems, matchRailScraps } from '../constants/data.js';
+import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows, listSewnItems, matchRailScraps, planRailScraps } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor, moveDealTwins, dealStartDate, dealFieldTitle } from '../lib/gcalDealSync.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
@@ -305,9 +305,8 @@ function openMontazWindow(cl){
   w.document.close();
 }
 
-// ── MODAL DEAL ───────────────────────────────────────────────────────────────
-// Podpowiedź w etapie Montaż: które szyny KS z wyceny klienta można wziąć z magazynu
-// w magazynie (Magazyn → Szyny KS). Tylko podpowiada — niczego nie rezerwuje ani nie usuwa.
+// Podpowiedź w etapie Montaż: z których szyn KS w magazynie (Magazyn → Szyny KS) zrobić szyny
+// z wyceny klienta — kilka odcinków może iść z jednej szyny. Tylko podpowiada, nic nie rezerwuje.
 function RailScrapHint(rp){
   var s1=useState(rp.scraps||null),scraps=s1[0],setScraps=s1[1];
   useEffect(function(){
@@ -317,8 +316,9 @@ function RailScrapHint(rp){
     return function(){alive=false;};
   },[]);
   if(!scraps||!rp.client)return null;
-  var needs=[];
-  try{needs=matchRailScraps(rp.client,scraps);}catch(e){needs=[];}
+  var plan={needs:[],rails:[]};
+  try{plan=planRailScraps(rp.client,scraps);}catch(e){plan={needs:[],rails:[]};}
+  var needs=plan.needs,rails=plan.rails;
   if(!needs.length)return null;
   var found=needs.filter(function(n){return !!n.scrap;}).length;
   return ce("div",{style:{borderTop:"1px dashed var(--bd2)",paddingTop:10}},
@@ -326,23 +326,33 @@ function RailScrapHint(rp){
       ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--t2)",textTransform:"uppercase"}},"\uD83D\uDCCF Szyny z magazynu"),
       ce("span",{style:{marginLeft:"auto",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,
         background:found?"rgba(16,185,129,0.12)":"var(--bg)",color:found?"#059669":"var(--t3)",border:"1px solid "+(found?"rgba(16,185,129,0.4)":"var(--bd2)")}},
-        "z magazynu: "+found+"/"+needs.length)
+        "z magazynu: "+found+"/"+needs.length+(rails.length?" \u00b7 "+rails.length+" szt.":""))
     ),
+    rails.length?ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd2)",borderRadius:10,padding:"8px 10px",marginBottom:8}},
+      ce("div",{style:{fontSize:10,fontWeight:700,color:"var(--t3)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}},"Weź z magazynu"),
+      rails.map(function(r){
+        return ce("div",{key:r.no,style:{fontSize:12,color:"var(--t1)",padding:"2px 0",lineHeight:1.4}},
+          ce("b",null,"#"+r.no+" szyna "+r.scrap.length_cm+" cm"+(r.scrap.color?" ("+r.scrap.color+")":"")),
+          " \u2192 tnij: "+r.cuts.map(function(c){return c.len;}).join(" + ")+" cm"
+            +(r.spare>0?" \u00b7 zostanie "+r.spare+" cm":" \u00b7 bez reszty"));
+      })
+    ):null,
     needs.map(function(n,i){
       var label=(n.room?n.room+" / ":"")+(n.win||"")+" \u2014 "+n.type+", "+n.len+" cm"+(n.pieces>1?" ("+n.piece+"/"+n.pieces+")":"");
       return ce("div",{key:i,style:{display:"flex",justifyContent:"space-between",gap:10,fontSize:12,padding:"4px 0",borderBottom:i<needs.length-1?"1px solid var(--bd2)":"none"}},
         ce("span",{style:{color:"var(--t1)"}},label),
         n.scrap
           ?ce("span",{style:{color:"#059669",fontWeight:600,textAlign:"right",flexShrink:0}},
-            "\u2713 szyna "+n.scrap.length_cm+" cm"+(n.scrap.color?" ("+n.scrap.color+")":"")+(n.spare>0?" \u00b7 zostanie "+n.spare+" cm":""))
+            "\u2713 z szyny #"+n.railNo)
           :ce("span",{style:{color:"var(--t3)",textAlign:"right",flexShrink:0}},"brak w magazynie")
       );
     }),
     ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:6,lineHeight:1.4}},
-      "Podpowiedź wg koloru i długości. Magazyn nie jest zmieniany — po użyciu szyny zaktualizuj stan w Magazyn \u2192 Szyny KS.")
+      "Podpowiedź wg koloru i długości (odcinki układane tak, by zużyć jak najmniej szyn). Magazyn nie jest zmieniany — po użyciu szyny zaktualizuj stan w Magazyn \u2192 Szyny KS.")
   );
 }
 
+// ── MODAL DEAL ───────────────────────────────────────────────────────────────
 export function ModalDeal(p){
   var d=p.deal;
   var gcalToken=p.gcalToken||null;

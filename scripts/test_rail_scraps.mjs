@@ -1,6 +1,6 @@
 // Dobor scinkow szyn KS z magazynu do szyn z wyceny (data.js: matchRailScraps).
 import assert from "node:assert/strict";
-import { matchRailScraps, railScrapColorKey } from "../src/constants/data.js";
+import { matchRailScraps, planRailScraps, railScrapColorKey } from "../src/constants/data.js";
 
 var szyna = function (len, kk, qty) { return { type: "szyna", c: { ks: "flex", kk: kk }, par: { len: len, qty: qty || 1 } }; };
 var client = function (prods) { return { rooms: [{ name: "Salon", windows: [{ name: "Okno 1", products: prods }] }] }; };
@@ -28,4 +28,21 @@ assert.equal(matchRailScraps(client([szyna(100, "czarna")]), [])[0].scrap, null)
 // brak szyn w wycenie / pusty klient
 assert.equal(matchRailScraps(client([{ type: "zaslona", c: {}, par: {} }]), [scrap("a", 500, "biała")]).length, 0);
 assert.equal(matchRailScraps({}, []).length, 0);
+// dwa odcinki 250 z jednej szyny 580 (nie zuzywamy dwoch szyn)
+var pl = planRailScraps(client([szyna(250, "biala", 2)]), [scrap("a", 580, "biała"), scrap("b", 580, "biała")]);
+assert.equal(pl.rails.length, 1); assert.equal(pl.rails[0].spare, 80);
+assert.deepEqual(pl.needs.map(function (n) { return n.railNo; }), [1, 1]);
+
+// 465 + 250 + 240 przy trzech 580: 465 osobno (zostaje 115), 250 + 240 razem na drugiej -> 2 szyny
+pl = planRailScraps(client([szyna(465, "biala"), szyna(250, "biala"), szyna(240, "biala")]),
+  [scrap("a", 580, "biała"), scrap("b", 580, "biała"), scrap("c", 580, "biała")]);
+assert.equal(pl.rails.length, 2);
+assert.equal(pl.rails[0].cuts.length + pl.rails[1].cuts.length, 3);
+assert.equal(pl.rails[0].spare, 115); assert.equal(pl.rails[1].spare, 90);
+
+// odcinki nie mieszaja kolorow na jednej szynie; za malo szyn -> brak dla reszty
+pl = planRailScraps(client([szyna(100, "biala"), szyna(100, "czarna")]), [scrap("a", 580, "biała")]);
+assert.equal(pl.rails.length, 1); assert.equal(pl.needs.filter(function (n) { return !n.scrap; }).length, 1);
+pl = planRailScraps(client([szyna(300, "biala", 2)]), [scrap("a", 580, "biała")]);
+assert.equal(pl.needs.filter(function (n) { return n.scrap; }).length, 1);
 console.log("test_rail_scraps OK");
