@@ -50,8 +50,7 @@ export var SYSTEM_TEMPLATES = {
       P("Dzień dobry,"),
       P("w załączeniu przesyłam fakturę nr <b>{numer}</b> na kwotę <b>{kwota}</b>{czesc}."),
       P("{terminZdanie}"),
-      P("Dziękujemy za współpracę. W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-      P("Pozdrawiam,")
+      P("Dziękujemy za współpracę. W razie jakichkolwiek pytań pozostaję do dyspozycji.")
     ]),
     files:[]
   },
@@ -62,8 +61,7 @@ export var SYSTEM_TEMPLATES = {
       P("Dzień dobry,"),
       P("uprzejmie przypominam, że termin płatności faktury nr <b>{numer}</b> na kwotę <b>{kwota}</b> upłynął{terminZdanie}."),
       P("Jeśli wpłata została już zrealizowana, proszę potraktować tę wiadomość jako bezprzedmiotową. W przeciwnym razie bardzo proszę o uregulowanie należności w najbliższym możliwym terminie."),
-      P("Fakturę przesyłam ponownie w załączeniu. W razie jakichkolwiek pytań pozostaję do dyspozycji."),
-      P("Pozdrawiam,")
+      P("Fakturę przesyłam ponownie w załączeniu. W razie jakichkolwiek pytań pozostaję do dyspozycji.")
     ]),
     files:[]
   },
@@ -72,8 +70,7 @@ export var SYSTEM_TEMPLATES = {
     subject:"Faktura nr {numer} i Ogólne Warunki Umowy",
     body:J([
       P("Dzień dobry,"),
-      P("w załączeniu przesyłamy fakturę nr <b>{numer}</b> oraz Ogólne Warunki Umowy (OWU)."),
-      P("Pozdrawiam,")
+      P("w załączeniu przesyłamy fakturę nr <b>{numer}</b> oraz Ogólne Warunki Umowy (OWU).")
     ]),
     files:[]
   },
@@ -83,8 +80,7 @@ export var SYSTEM_TEMPLATES = {
     body:J([
       P("Dzień dobry,"),
       P("potwierdzam zarejestrowanie wpłaty{wplata} i informuję, że rozpoczynamy realizację zamówienia."),
-      P("{terminZdanie}"),
-      P("Pozdrawiam,")
+      P("{terminZdanie}")
     ]),
     files:[]
   },
@@ -202,8 +198,8 @@ export function loadSystemTemplate(id){
 }
 
 // ── Podpis z Poczta → Ustawienia ─────────────────────────────────────────────
-// Doklejany do każdego maila wysyłanego z karty deala i z modułu Faktury (treść szablonu kończy się
-// samym „Pozdrawiam,"). Najpierw podpis konta, z którego idzie wysyłka (user_settings.signature_html
+// Doklejany do każdego maila wysyłanego z karty deala i z modułu Faktury (treści szablonów nie mają
+// własnego „Pozdrawiam,"). Najpierw podpis konta, z którego idzie wysyłka (user_settings.signature_html
 // + obrazek). Brak podpisu albo błąd odczytu nie blokuje wysyłki.
 export function loadMailSignature(acc){
   var email=acc&&(acc.username||acc.email)||"";
