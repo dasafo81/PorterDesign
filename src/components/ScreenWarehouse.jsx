@@ -293,8 +293,8 @@ function TabRails(p) {
   }
   useEffect(function() { reload(); }, []);
 
-  function handleDelete(scrap) {
-    if (!confirm("Usun\u0105\u0107 szyn\u0119 " + scrap.length_cm + " cm (" + scrap.color + ", " + scrap.rail_type + ")?")) return;
+  function handleDelete(scrap, cnt) {
+    if (!confirm("Usun\u0105\u0107 " + (cnt > 1 ? "1 szt. (z " + cnt + ") szyny " : "szyn\u0119 ") + scrap.length_cm + " cm (" + scrap.color + ", " + scrap.rail_type + ")?")) return;
     sbApi.deleteRailScrap(scrap.id)
       .then(function() { setScraps(function(prev) { return prev.filter(function(x) { return x.id !== scrap.id; }); }); })
       .catch(function(e) { alert("B\u0142\u0105d: " + e.message); });
@@ -336,7 +336,20 @@ function TabRails(p) {
     byColor[c].sort(function(a, b) { return b.length_cm - a.length_cm; });
   });
 
-  var maxRows = colorSet.reduce(function(m, c) { return Math.max(m, (byColor[c]||[]).length); }, 0);
+  // Identyczne szyny (ta sama długość i typ w danym kolorze) w jednym wierszu z licznikiem,
+  // np. paczka 10 × 580 cm to jeden wiersz "580 cm × 10", a nie dziesięć.
+  var groups = {};
+  colorSet.forEach(function(c) {
+    var list = [];
+    var idx = {};
+    byColor[c].forEach(function(sc) {
+      var k = sc.length_cm + "|" + (sc.rail_type || "");
+      if (idx[k] === undefined) { idx[k] = list.length; list.push({ scrap: sc, items: [] }); }
+      list[idx[k]].items.push(sc);
+    });
+    groups[c] = list;
+  });
+  var maxRows = colorSet.reduce(function(m, c) { return Math.max(m, (groups[c]||[]).length); }, 0);
 
   var COLOR_DOT = { "bia\u0142a": "#f0f0ec", "czarna": "#1a1a1a", "off white": "#ede8d8" };
   var COLOR_DOT_BORDER = { "czarna": "#555" };
@@ -417,7 +430,9 @@ function TabRails(p) {
           Array.from({ length: maxRows }, function(_, i) {
             return ce("tr", { key: i, style: { background: i % 2 === 0 ? "var(--bg)" : "var(--bg2)" } },
               colorSet.map(function(color) {
-                var scrap = (byColor[color] || [])[i];
+                var grp = (groups[color] || [])[i];
+                var scrap = grp ? grp.scrap : null;
+                var cnt = grp ? grp.items.length : 0;
                 if (!scrap) {
                   return [
                     ce("td", { key: color + "-len", style: { padding: "6px 12px", borderBottom: "0.5px solid var(--bd3)" } }),
@@ -429,7 +444,8 @@ function TabRails(p) {
                     ce("div", { style: { display: "flex", alignItems: "center", gap: 4 } },
                       ce("span", { style: { fontSize: 15, fontWeight: 600, color: "var(--violet)" } }, scrap.length_cm),
                       ce("span", { style: { fontSize: 9, color: "var(--t3)" } }, "cm"),
-                      ce("button", { onClick: function() { handleDelete(scrap); }, title: "Usu\u0144",
+                      cnt > 1 && ce("span", { title: cnt + " szt. tej samej d\u0142ugo\u015bci", style: { fontSize: 11, fontWeight: 700, color: "var(--t1)", background: "var(--bg2)", border: "0.5px solid var(--bd2)", borderRadius: 20, padding: "0 7px", marginLeft: 2 } }, "\u00d7 " + cnt),
+                      ce("button", { onClick: function() { handleDelete(grp.items[cnt - 1], cnt); }, title: cnt > 1 ? "Usu\u0144 1 szt." : "Usu\u0144",
                         style: { border: "none", background: "none", cursor: "pointer", color: "var(--t3)", fontSize: 12, padding: "0 2px", opacity: .4, marginLeft: 2, lineHeight: 1 } }, "\uD83D\uDDD1")
                     )
                   ),
