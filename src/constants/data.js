@@ -8588,6 +8588,51 @@ export function buildHardwareRows(client){
   return rows;
 }
 
+// ── Ścinki szyn KS z magazynu → szyny z wyceny klienta ───────────────────────
+// Kolor sprowadzony do rodziny (wycena: bialy/czarny/szary, magazyn: "biała",
+// "czarna", "off white" itd.). Nieznany kolor zwraca się jako tekst bez polskich znaków.
+export function railScrapColorKey(v){
+  var s=String(v==null?"":v).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ł/g,"l").trim();
+  if(!s)return "";
+  if(s.indexOf("off")>=0)return "offwhite";
+  if(s.indexOf("bial")>=0||s.indexOf("white")>=0)return "bialy";
+  if(s.indexOf("czarn")>=0||s.indexOf("black")>=0)return "czarny";
+  if(s.indexOf("szar")>=0||s.indexOf("srebr")>=0||s.indexOf("grey")>=0||s.indexOf("gray")>=0)return "szary";
+  return s;
+}
+
+// Rozbija szyny KS z wyceny na pojedyncze odcinki (qty × długość) i do każdego dobiera
+// ścinek z magazynu: ten sam kolor, długość >= potrzebnej, a z pasujących — najkrótszy
+// (najmniejszy odpad). Każdy ścinek jest użyty najwyżej raz. Najdłuższe odcinki mają
+// pierwszeństwo. Zwraca listę odcinków w kolejności z wyceny:
+//   {room,win,type,len,color,piece,pieces,scrap:(wiersz rail_scraps|null),spare:(cm zapasu|null)}
+// Funkcja tylko podpowiada — niczego nie zapisuje ani nie rezerwuje w magazynie.
+export function matchRailScraps(client,scraps){
+  var needs=[];
+  buildHardwareRows(client||{}).forEach(function(r){
+    if(r.category!=="szyna_ks"||!(r.len>0))return;
+    var q=Math.max(1,parseInt(r.qty)||1);
+    for(var i=0;i<q;i++){
+      needs.push({room:r.room,win:r.win,type:r.type,len:r.len,color:r.kolor,piece:i+1,pieces:q,scrap:null,spare:null});
+    }
+  });
+  var used={};
+  var pool=(scraps||[]).filter(function(s){
+    var t=String(s.rail_type||"").trim().toLowerCase();
+    return (t===""||t==="ks"||t==="szyna ks")&&s.length_cm>0;
+  });
+  needs.slice().sort(function(a,b){return b.len-a.len;}).forEach(function(n){
+    var key=railScrapColorKey(n.color);
+    var best=null;
+    pool.forEach(function(s){
+      if(used[s.id]||s.length_cm<n.len||railScrapColorKey(s.color)!==key)return;
+      if(!best||s.length_cm<best.length_cm)best=s;
+    });
+    if(best){used[best.id]=true;n.scrap=best;n.spare=best.length_cm-n.len;}
+  });
+  return needs;
+}
+
 // Buduje HTML Zamówienia Osprzętu z już gotowych (ewentualnie ręcznie
 // doedytowanych na ekranie podglądu) wierszy, pogrupowanych wg dostawcy.
 export function buildHardwarePDFHtmlFromRows(client,rows){

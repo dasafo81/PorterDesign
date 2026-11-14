@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, Fragment } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
-import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows, listSewnItems } from '../constants/data.js';
+import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows, listSewnItems, matchRailScraps } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
 import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor, moveDealTwins, dealStartDate, dealFieldTitle } from '../lib/gcalDealSync.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
@@ -306,6 +306,43 @@ function openMontazWindow(cl){
 }
 
 // ── MODAL DEAL ───────────────────────────────────────────────────────────────
+// Podpowiedź w etapie Montaż: które szyny KS z wyceny klienta można zrobić ze ścinków
+// w magazynie (Magazyn → Szyny KS). Tylko podpowiada — niczego nie rezerwuje ani nie usuwa.
+function RailScrapHint(rp){
+  var s1=useState(rp.scraps||null),scraps=s1[0],setScraps=s1[1];
+  useEffect(function(){
+    if(rp.scraps)return;
+    var alive=true;
+    sbApi.getRailScraps().then(function(d){if(alive)setScraps(d||[]);}).catch(function(){if(alive)setScraps([]);});
+    return function(){alive=false;};
+  },[]);
+  if(!scraps||!rp.client)return null;
+  var needs=[];
+  try{needs=matchRailScraps(rp.client,scraps);}catch(e){needs=[];}
+  if(!needs.length)return null;
+  var found=needs.filter(function(n){return !!n.scrap;}).length;
+  return ce("div",{style:{borderTop:"1px dashed var(--bd2)",paddingTop:10}},
+    ce("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
+      ce("div",{style:{fontSize:11,fontWeight:700,letterSpacing:"0.08em",color:"var(--t2)",textTransform:"uppercase"}},"\uD83D\uDCCF Szyny z magazynu"),
+      ce("span",{style:{marginLeft:"auto",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,
+        background:found?"rgba(16,185,129,0.12)":"var(--bg)",color:found?"#059669":"var(--t3)",border:"1px solid "+(found?"rgba(16,185,129,0.4)":"var(--bd2)")}},
+        "ze ścinków: "+found+"/"+needs.length)
+    ),
+    needs.map(function(n,i){
+      var label=(n.room?n.room+" / ":"")+(n.win||"")+" \u2014 "+n.type+", "+n.len+" cm"+(n.pieces>1?" ("+n.piece+"/"+n.pieces+")":"");
+      return ce("div",{key:i,style:{display:"flex",justifyContent:"space-between",gap:10,fontSize:12,padding:"4px 0",borderBottom:i<needs.length-1?"1px solid var(--bd2)":"none"}},
+        ce("span",{style:{color:"var(--t1)"}},label),
+        n.scrap
+          ?ce("span",{style:{color:"#059669",fontWeight:600,textAlign:"right",flexShrink:0}},
+            "\u2713 ścinek "+n.scrap.length_cm+" cm"+(n.scrap.color?" ("+n.scrap.color+")":"")+(n.spare>0?" \u00b7 zostanie "+n.spare+" cm":""))
+          :ce("span",{style:{color:"var(--t3)",textAlign:"right",flexShrink:0}},"brak w magazynie")
+      );
+    }),
+    ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:6,lineHeight:1.4}},
+      "Podpowiedź wg koloru i długości. Magazyn nie jest zmieniany — po użyciu ścinka usuń go w Magazyn \u2192 Szyny KS.")
+  );
+}
+
 export function ModalDeal(p){
   var d=p.deal;
   var gcalToken=p.gcalToken||null;
@@ -2209,6 +2246,7 @@ export function ModalDeal(p){
             ),
             null
           ),
+          d.stage==="montaz"?ce(RailScrapHint,{client:cl,scraps:p.railScraps}):null,
           ce(CheckRow,{checked:installDone,onChange:setInstallDone,label:"Montaż zrealizowany",sublabel:delivDate?("Zaplanowany: "+fmtDate(delivDate)+(installerName?" — "+installerName:"")):null}),
 
           ce("div",{style:{borderTop:"1px dashed var(--bd2)",marginTop:4,paddingTop:10}},
@@ -3942,6 +3980,12 @@ function DealCard(cp){
   var recvMap=deal.sewing_received&&typeof deal.sewing_received==="object"?deal.sewing_received:null;
   var sewnAll=cl&&recvMap&&Object.keys(recvMap).length?listSewnItems(cl):[];
   var sewnRecv=sewnAll.filter(function(it){return !!recvMap[it.key];}).length;
+  // Szyny KS z wyceny, które da się zrobić ze ścinków w magazynie (tylko kolumna Montaż).
+  var railNeeds=[];
+  if(sid==="montaz"&&cl&&cp.railScraps&&cp.railScraps.length){
+    try{railNeeds=matchRailScraps(cl,cp.railScraps);}catch(e){railNeeds=[];}
+  }
+  var railFound=railNeeds.filter(function(n){return !!n.scrap;}).length;
   return ce(Draggable,{draggableId:String(deal.id),index:index},function(provided,snapshot){
     return ce("div",Object.assign({
       ref:provided.innerRef
@@ -4014,6 +4058,11 @@ function DealCard(cp){
           },ce("span",null,st.icon),ce("span",null,st.label),on?ce("span",null,"\u2713"):null);
         })
       ):null,
+      railFound>0?ce("div",{
+        title:"Ścinki szyn KS z magazynu pasujące do szyn z wyceny — szczegóły w karcie deala (Montaż)",
+        style:{display:"inline-block",marginTop:6,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,
+          background:"rgba(16,185,129,0.12)",color:"#059669",border:"1px solid rgba(16,185,129,0.4)"}
+      },"\uD83D\uDCCF Szyny z magazynu "+railFound+"/"+railNeeds.length):null,
       deal.notes?ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:5,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}},deal.notes):null
     );
   });
@@ -4077,7 +4126,7 @@ function KanbanCol(kp){
               key:deal.id,deal:deal,stage:stage,index:i,
               clients:clients,openDeal:openDeal,
               fmtDate:fmtDate,clientTotal2:clientTotal2,toggleOrder:kp.toggleOrder,
-              teamUsers:kp.teamUsers,onToggleAssigned:kp.onToggleAssigned
+              teamUsers:kp.teamUsers,onToggleAssigned:kp.onToggleAssigned,railScraps:kp.railScraps
             });
           }),
           provided.placeholder,
@@ -4102,7 +4151,7 @@ function KanbanBoard(kp){
     moveStage(dealId,toStage);
   }
 
-  var colProps={deals:deals,clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2,toggleOrder:kp.toggleOrder,teamUsers:kp.teamUsers,onToggleAssigned:kp.onToggleAssigned};
+  var colProps={deals:deals,clients:clients,openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2,toggleOrder:kp.toggleOrder,teamUsers:kp.teamUsers,onToggleAssigned:kp.onToggleAssigned,railScraps:kp.railScraps};
   var mainStages=CRM_STAGES.filter(function(s){return s.id!=="posprzedazowa";});
   var stagePosprz=CRM_STAGES.find(function(s){return s.id==="posprzedazowa";});
   // Symetryczny układ górnego rzędu: 6 / 3 / 2 / 1 kolumn wg szerokości samej tablicy
@@ -4148,6 +4197,12 @@ export function ScreenCRM(p){
   var sAdding=useState(false),adding=sAdding[0],setAdding=sAdding[1];
   var sCalList=useState([]),calList=sCalList[0],setCalList=sCalList[1];
   var sTeam=useState([]),teamUsers=sTeam[0],setTeamUsers=sTeam[1];
+
+  // Ścinki szyn KS z magazynu — do podpowiedzi na kartach w kolumnie Montaż
+  var sRail=useState(null),railScraps=sRail[0],setRailScraps=sRail[1];
+  React.useEffect(function(){
+    sbApi.getRailScraps().then(function(data){setRailScraps(data||[]);}).catch(function(){setRailScraps([]);});
+  },[]);
 
   React.useEffect(function(){
     sbApi.getTenantUsers().then(function(data){setTeamUsers(data||[]);}).catch(function(){setTeamUsers([]);});
@@ -4352,7 +4407,7 @@ export function ScreenCRM(p){
     ce(KanbanBoard,{
       deals:deals,clients:p.clients,moveStage:moveStage,toggleOrder:toggleOrder,
       openDeal:openDeal,fmtDate:fmtDate,clientTotal2:clientTotal2,
-      teamUsers:teamUsers,onToggleAssigned:toggleAssigned
+      teamUsers:teamUsers,onToggleAssigned:toggleAssigned,railScraps:railScraps
     }),
     // Modall
     modalDeal?ce(ModalDeal,{
@@ -4371,6 +4426,7 @@ export function ScreenCRM(p){
       onClose:function(){setModalDeal(null);},
       onGoToClient:function(){goToClient(modalDeal.client_id,modalDeal.id);},
       onGoToSummary:function(){goToClientSummary(modalDeal.client_id,modalDeal.id);},
+      railScraps:railScraps,
       onOpenMail:p.onOpenMail,
       onIssueInvoice:p.onIssueInvoice
     }):null
