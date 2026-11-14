@@ -617,6 +617,22 @@ export const sbApi = {
   deleteRailScrap: function(id){
     return sbFetch("DELETE","rail_scraps?id=eq."+id);
   },
+  // Publiczny link „Do montażu” (tabela montaz_shares, migracja 0075): jeden wiersz na deal.
+  // Zapisuje snapshot listy i zwraca token — przy istniejącym wierszu token zostaje ten sam,
+  // więc link wklejony wcześniej do kalendarza dalej działa i pokazuje świeże dane.
+  upsertMontazShare: function(dealId,payload){
+    var now=new Date().toISOString();
+    return sbFetch("GET","montaz_shares?select=token&deal_id=eq."+encodeURIComponent(dealId)+"&limit=1").then(function(rows){
+      if(rows&&rows.length){
+        return sbFetch("PATCH","montaz_shares?deal_id=eq."+encodeURIComponent(dealId),{payload:payload,updated_at:now}).then(function(r){
+          return (r&&r[0]&&r[0].token)||rows[0].token;
+        });
+      }
+      return sbFetch("POST","montaz_shares",{deal_id:dealId,payload:payload}).then(function(r){
+        return r&&r[0]&&r[0].token;
+      });
+    });
+  },
   // ── MAIL RECIPIENTS HISTORY (historia adresów odbiorców) ──
   // Pobiera zapisane adresy pasujące do query (dla podpowiedzi w polu Do:)
   searchMailRecipients: function(query){

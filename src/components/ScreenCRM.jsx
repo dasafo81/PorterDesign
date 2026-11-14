@@ -3,6 +3,8 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows, listSewnItems, planRailScraps } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
+import { montazLinkOrNull, ensureMontazShare, buildMontazPayload } from '../lib/montazShare.js';
+import { renderMontazHtml } from '../../api/_montazView.js';
 import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor, moveDealTwins, dealStartDate, dealFieldTitle } from '../lib/gcalDealSync.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
 import { DealCorrespondence } from './DealCorrespondence.jsx';
@@ -258,74 +260,8 @@ function openMontazWindow(cl){
   sbApi.getRailScraps().catch(function(){return [];}).then(function(scraps){renderMontazWindow(w,cl,scraps||[]);});
 }
 function renderMontazWindow(w,cl,scraps){
-  function esc(v){return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-  var rows=buildOfferDetailRows(cl||{});
-  var addr=[cl.addr||cl.street,[cl.postal,cl.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  var body="";
-  // Szyny KS z magazynu do szyn z wyceny (kilka odcinków z jednej szyny, 1 cm na cięcie)
-  var plan={needs:[],rails:[]};
-  try{plan=planRailScraps(cl||{},scraps);}catch(e){plan={needs:[],rails:[]};}
-  if(plan.needs.length){
-    body+='<div class="rails"><div class="rt">\uD83D\uDCCF Szyny KS z magazynu</div>';
-    plan.rails.forEach(function(r){
-      body+='<div class="rl"><b>#'+r.no+' szyna '+esc(r.scrap.length_cm)+' cm'+(r.scrap.color?' ('+esc(r.scrap.color)+')':'')+'</b> \u2192 tnij: '
-        +esc(r.cuts.map(function(c){return c.len;}).join(" + "))+' cm'
-        +(r.spare>0?' \u00b7 zostanie '+esc(r.spare)+' cm':' \u00b7 bez reszty')+'</div>';
-    });
-    var missing=plan.needs.filter(function(n){return !n.scrap;});
-    if(missing.length){
-      body+='<div class="rl miss">Brak w magazynie: '+esc(missing.map(function(n){return n.len+" cm"+(n.room?" ("+n.room+")":"");}).join(", "))+'</div>';
-    }
-    body+='<div class="rn">Odcinki ułożone tak, by zużyć jak najmniej szyn; 1 cm zapasu na każde cięcie.</div></div>';
-  }
-  if(!rows.length){
-    body='<p class="empty">Brak pozycji w wycenie.</p>';
-  }else{
-    rows.forEach(function(r,i){
-      if(i===0||r.room!==rows[i-1].room)body+='<h2>'+esc(r.room)+'</h2>';
-      var wymiary=[r.szerokosc&&r.szerokosc!=="-"?r.szerokosc:null,r.wysokosc&&r.wysokosc!=="-"?r.wysokosc:null].filter(Boolean).join(" \u00d7 ");
-      var multi=r.qty>1;
-      body+='<div class="item'+(multi?' multi':'')+'">'
-        +'<div class="head">'
-        +(multi?'<span class="qty">'+esc(r.qty)+'\u00d7</span>':'')
-        +'<span class="name">'+esc(r.name)+'</span>'
-        +(multi&&r.unit?'<span class="unit">'+esc(r.unit)+'</span>':'')
-        +'</div>'
-        +(r.modelSzycia&&r.modelSzycia!=="-"?'<div class="model">'+esc(r.modelSzycia)+'</div>':'')
-        +(wymiary?'<div class="dim">'+esc(wymiary)+'</div>':'')
-        +(r.podzial&&r.podzial!=="-"?'<div class="sub">'+esc(r.podzial)+'</div>':'')
-        +(r.note?'<div class="note">Uwaga: '+esc(r.note)+'</div>':'')
-        +(r.installNote?'<div class="inst">\uD83D\uDD28 '+esc(r.installNote)+'</div>':'')
-        +'</div>';
-    });
-  }
-  var html='<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-    +'<title>Do monta\u017cu \u2014 '+esc(cl.name||"")+'</title><style>'
-    +'body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;max-width:760px;margin:0 auto;padding:20px 18px 40px;font-size:14px}'
-    +'.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid #1a1a1a;padding-bottom:10px;margin-bottom:6px}'
-    +'.lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#777}'
-    +'.cn{font-size:20px;font-weight:700;margin-top:2px}.ad{font-size:13px;color:#555;margin-top:3px}'
-    +'button{border:1px solid #bbb;background:#f4f4f4;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer}'
-    +'h2{font-size:15px;margin:22px 0 6px;padding-bottom:5px;border-bottom:1px solid #ccc}'
-    +'.item{padding:10px 0;border-bottom:1px dashed #ccc;page-break-inside:avoid}'
-    +'.item.multi{background:#fff7e0;border-left:5px solid #e08a00;padding-left:10px;border-radius:4px;margin:4px 0}'
-    +'.head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}'
-    +'.name{font-weight:600;font-size:14px}'
-    +'.qty{background:#e08a00;color:#fff;font-weight:800;font-size:20px;line-height:1;padding:5px 11px;border-radius:8px;white-space:nowrap}'
-    +'.unit{font-size:12px;color:#8a5a00;font-weight:700}'
-    +'.model{font-weight:600;font-size:13px;margin-top:4px}.dim{font-size:13px;color:#444;margin-top:3px}.sub{font-size:12px;color:#777;margin-top:2px}'
-    +'.note{font-size:13px;color:#a86b00;font-style:italic;margin-top:5px}'
-    +'.inst{font-size:13px;margin-top:5px;padding:6px 10px;background:#f1f1f1;border-radius:8px;white-space:pre-line}'
-    +'.rails{margin:12px 0 4px;padding:10px 12px;background:#eef7f1;border:1px solid #b7dcc4;border-radius:8px}'
-    +'.rt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#2f6b45;font-weight:700;margin-bottom:4px}'
-    +'.rl{font-size:13px;padding:2px 0}.rl.miss{color:#a86b00}.rn{font-size:11px;color:#777;margin-top:5px}'
-    +'.empty{text-align:center;color:#888;padding:30px 0}'
-    +'@media print{button{display:none}.item.multi{-webkit-print-color-adjust:exact;print-color-adjust:exact}.qty{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
-    +'</style></head><body>'
-    +'<div class="top"><div><div class="lbl">\uD83D\uDD27 Do monta\u017cu</div><div class="cn">'+esc(cl.name||"")+'</div>'
-    +(addr?'<div class="ad">\uD83D\uDCCD '+esc(addr)+'</div>':'')+'</div>'
-    +'<button onclick="window.print()">Drukuj</button></div>'
-    +body+'</body></html>';
+  // Ten sam widok co publiczny link dla montażysty (api/_montazView.js) — jedno źródło HTML.
+  var html=renderMontazHtml(buildMontazPayload(cl||{},scraps||[]));
   if(w.closed)return;
   w.document.open();
   w.document.write(html);
@@ -1306,7 +1242,7 @@ export function ModalDeal(p){
       installer_calendar_id:installerCalId||null,installer_calendar_id2:installerCalId2||null,
       install_label2:installLabel2||null
     },overrides||{});
-    var gctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+    var gctx={montazLink:function(dl,cli){return montazLinkOrNull(cli,dl.id);},token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
     var missing=[];
     return fields.reduce(function(chain,f){
       if(!snap[f])return chain;
@@ -1608,7 +1544,8 @@ export function ModalDeal(p){
     var wantInst=installerNameFor({installer_name:installerName,installer_name2:installerName2},dateField);
     var primaryId=(calList.find(function(c){return c.primary;})||calList[0]||{}).id||"primary";
     var missingInstaller=wantInst&&autoCalId===primaryId&&!calList.some(function(c){return c.id===autoCalId&&c.summary&&c.summary.toLowerCase().indexOf(wantInst.toLowerCase())>=0;})?wantInst:null;
-    setGcalDraft({title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+endMM,durMin:durMin,addPrimary:true,note:"",calId:calId,saving:false,onSave:onSave||null,pdKey:dateField?dealKey(d.id,dateField):null,missingInstaller:missingInstaller});
+    var isInstallDate=dateField==='delivery_date'||dateField==='delivery_date2'||(!dateField&&!/pomiar|follow/i.test(title||''));
+    setGcalDraft({withMontaz:!!cl&&isInstallDate,canMontaz:!!cl&&isInstallDate,title:title,date:dateVal,timeFrom:hh+":"+mm,timeTo:endHH+":"+endMM,durMin:durMin,addPrimary:true,note:"",calId:calId,saving:false,onSave:onSave||null,pdKey:dateField?dealKey(d.id,dateField):null,missingInstaller:missingInstaller});
   }
 
   function submitGcalDraft(){
@@ -1653,7 +1590,12 @@ export function ModalDeal(p){
         return r.json();
       });
     }
-    Promise.all(targets.map(function(cid){return postToCalendar(cid,gcalToken);}))
+    // Link do listy „Do montażu” dla montażysty (migracja 0075) — gdy się nie uda, wydarzenie i tak powstaje
+    var linkP=(dft.withMontaz&&clData)?montazLinkOrNull(clData,d.id):Promise.resolve(null);
+    linkP.then(function(url){
+        if(url)eventBody.description=(eventBody.description?eventBody.description+"\n":"")+"Do montażu (lista dla montażysty): "+url;
+        return Promise.all(targets.map(function(cid){return postToCalendar(cid,gcalToken);}));
+      })
       .then(function(){
         var dtStr=dft.date+"T"+dft.timeFrom;
         var toMin=function(t){var a=String(t||"").split(":");return parseInt(a[0],10)*60+parseInt(a[1]||"0",10);};
@@ -1706,6 +1648,17 @@ export function ModalDeal(p){
             // bez cen) — checklista dla ekipy montazowej, bez wychodzenia z karty deala.
             cl?ce("button",{onClick:function(){openMontazWindow(cl);},style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
               "🔧 Do montażu"
+            ):null,
+            // Tworzy/odświeża publiczny link (bez logowania, bez cen) i kopiuje go do schowka —
+            // do wklejenia montażyście; ten sam link trafia też do opisu wydarzenia w kalendarzu.
+            cl?ce("button",{title:"Kopiuje link do listy „Do montażu” dla montażysty (bez cen, bez logowania)",onClick:function(){
+              ensureMontazShare(cl,d.id).then(function(url){
+                var done=function(){alert("Link skopiowany — wklej go montażyście:\n"+url);};
+                if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,function(){prompt("Skopiuj link:",url);});}
+                else prompt("Skopiuj link:",url);
+              }).catch(function(e){alert("Nie udało się utworzyć linku: "+((e&&e.message)||"błąd")+"\nCzy uruchomiono migrację 0075_montaz_shares.sql w Supabase?");});
+            },style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
+              "🔗 Link dla montażysty"
             ):null,
             // Wyrazisty (bialy, pelny) przycisk — glowne CTA karty deala, zeby bylo
             // od razu widac skrot do wyceny bez szukania w tle nagłówka.
@@ -2650,6 +2603,11 @@ export function ModalDeal(p){
             onChange:function(ev){setGcalDraft(function(d){return Object.assign({},d,{note:ev.target.value});});},
             onKeyDown:function(ev){if(ev.key==="Enter")submitGcalDraft();if(ev.key==="Escape")setGcalDraft(null);}})
         ),
+        gcalDraft.canMontaz?ce("label",{style:{display:"flex",alignItems:"flex-start",gap:8,fontSize:12,color:"var(--t2)",marginTop:-4,marginBottom:16,cursor:"pointer"}},
+          ce("input",{type:"checkbox",checked:gcalDraft.withMontaz!==false,style:{marginTop:2},
+            onChange:function(ev){var v=ev.target.checked;setGcalDraft(function(x){return Object.assign({},x,{withMontaz:v});});}}),
+          "Dołącz link do listy „Do montażu” (montażysta otworzy ją z kalendarza, bez ceny)"
+        ):null,
         // Info kalendarze
         ce("div",{style:{fontSize:11,color:"var(--t3)",marginBottom:16,padding:"8px 10px",background:"var(--bg2)",borderRadius:8}},
           "📅 Dodaje do: ",
@@ -2896,7 +2854,7 @@ export function CRMKalendarz(p){
       });
     });
     if(!jobs.length)return;
-    var ctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+    var ctx={montazLink:function(dl,cli){return montazLinkOrNull(cli,dl.id);},token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
     // Po kolei, żeby nie przekroczyć limitów API
     var missingInst=[];
     var syncErrors=[];
@@ -3857,7 +3815,7 @@ export function CRMKalendarz(p){
             var deal=calendarDeals.find(function(x){return String(x.id)===String(ev._crmDealId);});
             if(!deal||!gcalToken){alert('Zaloguj się do Google Calendar.');return;}
             var client=(p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||null;
-            var ctx={token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
+            var ctx={montazLink:function(dl,cli){return montazLinkOrNull(cli,dl.id);},token:gcalToken,getFresh:function(){return gcalGetToken().then(function(t){setGcalToken(t);return t;});}};
             syncDealDateToGcal(ctx,deal,client,ev._crmDateField,calList).then(function(r){
               setSelectedGcalEv(null);
               fetchEvents(ctx.token);
