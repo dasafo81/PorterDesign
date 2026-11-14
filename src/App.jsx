@@ -211,8 +211,9 @@ export function App(p){
   var sKarniszRows=useState([]),karniszPreviewRows=sKarniszRows[0],setKarniszPreviewRows=sKarniszRows[1];
   var sKarniszBase=useState([]),karniszBaseRows=sKarniszBase[0],setKarniszBaseRows=sKarniszBase[1];
   var sKarniszNotes=useState(HW_ROLETY_NOTES_DEFAULT),karniszNotes=sKarniszNotes[0],setKarniszNotes=sKarniszNotes[1];
+  var sKarniszNotesKs=useState(""),karniszNotesKs=sKarniszNotesKs[0],setKarniszNotesKs=sKarniszNotesKs[1];
   var karniszDraftRef=React.useRef(null);
-  karniszDraftRef.current={baseRows:karniszBaseRows,rows:karniszPreviewRows,notes:karniszNotes};
+  karniszDraftRef.current={baseRows:karniszBaseRows,rows:karniszPreviewRows,notes:karniszNotes,notesKs:karniszNotesKs};
   var karniszDraftDirtyRef=React.useRef(false);
   var sFabricRows=useState([]),fabricPreviewRows=sFabricRows[0],setFabricPreviewRows=sFabricRows[1];
   var sFabricBase=useState([]),fabricBaseRows=sFabricBase[0],setFabricBaseRows=sFabricBase[1];
@@ -1163,7 +1164,7 @@ export function App(p){
     karniszDraftDirtyRef.current=true;
     var t=setTimeout(function(){karniszDraftFlushRef.current();},1500);
     return function(){clearTimeout(t);};
-  },[karniszPreviewRows,karniszNotes,screen,curClientId]);
+  },[karniszPreviewRows,karniszNotes,karniszNotesKs,screen,curClientId]);
 
   var fabricDraftFlushRef=React.useRef(function(){});
   fabricDraftFlushRef.current=function(){
@@ -2108,6 +2109,7 @@ export function App(p){
       setKarniszBaseRows(baseRows);
       setKarniszPreviewRows(baseUnchanged&&draft.rows?draft.rows:baseRows);
       setKarniszNotes(draft&&draft.notes!=null?draft.notes:HW_ROLETY_NOTES_DEFAULT);
+      setKarniszNotesKs(draft&&draft.notesKs!=null?draft.notesKs:"");
       setScreen("karniszPreview");
     }
     function openFabricPreview(){
@@ -2501,7 +2503,8 @@ export function App(p){
     );
   }
   else if(screen==="karniszPreview"&&curClient){
-    var karniszTotal=karniszPreviewRows.reduce(function(a,r){return r.skip?a:a+(+r.total||0);},0);
+    function hwNoPrice(r){return r.category==="rolety"||r.category==="szyna_ks";} // ceny nie trafiają na zamówienie rolet i szyn KS
+    var karniszTotal=karniszPreviewRows.reduce(function(a,r){return (r.skip||hwNoPrice(r))?a:a+(+r.total||0);},0);
     function setKarniszField(i,key,v){
       setKarniszPreviewRows(function(prev){return prev.map(function(x,xi){
         if(xi!==i)return x;
@@ -2518,6 +2521,7 @@ export function App(p){
       setKarniszBaseRows(freshRows);
       setKarniszPreviewRows(freshRows);
       setKarniszNotes(HW_ROLETY_NOTES_DEFAULT);
+      setKarniszNotesKs("");
     }
 
     // Dostawca wiersza (z fallbackiem do domyślnego dla kategorii) — jak w buildHardwarePDFHtmlFromRows.
@@ -2536,7 +2540,7 @@ export function App(p){
     function previewHwForSupplier(key){
       var rows=hwRowsForSupplier(key);
       if(!rows.length){alert("Brak zaznaczonych pozycji dla tego dostawcy.");return;}
-      generateHardwareOrderPDFFromRows(curClient,rows,{rolNotes:karniszNotes});
+      generateHardwareOrderPDFFromRows(curClient,rows,{rolNotes:karniszNotes,ksNotes:karniszNotesKs});
     }
     // Ten sam dokument co podgląd, ale tylko dla jednego dostawcy i na jego adres z Kontrahentów.
     function mailHwForSupplier(key){
@@ -2544,7 +2548,7 @@ export function App(p){
       if(!rows.length){alert("Brak zaznaczonych pozycji dla tego dostawcy.");return;}
       var sup=KARNISZ_SUPPLIERS.find(function(s){return s.key===key;});
       var supName=sup?sup.label:key;
-      mailDoc(buildHardwarePDFHtmlFromRows(curClient,rows,{rolNotes:karniszNotes}),
+      mailDoc(buildHardwarePDFHtmlFromRows(curClient,rows,{rolNotes:karniszNotes,ksNotes:karniszNotesKs}),
         "Zamowienie osprzetu - "+supName.split(",")[0]+".pdf",
         {to:"",supplier:supName,templateId:"zamowienie_osprzetu",noTemplates:true});
     }
@@ -2562,7 +2566,7 @@ export function App(p){
           karniszPreviewRows.forEach(function(r,i){if(effHwSupplier(r)===sup.key)idxs.push(i);});
           if(!idxs.length)return null;
           var selN=idxs.filter(function(i){return !karniszPreviewRows[i].skip;}).length;
-          var supTotal=idxs.reduce(function(a,i){var r=karniszPreviewRows[i];return r.skip?a:a+(+r.total||0);},0);
+          var supTotal=idxs.reduce(function(a,i){var r=karniszPreviewRows[i];return (r.skip||hwNoPrice(r))?a:a+(+r.total||0);},0);
           return ce("div",{key:sup.key,style:{marginBottom:20}},
             ce("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:8}},
               ce("div",null,
@@ -2593,9 +2597,9 @@ export function App(p){
                   cat?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)"}},cat.label):null
                 ),
                 ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:8}},
-                  karniszFieldInput(i,"roomWin","Pomieszczenie / okno",200),
+                  karniszFieldInput(i,"roomWin","Pomieszczenie",200),
                   karniszFieldInput(i,"type","Typ",isRolety?230:180),
-                  ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:"auto"}},
+                  hwNoPrice(r)?null:ce("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0,marginLeft:"auto"}},
                     ce("input",{type:"text",inputMode:"decimal",value:r.total,onChange:function(ev){setKarniszField(i,"total",ev.target.value);},style:{width:100,padding:"8px 10px",fontSize:14,fontWeight:600,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--gr)",textAlign:"right"}}),
                     ce("span",{style:{fontSize:12,color:"var(--t3)"}},"zł")
                   )
@@ -2609,12 +2613,12 @@ export function App(p){
                   isRolety?karniszFieldInput(i,"system","Sterowanie",120):null,
                   isRolety?karniszFieldInput(i,"strona","Strona",100):null,
                   isRolety?karniszFieldInput(i,"lancuszek","Łańcuszek",140):null,
-                  isRolety?null:karniszFieldInput(i,"arc","Gięcie łuk (mb)",110),
+                  isRolety?null:karniszFieldInput(i,"arc",r.category==="szyna_ks"?"Gięcie po łuku (mb)":"Gięcie łuk (mb)",r.category==="szyna_ks"?140:110),
                   isRolety?null:karniszFieldInput(i,"arcDepth","Głęb. łuku (cm)",110),
                   isRolety?null:karniszFieldInput(i,"arcChord","Cięciwa łuku (cm)",120),
-                  isRolety?null:karniszFieldInput(i,"pts","Gięcie pkt",90),
-                  isRolety?null:karniszFieldInput(i,"motorSide","Strona silnika",110),
-                  isRolety?null:karniszFieldInput(i,"motorType","Typ silnika",110)
+                  isRolety?null:karniszFieldInput(i,"pts",r.category==="szyna_ks"?"Gięcie punktowe (szt.)":"Gięcie pkt",r.category==="szyna_ks"?150:90),
+                  (isRolety||r.category==="szyna_ks")?null:karniszFieldInput(i,"motorSide","Strona silnika",110),
+                  (isRolety||r.category==="szyna_ks")?null:karniszFieldInput(i,"motorType","Typ silnika",110)
                 ),
                 ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}},
                   ce("span",{style:{fontSize:12,fontWeight:600,color:"var(--t2)"}},"Dostawca:"),
@@ -2638,15 +2642,20 @@ export function App(p){
           ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"\uD83D\uDCDD Uwagi do zamówienia rolet"),
           ce("textarea",{value:karniszNotes,onChange:function(ev){setKarniszNotes(ev.target.value);},rows:2,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
         ):null,
-      ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
+      karniszPreviewRows.some(function(r){return r.category==="szyna_ks";})
+        ?ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
+          ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"\uD83D\uDCDD Uwagi do zamówienia szyn KS"),
+          ce("textarea",{value:karniszNotesKs,onChange:function(ev){setKarniszNotesKs(ev.target.value);},rows:2,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
+        ):null,
+      karniszTotal>0?ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
         ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},"Łącznie"),
         ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(karniszTotal)+" zł")
-      ),
+      ):null,
       ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
         Btn("← Wstecz",function(){setScreen("sum");},false),
         ce("button",{onClick:resetKarniszPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"🔄 Wypełnij od nowa"),
         ce("button",{disabled:!hwSelCount,onClick:function(){
-          generateHardwareOrderPDFFromRows(curClient,karniszPreviewRows.filter(function(r){return !r.skip;}),{rolNotes:karniszNotes});
+          generateHardwareOrderPDFFromRows(curClient,karniszPreviewRows.filter(function(r){return !r.skip;}),{rolNotes:karniszNotes,ksNotes:karniszNotesKs});
           setScreen("sum");
         },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52,opacity:hwSelCount?1:0.5}},"👁️ Podgląd PDF (wszyscy dostawcy)")
       )

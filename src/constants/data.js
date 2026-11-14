@@ -8713,6 +8713,7 @@ export function hardwareRoomLabel(r){
 export function buildHardwarePDFHtmlFromRows(client,rows,opts){
   if(!rows||!rows.length)return null;
   opts=opts||{};
+  var ksNotes=opts.ksNotes!=null?String(opts.ksNotes):"";
   var rolNotes=opts.rolNotes!=null?String(opts.rolNotes):HW_ROLETY_NOTES_DEFAULT;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
@@ -8732,7 +8733,9 @@ export function buildHardwarePDFHtmlFromRows(client,rows,opts){
   var supplierSections=activeSups.map(function(sup,si){
     var allRows=bySupplier[sup.key];
     var rolRows=allRows.filter(function(r){return r.category==="rolety";});
-    var supRows=allRows.filter(function(r){return r.category!=="rolety";});
+    var ksRows=allRows.filter(function(r){return r.category==="szyna_ks";});
+    var supRows=allRows.filter(function(r){return r.category!=="rolety"&&r.category!=="szyna_ks";});
+    var notesBlock=function(t){return (t&&t.trim())?"<div class=\"notes-block\"><div class=\"lbl\">Uwagi</div><div class=\"val\">"+escHw(t.trim())+"</div></div>":"";};
 
     // Rolety: prosta tabela — pomieszczenie, typ, wymiary, kolor łańcuszka, strona sterowania.
     var rolHTML="";
@@ -8754,7 +8757,36 @@ export function buildHardwarePDFHtmlFromRows(client,rows,opts){
         ["Pomieszczenie","Typ","Szerokość","Wysokość","Kolor łańcuszka","Strona sterowania"],
         rolTable,
         "Rolety — mechanizmy do zamówienia"
-      )+(rolNotes.trim()?"<div class=\"notes-block\"><div class=\"lbl\">Uwagi</div><div class=\"val\">"+escHw(rolNotes.trim())+"</div></div>":"");
+      )+notesBlock(rolNotes);
+    }
+
+    // Szyny KS: pomieszczenie, typ, wymiar, ilość, kolor oraz dwa rodzaje gięcia.
+    var ksHTML="";
+    if(ksRows.length){
+      var ksTable=ksRows.map(function(r){
+        var kolorLbl=(RAIL_SLIM_KOLORY.find(function(k){return k.v===r.kolor;})||{}).l;
+        var g=arcGeom(r.arcChord,r.arcDepth);
+        var arcParts=[];
+        if(r.arcDepth)arcParts.push("g\u0142\u0119b. "+r.arcDepth+" cm");
+        if(r.arcChord)arcParts.push("ci\u0119ciwa "+r.arcChord+" cm");
+        if(g)arcParts.push("R\u2248"+Math.round(g.R)+" cm");
+        var arcCell=(r.arc?r.arc+" mb":(arcParts.length?"tak":"\u2013"))
+          +(arcParts.length?"<br><span style=\"font-size:8px;color:#6b6b66\">"+arcParts.join(", ")+"</span>":"");
+        return [
+          hardwareRoomLabel(r),
+          r.type||"-",
+          r.len?r.len+" cm":"-",
+          (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
+          kolorLbl||"-",
+          r.pts?r.pts+" szt.":"\u2013",
+          arcCell
+        ];
+      });
+      ksHTML=makeTableHTML(
+        ["Pomieszczenie","Typ","D\u0142ugo\u015b\u0107","Ilo\u015b\u0107","Kolor","Gi\u0119cie punktowe","Gi\u0119cie po \u0142uku"],
+        ksTable,
+        "Szyny KS \u2014 do zam\xf3wienia"
+      )+notesBlock(ksNotes);
     }
 
     // Pozostały osprzęt (szyny, karnisze) — dotychczasowy szablon.
@@ -8783,10 +8815,10 @@ export function buildHardwarePDFHtmlFromRows(client,rows,opts){
     }
 
     var pageBreak=si>0?"<div style=\"page-break-before:always;padding-top:10mm;\"></div>":"";
-    // Adres klienta tylko na zamówieniach szyn/karniszy — na roletach go nie podajemy.
+    // Adres klienta tylko na zamówieniach karniszy — na roletach i szynach KS go nie podajemy.
     var clientAddr=(supRows.length&&client.addr)?" \u2014 "+client.addr:"";
 
-    return pageBreak+"\n    <div class=\"supplier-header\">\n      <div class=\"supplier-name\">"+sup.label+"</div>\n      <div class=\"supplier-meta\">Zamawiaj\u0105cy: <strong>"+SELLER.name+"</strong>  |  Tel.: "+SELLER.tel+"  |  E-mail: "+SELLER.email+"</div>\n      <div class=\"supplier-meta\">Klient ko\u0144cowy: <strong>"+client.name+"</strong>"+clientAddr+"  |  Data: "+dateStr+"</div>\n    </div>\n    "+rolHTML+othHTML;
+    return pageBreak+"\n    <div class=\"supplier-header\">\n      <div class=\"supplier-name\">"+sup.label+"</div>\n      <div class=\"supplier-meta\">Zamawiaj\u0105cy: <strong>"+SELLER.name+"</strong>  |  Tel.: "+SELLER.tel+"  |  E-mail: "+SELLER.email+"</div>\n      <div class=\"supplier-meta\">Klient ko\u0144cowy: <strong>"+client.name+"</strong>"+clientAddr+"  |  Data: "+dateStr+"</div>\n    </div>\n    "+rolHTML+ksHTML+othHTML;
   }).join("");
 
   var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n    .notes-block{margin-top:4mm;font-size:10px;color:#3a3a38;}\n    .notes-block .lbl{font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-size:9px;color:#6b6b66;margin-bottom:3px;}\n    .notes-block .val{line-height:1.5;}\n  ";
