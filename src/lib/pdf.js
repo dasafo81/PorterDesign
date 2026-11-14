@@ -4,7 +4,7 @@ const ce = React.createElement;
 
 import {
   BANNER_PDF_G, FABRICS, LOGO_PDF_G, PROD_TYPES, karniszBrandLabel,
-  SELLER, buildFabricRows, buildSewingRows, sewFabKind, calc,
+  SELLER, hardwareRoomLabel, buildFabricRows, buildSewingRows, sewFabKind, calc,
   getPDFOfferNumber, getPanelsForProd, makeTableHTML, mg,
   openPDFWindow, pdfStyles, resolvePDFAssets, roundTo10
 } from '../constants/data.js';
@@ -102,7 +102,7 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
         g.fabName,
         g.kolor||"-",
         (+r.metry||0).toFixed(2).replace(".",",")+" mb",
-        r.roomWin||((r.room||"")+" / "+(r.win||""))
+        hardwareRoomLabel(r)
       ].concat(multiHouse?["<strong>"+shortHouse(houseOf(r))+"</strong>"]:[]));
     });
   });

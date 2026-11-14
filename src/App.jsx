@@ -2120,7 +2120,7 @@ export function App(p){
       var prepped=rows.map(function(r){
         var prod=r.prod||"Inny";
         if(prod==="-")prod="Bez producenta";
-        return mg(r,{prod:prod,roomWin:r.room+" / "+r.win});
+        return mg(r,{prod:prod,roomWin:hardwareRoomLabel(r)});
       });
       var draft=curClient.fabric_draft;
       var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(prepped);
@@ -2684,7 +2684,7 @@ export function App(p){
       var freshRows=buildFabricRows(curClient).filter(function(r){return r.metry&&r.metry>0;}).map(function(r){
         var prod=r.prod||"Inny";
         if(prod==="-")prod="Bez producenta";
-        return mg(r,{prod:prod,roomWin:r.room+" / "+r.win});
+        return mg(r,{prod:prod,roomWin:hardwareRoomLabel(r)});
       });
       setFabricBaseRows(freshRows);
       setFabricPreviewRows(freshRows);

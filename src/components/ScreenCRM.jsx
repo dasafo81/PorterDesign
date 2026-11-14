@@ -300,7 +300,7 @@ function RailScrapHint(rp){
       })
     ):null,
     needs.map(function(n,i){
-      var label=(n.room?n.room+" / ":"")+(n.win||"")+" \u2014 "+n.type+", "+n.len+" cm"+(n.pieces>1?" ("+n.piece+"/"+n.pieces+")":"");
+      var label=[n.room,n.win].filter(Boolean).join(" / ")+" \u2014 "+n.type+", "+n.len+" cm"+(n.pieces>1?" ("+n.piece+"/"+n.pieces+")":"");
       return ce("div",{key:i,style:{display:"flex",justifyContent:"space-between",gap:10,fontSize:12,padding:"4px 0",borderBottom:i<needs.length-1?"1px solid var(--bd2)":"none"}},
         ce("span",{style:{color:"var(--t1)"}},label),
         n.scrap
