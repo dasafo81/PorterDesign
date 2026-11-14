@@ -8609,8 +8609,12 @@ export function railScrapColorKey(v){
 // Zwraca {needs,rails}:
 //   needs — odcinki w kolejności z wyceny: {room,win,type,len,color,piece,pieces,
 //           scrap:(wiersz rail_scraps|null),railNo:(nr szyny|null),spare:(cm zostaje na całej szynie)}
+//   (każde cięcie zabiera RAIL_CUT_CM = 1 cm)
 //   rails — szyny do wzięcia z magazynu: {no,scrap,cuts:[odcinki],spare}
 // Funkcja tylko podpowiada — niczego nie zapisuje ani nie rezerwuje w magazynie.
+var RAIL_CUT_CM=1; // ubytek na każde cięcie (szerokość piły)
+// Odcinek mieści się na kawałku szyny, jeśli jest zapas na cięcie — chyba że to dokładnie cała reszta (bez cięcia).
+function railFits(left,len){return left===len||left>=len+RAIL_CUT_CM;}
 export function planRailScraps(client,scraps){
   var needs=[];
   buildHardwareRows(client||{}).forEach(function(r){
@@ -8631,19 +8635,19 @@ export function planRailScraps(client,scraps){
     var best=null;
     // 1) dociąć z już otwartej szyny tego koloru (najmniejszy pasujący zapas)
     open.forEach(function(o){
-      if(railScrapColorKey(o.scrap.color)!==key||o.left<n.len)return;
+      if(railScrapColorKey(o.scrap.color)!==key||!railFits(o.left,n.len))return;
       if(!best||o.left<best.left)best=o;
     });
     // 2) otworzyć nową — najkrótszą pasującą
     if(!best){
       var cand=null;
       pool.forEach(function(sc){
-        if(usedRail[sc.id]||sc.length_cm<n.len||railScrapColorKey(sc.color)!==key)return;
+        if(usedRail[sc.id]||!railFits(sc.length_cm,n.len)||railScrapColorKey(sc.color)!==key)return;
         if(!cand||sc.length_cm<cand.length_cm)cand=sc;
       });
       if(cand){usedRail[cand.id]=true;best={scrap:cand,left:cand.length_cm,cuts:[]};open.push(best);}
     }
-    if(best){best.left-=n.len;best.cuts.push(n);n.scrap=best.scrap;n.rail=best;}
+    if(best){best.left=best.left===n.len?0:best.left-n.len-RAIL_CUT_CM;best.cuts.push(n);n.scrap=best.scrap;n.rail=best;}
   });
   var rails=open.map(function(o,i){return {no:i+1,scrap:o.scrap,cuts:o.cuts,spare:o.left};});
   // numeracja szyn wg kolejności pierwszego odcinka w wycenie
@@ -8654,11 +8658,6 @@ export function planRailScraps(client,scraps){
     delete n.rail;
   });
   return {needs:needs,rails:rails};
-}
-
-// Sam podział odcinków (bez listy szyn) — dla znacznika na kafelku.
-export function matchRailScraps(client,scraps){
-  return planRailScraps(client,scraps).needs;
 }
 
 // Buduje HTML Zamówienia Osprzętu z już gotowych (ewentualnie ręcznie
