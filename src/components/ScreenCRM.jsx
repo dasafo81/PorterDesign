@@ -1637,7 +1637,7 @@ export function ModalDeal(p){
           clientTotal>0?ce("span",{style:{fontSize:14,color:"rgba(255,255,255,0.9)",fontWeight:700}},
             clientTotal.toLocaleString("pl-PL")+" zł"
           ):null,
-          sewnReceivedCount>0?ce("span",{title:"Uszyte zasłony/rolety odebrane ze szwalni — gotowe do montażu",style:{background:sewnReceivedCount===sewnItems.length?"#10b981":"rgba(255,255,255,0.2)",borderRadius:20,padding:"3px 12px",fontSize:12,color:"#fff",fontWeight:600}},
+          sewnReceivedCount>0?ce("span",{title:"Uszyte zasłony/rolety i plisy odebrane — gotowe do montażu",style:{background:sewnReceivedCount===sewnItems.length?"#10b981":"rgba(255,255,255,0.2)",borderRadius:20,padding:"3px 12px",fontSize:12,color:"#fff",fontWeight:600}},
             "📦 Na stanie: "+sewnReceivedCount+"/"+sewnItems.length+(sewnReceivedCount===sewnItems.length?" ✓ gotowe do montażu":"")
           ):null,
           ce("div",{style:{marginLeft:"auto",display:"flex",gap:8,flexWrap:"wrap"}},
@@ -2356,9 +2356,9 @@ export function ModalDeal(p){
 
         // Odebrane ze szwalni — odhaczasz, co z wyceny jest już uszyte i leży na stanie;
         // licznik widać w nagłówku karty i na kafelku deala w CRM.
-        sewnItems.length?ce(SectionCard,{icon:"📦",title:"Odebrane ze szwalni (na stanie)",done:sewnReceivedCount===sewnItems.length},
+        sewnItems.length?ce(SectionCard,{icon:"📦",title:"Odebrane — na stanie (szwalnia / plisy)",done:sewnReceivedCount===sewnItems.length},
           ce("div",{style:{fontSize:11,color:"var(--t3)",lineHeight:1.5}},
-            "Zaznacz uszyte zasłony i rolety, które już odebrałeś — będą widoczne jako gotowe do montażu. Odebrano: "+sewnReceivedCount+" z "+sewnItems.length+"."),
+            "Zaznacz uszyte zasłony, rolety i plisy, które już odebrałeś — będą widoczne jako gotowe do montażu. Odebrano: "+sewnReceivedCount+" z "+sewnItems.length+"."),
           sewnItems.map(function(it,i){
             var rcv=sewingReceived[it.key];
             var showRoom=i===0||sewnItems[i-1].room!==it.room;
@@ -4023,7 +4023,7 @@ function DealCard(cp){
         ):null
       ):null,
       sewnRecv>0?ce("div",{
-        title:"Uszyte zasłony/rolety odebrane ze szwalni"+(sewnRecv===sewnAll.length?" — komplet, gotowe do montażu":""),
+        title:"Uszyte zasłony/rolety i plisy odebrane"+(sewnRecv===sewnAll.length?" — komplet, gotowe do montażu":""),
         style:{display:"inline-block",marginTop:6,padding:"2px 8px",borderRadius:20,fontSize:10,fontWeight:700,
           background:sewnRecv===sewnAll.length?"#10b981":"var(--bg2)",color:sewnRecv===sewnAll.length?"#fff":"var(--t2)",
           border:"1px solid "+(sewnRecv===sewnAll.length?"#10b981":"var(--bd2)")}

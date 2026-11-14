@@ -8121,7 +8121,7 @@ export function buildSewingRows(client){
 }
 
 
-// Lista pozycji szytych na zamówienie (zasłony, firany, rolety, narzuty/poduszki) z wyceny klienta —
+// Lista pozycji szytych na zamówienie (zasłony, firany, rolety, narzuty/poduszki) oraz plis z wyceny klienta —
 // do odhaczania "odebrane ze szwalni / na stanie" w karcie deala. Klucz = id produktu
 // (deal.sewing_received = {klucz: data odbioru YYYY-MM-DD}); brak id → klucz z pozycji w wycenie.
 // Wiersz opisowy bierzemy z buildSewingRows (jeden produkt = jeden wiersz), żeby opis
@@ -8131,6 +8131,26 @@ export function listSewnItems(client){
   (client&&client.rooms||[]).forEach(function(r,ri){
     (r.windows||[]).forEach(function(w,wi){
       (w.products||[]).forEach(function(prod,pi){
+        // Plisy (okienne / dachowe SL) nie idą do szwalni (zamówienie u producenta), ale też trafiają
+        // na stan i czekają na montaż — odhaczamy je razem z resztą. buildSewingRows ich nie zna,
+        // więc opis składamy tu (zlecenie szycia / PDF zostają bez zmian).
+        if(prod.type==="plisa"){
+          var plc=prod.c||{},plp=prod.par||{};
+          var plDachL=plc.plWariant==="dachowa";
+          var plCollL=plisaFabricList(plDachL).find(function(f){return f.name===plc.plKolekcja;});
+          var plFab=plCollL?plCollL.name:(plc.plKolekcjaManual||"");
+          var plKol=plc.plKolorKod||plc.plKolorManual||"";
+          var plDim=(plp.wMm&&plp.hMm)?(Math.round(plp.wMm/10)+" \u00d7 "+Math.round(plp.hMm/10)+" cm"):"";
+          items.push({
+            key:prod.id!=null?String(prod.id):("pos_"+ri+"_"+wi+"_"+pi),
+            room:r.name||"",win:w.name||"",
+            label:plDachL?"Plisa dachowa SL":"Plisa okienna",
+            fabric:[plFab,plKol&&plFab.indexOf(plKol)===-1?plKol:""].filter(Boolean).join(" / "),
+            dim:plDim,
+            qty:1
+          });
+          return;
+        }
         var one=buildSewingRows({rooms:[{name:r.name,windows:[{name:w.name,products:[prod]}]}]})[0];
         if(!one)return;
         var dim=[one.wCm,one.hCm].map(function(v){return v==null||v==="-"?"":String(v).replace(/<[^>]*>/g," ").replace(/\s+/g," ").trim();}).filter(Boolean).join(" \u00d7 ");
