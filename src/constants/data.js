@@ -7038,7 +7038,6 @@ export function calc(p){
     if(c.mdPodtynk){var podMD=lookup(lenMD,MD_PODTYNK).p;netMD+=podMD;lines.push("Wersja podtynkowa = "+formatPLN(Math.round(podMD*MD_MULT)));}
     if(c.wave==="w60"){var wMD=lookup(lenMD,MD_W60).p;netMD+=wMD;lines.push("WAVE u\u0142o\u017cyskowany 60 mm = "+formatPLN(Math.round(wMD*MD_MULT)));}
     else if(c.wave==="w80"){var wMD2=lookup(lenMD,MD_W80).p;netMD+=wMD2;lines.push("WAVE u\u0142o\u017cyskowany 80 mm = "+formatPLN(Math.round(wMD2*MD_MULT)));}
-    if(c.tandem){var tMD=MD_TANDEM[napMD]||0;netMD+=tMD;if(tMD>0)lines.push("Tandem (rozsuwanie dwustronne)");}
     var pilMD=MD_PILOTY.find(function(x){return x.v===(c.mdPilot||"brak");});
     if(pilMD&&pilMD.c>0){
       var qPilMD=parseInt(par.mdPilotQty)||1;
@@ -7094,7 +7093,6 @@ export function calc(p){
     lines.push("Wsporniki x"+wspQ+" = "+formatPLN(Math.round(PL_WSPORNIK*wspQ*PL_MULT)));
     if(c.wave==="w60"){var wPL=lookup(lenPL,PL_W60).p;netPL+=wPL;lines.push("WAVE u\u0142o\u017cyskowany 60 mm = "+formatPLN(Math.round(wPL*PL_MULT)));}
     else if(c.wave==="w80"){var wPL2=lookup(lenPL,PL_W80).p;netPL+=wPL2;lines.push("WAVE u\u0142o\u017cyskowany 80 mm = "+formatPLN(Math.round(wPL2*PL_MULT)));}
-    if(c.tandem){var tPL=PL_TANDEM[napPL]||0;netPL+=tPL;if(tPL>0)lines.push("Tandem (rozsuwanie dwustronne)");}
     var pilPL=PL_PILOTY.find(function(x){return x.v===(c.plPilot||"brak");});
     if(pilPL&&pilPL.c>0){
       var qPil=parseInt(par.plPilotQty)||1;
@@ -7136,7 +7134,6 @@ export function calc(p){
     if(!TAB)return{total:0,lines:[],warn:"Brak cennika Prestige "+seria+" dla Somfy — czekamy na cennik."};
     var TW60=p.type==="prestige_round"?PRESTIGE_ROUND_W60:PRESTIGE_SQUARE_W60;
     var TW80=p.type==="prestige_round"?PRESTIGE_ROUND_W80:PRESTIGE_SQUARE_W80;
-    var TT  =isSomfyPrestige?PRESTIGE_SOMFY_TANDEM:(p.type==="prestige_round"?PRESTIGE_ROUND_TANDEM:PRESTIGE_SQUARE_TANDEM);
     var PILOTY_P=isSomfyPrestige?PRESTIGE_PILOTY_SOMFY:PRESTIGE_PILOTY;
     var CENTRALKI_P=isSomfyPrestige?PRESTIGE_CENTRALKI_SOMFY:PRESTIGE_CENTRALKI;
     var LADOWARKA_P=isSomfyPrestige?PRESTIGE_LADOWARKA_SOMFY:PRESTIGE_LADOWARKA;
@@ -7151,8 +7148,6 @@ export function calc(p){
     // WAVE (dopłata) — niezalezna od marki silnika
     if(c.wave==="w60"){var w=TW60[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 60 mm");}
     else if(c.wave==="w80"){var w=TW80[lenP]||0;lineSum+=w;if(w>0)lines.push("Dopłata WAVE 80 mm");}
-    // Tandem
-    if(c.tandem){var t=TT[nap]||0;lineSum+=t;if(t>0)lines.push("Tandem (rozsuwanie dwustronne synchroniczne)");}
     // Pilot
     var pil=PILOTY_P.find(function(x){return x.v===(c.pp||"brak");});
     if(pil&&pil.c>0){lineSum+=pil.c;lines.push(pil.l);}

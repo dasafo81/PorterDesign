@@ -30,8 +30,8 @@ import {
   RS_WIDTHS, SB_STORAGE, SELLER, WIN_PRESETS,
   KD_AKCESORIA, KD_KOLORY, KD_SZYNY, KD_ZASLEPKI,
   PRESTIGE_CENTRALKI, PRESTIGE_LADOWARKA, PRESTIGE_NAPEDY, PRESTIGE_PILOTY,
-  PRESTIGE_ROUND, PRESTIGE_ROUND_TANDEM, PRESTIGE_ROUND_W60, PRESTIGE_ROUND_W80,
-  PRESTIGE_SQUARE, PRESTIGE_SQUARE_TANDEM, PRESTIGE_SQUARE_W60, PRESTIGE_SQUARE_W80,
+  PRESTIGE_ROUND, PRESTIGE_ROUND_W60, PRESTIGE_ROUND_W80,
+  PRESTIGE_SQUARE, PRESTIGE_SQUARE_W60, PRESTIGE_SQUARE_W80,
   PRESTIGE_WIDTHS,
   SHUTTLE_BASE, SHUTTLE_DOPLATY, SHUTTLE_STEROWANIE, SHUTTLE_UCHWYTY,
   SHUTTLE_WIDTHS, shuttleUchwytyQty,
@@ -462,18 +462,20 @@ export function ProdCard(p){
   var brandBox=null;
   if(activeGroup.brands==="karnisz_el"&&isKarnEl){
     var bObj=KARNISZ_EL_BRANDS.find(function(b){return b.id===curBrand;})||KARNISZ_EL_BRANDS[0];
-    brandBox=ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd3)",borderRadius:10,padding:12}},
-      ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MARKA"),
-      ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-        KARNISZ_EL_BRANDS.map(function(b){
-          return ce(Chip,{key:b.id,label:b.label,active:curBrand===b.id,onClick:function(){
-            var d1=b.models[0];
-            applyType({id:b.id+"_"+d1.id,label:b.label+" \u2014 "+d1.label,type:d1.type,set:d1.set});
-          }});
-        })
+    brandBox=ce("div",{style:{background:"var(--bg)",border:"1px solid var(--bd3)",borderRadius:10,padding:"10px 12px",display:"flex",flexWrap:"wrap",alignItems:"flex-start",columnGap:24,rowGap:10}},
+      ce("div",null,
+        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:6}},"MARKA"),
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          KARNISZ_EL_BRANDS.map(function(b){
+            return ce(Chip,{key:b.id,label:b.label,active:curBrand===b.id,onClick:function(){
+              var d1=b.models[0];
+              applyType({id:b.id+"_"+d1.id,label:b.label+" \u2014 "+d1.label,type:d1.type,set:d1.set});
+            }});
+          })
+        )
       ),
-      bObj.models.length>1?ce("div",{style:{marginTop:12,paddingTop:12,borderTop:"1px solid var(--bd3)"}},
-        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:8}},"MODEL"),
+      bObj.models.length>1?ce("div",null,
+        ce("div",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.04em",color:"var(--t3)",marginBottom:6}},"MODEL"),
         ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
           bObj.models.map(function(m){
             return ce(Chip,{key:m.id,label:m.label,active:prod.type===m.type,onClick:function(){
@@ -490,6 +492,31 @@ export function ProdCard(p){
     ce("div",{style:{display:"grid",gridTemplateColumns:"repeat("+Math.max(groupCards.length,1)+",minmax(0,1fr))",gap:12,alignItems:"stretch"}},groupCards),
     brandBox
   );
+
+  // Strona silnika + typ ruchu: jedna linia (zawija sie dopiero na waskim ekranie).
+  function motorRow(){
+    var MLB={fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8};
+    function mBtn(cur,key,label,field){
+      var isA=cur===key;
+      return ce("button",{key:key,onClick:function(){sc(field,key);},style:{padding:"10px 18px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
+        isA?"\u2713 "+label:label);
+    }
+    var side=c.motorSide||"lewo",mt=c.motorType||"kurtyna";
+    return ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"flex-start",columnGap:24,rowGap:12,marginBottom:14}},
+      ce("div",null,
+        ce("label",{style:MLB},"STRONA SILNIKA"),
+        ce("div",{style:{display:"flex",gap:8}},
+          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(x){return mBtn(side,x.key,x.label,"motorSide");})
+        )
+      ),
+      ce("div",null,
+        ce("label",{style:MLB},"TYP RUCHU"),
+        ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(x){return mBtn(mt,x.key,x.label,"motorType");})
+        )
+      )
+    );
+  }
 
   var panOpts=["Zas\u0142ona lewa","Zas\u0142ona prawa","Firana \u015brodkowa","Panel lewy","Panel prawy","Ca\u0142o\u015b\u0107"];
   var form=null;
@@ -1930,8 +1957,8 @@ export function ProdCard(p){
       ce("div",{style:{marginBottom:14,padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)",fontSize:12,color:"var(--t2)"}},
         "\u2139\ufe0f Realizujemy wy\u0142\u0105cznie w wersji SLIM \u2014 dop\u0142ata za szyn\u0119 SLIM i wsporniki s\u0105 doliczane automatycznie."),
       ce("div",{style:{marginBottom:14}},
-        ce("label",{style:PLBL},"KOLOR SZYNY SLIM"),
-        ce("div",{style:{display:"flex",gap:8}},
+        ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8}},
+          ce("label",{style:Object.assign({},PLBL,{display:"inline-block",marginBottom:0,marginRight:4})},"KOLOR SZYNY SLIM"),
           RAIL_SLIM_KOLORY.map(function(k){
             return ce(Chip,{key:k.v,label:k.l,active:(c.plKolor||"bialy")===k.v,onClick:function(){sc("plKolor",k.v);}});
           })
@@ -1956,10 +1983,6 @@ export function ProdCard(p){
             return ce(Chip,{key:w.v||"std",label:w.l,active:(c.wave||null)===w.v,onClick:function(){sc("wave",w.v);}});
           })
         )
-      ),
-      ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
-        ce("input",{type:"checkbox",id:"pl-tandem",checked:!!c.tandem,onChange:function(ev){sc("tandem",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
-        ce("label",{htmlFor:"pl-tandem",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"Tandem \u2014 rozsuwanie dwustronne synchroniczne")
       ),
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:PLBL},"PILOT"),
@@ -2002,28 +2025,7 @@ export function ProdCard(p){
         ),
         (parseInt(par.pt)||0)>1?ce("div",{style:{marginTop:6,fontSize:11,color:"var(--t3)"}},"Pierwsze gi\u0119cie "+Math.round(122*PL_MULT)+" z\u0142, ka\u017cde nast\u0119pne "+Math.round(244*PL_MULT)+" z\u0142 (wg cennika)."):null
       ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:PLBL},"STRONA SILNIKA"),
-        ce("div",{style:{display:"flex",gap:10}},
-          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
-            var isA=(c.motorSide||"lewo")===s.key;
-            return ce("button",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+s.label:s.label
-            );
-          })
-        )
-      ),
-      ce("div",{style:{marginBottom:4}},
-        ce("label",{style:PLBL},"TYP"),
-        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
-          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
-            var isA=(c.motorType||"kurtyna")===t.key;
-            return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+t.label:t.label
-            );
-          })
-        )
-      )
+      motorRow()
     );
   }else if(prod.type==="karnisz"&&c.kBrand==="somfy"){
     // \u2500\u2500 MD LINE (Somfy) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -2081,10 +2083,6 @@ export function ProdCard(p){
           })
         )
       ),
-      ce("div",{style:{marginBottom:14,display:"flex",alignItems:"center",gap:12}},
-        ce("input",{type:"checkbox",id:"md-tandem",checked:!!c.tandem,onChange:function(ev){sc("tandem",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
-        ce("label",{htmlFor:"md-tandem",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"Tandem \u2014 rozsuwanie dwustronne synchroniczne")
-      ),
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:MDBL},"PILOT"),
         ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
@@ -2129,28 +2127,7 @@ export function ProdCard(p){
           ce(Fld,{label:"\u0141UK CI\u0104G\u0141Y (mb)"},ce("input",{type:"text",inputMode:"numeric",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST}))
         )
       ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:MDBL},"STRONA SILNIKA"),
-        ce("div",{style:{display:"flex",gap:10}},
-          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
-            var isA=(c.motorSide||"lewo")===s.key;
-            return ce("button",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+s.label:s.label
-            );
-          })
-        )
-      ),
-      ce("div",{style:{marginBottom:4}},
-        ce("label",{style:MDBL},"TYP"),
-        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
-          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
-            var isA=(c.motorType||"kurtyna")===t.key;
-            return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+t.label:t.label
-            );
-          })
-        )
-      )
+      motorRow()
     );
   }else if(prod.type==="karnisz"){
     var kPow=c.kpow||"siec";
@@ -2162,8 +2139,7 @@ export function ProdCard(p){
         ce(Fld,{label:"GI\u0118CIE PKT (szt.)"},ce("input",{type:"text",inputMode:"numeric",value:par.pt||"",onChange:function(ev){sp("pt",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"GI\u0118CIE \u0141UK (mb)"},ce("input",{type:"text",inputMode:"numeric",step:"0.1",value:par.arc||"",onChange:function(ev){sp("arc",ev.target.value);},placeholder:"0",style:IST})),
         ce(Fld,{label:"G\u0141\u0118BOKO\u015a\u0106 \u0141UKU (cm) — opcjonalnie"},ce("input",{type:"text",inputMode:"numeric",value:par.arcDepth||"",onChange:function(ev){spArc("arcDepth",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm) — rozstaw ko\u0144c\u00f3w"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"–",style:IST})),
-        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hKm||"",onChange:function(ev){sp("hKm",ev.target.value);},placeholder:"–",style:IST}))
+        ce(Fld,{label:"CI\u0118CIWA \u0141UKU (cm) — rozstaw ko\u0144c\u00f3w"},ce("input",{type:"text",inputMode:"numeric",value:par.arcChord||"",onChange:function(ev){spArc("arcChord",ev.target.value);},placeholder:"–",style:IST}))
       ),
       arcInfo(),
       ce(Chips,{items:[
@@ -2213,28 +2189,7 @@ export function ProdCard(p){
           return ce(Chip,{key:x.v,label:x.l+(prC?" "+prC+"z\u0142":""),active:(!c.kc&&x.v==="brak")||c.kc===x.v,onClick:function(){sc("kc",x.v);}});
         })})
       ),
-      ce("div",{style:{marginTop:20}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"STRONA SILNIKA"),
-        ce("div",{style:{display:"flex",gap:10}},
-          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
-            var isA=(c.motorSide||"lewo")===s.key;
-            return ce("button",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+s.label:s.label
-            );
-          })
-        )
-      ),
-      ce("div",{style:{marginTop:16}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:12}},"TYP"),
-        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
-          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
-            var isA=(c.motorType||"kurtyna")===t.key;
-            return ce("button",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s"}},
-              isA?"\u2713 "+t.label:t.label
-            );
-          })
-        )
-      )
+      motorRow()
     );
   }else if(prod.type==="prestige_round"||prod.type==="prestige_square"){
     var isPrestigeRound=prod.type==="prestige_round";
@@ -2258,15 +2213,6 @@ export function ProdCard(p){
           })
         )
       ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"KOLOR SYSTEMU"),
-        ce("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
-          PRESTIGE_KOLORY.map(function(k){
-            return ce(Chip,{key:k.v,label:k.l+(k.std?"":" *"),active:c.pKolor===k.v,onClick:function(){sc("pKolor",c.pKolor===k.v?null:k.v);}});
-          })
-        ),
-        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:6}},"* kolor na zam\u00f3wienie \u2014 d\u0142u\u017cszy termin realizacji")
-      ),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},
@@ -2276,8 +2222,14 @@ export function ProdCard(p){
           )
         )
       ),
-      ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
-        ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.hPres||"",onChange:function(ev){sp("hPres",ev.target.value);},placeholder:"\u2013",style:IST}))
+      ce("div",{style:{marginBottom:14}},
+        ce("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:8}},
+          ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",marginRight:4}},"KOLOR SYSTEMU"),
+          PRESTIGE_KOLORY.map(function(k){
+            return ce(Chip,{key:k.v,label:k.l+(k.std?"":" *"),active:c.pKolor===k.v,onClick:function(){sc("pKolor",c.pKolor===k.v?null:k.v);}});
+          })
+        ),
+        ce("div",{style:{fontSize:11,color:"var(--t3)",marginTop:4}},"* kolor na zam\u00f3wienie \u2014 d\u0142u\u017cszy termin realizacji")
       ),
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"NAP\u0118D"),
@@ -2288,28 +2240,7 @@ export function ProdCard(p){
           })
         )
       ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"STRONA SILNIKA"),
-        ce("div",{style:{display:"flex",gap:10}},
-          [{key:"lewo",label:"Lewo"},{key:"prawo",label:"Prawo"}].map(function(s){
-            var isA=(c.motorSide||"lewo")===s.key;
-            return ce("div",{key:s.key,onClick:function(){sc("motorSide",s.key);},style:{padding:"14px 28px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
-              isA?"\u2713 "+s.label:s.label
-            );
-          })
-        )
-      ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"TYP RUCHU"),
-        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
-          [{key:"kurtyna",label:"Kurtyna"},{key:"lewostronny",label:"Lewostronny"},{key:"prawostronny",label:"Prawostronny"}].map(function(t){
-            var isA=(c.motorType||"kurtyna")===t.key;
-            return ce("div",{key:t.key,onClick:function(){sc("motorType",t.key);},style:{padding:"14px 22px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
-              isA?"\u2713 "+t.label:t.label
-            );
-          })
-        )
-      ),
+      motorRow(),
       ce("div",{style:{marginBottom:14}},
         ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"TA\u015aMA WAVE"),
         ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
@@ -2317,13 +2248,6 @@ export function ProdCard(p){
             var isA=(c.wave||"brak")===w.v;
             return ce(Chip,{key:w.v,label:w.l,active:isA,onClick:function(){sc("wave",w.v);}});
           })
-        )
-      ),
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"TANDEM"),
-        ce("div",{style:{display:"flex",alignItems:"center",gap:12}},
-          ce("input",{type:"checkbox",id:"prestige-tandem",checked:!!c.tandem,onChange:function(ev){sc("tandem",ev.target.checked||undefined);},style:{width:18,height:18,cursor:"pointer"}}),
-          ce("label",{htmlFor:"prestige-tandem",style:{fontSize:14,cursor:"pointer",color:"var(--t1)"}},"Rozsuwanie dwustronne synchroniczne (Tandem)")
         )
       ),
       ce("div",{style:{marginBottom:14}},
@@ -2714,9 +2638,12 @@ export function ProdCard(p){
 
   // ▼ NOWE: szerokość pomieszczenia — wszystkie karnisze/szyny
   if(["karnisz","prestige_round","prestige_square","shuttle","karnisz_dek"].indexOf(prod.type)>=0){
+    // Wysokosc pomieszczenia (tylko karnisze elektryczne Premium/Somfy/Prestige) — w jednej linii z szerokoscia.
+    var roomHKey=prod.type==="karnisz"?"hKm":(prod.type==="prestige_round"||prod.type==="prestige_square")?"hPres":null;
     form=ce(Fragment,null,
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
-        ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST}))
+        ce(Fld,{label:"SZEROKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par.roomW||"",onChange:function(ev){sp("roomW",ev.target.value);},placeholder:"\u2013",style:IST})),
+        roomHKey?ce(Fld,{label:"WYSOKO\u015a\u0106 POMIESZCZENIA (cm)"},ce("input",{type:"text",inputMode:"numeric",value:par[roomHKey]||"",onChange:function(ev){sp(roomHKey,ev.target.value);},placeholder:"\u2013",style:IST})):null
       ),
       form
     );
