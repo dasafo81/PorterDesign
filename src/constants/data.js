@@ -8121,7 +8121,7 @@ export function buildSewingRows(client){
 }
 
 
-// Lista pozycji szytych na zamówienie (zasłony, firany, rolety, narzuty/poduszki) oraz plis z wyceny klienta —
+// Lista pozycji szytych na zamówienie (zasłony, firany, rolety, narzuty/poduszki) plis i żaluzji z wyceny klienta —
 // do odhaczania "odebrane ze szwalni / na stanie" w karcie deala. Klucz = id produktu
 // (deal.sewing_received = {klucz: data odbioru YYYY-MM-DD}); brak id → klucz z pozycji w wycenie.
 // Wiersz opisowy bierzemy z buildSewingRows (jeden produkt = jeden wiersz), żeby opis
@@ -8148,6 +8148,23 @@ export function listSewnItems(client){
             fabric:[plFab,plKol&&plFab.indexOf(plKol)===-1?plKol:""].filter(Boolean).join(" / "),
             dim:plDim,
             qty:1
+          });
+          return;
+        }
+        // Żaluzje (Sun & Shade) — też zamówienie u producenta, nie szwalnia; odhaczamy jak plisy.
+        if(prod.type==="zaluzja"){
+          var zc=prod.c||{},zp=prod.par||{};
+          var zjt=zc.jt||"al25";
+          var zList=zjt.indexOf("al")===0?JZ_AL50_COLORS:zjt.indexOf("ba")===0?JZ_BA50_COLORS:zjt.indexOf("bs")===0?JZ_BS50_COLORS:null;
+          var zCol=(zList&&zc.jzColor)?zList.find(function(col){return col.v===zc.jzColor;}):null;
+          var zModel=JZ_LABELS[zjt]||zjt;
+          items.push({
+            key:prod.id!=null?String(prod.id):("pos_"+ri+"_"+wi+"_"+pi),
+            room:r.name||"",win:w.name||"",
+            label:"\u017baluzja",
+            fabric:[zModel,zCol?zCol.l+(zCol.code?" ("+zCol.code+")":""):""].filter(Boolean).join(" / "),
+            dim:(zp.wCm&&zp.lCm)?(zp.wCm+" \u00d7 "+zp.lCm+" cm"):"",
+            qty:zp.qty||1
           });
           return;
         }
