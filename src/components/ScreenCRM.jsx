@@ -248,12 +248,36 @@ function SectionCard(rp){
 // wszystkie produkty pogrupowane wg pomieszczenia, z wymiarami i uwagami przy
 // pozycji, bez cen — do szybkiego podglądu/wydruku przez ekipę montażową.
 // Otwierany w osobnym oknie przeglądarki (jak podgląd faktury); musi być wywołany
-// synchronicznie z kliknięcia, inaczej przeglądarka zablokuje popup.
+// synchronicznie z kliknięcia, inaczej przeglądarka zablokuje popup — dlatego okno otwieramy
+// od razu, a treść (z szynami KS pobranymi z magazynu) wpisujemy po załadowaniu.
 function openMontazWindow(cl){
+  var w=window.open("","_blank");
+  if(!w){alert("Zablokowano popup. Zezwól na wyskakujące okna.");return;}
+  w.document.write('<!DOCTYPE html><meta charset="UTF-8"><title>Do montażu</title><p style="font-family:Arial;color:#777;padding:30px">Ładowanie…</p>');
+  w.document.close();
+  sbApi.getRailScraps().catch(function(){return [];}).then(function(scraps){renderMontazWindow(w,cl,scraps||[]);});
+}
+function renderMontazWindow(w,cl,scraps){
   function esc(v){return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
   var rows=buildOfferDetailRows(cl||{});
   var addr=[cl.addr||cl.street,[cl.postal,cl.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
   var body="";
+  // Szyny KS z magazynu do szyn z wyceny (kilka odcinków z jednej szyny, 1 cm na cięcie)
+  var plan={needs:[],rails:[]};
+  try{plan=planRailScraps(cl||{},scraps);}catch(e){plan={needs:[],rails:[]};}
+  if(plan.needs.length){
+    body+='<div class="rails"><div class="rt">\uD83D\uDCCF Szyny KS z magazynu</div>';
+    plan.rails.forEach(function(r){
+      body+='<div class="rl"><b>#'+r.no+' szyna '+esc(r.scrap.length_cm)+' cm'+(r.scrap.color?' ('+esc(r.scrap.color)+')':'')+'</b> \u2192 tnij: '
+        +esc(r.cuts.map(function(c){return c.len;}).join(" + "))+' cm'
+        +(r.spare>0?' \u00b7 zostanie '+esc(r.spare)+' cm':' \u00b7 bez reszty')+'</div>';
+    });
+    var missing=plan.needs.filter(function(n){return !n.scrap;});
+    if(missing.length){
+      body+='<div class="rl miss">Brak w magazynie: '+esc(missing.map(function(n){return n.len+" cm"+(n.room?" ("+n.room+")":"");}).join(", "))+'</div>';
+    }
+    body+='<div class="rn">Odcinki ułożone tak, by zużyć jak najmniej szyn; 1 cm zapasu na każde cięcie.</div></div>';
+  }
   if(!rows.length){
     body='<p class="empty">Brak pozycji w wycenie.</p>';
   }else{
@@ -292,6 +316,9 @@ function openMontazWindow(cl){
     +'.model{font-weight:600;font-size:13px;margin-top:4px}.dim{font-size:13px;color:#444;margin-top:3px}.sub{font-size:12px;color:#777;margin-top:2px}'
     +'.note{font-size:13px;color:#a86b00;font-style:italic;margin-top:5px}'
     +'.inst{font-size:13px;margin-top:5px;padding:6px 10px;background:#f1f1f1;border-radius:8px;white-space:pre-line}'
+    +'.rails{margin:12px 0 4px;padding:10px 12px;background:#eef7f1;border:1px solid #b7dcc4;border-radius:8px}'
+    +'.rt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#2f6b45;font-weight:700;margin-bottom:4px}'
+    +'.rl{font-size:13px;padding:2px 0}.rl.miss{color:#a86b00}.rn{font-size:11px;color:#777;margin-top:5px}'
     +'.empty{text-align:center;color:#888;padding:30px 0}'
     +'@media print{button{display:none}.item.multi{-webkit-print-color-adjust:exact;print-color-adjust:exact}.qty{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
     +'</style></head><body>'
@@ -299,8 +326,8 @@ function openMontazWindow(cl){
     +(addr?'<div class="ad">\uD83D\uDCCD '+esc(addr)+'</div>':'')+'</div>'
     +'<button onclick="window.print()">Drukuj</button></div>'
     +body+'</body></html>';
-  var w=window.open("","_blank");
-  if(!w){alert("Zablokowano popup. Zezwól na wyskakujące okna.");return;}
+  if(w.closed)return;
+  w.document.open();
   w.document.write(html);
   w.document.close();
 }
