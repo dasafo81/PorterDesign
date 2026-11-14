@@ -8697,10 +8697,23 @@ export function planRailScraps(client,scraps){
   return {needs:needs,rails:rails};
 }
 
+// Domyślne uwagi na zamówieniu mechanizmów rolet (edytowalne w podglądzie).
+export const HW_ROLETY_NOTES_DEFAULT="bez dystanserów, szpros średnica 5mm";
+
+// Pomieszczenie (+ okno, jeśli ma nazwę) bez zbędnych ukośników: okno bez nazwy
+// dawało "Salon / ". Czyści też wartości zapisane wcześniej w szkicu ("Salon / ").
+export function hardwareRoomLabel(r){
+  r=r||{};
+  var base=(r.roomWin!=null&&r.roomWin!=="")?String(r.roomWin):((r.room||"")+((r.win)?" / "+r.win:""));
+  return base.replace(/\s*\/\s*$/,"").replace(/^\s*\/\s*/,"").trim();
+}
+
 // Buduje HTML Zamówienia Osprzętu z już gotowych (ewentualnie ręcznie
 // doedytowanych na ekranie podglądu) wierszy, pogrupowanych wg dostawcy.
-export function buildHardwarePDFHtmlFromRows(client,rows){
+export function buildHardwarePDFHtmlFromRows(client,rows,opts){
   if(!rows||!rows.length)return null;
+  opts=opts||{};
+  var rolNotes=opts.rolNotes!=null?String(opts.rolNotes):HW_ROLETY_NOTES_DEFAULT;
   var now=new Date();var dateStr=now.toLocaleDateString("pl-PL");
 
   var bySupplier={};
@@ -8715,46 +8728,68 @@ export function buildHardwarePDFHtmlFromRows(client,rows){
   var activeSups=KARNISZ_SUPPLIERS.filter(function(s){return bySupplier[s.key].length>0;});
   if(!activeSups.length)return null;
 
+  var escHw=function(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");};
   var supplierSections=activeSups.map(function(sup,si){
-    var supRows=bySupplier[sup.key];
-    var tableRows=supRows.map(function(r){
-      var motorDesc=r.motorSide?(String(r.motorSide).charAt(0).toUpperCase()+String(r.motorSide).slice(1))+(r.motorType?" / "+(String(r.motorType).charAt(0).toUpperCase()+String(r.motorType).slice(1)):""):"–";
-      var kolorLbl=(RAIL_SLIM_KOLORY.find(function(k){return k.v===r.kolor;})||{}).l;
-      // Mechanizm rolety: pozostałe kolumny (łuk/silnik) nic tu nie wnoszą, więc
-      // cała specyfika (sterowanie, strona, łańcuszek, wymiary) trafia w opis "Typ".
-      var typDesc=r.category==="rolety"
-        ?r.type+(r.model?" — "+r.model:"")
-          +"<br><span style=\"font-size:9px;color:#6b6b66\">"
-          +"Sterowanie: "+(r.system||"-")+" · Strona: "+(r.strona||"-")+" · Łańcuszek: "+(r.lancuszek||"-")
-          +(r.hCm?"<br>Wymiary: "+(r.len||"-")+"\xd7"+r.hCm+" cm":"")
-          +(r.nadproze?" · Nadproże: "+r.nadproze+" cm":"")
-          +"</span>"
-        :r.type+(kolorLbl?" — kolor: "+kolorLbl:"");
-      return [
-        r.roomWin||((r.room||"")+" / "+(r.win||"")),
-        typDesc,
-        r.len?r.len+"cm":"-",
-        (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
-        r.arc?r.arc+" mb":"–",
-        (function(){var g=arcGeom(r.arcChord,r.arcDepth);return (r.arcDepth?r.arcDepth+" cm":"–")+(r.arcChord?"<br><span style=\"font-size:8px;color:#6b6b66\">ci\u0119ciwa "+r.arcChord+" cm"+(g?", R\u2248"+Math.round(g.R)+" cm":"")+"</span>":"");})(),
-        r.pts?r.pts+" szt.":"–",
-        motorDesc,
-        (+r.total||0)>0?(+r.total).toFixed(2).replace(".",",")+" zł":"–"
-      ];
-    });
+    var allRows=bySupplier[sup.key];
+    var rolRows=allRows.filter(function(r){return r.category==="rolety";});
+    var supRows=allRows.filter(function(r){return r.category!=="rolety";});
 
-    var tableHTML=makeTableHTML(
-      ["Pom. / Okno","Typ","D\u0142ugo\u015b\u0107","Ilo\u015b\u0107","Gi\u0119cie \u0142uk","G\u0142\u0119b. \u0142uku","Gi\u0119cie pkt","Silnik / Typ","Warto\u015b\u0107"],
-      tableRows,
-      "Pozycje do zam\xf3wienia"
-    );
+    // Rolety: prosta tabela — pomieszczenie, typ, wymiary, kolor łańcuszka, strona sterowania.
+    var rolHTML="";
+    if(rolRows.length){
+      var rolTable=rolRows.map(function(r){
+        var typ=(r.type||"")+(r.model?" — "+r.model:"");
+        if(r.system&&r.system!=="manualny")typ+=", "+r.system;
+        if((+r.qty||1)>1)typ+=" ("+r.qty+" szt.)";
+        return [
+          hardwareRoomLabel(r),
+          typ,
+          r.len?r.len+" cm":"-",
+          r.hCm?r.hCm+" cm":"-",
+          r.lancuszek||"-",
+          r.strona||"-"
+        ];
+      });
+      rolHTML=makeTableHTML(
+        ["Pomieszczenie","Typ","Szerokość","Wysokość","Kolor łańcuszka","Strona sterowania"],
+        rolTable,
+        "Rolety — mechanizmy do zamówienia"
+      )+(rolNotes.trim()?"<div class=\"notes-block\"><div class=\"lbl\">Uwagi</div><div class=\"val\">"+escHw(rolNotes.trim())+"</div></div>":"");
+    }
+
+    // Pozostały osprzęt (szyny, karnisze) — dotychczasowy szablon.
+    var othHTML="";
+    if(supRows.length){
+      var tableRows=supRows.map(function(r){
+        var motorDesc=r.motorSide?(String(r.motorSide).charAt(0).toUpperCase()+String(r.motorSide).slice(1))+(r.motorType?" / "+(String(r.motorType).charAt(0).toUpperCase()+String(r.motorType).slice(1)):""):"–";
+        var kolorLbl=(RAIL_SLIM_KOLORY.find(function(k){return k.v===r.kolor;})||{}).l;
+        return [
+          hardwareRoomLabel(r),
+          r.type+(kolorLbl?" — kolor: "+kolorLbl:""),
+          r.len?r.len+"cm":"-",
+          (+r.qty||0)>1?r.qty+" szt.":"1 szt.",
+          r.arc?r.arc+" mb":"–",
+          (function(){var g=arcGeom(r.arcChord,r.arcDepth);return (r.arcDepth?r.arcDepth+" cm":"–")+(r.arcChord?"<br><span style=\"font-size:8px;color:#6b6b66\">ci\u0119ciwa "+r.arcChord+" cm"+(g?", R\u2248"+Math.round(g.R)+" cm":"")+"</span>":"");})(),
+          r.pts?r.pts+" szt.":"–",
+          motorDesc,
+          (+r.total||0)>0?(+r.total).toFixed(2).replace(".",",")+" zł":"–"
+        ];
+      });
+      othHTML=makeTableHTML(
+        ["Pom. / Okno","Typ","D\u0142ugo\u015b\u0107","Ilo\u015b\u0107","Gi\u0119cie \u0142uk","G\u0142\u0119b. \u0142uku","Gi\u0119cie pkt","Silnik / Typ","Warto\u015b\u0107"],
+        tableRows,
+        "Pozycje do zam\xf3wienia"
+      )+"<div class=\"notes\" style=\"margin-top:4mm\">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma p\u0142atno\u015bci: _________________</div>";
+    }
 
     var pageBreak=si>0?"<div style=\"page-break-before:always;padding-top:10mm;\"></div>":"";
+    // Adres klienta tylko na zamówieniach szyn/karniszy — na roletach go nie podajemy.
+    var clientAddr=(supRows.length&&client.addr)?" \u2014 "+client.addr:"";
 
-    return pageBreak+"\n    <div class=\"supplier-header\">\n      <div class=\"supplier-name\">"+sup.label+"</div>\n      <div class=\"supplier-meta\">Zamawiaj\u0105cy: <strong>"+SELLER.name+"</strong>  |  Tel.: "+SELLER.tel+"  |  E-mail: "+SELLER.email+"</div>\n      <div class=\"supplier-meta\">Klient ko\u0144cowy: <strong>"+client.name+"</strong>"+(client.addr?" \u2014 "+client.addr:"")+"  |  Data: "+dateStr+"</div>\n    </div>\n    "+tableHTML+"\n    <div class=\"notes\" style=\"margin-top:4mm\">Termin dostawy: _________________ &nbsp;&nbsp;&nbsp; Forma p\u0142atno\u015bci: _________________</div>";
+    return pageBreak+"\n    <div class=\"supplier-header\">\n      <div class=\"supplier-name\">"+sup.label+"</div>\n      <div class=\"supplier-meta\">Zamawiaj\u0105cy: <strong>"+SELLER.name+"</strong>  |  Tel.: "+SELLER.tel+"  |  E-mail: "+SELLER.email+"</div>\n      <div class=\"supplier-meta\">Klient ko\u0144cowy: <strong>"+client.name+"</strong>"+clientAddr+"  |  Data: "+dateStr+"</div>\n    </div>\n    "+rolHTML+othHTML;
   }).join("");
 
-  var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n  ";
+  var extraStyles="\n    .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}\n    .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}\n    .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}\n    .notes-block{margin-top:4mm;font-size:10px;color:#3a3a38;}\n    .notes-block .lbl{font-weight:700;text-transform:uppercase;letter-spacing:0.05em;font-size:9px;color:#6b6b66;margin-bottom:3px;}\n    .notes-block .val{line-height:1.5;}\n  ";
 
   return "<!DOCTYPE html><html lang=\"pl\"><head><meta charset=\"UTF-8\"><title>Zam\xf3wienie osprz\u0119tu \u2014 "+client.name+"</title>"+pdfStyles().replace("</style>",extraStyles+"</style>")+"</head><body>"
     +"<div class=\"header\"><div><div class=\"logo-text\">PORTER<br>DESIGN</div><div class=\"logo-sub\">Dekoracje okienne</div></div>"
@@ -8765,8 +8800,8 @@ export function buildHardwarePDFHtmlFromRows(client,rows){
     +"</body></html>";
 }
 
-export function generateHardwareOrderPDFFromRows(client,rows){
-  var html=buildHardwarePDFHtmlFromRows(client,rows);
+export function generateHardwareOrderPDFFromRows(client,rows,opts){
+  var html=buildHardwarePDFHtmlFromRows(client,rows,opts);
   if(!html){alert("Brak pozycji.");return;}
   openPDFWindow(html,"zamowienie-osprzetu");
 }

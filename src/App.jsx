@@ -6,7 +6,7 @@ import {
   IMG_ROOM_POKÓJ, IMG_ROOM_SALON, IMG_ROOM_SYPIALNIA, InlineEdit, JZ_LABELS,
   KARNISZ_SUPPLIERS, HARDWARE_CATEGORIES, LOGO_SRC, PROD_TYPES, RAIL_SLIM_KOLORY, primeFabricOverrides, setBuiltinCatalog, hasBuiltinCatalog, applySellerConfig, SELLER,
   SEWING_HOUSES, buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
-  buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows,
+  buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows, HW_ROLETY_NOTES_DEFAULT, hardwareRoomLabel,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
   getPanelsForProd, mg, openPDFWindow, roundTo10, persistOfferFromRows
 } from './constants/data.js';
@@ -210,8 +210,9 @@ export function App(p){
   var offerDraftDirtyRef=React.useRef(false);
   var sKarniszRows=useState([]),karniszPreviewRows=sKarniszRows[0],setKarniszPreviewRows=sKarniszRows[1];
   var sKarniszBase=useState([]),karniszBaseRows=sKarniszBase[0],setKarniszBaseRows=sKarniszBase[1];
+  var sKarniszNotes=useState(HW_ROLETY_NOTES_DEFAULT),karniszNotes=sKarniszNotes[0],setKarniszNotes=sKarniszNotes[1];
   var karniszDraftRef=React.useRef(null);
-  karniszDraftRef.current={baseRows:karniszBaseRows,rows:karniszPreviewRows};
+  karniszDraftRef.current={baseRows:karniszBaseRows,rows:karniszPreviewRows,notes:karniszNotes};
   var karniszDraftDirtyRef=React.useRef(false);
   var sFabricRows=useState([]),fabricPreviewRows=sFabricRows[0],setFabricPreviewRows=sFabricRows[1];
   var sFabricBase=useState([]),fabricBaseRows=sFabricBase[0],setFabricBaseRows=sFabricBase[1];
@@ -1162,7 +1163,7 @@ export function App(p){
     karniszDraftDirtyRef.current=true;
     var t=setTimeout(function(){karniszDraftFlushRef.current();},1500);
     return function(){clearTimeout(t);};
-  },[karniszPreviewRows,screen,curClientId]);
+  },[karniszPreviewRows,karniszNotes,screen,curClientId]);
 
   var fabricDraftFlushRef=React.useRef(function(){});
   fabricDraftFlushRef.current=function(){
@@ -2101,11 +2102,12 @@ export function App(p){
     function openKarniszPreview(){
       var rows=buildHardwareRows(curClient);
       if(!rows.length){alert("Brak osprzętu do zamówienia.");return;}
-      var baseRows=rows.map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||defaultHardwareSupplier(r.category)});});
+      var baseRows=rows.map(function(r){return mg(r,{roomWin:hardwareRoomLabel(r),supplier:r.supplier||defaultHardwareSupplier(r.category)});});
       var draft=curClient.karnisz_draft;
       var baseUnchanged=draft&&JSON.stringify(draft.baseRows)===JSON.stringify(baseRows);
       setKarniszBaseRows(baseRows);
       setKarniszPreviewRows(baseUnchanged&&draft.rows?draft.rows:baseRows);
+      setKarniszNotes(draft&&draft.notes!=null?draft.notes:HW_ROLETY_NOTES_DEFAULT);
       setScreen("karniszPreview");
     }
     function openFabricPreview(){
@@ -2512,9 +2514,10 @@ export function App(p){
     }
     function resetKarniszPreviewFromSource(){
       if(!window.confirm("Wypełnić wiersze od nowa z aktualnej wyceny?\n\nNadpisze to zmiany wprowadzone na tym ekranie."))return;
-      var freshRows=buildHardwareRows(curClient).map(function(r){return mg(r,{roomWin:r.room+" / "+r.win,supplier:r.supplier||((HARDWARE_CATEGORIES[r.category]&&HARDWARE_CATEGORIES[r.category].suppliers[0])||"marcin_dekor")});});
+      var freshRows=buildHardwareRows(curClient).map(function(r){return mg(r,{roomWin:hardwareRoomLabel(r),supplier:r.supplier||((HARDWARE_CATEGORIES[r.category]&&HARDWARE_CATEGORIES[r.category].suppliers[0])||"marcin_dekor")});});
       setKarniszBaseRows(freshRows);
       setKarniszPreviewRows(freshRows);
+      setKarniszNotes(HW_ROLETY_NOTES_DEFAULT);
     }
 
     // Dostawca wiersza (z fallbackiem do domyślnego dla kategorii) — jak w buildHardwarePDFHtmlFromRows.
@@ -2533,7 +2536,7 @@ export function App(p){
     function previewHwForSupplier(key){
       var rows=hwRowsForSupplier(key);
       if(!rows.length){alert("Brak zaznaczonych pozycji dla tego dostawcy.");return;}
-      generateHardwareOrderPDFFromRows(curClient,rows);
+      generateHardwareOrderPDFFromRows(curClient,rows,{rolNotes:karniszNotes});
     }
     // Ten sam dokument co podgląd, ale tylko dla jednego dostawcy i na jego adres z Kontrahentów.
     function mailHwForSupplier(key){
@@ -2541,7 +2544,7 @@ export function App(p){
       if(!rows.length){alert("Brak zaznaczonych pozycji dla tego dostawcy.");return;}
       var sup=KARNISZ_SUPPLIERS.find(function(s){return s.key===key;});
       var supName=sup?sup.label:key;
-      mailDoc(buildHardwarePDFHtmlFromRows(curClient,rows),
+      mailDoc(buildHardwarePDFHtmlFromRows(curClient,rows,{rolNotes:karniszNotes}),
         "Zamowienie osprzetu - "+supName.split(",")[0]+".pdf",
         {to:"",supplier:supName,templateId:"zamowienie_osprzetu",noTemplates:true});
     }
@@ -2630,6 +2633,11 @@ export function App(p){
             })
           );
         }),
+      karniszPreviewRows.some(function(r){return r.category==="rolety";})
+        ?ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"14px 16px",marginBottom:12}},
+          ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t2)",marginBottom:8}},"\uD83D\uDCDD Uwagi do zamówienia rolet"),
+          ce("textarea",{value:karniszNotes,onChange:function(ev){setKarniszNotes(ev.target.value);},rows:2,style:{width:"100%",padding:"10px 12px",fontSize:13,border:"1.5px solid var(--bd2)",borderRadius:8,background:"var(--bg)",color:"var(--t1)",resize:"vertical",fontFamily:"inherit"}})
+        ):null,
       ce("div",{style:{background:"var(--t1)",borderRadius:14,padding:"20px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}},
         ce("span",{style:{fontSize:14,color:"var(--bg)",opacity:0.75,letterSpacing:"0.04em"}},"Łącznie"),
         ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--bg)"}},roundTo10(karniszTotal)+" zł")
@@ -2638,7 +2646,7 @@ export function App(p){
         Btn("← Wstecz",function(){setScreen("sum");},false),
         ce("button",{onClick:resetKarniszPreviewFromSource,style:{padding:"14px 16px",borderRadius:12,border:"1.5px solid var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52}},"🔄 Wypełnij od nowa"),
         ce("button",{disabled:!hwSelCount,onClick:function(){
-          generateHardwareOrderPDFFromRows(curClient,karniszPreviewRows.filter(function(r){return !r.skip;}));
+          generateHardwareOrderPDFFromRows(curClient,karniszPreviewRows.filter(function(r){return !r.skip;}),{rolNotes:karniszNotes});
           setScreen("sum");
         },style:{padding:"14px 20px",borderRadius:12,border:"none",background:"var(--gr)",color:"var(--bg)",fontSize:14,fontWeight:600,cursor:"pointer",letterSpacing:"0.03em",minHeight:52,opacity:hwSelCount?1:0.5}},"👁️ Podgląd PDF (wszyscy dostawcy)")
       )
