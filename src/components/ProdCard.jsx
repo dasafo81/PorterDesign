@@ -2202,17 +2202,6 @@ export function ProdCard(p){
     var napAktywny=c.pn||(isSomfyPrestige?"movelite_wt":"am75_3w");
     var isAku=napAktywny===akuKeyPres;
     form=ce(Fragment,null,
-      ce("div",{style:{marginBottom:14}},
-        ce("label",{style:{fontSize:12,color:"var(--t2)",letterSpacing:"0.06em",fontWeight:600,textTransform:"uppercase",display:"block",marginBottom:8}},"SERIA"),
-        ce("div",{style:{display:"flex",gap:10}},
-          [{key:"prestige_round",label:"ROUND"},{key:"prestige_square",label:"SQUARE"}].map(function(s){
-            var isA=prod.type===s.key;
-            return ce("div",{key:s.key,onClick:function(){p.onChange(mg(prod,{type:s.key}));},style:{padding:"12px 24px",borderRadius:10,border:"2px solid "+(isA?"var(--t1)":"var(--bd2)"),background:isA?"var(--t1)":"var(--bg)",color:isA?"var(--bg)":"var(--t1)",fontSize:14,fontWeight:isA?600:400,cursor:"pointer",transition:"all .18s",userSelect:"none"}},
-              isA?"\u2713 "+s.label:s.label
-            );
-          })
-        )
-      ),
       ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",min:1,value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
         ce(Fld,{label:"D\u0141UGO\u015a\u0106 (cm)"},
