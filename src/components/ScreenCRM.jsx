@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { sbApi, ksefApi, SB_URL, SB_KEY } from '../lib/supabase.js';
 import { LOGO_SRC, SELLER, mg, calc, getPanelsForProd, roundTo10, costOf, getFabricEffective, buildOfferDetailRows, listSewnItems, planRailScraps } from '../constants/data.js';
 import { gcalLogin, gcalLogout, gcalGetToken, gcalHasValidToken, gcalWaitReady, GCAL_CLIENT_ID, GCAL_SCOPES } from '../lib/gcal.js';
-import { montazLinkOrNull, ensureMontazShare, buildMontazPayload } from '../lib/montazShare.js';
+import { montazLinkOrNull, buildMontazPayload } from '../lib/montazShare.js';
 import { renderMontazHtml } from '../../api/_montazView.js';
 import { DEAL_DATE_FIELDS, dealKey, parseDealKey, eventDealKey, syncDealDateToGcal, installerCalendarId, installerNameFor, moveDealTwins, dealStartDate, dealFieldTitle } from '../lib/gcalDealSync.js';
 import { mailGetToken, mailGetActiveAccount, mailFetch, mailProviderLabel } from '../lib/mailClient.js';
@@ -1648,17 +1648,6 @@ export function ModalDeal(p){
             // bez cen) — checklista dla ekipy montazowej, bez wychodzenia z karty deala.
             cl?ce("button",{onClick:function(){openMontazWindow(cl);},style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
               "🔧 Do montażu"
-            ):null,
-            // Tworzy/odświeża publiczny link (bez logowania, bez cen) i kopiuje go do schowka —
-            // do wklejenia montażyście; ten sam link trafia też do opisu wydarzenia w kalendarzu.
-            cl?ce("button",{title:"Kopiuje link do listy „Do montażu” dla montażysty (bez cen, bez logowania)",onClick:function(){
-              ensureMontazShare(cl,d.id).then(function(url){
-                var done=function(){alert("Link skopiowany — wklej go montażyście:\n"+url);};
-                if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(url).then(done,function(){prompt("Skopiuj link:",url);});}
-                else prompt("Skopiuj link:",url);
-              }).catch(function(e){alert("Nie udało się utworzyć linku: "+((e&&e.message)||"błąd")+"\nCzy uruchomiono migrację 0075_montaz_shares.sql w Supabase?");});
-            },style:{background:"rgba(255,255,255,0.15)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:8,color:"#fff",fontSize:11,padding:"4px 10px",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}},
-              "🔗 Link dla montażysty"
             ):null,
             // Wyrazisty (bialy, pelny) przycisk — glowne CTA karty deala, zeby bylo
             // od razu widac skrot do wyceny bez szukania w tle nagłówka.
