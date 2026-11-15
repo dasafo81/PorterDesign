@@ -39,6 +39,9 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
     .supplier-header{background:#f2f2ef;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-bottom:5mm;}
     .supplier-name{font-size:14px;font-weight:700;color:#1a1a18;margin-bottom:3px;letter-spacing:0.03em;}
     .supplier-meta{font-size:9px;color:#6b6b66;margin-top:2px;}
+    .party-table{width:100%;border-collapse:collapse;margin-bottom:5mm;table-layout:fixed;}
+    .party-table th{background:#f2f2ef;font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:#6b6b66;text-align:left;padding:5px 8px;border:0.5px solid #c8c8c4;}
+    .party-table td{font-size:10px;line-height:1.5;color:#1a1a18;vertical-align:top;padding:6px 8px;border:0.5px solid #c8c8c4;}
     .ship-block{background:#f7f7f5;border:0.5px solid #c8c8c4;border-radius:4px;padding:8px 12px;margin-top:5mm;}
     .ship-block h4{font-size:9px;letter-spacing:0.07em;text-transform:uppercase;color:#6b6b66;margin:0 0 4px;}
     .ship-block .ship-val{font-size:11px;color:#1a1a18;font-weight:600;white-space:pre-line;}
@@ -83,7 +86,7 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
   var orderTableHTML=makeTableHTML(
     ["Tkanina","Kolor","Szer. tkaniny","Do zamówienia (mb)","Pozycji"].concat(hasFabNotes?["Uwagi"]:[]),
     orderRows,
-    "Zamówienie — metraż dla każdej tkaniny"
+    "Podsumowanie ilości tkanin"
   );
 
   // Tabela 2 — rozbicie pomocnicze: co i gdzie idzie
@@ -109,7 +112,7 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
   var tableHTML=orderTableHTML+makeTableHTML(
     ["Tkanina","Kolor","Ilość (mb)","Przeznaczenie"].concat(multiHouse?["Szwalnia"]:[]),
     detailRows,
-    "Rozbicie na pomieszczenia / okna"
+    "Rozbicie tkanin na poszczególne kawałki w pomieszczeniach"
   );
 
   if(!multiHouse&&houseNames.length===1)sewingHouse=houseNames[0];
@@ -129,28 +132,33 @@ export function buildFabricOrderHtmlFromRows(client,supplierLabel,rows,opts){
             +'<div style="font-size:10px;color:#3a3a38;margin-bottom:3px">'+g.keys.map(function(k){return escNote(k)+": <strong>"+g.items[k].toFixed(2).replace(".",",")+" mb</strong>";}).join("<br>")+'</div>';
         }).join("")+'</div>';
       })()
-    : sewingHouse
-    ? `<div class="ship-block"><h4>Wysyłka tkaniny — szwalnia</h4><div class="ship-val">${sewingHouse}</div></div>`
     : "";
   var notesHTML=notes
     ? `<div class="notes-block"><div class="lbl">Uwagi do zlecenia</div><div class="val">${notes}</div></div>`
     : "";
 
+  // Mini tabelka: zamawiający | dostawca | adres wysyłki
+  var splitHouse=function(h){var p=String(h||"").split(" — ");return {name:p[0]||"",addr:p.slice(1).join(" — ")};};
+  var buyerHTML="<strong>"+escNote(SELLER.name)+"</strong><br>"+escNote(SELLER.addr)+"<br>"+escNote(SELLER.city)
+    +(SELLER.nip?"<br>NIP: "+escNote(SELLER.nip):"")+"<br>Tel.: "+escNote(SELLER.tel)+"<br>"+escNote(SELLER.email);
+  var supplierHTML="<strong>"+escNote(supplierLabel)+"</strong>";
+  var shipTo=(multiHouse?houseNames:(sewingHouse?[sewingHouse]:[])).map(function(h){
+    var sp=splitHouse(h);
+    return "<strong>"+escNote(sp.name)+"</strong>"+(sp.addr?"<br>"+escNote(sp.addr):"");
+  }).join("<br><br>");
+  var partyHTML='<table class="party-table"><thead><tr><th>Zamawiający</th><th>Dostawca</th><th>Adres wysyłki</th></tr></thead>'
+    +'<tbody><tr><td>'+buyerHTML+'</td><td>'+supplierHTML+'</td><td>'+(shipTo||"-")+'</td></tr></tbody></table>';
+
   var bodySection=`
-    <div class="supplier-header">
-      <div class="supplier-name">${supplierLabel}</div>
-      <div class="supplier-meta">Zamawiający: <strong>${SELLER.name}</strong>  |  Tel.: ${SELLER.tel}  |  E-mail: ${SELLER.email}</div>
-      <div class="supplier-meta">${opts.bulkLabel?"Zamówienie zbiorcze":"Klient"}: <strong>${client.name}</strong>  |  Data: ${dateStr}</div>
-    </div>
+    ${partyHTML}
     ${tableHTML}
     ${shipHTML}
-    ${notesHTML}
-    <div class="notes" style="margin-top:4mm">Termin dostawy: _________________&nbsp;&nbsp;&nbsp; Forma płatności: _________________</div>`;
+    ${notesHTML}`;
 
   return '<!DOCTYPE html><html lang="pl"><head><meta charset="UTF-8"><title>Zamówienie tkaniny — '+supplierLabel+' — '+client.name+'</title>'+pdfStyles().replace('</style>',extraStyles+'</style>')+'</head><body>'
     +'<div class="header"><div><div class="logo-text">PORTER<br>DESIGN</div><div class="logo-sub">Dekoracje okienne</div></div>'
     +'<div style="text-align:right"><div style="font-size:18px;font-weight:700">Zamówienie tkaniny</div>'
-    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">'+(opts.bulkLabel?'Zamówienie zbiorcze':'Klient')+': <strong>'+client.name+'</strong> &nbsp;|&nbsp; Dostawca: <strong>'+supplierLabel+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
+    +'<div style="font-size:9px;color:#6b6b66;margin-top:4px">'+(opts.bulkLabel?'Zamówienie zbiorcze':'Klient')+': <strong>'+client.name+'</strong> &nbsp;|&nbsp; Data: '+dateStr+'</div></div></div>'
     +bodySection
     +'<div class="footer" style="margin-top:8mm"><span>'+SELLER.name+' | '+SELLER.city+'</span><span>Generowano: '+dateStr+'</span></div>'
     +'</body></html>';
