@@ -22,7 +22,7 @@ import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
 import { ScreenCRM, CRMKalendarz, CRM_STAGES, ORDER_STEPS, dealTotal } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
-import { loadSystemTemplate, HIDDEN_IN_COMPOSE } from './lib/mailTemplates.js';
+import { loadSystemTemplate, HIDDEN_IN_COMPOSE, stripClosingGreeting } from './lib/mailTemplates.js';
 const ce = React.createElement;
 
 // \u2500\u2500 Leniwe ekrany \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -3764,7 +3764,7 @@ export function ModalClientEmail(p){
         sig="<br><br><div style=\""+font+"font-size:13px;color:#444;\">"+sigHtml
           +(img?(sigHtml?"<br>":"")+"<img src=\"cid:signature-image\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">":"")+"</div>";
       }
-      var html="<div style=\""+font+"font-size:14px;color:#222;\">"+body+"</div>"+sig;
+      var html="<div style=\""+font+"font-size:14px;color:#222;\">"+(sig?stripClosingGreeting(body):body)+"</div>"+sig;
       var atts=[{"@odata.type":"#microsoft.graph.fileAttachment",name:pdfName,contentType:"application/pdf",contentBytes:pdfB64}].concat(extraGraphAtts);
       if(img)atts.push({"@odata.type":"#microsoft.graph.fileAttachment",name:"signature.png",contentType:img.ct,contentBytes:img.b64,isInline:true,contentId:"signature-image"});
       var recips=to.split(/[,;]/).map(function(s){return s.trim();}).filter(Boolean).map(function(a){return {emailAddress:{address:a}};});

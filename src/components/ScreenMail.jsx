@@ -7,7 +7,7 @@ import { sbApi } from '../lib/supabase.js';
 import { guessMailServers } from '../lib/imapApi.js';
 import { fillTemplate, RichTextEditor } from './MailShared.jsx';
 import { RecipientInput, parseRecipientList } from './RecipientInput.jsx';
-import { SYSTEM_TEMPLATES, TEMPLATE_USAGE, HIDDEN_IN_COMPOSE } from '../lib/mailTemplates.js';
+import { SYSTEM_TEMPLATES, TEMPLATE_USAGE, HIDDEN_IN_COMPOSE, stripClosingGreeting } from '../lib/mailTemplates.js';
 const ce = React.createElement;
 // Reeksport dla zgodnosci — definicje mieszkaja teraz w MailShared.jsx.
 export { fillTemplate, RichTextEditor };
@@ -2754,12 +2754,13 @@ export function ScreenMail(p){
     // @import ładuje Montserrat w klientach, które to wspierają (np. Apple Mail);
     // pozostałe (Gmail/Outlook zwykle blokują web-fonty) użyją fallbacku Arial.
     var fontImport="<style>@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');</style>";
-    var bodyHtml="<div style=\"font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"
-      +(htmlBodyInput||"")
-      +"</div>";
     var sig=settings||{};
     var sigHtml=sig.signature_html||"";
     var sigImg=sig.signature_image_url||"";
+    // Podpis ma własne „Pozdrawiam” — nie dublujemy go końcówką treści
+    var bodyHtml="<div style=\"font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:14px;color:#222;\">"
+      +((sigHtml||sigImg)?stripClosingGreeting(htmlBodyInput||""):(htmlBodyInput||""))
+      +"</div>";
     var sigBlock="";
     if(sigHtml||sigImg){
       // Podpis wchodzi zaraz po treści wiadomości, PRZED cytowanym wątkiem — nie na jego końcu

@@ -209,10 +209,23 @@ export function loadMailSignature(acc){
     return {html:row.signature_html||"",imageUrl:row.signature_image_url||""};
   }).catch(function(){return null;});
 }
+// Końcowe „Pozdrawiam,” (także „Pozdrawiam serdecznie,”, „Z poważaniem” + ewentualna linia z imieniem)
+// z treści maila. Podpis z Ustawień ma własne pozdrowienie, więc przy doklejaniu podpisu wycinamy je z treści
+// — niezależnie od tego, co siedzi w szablonie w bazie albo co dopisano ręcznie. Reszta treści bez zmian.
+var GREET="(?:Pozdrawiam(?:y)?(?:\\s+serdecznie)?|Serdecznie\\s+pozdrawiam(?:y)?|Z\\s+poważaniem|Z\\s+wyrazami\\s+szacunku)";
+var GREET_BLOCK_RE=new RegExp("(?:<div[^>]*>\\s*<br\\s*/?>\\s*</div>|<br\\s*/?>|&nbsp;|\\s)*<(div|p)[^>]*>\\s*"+GREET+"\\s*[,.!]?\\s*(?:<br\\s*/?>\\s*[^<]{0,60}){0,2}</\\1>(?:<div[^>]*>\\s*<br\\s*/?>\\s*</div>|<br\\s*/?>|&nbsp;|\\s)*$","i");
+var GREET_TEXT_RE=new RegExp("(?:<br\\s*/?>|&nbsp;|\\s)*"+GREET+"\\s*[,.!]?\\s*(?:<br\\s*/?>\\s*[^<]{0,60}){0,2}(?:<br\\s*/?>|&nbsp;|\\s)*$","i");
+export function stripClosingGreeting(html){
+  var h=String(html||"");
+  var out=h.replace(GREET_BLOCK_RE,"");
+  if(out===h)out=h.replace(GREET_TEXT_RE,"");
+  return out;
+}
 // Treść (HTML lub zwykły tekst) + podpis; obrazek jako <img src="cid:signature-image"> (patrz signatureAttachment).
 export function appendSignature(body, sig){
   var html=bodyToHtml(body);
   if(!sig)return html;
+  if(sig.html||sig.imageUrl)html=stripClosingGreeting(html);
   var blk="<br><div style=\"font-size:13px;color:#444;\">"+(sig.html||"");
   if(sig.imageUrl){
     blk+=(sig.html?"<br>":"")+"<img src=\"cid:signature-image\" alt=\"\" style=\"max-width:250px;height:auto;display:block;margin-top:8px;\">";
