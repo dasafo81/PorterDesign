@@ -8899,5 +8899,6 @@ export const SEWING_HOUSES = [
   "TRINITAS \u2014 ul. Sk\u0142adowa 9, 86-300 Grudzi\u0105dz",
   "LAURALES \u2014 ul. Kolegialna 35 lok.1, 09-402 P\u0142ock",
   "MARCIN DEKOR \u2014 ul. Terespolska 75, 05-074 Halin\u00f3w",
-  "NITECZKAMI \u2014 Troszyn Polski 38B, 09-530 Troszyn"
+  "NITECZKAMI \u2014 Troszyn Polski 38B, 09-530 Troszyn",
+  "Ala Pawlak \u2014 ul. Podle\u015bna 13, 05-205 Sitki"
 ];

@@ -3002,7 +3002,8 @@ export function App(p){
         var today=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0");
         var key=normSupName(house);
         var known=["TRINITAS — ul. Składowa 9, 86-300 Grudziądz","LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock",
-          "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów","Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"]
+          "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów","Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B",
+          "Ala Pawlak — ul. Podleśna 13, 05-205 Sitki"]
           .find(function(o){var k=normSupName(o);return k===key||(key&&(k.indexOf(key)>=0||key.indexOf(k)>=0))||(key.split(" ")[0]===k.split(" ")[0]);});
         var houseName=known||String(house).trim();
         var latest=(deals||[]).find(function(d){return d.id===curDeal.id;})||curDeal;

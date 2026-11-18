@@ -30,7 +30,8 @@ export function ModalSewing(p){
     'TRINITAS — ul. Składowa 9, 86-300 Grudziądz',
     'LAURALES — ul. Kolegialna 35 lok.1, 09-402 Płock',
     'MARCIN DEKOR — ul. Terespolska 75, 05-074 Halinów',
-    'NITECZKAMI — Troszyn Polski 38B, 09-530 Troszyn'
+    'NITECZKAMI — Troszyn Polski 38B, 09-530 Troszyn',
+    'Ala Pawlak — ul. Podleśna 13, 05-205 Sitki'
   ];
   // ── DRAFT: ten sam mechanizm co w App.jsx (offer_draft i in.) — ekran
   // "Zlecenie szycia — podgląd" jest osobnym komponentem, wiec traci caly stan
@@ -589,7 +590,8 @@ export function ModalFabricOrder(p){
     'TRINITAS — ul. Składowa 9, 86-300 Grudziądz',
     'LAURALES — ul. Kolegialna 35 lok.1, 09-402 Płock',
     'MARCIN DEKOR — ul. Terespolska 75, 05-074 Halinów',
-    'NITECZKAMI — Troszyn Polski 38B, 09-530 Troszyn'
+    'NITECZKAMI — Troszyn Polski 38B, 09-530 Troszyn',
+    'Ala Pawlak — ul. Podleśna 13, 05-205 Sitki'
   ];
   var ss=useState(SEWING_HOUSES[0]),selHouse=ss[0],setSelHouse=ss[1];
   var cs=useState(''),customHouse=cs[0],setCustomHouse=cs[1];

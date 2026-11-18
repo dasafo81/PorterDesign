@@ -451,7 +451,8 @@ export function ModalDeal(p){
     "TRINITAS — ul. Składowa 9, 86-300 Grudziądz",
     "LaurAles — ul. Kolegialna 35 lok.1, 09-402 Płock",
     "Marcin Dekor — ul. Terespolska 75, 05-074 Halinów",
-    "Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B"
+    "Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B",
+    "Ala Pawlak — ul. Podleśna 13, 05-205 Sitki"
   ];
   var INSTALLER_OPTIONS=["","Darek","Grzesiek","Damian"];
   // Rodzaje kosztow — te same wartosci co CHECK-lista w komentarzu migracji 0034
