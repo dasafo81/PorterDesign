@@ -1270,10 +1270,30 @@ export function App(p){
   }
   // Adresy zamówień narzucone na stałe (mają pierwszeństwo przed e-mailem z Kontrahentów).
   var SUPPLIER_ORDER_EMAILS={dekoma:"orders@dekoma.eu","ala pawlak":"ala.pawlak1974@gmail.com"};
-  function findSupplierEmail(contacts,supplier){
+  // nameOnly (zamówienie osprzętu): dopasowanie wyłącznie po nazwie kontrahenta, na całych słowach,
+  // bez heurystyk szwalni (ulica/notatki/tagi/fragment tekstu) — inaczej do dostawcy osprzętu
+  // podstawia się e-mail szwalni.
+  function findSupplierEmail(contacts,supplier,nameOnly){
     var key=normSupName(supplier);
     if(!key||key.length<3)return "";
     if(SUPPLIER_ORDER_EMAILS[key])return SUPPLIER_ORDER_EMAILS[key];
+    if(nameOnly){
+      var kw=key.split(" ");
+      var named=(contacts||[]).filter(function(c){
+        if(!c.email)return false;
+        var n=normSupName(c.name);
+        if(!n)return false;
+        if(n===key)return true;
+        var nw=n.split(" ");
+        return kw.every(function(w){return nw.indexOf(w)>=0;})||nw.every(function(w){return kw.indexOf(w)>=0;});
+      });
+      named.sort(function(a,b){
+        var ea=normSupName(a.name)===key?1:0,eb=normSupName(b.name)===key?1:0;
+        if(ea!==eb)return eb-ea;
+        return (b.role==="dostawca"||b.role==="oba"?1:0)-(a.role==="dostawca"||a.role==="oba"?1:0);
+      });
+      return named.length?named[0].email:"";
+    }
     var cands=(contacts||[]).filter(function(c){
       if(!c.email)return false;
       var n=normSupName(c.name);
@@ -1324,7 +1344,7 @@ export function App(p){
     }
     // opts.supplier: gdy pole "Do" nie jest podane, podstawiamy e-mail dostawcy z Kontrahentów.
     if(opts.supplier&&!opts.to){
-      sbApi.getContacts().then(function(rows){return findSupplierEmail(rows,opts.supplier);})
+      sbApi.getContacts().then(function(rows){return findSupplierEmail(rows,opts.supplier,!!opts.supplierNameOnly);})
         .catch(function(){return "";}).then(open);
     }else open(opts.to);
   }
@@ -2551,7 +2571,7 @@ export function App(p){
       var supName=sup?sup.label:key;
       mailDoc(buildHardwarePDFHtmlFromRows(curClient,rows,{rolNotes:karniszNotes,ksNotes:karniszNotesKs,krNotes:karniszNotesKr}),
         "Zamowienie osprzetu - "+supName.split(",")[0]+".pdf",
-        {to:"",supplier:supName,templateId:"zamowienie_osprzetu",noTemplates:true});
+        {to:"",supplier:supName,supplierNameOnly:true,templateId:"zamowienie_osprzetu",noTemplates:true});
     }
     var hwSelCount=karniszPreviewRows.filter(function(r){return !r.skip;}).length;
 
