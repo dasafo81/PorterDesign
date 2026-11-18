@@ -1,0 +1,22 @@
+NAZWA: Wycena po spotkaniu
+ID: wycena_po_spotkaniu
+GDZIE UŻYWANY: Podsumowanie → Wyślij klientowi oraz Podgląd oferty → Wyślij mailem. W Poczcie oznaczony jako domyślny.
+ZMIENNE: {clientName}, {honorific}, {total}, {zaliczka}
+ZAŁĄCZNIKI: brak
+
+TEMAT: Oferta aranżacji okiennych
+
+===== TREŚĆ =====
+
+Dzień dobry,
+
+Bardzo dziękuję za niezwykle miłe spotkanie. Zgodnie z naszymi ustaleniami, w załączniku przesyłam ofertę oraz dokładne informacje dotyczące aranżacji okiennych.
+
+Poniżej przesyłam kluczowe informacje organizacyjne:
+
+**Warunki płatności:** Rozpoczęcie zamówienia następuje po wpłacie zaliczki w wysokości 50% wartości zlecenia.
+**Czas realizacji:** Wynosi ok. 4 tygodni od momentu zaksięgowania wpłaty.
+
+Jeśli akceptują Państwo przedstawioną ofertę i przechodzimy do działania, bardzo proszę o potwierdzenie oraz przesłanie danych do wystawienia faktury na wspomnianą zaliczkę.
+
+W razie jakichkolwiek pytań do załączonego projektu, pozostaję do dyspozycji.

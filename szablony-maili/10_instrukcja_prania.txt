@@ -1,0 +1,12 @@
+NAZWA: Instrukcja prania i czyszczenia
+ID: instrukcja_prania
+GDZIE UŻYWANY: CRM, karta deala → Obsługa posprzedażowa → Instrukcja prania (✉ Wyślij)
+ZMIENNE: {clientName}, {honorific}
+
+UWAGA: treść tego szablonu jest tylko w bazie Supabase, nie ma jej w kodzie.
+Wklej ją tutaj z aplikacji (Poczta → Szablony).
+
+TEMAT:
+
+===== TREŚĆ =====
+

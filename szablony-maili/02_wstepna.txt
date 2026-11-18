@@ -1,0 +1,23 @@
+NAZWA: Wstępna wycena
+ID: wstepna
+GDZIE UŻYWANY: Wycena uproszczona → Wyślij mailem, razem z załączonymi plikami szablonu (domyślnie dwa PDF-y).
+ZMIENNE: {clientName}, {honorific}, {total}, {zaliczka}
+ZAŁĄCZNIKI: Zasłony-Firany_PD.pdf, Rolety_rzymskie_PD.pdf
+
+TEMAT: Wycena aranżacji okiennych
+
+===== TREŚĆ =====
+
+Dzień dobry,
+
+Dziękuję za przesłane zapytanie, w odpowiedzi przesyłam wstępną, orientacyjną wycenę oraz informacje odnośnie rodzajów szycia i rolet rzymskich w ofercie.
+
+Podane ceny są cenami brutto, wyszczególniony jest również koszt montażu, obejmujący montaż osprzętu, powieszenie, wyprasowanie i ułożenie dekoracji.
+
+Informacje organizacyjne:
+
+**Spotkanie:** W przypadku zainteresowania, umawiamy się na spotkanie u Państwa na dobór tkanin i wykonanie dokładnego pomiaru. Koszt spotkania wynosi 250 zł i jest odejmowany od całości zamówienia. Po spotkaniu przesyłam dokładną wycenę.
+**Warunki płatności:** Rozpoczęcie zamówienia następuje po wpłacie zaliczki w wysokości 50% wartości zlecenia.
+**Czas realizacji:** Wynosi ok. 4 tygodni od momentu zaksięgowania wpłaty, od połowy października, ze względu na okres przedświąteczny, termin ten może wydłużyć się do ok. 6 tygodni.
+
+W razie jakichkolwiek pytań, pozostaję do dyspozycji.

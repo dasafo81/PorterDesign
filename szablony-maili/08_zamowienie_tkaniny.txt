@@ -1,0 +1,15 @@
+NAZWA: Zamówienie tkaniny
+ID: zamowienie_tkaniny
+GDZIE UŻYWANY: Podgląd zamówienia tkaniny → Wyślij mailem do dostawcy.
+ZMIENNE: {clientName}
+ZAŁĄCZNIKI: brak
+
+TEMAT: Zamówienie tkaniny — {clientName}
+
+===== TREŚĆ =====
+
+Dzień dobry,
+
+W załączeniu przesyłam zamówienie tkaniny.
+
+Proszę o potwierdzenie dostępności i terminu wysyłki.

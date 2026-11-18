@@ -1,0 +1,11 @@
+SZABLONY MAILI - PORTER DESIGN
+
+Pliki 01-08: szablony systemowe (Poczta -> Szablony w aplikacji). Edycja w aplikacji lub w kodzie.
+Pliki 09-10: Opinia i Instrukcja prania. Treść tylko w bazie, trzeba ją wkleść z aplikacji.
+Pliki 11-15 (STALE/STARE): teksty wpisane w kod, zmiana wymaga edycji kodu.
+
+Uwagi:
+- To są DOMYŚLNE treści z kodu. Jeśli szablon był edytowany w aplikacji, w mailach wychodzi wersja z bazy.
+- **tekst** oznacza pogrubienie w mailu.
+- {zmienne} w nawiasach klamrowych są podstawiane automatycznie - nie zmieniaj ich nazw.
+- Do maili z karty deala i z Faktur doklejany jest podpis z Poczta -> Ustawienia, dlatego szablony nie mają 'Pozdrawiam'.

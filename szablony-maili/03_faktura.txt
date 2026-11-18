@@ -1,0 +1,17 @@
+NAZWA: Faktura
+ID: faktura
+GDZIE UŻYWANY: Moduł Faktury → Wyślij fakturę oraz CRM, karta deala → wysyłka faktury dla klienta.
+ZMIENNE: {numer}, {kwota}, {czesc}, {terminZdanie}, {sprzedawca}
+ZAŁĄCZNIKI: brak
+
+TEMAT: Faktura nr {numer} — {sprzedawca}
+
+===== TREŚĆ =====
+
+Dzień dobry,
+
+w załączeniu przesyłam fakturę nr **{numer}** na kwotę **{kwota}**{czesc}.
+
+{terminZdanie}
+
+Dziękujemy za współpracę. W razie jakichkolwiek pytań pozostaję do dyspozycji.

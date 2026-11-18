@@ -1,0 +1,14 @@
+NAZWA: Faktura przez mailto (tekst wpisany w kod: src/components/ScreenInvoices.jsx)
+GDZIE UŻYWANY: Faktury → przycisk otwierający program pocztowy
+
+TEMAT: Faktura {numer}
+
+===== TREŚĆ =====
+
+Dzień dobry,
+
+W załączeniu przesyłam fakturę nr {numer} na kwotę {kwota brutto}.
+
+Pozdrawiam serdecznie,
+Paulina Porter
+Porter Design
