@@ -1269,7 +1269,7 @@ export function App(p){
       .split(/\s[\u2014\u2013-]\s|,/)[0].replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
   }
   // Adresy zamówień narzucone na stałe (mają pierwszeństwo przed e-mailem z Kontrahentów).
-  var SUPPLIER_ORDER_EMAILS={dekoma:"orders@dekoma.eu"};
+  var SUPPLIER_ORDER_EMAILS={dekoma:"orders@dekoma.eu","ala pawlak":"ala.pawlak1974@gmail.com"};
   function findSupplierEmail(contacts,supplier){
     var key=normSupName(supplier);
     if(!key||key.length<3)return "";
