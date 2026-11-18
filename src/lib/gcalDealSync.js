@@ -50,18 +50,37 @@ export function dealStartDate(val) {
 }
 
 // ctx = { token, getFresh } — po 401 pobieramy świeży token i zapamiętujemy go w ctx
+// Google chwilowo odrzuca zbyt szybkie serie zapytań (403 rateLimitExceeded / 429 / 5xx) —
+// wtedy ponawiamy z rosnącym opóźnieniem zamiast od razu zgłaszać błąd.
+var RETRY_DELAYS_MS = [1200, 2500, 5000, 9000];
+
+function sleep(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+
+function isRateLimited(r) {
+  if (r.status === 429 || r.status === 500 || r.status === 502 || r.status === 503) return Promise.resolve(true);
+  if (r.status !== 403) return Promise.resolve(false);
+  return r.clone().text().then(function (t) { return /rateLimitExceeded|userRateLimitExceeded|quotaExceeded/i.test(t); })
+    .catch(function () { return false; });
+}
+
 function req(ctx, url, opts) {
   opts = opts || {};
   function go(t) {
     var h = Object.assign({ Authorization: "Bearer " + t }, opts.headers || {});
     return fetch(url, Object.assign({}, opts, { headers: h }));
   }
-  return go(ctx.token).then(function (r) {
-    if (r.status === 401 && ctx.getFresh) {
-      return ctx.getFresh().then(function (fresh) { ctx.token = fresh; return go(fresh); });
-    }
-    return r;
-  });
+  function attempt(n) {
+    return go(ctx.token).then(function (r) {
+      if (r.status === 401 && ctx.getFresh) {
+        return ctx.getFresh().then(function (fresh) { ctx.token = fresh; return go(fresh); });
+      }
+      return isRateLimited(r).then(function (limited) {
+        if (!limited || n >= RETRY_DELAYS_MS.length) return r;
+        return sleep(RETRY_DELAYS_MS[n] + Math.random() * 400).then(function () { return attempt(n + 1); });
+      });
+    });
+  }
+  return attempt(0);
 }
 
 function json(r) {
@@ -223,8 +242,9 @@ export function syncDealDateToGcal(ctx, deal, client, field, calList) {
       durMin: defaultDurMin(field, deal),
       clientName: client && client.name
     };
-    return Promise.all(targets.map(function (calId) {
-      return upsertDealEvent(ctx, Object.assign({}, base, { calId: calId }));
-    }));
+    // Po kolei (nie naraz) — mniejsze ryzyko limitu zapytań Google
+    return targets.reduce(function (chain, calId) {
+      return chain.then(function () { return upsertDealEvent(ctx, Object.assign({}, base, { calId: calId })); });
+    }, Promise.resolve());
   }).then(function () { return { missingInstaller: missingInstaller }; });
 }
