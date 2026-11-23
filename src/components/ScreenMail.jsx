@@ -257,6 +257,25 @@ function fmtRecipients(list){
 }
 
 // To samo co fmtRecipients, ale jako lista {email,name} — potrzebne dla "Odpowiedz wszystkim"
+// Temat bez prefiksów odpowiedzi/przekazania (Re:, Odp:, Fwd:, Prz:, SV:, AW: — także zagnieżdżonych).
+function normSubject(s){
+  var t=String(s||"").toLowerCase();
+  var prev;
+  do { prev=t; t=t.replace(/^\s*(re|odp|fw|fwd|prz|sv|aw)\s*(\[\d+\])?\s*:\s*/,""); } while(t!==prev);
+  return t.replace(/\s+/g," ").trim();
+}
+
+// Adresy odbiorców wysłanej wiadomości (To + Cc), małymi literami.
+function sentRecipientEmails(m){
+  var out=[];
+  (m.toAll||[]).concat(m.ccAll||[]).forEach(function(r){if(r&&r.email)out.push(String(r.email).toLowerCase());});
+  if(!out.length&&m.to)String(m.to).split(/[,;]/).forEach(function(a){
+    var x=a.match(/<([^>]+)>/);a=(x?x[1]:a).trim().toLowerCase();
+    if(a)out.push(a);
+  });
+  return out;
+}
+
 function recipObjs(list){
   return (list||[]).map(function(r){
     var e=(r&&r.emailAddress)||{};
@@ -795,8 +814,7 @@ function MailList(p){
           var ci=Math.abs((nm||"").charCodeAt(0)||0)%colors.length;
           var unread=isInbox&&t.mails.some(function(x){return x.isRead===false;});
           // Odpisano = po najnowszej odebranej wiadomości wątku wysłaliśmy coś w tej samej konwersacji.
-          var replied=m.folder==="inbox"&&!!m.conversationId&&!!p.sentByConv
-            &&p.sentByConv[m.conversationId]>new Date(m.date).getTime();
+          var replied=!!p.isReplied&&p.isReplied(m);
           // Jedna ikona ⚑ na wątek: kolor pierwszej aktywnej flagi, licznik gdy jest ich więcej.
           // Najechanie (lub klik) otwiera menu "Oznacz jako" ze wszystkimi flagami.
           var onFlags=allFlags.filter(function(fl){return threadHasFlag(t,fl);});
@@ -2527,6 +2545,7 @@ export function ScreenMail(p){
           id:m.id,folder:"sent",
           from:"",fromName:"",
           to:rec.address||"",toName:rec.name||rec.address||"",
+          toAll:recipObjs(m.toRecipients),ccAll:recipObjs(m.ccRecipients),
           cc:fmtRecipients(m.ccRecipients),
           subject:m.subject||"",
           date:m.sentDateTime||new Date().toISOString(),
@@ -3545,14 +3564,29 @@ export function ScreenMail(p){
     });
   } else {
     var folderMails=allMails.filter(function(m){return m.folder===activeFolder;});
-    // Najnowsza wiadomość wysłana w każdej konwersacji — na tej podstawie lista pokazuje
-    // strzałkę "odpisano" (działa tak samo dla Outlooka, Gmaila i własnej skrzynki IMAP).
-    var sentByConv={};
+    // "Odpisano": po odebranej wiadomości poszła wysłana (a) w tej samej konwersacji albo
+    // (b) z tym samym tematem do jej nadawcy. (b) jest potrzebne, bo odpowiedź wysłana z tej
+    // aplikacji to nowa wiadomość bez nagłówków In-Reply-To — Outlook/Gmail/IMAP nie wiążą jej
+    // z oryginałem, więc samo conversationId jej nie widzi.
+    var sentByConv={},sentBySubj={};
     allMails.forEach(function(m){
-      if(m.folder!=="sent"||!m.conversationId)return;
+      if(m.folder!=="sent")return;
       var d=new Date(m.date).getTime();
-      if(!(sentByConv[m.conversationId]>=d))sentByConv[m.conversationId]=d;
+      if(m.conversationId&&!(sentByConv[m.conversationId]>=d))sentByConv[m.conversationId]=d;
+      var subj=normSubject(m.subject);
+      if(!subj)return;
+      sentRecipientEmails(m).forEach(function(addr){
+        var k=subj+"|"+addr;
+        if(!(sentBySubj[k]>=d))sentBySubj[k]=d;
+      });
     });
+    var isReplied=function(m){
+      if(!m||m.folder!=="inbox")return false;
+      var d=new Date(m.date).getTime();
+      if(m.conversationId&&sentByConv[m.conversationId]>d)return true;
+      var subj=normSubject(m.subject);
+      return !!subj&&!!m.from&&sentBySubj[subj+"|"+String(m.from).toLowerCase()]>d;
+    };
     var loaderActive=loadingMails&&(activeFolder==="sent"||activeFolder==="inbox"||activeFolder==="trash"||activeFolder==="spam");
     var mobileShowingThread=isMobile&&!!selThread;
     rightContent=ce("div",{style:{display:"flex",height:"100%",minHeight:0}},
@@ -3568,7 +3602,7 @@ export function ScreenMail(p){
             onLoadMore:loadMore,hasMore:!!nextLinks[activeFolder],loadingMore:loadingMore,
             onSearch:runSearch,searchResults:searchResults,searchLoading:searchLoading,
             onLoadMoreSearch:loadMoreSearch,searchHasMore:!!searchNextLink,
-            flags:mailFlags,onToggleFlag:toggleFlag,sentByConv:sentByConv})
+            flags:mailFlags,onToggleFlag:toggleFlag,isReplied:isReplied})
       ),
       ce("div",{style:isMobile?{width:"100%",display:mobileShowingThread?"flex":"none",flexDirection:"column",minWidth:0,overflow:"hidden"}:{flex:1,minWidth:0,overflow:"hidden"}},
         isMobile?ce("button",{onClick:function(){setSelThread(null);},style:{flexShrink:0,alignSelf:"flex-start",margin:"0 0 8px",padding:"6px 12px",borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"\u2039 Wr\u00f3\u0107 do listy"):null,
