@@ -2206,7 +2206,7 @@ export function ScreenMail(p){
   var scf=us(null),customForm=scf[0],setCustomForm=scf[1];
   var scErr=us(""),customError=scErr[0],setCustomError=scErr[1];
   var sliss=us(null),loginIssue=sliss[0],setLoginIssue=sliss[1];   // dlaczego powrót z OAuth nie zalogował
-  var suf=us([]),userFolders=suf[0],setUserFolders=suf[1];
+  var suf=us([{id:"cenniki",label:"Cenniki",icon:"💰",system:false}]),userFolders=suf[0],setUserFolders=suf[1];
   var saf=us("inbox"),activeFolder=saf[0],setActiveFolder=saf[1];
   var snf=us(false),showNF=snf[0],setShowNF=snf[1];
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
