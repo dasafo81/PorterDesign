@@ -2781,8 +2781,10 @@ export function CRMKalendarz(p){
           var key=[ev.summary||"",start,end,ev.location||""].join("\u001f");
           var current=unique[key];
           var names=((current&&current._calNames)||[]).concat(ev._calName||[]);
+          // Kolory kalendarzy innych niż główny (np. montażysty), w których leży ta sama kopia
+          var otherColors=((current&&current._calOtherColors)||[]).concat(ev._calPrimary?[]:[ev._calColor]);
           if(!current || (ev._calPrimary && !current._calPrimary)) unique[key]=ev;
-          unique[key]=Object.assign({},unique[key],{_calNames:names});
+          unique[key]=Object.assign({},unique[key],{_calNames:names,_calOtherColors:otherColors});
         });
         setGcalEvents(Object.keys(unique).map(function(k){return unique[k];}));
         setLoadingEv(false);
@@ -3393,9 +3395,11 @@ export function CRMKalendarz(p){
   // ── Pomocniki kalendarza ──
   function isSameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
 
-  // Montaże (termin realizacji z deala) zawsze na zielono, niezależnie od koloru kalendarza,
-  // w którym akurat leży wybrana kopia wydarzenia (zwykle główny, niebieski).
+  // Bez kalendarza montażysty: montaże (termin realizacji z deala) na zielono, reszta w kolorze kalendarza.
   function gcalEventColor(ev){
+    // Wydarzenie leży też w kalendarzu montażysty — pokaż kolor jego kalendarza, a nie głównego (niebieskiego),
+    // żeby od razu było widać, czyje to zlecenie. Pokazujemy jedną kopię (główną), stąd osobna lista kolorów.
+    if(ev._calOtherColors&&ev._calOtherColors.length)return ev._calOtherColors[0];
     var k=eventDealKey(ev),pk=k&&parseDealKey(k);
     if(pk&&pk.field==="delivery_date")return "#10b981";
     // Wydarzenia bez znacznika pdKey (starsze / dodane ręcznie) — rozpoznaj po tytule
