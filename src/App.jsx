@@ -20,7 +20,7 @@ import { ModalSewing, ModalFabricOrder } from './components/ModalSewing.jsx';
 import { ModalRoom, ModalWindow, ModalConfirmDelete, ModalConfirmRemove, ModalCopyProduct, ModalConfirmTypeChange, ModalSimple, ModalVariantAdvisor } from './components/ModalRoom.jsx';
 import { ModalClientHistory } from './components/ModalClientHistory.jsx';
 import { ProdCard, Chip, Chips, Fld, Section, FabPicker, MAIL_TEMPLATES, fillTemplate } from './components/ProdCard.jsx';
-import { ScreenCRM, CRMKalendarz, CRM_STAGES, ORDER_STEPS, dealTotal } from './components/ScreenCRM.jsx';
+import { ScreenCRM, CRMKalendarz, CRM_STAGES, ORDER_STEPS, dealTotal, OWU_URL, OWU_NAME } from './components/ScreenCRM.jsx';
 import { gcalWaitReady, gcalGetToken, gcalHasValidToken } from './lib/gcal.js';
 import { loadSystemTemplate, HIDDEN_IN_COMPOSE, stripClosingGreeting } from './lib/mailTemplates.js';
 const ce = React.createElement;
@@ -1332,14 +1332,25 @@ export function App(p){
     // "wstepna" (wycena uproszczona) / "wycena_po_spotkaniu" (pozostałe wyceny dla klienta).
     var tplId=opts.templateId||(opts.body?null:(opts.template==="wstepna"?"wstepna":"wycena_po_spotkaniu"));
     function open(to){
-      (tplId?loadSystemTemplate(tplId):Promise.resolve(null)).then(function(tpl){
-        var filled=tpl?fillTemplate({subject:tpl.subject,body:tpl.body},curClient):null;
-        setEmailPdf({html:html,name:name,
-          subject:opts.subject!=null?opts.subject:(filled?filled.subject:undefined),
-          body:opts.body!=null?opts.body:(filled?filled.body:undefined),
-          tplFiles:tpl&&opts.template==="wstepna"?tpl.files:null,
-          to:to,title:opts.title,template:opts.template,noTemplates:opts.noTemplates,onSent:opts.onSent});
-        setShowEmailModal(true);
+      // opts.ekoOwu (wycena szczegółowa): gdy klientowi wystawiono fakturę EKO, do maila dołączamy OWU
+      // (samej faktury EKO nie wysyłamy) i bierzemy treść z szablonu "wycena_eko_owu".
+      var ekoP=(opts.ekoOwu&&curClient)?sbApi.hasEkoInvoice(curClient.id).catch(function(){
+        alert("Nie udało się sprawdzić, czy klient ma fakturę EKO. OWU NIE zostało dołączone do maila — jeśli klient ma fakturę EKO, dołącz je ręcznie.");
+        return false;
+      }):Promise.resolve(false);
+      ekoP.then(function(eko){
+        var useOwu=eko&&opts.body==null;
+        var id=useOwu?"wycena_eko_owu":tplId;
+        return (id?loadSystemTemplate(id):Promise.resolve(null)).then(function(tpl){
+          var filled=tpl?fillTemplate({subject:tpl.subject,body:tpl.body},curClient):null;
+          setEmailPdf({html:html,name:name,
+            subject:opts.subject!=null?opts.subject:(filled?filled.subject:undefined),
+            body:opts.body!=null?opts.body:(filled?filled.body:undefined),
+            tplFiles:tpl&&opts.template==="wstepna"?tpl.files:null,
+            attachFiles:useOwu?[{name:OWU_NAME,url:OWU_URL}]:null,
+            to:to,title:opts.title,template:opts.template,noTemplates:opts.noTemplates,onSent:opts.onSent});
+          setShowEmailModal(true);
+        });
       });
     }
     // opts.supplier: gdy pole "Do" nie jest podane, podstawiamy e-mail dostawcy z Kontrahentów.
@@ -2516,7 +2527,7 @@ export function App(p){
         ce("button",{onClick:function(){
           var vu2=offerValidUntil?new Date(offerValidUntil):null;
           mailDoc(buildOfferPDFHtmlFromRows(curClient,offerPreviewRows,previewMontazParam,offerNotes,vu2,previewDiscountVal,previewVisitFeeVal),
-            "Wycena - "+(curClient.name||"klient")+".pdf",{onSent:function(){
+            "Wycena - "+(curClient.name||"klient")+".pdf",{ekoOwu:true,onSent:function(){
               persistOfferFromRows(curClient,"szczegolowa",offerPreviewRows,previewMontazParam,vu2,offerNotes,previewDiscountVal,previewVisitFeeVal);
               markQuoteSent("szczegolowa");
             }});
@@ -3209,7 +3220,7 @@ export function App(p){
     showWinModal?ce(ModalWindow,{onOk:newWin,onClose:function(){setShowWinModal(false);}}):null,
     showVariantAdvisor&&curClient?ce(ModalVariantAdvisor,{client:curClient,onApply:applyVariantAdvisor,onClose:function(){setShowVariantAdvisor(false);}}):null,
     showFabricModal?ce(ModalFabricOrder,{client:curClient,onClose:function(){setShowFabricModal(false);}}):null,
-    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,tplFiles:emailPdf&&emailPdf.tplFiles,onSent:emailPdf&&emailPdf.onSent,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
+    showEmailModal?ce(ModalClientEmail,{client:curClient,pdfHtml:emailPdf&&emailPdf.html,pdfName:emailPdf&&emailPdf.name,subject:emailPdf&&emailPdf.subject,body:emailPdf&&emailPdf.body,to:emailPdf&&emailPdf.to,title:emailPdf&&emailPdf.title,template:emailPdf&&emailPdf.template,noTemplates:emailPdf&&emailPdf.noTemplates,tplFiles:emailPdf&&emailPdf.tplFiles,attachFiles:emailPdf&&emailPdf.attachFiles,onSent:emailPdf&&emailPdf.onSent,onClose:function(){setShowEmailModal(false);setEmailPdf(null);}}):null,
     showAIModal?ce(ModalAIValuation,{brandName:brandName,onClose:function(){setShowAIModal(false);},addClient:addClient,setClients:setClients,setCurClientId:setCurClientId,setScreen:setScreen}):null,
     showOfflineModal?ce(ModalOfflineQuotes,{show:showOfflineModal,onClose:function(){setShowOfflineModal(false);},setClients:setClients}):null,
     showHistoryModal&&curClient?ce(ModalClientHistory,{
@@ -3592,6 +3603,8 @@ export function ModalClientEmail(p){
   var sigRef=React.useRef(null);
   // Domyślne załączniki szablonu "Wstępna wycena" (PDF-y z public/mail-att/) — użytkownik może je usunąć
   useEffect(function(){ if(isWstepna)addTemplateFiles(p.tplFiles?{files:p.tplFiles}:TPL_WSTEPNA); },[]);
+  // Pliki dołączane z góry przez wywołującego (np. OWU przy wycenie szczegółowej dla klienta z fakturą EKO)
+  useEffect(function(){ if(p.attachFiles&&p.attachFiles.length)addTemplateFiles({files:p.attachFiles}); },[]);
   // Odpowiedź w wątku klienta: ostatni mail od klienta w Odebranych (Graph createReply)
   var sRM=useState(null),replyMsg=sRM[0],setReplyMsg=sRM[1];   // {id,subject,date}
   var sAR=useState(true),asReply=sAR[0],setAsReply=sAR[1];

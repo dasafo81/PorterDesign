@@ -74,6 +74,19 @@ export var SYSTEM_TEMPLATES = {
     ]),
     files:[]
   },
+  // Wycena szczegółowa dla klienta, któremu wystawiono fakturę EKO: do maila dołącza się OWU
+  // (bez faktury EKO), a treść mówi, co klient dostaje w załączeniu.
+  wycena_eko_owu: {
+    label:"Wycena szczegółowa i OWU", icon:"📎",
+    subject:"Oferta aranżacji okiennych i Ogólne Warunki Umowy",
+    body:J([
+      P("Dzień dobry,"),
+      P("w załączeniu przesyłam szczegółową ofertę (wycenę) aranżacji okiennych oraz Ogólne Warunki Umowy (OWU)."),
+      P("Bardzo proszę o zapoznanie się z OWU. Zgodnie z nimi dokonanie wpłaty jest równoznaczne z zapoznaniem się z ich treścią i pełną akceptacją."),
+      P("W razie jakichkolwiek pytań pozostaję do dyspozycji.")
+    ]),
+    files:[]
+  },
   wplata_start: {
     label:"Potwierdzenie wpłaty i start realizacji", icon:"✅",
     subject:"Potwierdzenie wpłaty i rozpoczęcie realizacji zamówienia",
@@ -123,6 +136,9 @@ export var TEMPLATE_USAGE = {
   faktura_zaliczkowa:{
     where:"CRM, karta deala → wysyłka faktury zaliczkowej z OWU (OWU dołącza się automatycznie).",
     vars:"{numer}, {kwota}"},
+  wycena_eko_owu:{
+    where:"Podgląd wyceny szczegółowej → Wyślij mailem, gdy klientowi wystawiono fakturę EKO (OWU dołącza się automatycznie, faktura EKO nie jest wysyłana).",
+    vars:"{clientName}, {honorific}, {total}, {zaliczka}"},
   wplata_start:{
     where:"CRM, karta deala → Start realizacji → ✉ Wyślij (potwierdzenie wpłaty i informacja o rozpoczęciu realizacji).",
     vars:"{wplata}, {terminZdanie}"},
@@ -143,7 +159,7 @@ export var TEMPLATE_USAGE = {
 // Szablony wywoływane tylko przez aplikację: zawierają zmienne, które znają wyłącznie
 // te przepływy, więc nie pokazujemy ich w liście zwykłej wiadomości w Poczcie.
 export var HIDDEN_IN_COMPOSE = {
-  faktura:1, ponaglenie:1, faktura_zaliczkowa:1, wplata_start:1, zamowienie_osprzetu:1, zamowienie_tkaniny:1
+  faktura:1, ponaglenie:1, faktura_zaliczkowa:1, wycena_eko_owu:1, wplata_start:1, zamowienie_osprzetu:1, zamowienie_tkaniny:1
 };
 
 // Podstawia {zmienne}. Nieznane zostają bez zmian, puste akapity (zmienna bez wartości) znikają.
