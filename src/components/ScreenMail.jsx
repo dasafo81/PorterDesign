@@ -276,6 +276,31 @@ function sentRecipientEmails(m){
   return out;
 }
 
+// ── Ranking wyników wyszukiwania ─────────────────────────────────────────────
+// Bez polskich znaków i interpunkcji, żeby "lukasz" łapał "Łukasz", a "jan kow" — "Jan Kowalski <jan.kowalski@x.pl>".
+function foldText(s){
+  return String(s||"").toLowerCase().replace(/\u0142/g,"l").normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^a-z0-9]+/g," ").trim();
+}
+// Czy któreś SŁOWO w tekście zaczyna się od frazy (pierwsze litery imienia, nazwiska, adresu, wyrazu w temacie).
+function wordPrefixMatch(text,q){
+  var f=" "+foldText(text);
+  if(f===" "||!q)return false;
+  // każde słowo frazy musi być początkiem jakiegoś słowa ("łuk ko" → "Łukasz Kowal")
+  return q.split(" ").every(function(tok){return f.indexOf(" "+tok)>=0;});
+}
+// 1 = nadawca/adresat, 2 = temat, 3 = tylko treść (podgląd) — tak układamy wyniki.
+function searchTier(m,qRaw){
+  var q=foldText(qRaw);
+  if(!q)return 3;
+  var people=[m.fromName,m.from,m.toName,m.to];
+  (m.toAll||[]).concat(m.ccAll||[]).forEach(function(r){if(r){people.push(r.name);people.push(r.email);}});
+  for(var i=0;i<people.length;i++){if(wordPrefixMatch(people[i],q))return 1;}
+  if(wordPrefixMatch(m.subject,q))return 2;
+  return 3;
+}
+var SEARCH_TIER_LABELS={1:"Nadawca / adresat",2:"Temat",3:"W tre\u015bci wiadomo\u015bci"};
+
 function recipObjs(list){
   return (list||[]).map(function(r){
     var e=(r&&r.emailAddress)||{};
@@ -655,6 +680,8 @@ function MailList(p){
   var sfm=us("any"),flagMode=sfm[0],setFlagMode=sfm[1];     // "any" = dowolna, "all" = wszystkie naraz
   var sfo=us(false),filterOpen=sfo[0],setFilterOpen=sfo[1]; // rozwiniety panel filtra
   var smk=us(null),menuKey=smk[0],setMenuKey=smk[1];        // klucz watku z otwartym menu "Oznacz jako"
+  var scs=us([]),contactHits=scs[0],setContactHits=scs[1];  // osoby z książki adresowej pasujące do frazy
+  var csSeq=React.useRef(0);
   var ue=React.useEffect;
   // "Wazne" (importance=high w Graph) traktujemy jak flage — dzieki temu jedno
   // menu i jeden filtr obsluguja i ja, i kategorie tenanta (Damian itd.).
@@ -686,6 +713,26 @@ function MailList(p){
     var t=setTimeout(function(){ if(q.length===0||q.length>=2) p.onSearch(p.folder,q); },400);
     return function(){clearTimeout(t);};
   },[filter,p.folder]);
+  // Osoby z książki adresowej (klienci, kontrahenci, historia korespondencji) pasujące do wpisanych
+  // liter — pokazujemy je NA GÓRZE wyników; kliknięcie zawęża wyszukiwanie do tej osoby.
+  ue(function(){
+    var q=filter.trim();
+    var seq=++csSeq.current;
+    if(!p.suggestContacts||q.length<2){setContactHits([]);return;}
+    var tm=setTimeout(function(){
+      p.suggestContacts(q.toLowerCase(),function(items){
+        if(seq!==csSeq.current)return;
+        var fq=foldText(q);
+        var rank=function(c){return wordPrefixMatch(c.name,fq)?0:(wordPrefixMatch(c.email,fq)?1:2);};
+        var list=(items||[]).slice().sort(function(a,b){return rank(a)-rank(b);});
+        // Dopasowanie "gdzieś w środku" pomijamy, jeśli są trafienia po pierwszych literach.
+        if(list.length&&rank(list[0])<2)list=list.filter(function(c){return rank(c)<2;});
+        setContactHits(list.slice(0,5));
+      });
+    },200);
+    return function(){clearTimeout(tm);};
+  // eslint-disable-next-line
+  },[filter]);
   // Źródło wątków: wyniki serwera gdy szukamy i już są, inaczej wczytany folder
   var sourceMails=(searching&&p.searchResults!=null)?p.searchResults:(p.mails||[]);
 
@@ -739,6 +786,14 @@ function MailList(p){
     // Pasuje jeśli którakolwiek wiadomość w wątku pasuje
     return t.mails.some(function(m){return searchableText(m).indexOf(q)>=0;});
   });
+
+  // Podczas wyszukiwania: najpierw nadawca/adresat, potem temat, na końcu trafienia tylko w treści
+  // (w obrębie grupy — od najnowszych). Bez tego dopasowanie w treści zasłaniało właściwą osobę.
+  if(searching){
+    filtered.forEach(function(t){t.tier=searchTier(t.head,filter.trim());});
+    filtered.sort(function(a,b){return (a.tier-b.tier)||(new Date(b.head.date)-new Date(a.head.date));});
+    filtered.forEach(function(t,i){t.tierHead=(i===0||filtered[i-1].tier!==t.tier);});
+  }
 
   return ce("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
     ce("div",{style:{paddingBottom:10,flexShrink:0}},
@@ -801,6 +856,19 @@ function MailList(p){
       )
     ),
     ce("div",{style:{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}},
+      (searching&&contactHits.length)?ce("div",{style:{flexShrink:0,marginBottom:6}},
+        ce("div",{style:{padding:"2px 4px 5px",fontSize:9,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)"}},"Osoby z ksi\u0105\u017cki adresowej"),
+        contactHits.map(function(c){
+          return ce("div",{key:c.email,onClick:function(){setFilter(c.email);},title:"Poka\u017c maile z t\u0105 osob\u0105",
+            style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:9,cursor:"pointer",border:"1px solid var(--bd2)",marginBottom:3,background:"var(--bd3)"}},
+            ce(Avatar,{size:26,bg:"#c8a96a99",label:initials(c.name||c.email)}),
+            ce("div",{style:{minWidth:0,flex:1}},
+              ce("div",{style:{fontSize:12,fontWeight:700,color:"var(--t1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.name||c.email),
+              c.name&&c.name!==c.email?ce("div",{style:{fontSize:10,color:"var(--t3)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},c.email):null
+            )
+          );
+        })
+      ):null,
       (filtered.length===0&&!searching)
         ?ce("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:8,color:"var(--t3)"}},
           ce("div",{style:{fontSize:32,opacity:0.4}},"\uD83D\uDCEC"),
@@ -819,7 +887,7 @@ function MailList(p){
           // Najechanie (lub klik) otwiera menu "Oznacz jako" ze wszystkimi flagami.
           var onFlags=allFlags.filter(function(fl){return threadHasFlag(t,fl);});
           var menuOpen=menuKey===t.key;
-          return ce("div",{key:t.key,onClick:function(){p.onSelect(t);},
+          var row=ce("div",{key:t.key,onClick:function(){p.onSelect(t);},
             style:{padding:"10px 12px",borderRadius:10,cursor:"pointer",
               background:selectedInThread?"var(--wb)":(unread?"var(--bd3)":"transparent"),
               border:"1px solid "+(selectedInThread?"var(--wbd)":(unread?"var(--bd2)":"transparent")),
@@ -878,6 +946,10 @@ function MailList(p){
               ):null
             )
           );
+          if(!(searching&&t.tierHead))return row;
+          return ce(React.Fragment,{key:t.key},
+            ce("div",{style:{padding:"8px 4px 3px",fontSize:9,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"var(--t3)"}},SEARCH_TIER_LABELS[t.tier]),
+            row);
         }),
       (searching||p.hasMore||p.searchLoading||p.searchHasMore)
         ?ce("div",{style:{flexShrink:0,paddingTop:4}},
@@ -3602,7 +3674,8 @@ export function ScreenMail(p){
             onLoadMore:loadMore,hasMore:!!nextLinks[activeFolder],loadingMore:loadingMore,
             onSearch:runSearch,searchResults:searchResults,searchLoading:searchLoading,
             onLoadMoreSearch:loadMoreSearch,searchHasMore:!!searchNextLink,
-            flags:mailFlags,onToggleFlag:toggleFlag,isReplied:isReplied})
+            flags:mailFlags,onToggleFlag:toggleFlag,isReplied:isReplied,
+            suggestContacts:function(q,cb){suggestRecipients(q,cb,true);}})
       ),
       ce("div",{style:isMobile?{width:"100%",display:mobileShowingThread?"flex":"none",flexDirection:"column",minWidth:0,overflow:"hidden"}:{flex:1,minWidth:0,overflow:"hidden"}},
         isMobile?ce("button",{onClick:function(){setSelThread(null);},style:{flexShrink:0,alignSelf:"flex-start",margin:"0 0 8px",padding:"6px 12px",borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"\u2039 Wr\u00f3\u0107 do listy"):null,
