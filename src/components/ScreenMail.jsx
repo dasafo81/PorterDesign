@@ -794,6 +794,9 @@ function MailList(p){
           var nm=displayName(m);
           var ci=Math.abs((nm||"").charCodeAt(0)||0)%colors.length;
           var unread=isInbox&&t.mails.some(function(x){return x.isRead===false;});
+          // Odpisano = po najnowszej odebranej wiadomości wątku wysłaliśmy coś w tej samej konwersacji.
+          var replied=m.folder==="inbox"&&!!m.conversationId&&!!p.sentByConv
+            &&p.sentByConv[m.conversationId]>new Date(m.date).getTime();
           // Jedna ikona ⚑ na wątek: kolor pierwszej aktywnej flagi, licznik gdy jest ich więcej.
           // Najechanie (lub klik) otwiera menu "Oznacz jako" ze wszystkimi flagami.
           var onFlags=allFlags.filter(function(fl){return threadHasFlag(t,fl);});
@@ -843,7 +846,10 @@ function MailList(p){
                     t.count>1?ce("span",{style:{fontSize:11,color:"var(--t3)",fontWeight:500,marginLeft:6}},"("+t.count+")"):null
                   )
                 ),
-                ce("span",{style:{fontSize:10,color:"var(--t3)",flexShrink:0}},searching?fmtMailDateFull(m.date):fmtMailDate(m.date))
+                ce("span",{style:{display:"flex",alignItems:"center",gap:5,flexShrink:0}},
+                  replied?ce("span",{title:"Odpisano na t\u0119 wiadomo\u015b\u0107",style:{fontSize:13,lineHeight:1,color:"var(--violet)",fontWeight:700}},"\u21A9"):null,
+                  ce("span",{style:{fontSize:10,color:"var(--t3)"}},searching?fmtMailDateFull(m.date):fmtMailDate(m.date))
+                )
               ),
               ce("div",{style:{fontSize:12,color:selectedInThread?"var(--wt)":"var(--t1)",fontWeight:unread?700:500,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},
                 (searching&&p.searchResults!=null&&m.folder!==p.folder)?ce("span",{style:{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",color:"var(--violet)",background:"var(--violet-l)",borderRadius:6,padding:"1px 6px",marginRight:6}},m.folder==="sent"?"Wys\u0142ane":"Odebrane"):null,
@@ -2255,6 +2261,7 @@ export function ScreenMail(p){
   var sqt=us(""),quotedHtml=sqt[0],setQuotedHtml=sqt[1];
   var satt=us([]),attachments=satt[0],setAttachments=satt[1];
   var ssent=us(false),justSent=ssent[0],setJustSent=ssent[1];
+  var srconv=us(null),replyConv=srconv[0],setReplyConv=srconv[1]; // konwersacja, na którą odpisujemy (strzałka "odpisano" od razu po wysłaniu)
   var ssending=us(false),sending=ssending[0],setSending=ssending[1];
   var scal=us(null),calMail=scal[0],setCalMail=scal[1];
   var scalok=us(null),calSaved=scalok[0],setCalSaved=scalok[1];
@@ -2907,6 +2914,9 @@ export function ScreenMail(p){
             localAttachments:sentAtts,
             hasAttachments:sentAtts.length>0,
             isRead:true,isImportant:false,categories:[]};
+          // Odpowiedź ("Re:") dziedziczy konwersację, więc lista od razu oznaczy wątek strzałką.
+          if(replyConv&&/^re:/i.test(subject||""))nm.conversationId=replyConv;
+          setReplyConv(null);
           setAllMails(function(prev){return [nm].concat(prev);});
           // Po chwili od\u015bwie\u017c foldery \u2014 placeholder zostanie zast\u0105piony prawdziw\u0105
           // wiadomo\u015bci\u0105 z Sent Items (z klikalnymi, pobieralnymi za\u0142\u0105cznikami)
@@ -3505,6 +3515,14 @@ export function ScreenMail(p){
     });
   } else {
     var folderMails=allMails.filter(function(m){return m.folder===activeFolder;});
+    // Najnowsza wiadomość wysłana w każdej konwersacji — na tej podstawie lista pokazuje
+    // strzałkę "odpisano" (działa tak samo dla Outlooka, Gmaila i własnej skrzynki IMAP).
+    var sentByConv={};
+    allMails.forEach(function(m){
+      if(m.folder!=="sent"||!m.conversationId)return;
+      var d=new Date(m.date).getTime();
+      if(!(sentByConv[m.conversationId]>=d))sentByConv[m.conversationId]=d;
+    });
     var loaderActive=loadingMails&&(activeFolder==="sent"||activeFolder==="inbox"||activeFolder==="trash"||activeFolder==="spam");
     var mobileShowingThread=isMobile&&!!selThread;
     rightContent=ce("div",{style:{display:"flex",height:"100%",minHeight:0}},
@@ -3520,13 +3538,14 @@ export function ScreenMail(p){
             onLoadMore:loadMore,hasMore:!!nextLinks[activeFolder],loadingMore:loadingMore,
             onSearch:runSearch,searchResults:searchResults,searchLoading:searchLoading,
             onLoadMoreSearch:loadMoreSearch,searchHasMore:!!searchNextLink,
-            flags:mailFlags,onToggleFlag:toggleFlag})
+            flags:mailFlags,onToggleFlag:toggleFlag,sentByConv:sentByConv})
       ),
       ce("div",{style:isMobile?{width:"100%",display:mobileShowingThread?"flex":"none",flexDirection:"column",minWidth:0,overflow:"hidden"}:{flex:1,minWidth:0,overflow:"hidden"}},
         isMobile?ce("button",{onClick:function(){setSelThread(null);},style:{flexShrink:0,alignSelf:"flex-start",margin:"0 0 8px",padding:"6px 12px",borderRadius:8,border:"1px solid var(--bd2)",background:"var(--bg)",color:"var(--t2)",fontSize:12,cursor:"pointer"}},"\u2039 Wr\u00f3\u0107 do listy"):null,
         ce(MailPreview,{thread:selThread,accessToken:accessToken,onTokenRefresh:function(tok){setAccessToken(tok);},onCalendar:function(){if(selThread&&selThread.head)setCalMail(selThread.head);},
           flags:mailFlags,onToggleFlag:toggleFlag,
           onReply:function(head,bodyCache){
+            setReplyConv(head.conversationId||null);
             // Mail z Wysłanych: "odpowiedź" to kolejna wiadomość do tych samych adresatów
             var sentHead=head.folder==="sent";
             var replyTgt=sentHead?null:replyTarget(head,bodyCache,msAccount&&(msAccount.email||msAccount.username));
@@ -3551,6 +3570,7 @@ export function ScreenMail(p){
             mailNavigate("compose");
           },
           onReplyAll:function(head,bodyCache,toRecipients,ccRecipients){
+            setReplyConv(head.conversationId||null);
             var own=msAccount&&(msAccount.username||msAccount.email)||"";
             var dedupe=function(list,exclude){
               var seen={};
