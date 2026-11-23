@@ -78,7 +78,7 @@ export var SYSTEM_TEMPLATES = {
   // (bez faktury EKO), a treść mówi, co klient dostaje w załączeniu.
   wycena_eko_owu: {
     label:"Wycena szczegółowa i OWU", icon:"📎",
-    subject:"Oferta aranżacji okiennych i Ogólne Warunki Umowy",
+    subject:"Aranżacje okienne - zamówienie i OWU",
     body:J([
       P("Dzień dobry,"),
       P("w załączeniu przesyłam szczegółową ofertę (wycenę) aranżacji okiennych oraz Ogólne Warunki Umowy (OWU)."),

@@ -19,9 +19,15 @@ begin
   end if;
 
   insert into public.mail_templates (tenant_id, template_id, label, icon, subject, body, sort_order)
-  select v_tenant, 'wycena_eko_owu', $l$Wycena szczegółowa i OWU$l$, '📎', $s$Oferta aranżacji okiennych i Ogólne Warunki Umowy$s$,
+  select v_tenant, 'wycena_eko_owu', $l$Wycena szczegółowa i OWU$l$, '📎', $s$Aranżacje okienne - zamówienie i OWU$s$,
   $b$<div>Dzień dobry,</div><div><br></div><div>w załączeniu przesyłam szczegółową ofertę (wycenę) aranżacji okiennych oraz Ogólne Warunki Umowy (OWU).</div><div><br></div><div>Bardzo proszę o zapoznanie się z OWU. Zgodnie z nimi dokonanie wpłaty jest równoznaczne z zapoznaniem się z ich treścią i pełną akceptacją.</div><div><br></div><div>W razie jakichkolwiek pytań pozostaję do dyspozycji.</div>$b$,
   coalesce((select max(sort_order) from public.mail_templates where tenant_id=v_tenant),0)+1
    where not exists (select 1 from public.mail_templates where tenant_id=v_tenant and template_id='wycena_eko_owu');
+
+  -- Jeśli migracja była już uruchomiona ze starym tematem — popraw go (tylko gdy nikt go nie zmienił)
+  update public.mail_templates
+     set subject = $s$Aranżacje okienne - zamówienie i OWU$s$
+   where tenant_id = v_tenant and template_id = 'wycena_eko_owu'
+     and subject = $s$Oferta aranżacji okiennych i Ogólne Warunki Umowy$s$;
 end
 $mig$;
