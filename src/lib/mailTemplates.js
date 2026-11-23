@@ -74,14 +74,14 @@ export var SYSTEM_TEMPLATES = {
     ]),
     files:[]
   },
-  // Wycena szczegółowa dla klienta, któremu wystawiono fakturę EKO: do maila dołącza się OWU
-  // (bez faktury EKO), a treść mówi, co klient dostaje w załączeniu.
+  // Dokument z podglądu wyceny szczegółowej wysyłany klientowi, któremu wystawiono fakturę EKO, to zamówienie
+  // (bez kwot): do maila dołącza się OWU (bez faktury EKO), a treść mówi, co klient dostaje w załączeniu.
   wycena_eko_owu: {
-    label:"Wycena szczegółowa i OWU", icon:"📎",
+    label:"Zamówienie i OWU", icon:"📎",
     subject:"Aranżacje okienne - zamówienie i OWU",
     body:J([
       P("Dzień dobry,"),
-      P("w załączeniu przesyłam szczegółową ofertę (wycenę) aranżacji okiennych oraz Ogólne Warunki Umowy (OWU)."),
+      P("w załączeniu przesyłam zamówienie aranżacji okiennych oraz Ogólne Warunki Umowy (OWU)."),
       P("Bardzo proszę o zapoznanie się z OWU. Zgodnie z nimi dokonanie wpłaty jest równoznaczne z zapoznaniem się z ich treścią i pełną akceptacją."),
       P("W razie jakichkolwiek pytań pozostaję do dyspozycji.")
     ]),

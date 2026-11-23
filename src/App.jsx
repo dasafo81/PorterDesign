@@ -1343,7 +1343,7 @@ export function App(p){
         var id=useOwu?"wycena_eko_owu":tplId;
         return (id?loadSystemTemplate(id):Promise.resolve(null)).then(function(tpl){
           var filled=tpl?fillTemplate({subject:tpl.subject,body:tpl.body},curClient):null;
-          setEmailPdf({html:html,name:name,
+          setEmailPdf({html:html,name:useOwu?"Zamówienie - "+(curClient.name||"klient")+".pdf":name,
             subject:opts.subject!=null?opts.subject:(filled?filled.subject:undefined),
             body:opts.body!=null?opts.body:(filled?filled.body:undefined),
             tplFiles:tpl&&opts.template==="wstepna"?tpl.files:null,
