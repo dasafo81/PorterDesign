@@ -774,6 +774,18 @@ export function App(p){
     curWinCtxRef.current={c:curClientId,r:curRoomId};
     setCurWin(JSON.parse(JSON.stringify(w)));setScreen("detail");
   }
+  // Podpis pod pomieszczeniem: okna liczone osobno od pozycji "Inny" (outside:true).
+  function roomCountLabel(r){
+    var wins=r.windows||[];
+    var nOut=wins.filter(function(w){return w.outside;}).length;
+    var n=wins.length-nOut;
+    var m10=n%10,m100=n%100;
+    var oknaWord=n===1?"okno":(m10>=2&&m10<=4&&!(m100>=12&&m100<=14))?"okna":"okien";
+    var parts=[];
+    if(n>0||nOut===0)parts.push(n+" "+oknaWord);
+    if(nOut>0)parts.push(nOut+" inny");
+    return parts.join(" + ");
+  }
   function newWin(name){
     curWinCtxRef.current={c:curClientId,r:curRoomId};
     // Gole Date.now() potrafilo dac to samo id na dwoch urzadzeniach naraz.
@@ -1775,7 +1787,7 @@ export function App(p){
               inputStyle:{fontSize:13,fontWeight:500}}),
             (r.variantGroup&&roomGroupSizes[r.variantGroup]>1)?ce("span",{style:{fontSize:10,fontWeight:700,letterSpacing:"0.06em",background:"var(--grl)",color:"var(--gr)",borderRadius:6,padding:"2px 4px 2px 7px",verticalAlign:"middle",display:"inline-flex",alignItems:"center",gap:2}},"Wariant ",ce("input",{value:r.variantLabel||"",onClick:function(ev){ev.stopPropagation();},onChange:function(ev){ev.stopPropagation();var v=(ev.target.value||"").toUpperCase().slice(0,1);if(!v)return;updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(x){return x.id===r.id?mg(x,{variantLabel:v,name:roomBaseName(x)}):x;})});});},style:{width:14,padding:0,border:"none",background:"transparent",color:"var(--gr)",fontWeight:700,fontSize:10,letterSpacing:"0.06em",outline:"none",textTransform:"uppercase"}})):null
           ),
-          ce("div",{onClick:function(){openRoom(r.id);},style:{fontSize:11,color:"var(--t3)",cursor:"pointer"}},(r.windows||[]).length+" okien")
+          ce("div",{onClick:function(){openRoom(r.id);},style:{fontSize:11,color:"var(--t3)",cursor:"pointer"}},roomCountLabel(r))
         ),
         rTotal?ce("span",{onClick:function(){openRoom(r.id);},style:{fontSize:12,fontWeight:600,color:"var(--gr)",cursor:"pointer"}},roundTo10(rTotal)+" z\u0142"):null,
         ce("span",{onClick:function(){openRoom(r.id);},style:{color:"var(--t3)",fontSize:13,cursor:"pointer"}},"\u203a"),
