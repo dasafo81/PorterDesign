@@ -123,8 +123,11 @@ export function upsertDealEvent(ctx, o) {
   return findByKey().then(function (ev) {
     if (ev) {
       var cur = ev.start && ev.start.dateTime;
-      if (cur && Math.abs(new Date(cur) - o.start) < 60000) return ev;
-      var len = (cur && ev.end && ev.end.dateTime) ? (new Date(ev.end.dateTime) - new Date(cur)) : o.durMin * 60000;
+      var curEnd = ev.end && ev.end.dateTime;
+      // forceDur: termin ustawiony świadomie w oknie nowego wydarzenia — czas trwania też ma się zgodzić
+      var sameEnd = !o.forceDur || (curEnd && Math.abs(new Date(curEnd) - (o.start.getTime() + o.durMin * 60000)) < 60000);
+      if (cur && Math.abs(new Date(cur) - o.start) < 60000 && sameEnd) return ev;
+      var len = (!o.forceDur && cur && curEnd) ? (new Date(curEnd) - new Date(cur)) : o.durMin * 60000;
       return patch(ev.id, { start: tzTime(o.start), end: tzTime(new Date(o.start.getTime() + len)) });
     }
     return findLegacy().then(function (legacy) {
@@ -208,13 +211,18 @@ export function installerNameFor(deal, field) {
 }
 
 // Wysyła jeden termin deala do kalendarza głównego oraz (gdy ustawiony) kalendarza montażysty.
-export function syncDealDateToGcal(ctx, deal, client, field, calList) {
+// opts (opcjonalne, z okna „Nowe zdarzenie”): { targets: [calId…] — własna lista kalendarzy zamiast
+// głównego + montażysty, summary — własny tytuł, note — dopisek do opisu, noMontazLink — bez linku
+// „Do montażu”, forceDur — dopasuj też godzinę końca istniejącego wydarzenia }
+export function syncDealDateToGcal(ctx, deal, client, field, calList, opts) {
+  opts = opts || {};
   var start = dealStartDate(deal[field]);
   if (!start) return Promise.resolve({ missingInstaller: null });
   var primary = (calList.find(function (c) { return c.primary; }) || calList[0] || {}).id || "primary";
   var instId = installerCalendarId(deal, field, calList);
   var targets = [primary];
   if (instId && instId !== primary) targets.push(instId);
+  if (opts.targets && opts.targets.length) targets = opts.targets.slice();
   // Wybrano montażystę, ale nie ma jego kalendarza na liście — wołający musi o tym ostrzec
   var instName = installerNameFor(deal, field);
   var missingInstaller = instName && !instId ? instName : null;
@@ -225,21 +233,23 @@ export function syncDealDateToGcal(ctx, deal, client, field, calList) {
   if (addr) parts.push("Adres: " + addr);
   if (client && client.phone) parts.push("Tel: " + client.phone);
   if (deal.title) parts.push("Deal: " + deal.title);
+  if (opts.note) parts.push(opts.note);
   var title = dealFieldTitle(field, deal);
 
   // Termin montażowy: link do listy „Do montażu” (ctx.montazLink(deal, client) → Promise<url|null>)
   var isInstall = field === "delivery_date" || field === "delivery_date2";
-  var linkP = (isInstall && ctx.montazLink && client) ? ctx.montazLink(deal, client).catch(function () { return null; }) : Promise.resolve(null);
+  var linkP = (isInstall && !opts.noMontazLink && ctx.montazLink && client) ? ctx.montazLink(deal, client).catch(function () { return null; }) : Promise.resolve(null);
 
   return linkP.then(function (montazUrl) {
     if (montazUrl) parts.push("Do montażu (lista dla montażysty): " + montazUrl);
     var base = {
       key: dealKey(deal.id, field),
-      summary: title + (client && client.name ? " — " + client.name : ""),
+      summary: opts.summary || (title + (client && client.name ? " — " + client.name : "")),
       description: parts.join("\n"),
       location: addr,
       start: start,
       durMin: defaultDurMin(field, deal),
+      forceDur: !!opts.forceDur,
       clientName: client && client.name
     };
     // Po kolei (nie naraz) — mniejsze ryzyko limitu zapytań Google

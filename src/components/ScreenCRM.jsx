@@ -134,6 +134,9 @@ export function deadlineFromNow(){
 // Kolumna z czasem trwania (min) dla każdego pola terminu w dealu
 export var DEAL_DURATION_FIELD={visit_date:"visit_duration_min",delivery_date:"delivery_duration_min",delivery_date2:"delivery2_duration_min",followup_date:"followup_duration_min"};
 
+// Montażyści do wyboru w karcie deala i w oknie „Nowe zdarzenie” kalendarza
+export var INSTALLER_NAMES=["Darek","Grzesiek","Damian"];
+
 export function gcalLink(title,date,desc){
   if(!date)return null;
   var d=new Date(date);
@@ -454,7 +457,7 @@ export function ModalDeal(p){
     "Szwalnia Niteczkami — Barbara Jasińska, Troszyn Polski 38B",
     "Ala Pawlak — ul. Podleśna 13, 05-205 Sitki"
   ];
-  var INSTALLER_OPTIONS=["","Darek","Grzesiek","Damian"];
+  var INSTALLER_OPTIONS=[""].concat(INSTALLER_NAMES);
   // Rodzaje kosztow — te same wartosci co CHECK-lista w komentarzu migracji 0034
   var COST_KINDS=[
     {id:"tkanina",  label:"Tkanina",           icon:"🧵"},
@@ -2941,7 +2944,161 @@ export function CRMKalendarz(p){
     var primary=calList.find(function(c){return c.primary;});
     if(primary) defaultCals=[primary.id];
     else if(calList.length>0) defaultCals=[calList[0].id];
-    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false,selectedCals:defaultCals});
+    setNewEvDraft({title:'',date:dateStr,timeFrom:pad(h)+':00',timeTo:pad(Math.min(h+1,23))+':00',description:'',saving:false,selectedCals:defaultCals,
+      dealId:null,dealQuery:'',evType:'other',installer:'',instCal:null,withMontaz:true,titleTouched:false,durTouched:false});
+  }
+
+  // ── Powiązanie wydarzenia z dealem / klientem ──
+  // Typy terminów deala: zapisują się w karcie deala (data + czas trwania + montażysta)
+  // i trafiają do Google tak samo jak terminy ustawiane w karcie deala.
+  var EV_TYPE_DURATION={visit_date:60,delivery_date:180,delivery_date2:180,followup_date:30,other:60};
+  function evTypeIcon(t){return {visit_date:'\uD83D\uDCCF',delivery_date:'\uD83D\uDD27',delivery_date2:'\uD83D\uDD27',followup_date:'\u23F0',other:'\uD83D\uDCDD'}[t]||'';}
+  function evTypeLabel(t,deal){return t==='other'?'Inne':dealFieldTitle(t,deal);}
+  function clientOfDeal(deal){return deal?((p.clients||[]).find(function(c){return String(c.id)===String(deal.client_id);})||null):null;}
+  function clientAddress(c){return c?[c.addr||c.street,[c.postal,c.city].filter(Boolean).join(' ')].filter(Boolean).join(', '):'';}
+  function draftDeal(d){return d&&d.dealId?(calendarDeals.find(function(x){return String(x.id)===String(d.dealId);})||null):null;}
+  function timeToMin(t){var a=String(t||'').split(':');return parseInt(a[0],10)*60+parseInt(a[1]||'0',10);}
+  function minToTime(m){m=Math.max(0,Math.min(m,23*60+30));return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+  // Kalendarz wybranego montażysty (po nazwie w nazwie kalendarza) albo null
+  function installerCalFor(name){
+    return name?installerCalendarId({installer_name:name},'delivery_date',calList):null;
+  }
+  // Pierwszy jeszcze nieustawiony termin deala (pomiar → montaż → termin 2 → follow-up)
+  function firstFreeField(deal){
+    var order=['visit_date','delivery_date','delivery_date2','followup_date'];
+    for(var i=0;i<order.length;i++){if(!deal[order[i]])return order[i];}
+    return 'delivery_date';
+  }
+  // Przelicza pola zależne od deala i typu (tytuł, czas trwania, montażysta, kalendarz montażysty)
+  function relinkDraft(d,changes){
+    var n=Object.assign({},d,changes);
+    var deal=draftDeal(n),client=clientOfDeal(deal);
+    if(!n.titleTouched){
+      if(deal){
+        var nm=client&&client.name;
+        n.title=n.evType==='other'?(nm?'Spotkanie \u2014 '+nm:''):(evTypeLabel(n.evType,deal)+(nm?' \u2014 '+nm:''));
+      } else if(changes.dealId===null){n.title='';}
+    }
+    if(deal&&!n.durTouched&&(changes.evType!==undefined||changes.dealId!==undefined)&&n.evType!=='other'){
+      n.timeTo=minToTime(timeToMin(n.timeFrom)+EV_TYPE_DURATION[n.evType]);
+    }
+    if(deal&&(changes.evType!==undefined||changes.dealId!==undefined)){
+      var saved=n.evType==='delivery_date'?deal.installer_name:(n.evType==='delivery_date2'?deal.installer_name2:'');
+      if(saved)n.installer=saved;
+    }
+    // Kalendarz montażysty zaznaczamy sami; poprzedni (wybrany automatycznie) odznaczamy
+    var wantCal=installerCalFor(n.installer);
+    if(wantCal!==n.instCal||changes.dealId!==undefined){
+      var cals=(n.selectedCals||[]).filter(function(x){return x!==n.instCal;});
+      if(wantCal&&cals.indexOf(wantCal)<0)cals.push(wantCal);
+      n.selectedCals=cals;n.instCal=wantCal;
+    }
+    return n;
+  }
+  function pickDealForDraft(deal){
+    setNewEvDraft(function(d){
+      if(!d)return d;
+      return relinkDraft(d,{dealId:deal.id,dealQuery:'',evType:firstFreeField(deal),installer:''});
+    });
+  }
+  function setDraftField(changes){
+    setNewEvDraft(function(d){return d?relinkDraft(d,changes):d;});
+  }
+
+  var EV_INP={width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'};
+  var EV_LBL={fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4};
+
+  // Sekcja „Powiąż z dealem / klientem” + wybór typu terminu (tylko przy tworzeniu nowego wydarzenia)
+  function renderEventLinkSection(){
+    var d=newEvDraft,deal=draftDeal(d),client=clientOfDeal(deal);
+    if(!deal){
+      var q=(d.dealQuery||'').toLowerCase().trim();
+      var rows=calendarDeals.map(function(x){return {deal:x,client:clientOfDeal(x)};}).filter(function(r){return r.client;});
+      if(q)rows=rows.filter(function(r){
+        return [r.client.name,r.client.phone,r.client.email,clientAddress(r.client),r.deal.title].join(' ').toLowerCase().indexOf(q)>=0;
+      });
+      rows.sort(function(a,b){return String(b.deal.created_at||'').localeCompare(String(a.deal.created_at||''));});
+      rows=rows.slice(0,40);
+      return ce('div',{style:{marginBottom:14}},
+        ce('label',{style:EV_LBL},'POWI\u0104\u017b Z DEALEM / KLIENTEM (opcjonalnie)'),
+        ce('input',{type:'text',value:d.dealQuery||'',placeholder:'Szukaj klienta: nazwisko, telefon, adres…',
+          onChange:function(e){var v=e.target.value;setNewEvDraft(function(x){return Object.assign({},x,{dealQuery:v});});},
+          style:EV_INP}),
+        ce('div',{style:{marginTop:6,maxHeight:150,overflowY:'auto',background:'var(--bg2)',borderRadius:8,border:'1.5px solid var(--bd2)'}},
+          rows.length===0
+            ?ce('div',{style:{padding:'10px',fontSize:11,color:'var(--t3)'}},'Brak pasujących deali.')
+            :rows.map(function(r){
+                var st=CRM_STAGES.find(function(x){return x.id===r.deal.stage;});
+                return ce('div',{key:r.deal.id,onClick:function(){pickDealForDraft(r.deal);},
+                  style:{padding:'7px 10px',cursor:'pointer',borderBottom:'1px solid var(--bd2)',display:'flex',alignItems:'center',gap:8}},
+                  ce('div',{style:{flex:1,minWidth:0}},
+                    ce('div',{style:{fontSize:12,fontWeight:600,color:'var(--t1)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},r.client.name),
+                    ce('div',{style:{fontSize:10,color:'var(--t3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
+                      [clientAddress(r.client),r.deal.title].filter(Boolean).join(' · ')||'bez adresu')
+                  ),
+                  st?ce('span',{style:{fontSize:9,fontWeight:700,color:st.color,background:'var(--bg)',padding:'2px 7px',borderRadius:10,flexShrink:0}},st.label):null
+                );
+              })
+        )
+      );
+    }
+    var addr=clientAddress(client);
+    var st=CRM_STAGES.find(function(x){return x.id===deal.stage;});
+    var types=['visit_date','delivery_date','delivery_date2','followup_date','other'];
+    var existing=d.evType!=='other'&&deal[d.evType]?new Date(deal[d.evType]):null;
+    return ce('div',{style:{marginBottom:14}},
+      ce('label',{style:EV_LBL},'POWIĄZANE Z DEALEM'),
+      ce('div',{style:{padding:'9px 10px',background:'var(--bg2)',borderRadius:8,border:'1.5px solid #4285f4',display:'flex',gap:8,alignItems:'flex-start'}},
+        ce('div',{style:{flex:1,minWidth:0}},
+          ce('div',{style:{fontSize:13,fontWeight:700,color:'var(--t1)'}},(client&&client.name)||'Klient',
+            st?ce('span',{style:{fontSize:9,fontWeight:700,color:st.color,background:'var(--bg)',padding:'2px 7px',borderRadius:10,marginLeft:8}},st.label):null),
+          addr?ce('div',{style:{fontSize:11,color:'var(--t2)',marginTop:2}},'📍 '+addr):null,
+          client&&client.phone?ce('div',{style:{fontSize:11,color:'var(--t2)',marginTop:1}},'📞 '+client.phone):null,
+          deal.title?ce('div',{style:{fontSize:11,color:'var(--t3)',marginTop:1}},deal.title):null
+        ),
+        ce('button',{onClick:function(){setDraftField({dealId:null,evType:'other',dealQuery:''});},title:'Odłącz od deala',
+          style:{border:'none',background:'none',color:'var(--t3)',fontSize:18,cursor:'pointer',padding:'0 4px',lineHeight:1}},'×')
+      ),
+      ce('div',{style:{fontSize:10,color:'var(--t3)',marginTop:5}},'Adres i dane klienta zostaną dołączone do wydarzenia automatycznie.'),
+      ce('label',{style:Object.assign({},EV_LBL,{marginTop:10})},'RODZAJ TERMINU'),
+      ce('div',{style:{display:'flex',flexWrap:'wrap',gap:6}},
+        types.map(function(t){
+          var on=d.evType===t;
+          return ce('button',{key:t,onClick:function(){setDraftField({evType:t});},
+            style:{padding:'6px 10px',borderRadius:16,border:'1.5px solid '+(on?'#4285f4':'var(--bd2)'),background:on?'rgba(66,133,244,0.12)':'var(--bg2)',color:on?'#4285f4':'var(--t1)',fontSize:12,fontWeight:on?700:500,cursor:'pointer',fontFamily:'inherit'}},
+            evTypeIcon(t)+' '+evTypeLabel(t,deal));
+        })
+      ),
+      ce('div',{style:{fontSize:10,color:'var(--t3)',marginTop:5}},
+        d.evType==='other'
+          ?'Samo wydarzenie w Google Calendar — bez zmiany terminów w dealu.'
+          :'Termin zostanie zapisany też w karcie deala (jak termin ustawiany w deal­zie).'),
+      existing?ce('div',{style:{fontSize:11,color:'#b45309',marginTop:5}},
+        '⚠ Ten deal ma już termin: '+existing.toLocaleString('pl-PL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+' — zostanie zmieniony.'):null,
+      (d.evType==='delivery_date'||d.evType==='delivery_date2')&&client
+        ?ce('div',{onClick:function(){setDraftField({withMontaz:!d.withMontaz});},style:{display:'flex',alignItems:'center',gap:8,marginTop:8,cursor:'pointer'}},
+            ce('div',{style:{width:16,height:16,borderRadius:4,border:'1.5px solid '+(d.withMontaz?'#4285f4':'var(--bd2)'),background:d.withMontaz?'#4285f4':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+              d.withMontaz?ce('span',{style:{color:'#fff',fontSize:10,fontWeight:700,lineHeight:1}},'✓'):null),
+            ce('span',{style:{fontSize:11,color:'var(--t2)'}},'Dołącz link do listy „Do montażu” (bez cen)'))
+        :null
+    );
+  }
+
+  // Wybór montażysty — jego kalendarz zaznaczamy automatycznie
+  function renderInstallerField(){
+    var d=newEvDraft;
+    var calFound=d.installer?installerCalFor(d.installer):null;
+    var calObj=calFound?calList.find(function(c){return c.id===calFound;}):null;
+    return ce('div',{style:{marginBottom:12}},
+      ce('label',{style:EV_LBL},'MONTAŻYSTA (opcjonalnie)'),
+      ce('select',{value:d.installer||'',onChange:function(e){setDraftField({installer:e.target.value});},style:EV_INP},
+        [''].concat(INSTALLER_NAMES).map(function(o,i){return ce('option',{key:i,value:o},o||'— brak —');})),
+      d.installer
+        ?(calObj
+            ?ce('div',{style:{fontSize:10,color:'#059669',marginTop:4}},'✓ Wydarzenie trafi też do kalendarza: '+calObj.summary)
+            :ce('div',{style:{fontSize:10,color:'#b45309',marginTop:4}},'⚠ Nie znaleziono w Google kalendarza montażysty „'+d.installer+'” — zaznacz kalendarz ręcznie lub udostępnij go temu kontu Google.'))
+        :null
+    );
   }
 
   function openEditEventModal(ev){
@@ -3053,9 +3210,54 @@ export function CRMKalendarz(p){
     }
     var sel=ev.selectedCals||[];
     if(sel.length===0){alert('Wybierz co najmniej jeden kalendarz.');return;}
+    // ── Wydarzenie powiązane z dealem / klientem ──
+    var linkDeal=draftDeal(ev),linkClient=clientOfDeal(linkDeal);
+    var linkAddr=clientAddress(linkClient);
+    var noteLines=[];
+    if(ev.installer)noteLines.push('Monta\u017cysta: '+ev.installer);
+    if(ev.description&&ev.description.trim())noteLines.push(ev.description.trim());
+    var missingInst=ev.installer&&!installerCalFor(ev.installer)?ev.installer:null;
+    function afterLinkedSave(){
+      setNewEvDraft(null);
+      fetchEvents(gcalToken);
+      if(missingInst)alert('Dodano, ale nie znaleziono w Google kalendarza monta\u017cysty: '+missingInst+'.\nMonta\u017cysta nie zobaczy tego terminu, dop\u00f3ki kalendarz o takiej nazwie nie b\u0119dzie dost\u0119pny dla tego konta (z prawem zapisu).');
+    }
+    // Typ terminu deala (pomiar / montaż / wieszanie / follow-up): zapis w dealu + synchronizacja do Google
+    if(linkDeal&&ev.evType&&ev.evType!=='other'){
+      var lField=ev.evType;
+      var lPatch={};
+      lPatch[lField]=start.toISOString();
+      lPatch[DEAL_DURATION_FIELD[lField]]=Math.round((end-start)/60000);
+      if(lField==='delivery_date'){lPatch.installer_name=ev.installer||null;lPatch.installer_calendar_id=installerCalFor(ev.installer)||null;}
+      if(lField==='delivery_date2'){lPatch.installer_name2=ev.installer||null;lPatch.installer_calendar_id2=installerCalFor(ev.installer)||null;}
+      var lUpdated=Object.assign({},linkDeal,lPatch);
+      var lCtx=Object.assign(gcalCtx(),{montazLink:function(dl,cli){return montazLinkOrNull(cli,dl.id);}});
+      setNewEvDraft(function(d){return Object.assign({},d,{saving:true});});
+      sbApi.updateDeal(linkDeal.id,lPatch)
+        .then(function(){
+          setCalendarDeals(function(ds){return ds.map(function(x){return String(x.id)===String(linkDeal.id)?lUpdated:x;});});
+          if(p.onDealsSync)p.onDealsSync(function(prev){return (prev||[]).map(function(x){return String(x.id)===String(linkDeal.id)?Object.assign({},x,lPatch):x;});});
+          return syncDealDateToGcal(lCtx,lUpdated,linkClient,lField,calList,{
+            targets:sel,summary:ev.title.trim(),note:noteLines.join('\n'),noMontazLink:!ev.withMontaz,forceDur:true
+          });
+        })
+        .then(afterLinkedSave)
+        .catch(function(e){
+          setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
+          alert('B\u0142\u0105d zapisu terminu: '+((e&&e.message)||'nie uda\u0142o si\u0119 zapisa\u0107.'));
+        });
+      return;
+    }
+    // Zwykłe wydarzenie — jeśli wskazano klienta, dosyłamy jego adres i dane kontaktowe
+    var descParts=[];
+    if(linkClient&&linkClient.name)descParts.push('Klient: '+linkClient.name);
+    if(linkAddr)descParts.push('Adres: '+linkAddr);
+    if(linkClient&&linkClient.phone)descParts.push('Tel: '+linkClient.phone);
+    if(linkDeal&&linkDeal.title)descParts.push('Deal: '+linkDeal.title);
     var body={
       summary:ev.title.trim(),
-      description:ev.description||'',
+      description:descParts.concat(noteLines).join('\n'),
+      location:linkAddr||undefined,
       start:{dateTime:start.toISOString(),timeZone:'Europe/Warsaw'},
       end:{dateTime:end.toISOString(),timeZone:'Europe/Warsaw'}
     };
@@ -3077,8 +3279,7 @@ export function CRMKalendarz(p){
       .then(function(results){
         var failed=results.filter(function(r){return !r.ok;});
         if(failed.length===0){
-          setNewEvDraft(null);
-          fetchEvents(gcalToken);
+          afterLinkedSave();
         } else {
           setNewEvDraft(function(d){return Object.assign({},d,{saving:false});});
           var failedNames=failed.map(function(f){var c=calList.find(function(x){return x.id===f.calId;});return c?c.summary:f.calId;}).join(', ');
@@ -3671,15 +3872,16 @@ export function CRMKalendarz(p){
       style:{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center'},
       onClick:function(e){if(e.target===e.currentTarget)setNewEvDraft(null);}
     },
-      ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:24,width:'100%',maxWidth:420,boxShadow:'0 8px 40px rgba(0,0,0,0.2)',margin:'0 16px'}},
+      ce('div',{style:{background:'var(--bg)',borderRadius:16,padding:24,width:'100%',maxWidth:460,maxHeight:'92vh',overflowY:'auto',boxShadow:'0 8px 40px rgba(0,0,0,0.2)',margin:'0 16px'}},
         ce('div',{style:{fontSize:16,fontWeight:700,color:'var(--t1)',marginBottom:16}},
           newEvDraft._editId?'\u270F\uFE0F Edytuj wydarzenie':'\uD83D\uDCC5 Nowe zdarzenie w Google Calendar'
         ),
+        !newEvDraft._editId?renderEventLinkSection():null,
         ce('div',{style:{marginBottom:12}},
           ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'TYTU\u0141 *'),
           ce('input',{
             type:'text',value:newEvDraft.title,autoFocus:true,
-            onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{title:e.target.value});});},
+            onChange:function(e){var v=e.target.value;setNewEvDraft(function(d){return Object.assign({},d,{title:v,titleTouched:true});});},
             onKeyDown:function(e){if(e.key==='Enter')addCustomEvent();if(e.key==='Escape')setNewEvDraft(null);},
             placeholder:'np. Pomiar u klienta, Dostawa...',
             style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
@@ -3717,13 +3919,14 @@ export function CRMKalendarz(p){
             ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'DO'),
             ce('select',{
               value:newEvDraft.timeTo,
-              onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{timeTo:e.target.value});});},
+              onChange:function(e){var v=e.target.value;setNewEvDraft(function(d){return Object.assign({},d,{timeTo:v,durTouched:true});});},
               style:{width:'100%',padding:'8px 10px',borderRadius:8,border:'1.5px solid var(--bd2)',background:'var(--bg2)',color:'var(--t1)',fontSize:13,boxSizing:'border-box',outline:'none',fontFamily:'inherit'}
             },dealTimeOptions(newEvDraft.timeTo))
           )
         ),
+        !newEvDraft._editId?renderInstallerField():null,
         ce('div',{style:{marginBottom:16}},
-          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},'OPIS (opcjonalnie)'),
+          ce('label',{style:{fontSize:11,fontWeight:700,color:'var(--t3)',display:'block',marginBottom:4}},newEvDraft.dealId?'NOTATKA (opcjonalnie)':'OPIS (opcjonalnie)'),
           ce('textarea',{
             value:newEvDraft.description,rows:3,
             onChange:function(e){setNewEvDraft(function(d){return Object.assign({},d,{description:e.target.value});});},

@@ -3184,7 +3184,7 @@ export function App(p){
             )
           )
       : appMode==="kalendarz"
-        ? ce(CRMKalendarz,{deals:deals,clients:clients,onDealClick:function(){},gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
+        ? ce(CRMKalendarz,{deals:deals,clients:clients,onDealClick:function(){},onDealsSync:setDeals,gcalToken:gcalToken,setGcalToken:setGcalToken,gsiReady:gsiReady})
       : appMode==="zadania"
         ? ce(ScreenTasks,{})
       : appMode==="faktury"
