@@ -1360,7 +1360,7 @@ export function App(p){
     }else open(opts.to);
   }
 
-  function addProd(){setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([{id:Date.now(),type:"zaslona",c:{},par:{},panels:[{side:"Zasłona lewa",w:""}],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});}
+  function addProd(){setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([w.outside?{id:Date.now(),type:"inny",c:{},par:{},mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}:{id:Date.now(),type:"zaslona",c:{},par:{},panels:[{side:"Zasłona lewa",w:""}],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});}
   function updProd(i,p){setCurWin(function(w){return mg(w,{products:(w.products||[]).map(function(x,j){return j===i?p:x;})});});}
   function remProd(i){setCurWin(function(w){return mg(w,{products:(w.products||[]).filter(function(_,j){return j!==i;})});});}
   var scp=useState(null),copyProd=scp[0],setCopyProd=scp[1];
@@ -1908,6 +1908,27 @@ export function App(p){
       },50);
     }
 
+    // Pozycja "Inny" (poduszki, narzuty, tapety itp.) — to pseudo-okno z flagą
+    // outside:true, więc wszystkie sumy, podsumowanie i PDF liczą je jak zwykłe okno.
+    function addOutsideItem(){
+      var wins0=curRoom.windows||[];
+      var nOutside=wins0.filter(function(w){return w.outside;}).length;
+      var newId=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+      var newName="Inny"+(nOutside?" "+(nOutside+1):"");
+      var newW={id:newId,name:newName,outside:true,isDefault:false,products:[{id:Date.now(),type:"inny",c:{},par:{},mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}]};
+      updateClient(curClientId,function(cl){
+        return mg(cl,{rooms:(cl.rooms||[]).map(function(r){
+          if(r.id!==curRoomId)return r;
+          var renamed=(r.windows||[]).map(function(w,idx){
+            if(!w.outside&&(w.isDefault||!w.name)){return mg(w,{name:"Okno "+(idx+1),isDefault:false});}
+            return w;
+          });
+          return mg(r,{windows:renamed.concat([newW])});
+        })});
+      });
+      openWin(newW);
+    }
+
     if(isSingleMode){
       // ── Single-window mode: show products directly ──
       var sw=singleWin||{id:"default_"+curRoomId,name:"",isDefault:true,products:[]};
@@ -1960,7 +1981,7 @@ export function App(p){
           );
         }),
         ce("button",{
-          onClick:function(){setCurWin(function(w){return mg(w,{products:(w.products||[]).concat([{id:Date.now(),type:"zaslona",c:{},par:{},panels:[{side:"Zas\u0142ona lewa",w:""}],mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}])});});},
+          onClick:addProd,
           style:{padding:"20px 18px",borderRadius:12,border:"2px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:16,cursor:"pointer",marginBottom:16,width:"100%",minHeight:62,transition:"all .15s"}
         },"+ Dodaj produkt"),
         swProducts.length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}},
@@ -1975,7 +1996,11 @@ export function App(p){
           ce("button",{
             onClick:addAnotherWindow,
             style:{padding:"14px 18px",borderRadius:10,border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,cursor:"pointer",width:"100%",textAlign:"left"}
-          },"+ Dodaj kolejne okno (wielookienny widok)")
+          },"+ Dodaj kolejne okno (wielookienny widok)"),
+          ce("button",{
+            onClick:addOutsideItem,
+            style:{padding:"14px 18px",borderRadius:10,border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,cursor:"pointer",width:"100%",textAlign:"left",marginTop:8}
+          },"+ Dodaj Inny (poduszki, narzuty, tapety\u2026)")
         )
       );
     } else {
@@ -1989,7 +2014,7 @@ export function App(p){
         return ce("div",{key:w.id,
           style:{display:"flex",alignItems:"center",gap:14,padding:"16px 14px",borderBottom:"1px solid var(--bd3)",borderRadius:0,position:"relative",background:isVariant?"var(--bd3)":"transparent"}},
           ce("div",{onClick:function(){openWin(w);},style:{display:"flex",alignItems:"center",gap:14,flex:1,cursor:"pointer",minWidth:0}},
-            ce("img",{src:IMG_OKNO,style:{width:80,height:80,objectFit:"cover",borderRadius:10,flexShrink:0}}),
+            w.outside?ce("div",{style:{width:80,height:80,borderRadius:10,flexShrink:0,background:"var(--bg2)",border:"1px solid var(--bd3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34}},"\uD83D\uDECB\uFE0F"):ce("img",{src:IMG_OKNO,style:{width:80,height:80,objectFit:"cover",borderRadius:10,flexShrink:0}}),
             ce("div",{style:{flex:1,minWidth:0}},
               ce("div",{style:{fontSize:15,fontWeight:600,color:"var(--t1)",marginBottom:3,display:"flex",alignItems:"center",flexWrap:"wrap"}},
                 ce(InlineEdit,{
@@ -2062,7 +2087,10 @@ export function App(p){
           ce(InlineEdit,{value:curRoom.name,onSave:function(v){updateClient(curClientId,function(cl){return mg(cl,{rooms:(cl.rooms||[]).map(function(r){return r.id===curRoomId?mg(r,{name:v,variantBaseName:r.variantGroup?v:r.variantBaseName}):r;})});});},inputStyle:{fontSize:10,fontWeight:600,letterSpacing:"0.12em",textTransform:"uppercase",color:"var(--t3)"}})
         ),
         winRows.length?ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},winRows):null,
-        Btn("+ Dodaj okno",function(){setShowWinModal(true);},false)
+        ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
+          Btn("+ Dodaj okno",function(){setShowWinModal(true);},false),
+          Btn("+ Dodaj Inny",addOutsideItem,false)
+        )
       );
     }
   }
@@ -2097,10 +2125,10 @@ export function App(p){
       (curWin.products||[]).map(function(p,i){return ce("div",{key:p.id,id:"prod-anchor-"+p.id},ce(ProdCard,{prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);},onDuplicate:function(){dupProd(i);},onCopyTo:function(){setCopyProd((curWin.products||[])[i]);}}));}),
       ce("button",{onClick:addProd,style:{padding:"20px 18px",borderRadius:12,border:"2px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:16,cursor:"pointer",marginBottom:16,width:"100%",minHeight:62,transition:"all .15s"}},"+ Dodaj produkt"),
       (curWin.products||[]).length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},
-        ce("span",{style:{fontSize:14,color:"var(--grd)"}},"Łącznie okno"),
+        ce("span",{style:{fontSize:14,color:"var(--grd)"}},curWin.outside?"Łącznie":"Łącznie okno"),
         ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--grd)"}},roundTo10(wtv)+" z\u0142")
       ):null,
-      ce("div",{style:{display:"flex",gap:8}},Btn("Zapisz okno",saveWin,true),Btn("Anuluj",function(){setScreen("windows");},false))
+      ce("div",{style:{display:"flex",gap:8}},Btn(curWin.outside?"Zapisz":"Zapisz okno",saveWin,true),Btn("Anuluj",function(){setScreen("windows");},false))
     );
   }
 
