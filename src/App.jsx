@@ -1908,13 +1908,13 @@ export function App(p){
       },50);
     }
 
-    // Pozycja "poza oknem" (poduszki, narzuty, tapety itp.) — to pseudo-okno z flagą
+    // Pozycja "Inny" (poduszki, narzuty, tapety itp.) — to pseudo-okno z flagą
     // outside:true, więc wszystkie sumy, podsumowanie i PDF liczą je jak zwykłe okno.
     function addOutsideItem(){
       var wins0=curRoom.windows||[];
       var nOutside=wins0.filter(function(w){return w.outside;}).length;
       var newId=Date.now()+"_"+Math.random().toString(36).slice(2,7);
-      var newName="Poza oknem"+(nOutside?" "+(nOutside+1):"");
+      var newName="Inny"+(nOutside?" "+(nOutside+1):"");
       var newW={id:newId,name:newName,outside:true,isDefault:false,products:[{id:Date.now(),type:"inny",c:{},par:{},mp:null,fabName:null,fabP:null,fabW:null,fabMan:null}]};
       updateClient(curClientId,function(cl){
         return mg(cl,{rooms:(cl.rooms||[]).map(function(r){
@@ -2000,7 +2000,7 @@ export function App(p){
           ce("button",{
             onClick:addOutsideItem,
             style:{padding:"14px 18px",borderRadius:10,border:"1.5px dashed var(--bd2)",background:"transparent",color:"var(--t3)",fontSize:13,cursor:"pointer",width:"100%",textAlign:"left",marginTop:8}
-          },"+ Dodaj produkt poza oknem (poduszki, narzuty, tapety\u2026)")
+          },"+ Dodaj Inny (poduszki, narzuty, tapety\u2026)")
         )
       );
     } else {
@@ -2089,7 +2089,7 @@ export function App(p){
         winRows.length?ce("div",{style:{marginBottom:16,border:"1px solid var(--bd2)",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}},winRows):null,
         ce("div",{style:{display:"flex",gap:10,flexWrap:"wrap"}},
           Btn("+ Dodaj okno",function(){setShowWinModal(true);},false),
-          Btn("+ Dodaj poza oknem",addOutsideItem,false)
+          Btn("+ Dodaj Inny",addOutsideItem,false)
         )
       );
     }
@@ -2125,7 +2125,7 @@ export function App(p){
       (curWin.products||[]).map(function(p,i){return ce("div",{key:p.id,id:"prod-anchor-"+p.id},ce(ProdCard,{prod:p,onChange:function(np){updProd(i,np);},onRemove:function(){remProd(i);},onDuplicate:function(){dupProd(i);},onCopyTo:function(){setCopyProd((curWin.products||[])[i]);}}));}),
       ce("button",{onClick:addProd,style:{padding:"20px 18px",borderRadius:12,border:"2px dashed var(--bd2)",background:"transparent",color:"var(--t2)",fontSize:16,cursor:"pointer",marginBottom:16,width:"100%",minHeight:62,transition:"all .15s"}},"+ Dodaj produkt"),
       (curWin.products||[]).length>0?ce("div",{style:{background:"var(--grl)",border:"1px solid var(--grm)",borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}},
-        ce("span",{style:{fontSize:14,color:"var(--grd)"}},curWin.outside?"Łącznie poza oknem":"Łącznie okno"),
+        ce("span",{style:{fontSize:14,color:"var(--grd)"}},curWin.outside?"Łącznie":"Łącznie okno"),
         ce("span",{style:{fontSize:20,fontWeight:700,color:"var(--grd)"}},roundTo10(wtv)+" z\u0142")
       ):null,
       ce("div",{style:{display:"flex",gap:8}},Btn(curWin.outside?"Zapisz":"Zapisz okno",saveWin,true),Btn("Anuluj",function(){setScreen("windows");},false))
