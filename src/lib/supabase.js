@@ -473,6 +473,12 @@ export const sbApi = {
   getInvoicesForDeal: function(dealId){
     return sbFetch("GET","invoices?select=*&or=(deal_id.eq."+encodeURIComponent(dealId)+",deal_id.is.null)&order=issue_date.desc.nullslast,created_at.desc");
   },
+  // Czy klientowi (wycena = clients.id) wystawiono sprzedażowy dokument EKO (niezanulowany).
+  hasEkoInvoice: function(clientId){
+    if(clientId==null||clientId==="")return Promise.resolve(false);
+    return sbFetch("GET","invoices?client_id=eq."+encodeURIComponent(clientId)+"&doc_type=eq.eko&direction=eq.sprzedaz&status=neq.cancelled&select=id&limit=1")
+      .then(function(rows){return !!(rows&&rows.length);});
+  },
   // Pojedyncza faktura wraz z pozycjami (PostgREST embed).
   getInvoice: function(id){
     return sbFetch("GET","invoices?id=eq."+id+"&select=*,invoice_items(*)").then(function(rows){

@@ -5532,12 +5532,13 @@ var NATURAL_FIBER_TOKENS = [
 ];
 export function classifyFabricComposition(sklad){
   if(!sklad) return null;
-  // Dopasowuje oba szyki zapisu: "60% Bawełna" oraz "Bawełna 60%"
-  var re = /(\d+(?:[.,]\d+)?)\s*%\s*([\p{L}]+)|([\p{L}]+)\s*(\d+(?:[.,]\d+)?)\s*%/gu;
+  // Dopasowuje szyki zapisu: "60% Bawełna", "Bawełna 60%" oraz literówkę
+  // "80 PES%" (liczba, nazwa, dopiero potem znak %).
+  var re = /(\d+(?:[.,]\d+)?)\s*%\s*([\p{L}]+)|([\p{L}]+)\s*(\d+(?:[.,]\d+)?)\s*%|(\d+(?:[.,]\d+)?)\s+([\p{L}]+)\s*%/gu;
   var m, hasNatural=false, hasOther=false, naturalPct=0, totalPct=0;
   while((m = re.exec(String(sklad))) !== null){
-    var pctStr = m[1]!=null ? m[1] : m[4];
-    var word   = m[2]!=null ? m[2] : m[3];
+    var pctStr = m[1]!=null ? m[1] : (m[4]!=null ? m[4] : m[5]);
+    var word   = m[2]!=null ? m[2] : (m[3]!=null ? m[3] : m[6]);
     if(pctStr==null || !word) continue;
     var pct = parseFloat(pctStr.replace(",", "."));
     var token = _normPl(word);
@@ -5546,6 +5547,9 @@ export function classifyFabricComposition(sklad){
     else hasOther = true;
   }
   if(!hasNatural || !totalPct) return null;
+  // Udziały nie sumują się do 100% — część składu nie została rozpoznana,
+  // więc nie wolno uznać tkaniny za w pełni naturalną.
+  if(!hasOther && totalPct < 99) return null;
   if(!hasOther && naturalPct >= totalPct - 1) return "Naturalne";
   return "Semi-Natural";
 }

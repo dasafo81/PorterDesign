@@ -928,6 +928,7 @@ function MailPreview(p){
   // Cache załączników per messageId — pobierane on-demand przy rozwinięciu
   var sfa=us({}),fetchedAtts=sfa[0],setFetchedAtts=sfa[1];
   var sla=us({}),loadingAtts=sla[0],setLoadingAtts=sla[1];
+  var sae=us({}),attErrors=sae[0],setAttErrors=sae[1];   // messageId → true, gdy pobranie załączników się nie udało
   // Resolved srcDoc per messageId — aktualizowany po załadowaniu obrazków cid:
   var ssd=us({}),resolvedSrcDocs=ssd[0],setResolvedSrcDocs=ssd[1];
   // Galeria (lightbox) załączników-obrazków: {mid, idx} albo null
@@ -987,6 +988,13 @@ function MailPreview(p){
 
   // Pobiera załączniki jednym GET BEZ $select — zwraca metadane + contentBytes (<3MB) + contentId.
   // $select=contentId daje 400, bo contentId nie jest polem bazowego attachment (tylko fileAttachment).
+  // B\u0142\u0105d pobierania za\u0142\u0105cznik\u00f3w pokazujemy w UI (z przyciskiem "Spr\u00f3buj ponownie") \u2014
+  // wcze\u015bniej pora\u017cka ko\u0144czy\u0142a si\u0119 pust\u0105 list\u0105 i u\u017cytkownik my\u015bla\u0142, \u017ce maila nie ma za\u0142\u0105cznik\u00f3w.
+  function failAttachments(mid){
+    setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
+    setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
+    setAttErrors(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
+  }
   function fetchAttachments(mid){
     if(!mid)return;
     // Placeholder \u015bwie\u017co wys\u0142anego maila (id "m_...") \u2014 Graph go jeszcze nie zna
@@ -994,6 +1002,17 @@ function MailPreview(p){
     if(fetchedAtts[mid]&&fetchedAtts[mid].length>0)return;
     if(loadingAtts[mid])return;
     setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
+    setAttErrors(function(prev){if(!prev[mid])return prev;var n=Object.assign({},prev);delete n[mid];return n;});
+    doFetchAttachments(mid,0);
+  }
+  function retryAttachments(mid){
+    setFetchedAtts(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+    setAttErrors(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
+    setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=true;return n;});
+    doFetchAttachments(mid,0);
+  }
+  // tryNo \u2014 numer pr\u00f3by przy throttlingu (429): do 3 ponowie\u0144 zamiast jednego
+  function doFetchAttachments(mid,tryNo){
     mailGetToken().then(function(tok){
       if(tok&&p.onTokenRefresh)p.onTokenRefresh(tok);
       var useToken=tok||p.accessToken;
@@ -1003,24 +1022,16 @@ function MailPreview(p){
     })
     .then(function(r){
       if(r.status===429){
-        var wait=parseInt(r.headers.get("Retry-After")||"2",10)*1000;
-        setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
-        setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-        // retry raz po throttle
-        setTimeout(function(){
-          setFetchedAtts(function(prev){var n=Object.assign({},prev);delete n[mid];return n;});
-          fetchAttachments(mid);
-        },wait);
+        if(tryNo>=3){failAttachments(mid);return null;}
+        var wait=Math.max(parseInt(r.headers.get("Retry-After")||"2",10)||2,1)*1000;
+        setTimeout(function(){doFetchAttachments(mid,tryNo+1);},wait);
         return null;
       }
-      return r.ok?r.json():null;
+      if(!r.ok){console.error("[mail] fetchAttachments HTTP "+r.status+" dla",mid);failAttachments(mid);return null;}
+      return r.json();
     })
     .then(function(data){
-      if(!data){
-        setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
-        setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-        return;
-      }
+      if(!data)return;
       var list=(data.value)||[];
       var metaList=list.map(function(a){return {id:a.id,name:a.name,size:a.size,contentType:a.contentType,contentId:a.contentId||null,isInline:!!a.isInline};});
       setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=metaList;return n;});
@@ -1045,10 +1056,7 @@ function MailPreview(p){
         if(bodyObj&&bodyObj.isHtml&&bodyObj.content)buildSrcDoc(mid,bodyObj.content);
       }
     })
-    .catch(function(){
-      setFetchedAtts(function(prev){var n=Object.assign({},prev);n[mid]=[];return n;});
-      setLoadingAtts(function(prev){var n=Object.assign({},prev);n[mid]=false;return n;});
-    });
+    .catch(function(){failAttachments(mid);});
   }
 
   // ── Galeria obrazków ────────────────────────────────────────────────────
@@ -1478,6 +1486,14 @@ function MailPreview(p){
                       att.size?ce("span",{style:{color:"var(--t3)",fontSize:10,marginLeft:4}},fmtBytes(att.size)):null
                     );
                   })
+                )
+              :null,
+            (attErrors[m.id]&&!loadingAtts[m.id])
+              ?ce("div",{style:{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10,padding:"0 4px",fontSize:12,color:"var(--red)"}},
+                  ce("span",null,"⚠️ Nie udało się pobrać załączników."),
+                  ce("button",{onClick:function(){retryAttachments(m.id);},
+                    style:{padding:"5px 12px",borderRadius:8,border:"1px solid var(--bd2)",background:"transparent",
+                      color:"var(--t1)",fontSize:12,fontWeight:600,cursor:"pointer"}},"↻ Spróbuj ponownie")
                 )
               :null,
             (loadingAtts[m.id]||(fetchedAtts[m.id]&&fetchedAtts[m.id].length>0))?ce("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10,padding:"0 4px"}},
@@ -2206,7 +2222,7 @@ export function ScreenMail(p){
   var scf=us(null),customForm=scf[0],setCustomForm=scf[1];
   var scErr=us(""),customError=scErr[0],setCustomError=scErr[1];
   var sliss=us(null),loginIssue=sliss[0],setLoginIssue=sliss[1];   // dlaczego powrót z OAuth nie zalogował
-  var suf=us([]),userFolders=suf[0],setUserFolders=suf[1];
+  var suf=us([{id:"cenniki",label:"Cenniki",icon:"💰",system:false}]),userFolders=suf[0],setUserFolders=suf[1];
   var saf=us("inbox"),activeFolder=saf[0],setActiveFolder=saf[1];
   var snf=us(false),showNF=snf[0],setShowNF=snf[1];
   var smails=us([]),allMails=smails[0],setAllMails=smails[1];
