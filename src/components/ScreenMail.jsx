@@ -1124,7 +1124,9 @@ function MailPreview(p){
       else if(e.key==="ArrowLeft"){e.preventDefault();lightboxStep(-1);}
     }
     window.addEventListener("keydown",onKey);
-    return function(){window.removeEventListener("keydown",onKey);};
+    // Znacznik "otwarta galeria" — klawisz Delete na liście maili nie może wtedy kasować wątku.
+    window.__pdMailLightbox=true;
+    return function(){window.removeEventListener("keydown",onKey);window.__pdMailLightbox=false;};
   // eslint-disable-next-line
   },[lightbox]);
 
@@ -1423,7 +1425,7 @@ function MailPreview(p){
         p.activeFolder!=="trash"&&p.activeFolder!=="spam"
           ?ce("button",{onClick:function(){p.onSpam&&p.onSpam(head);},style:Object.assign({},BGHOST,{color:"var(--amber)",borderColor:"var(--amber)"})},"🚫 Spam")
           :null,
-        ce("button",{onClick:function(){p.onTrash&&p.onTrash(head);},style:Object.assign({},BGHOST,{color:"var(--red)",borderColor:"var(--red)"})},
+        ce("button",{onClick:function(){p.onTrash&&p.onTrash(head);},title:"Klawisz Delete",style:Object.assign({},BGHOST,{color:"var(--red)",borderColor:"var(--red)"})},
           p.activeFolder==="trash"?"🗑️ Usu\u0144 na zawsze":"🗑️ Kosz"
         ),
         ce("div",{style:{position:"relative"}},
@@ -2572,6 +2574,24 @@ export function ScreenMail(p){
   // Zmiana folderu na mobile → zamknij nakładkę z folderami
   ue(function(){ setMobileFoldersOpen(false); }, [activeFolder]);
 
+  // Klawisz Delete usuwa otwarty wątek (do Kosza; w Koszu — na zawsze, po potwierdzeniu).
+  // Nie reaguje, gdy piszesz w polu tekstowym, ma otwarte okno (kalendarz, galeria) albo
+  // jesteś w kreatorze / szkicach / ustawieniach.
+  ue(function(){
+    function onKey(e){
+      if(e.key!=="Delete"||e.ctrlKey||e.metaKey||e.altKey||e.shiftKey)return;
+      var t=e.target,tag=t&&t.tagName;
+      if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(t&&t.isContentEditable))return;
+      if(activeFolder==="compose"||activeFolder==="drafts"||activeFolder==="settings")return;
+      if(calMail||window.__pdMailLightbox||!selThread||!selThread.mails||!selThread.mails.length)return;
+      e.preventDefault();
+      trashMails(selThread.mails);
+    }
+    window.addEventListener("keydown",onKey);
+    return function(){window.removeEventListener("keydown",onKey);};
+  // eslint-disable-next-line
+  }, [selThread,activeFolder,calMail,accessToken]);
+
   ue(function(){
     // Bez szablonu nic nie wklejamy, ale adres klienta nadal uzupełniamy
     if(selTemplate==="__none__"){
@@ -3058,25 +3078,35 @@ export function ScreenMail(p){
     setSelThread(null);
     if(accessToken&&mail.id&&mail.id.indexOf("m_")!==0) moveMailToFolder(mail.id,accessToken,folderId);
   }
-  function trashMail(mail){
-    if(!mail)return;
-    if(mail.folder==="trash"&&getMailProvider()==="google"){
+  // Kosz / trwałe usunięcie jednej lub wielu wiadomości (cały wątek naraz).
+  function trashMails(list){
+    list=(list||[]).filter(Boolean);
+    if(!list.length)return;
+    var inTrash=list.filter(function(m){return m.folder==="trash";});
+    var others=list.filter(function(m){return m.folder!=="trash";});
+    if(inTrash.length&&getMailProvider()==="google"){
       // Aplikacja nie ma uprawnienia do trwałego usuwania w Gmailu (zakres gmail.modify) —
       // Gmail sam czyści kosz po 30 dniach.
       window.alert("Gmail usuwa wiadomości z kosza automatycznie po 30 dniach. Aby usunąć od razu, opróżnij Kosz w Gmailu.");
-      return;
+      inTrash=[];
+      if(!others.length)return;
     }
-    if(mail.folder==="trash"){
-      if(!window.confirm("Trwale usun\u0105\u0107 t\u0119 wiadomo\u015b\u0107? Tej operacji nie mo\u017cna cofn\u0105\u0107."))return;
-      setAllMails(function(prev){return prev.filter(function(m){return m.id!==mail.id;});});
-      setSelThread(null);
-      if(accessToken&&mail.id&&mail.id.indexOf("m_")!==0) deleteMailPermanent(mail.id,accessToken);
-    } else {
-      setAllMails(function(prev){return prev.map(function(m){return m.id===mail.id?Object.assign({},m,{folder:"trash"}):m;});});
-      setSelThread(null);
-      if(accessToken&&mail.id&&mail.id.indexOf("m_")!==0) moveMailToFolder(mail.id,accessToken,"trash");
-    }
+    if(inTrash.length&&!window.confirm(inTrash.length>1
+      ?"Trwale usun\u0105\u0107 te wiadomo\u015bci ("+inTrash.length+")? Tej operacji nie mo\u017cna cofn\u0105\u0107."
+      :"Trwale usun\u0105\u0107 t\u0119 wiadomo\u015b\u0107? Tej operacji nie mo\u017cna cofn\u0105\u0107."))return;
+    var delIds={},movIds={};
+    inTrash.forEach(function(m){delIds[m.id]=true;});
+    others.forEach(function(m){movIds[m.id]=true;});
+    setAllMails(function(prev){
+      return prev.filter(function(m){return !delIds[m.id];})
+        .map(function(m){return movIds[m.id]?Object.assign({},m,{folder:"trash"}):m;});
+    });
+    setSelThread(null);
+    if(!accessToken)return;
+    inTrash.forEach(function(m){if(m.id&&m.id.indexOf("m_")!==0)deleteMailPermanent(m.id,accessToken);});
+    others.forEach(function(m){if(m.id&&m.id.indexOf("m_")!==0)moveMailToFolder(m.id,accessToken,"trash");});
   }
+  function trashMail(mail){ if(mail)trashMails([mail]); }
   function spamMail(mail){
     if(!mail)return;
     setAllMails(function(prev){return prev.map(function(m){return m.id===mail.id?Object.assign({},m,{folder:"spam"}):m;});});
@@ -3626,7 +3656,7 @@ export function ScreenMail(p){
           },
           onMarkRead:function(mail,val){markAsRead(mail,val);},
           onToggleImportant:function(mail){toggleImportant(mail);},
-          customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMail(m);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:(selThread&&selThread.head&&selThread.head.folder)||activeFolder})
+          customFolders:userFolders,onMove:moveMail,onTrash:function(m){trashMails(selThread&&selThread.mails&&selThread.mails.indexOf(m)>=0?selThread.mails:[m]);},onSpam:function(m){spamMail(m);},onRestore:function(m){restoreMail(m);},activeFolder:(selThread&&selThread.head&&selThread.head.folder)||activeFolder})
       )
     );
   }
