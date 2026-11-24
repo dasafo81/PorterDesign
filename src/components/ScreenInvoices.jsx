@@ -3243,7 +3243,10 @@ function InvoiceDetailView(p){
           ce("div",{style:{fontSize:13,fontWeight:600,color:"var(--t1)",marginBottom:3}},"Status KSeF"),
           ce("div",{style:{fontSize:12,color:ksefStatusColor,fontWeight:500}},ksefStatusLabel),
           currentInv.ksef_number&&ce("div",{style:{fontSize:10,color:"var(--t3)",marginTop:2}},
-            "Nr KSeF: "+currentInv.ksef_number)
+            (ksefOk?"Nr KSeF: ":"Nr sesji KSeF: ")+currentInv.ksef_number),
+          // Powód odrzucenia zapisany przez funkcję ksef-send / ksef-status
+          ksefError&&currentInv.ksef_error&&ce("div",{style:{fontSize:12,color:"var(--red)",marginTop:6,maxWidth:520,lineHeight:1.4,wordBreak:"break-word"}},
+            "Powód: "+currentInv.ksef_error)
         ),
         !ksefOk&&isIssued&&ce("button",{
           onClick:sendToKsef,
