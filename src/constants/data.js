@@ -6951,6 +6951,12 @@ export function calc(p){
     var tpR=tapetaCalc(p);
     if(!tpR.total)return{total:0,lines:[],warn:tpR.warn};
     total=tpR.total;lines=tpR.lines;warn=tpR.warn;
+  }else if(p.type==="inny"&&p.innyKat==="poduszki"&&c.pdModel){
+    // Poduszki wg cennika (model szycia + rozmiar + wkład + pasmanteria + tkanina)
+    var pdR=pillowCalc(p);
+    if(!pdR.total)return{total:0,lines:[],warn:pdR.warn};
+    total=pdR.total;lines=pdR.lines;warn=pdR.warn;
+    usage.fabMb=pdR.fabMb;usage.fabSell=pdR.fabSell;usage.sewSell=pdR.sewSell;
   }else if(p.type==="inny"){
     // Cena za szt. (c.innyCena, string — dopuszcza przecinek) x ilość (par.qty)
     var inCena=+(String(c.innyCena==null?"":c.innyCena).replace(",","."))||0,inQty=par.qty||1;
@@ -7768,6 +7774,14 @@ export function buildOfferDetailRows(client){
             cat="poduszki";
             X.rozmiar=(par.wCm&&par.hCm)?(par.wCm+" \u00d7 "+par.hCm+" cm"):(par.wCm?par.wCm+" cm":"-");
             X.wypelnienie="-";
+            if(p.innyKat==="poduszki"){
+              if(pc.pdModel){
+                modelSzycia=pillowModelLabel(pc.pdModel)||"-";
+                if(pc.pdModel==="pasmanteria"&&+pc.pdPasMb>0)modelSzycia+=" ("+String(+pc.pdPasMb).replace(".",",")+" mb)";
+              }
+              var pdInsO=pillowInsert(pc.pdWklad);
+              if(pdInsO)X.wypelnienie=pdInsO.label;
+            }
           }
         } else if(p.type==="tapeta"){
           var tpX=tapetaCalc(p);
@@ -7882,20 +7896,134 @@ export function getPasyParityKorekta(client){
   return out;
 }
 
+// ── MODUŁ PODUSZEK ───────────────────────────────────────────────────────────
+// Cennik wg notatki właściciela. Pary [cena zakupu netto, cena dla klienta brutto] zł/szt.
+// Rozmiary poszewek (szer. × wys. w cm) w trzech przedziałach cenowych (indeks = przedział).
+export const PILLOW_SIZES=[
+  {w:60,h:40,tier:0},{w:45,h:45,tier:0},{w:65,h:45,tier:0},
+  {w:50,h:50,tier:1},{w:55,h:55,tier:1},
+  {w:70,h:50,tier:2},{w:70,h:70,tier:2}
+];
+// Model szycia. "prices" = klucz w PILLOW_SEW_PRICES; "inne" = tylko cena własna.
+export const PILLOW_MODELS=[
+  {id:"basic",label:"Basic",prices:"basic"},
+  {id:"ryszka",label:"Ryszka",prices:"ryszka"},
+  {id:"lamowka",label:"Lamówka",prices:"ryszka"},
+  {id:"pasmanteria",label:"Pasmanteria",prices:"basic"},
+  {id:"inne",label:"Inne",prices:null}
+];
+export const PILLOW_SEW_PRICES={
+  basic:[[30,60],[35,70],[40,80]],
+  ryszka:[[40,80],[45,90],[50,100]]
+};
+// Doszycie pasmanterii (wszycie sznura, taśmy): [zakup netto, klient] zł za mb. Koszt samej
+// pasmanterii wpisywany ręcznie (zł za mb).
+export const PILLOW_TRIM_SEW=[10,20];
+// Wkład do poduszki: [zakup netto, klient brutto] zł/szt.
+export const PILLOW_INSERTS=[
+  {id:"maly",label:"Wkład mały",cost:12,client:20},
+  {id:"duzy",label:"Wkład duży",cost:15,client:30}
+];
+
+export function pillowModelLabel(id){
+  var m=PILLOW_MODELS.find(function(x){return x.id===id;});
+  return m?m.label:"";
+}
+export function pillowInsert(id){
+  return PILLOW_INSERTS.find(function(x){return x.id===id;})||null;
+}
+// Przedział cenowy rozmiaru poszewki (0..2) albo -1, gdy rozmiaru nie ma w cenniku.
+// Rozmiar odwrócony (np. 50×70 zamiast 70×50) to ta sama poszewka.
+export function pillowSizeTier(w,h){
+  w=+w||0;h=+h||0;
+  var s=PILLOW_SIZES.find(function(x){return (x.w===w&&x.h===h)||(x.w===h&&x.h===w);});
+  return s?s.tier:-1;
+}
+// Cena szycia 1 poszewki wg cennika: {client,cost} albo null (model "inne" / rozmiar spoza cennika).
+export function pillowSewPrice(model,w,h){
+  var m=PILLOW_MODELS.find(function(x){return x.id===model;});
+  if(!m||!m.prices)return null;
+  var t=pillowSizeTier(w,h);
+  if(t<0)return null;
+  var pr=PILLOW_SEW_PRICES[m.prices][t];
+  return {cost:pr[0],client:pr[1]};
+}
+
 // Zapotrzebowanie na tkaninę na poduszki (poszewki kopertowe): pas = przód + tył z zakładką,
 // szerokość pasa = szer. poszewki + 3 cm na szwy, długość = 2 × wys. + 16 cm (szwy + zakładka 10 cm).
-// Pasy układane wzdłuż szerokości belki (kierunek wzoru zachowany); gdy poszewka jest szersza
-// niż belka — pas obrócony. Zwraca metry bieżące zaokrąglone w górę do 0,1 m (0 = brak danych).
-export function pillowFabricMetry(prod){
+// Normalnie (tkanina wysoka) pasy układane wzdłuż szerokości belki — kierunek wzoru zachowany.
+// Tkanina przekręcona (c.pdRot==="tak"): pas obrócony o 90°, jego dłuższy bok idzie wzdłuż
+// szerokości belki, więc zwykle schodzi mniej metrów. Gdy wybrany układ się nie mieści,
+// liczymy drugi (zwracamy to w "rotated"). Metry zaokrąglone w górę do 0,1 m (0 = brak danych).
+export function pillowFabricLayout(prod,rot){
   var par=prod.par||{};
   var w=+par.wCm||0,h=+par.hCm||0,fw=+prod.fabW||0;
   var qty=Math.max(1,Math.floor(+par.qty||1));
-  if(!(w>0&&h>0&&fw>0))return 0;
-  var a=w+3,b=2*h+16,len=0;
-  if(a<=fw){len=Math.ceil(qty/Math.floor(fw/a))*b;}
-  else if(b<=fw){len=Math.ceil(qty/Math.floor(fw/b))*a;}
-  else return 0;
-  return Math.ceil(len/10)/10;
+  if(!(w>0&&h>0&&fw>0))return {mb:0,rotated:!!rot};
+  var a=w+3,b=2*h+16;
+  function lenNormal(){return a<=fw?Math.ceil(qty/Math.floor(fw/a))*b:0;}
+  function lenRot(){return b<=fw?Math.ceil(qty/Math.floor(fw/b))*a:0;}
+  var len=0,rotated=!!rot;
+  if(rot){len=lenRot();if(!len){len=lenNormal();rotated=false;}}
+  else{len=lenNormal();if(!len){len=lenRot();rotated=true;}}
+  if(!len)return {mb:0,rotated:rotated};
+  return {mb:Math.ceil(len/10)/10,rotated:rotated};
+}
+export function pillowFabricMetry(prod){
+  return pillowFabricLayout(prod,((prod.c||{}).pdRot==="tak")).mb;
+}
+
+// Wycena poduszek wg notatki (tylko pozycje z wybranym modelem szycia c.pdModel; starsze
+// pozycje bez modelu liczy dawna gałąź "Inny": cena za szt. × ilość).
+// Składniki: szycie (cennik wg modelu i rozmiaru albo cena własna c.innyCena) + wkład
+// + doszycie pasmanterii (mb × stawka + ręczny koszt pasmanterii za mb) — wszystko × ilość,
+// plus tkanina (metry z pillowFabricLayout × cena za mb).
+// Zwraca {total,lines,warn,fabMb,fabSell,sewSell}; total=0 gdy brakuje danych do wyceny.
+export function pillowCalc(p){
+  var c=p.c||{},par=p.par||{};
+  var qty=Math.max(1,Math.floor(+par.qty||1));
+  var zero=function(w){return {total:0,lines:[],warn:w||null,fabMb:0,fabSell:0,sewSell:0};};
+  var w=+par.wCm||0,h=+par.hCm||0;
+  if(!(w>0&&h>0))return zero(null);
+  var num=function(v){return +(String(v==null?"":v).replace(",","."))||0;};
+  var money=function(n){return (Math.round(n*100)/100).toFixed(2).replace(".",",")+" zł";};
+  var fabP=p.fabMan!=null?p.fabMan:(p.fabP!=null?p.fabP:null);
+  if(fabP==null)return zero("Wybierz tkaninę");
+  var lay=pillowFabricLayout(p,c.pdRot==="tak");
+  if(!(lay.mb>0))return zero("Podaj wymiary poszewki i szerokość tkaniny (przy ręcznej tkaninie: „Wys. belki”)");
+
+  var own=num(c.innyCena);
+  var tab=pillowSewPrice(c.pdModel,w,h);
+  var sewUnit=own>0?own:(tab?tab.client:0);
+  if(!(sewUnit>0)){
+    return zero(c.pdModel==="inne"?"Model „Inne” — wpisz cenę własną szycia za szt.":"Rozmiar spoza cennika — wpisz cenę własną szycia za szt.");
+  }
+  var total=0,lines=[],sewSell=0;
+  var mdl=pillowModelLabel(c.pdModel);
+  var sewLine=w+"×"+h+" cm"+(mdl?" · "+mdl:"")+" "+money(sewUnit)+"/szt."+(own>0?" (cena własna)":"")+(qty>1?" ×"+qty:"");
+  lines.push("Szycie poszewki "+sewLine+" = "+money(sewUnit*qty));
+  total+=sewUnit*qty;sewSell+=sewUnit*qty;
+
+  var ins=pillowInsert(c.pdWklad);
+  if(ins){
+    lines.push(ins.label+" "+money(ins.client)+"/szt."+(qty>1?" ×"+qty:"")+" = "+money(ins.client*qty));
+    total+=ins.client*qty;sewSell+=ins.client*qty;
+  }
+
+  var trimMb=c.pdModel==="pasmanteria"?num(c.pdPasMb):0;
+  if(trimMb>0){
+    var trimMat=num(c.pdPasKoszt);
+    var trimSew=PILLOW_TRIM_SEW[1]*trimMb*qty;
+    var trimMatTot=trimMat*trimMb*qty;
+    lines.push("Doszycie pasmanterii "+String(trimMb).replace(".",",")+" mb × "+money(PILLOW_TRIM_SEW[1])+"/mb"+(qty>1?" ×"+qty+" szt.":"")+" = "+money(trimSew));
+    if(trimMat>0)lines.push("Pasmanteria "+String(trimMb).replace(".",",")+" mb × "+money(trimMat)+"/mb"+(qty>1?" ×"+qty+" szt.":"")+" = "+money(trimMatTot));
+    total+=trimSew+trimMatTot;sewSell+=trimSew;
+  }
+
+  var fabCost=+(lay.mb*fabP).toFixed(2);
+  lines.push("Tkanina "+String(lay.mb).replace(".",",")+" mb × "+money(fabP)+(lay.rotated?" (przekręcona)":"")+" = "+money(fabCost));
+  total+=fabCost;
+  return {total:+total.toFixed(2),lines:lines,warn:null,fabMb:lay.mb,fabSell:fabCost,sewSell:+sewSell.toFixed(2)};
 }
 
 export function buildFabricRows(client){
@@ -7919,7 +8047,7 @@ export function buildFabricRows(client){
             metry:pillowFabricMetry(p),
             room:r.name,
             win:w.name,
-            note:(p.innyNazwa||"Poduszki")+" \u00d7 "+pdQty+(p.note?" \u2014 "+p.note:"")
+            note:(p.innyNazwa||"Poduszki")+" \u00d7 "+pdQty+(pillowFabricLayout(p,pc.pdRot==="tak").rotated?" (tkanina przekr\u0119cona)":"")+(p.note?" \u2014 "+p.note:"")
           });
           return;
         }
@@ -8081,6 +8209,16 @@ export function buildSewingRows(client){
             _type:"inne",
             note:prod.note||""
           });
+          if(prod.innyKat==="poduszki"){
+            // Model szycia, wkład, pasmanteria i układ tkaniny — szwalnia musi je znać.
+            var pdS=prod.c||{},pdRow=rows[rows.length-1],pdBits=[];
+            if(pdS.pdModel)pdRow.szStyle=pillowModelLabel(pdS.pdModel)||"-";
+            var pdInsS=pillowInsert(pdS.pdWklad);
+            if(pdInsS)pdBits.push(pdInsS.label);
+            if(pdS.pdModel==="pasmanteria"&&+pdS.pdPasMb>0)pdBits.push("doszyć pasmanterię "+String(+pdS.pdPasMb).replace(".",",")+" mb/szt.");
+            if(pdS.pdRot==="tak")pdBits.push("tkanina przekręcona");
+            if(pdBits.length)pdRow.note=pdBits.join(", ")+(pdRow.note?" — "+pdRow.note:"");
+          }
           return;
         }
         if(prod.type!=="zaslona"&&prod.type!=="firana"&&prod.type!=="roleta")return;
@@ -9032,6 +9170,25 @@ export const PRICE_LISTS=[
       {service:"Szycie k\u0119dry sznura",net:"10 z\u0142/mb",client:"20 z\u0142/mb"},
       {service:"Narzuta z wk\u0142adem",net:"50 z\u0142/m\u00b2",client:"100 z\u0142/m\u00b2"}
     ]
+  },
+  // Cennik modu\u0142u poduszek (kalkulator w karcie produktu "Inny \u2192 Poduszki"), generowany z PILLOW_*.
+  {
+    id:"poduszki",
+    title:"Cennik poduszek",
+    rows:(function(){
+      var rows=[];
+      var tiers=[0,1,2].map(function(t){
+        return PILLOW_SIZES.filter(function(z){return z.tier===t;}).map(function(z){return z.w+"\u00d7"+z.h;}).join(", ");
+      });
+      [["basic","Szycie Basic"],["ryszka","Szycie Ryszka / Lam\u00f3wka"]].forEach(function(g){
+        PILLOW_SEW_PRICES[g[0]].forEach(function(pr,t){
+          rows.push({service:g[1]+" \u2014 "+tiers[t],net:pr[0]+" z\u0142/szt.",client:pr[1]+" z\u0142/szt."});
+        });
+      });
+      rows.push({service:"Doszycie pasmanterii (wszycie sznura, ta\u015bmy)",net:PILLOW_TRIM_SEW[0]+" z\u0142/mb",client:PILLOW_TRIM_SEW[1]+" z\u0142/mb"});
+      PILLOW_INSERTS.forEach(function(w){rows.push({service:w.label+" do poduszki",net:w.cost+" z\u0142/szt.",client:w.client+" z\u0142/szt."});});
+      return rows;
+    })()
   }
 ];
 // Szwalnie, do których wysyłamy tkaninę / zlecenia (lista wyboru w zamówieniach tkanin).

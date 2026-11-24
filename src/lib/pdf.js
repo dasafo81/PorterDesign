@@ -755,13 +755,13 @@ function sewGroupRows(rows, mapFn){
 // Tabela narzut / poduszek (kategorie "Inny") w zleceniu szycia
 function buildInneSewingTableHTML(inneRows){
   if(!inneRows||!inneRows.length)return "";
-  var hdr=["Lp.","Produkt","Tkanina","Szerokość","Długość / wysokość","Ilość","Uwagi"];
+  var hdr=["Lp.","Produkt","Model szycia","Tkanina","Szerokość","Długość / wysokość","Ilość","Uwagi"];
   var trs=sewGroupRows(inneRows,function(r,i){
-    return [String(i+1),'<strong>'+r.type+'</strong>',r.fabric||'-',
+    return [String(i+1),'<strong>'+r.type+'</strong>',r.szStyle&&r.szStyle!=='-'?r.szStyle:'-',r.fabric||'-',
       r.wCm?(r.wCm+' cm'):'-',r.hCm?(r.hCm+' cm'):'-',
       String(r.qty||1)+' szt.',r.note||''];
   });
-  return makeTableHTML(hdr,trs,"Narzuty i poduszki \u2014 specyfikacja szycia",['3%','16%','20%','10%','12%','8%','31%']);
+  return makeTableHTML(hdr,trs,"Narzuty i poduszki \u2014 specyfikacja szycia",['3%','13%','11%','17%','9%','11%','7%','29%']);
 }
 
 export function generateSewingOrderPDF(client, modalData){

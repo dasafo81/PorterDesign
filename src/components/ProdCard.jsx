@@ -36,7 +36,8 @@ import {
   SHUTTLE_BASE, SHUTTLE_DOPLATY, SHUTTLE_STEROWANIE, SHUTTLE_UCHWYTY,
   SHUTTLE_WIDTHS, shuttleUchwytyQty,
   PLISA_FABRICS, PLISA_OSPRZET_KOLORY, PLISA_FABRIC_IMAGES, PLISA_SL_OSPRZET_KOLORY, PLISA_GR_LABEL, plisaFabricList,
-  calc, tapetaCalc, formatPLN, getPanelsForProd, pillowFabricMetry, jzLookup,
+  calc, tapetaCalc, formatPLN, getPanelsForProd, pillowFabricMetry, pillowFabricLayout, pillowSizeTier, pillowSewPrice,
+  PILLOW_SIZES, PILLOW_MODELS, PILLOW_INSERTS, PILLOW_TRIM_SEW, jzLookup,
   lookup, mg, roundTo10, rrzLookup, arcGeom
 } from '../constants/data.js';
 import { generateFabricOrderPDF, generateClientEmail,
@@ -2630,7 +2631,8 @@ export function ProdCard(p){
         ce(Chips,{items:INNY_KATEGORIE.map(function(k){
           return ce(Chip,{key:k.id,label:k.label,active:innyKat===k.id,onClick:function(){
             if(innyKat===k.id)return;
-            p.onChange(mg(prod,{innyKat:k.id,innyNazwa:k.id==="inny"?undefined:k.label}));
+            p.onChange(mg(prod,Object.assign({innyKat:k.id,innyNazwa:k.id==="inny"?undefined:k.label},
+              k.id==="poduszki"?{c:mg(c,{pdModel:c.pdModel||"basic"})}:{})));
           }});
         })})
       ),
@@ -2641,32 +2643,84 @@ export function ProdCard(p){
           style:Object.assign({},IST,{width:"100%"})
         })
       ):null,
-      (innyKat==="narzuta"||innyKat==="poduszki")?ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
+      innyKat==="narzuta"?ce("div",{style:{display:"flex",flexDirection:"column",gap:14}},
         ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
-          ce(Fld,{label:innyKat==="poduszki"?"SZEROKO\u015a\u0106 POSZEWKI (cm)":"SZEROKO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 50",style:IST})),
-          ce(Fld,{label:innyKat==="poduszki"?"WYSOKO\u015a\u0106 POSZEWKI (cm)":"D\u0141UGO\u015a\u0106 (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 50",style:IST}))
+          ce(Fld,{label:"SZEROKOŚĆ (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 50",style:IST})),
+          ce(Fld,{label:"DŁUGOŚĆ (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 50",style:IST}))
         ),
-        innyKat==="poduszki"?ce(Fragment,null,
+        ce(Fld,{label:"TKANINA / KOLOR (do zlecenia szycia)"},ce("input",{type:"text",value:prod.innyTkanina||"",onChange:function(ev){p.onChange(mg(prod,{innyTkanina:ev.target.value||undefined}));},placeholder:"np. Velvet 12 beż",style:Object.assign({},IST,{width:"100%"})}))
+      ):null,
+      innyKat==="poduszki"?(function(){
+        // Moduł poduszek wg notatki: rozmiar → model szycia → wkład → tkanina (+ układ) → ilość / cena własna.
+        var pdTier=pillowSizeTier(par.wCm,par.hCm);
+        var pdCustom=c.pdSizeCustom==="tak"||(!!(par.wCm||par.hCm)&&pdTier<0);
+        var pdModel=c.pdModel||null;
+        var pdTab=pillowSewPrice(pdModel,par.wCm,par.hCm);
+        var pdOwn=+String(c.innyCena==null?"":c.innyCena).replace(",",".")||0;
+        var pdRot=c.pdRot==="tak";
+        var hasFab=!!(prod.fabName||prod.fabMan!=null||prod.fabManName);
+        var layN=pillowFabricLayout(prod,false),layR=pillowFabricLayout(prod,true);
+        var pmb=pillowFabricMetry(prod);
+        var fmtMb=function(n){return String(n).replace(".",",");};
+        return ce(Fragment,null,
+          ce(Fld,{label:"ROZMIAR POSZEWKI (cm)"},
+            ce(Chips,{items:PILLOW_SIZES.map(function(z){
+              var act=c.pdSizeCustom!=="tak"&&+par.wCm===z.w&&+par.hCm===z.h;
+              return ce(Chip,{key:z.w+"x"+z.h,label:z.w+" × "+z.h,active:act,onClick:function(){
+                p.onChange(mg(prod,{par:mg(par,{wCm:z.w,hCm:z.h}),c:mg(c,{pdSizeCustom:undefined})}));
+              }});
+            }).concat([ce(Chip,{key:"_custom",label:"Inny rozmiar",active:pdCustom,onClick:function(){sc("pdSizeCustom","tak");}})])})
+          ),
+          pdCustom?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+            ce(Fld,{label:"SZEROKOŚĆ POSZEWKI (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.wCm||"",onChange:function(ev){sp("wCm",ev.target.value);},placeholder:"np. 50",style:IST})),
+            ce(Fld,{label:"WYSOKOŚĆ POSZEWKI (cm)"},ce("input",{type:"text",inputMode:"decimal",value:par.hCm||"",onChange:function(ev){sp("hCm",ev.target.value);},placeholder:"np. 50",style:IST}))
+          ):null,
+          ce(Fld,{label:"MODEL SZYCIA"},
+            ce(Chips,{items:PILLOW_MODELS.map(function(m){
+              return ce(Chip,{key:m.id,label:m.label,active:pdModel===m.id,onClick:function(){sc("pdModel",m.id);}});
+            })})
+          ),
+          !pdModel?ce("div",{style:{fontSize:13,color:"var(--t2)"}},"Pozycja wyceniana po staremu (cena za szt. × ilość, bez tkaniny). Wybierz model szycia, żeby policzyć wg cennika."):null,
+          pdModel==="pasmanteria"?ce("div",{style:{display:"flex",flexDirection:"column",gap:8}},
+            ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
+              ce(Fld,{label:"DŁUGOŚĆ PASMANTERII NA 1 SZT. (mb)"},ce("input",{type:"text",inputMode:"decimal",value:c.pdPasMb!=null?c.pdPasMb:"",onChange:function(ev){sc("pdPasMb",ev.target.value===""?null:ev.target.value);},placeholder:"np. 2",style:IST})),
+              ce(Fld,{label:"KOSZT PASMANTERII (zł/mb)"},ce("input",{type:"text",inputMode:"decimal",value:c.pdPasKoszt!=null?c.pdPasKoszt:"",onChange:function(ev){sc("pdPasKoszt",ev.target.value===""?null:ev.target.value);},placeholder:"wpisz ręcznie",style:IST}))
+            ),
+            ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Doszycie pasmanterii (wszycie sznura, taśmy): "+PILLOW_TRIM_SEW[1]+" zł/mb dla klienta. Koszt samej pasmanterii wpisz ręcznie.")
+          ):null,
+          ce(Fld,{label:"WKŁAD DO PODUSZKI"},
+            ce(Chips,{items:[ce(Chip,{key:"_none",label:"Brak",active:!c.pdWklad,onClick:function(){sc("pdWklad",undefined);}})].concat(PILLOW_INSERTS.map(function(w){
+              return ce(Chip,{key:w.id,label:w.label.replace("Wkład ","")+" · "+w.client+" zł",active:c.pdWklad===w.id,onClick:function(){sc("pdWklad",w.id);}});
+            }))})
+          ),
           ce(Fld,{label:"KOLOR TKANINY"},ce("input",{type:"text",value:c.kolor||"",onChange:function(ev){sc("kolor",ev.target.value);},placeholder:"np. 03 Ecru, beż...",style:Object.assign({},IST,{width:"100%"})})),
           ce(FabPicker,{fabName:prod.fabName,fabMan:prod.fabMan,fabManW:prod.fabManW,fabManName:prod.fabManName,onSelect:sf,onManual:sfm,onManualW:sfmW,onManualName:sfmN}),
-          (function(){
-            var pm=pillowFabricMetry(prod);
-            var hasFab=!!(prod.fabName||prod.fabMan!=null||prod.fabManName);
-            if(pm>0)return ce("div",{style:{fontSize:14,color:"var(--grd)",fontWeight:600}},"Do zam\u00f3wienia: "+String(pm).replace(".",",")+" mb tkaniny");
-            return ce("div",{style:{fontSize:13,color:"var(--t2)"}},hasFab?"Podaj wymiary poszewki i szeroko\u015b\u0107 tkaniny (przy r\u0119cznej tkaninie: \u201eWys. belki\u201d), \u017ceby policzy\u0107 zapotrzebowanie.":"Wybierz tkanin\u0119, \u017ceby policzy\u0107 zapotrzebowanie na materia\u0142.");
-          })(),
-          ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Wyliczenie: poszewka kopertowa (szwy 1,5 cm, zak\u0142adka 10 cm), pasy uk\u0142adane wzd\u0142u\u017c szeroko\u015bci belki.")
-        ):ce(Fld,{label:"TKANINA / KOLOR (do zlecenia szycia)"},ce("input",{type:"text",value:prod.innyTkanina||"",onChange:function(ev){p.onChange(mg(prod,{innyTkanina:ev.target.value||undefined}));},placeholder:"np. Velvet 12 beż",style:Object.assign({},IST,{width:"100%"})}))
-      ):null,
+          ce(Fld,{label:"UKŁAD TKANINY (zużycie metrów)"},
+            ce(Chips,{items:[
+              ce(Chip,{key:"n",label:"Tkanina wysoka — normalnie",active:!pdRot,onClick:function(){sc("pdRot",undefined);}}),
+              ce(Chip,{key:"r",label:"Tkanina szeroka — przekręcona",active:pdRot,onClick:function(){sc("pdRot","tak");}})
+            ]})
+          ),
+          layN.mb>0?ce("div",{style:{fontSize:13,color:"var(--t2)"}},
+            "Normalnie: "+fmtMb(layN.mb)+" mb"+(layN.rotated?" (poszewka szersza niż belka — policzono po obróceniu)":"")+" · przekręcona: "+fmtMb(layR.mb)+" mb"+(!layR.rotated?" (nie mieści się — policzono normalnie)":"")
+          ):null,
+          pmb>0?ce("div",{style:{fontSize:14,color:"var(--grd)",fontWeight:600}},"Do zamówienia: "+fmtMb(pmb)+" mb tkaniny"):
+            ce("div",{style:{fontSize:13,color:"var(--t2)"}},hasFab?"Podaj wymiary poszewki i szerokość tkaniny (przy ręcznej tkaninie: „Wys. belki”), żeby policzyć zapotrzebowanie.":"Wybierz tkaninę, żeby policzyć zapotrzebowanie na materiał."),
+          ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Wyliczenie: poszewka kopertowa (szwy 1,5 cm, zakładka 10 cm), pasy układane wzdłuż szerokości belki; po przekręceniu pas idzie dłuższym bokiem wzdłuż belki, więc zwykle schodzi mniej metrów."),
+          pdModel&&pdModel!=="inne"&&!pdTab&&!pdOwn&&par.wCm&&par.hCm?ce("div",{style:{fontSize:13,color:"var(--t2)"}},"Rozmiar spoza cennika — wpisz cenę własną szycia za szt. poniżej."):null
+        );
+      })():null,
       innyKat?ce("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}},
         ce(Fld,{label:"ILO\u015a\u0106 SZTUK"},ce("input",{type:"text",inputMode:"numeric",value:par.qty||"",onChange:function(ev){sp("qty",ev.target.value);},placeholder:"1",style:IST})),
-        ce(Fld,{label:"CENA ZA SZT. (z\u0142)"},ce("input",{type:"text",inputMode:"decimal",value:c.innyCena!=null?c.innyCena:"",onChange:function(ev){sc("innyCena",ev.target.value===""?null:ev.target.value);},placeholder:"np. 250",style:IST}))
+        ce(Fld,{label:(innyKat==="poduszki"&&c.pdModel)?"CENA W\u0141ASNA SZYCIA ZA SZT. (z\u0142)":"CENA ZA SZT. (z\u0142)"},ce("input",{type:"text",inputMode:"decimal",value:c.innyCena!=null?c.innyCena:"",onChange:function(ev){sc("innyCena",ev.target.value===""?null:ev.target.value);},placeholder:(innyKat==="poduszki"&&c.pdModel)?(function(){var t=pillowSewPrice(c.pdModel,par.wCm,par.hCm);return t?("z cennika: "+t.client):"np. 90";})():"np. 250",style:IST}))
       ):null,
-      innyCenaNum>0?ce("div",{style:{fontSize:14,color:"var(--grd)",fontWeight:600}},
+      innyCenaNum>0&&!(innyKat==="poduszki"&&c.pdModel)?ce("div",{style:{fontSize:14,color:"var(--grd)",fontWeight:600}},
         innyQty+" \xd7 "+innyCenaNum+" z\u0142 = "+(Math.round(innyQty*innyCenaNum*100)/100)+" z\u0142"
       ):null,
       ce("div",{style:{fontSize:13,color:"var(--t2)",padding:"8px 12px",background:"var(--bg2)",borderRadius:8,border:"1px solid var(--bd2)"}},
-        "\u2139\uFE0F Cena = ilo\u015b\u0107 \xd7 cena za szt. Pole \u201eW\u0142asna cena ko\u0144cowa\u201d poni\u017cej nadpisuje ca\u0142o\u015b\u0107."
+        (innyKat==="poduszki"&&c.pdModel)
+          ?"\u2139\uFE0F Cena = (szycie wg cennika lub cena w\u0142asna + wk\u0142ad + pasmanteria) \xd7 ilo\u015b\u0107 + tkanina. Pole \u201eW\u0142asna cena ko\u0144cowa\u201d poni\u017cej nadpisuje ca\u0142o\u015b\u0107."
+          :"\u2139\uFE0F Cena = ilo\u015b\u0107 \xd7 cena za szt. Pole \u201eW\u0142asna cena ko\u0144cowa\u201d poni\u017cej nadpisuje ca\u0142o\u015b\u0107."
       )
     );
   }else{

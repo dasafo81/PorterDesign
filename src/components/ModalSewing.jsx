@@ -96,7 +96,7 @@ export function ModalSewing(p){
             sewRowInput(i,'wCm','Szer. (cm)',80),
             sewRowInput(i,'hCm','Wys. (cm)',80),
             r._type==='inne'?sewRowInput(i,'qty','Ilość (szt.)',80):null,
-            r._type==='inne'?null:(isRoleta?sewRowInput(i,'nadprozeCm','Wys. nadproża',100):sewRowInput(i,'szStyle','Model szycia',100)),
+            isRoleta?sewRowInput(i,'nadprozeCm','Wys. nadproża',100):sewRowInput(i,'szStyle','Model szycia',100),
             r._type==='inne'?null:(isRoleta?sewRowInput(i,'rSystem','Mechanizm',110):sewRowInput(i,'marszczenie','Marszczenie',90)),
             r._type==='inne'?null:(isRoleta?sewRowInput(i,'stronaObslugi','Strona łańcuszka',110):sewRowInput(i,'split','Podział',110)),
             isRoleta?sewRowInput(i,'kolorLancuszka','Kolor łańcuszka',110):null,
