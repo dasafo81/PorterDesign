@@ -6753,7 +6753,10 @@ export function calc(p){
       if(useA2){
         var pg=Math.ceil((belka/mars)/10)*10-(legP?20:10),lp=Math.ceil((pwZ/pg)*2)/2;
         // Tkanina: każdy zaczęty pas odcinamy na pełną wysokość (połówka pasa też zużywa pełne hM)
-        z=Math.ceil(((legP?lp:Math.ceil(lp))*hM+0.2)*10)/10;kt=+(z*fabP).toFixed(2);
+        // Nowe liczenie: KAŻDY pas to osobny kawałek = wysokość gotowa + 10 cm góra + 10 cm dół,
+        // więc zapas 0,2 m jest na każdym pasie (n × (h+0,2)); liczone w cm, by uniknąć błędów float.
+        // Stare wyceny (legacyPasy) zostają przy dawnym wzorze: n × h + 0,2 raz na zasłonę.
+        z=legP?Math.ceil((lp*hM+0.2)*10)/10:Math.ceil(+(Math.ceil(lp)*(phCm+20)/10).toFixed(6))/10;kt=+(z*fabP).toFixed(2);
         var sv=hM<=3?100:hM<=3.7?130:hM<=4.9?170:230;
         ks=dekro?+(z*sv).toFixed(2):+(lp*250).toFixed(2);
       }else{
