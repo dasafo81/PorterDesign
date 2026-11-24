@@ -8505,7 +8505,6 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
   </div>
   ${tablesHTML}
   ${userNotesHTML}
-  <div class="notes">Niniejszy dokument nie jest fakturą w rozumieniu ustawy z dnia 11 marca 2004 r. o podatku od towarów i usług.</div>
   <div class="footer"><span>${SELLER.name} | ${SELLER.city}</span><span>Strona 1</span></div>
   </body></html>`;
   return html;
