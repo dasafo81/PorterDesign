@@ -7552,6 +7552,9 @@ export function buildOfferDetailRows(client){
         var name=prodLabel+nameLoc;
 
         var modelSzycia="-",tkaninaKolor="-",producent="-",szerokosc="-",wysokosc="-",podzial="-";
+        // cat = kt\u00f3ra tabela druku "Zam\u00f3wienie" (patrz OFFER_TABLES); X = pola specyficzne
+        // dla tej tabeli (kolumny, kt\u00f3rych nie ma w wsp\u00f3lnych polach wiersza).
+        var cat="inne",X={};
 
         if(isKurtain){
           var sz;
@@ -7573,30 +7576,47 @@ export function buildOfferDetailRows(client){
           else if(split==="right")podzial="Prawa";
           else if(split==="equal"){var tw=par.wCm||0;podzial="Kurtyna "+Math.floor(tw/2)+" + "+Math.ceil(tw/2)+" cm";}
           else podzial=(pc.leftW||0)+"cm + "+(pc.rightW||0)+"cm";
+          cat="zaslony";
+          var bottomMapO={single:"Pojedynczy",double:"Podw\u00f3jny",overlock:"Overlock",tape:"O\u0142owianka",pasmanteria:"Pasmanteria"};
+          X.typDolu=(bottomMapO[pc.bottomType||"single"]||"Pojedynczy")+(pc.bottomSize?" "+pc.bottomSize+" cm":"");
+          var dodZ=[];
+          if(pc.podszewka==="tak")dodZ.push("Podszewka"+(pc.podszewkaTkanina?" "+pc.podszewkaTkanina:""));
+          if(pc.leadInSides)dodZ.push("O\u0142\u00f3w w bokach");
+          if(pc.tasmaNaStojaco)dodZ.push("Ta\u015bma na stoj\u0105co");
+          if(pc.model==="tasma"||pc.model==="falda"){
+            dodZ.push("Ta\u015bma "+(pc.szerokosc_tasmy||8)+" cm");
+            dodZ.push("Ryszka "+(pc.wysokosc_haczyka!=null?pc.wysokosc_haczyka:2.5)+" cm");
+          }
+          if(pc.model==="wave"||pc.sz==="wave")dodZ.push("Odst\u0119p \u015blizg\u00f3w "+(pc.glideGap||8)+" cm");
+          X.dodatki=dodZ.join(", ")||"-";
         } else if(p.type==="roleta"){
           var rModelMap={relax:"Relax",print:"Print",back:"Back",front:"Front",cascade:"Cascade",duo:"Duo"};
           modelSzycia=rModelMap[pc.rModel]||pc.rModel||"-";
           var fabObjR=p.fabName?getFabricEffective(p.fabName):null;
           var rLancuszekKolorMap={srebrny:"Srebrny",zloty:"Z\u0142oty",stare_zloto:"Stare z\u0142oto",antracyt:"Antracyt",miedz:"Mied\u017a"};
-          var rLancuszekLbl=pc.rSystem==="elektryk"?null
-            :(pc.lancuszek==="metalowy"
-              ?"\u0142a\u0144cuszek "+(rLancuszekKolorMap[pc.kolorLancuszka]||"srebrny").toLowerCase()
-              :"\u0142a\u0144cuszek bia\u0142y");
+          var rNoChain=pc.rSystem==="elektryk"||pc.rSystem==="bez_mechanizmu";
+          cat="rolety";
+          X.kolorLancuszka=rNoChain?"-":(pc.lancuszek==="metalowy"?(rLancuszekKolorMap[pc.kolorLancuszka]||"Srebrny"):"Bia\u0142y");
+          X.mechanizm=pc.rSystem==="bez_mechanizmu"?"Bez mechanizmu":pc.rSystem==="elektryk"?"Elektryczny":pc.rSystem==="polautomatyczny"?"P\u00f3\u0142automatyczny":"Manualny";
+          var dodR=[];
+          if(pc.rMask==="tak")dodR.push("Boczki / maskownice");
+          if(pc.rPodszewka==="tak")dodR.push("Podszewka");
+          X.dodatki=dodR.join(", ")||"-";
           if(pc.rModel==="duo"){
             // Duo: dwie tkaniny — ① pierwsza warstwa, ② druga (jak w buildSewingRows)
             var fab2ObjR=p.fab2Name?getFabricEffective(p.fab2Name):null;
             var duoT1=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
             var duoT2=(p.fab2Name||p.fab2ManName||"tkanina")+(pc.kolor2?" / "+pc.kolor2:"");
-            tkaninaKolor="\u2460 "+duoT1+" + \u2461 "+duoT2+(rLancuszekLbl?" / "+rLancuszekLbl:"");
+            tkaninaKolor="\u2460 "+duoT1+" + \u2461 "+duoT2;
             var duoProd1=fabObjR?fabObjR.prod:"-",duoProd2=fab2ObjR?fab2ObjR.prod:"-";
             producent=(duoProd1===duoProd2)?duoProd1:duoProd1+" / "+duoProd2;
           }else{
-            tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"")+(rLancuszekLbl?" / "+rLancuszekLbl:"");
+            tkaninaKolor=(p.fabName||p.fabManName||"tkanina")+(pc.kolor?" / "+pc.kolor:"");
             producent=fabObjR?fabObjR.prod:"-";
           }
           szerokosc=par.wCm?(par.wCm+" cm"):"-";
           wysokosc=par.hCm?(par.hCm+" cm"):"-";
-          podzial=pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo")
+          podzial=pc.rSystem==="bez_mechanizmu"?"-":pc.rSystem==="elektryk"?(pc.stronaSilnika||"Lewo")
             :(pc.rModel==="duo"&&pc.rSystem==="manual"?"Obie strony":(pc.stronaObslugi||"Lewo"));
         } else if(p.type==="zaluzja"){
           // Producent \u017caluzji jest zawsze ten sam \u2014 Sun & Shade
@@ -7618,7 +7638,14 @@ export function buildOfferDetailRows(client){
         } else if(p.type==="szyna"){
           var szMSigma=pc.ksBrand==="msigma";
           var szMarcin=pc.ksBrand==="marcin";
-          modelSzycia=szMarcin?"Marcin Dekor":(szMSigma?"mSigma ":"")+(pc.ks==="wave"?"Wave":"Flex");
+          cat="karn_man";
+          modelSzycia=szMarcin?"KS Marcin Dekor":szMSigma?"KS mSigma":"KS Forest";
+          X.typZaslony=szMarcin?"-":(pc.ks==="wave"?"Wave":"Flex");
+          var szGiec=[];
+          if(par.arc)szGiec.push("\u0142uk "+String(par.arc).replace(".",",")+" mb");
+          if(par.pts)szGiec.push(par.pts+" pkt");
+          X.giecie=szGiec.join(", ")||"-";
+          X.typUchwytu=(pc.km==="sciana"?"\u015acienny "+(pc.kmWall==="podwojny"?"podw\u00f3jny":"pojedynczy"):"Sufitowy")+(szMSigma&&pc.ksWysiegnik==="tak"?", wysi\u0119gnik mFix":"");
           tkaninaKolor=pc.kk==="czarna"?"Czarna":pc.kk==="szara"?"Szara":"Bia\u0142a";
           szerokosc=par.len?(par.len+" cm"):"-";
           // Szyny KS Forest \u2014 producent zawsze Forest; mSigma \u2014 Mio Decor
@@ -7643,7 +7670,8 @@ export function buildOfferDetailRows(client){
             var karNapObj=pc.kBrand?(karNapLista.find(function(x){return x.v===(karIsSomfy?pc.mdNap:pc.plNap);})||karNapLista[0]):null;
             var karKolCode=karIsSomfy?pc.mdKolor:pc.plKolor;
             var karKolObj=pc.kBrand?RAIL_SLIM_KOLORY.find(function(k){return k.v===(karKolCode||"bialy");}):null;
-            tkaninaKolor=[karKolObj?karKolObj.l:null,karNapObj?karNapObj.l:null].filter(Boolean).join(" \u00b7 ")||"-";
+            tkaninaKolor=karKolObj?karKolObj.l:"-";
+            X.rodzajSilnika=karNapObj?karNapObj.l:"-";
             if(karIsSomfy){
               var mdPil=MD_PILOTY.find(function(x){return x.v===(pc.mdPilot||"brak");});
               if(mdPil&&mdPil.v!=="brak")karAccessories.push(mdPil.l);
@@ -7666,7 +7694,8 @@ export function buildOfferDetailRows(client){
             var presNapObj=presNapLista.find(function(x){return x.v===pc.pn;})||presNapLista[0];
             modelSzycia="Prestige "+presSeria+(presIsSomfy?" (Somfy)":"");
             var presKolObj=PRESTIGE_KOLORY.find(function(x){return x.v===pc.pKolor;});
-            tkaninaKolor=[presKolObj?presKolObj.l:null,presNapObj?presNapObj.l:null].filter(Boolean).join(" \u00b7 ")||"-";
+            tkaninaKolor=presKolObj?presKolObj.l:"-";
+            X.rodzajSilnika=presNapObj?presNapObj.l:"-";
             var presPilotyLista=presIsSomfy?PRESTIGE_PILOTY_SOMFY:PRESTIGE_PILOTY;
             var presCentralkiLista=presIsSomfy?PRESTIGE_CENTRALKI_SOMFY:PRESTIGE_CENTRALKI;
             var presPil=presPilotyLista.find(function(x){return x.v===(pc.pp||"brak");});
@@ -7675,7 +7704,11 @@ export function buildOfferDetailRows(client){
             if(presCen&&presCen.v!=="brak")karAccessories.push(presCen.l);
           } else {
             modelSzycia="Forest Shuttle";
-            tkaninaKolor=(pc.shFes&&pc.shFes!=="brak")?("FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%"):"-";
+            tkaninaKolor="-";
+            X.rodzajSilnika="-";
+            if(pc.shFes&&pc.shFes!=="brak")karAccessories.push("FES "+(pc.shFes==="snap"?"SNAP":"FLEX")+" "+(pc.shFesKrot||100)+"%");
+            var shUchO=SHUTTLE_UCHWYTY.find(function(u){return u.id===(pc.shUch||"sk1");});
+            if(shUchO)X.typUchwytu=shUchO.label.replace(/ \+ za\u015blepka$/,"");
             var shSter=pc.shSter||{};
             SHUTTLE_STEROWANIE.forEach(function(s){
               var q=parseInt(shSter[s.id])||0;
@@ -7685,11 +7718,54 @@ export function buildOfferDetailRows(client){
           var karMotorSideLbl=(pc.motorSide||"lewo");karMotorSideLbl=karMotorSideLbl.charAt(0).toUpperCase()+karMotorSideLbl.slice(1);
           var karMotorTypeLbl=(pc.motorType||"kurtyna");karMotorTypeLbl=karMotorTypeLbl.charAt(0).toUpperCase()+karMotorTypeLbl.slice(1);
           podzial=karMotorSideLbl+" / "+karMotorTypeLbl+(karAccessories.length?" \u00b7 Dodatki: "+karAccessories.join(", "):"");
+          cat="karn_el";
+          X.typRuchu=karMotorTypeLbl;
+          X.stronaSilnika=karMotorSideLbl;
+          X.akcesoria=karAccessories.join(", ")||"-";
+          if(!X.typUchwytu)X.typUchwytu="-";
           szerokosc=par.len?(par.len+" cm"):"-";
           // p.karniszSupplier nigdy nie jest ustawiane z poziomu formularza produktu
           // (nie ma tam takiego pola) — zawsze wychodziło "-". Wg Damiana: Producent
           // to marka szyny, nie dostawca — Forest dla Shuttle, inaczej Premium Line/Somfy.
           producent=p.type==="shuttle"?"Forest":(pc.kBrand==="somfy"?"Somfy":"Premium Line");
+        } else if(p.type==="karnisz_dek"){
+          // Do tej pory karnisz dekoracyjny mia\u0142 w druku same "-". Teraz: model, kolor,
+          // d\u0142ugo\u015bci odcink\u00f3w szyny i uchwyty/wsporniki z listy akcesori\u00f3w.
+          cat="karn_man";
+          var kdRO=p.kdRozmiar||20;
+          var kdKolO=KD_KOLORY.find(function(k){return k.id===(p.kdKolor||"bialy_mat");});
+          modelSzycia="Impress Line Square "+kdRO+" mm";
+          tkaninaKolor=kdKolO?kdKolO.label:"-";
+          var kdSegsO=(p.kdSzyny||[]).map(function(sg){
+            var l=sg&&(sg.len||sg.dlugosc),q=parseInt(sg&&sg.qty)||1;
+            return l?(l+" cm"+(q>1?" \u00d7"+q:"")):null;
+          }).filter(Boolean);
+          szerokosc=kdSegsO.join(", ")||"-";
+          X.typZaslony="-";
+          X.giecie="-";
+          var kdUchO=[];
+          Object.keys(p.kdAkc||{}).forEach(function(id){
+            var q=parseInt(p.kdAkc[id])||0;
+            if(q<=0||id==="lac_szyny"||id==="zas_uch_wkl")return;
+            var a=KD_AKCESORIA.find(function(x){return x.id===id;});
+            if(a)kdUchO.push(a.label+(q>1?" \u00d7"+q:""));
+          });
+          X.typUchwytu=kdUchO.join(", ")||"-";
+        } else if(p.type==="inny"&&(p.innyKat==="poduszki"||p.innyKat==="narzuta"||p.innyKat==="panele")){
+          var inFabO=p.fabName?getFabricEffective(p.fabName):null;
+          var inFabNameO=p.fabName||p.fabManName||p.innyTkanina||"";
+          tkaninaKolor=inFabNameO?(inFabNameO+(pc.kolor?" / "+pc.kolor:"")):"-";
+          producent=inFabO?inFabO.prod:"-";
+          if(p.innyKat==="panele"){
+            cat="panele";
+            szerokosc=par.wCm?(par.wCm+" cm"):"-";
+            wysokosc=par.hCm?(par.hCm+" cm"):"-";
+            X.montaz="-";
+          }else{
+            cat="poduszki";
+            X.rozmiar=(par.wCm&&par.hCm)?(par.wCm+" \u00d7 "+par.hCm+" cm"):(par.wCm?par.wCm+" cm":"-");
+            X.wypelnienie="-";
+          }
         } else if(p.type==="tapeta"){
           var tpX=tapetaCalc(p);
           producent="ARTE";
@@ -7717,14 +7793,14 @@ export function buildOfferDetailRows(client){
         var QTY_TYPES=["szyna","karnisz","prestige_round","prestige_square","shuttle","inny"];
         var tpD=p.type==="tapeta"?tapetaCalc(p):null;
         var rowQty=tpD&&tpD.qty?tpD.qty:(QTY_TYPES.indexOf(p.type)>=0?(par.qty||1):1);
-        rows.push({
+        rows.push(Object.assign({
           room:r.name,win:w.name,
           qty:rowQty,unit:tpD?tpD.unit:(isKurtain?"kpl.":"szt."),
           name:name,_prodLabel:prodLabel,_nameLoc:nameLoc,
           modelSzycia:modelSzycia,tkaninaKolor:tkaninaKolor,producent:producent,
           szerokosc:szerokosc,wysokosc:wysokosc,podzial:podzial,note:p.note||null,installNote:p.installNote||null,
           total:total,cenaJedn:total/rowQty
-        });
+        },X,{cat:cat}));
       });
     });
   });
@@ -8305,6 +8381,65 @@ export function pdfStyles(){
   </style>`;
 }
 
+// ── Wzór druku "Zamówienie": tabele per kategoria produktu ───────────────────────
+// col = [nagłówek, klucz pola wiersza, szerokość]. Klucze "_prod" i "_qty" są wyliczane
+// (nazwa produktu bez pomieszczenia; ilość na końcu tabeli). Pozostałe klucze to pola
+// wiersza z buildOfferDetailRows (edytowalne na ekranie podglądu oferty).
+export const OFFER_TABLES=[
+  {cat:"zaslony",title:"Zasłony i firany",cols:[
+    ["Produkt","_prod","13%"],["Model szycia","modelSzycia","10%"],["Typ dołu","typDolu","9%"],
+    ["Tkanina / Kolor","tkaninaKolor","15%"],["Producent","producent","8%"],["Szerokość","szerokosc","7%"],
+    ["Wysokość","wysokosc","7%"],["Podział","podzial","9%"],["Dodatki","dodatki","15%"],["Ilość","_qty","7%"]]},
+  {cat:"rolety",title:"Rolety rzymskie",cols:[
+    ["Produkt","_prod","12%"],["Model szycia","modelSzycia","9%"],["Tkanina / Kolor","tkaninaKolor","15%"],
+    ["Producent","producent","8%"],["Kolor łańcuszka","kolorLancuszka","8%"],["Mechanizm","mechanizm","9%"],
+    ["Szerokość","szerokosc","7%"],["Wysokość","wysokosc","7%"],["Sterowanie","podzial","8%"],
+    ["Dodatki","dodatki","10%"],["Ilość","_qty","7%"]]},
+  {cat:"karn_man",title:"Karnisze manualne",cols:[
+    ["Produkt","_prod","14%"],["Model karnisza","modelSzycia","14%"],["Kolor","tkaninaKolor","12%"],
+    ["Długość","szerokosc","10%"],["Typ zasłony","typZaslony","10%"],["Gięcie","giecie","12%"],
+    ["Typ uchwytu","typUchwytu","19%"],["Ilość","_qty","9%"]]},
+  {cat:"karn_el",title:"Karnisze elektryczne",cols:[
+    ["Produkt","_prod","11%"],["Model karnisza","modelSzycia","11%"],["Kolor","tkaninaKolor","9%"],
+    ["Producent","producent","8%"],["Długość","szerokosc","7%"],["Typ ruchu","typRuchu","8%"],
+    ["Strona silnika","stronaSilnika","8%"],["Rodzaj silnika","rodzajSilnika","10%"],
+    ["Akcesoria","akcesoria","13%"],["Typ uchwytu","typUchwytu","8%"],["Ilość","_qty","7%"]]},
+  {cat:"poduszki",title:"Poduszki i narzuty",cols:[
+    ["Produkt","_prod","20%"],["Model szycia","modelSzycia","17%"],["Tkanina / Kolor","tkaninaKolor","24%"],
+    ["Rozmiar","rozmiar","13%"],["Wypełnienie","wypelnienie","16%"],["Ilość","_qty","10%"]]},
+  {cat:"panele",title:"Panele tapicerowane",cols:[
+    ["Produkt","_prod","17%"],["Model","modelSzycia","13%"],["Tkanina / Kolor","tkaninaKolor","20%"],
+    ["Producent","producent","11%"],["Szerokość","szerokosc","9%"],["Wysokość","wysokosc","9%"],
+    ["Ilość","_qty","8%"],["Montaż","montaz","13%"]]},
+  {cat:"inne",title:"Pozostałe produkty",cols:[
+    ["Produkt","_prod","22%"],["Model szycia","modelSzycia","13%"],["Tkanina / Kolor / Osprzęt","tkaninaKolor","20%"],
+    ["Producent","producent","10%"],["Szerokość","szerokosc","9%"],["Wysokość","wysokosc","9%"],
+    ["Podział / Sterowanie","podzial","11%"],["Ilość","_qty","6%"]]}
+];
+
+// Pola edytowalne w podglądzie oferty poza wspólnymi (model / tkanina / producent /
+// szerokość / wysokość / podział) — specyficzne kolumny danej tabeli.
+var OFFER_COMMON_KEYS=["_prod","_qty","modelSzycia","tkaninaKolor","producent","szerokosc","wysokosc","podzial"];
+export function offerExtraFields(cat){
+  var tb=OFFER_TABLES.find(function(t){return t.cat===(cat||"inne");});
+  if(!tb)return [];
+  return tb.cols.filter(function(c){return OFFER_COMMON_KEYS.indexOf(c[1])<0;}).map(function(c){return {key:c[1],label:c[0]};});
+}
+
+function offerCellHTML(r,key,esc){
+  if(key==="_qty")return esc(r.qtyUnit||((r.qty!=null?r.qty:1)+" "+(r.unit||"")));
+  if(key==="_prod"){
+    // r.name = "<produkt> — <pomieszczenie> / <okno>": pomieszczenie jest już nad tabelą,
+    // wiersz zostawia produkt, a okno (jeśli nazwane) drobnym drukiem pod spodem.
+    var nm=String(r.name==null?"":r.name);
+    var loc=" \u2014 "+(r.room||"")+(r.win?" / "+r.win:"");
+    if(r.room!=null&&nm.slice(-loc.length)===loc)nm=nm.slice(0,nm.length-loc.length);
+    return '<strong>'+esc(nm)+'</strong>'+(r.win?'<br><span style="color:#6b6b66;font-size:10px">'+esc(r.win)+'</span>':'');
+  }
+  var v=r[key];
+  return esc(v==null||v===""?"-":v);
+}
+
 function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,visitFee){
   montaz=montaz||0;
   var montazMode=montaz.mode||"percent";
@@ -8328,20 +8463,19 @@ function _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,vis
     roomGroups[roomIndex[key]].rows.push(r);
   });
 
+  // Pomieszczenie wyświetla się tylko nad tabelami (nie w wierszu produktu); w obrębie
+  // pomieszczenia każda kategoria produktów ma własną tabelę z własnymi kolumnami.
+  var escO=function(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;");};
   var tablesHTML=roomGroups.map(function(g){
-    var gRows=g.rows.map(function(r){
-      return [
-        r.qtyUnit||((r.qty!=null?r.qty:1)+" "+(r.unit||"")),
-        r.name,
-        r.modelSzycia||"-",
-        r.tkaninaKolor||"-",
-        r.producent||"-",
-        r.szerokosc||"-",
-        r.wysokosc||"-",
-        r.podzial||"-"
-      ];
-    });
-    return makeTableHTML(["Ilość","Produkt","Model szycia","Tkanina / Kolor / Osprzęt","Producent","Szerokość","Wysokość","Podział / Sterowanie"],gRows,g.room,['7%','24%','12%','18%','10%','9%','9%','11%']);
+    var roomTables=OFFER_TABLES.map(function(tb){
+      var tRows=g.rows.filter(function(r){return (r.cat||"inne")===tb.cat;});
+      if(!tRows.length)return "";
+      var rowsHtml=tRows.map(function(r){
+        return tb.cols.map(function(col){return offerCellHTML(r,col[1],escO);});
+      });
+      return makeTableHTML(tb.cols.map(function(col){return col[0];}),rowsHtml,tb.title,tb.cols.map(function(col){return col[2];}));
+    }).join("\n");
+    return '<div style="font-size:15px;font-weight:700;margin:6mm 0 2mm;padding-bottom:1.5mm;border-bottom:1px solid #1a1a18;">'+escO(g.room)+'</div>'+roomTables;
   }).join("\n");
 
   var userNotesHTML=offerNotes

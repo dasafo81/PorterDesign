@@ -8,7 +8,7 @@ import {
   SEWING_HOUSES, buildFabricRows, buildHardwareRows, buildOfferDetailRows, buildSewingRows, calc,
   buildHardwarePDFHtmlFromRows, buildOfferPDFHtmlFromRows, HW_ROLETY_NOTES_DEFAULT, hardwareRoomLabel,
   formatPLN, generateHardwareOrderPDFFromRows, generateOfferPDF, generateOfferPDFFromRows,
-  getPanelsForProd, mg, openPDFWindow, roundTo10, persistOfferFromRows
+  getPanelsForProd, mg, openPDFWindow, roundTo10, persistOfferFromRows, offerExtraFields
 } from './constants/data.js';
 import {
   buildFabricOrderHtmlFromRows, buildSimplifiedPDFHtmlFromRows, buildSimplifiedRows, spreadDiscountOnRows, generateClientEmail, generateFabricOrderPDFFromRows, generateSewingOrderPDF, generateSimplifiedPDFFromRows, htmlToPdfBase64
@@ -2515,7 +2515,10 @@ export function App(p){
               rowFieldInput(i,"szerokosc","Szerokość",90),
               rowFieldInput(i,"wysokosc","Wysokość",90),
               rowFieldInput(i,"podzial","Podział / Sterowanie",140)
-            )
+            ),
+            offerExtraFields(r.cat).length?ce("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginTop:8}},
+              offerExtraFields(r.cat).map(function(f){return ce(Fragment,{key:f.key},rowFieldInput(i,f.key,f.label,f.key==="dodatki"||f.key==="akcesoria"||f.key==="typUchwytu"?200:120));})
+            ):null
           )
           );
         }),
