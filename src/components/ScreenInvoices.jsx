@@ -807,8 +807,20 @@ export function InvoiceEditor(p){
     setDiscountInput("");
   }
 
+  // Suma kontrolna polskiego NIP (wagi 6-5-7-2-3-4-5-6-7, mod 11). KSeF odrzuca fakturę
+  // z błędnym NIP-em nabywcy dopiero po wysyłce — łapiemy to wcześniej, przy zapisie.
+  // Sprawdzamy tylko numery złożone z dokładnie 10 cyfr (NIP z prefiksem kraju UE pomijamy).
+  function nipChecksumBad(raw){
+    var s=String(raw||"").replace(/[\s\-]/g,"");
+    if(!/^\d{10}$/.test(s)) return false;
+    var w=[6,5,7,2,3,4,5,6,7],sum=0;
+    for(var i=0;i<9;i++) sum+=w[i]*(+s.charAt(i));
+    return sum%11!==(+s.charAt(9));
+  }
+
   function validate(){
     if(!buyerName.trim()) return direction==="zakup"?"Brak nazwy sprzedawcy (kontrahenta)":"Brak nazwy nabywcy";
+    if(direction!=="zakup"&&nipChecksumBad(buyerNip)) return "NIP nabywcy ("+String(buyerNip).trim()+") ma błędną sumę kontrolną — sprawdź, czy nie ma literówki. KSeF odrzuci taką fakturę.";
     // Proforma i EKO (niezależnie od kierunku) mają własną automatyczną numerację.
     // Ręczny numer pozostaje wymagany wyłącznie dla rzeczywistej faktury zakupowej
     // otrzymanej od dostawcy.
