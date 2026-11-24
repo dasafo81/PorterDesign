@@ -54,7 +54,7 @@ export function ModalSewing(p){
   var as=useState(null),attachB64=as[0],setAttachB64=as[1];
   var fns=useState(savedDraft?(savedDraft.attachName||''):''),attachName=fns[0],setAttachName=fns[1];
   // ── Edytowalne pozycje szycia — ten sam wzorzec co previewRows w App.jsx
-  // (Wycena szczegółowa, Zamówienie tkaniny...). sourceFingerprint (patrz wyżej)
+  // (Zamówienie, Zamówienie tkaniny...). sourceFingerprint (patrz wyżej)
   // już pilnuje, że savedDraft.rows pasuje do aktualnych rooms — buildSewingRows
   // jest czystą funkcją rooms, więc osobny baseRows do porównania nie jest tu
   // potrzebny.

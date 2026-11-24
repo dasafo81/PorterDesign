@@ -87,7 +87,7 @@ export function getMailFlags(){
 }
 
 var APP_PDF_OPTIONS = [
-  {id:"pdf_oferta",label:"Wycena pe\u0142na",icon:"\uD83D\uDCC4"},
+  {id:"pdf_oferta",label:"Zam\u00f3wienie",icon:"\uD83D\uDCC4"},
   {id:"pdf_uproszczona",label:"Wycena uproszczona",icon:"\uD83D\uDCC3"}
   // Zlecenie szycia / Zamówienie tkaniny usunięte — nigdy nie były generowane przy wysyłce (znikały po cichu)
 ];
@@ -186,7 +186,7 @@ function buildAppPdfHtml(id,client){
 function appPdfName(id,client){
   var who=(client.name||"klient").replace(/[\\/:*?"<>|]/g,"").trim();
   var no=client.quote_no?" "+String(client.quote_no).replace(/\//g,"-"):"";
-  return (id==="pdf_oferta"?"Wycena szczeg\u00f3\u0142owa":"Oferta")+no+" - "+who+".pdf";
+  return (id==="pdf_oferta"?"Zam\u00f3wienie":"Oferta")+no+" - "+who+".pdf";
 }
 function previewPdfB64(b64){
   var bin=atob(b64),arr=new Uint8Array(bin.length);

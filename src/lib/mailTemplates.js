@@ -74,7 +74,7 @@ export var SYSTEM_TEMPLATES = {
     ]),
     files:[]
   },
-  // Dokument z podglądu wyceny szczegółowej wysyłany klientowi, któremu wystawiono fakturę EKO, to zamówienie
+  // Dokument z podglądu zamówienia wysyłany klientowi, któremu wystawiono fakturę EKO, to zamówienie
   // (bez kwot): do maila dołącza się OWU (bez faktury EKO), a treść mówi, co klient dostaje w załączeniu.
   wycena_eko_owu: {
     label:"Zamówienie i OWU", icon:"📎",
@@ -137,7 +137,7 @@ export var TEMPLATE_USAGE = {
     where:"CRM, karta deala → wysyłka faktury zaliczkowej z OWU (OWU dołącza się automatycznie).",
     vars:"{numer}, {kwota}"},
   wycena_eko_owu:{
-    where:"Podgląd wyceny szczegółowej → Wyślij mailem, gdy klientowi wystawiono fakturę EKO (OWU dołącza się automatycznie, faktura EKO nie jest wysyłana).",
+    where:"Podgląd zamówienia → Wyślij mailem, gdy klientowi wystawiono fakturę EKO (OWU dołącza się automatycznie, faktura EKO nie jest wysyłana).",
     vars:"{clientName}, {honorific}, {total}, {zaliczka}"},
   wplata_start:{
     where:"CRM, karta deala → Start realizacji → ✉ Wyślij (potwierdzenie wpłaty i informacja o rozpoczęciu realizacji).",

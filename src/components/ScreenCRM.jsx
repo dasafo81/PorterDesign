@@ -249,7 +249,7 @@ function SectionCard(rp){
   );
 }
 
-// Widok "Do montażu" — checklista z Wyceny szczegółowej (buildOfferDetailRows):
+// Widok "Do montażu" — checklista z Zamówienia (buildOfferDetailRows):
 // wszystkie produkty pogrupowane wg pomieszczenia, z wymiarami i uwagami przy
 // pozycji, bez cen — do szybkiego podglądu/wydruku przez ekipę montażową.
 // Otwierany w osobnym oknie przeglądarki (jak podgląd faktury); musi być wywołany
@@ -2136,7 +2136,7 @@ export function ModalDeal(p){
           d.quote_sent_at
             ?ce("div",{style:{fontSize:12,color:"var(--gr)"}},
               "✓ Wysłano "+new Date(d.quote_sent_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})
-              +(d.quote_sent_kind?" ("+(d.quote_sent_kind==="uproszczona"?"wycena uproszczona":"wycena szczegółowa")+")":""))
+              +(d.quote_sent_kind?" ("+(d.quote_sent_kind==="uproszczona"?"wycena uproszczona":"zamówienie")+")":""))
             :ce("div",{style:{fontSize:12,color:"var(--t3)"}},"Brak śladu wysyłki wyceny z aplikacji (ekran Podsumowanie → Mail do klienta). Mail wysłany poza aplikacją nie jest tu widoczny.")
         ),
 

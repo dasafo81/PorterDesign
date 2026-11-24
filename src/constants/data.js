@@ -7523,7 +7523,7 @@ export function buildOfferRows(client){
   return rows;
 }
 
-// Wiersze "Wyceny szczegółowej" — jak buildOfferRows (wszystkie typy produktów),
+// Wiersze "Zamówienia" (dawniej Wycena szczegółowa) — jak buildOfferRows (wszystkie typy produktów),
 // ale z dodatkowymi kolumnami technicznymi analogicznymi do zlecenia szycia
 // (Model szycia / Tkanina i Kolor / Producent / Szerokość / Wysokość / Podział).
 // Nazwa produktu NIE zawiera uwag (p.note) — te idą wyłącznie do wspólnego pola
@@ -8525,7 +8525,7 @@ export function buildOfferPDFHtml(client,comm,montaz,offerNotes,validUntil,disco
 }
 
 // Wariant przyjmujący już gotowe (i ewentualnie ręcznie doedytowane na ekranie
-// podglądu) wiersze — używany przez ekran "Wycena szczegółowa — podgląd".
+// podglądu) wiersze — używany przez ekran "Zamówienie — podgląd".
 export function buildOfferPDFHtmlFromRows(client,rows,montaz,offerNotes,validUntil,discount,visitFee){
   return _offerPDFHtmlCore(client,rows,montaz,offerNotes,validUntil,discount,visitFee);
 }

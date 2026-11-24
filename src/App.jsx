@@ -281,7 +281,7 @@ export function App(p){
   // Roleta: PROD_TYPES ma tylko ogólną etykietę "Roleta rzymska" — realny model
   // (Relax/Print/Back/Front/Cascade/Duo) jest w p.c.rModel. Ta sama zasada nazewnictwa
   // co w buildOfferDetailRows/buildSimplifiedRows, żeby Podsumowanie pokazywało
-  // ten sam produkt co Wycena szczegółowa/uproszczona i PDF-y wysyłane do klienta.
+  // ten sam produkt co Zamówienie/Wycena uproszczona i PDF-y wysyłane do klienta.
   function prodTypeLabel(p){
     if(p.type==="inny")return p.innyNazwa||"Inny";
     if(p.type==="roleta"){
@@ -1114,7 +1114,7 @@ export function App(p){
   },[]);
 
   // ── AUTOSAVE PODGLĄDU WYCENY SZCZEGÓŁOWEJ (offerPreview) ───────────
-  // Do 2026-09-16 wiersze/uwagi/ważność oferty na ekranie "Wycena szczegółowa —
+  // Do 2026-09-16 wiersze/uwagi/ważność oferty na ekranie "Zamówienie —
   // podgląd" żyły wyłącznie w lokalnym stanie: powrót do "sum" i ponowne wejście
   // w podgląd (albo odświeżenie strony / zawieszona karta na tablecie) kasowało
   // wszystkie ręczne poprawki bez ostrzeżenia. Zapisujemy teraz draft do
@@ -1344,7 +1344,7 @@ export function App(p){
     // "wstepna" (wycena uproszczona) / "wycena_po_spotkaniu" (pozostałe wyceny dla klienta).
     var tplId=opts.templateId||(opts.body?null:(opts.template==="wstepna"?"wstepna":"wycena_po_spotkaniu"));
     function open(to){
-      // opts.ekoOwu (wycena szczegółowa): gdy klientowi wystawiono fakturę EKO, do maila dołączamy OWU
+      // opts.ekoOwu (zamówienie): gdy klientowi wystawiono fakturę EKO, do maila dołączamy OWU
       // (samej faktury EKO nie wysyłamy) i bierzemy treść z szablonu "wycena_eko_owu".
       var ekoP=(opts.ekoOwu&&curClient)?sbApi.hasEkoInvoice(curClient.id).catch(function(){
         alert("Nie udało się sprawdzić, czy klient ma fakturę EKO. OWU NIE zostało dołączone do maila — jeśli klient ma fakturę EKO, dołącz je ręcznie.");
@@ -2434,7 +2434,7 @@ export function App(p){
       // ekranie zawijaja sie do kolejnych rzedow (auto-fit).
       ce("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:10}},
         ce("button",{onClick:function(){setScreen("rooms");},style:Object.assign(sumActBtn(false),{background:"transparent",boxShadow:"none",border:"1.5px solid var(--bd2)",fontWeight:500})},"\u2190 Edytuj"),
-        ce("button",{onClick:function(){openOfferPreview();},style:sumActBtn(true)},"Wycena szczegółowa"),
+        ce("button",{onClick:function(){openOfferPreview();},style:sumActBtn(true)},"Zamówienie"),
         ce("button",{onClick:function(){openSimplifiedPreview();},style:sumActBtn(false)},"Wycena uproszczona"),
         ce("button",{onClick:function(){startClientMail();},style:sumActBtn(false)},"Mail do klienta"),
         ce("button",{onClick:function(){openFabricPreview();},style:sumActBtn(false)},"Zamówienie tkaniny"),
@@ -2475,7 +2475,7 @@ export function App(p){
     }
 
     content=ce(Fragment,null,
-      ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCC4 Wycena szczegółowa \u2014 podgląd przed wygenerowaniem"),
+      ce("div",{style:{fontSize:15,fontWeight:700,color:"var(--t1)",marginBottom:14}},"\uD83D\uDCC4 Zamówienie \u2014 podgląd przed wygenerowaniem"),
       ce("div",{style:{background:"var(--bg2)",border:"1px solid var(--bd2)",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:12,color:"var(--t3)",lineHeight:1.5}},
         "Każde pole poniżej jest edytowalne \u2014 ilość, produkt, model szycia, tkanina/kolor, producent, szeroko\u015b\u0107, wysoko\u015b\u0107, podzia\u0142, cena, uwagi, ważność oferty i monta\u017c. Dopiero st\u0105d otwierasz podgl\u0105d dokumentu."
       ),
